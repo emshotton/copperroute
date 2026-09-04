@@ -7,16 +7,16 @@ use crate::autoroute::expansion::{ExpandableRef, ExpansionDoor, RoomRef};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ObstacleExpansionRoom {
-        item: ItemId,
-        index_in_item: usize,
-            id_no: i32,
-                    shape: Option<TileShape>,
-        doors: Vec<DoorId>,
-        doors_calculated: bool,
+    item: ItemId,
+    index_in_item: usize,
+    id_no: i32,
+    shape: Option<TileShape>,
+    doors: Vec<DoorId>,
+    doors_calculated: bool,
 }
 
 impl ObstacleExpansionRoom {
-                                            pub fn new(
+    pub fn new(
         board: &mut Board,
         item: ItemId,
         index_in_item: usize,
@@ -33,31 +33,31 @@ impl ObstacleExpansionRoom {
         }
     }
 
-        pub fn get_index_in_item(&self) -> usize {
+    pub fn get_index_in_item(&self) -> usize {
         self.index_in_item
     }
 
-        pub fn get_item(&self) -> ItemId {
+    pub fn get_item(&self) -> ItemId {
         self.item
     }
 
-                        pub fn get_layer(&self, board: &Board) -> Option<usize> {
+    pub fn get_layer(&self, board: &Board) -> Option<usize> {
         board.item_shape_layer(self.item, self.index_in_item)
     }
 
-        pub fn get_shape(&self) -> Option<&TileShape> {
+    pub fn get_shape(&self) -> Option<&TileShape> {
         self.shape.as_ref()
     }
 
-                                                                            pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         self.id_no
     }
 
-            pub fn java_id(item: ItemId, index_in_item: usize) -> i32 {
+    pub fn java_id(item: ItemId, index_in_item: usize) -> i32 {
         (item.0 as i32).wrapping_shl(10) | (index_in_item as i32)
     }
 
-                        pub fn door_exists(&self, doors: &Arena<ExpansionDoor>, other: RoomRef) -> bool {
+    pub fn door_exists(&self, doors: &Arena<ExpansionDoor>, other: RoomRef) -> bool {
         self.doors.iter().any(|door| {
             doors
                 .get(door.0)
@@ -65,19 +65,19 @@ impl ObstacleExpansionRoom {
         })
     }
 
-        pub fn add_door(&mut self, door: DoorId) {
+    pub fn add_door(&mut self, door: DoorId) {
         self.doors.push(door);
     }
 
-        pub fn get_doors(&self) -> &[DoorId] {
+    pub fn get_doors(&self) -> &[DoorId] {
         &self.doors
     }
 
-        pub fn clear_doors(&mut self) {
+    pub fn clear_doors(&mut self) {
         self.doors = Vec::new();
     }
 
-        pub fn reset_doors(&self, doors: &mut Arena<ExpansionDoor>) {
+    pub fn reset_doors(&self, doors: &mut Arena<ExpansionDoor>) {
         for door in &self.doors {
             if let Some(door) = doors.get_mut(door.0) {
                 door.reset();
@@ -85,7 +85,7 @@ impl ObstacleExpansionRoom {
         }
     }
 
-                    pub fn remove_door(&mut self, door: ExpandableRef) -> bool {
+    pub fn remove_door(&mut self, door: ExpandableRef) -> bool {
         let ExpandableRef::Door(id) = door else {
             return false;
         };
@@ -98,23 +98,22 @@ impl ObstacleExpansionRoom {
         }
     }
 
-            pub fn get_target_doors(&self) -> &[TargetDoorId] {
+    pub fn get_target_doors(&self) -> &[TargetDoorId] {
         &[]
     }
 
-                pub fn get_object(&self) -> TreeObject {
+    pub fn get_object(&self) -> TreeObject {
         TreeObject::Item(self.item)
     }
 
-        pub fn all_doors_calculated(&self) -> bool {
+    pub fn all_doors_calculated(&self) -> bool {
         self.doors_calculated
     }
 
-        pub fn set_doors_calculated(&mut self, value: bool) {
+    pub fn set_doors_calculated(&mut self, value: bool) {
         self.doors_calculated = value;
     }
 }
-
 
 #[cfg(test)]
 mod tests {

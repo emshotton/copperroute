@@ -11,14 +11,14 @@ pub struct IdentifierType {
 }
 
 impl IdentifierType {
-        pub fn new(reserved_chars: Vec<String>, string_quote: String) -> Self {
+    pub fn new(reserved_chars: Vec<String>, string_quote: String) -> Self {
         Self {
             string_quote,
             reserved_chars,
         }
     }
 
-            pub fn write<W: Write>(&self, name: &str, out: &mut IndentFileWriter<W>) {
+    pub fn write<W: Write>(&self, name: &str, out: &mut IndentFileWriter<W>) {
         let mut name = name.to_string();
 
         while name.chars().count() > 2 && name.starts_with('"') && name.ends_with('"') {
@@ -48,7 +48,7 @@ impl IdentifierType {
         out.write(&name);
     }
 
-                    #[allow(dead_code)]
+    #[allow(dead_code)]
     pub(crate) fn is_legal(&self, string: &str) -> bool {
         self.reserved_chars
             .iter()
@@ -76,7 +76,7 @@ mod tests {
         )
     }
 
-            #[test]
+    #[test]
     fn is_legal_rejects_reserved_characters() {
         let id = dsn_id();
         assert!(id.is_legal("F.Cu"));

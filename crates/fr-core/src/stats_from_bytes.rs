@@ -2,7 +2,7 @@ use crate::FileFormat;
 use fr_router::score::BoardStatistics;
 
 pub trait BoardStatisticsExt {
-                        fn from_bytes(data: &[u8], format: FileFormat) -> BoardStatistics;
+    fn from_bytes(data: &[u8], format: FileFormat) -> BoardStatistics;
 }
 
 impl BoardStatisticsExt for BoardStatistics {

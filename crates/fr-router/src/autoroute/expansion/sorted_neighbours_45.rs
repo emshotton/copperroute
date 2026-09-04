@@ -15,15 +15,15 @@ use crate::autoroute::tree_ext::AutorouteSearchTreeExt;
 
 #[derive(Debug, Clone)]
 pub struct Sorted45DegreeRoomNeighbours {
-        pub completed_room: RoomRef,
-        pub sorted_neighbours: JavaTreeSet<SortedRoomNeighbour>,
-        pub from_room: RoomRef,
-            pub room_shape: IntOctagon,
-            pub edge_interior_touches_obstacle: [bool; 8],
+    pub completed_room: RoomRef,
+    pub sorted_neighbours: JavaTreeSet<SortedRoomNeighbour>,
+    pub from_room: RoomRef,
+    pub room_shape: IntOctagon,
+    pub edge_interior_touches_obstacle: [bool; 8],
 }
 
 impl Sorted45DegreeRoomNeighbours {
-        fn new(
+    fn new(
         from_room: RoomRef,
         completed_room: RoomRef,
         room_shape: IntOctagon,
@@ -37,7 +37,7 @@ impl Sorted45DegreeRoomNeighbours {
         }
     }
 
-                                            pub fn calculate(
+    pub fn calculate(
         room: RoomRef,
         net_number: i32,
         board: &mut Board,
@@ -71,7 +71,7 @@ impl Sorted45DegreeRoomNeighbours {
         }
     }
 
-                            pub fn calculate_neighbours(
+    pub fn calculate_neighbours(
         room: RoomRef,
         net_number: i32,
         board: &mut Board,
@@ -259,7 +259,7 @@ impl Sorted45DegreeRoomNeighbours {
         Some(result)
     }
 
-                    fn add_sorted_neighbour(
+    fn add_sorted_neighbour(
         &mut self,
         search_tree_object: TreeObject,
         rooms: &ExpansionRoomStore,
@@ -279,7 +279,7 @@ impl Sorted45DegreeRoomNeighbours {
         }
     }
 
-                    fn calculate_edge_incomplete_rooms_of_obstacle_expansion_room(
+    fn calculate_edge_incomplete_rooms_of_obstacle_expansion_room(
         &self,
         from_side_index: usize,
         to_side_index: usize,
@@ -335,7 +335,7 @@ impl Sorted45DegreeRoomNeighbours {
         }
     }
 
-                    fn try_remove_edge_line(
+    fn try_remove_edge_line(
         &self,
         net_number: i32,
         board: &mut Board,
@@ -441,7 +441,7 @@ impl Sorted45DegreeRoomNeighbours {
         true
     }
 
-                #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     fn insert_incomplete_room(
         &self,
         board: &mut Board,
@@ -490,7 +490,7 @@ impl Sorted45DegreeRoomNeighbours {
         rooms.add_door(new_room, new_door);
     }
 
-            fn calculate_new_incomplete_rooms_for_obstacle_expansion_room(
+    fn calculate_new_incomplete_rooms_for_obstacle_expansion_room(
         &self,
         prev_neighbour: &SortedRoomNeighbour,
         next_neighbour: &SortedRoomNeighbour,
@@ -632,7 +632,7 @@ impl Sorted45DegreeRoomNeighbours {
         );
     }
 
-            pub fn calculate_new_incomplete_rooms(
+    pub fn calculate_new_incomplete_rooms(
         &self,
         board: &mut Board,
         rooms: &mut ExpansionRoomStore,
@@ -830,7 +830,6 @@ impl Sorted45DegreeRoomNeighbours {
     }
 }
 
-
 fn remove_not_touching_border_lines(
     room_oct: &IntOctagon,
     edge_interior_touches_obstacle: &[bool; 8],
@@ -903,19 +902,18 @@ fn side_index(no: i32, java_line: u32) -> usize {
     })
 }
 
-
 #[derive(Debug, Clone)]
 pub struct SortedRoomNeighbour {
-        pub search_tree_object: TreeObject,
-                pub object_id: i32,
-        pub shape: IntOctagon,
-            pub intersection: IntOctagon,
-            pub first_touching_side: i32,
-            pub last_touching_side: i32,
+    pub search_tree_object: TreeObject,
+    pub object_id: i32,
+    pub shape: IntOctagon,
+    pub intersection: IntOctagon,
+    pub first_touching_side: i32,
+    pub last_touching_side: i32,
 }
 
 impl SortedRoomNeighbour {
-                                            pub fn new(
+    pub fn new(
         search_tree_object: TreeObject,
         object_id: i32,
         neighbour_shape: IntOctagon,
@@ -1045,7 +1043,7 @@ impl SortedRoomNeighbour {
         }
     }
 
-                            pub fn compare_to(&self, other: &SortedRoomNeighbour) -> Ordering {
+    pub fn compare_to(&self, other: &SortedRoomNeighbour) -> Ordering {
         if self.first_touching_side > other.first_touching_side {
             return Ordering::Greater;
         }

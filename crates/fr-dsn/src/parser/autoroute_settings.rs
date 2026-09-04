@@ -12,17 +12,17 @@ use crate::parser::scope_parameter::skip_scope;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnRouterSettings {
-        run_router: bool,
-        run_optimizer: bool,
-            vias_allowed: Option<bool>,
-        via_costs: Option<i32>,
-        plane_via_costs: Option<i32>,
-        start_ripup_costs: Option<i32>,
-        layer_active: Vec<bool>,
-                preferred_direction_is_horizontal: Vec<Option<bool>>,
-        preferred_direction_trace_costs: Vec<f64>,
-        against_preferred_direction_trace_costs: Vec<f64>,
-                                                            board_specific_trace_costs_applied: bool,
+    run_router: bool,
+    run_optimizer: bool,
+    vias_allowed: Option<bool>,
+    via_costs: Option<i32>,
+    plane_via_costs: Option<i32>,
+    start_ripup_costs: Option<i32>,
+    layer_active: Vec<bool>,
+    preferred_direction_is_horizontal: Vec<Option<bool>>,
+    preferred_direction_trace_costs: Vec<f64>,
+    against_preferred_direction_trace_costs: Vec<f64>,
+    board_specific_trace_costs_applied: bool,
 }
 
 impl Default for DsnRouterSettings {
@@ -32,7 +32,7 @@ impl Default for DsnRouterSettings {
 }
 
 impl DsnRouterSettings {
-                #[must_use]
+    #[must_use]
     pub fn new() -> DsnRouterSettings {
         DsnRouterSettings {
             run_router: true,
@@ -49,7 +49,7 @@ impl DsnRouterSettings {
         }
     }
 
-                                        pub fn set_layer_count(&mut self, layer_count: usize) {
+    pub fn set_layer_count(&mut self, layer_count: usize) {
         if self.layer_active.len() != layer_count {
             self.board_specific_trace_costs_applied = false;
         }
@@ -59,97 +59,97 @@ impl DsnRouterSettings {
         self.against_preferred_direction_trace_costs = vec![1.0; layer_count];
     }
 
-        #[must_use]
+    #[must_use]
     pub fn get_layer_count(&self) -> usize {
         self.layer_active.len()
     }
 
-        #[must_use]
+    #[must_use]
     pub fn run_router(&self) -> bool {
         self.run_router
     }
 
-        pub fn set_run_router(&mut self, value: bool) {
+    pub fn set_run_router(&mut self, value: bool) {
         self.run_router = value;
     }
 
-        #[must_use]
+    #[must_use]
     pub fn run_optimizer(&self) -> bool {
         self.run_optimizer
     }
 
-        pub fn set_run_optimizer(&mut self, value: bool) {
+    pub fn set_run_optimizer(&mut self, value: bool) {
         self.run_optimizer = value;
     }
 
-        #[must_use]
+    #[must_use]
     pub fn vias_allowed(&self) -> bool {
         self.vias_allowed.unwrap_or(true)
     }
 
-        #[must_use]
+    #[must_use]
     pub fn vias_allowed_raw(&self) -> Option<bool> {
         self.vias_allowed
     }
 
-        pub fn set_vias_allowed(&mut self, value: bool) {
+    pub fn set_vias_allowed(&mut self, value: bool) {
         self.vias_allowed = Some(value);
     }
 
-        #[must_use]
+    #[must_use]
     pub fn via_costs(&self) -> i32 {
         self.via_costs.unwrap_or(1)
     }
 
-        #[must_use]
+    #[must_use]
     pub fn via_costs_raw(&self) -> Option<i32> {
         self.via_costs
     }
 
-        pub fn set_via_costs(&mut self, value: i32) {
+    pub fn set_via_costs(&mut self, value: i32) {
         self.via_costs = Some(value.max(1));
     }
 
-        #[must_use]
+    #[must_use]
     pub fn plane_via_costs(&self) -> i32 {
         self.plane_via_costs.unwrap_or(1)
     }
 
-        #[must_use]
+    #[must_use]
     pub fn plane_via_costs_raw(&self) -> Option<i32> {
         self.plane_via_costs
     }
 
-        pub fn set_plane_via_costs(&mut self, value: i32) {
+    pub fn set_plane_via_costs(&mut self, value: i32) {
         self.plane_via_costs = Some(value.max(1));
     }
 
-        #[must_use]
+    #[must_use]
     pub fn start_ripup_costs(&self) -> i32 {
         self.start_ripup_costs.unwrap_or(1)
     }
 
-        #[must_use]
+    #[must_use]
     pub fn start_ripup_costs_raw(&self) -> Option<i32> {
         self.start_ripup_costs
     }
 
-        pub fn set_start_ripup_costs(&mut self, value: i32) {
+    pub fn set_start_ripup_costs(&mut self, value: i32) {
         self.start_ripup_costs = Some(value.max(1));
     }
 
-            #[must_use]
+    #[must_use]
     pub fn get_layer_active(&self, layer: usize) -> bool {
         self.layer_active.get(layer).copied().unwrap_or(false)
     }
 
-            pub fn set_layer_active(&mut self, layer: usize, value: bool) {
+    pub fn set_layer_active(&mut self, layer: usize, value: bool) {
         if let Some(slot) = self.layer_active.get_mut(layer) {
             *slot = value;
         }
     }
 
-            #[must_use]
+    #[must_use]
     pub fn get_preferred_direction_is_horizontal(&self, layer: usize) -> bool {
         match self.preferred_direction_is_horizontal.get(layer) {
             None => false,
@@ -158,7 +158,7 @@ impl DsnRouterSettings {
         }
     }
 
-                                                #[must_use]
+    #[must_use]
     pub fn preferred_direction_is_horizontal_raw(&self, layer: usize) -> Option<bool> {
         self.preferred_direction_is_horizontal
             .get(layer)
@@ -166,13 +166,13 @@ impl DsnRouterSettings {
             .flatten()
     }
 
-        pub fn set_preferred_direction_is_horizontal(&mut self, layer: usize, value: bool) {
+    pub fn set_preferred_direction_is_horizontal(&mut self, layer: usize, value: bool) {
         if let Some(slot) = self.preferred_direction_is_horizontal.get_mut(layer) {
             *slot = Some(value);
         }
     }
 
-            #[must_use]
+    #[must_use]
     pub fn get_preferred_direction_trace_costs(&self, layer: usize) -> f64 {
         self.preferred_direction_trace_costs
             .get(layer)
@@ -180,14 +180,14 @@ impl DsnRouterSettings {
             .unwrap_or(0.0)
     }
 
-            pub fn set_preferred_direction_trace_costs(&mut self, layer: usize, value: f64) {
+    pub fn set_preferred_direction_trace_costs(&mut self, layer: usize, value: f64) {
         if let Some(slot) = self.preferred_direction_trace_costs.get_mut(layer) {
             *slot = value.max(0.1);
             self.board_specific_trace_costs_applied = true;
         }
     }
 
-        #[must_use]
+    #[must_use]
     pub fn get_against_preferred_direction_trace_costs(&self, layer: usize) -> f64 {
         self.against_preferred_direction_trace_costs
             .get(layer)
@@ -195,19 +195,19 @@ impl DsnRouterSettings {
             .unwrap_or(0.0)
     }
 
-            pub fn set_against_preferred_direction_trace_costs(&mut self, layer: usize, value: f64) {
+    pub fn set_against_preferred_direction_trace_costs(&mut self, layer: usize, value: f64) {
         if let Some(slot) = self.against_preferred_direction_trace_costs.get_mut(layer) {
             *slot = value.max(0.1);
             self.board_specific_trace_costs_applied = true;
         }
     }
 
-                            #[must_use]
+    #[must_use]
     pub fn are_board_specific_trace_costs_applied(&self) -> bool {
         self.board_specific_trace_costs_applied
     }
 
-                                                                                                                                                pub fn apply_new_values_from(&mut self, other: &DsnRouterSettings) {
+    pub fn apply_new_values_from(&mut self, other: &DsnRouterSettings) {
         self.run_router = other.run_router;
         self.run_optimizer = other.run_optimizer;
 
@@ -452,13 +452,13 @@ pub fn write_autoroute_settings_scope<W: Write>(
         });
         file.new_line();
         file.write("(preferred_direction_trace_costs ");
-        #[allow(clippy::cast_possible_truncation)] 
+        #[allow(clippy::cast_possible_truncation)]
         let trace_costs = settings.get_preferred_direction_trace_costs(i) as f32;
         file.write(&java_float_to_string(trace_costs));
         file.write(")");
         file.new_line();
         file.write("(against_preferred_direction_trace_costs ");
-        #[allow(clippy::cast_possible_truncation)] 
+        #[allow(clippy::cast_possible_truncation)]
         let trace_costs = settings.get_against_preferred_direction_trace_costs(i) as f32;
         file.write(&java_float_to_string(trace_costs));
         file.write(")");

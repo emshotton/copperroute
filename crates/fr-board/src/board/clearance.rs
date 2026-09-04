@@ -6,11 +6,11 @@ use crate::ids::{ItemId, TreeObject};
 use crate::items::{ClearanceViolation, Item, ItemCtx};
 
 impl Board {
-        pub fn clearance_violation_count(&mut self, id: ItemId) -> usize {
+    pub fn clearance_violation_count(&mut self, id: ItemId) -> usize {
         self.clearance_violations(id).len()
     }
 
-                                            pub fn clearance_violations(&mut self, id: ItemId) -> Vec<ClearanceViolation> {
+    pub fn clearance_violations(&mut self, id: ItemId) -> Vec<ClearanceViolation> {
         let mut result: Vec<ClearanceViolation> = Vec::new();
         let Some(item) = self.items.get(&id) else {
             return result;
@@ -200,7 +200,7 @@ impl Board {
         result
     }
 
-                                pub fn calculate_clearance_between_two_shapes(
+    pub fn calculate_clearance_between_two_shapes(
         raw_shape1: &TileShape,
         raw_shape2: &TileShape,
         minimum_clearance: f64,
@@ -236,7 +236,7 @@ impl Board {
         low
     }
 
-                                            pub fn aggregate_violations_sorted_by_severity(&mut self) -> Vec<ClearanceViolation> {
+    pub fn aggregate_violations_sorted_by_severity(&mut self) -> Vec<ClearanceViolation> {
         let mut violations = Vec::new();
         for id in self.items_in_board_order() {
             violations.extend(self.clearance_violations(id));
@@ -248,7 +248,7 @@ impl Board {
         violations
     }
 
-                                pub fn smallest_clearance(&self) -> f64 {
+    pub fn smallest_clearance(&self) -> f64 {
         let mut smallest = f64::MAX;
         for item in self.get_items() {
             let item_smallest = item.header().smallest_clearance;

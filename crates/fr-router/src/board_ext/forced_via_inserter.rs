@@ -9,7 +9,7 @@ use crate::board_ext::forced_pad_router::{CheckDrillResult, ForcedPadRouter};
 pub struct ForcedViaInserter;
 
 impl ForcedViaInserter {
-                                                        #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn check_layer(
         board: &mut Board,
         via_radius: f64,
@@ -112,7 +112,7 @@ impl ForcedViaInserter {
         CheckDrillResult::Drillable
     }
 
-                                                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn check(
         board: &mut Board,
         via_info: &ViaInfo,
@@ -240,7 +240,7 @@ impl ForcedViaInserter {
         true
     }
 
-                                                                                                                                    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn insert(
         board: &mut Board,
         via_info: &ViaInfo,
@@ -373,7 +373,7 @@ impl ForcedViaInserter {
         Ok(true)
     }
 
-                                                pub fn hole_check_shape(
+    pub fn hole_check_shape(
         board: &Board,
         padstack: PadstackId,
         location: &Point,
@@ -395,7 +395,7 @@ impl ForcedViaInserter {
         )))
     }
 
-                                            pub fn calculate_from_side(
+    pub fn calculate_from_side(
         via_location: &FloatPoint,
         via_shape: &TileShape,
         room_shape: &Simplex,
@@ -490,4 +490,3 @@ fn padstack_shape_layer_range(board: &Board, padstack: PadstackId) -> Option<(i3
     let (from, to) = (padstack.from_layer(), padstack.to_layer());
     if from > to { None } else { Some((from, to)) }
 }
-

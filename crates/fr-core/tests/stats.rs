@@ -351,7 +351,6 @@ const TRANSCRIPT: &[&str] = &[
     "JSON\t91\t{\\n  \"board\": {},\\n  \"layers\": {},\\n  \"items\": {},\\n  \"components\": {},\\n  \"pads\": {},\\n  \"nets\": {},\\n  \"connections\": {},\\n  \"traces\": {},\\n  \"bends\": {},\\n  \"vias\": {},\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 7,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
 ];
 
-
 #[test]
 fn the_committed_transcript_still_says_what_this_table_says() {
     let file = include_str!("data/p8t2-byte-statistics.txt");
@@ -480,7 +479,6 @@ fn the_port_reproduces_every_transcript_row() {
         );
     }
 }
-
 
 #[test]
 fn the_dsn_host_scrape_finds_nothing_on_a_real_dsn() {
@@ -748,7 +746,6 @@ fn a_non_finite_float_is_refused_exactly_where_gson_throws() {
     let _ = to_gson_string(&stats);
 }
 
-
 fn statistics_of(format: &str, source: &str) -> BoardStatistics {
     match source {
         "null" => BoardStatistics::default(),
@@ -908,7 +905,6 @@ fn unescape(s: &str) -> String {
     }
     out
 }
-
 
 fn populated() -> BoardStatistics {
     let mut s = BoardStatistics {

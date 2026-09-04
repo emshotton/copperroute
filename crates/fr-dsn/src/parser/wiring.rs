@@ -555,7 +555,6 @@ fn path_width(shape: &DsnShape) -> f64 {
     }
 }
 
-
 pub fn write_wiring_scope(p: &mut WriteScopeParameter<'_>) {
     p.file.start_scope_nl();
     p.file.write("wiring");

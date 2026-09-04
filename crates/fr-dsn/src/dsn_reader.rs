@@ -147,8 +147,8 @@ pub fn read_metadata(input: impl Read) -> BoardReadResult {
 }
 
 enum HeaderResult {
-        Ok,
-        NotDsn,
+    Ok,
+    NotDsn,
 }
 
 fn read_pcb_header(p: &mut ReadScopeParameter<'_>) -> Result<HeaderResult, DsnError> {

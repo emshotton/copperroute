@@ -23,7 +23,7 @@ pub struct LineSegment {
 }
 
 impl LineSegment {
-                    pub fn new(start_line: Line, middle_line: Line, end_line: Line) -> LineSegment {
+    pub fn new(start_line: Line, middle_line: Line, end_line: Line) -> LineSegment {
         LineSegment {
             start: start_line,
             middle: middle_line,
@@ -31,7 +31,7 @@ impl LineSegment {
         }
     }
 
-                        pub fn from_polyline(polyline: &Polyline, no: usize) -> Option<LineSegment> {
+    pub fn from_polyline(polyline: &Polyline, no: usize) -> Option<LineSegment> {
         let lines = polyline.lines();
         if no == 0 || no + 1 >= lines.len() {
             // Java: FRLogger.warn("LineSegment from Polyline: no out of range")
@@ -44,15 +44,15 @@ impl LineSegment {
         })
     }
 
-                pub fn to_polyline(&self) -> Result<Polyline, PolylineError> {
+    pub fn to_polyline(&self) -> Result<Polyline, PolylineError> {
         Polyline::from_lines(vec![self.start, self.middle, self.end])
     }
 
-                            pub fn from_tile_shape(shape: &TileShape, no: usize) -> Option<LineSegment> {
+    pub fn from_tile_shape(shape: &TileShape, no: usize) -> Option<LineSegment> {
         LineSegment::from_polyline_shape(shape, no)
     }
 
-                                pub fn from_polyline_shape(shape: &dyn PolylineShapeOps, no: usize) -> Option<LineSegment> {
+    pub fn from_polyline_shape(shape: &dyn PolylineShapeOps, no: usize) -> Option<LineSegment> {
         let line_count = shape.border_line_count();
         if no >= line_count {
             return None;
@@ -71,35 +71,35 @@ impl LineSegment {
         Some(LineSegment { start, middle, end })
     }
 
-        pub fn start_point(&self) -> Point {
+    pub fn start_point(&self) -> Point {
         self.middle.intersection(&self.start)
     }
 
-        pub fn end_point(&self) -> Point {
+    pub fn end_point(&self) -> Point {
         self.middle.intersection(&self.end)
     }
 
-                                    pub fn start_point_approx(&self) -> FloatPoint {
+    pub fn start_point_approx(&self) -> FloatPoint {
         self.start.intersection_approx(&self.middle)
     }
 
-            pub fn end_point_approx(&self) -> FloatPoint {
+    pub fn end_point_approx(&self) -> FloatPoint {
         self.end.intersection_approx(&self.middle)
     }
 
-        pub fn get_line(&self) -> Line {
+    pub fn get_line(&self) -> Line {
         self.middle
     }
 
-        pub fn get_start_closing_line(&self) -> Line {
+    pub fn get_start_closing_line(&self) -> Line {
         self.start
     }
 
-        pub fn get_end_closing_line(&self) -> Line {
+    pub fn get_end_closing_line(&self) -> Line {
         self.end
     }
 
-        pub fn opposite(&self) -> LineSegment {
+    pub fn opposite(&self) -> LineSegment {
         LineSegment::new(
             self.end.opposite(),
             self.middle.opposite(),
@@ -107,7 +107,7 @@ impl LineSegment {
         )
     }
 
-                        pub fn to_simplex(&self) -> Simplex {
+    pub fn to_simplex(&self) -> Simplex {
         let mut lines: Vec<Line> = Vec::with_capacity(4);
         lines.push(
             if self.end_point().side_of_line(&self.start) == Side::OnTheRight {
@@ -128,7 +128,7 @@ impl LineSegment {
         Simplex::from_lines(lines)
     }
 
-                    pub fn contains(&self, point: &Point) -> bool {
+    pub fn contains(&self, point: &Point) -> bool {
         let Point::Int(int_point) = point else {
             return false;
         };
@@ -142,7 +142,7 @@ impl LineSegment {
         start_point_side != end_point_side || start_point_side == Side::Collinear
     }
 
-        pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self) -> IntBox {
         let start_corner = self.middle.intersection_approx(&self.start);
         let end_corner = self.middle.intersection_approx(&self.end);
         let llx = java_min(start_corner.x, end_corner.x);
@@ -154,7 +154,7 @@ impl LineSegment {
         IntBox::new(lower_left, upper_right)
     }
 
-            pub fn bounding_octagon(&self) -> IntOctagon {
+    pub fn bounding_octagon(&self) -> IntOctagon {
         let start_corner = self.middle.intersection_approx(&self.start);
         let end_corner = self.middle.intersection_approx(&self.end);
         let lx = java_min(start_corner.x, end_corner.x).floor();
@@ -176,7 +176,7 @@ impl LineSegment {
         result.normalize()
     }
 
-            pub fn change_length_approx(&self, new_length: f64) -> LineSegment {
+    pub fn change_length_approx(&self, new_length: f64) -> LineSegment {
         let new_end_point = self
             .start_point_approx()
             .change_length(&self.end_point_approx(), new_length);
@@ -185,7 +185,7 @@ impl LineSegment {
         LineSegment::new(self.start, self.middle, new_end_line)
     }
 
-                                        pub fn intersection(&self, other: &LineSegment) -> Vec<Line> {
+    pub fn intersection(&self, other: &LineSegment) -> Vec<Line> {
         if !self.bounding_box().intersects(&other.bounding_box()) {
             return Vec::new();
         }
@@ -222,20 +222,20 @@ impl LineSegment {
             || other.start_point().side_of_line(&self.middle)
                 == other.end_point().side_of_line(&self.middle)
         {
-            return Vec::new(); 
+            return Vec::new();
         }
         vec![other.middle]
     }
 
-        pub fn intersects(&self, other: &LineSegment) -> bool {
+    pub fn intersects(&self, other: &LineSegment) -> bool {
         !self.intersection(other).is_empty()
     }
 
-            pub fn overlaps(&self, other: &LineSegment) -> bool {
+    pub fn overlaps(&self, other: &LineSegment) -> bool {
         self.intersection(other).len() > 1
     }
 
-                                pub fn stair_approximation(&self, width: f64, to_the_right: bool) -> Vec<IntPoint> {
+    pub fn stair_approximation(&self, width: f64, to_the_right: bool) -> Vec<IntPoint> {
         let start_point = self.start_point().to_float().round();
         let end_point = self.end_point().to_float().round();
         if start_point == end_point {
@@ -310,7 +310,7 @@ impl LineSegment {
         result
     }
 
-                                pub fn stair_approximation_45(&self, width: f64, to_the_right: bool) -> Vec<IntPoint> {
+    pub fn stair_approximation_45(&self, width: f64, to_the_right: bool) -> Vec<IntPoint> {
         let start_point = self.start_point().to_float().round();
         let end_point = self.end_point().to_float().round();
         if start_point == end_point {
@@ -395,7 +395,7 @@ impl LineSegment {
         result
     }
 
-                                                pub fn border_intersections(&self, shape: &TileShape) -> Vec<usize> {
+    pub fn border_intersections(&self, shape: &TileShape) -> Vec<usize> {
         if !self.bounding_box().intersects(&shape.bounding_box()) {
             return Vec::new();
         }
@@ -450,7 +450,6 @@ impl LineSegment {
                 if prev_line_side_of_is != Side::OnTheLeft
                     && next_line_side_of_is != Side::OnTheLeft
                 {
-
                     if prev_line_side_of_is == Side::Collinear {
                         let prev_prev_corner = if edge_line_no == 0 {
                             shape.corner(edge_count - 1)
@@ -533,7 +532,7 @@ impl LineSegment {
         vec![result[0]]
     }
 
-                                pub fn sort_endpoints_in_xy(&self) -> LineSegment {
+    pub fn sort_endpoints_in_xy(&self) -> LineSegment {
         let swap_endlines = self.start_point().compare_xy(&self.end_point()) == Ordering::Greater;
 
         if swap_endlines {
@@ -604,7 +603,7 @@ mod tests {
         let hits = s.border_intersections(&b);
         assert_eq!(hits.len(), 2);
         assert!(b.is_intersected_interior_by(&s));
-        assert!(!b.is_intersected_interior_by(&seg(-5, 0, 15, 0))); 
+        assert!(!b.is_intersected_interior_by(&seg(-5, 0, 15, 0)));
     }
 
     #[test]

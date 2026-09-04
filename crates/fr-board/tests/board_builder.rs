@@ -31,11 +31,11 @@ pub struct BoardFixture {
 }
 
 impl BoardFixture {
-            pub fn new() -> BoardFixture {
+    pub fn new() -> BoardFixture {
         BoardFixture::with_angle(AngleRestriction::FortyFiveDegree)
     }
 
-            pub fn with_angle(angle: AngleRestriction) -> BoardFixture {
+    pub fn with_angle(angle: AngleRestriction) -> BoardFixture {
         let layer_structure = layers();
         let mut clearance_matrix = ClearanceMatrix::get_default_instance(&layer_structure, 200);
         assert!(clearance_matrix.append_class("wide"));
@@ -131,7 +131,7 @@ impl BoardFixture {
         }
     }
 
-                        pub fn insert_all(&mut self) {
+    pub fn insert_all(&mut self) {
         let mut items = std::mem::take(&mut self.items);
         let ctx = ItemCtx {
             library: &self.library,
@@ -146,7 +146,7 @@ impl BoardFixture {
         self.items = items;
     }
 
-                                        pub fn build_autoroute_tree(&mut self, clearance_class_index: usize) -> TreeId {
+    pub fn build_autoroute_tree(&mut self, clearance_class_index: usize) -> TreeId {
         let mut items = std::mem::take(&mut self.items);
         let ctx = ItemCtx {
             library: &self.library,
@@ -165,11 +165,11 @@ impl BoardFixture {
         id
     }
 
-                pub fn items_in_board_order(&mut self) -> Vec<&mut Item> {
+    pub fn items_in_board_order(&mut self) -> Vec<&mut Item> {
         self.items.values_mut().rev().collect()
     }
 
-        pub fn tree(&self, id: TreeId) -> &ShapeSearchTree {
+    pub fn tree(&self, id: TreeId) -> &ShapeSearchTree {
         self.manager
             .trees()
             .find(|tree| tree.id() == id)
@@ -270,7 +270,6 @@ fn the_fixture_matches_the_java_driver_board() {
     );
     assert_eq!(f.items[&ItemId(1)].tile_shape_count(&ctx), 0);
 }
-
 
 pub struct AreaFixture {
     pub library: BoardLibrary,
@@ -407,7 +406,7 @@ impl AreaFixture {
         id
     }
 
-            pub fn generate_keepout_outside(&mut self) {
+    pub fn generate_keepout_outside(&mut self) {
         let mut outline = self.items.remove(&ItemId(1)).expect("the outline");
         self.manager.remove(&mut outline);
         if let Item::BoardOutline(o) = &mut outline {
@@ -437,7 +436,6 @@ impl Default for AreaFixture {
         Self::new()
     }
 }
-
 
 pub struct TraceFixture {
     pub library: BoardLibrary,
@@ -493,7 +491,7 @@ impl TraceFixture {
         fixture
     }
 
-                pub fn skewed_outline() -> TraceFixture {
+    pub fn skewed_outline() -> TraceFixture {
         let rules = BoardRules::new(
             layers(),
             ClearanceMatrix::get_default_instance(&layers(), 200),
@@ -535,7 +533,7 @@ impl TraceFixture {
         fixture
     }
 
-                    pub fn merge_pair(a: &[Point], b: &[Point]) -> TraceFixture {
+    pub fn merge_pair(a: &[Point], b: &[Point]) -> TraceFixture {
         let rules = BoardRules::new(
             layers(),
             ClearanceMatrix::get_default_instance(&layers(), 200),
@@ -584,7 +582,7 @@ impl TraceFixture {
         fixture
     }
 
-        pub fn build_autoroute_tree(&mut self, clearance_class_index: usize) -> TreeId {
+    pub fn build_autoroute_tree(&mut self, clearance_class_index: usize) -> TreeId {
         let mut items = std::mem::take(&mut self.items);
         let ctx = ItemCtx {
             library: &self.library,
@@ -649,7 +647,6 @@ pub fn trace_piece(id: u32, corners: &[(i32, i32)]) -> PolylineTrace {
         None,
     )
 }
-
 
 pub fn p2t11_board() -> Board {
     p2t11_board_with_host_cad(false)

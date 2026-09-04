@@ -12,17 +12,16 @@ use crate::parser::dsn_file::read_string_scope;
 use crate::parser::scope_parameter::skip_scope;
 use std::io::Write;
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DsnLayer {
-        pub name: String,
-            pub no: i32,
-        pub is_signal: bool,
-        pub net_names: Vec<String>,
+    pub name: String,
+    pub no: i32,
+    pub is_signal: bool,
+    pub net_names: Vec<String>,
 }
 
 impl DsnLayer {
-        #[must_use]
+    #[must_use]
     pub fn with_nets(
         name: impl Into<String>,
         no: i32,
@@ -37,36 +36,34 @@ impl DsnLayer {
         }
     }
 
-        #[must_use]
+    #[must_use]
     pub fn new(name: impl Into<String>, no: i32, is_signal: bool) -> DsnLayer {
         DsnLayer::with_nets(name, no, is_signal, Vec::new())
     }
 
-                    #[must_use]
+    #[must_use]
     pub fn pcb() -> DsnLayer {
         DsnLayer::new("pcb", -1, false)
     }
 
-        #[must_use]
+    #[must_use]
     pub fn signal() -> DsnLayer {
         DsnLayer::new("signal", -1, true)
     }
-
 }
-
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DsnLayerStructure {
-        pub layers: Vec<DsnLayer>,
+    pub layers: Vec<DsnLayer>,
 }
 
 impl DsnLayerStructure {
-        #[must_use]
+    #[must_use]
     pub fn new(layers: Vec<DsnLayer>) -> DsnLayerStructure {
         DsnLayerStructure { layers }
     }
 
-            #[must_use]
+    #[must_use]
     pub fn from_board(board_layer_structure: &fr_board::LayerStructure) -> DsnLayerStructure {
         DsnLayerStructure {
             layers: board_layer_structure
@@ -84,7 +81,7 @@ impl DsnLayerStructure {
         }
     }
 
-                                    #[must_use]
+    #[must_use]
     pub fn get_no(&self, name: &str) -> Option<usize> {
         for (i, layer) in self.layers.iter().enumerate() {
             if name == layer.name {
@@ -100,12 +97,12 @@ impl DsnLayerStructure {
         None
     }
 
-        #[must_use]
+    #[must_use]
     pub fn signal_layer_count(&self) -> usize {
         self.layers.iter().filter(|l| l.is_signal).count()
     }
 
-            #[must_use]
+    #[must_use]
     pub fn contains_plane(&self, net_name: &str) -> bool {
         self.layers
             .iter()
@@ -113,25 +110,24 @@ impl DsnLayerStructure {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnRectangle {
-        pub layer: DsnLayer,
-        pub coor: [f64; 4],
+    pub layer: DsnLayer,
+    pub coor: [f64; 4],
 }
 
 impl DsnRectangle {
-        #[must_use]
+    #[must_use]
     pub fn new(layer: DsnLayer, coor: [f64; 4]) -> DsnRectangle {
         DsnRectangle { layer, coor }
     }
 
-                            #[must_use]
+    #[must_use]
     pub fn bounding_box(&self) -> DsnRectangle {
         self.clone()
     }
 
-        #[must_use]
+    #[must_use]
     pub fn union(&self, other: &DsnRectangle) -> DsnRectangle {
         DsnRectangle::new(
             self.layer.clone(),
@@ -144,7 +140,7 @@ impl DsnRectangle {
         )
     }
 
-        #[must_use]
+    #[must_use]
     pub fn transform_to_board_rel(&self, coordinate_transform: &CoordinateTransform) -> Shape {
         let mut box_coor = [0_i32; 4];
         for (target, source) in box_coor.iter_mut().zip(self.coor) {
@@ -158,7 +154,7 @@ impl DsnRectangle {
         Shape::Tile(TileShape::Box(result))
     }
 
-        #[must_use]
+    #[must_use]
     pub fn transform_to_board(&self, coordinate_transform: &CoordinateTransform) -> Shape {
         let lower_left = coordinate_transform.dsn_to_board_point(&[
             self.coor[0].min(self.coor[2]),
@@ -174,7 +170,7 @@ impl DsnRectangle {
         )))
     }
 
-        pub fn write_scope<W: Write>(
+    pub fn write_scope<W: Write>(
         &self,
         file: &mut IndentFileWriter<W>,
         identifier: &IdentifierType,
@@ -189,7 +185,7 @@ impl DsnRectangle {
         file.write(")");
     }
 
-        pub fn write_scope_int<W: Write>(
+    pub fn write_scope_int<W: Write>(
         &self,
         file: &mut IndentFileWriter<W>,
         identifier: &IdentifierType,
@@ -206,20 +202,19 @@ impl DsnRectangle {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnCircle {
-        pub layer: DsnLayer,
-        pub coor: [f64; 3],
+    pub layer: DsnLayer,
+    pub coor: [f64; 3],
 }
 
 impl DsnCircle {
-                #[must_use]
+    #[must_use]
     pub fn new(layer: DsnLayer, coor: [f64; 3]) -> DsnCircle {
         DsnCircle { layer, coor }
     }
 
-        #[must_use]
+    #[must_use]
     pub fn transform_to_board(&self, coordinate_transform: &CoordinateTransform) -> Shape {
         let center = coordinate_transform
             .dsn_to_board_point(&[self.coor[1], self.coor[2]])
@@ -228,7 +223,7 @@ impl DsnCircle {
         Shape::Circle(Circle::new(center, radius))
     }
 
-        #[must_use]
+    #[must_use]
     pub fn transform_to_board_rel(&self, coordinate_transform: &CoordinateTransform) -> Shape {
         let radius = java_round_to_int(coordinate_transform.dsn_to_board(self.coor[0]) / 2.0);
         let x = java_round_to_int(coordinate_transform.dsn_to_board(self.coor[1]));
@@ -236,7 +231,7 @@ impl DsnCircle {
         Shape::Circle(Circle::new(IntPoint::new(x, y), radius))
     }
 
-            #[must_use]
+    #[must_use]
     pub fn bounding_box(&self) -> DsnRectangle {
         let radius = self.coor[0] / 2.0;
         DsnRectangle::new(
@@ -250,7 +245,7 @@ impl DsnCircle {
         )
     }
 
-        pub fn write_scope<W: Write>(
+    pub fn write_scope<W: Write>(
         &self,
         file: &mut IndentFileWriter<W>,
         identifier: &IdentifierType,
@@ -265,7 +260,7 @@ impl DsnCircle {
         file.write(")");
     }
 
-        pub fn write_scope_int<W: Write>(
+    pub fn write_scope_int<W: Write>(
         &self,
         file: &mut IndentFileWriter<W>,
         identifier: &IdentifierType,
@@ -282,20 +277,19 @@ impl DsnCircle {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnPolygon {
-        pub layer: DsnLayer,
-        pub coor: Vec<f64>,
+    pub layer: DsnLayer,
+    pub coor: Vec<f64>,
 }
 
 impl DsnPolygon {
-        #[must_use]
+    #[must_use]
     pub fn new(layer: DsnLayer, coor: Vec<f64>) -> DsnPolygon {
         DsnPolygon { layer, coor }
     }
 
-        #[must_use]
+    #[must_use]
     pub fn transform_to_board(&self, coordinate_transform: &CoordinateTransform) -> Shape {
         let corners: Vec<Point> = (0..self.coor.len() / 2)
             .map(|i| {
@@ -309,7 +303,7 @@ impl DsnPolygon {
         Shape::Polygon(PolygonShape::from_points(&corners))
     }
 
-        #[must_use]
+    #[must_use]
     pub fn transform_to_board_rel(&self, coordinate_transform: &CoordinateTransform) -> Shape {
         if self.coor.len() < 2 {
             return Shape::Tile(TileShape::Simplex(Simplex::EMPTY));
@@ -326,7 +320,7 @@ impl DsnPolygon {
         Shape::Polygon(PolygonShape::from_points(&corners))
     }
 
-                #[must_use]
+    #[must_use]
     pub fn bounding_box(&self) -> DsnRectangle {
         let mut bounds = [
             f64::from(i32::MAX),
@@ -346,7 +340,7 @@ impl DsnPolygon {
         DsnRectangle::new(self.layer.clone(), bounds)
     }
 
-            pub fn write_scope<W: Write>(
+    pub fn write_scope<W: Write>(
         &self,
         file: &mut IndentFileWriter<W>,
         identifier: &IdentifierType,
@@ -366,7 +360,7 @@ impl DsnPolygon {
         file.end_scope();
     }
 
-        pub fn write_scope_int<W: Write>(
+    pub fn write_scope_int<W: Write>(
         &self,
         file: &mut IndentFileWriter<W>,
         identifier: &IdentifierType,
@@ -389,16 +383,15 @@ impl DsnPolygon {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnPolygonPath {
-        pub layer: DsnLayer,
-        pub width: f64,
-        pub coordinate_arr: Vec<f64>,
+    pub layer: DsnLayer,
+    pub width: f64,
+    pub coordinate_arr: Vec<f64>,
 }
 
 impl DsnPolygonPath {
-            #[must_use]
+    #[must_use]
     pub fn new(layer: DsnLayer, width: f64, coordinate_arr: Vec<f64>) -> DsnPolygonPath {
         DsnPolygonPath {
             layer,
@@ -407,7 +400,7 @@ impl DsnPolygonPath {
         }
     }
 
-        pub fn write_scope<W: Write>(
+    pub fn write_scope<W: Write>(
         &self,
         file: &mut IndentFileWriter<W>,
         identifier: &IdentifierType,
@@ -427,7 +420,7 @@ impl DsnPolygonPath {
         file.end_scope();
     }
 
-            pub fn write_scope_int<W: Write>(
+    pub fn write_scope_int<W: Write>(
         &self,
         file: &mut IndentFileWriter<W>,
         identifier: &IdentifierType,
@@ -449,7 +442,7 @@ impl DsnPolygonPath {
         file.end_scope();
     }
 
-        #[must_use]
+    #[must_use]
     pub fn transform_to_board(&self, coordinate_transform: &CoordinateTransform) -> Shape {
         let corners: Vec<FloatPoint> = (0..self.coordinate_arr.len() / 2)
             .map(|i| {
@@ -462,7 +455,7 @@ impl DsnPolygonPath {
         self.enlarged_polygon(coordinate_transform, &corners)
     }
 
-            #[must_use]
+    #[must_use]
     pub fn transform_to_board_rel(&self, coordinate_transform: &CoordinateTransform) -> Shape {
         let corners: Vec<FloatPoint> = (0..self.coordinate_arr.len() / 2)
             .map(|i| {
@@ -473,7 +466,7 @@ impl DsnPolygonPath {
         self.enlarged_polygon(coordinate_transform, &corners)
     }
 
-            fn enlarged_polygon(
+    fn enlarged_polygon(
         &self,
         coordinate_transform: &CoordinateTransform,
         corners: &[FloatPoint],
@@ -492,7 +485,7 @@ impl DsnPolygonPath {
         Shape::Polygon(result)
     }
 
-        #[must_use]
+    #[must_use]
     pub fn bounding_box(&self) -> DsnRectangle {
         let offset = self.width / 2.0;
         let mut bounds = [
@@ -514,16 +507,15 @@ impl DsnPolygonPath {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnPolylinePath {
-        pub layer: DsnLayer,
-        pub width: f64,
-        pub coordinate_arr: Vec<f64>,
+    pub layer: DsnLayer,
+    pub width: f64,
+    pub coordinate_arr: Vec<f64>,
 }
 
 impl DsnPolylinePath {
-        #[must_use]
+    #[must_use]
     pub fn new(layer: DsnLayer, width: f64, coordinate_arr: Vec<f64>) -> DsnPolylinePath {
         DsnPolylinePath {
             layer,
@@ -532,7 +524,7 @@ impl DsnPolylinePath {
         }
     }
 
-                pub fn write_scope<W: Write>(
+    pub fn write_scope<W: Write>(
         &self,
         file: &mut IndentFileWriter<W>,
         identifier: &IdentifierType,
@@ -553,7 +545,7 @@ impl DsnPolylinePath {
         file.end_scope();
     }
 
-        pub fn write_scope_int<W: Write>(
+    pub fn write_scope_int<W: Write>(
         &self,
         file: &mut IndentFileWriter<W>,
         identifier: &IdentifierType,
@@ -575,7 +567,7 @@ impl DsnPolylinePath {
         file.end_scope();
     }
 
-            #[must_use]
+    #[must_use]
     pub fn transform_to_board_rel(
         &self,
         _coordinate_transform: &CoordinateTransform,
@@ -583,29 +575,28 @@ impl DsnPolylinePath {
         None
     }
 
-            #[must_use]
+    #[must_use]
     pub fn transform_to_board(&self, _coordinate_transform: &CoordinateTransform) -> Option<Shape> {
         None
     }
 
-            #[must_use]
+    #[must_use]
     pub fn bounding_box(&self) -> Option<DsnRectangle> {
         None
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum DsnShape {
-        Rect(DsnRectangle),
-        Circle(DsnCircle),
-        Polygon(DsnPolygon),
-        Path(DsnPolygonPath),
-        PolylinePath(DsnPolylinePath),
+    Rect(DsnRectangle),
+    Circle(DsnCircle),
+    Polygon(DsnPolygon),
+    Path(DsnPolygonPath),
+    PolylinePath(DsnPolylinePath),
 }
 
 impl DsnShape {
-        #[must_use]
+    #[must_use]
     pub fn layer(&self) -> &DsnLayer {
         match self {
             DsnShape::Rect(s) => &s.layer,
@@ -616,7 +607,7 @@ impl DsnShape {
         }
     }
 
-            pub fn layer_mut(&mut self) -> &mut DsnLayer {
+    pub fn layer_mut(&mut self) -> &mut DsnLayer {
         match self {
             DsnShape::Rect(s) => &mut s.layer,
             DsnShape::Circle(s) => &mut s.layer,
@@ -626,7 +617,7 @@ impl DsnShape {
         }
     }
 
-        pub fn write_scope<W: Write>(
+    pub fn write_scope<W: Write>(
         &self,
         file: &mut IndentFileWriter<W>,
         identifier: &IdentifierType,
@@ -640,7 +631,7 @@ impl DsnShape {
         }
     }
 
-            pub fn write_scope_int<W: Write>(
+    pub fn write_scope_int<W: Write>(
         &self,
         file: &mut IndentFileWriter<W>,
         identifier: &IdentifierType,
@@ -654,7 +645,7 @@ impl DsnShape {
         }
     }
 
-        pub fn write_hole_scope<W: Write>(
+    pub fn write_hole_scope<W: Write>(
         &self,
         file: &mut IndentFileWriter<W>,
         identifier: &IdentifierType,
@@ -665,7 +656,7 @@ impl DsnShape {
         file.end_scope();
     }
 
-            #[must_use]
+    #[must_use]
     pub fn transform_to_board(&self, coordinate_transform: &CoordinateTransform) -> Option<Shape> {
         match self {
             DsnShape::Rect(s) => Some(s.transform_to_board(coordinate_transform)),
@@ -676,7 +667,7 @@ impl DsnShape {
         }
     }
 
-        #[must_use]
+    #[must_use]
     pub fn transform_to_board_rel(
         &self,
         coordinate_transform: &CoordinateTransform,
@@ -690,7 +681,7 @@ impl DsnShape {
         }
     }
 
-        #[must_use]
+    #[must_use]
     pub fn bounding_box(&self) -> Option<DsnRectangle> {
         match self {
             DsnShape::Rect(s) => Some(s.bounding_box()),
@@ -704,9 +695,9 @@ impl DsnShape {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReadAreaScopeResult {
-                pub shape_list: Vec<Option<DsnShape>>,
-        pub clearance_class_name: Option<String>,
-            pub area_name: Option<String>,
+    pub shape_list: Vec<Option<DsnShape>>,
+    pub clearance_class_name: Option<String>,
+    pub area_name: Option<String>,
 }
 
 fn get_layer(layer_structure: Option<&DsnLayerStructure>, layer_name: &str) -> Option<DsnLayer> {

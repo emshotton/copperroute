@@ -12,15 +12,15 @@ const DETOUR_ITEM_COST: f64 = 0.1;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Connection {
-            pub start_point: Option<Point>,
-                        pub start_layer: i32,
-        pub end_point: Option<Point>,
-        pub end_layer: i32,
-        pub item_list: BTreeSet<ItemId>,
+    pub start_point: Option<Point>,
+    pub start_layer: i32,
+    pub end_point: Option<Point>,
+    pub end_layer: i32,
+    pub item_list: BTreeSet<ItemId>,
 }
 
 impl Connection {
-                                                                                    pub fn get(
+    pub fn get(
         board: &mut Board,
         connections: &mut Arena<Connection>,
         item: ItemId,
@@ -120,7 +120,7 @@ impl Connection {
         Some(id)
     }
 
-                        pub fn trace_length(&self, board: &Board) -> f64 {
+    pub fn trace_length(&self, board: &Board) -> f64 {
         let mut result = 0.0;
         for current_item in &self.item_list {
             if let Some(Item::Trace(trace)) = board.get_item(*current_item) {
@@ -130,7 +130,7 @@ impl Connection {
         result
     }
 
-                            pub fn get_detour(&self, board: &Board) -> f64 {
+    pub fn get_detour(&self, board: &Board) -> f64 {
         let (Some(start_point), Some(end_point)) = (&self.start_point, &self.end_point) else {
             return f64::from(i32::MAX);
         };

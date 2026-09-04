@@ -18,7 +18,6 @@ const CI_STEMS: &[&str] = &[
     "batch-empty-board",
 ];
 
-
 struct Variant {
     name: String,
     copper: Option<f64>,
@@ -74,7 +73,6 @@ fn parse_transcript() -> Vec<BoardBlock> {
     }
     boards
 }
-
 
 fn default_settings() -> RouterSettings {
     DefaultSettings::new(&HostEnvironment::detect())
@@ -214,7 +212,6 @@ fn format_optional(value: Option<f64>) -> String {
         Some(v) => format!("{v}"),
     }
 }
-
 
 fn replay(stems: &[&str]) {
     let transcript = parse_transcript();

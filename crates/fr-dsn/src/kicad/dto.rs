@@ -1,206 +1,205 @@
 //! `#[serde(rename)]` on every one of them: a rename attribute is a second place to get the
 //! is what the `#![allow(non_snake_case)]` below buys, and it buys nothing else — no other module
 //! | key absent | the Java field initializer survives (`new ArrayList<>()`, `UnitJson.MM`, `1.0`) | `#[serde(default = "…")]` reproducing that initializer |
-#![allow(non_snake_case)] 
+#![allow(non_snake_case)]
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct KiCadBoardJson {
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub designName: Option<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hostCad: Option<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hostVersion: Option<String>,
-        #[serde(
+    #[serde(
         default = "unit_default",
         deserialize_with = "gson_enum",
         skip_serializing_if = "Option::is_none"
     )]
     pub unit: Option<UnitJson>,
-            #[serde(default = "one", deserialize_with = "nullable_or_one")]
+    #[serde(default = "one", deserialize_with = "nullable_or_one")]
     pub resolution: f64,
 
-        #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub layers: Option<Vec<LayerJson>>,
-        #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub netClasses: Option<Vec<NetClassJson>>,
-        #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub nets: Option<Vec<NetJson>>,
-        #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub clearanceRules: Option<Vec<CustomClearanceRuleJson>>,
-        #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub components: Option<Vec<ComponentJson>>,
-        #[serde(default = "outline_default", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "outline_default", skip_serializing_if = "Option::is_none")]
     pub outline: Option<OutlineJson>,
 
-        #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub traces: Option<Vec<TraceJson>>,
-        #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub vias: Option<Vec<ViaJson>>,
-        #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub conductionAreas: Option<Vec<ConductionAreaJson>>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub enum UnitJson {
-        MM,
-        MIL,
-        UM,
+    MM,
+    MIL,
+    UM,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default, PartialEq)]
 pub struct LayerJson {
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub index: i32,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-            #[serde(default, rename = "type", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "type", skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NetClassJson {
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub clearance: f64,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub traceWidth: f64,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub viaDiameter: f64,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub viaDrill: f64,
-            #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub netNames: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default, PartialEq)]
 pub struct NetJson {
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub id: i32,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub className: Option<String>,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub containsPlane: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default, PartialEq)]
 pub struct CustomClearanceRuleJson {
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub classA: Option<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub classB: Option<String>,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub clearance: f64,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ComponentJson {
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reference: Option<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub footprint: Option<String>,
-        #[serde(default = "point_default", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "point_default", skip_serializing_if = "Option::is_none")]
     pub position: Option<Point2D>,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub rotation: f64,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layer: Option<String>,
-        #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub pads: Option<Vec<PadJson>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct PadJson {
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub netName: Option<String>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shape: Option<String>,
-        #[serde(default = "point_default", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "point_default", skip_serializing_if = "Option::is_none")]
     pub size: Option<Point2D>,
-        #[serde(default = "point_default", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "point_default", skip_serializing_if = "Option::is_none")]
     pub offset: Option<Point2D>,
-            #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<Point2D>,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub drill: f64,
-                                                        #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub layers: Option<Vec<Option<String>>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct OutlineJson {
-            #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub corners: Option<Vec<Point2D>>,
-                                        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub clearance: f64,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct TraceJson {
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub id: i32,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub netName: Option<String>,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub width: f64,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub layerIndex: i32,
-        #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub points: Option<Vec<Point2D>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ViaJson {
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub id: i32,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub netName: Option<String>,
-        #[serde(default = "point_default", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "point_default", skip_serializing_if = "Option::is_none")]
     pub position: Option<Point2D>,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub diameter: f64,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub drill: f64,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub startLayerIndex: i32,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub endLayerIndex: i32,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct ConductionAreaJson {
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub id: i32,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub netName: Option<String>,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub layerIndex: i32,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub isObstacle: bool,
-        #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
+    #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub polygon: Option<Vec<Point2D>>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, Default, PartialEq)]
 pub struct Point2D {
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub x: f64,
-        #[serde(default, deserialize_with = "nullable")]
+    #[serde(default, deserialize_with = "nullable")]
     pub y: f64,
 }
 
-
 impl Default for KiCadBoardJson {
-        fn default() -> KiCadBoardJson {
+    fn default() -> KiCadBoardJson {
         KiCadBoardJson {
             designName: None,
             hostCad: None,
@@ -221,7 +220,7 @@ impl Default for KiCadBoardJson {
 }
 
 impl Default for NetClassJson {
-        fn default() -> NetClassJson {
+    fn default() -> NetClassJson {
         NetClassJson {
             name: None,
             clearance: 0.0,
@@ -234,7 +233,7 @@ impl Default for NetClassJson {
 }
 
 impl Default for ComponentJson {
-        fn default() -> ComponentJson {
+    fn default() -> ComponentJson {
         ComponentJson {
             reference: None,
             value: None,
@@ -248,7 +247,7 @@ impl Default for ComponentJson {
 }
 
 impl Default for PadJson {
-            fn default() -> PadJson {
+    fn default() -> PadJson {
         PadJson {
             name: None,
             netName: None,
@@ -263,7 +262,7 @@ impl Default for PadJson {
 }
 
 impl Default for OutlineJson {
-                fn default() -> OutlineJson {
+    fn default() -> OutlineJson {
         OutlineJson {
             corners: empty(),
             clearance: 0.0,
@@ -272,7 +271,7 @@ impl Default for OutlineJson {
 }
 
 impl Default for TraceJson {
-        fn default() -> TraceJson {
+    fn default() -> TraceJson {
         TraceJson {
             id: 0,
             netName: None,
@@ -284,7 +283,7 @@ impl Default for TraceJson {
 }
 
 impl Default for ViaJson {
-        fn default() -> ViaJson {
+    fn default() -> ViaJson {
         ViaJson {
             id: 0,
             netName: None,
@@ -298,7 +297,7 @@ impl Default for ViaJson {
 }
 
 impl Default for ConductionAreaJson {
-        fn default() -> ConductionAreaJson {
+    fn default() -> ConductionAreaJson {
         ConductionAreaJson {
             id: 0,
             netName: None,
@@ -308,7 +307,6 @@ impl Default for ConductionAreaJson {
         }
     }
 }
-
 
 fn nullable<'de, D, T>(deserializer: D) -> Result<T, D::Error>
 where
@@ -343,16 +341,15 @@ fn empty<T>() -> Option<Vec<T>> {
     Some(Vec::new())
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MalformedJson {
-            pub section: &'static str,
-        pub object: String,
-        pub problem: &'static str,
+    pub section: &'static str,
+    pub object: String,
+    pub problem: &'static str,
 }
 
 impl KiCadBoardJson {
-                                                                                                                            pub fn validate(&self) -> Result<(), MalformedJson> {
+    pub fn validate(&self) -> Result<(), MalformedJson> {
         for (index, layer) in self.layers.iter().flatten().enumerate() {
             if layer.name.is_none() {
                 return Err(MalformedJson {

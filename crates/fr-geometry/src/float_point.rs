@@ -8,8 +8,8 @@ use crate::vector::Vector;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FloatPoint {
-        pub x: f64,
-        pub y: f64,
+    pub x: f64,
+    pub y: f64,
 }
 
 fn vector_signs(v: &Vector) -> (i32, i32) {
@@ -20,36 +20,35 @@ fn vector_signs(v: &Vector) -> (i32, i32) {
 }
 
 impl FloatPoint {
-        pub const ZERO: FloatPoint = FloatPoint { x: 0.0, y: 0.0 };
+    pub const ZERO: FloatPoint = FloatPoint { x: 0.0, y: 0.0 };
 
-        pub fn new(x: f64, y: f64) -> FloatPoint {
+    pub fn new(x: f64, y: f64) -> FloatPoint {
         FloatPoint { x, y }
     }
 
-        pub fn from_int(pt: &IntPoint) -> FloatPoint {
+    pub fn from_int(pt: &IntPoint) -> FloatPoint {
         FloatPoint::new(pt.x as f64, pt.y as f64)
     }
 
-
-        pub fn size_square(&self) -> f64 {
+    pub fn size_square(&self) -> f64 {
         self.x * self.x + self.y * self.y
     }
 
-        pub fn size(&self) -> f64 {
+    pub fn size(&self) -> f64 {
         self.size_square().sqrt()
     }
 
-        pub fn distance_square(&self, other: &FloatPoint) -> f64 {
+    pub fn distance_square(&self, other: &FloatPoint) -> f64 {
         let dx = other.x - self.x;
         let dy = other.y - self.y;
         dx * dx + dy * dy
     }
 
-        pub fn distance(&self, other: &FloatPoint) -> f64 {
+    pub fn distance(&self, other: &FloatPoint) -> f64 {
         self.distance_square(other).sqrt()
     }
 
-        pub fn weighted_distance(
+    pub fn weighted_distance(
         &self,
         other: &FloatPoint,
         horizontal_weight: f64,
@@ -62,14 +61,14 @@ impl FloatPoint {
         (delta_x * delta_x + delta_y * delta_y).sqrt()
     }
 
-        pub fn round(&self) -> IntPoint {
+    pub fn round(&self) -> IntPoint {
         IntPoint::new(
             crate::limits::java_round(self.x) as i32,
             crate::limits::java_round(self.y) as i32,
         )
     }
 
-            pub fn round_to_the_right(&self, dir: &Direction) -> IntPoint {
+    pub fn round_to_the_right(&self, dir: &Direction) -> IntPoint {
         let (dir_x, dir_y) = vector_signs(&dir.get_vector());
 
         let rounded_x = if dir_y > 0 {
@@ -90,7 +89,7 @@ impl FloatPoint {
         IntPoint::new(rounded_x, rounded_y)
     }
 
-                            pub fn round_to_grid(&self, horizontal_grid: i32, vertical_grid: i32) -> IntPoint {
+    pub fn round_to_grid(&self, horizontal_grid: i32, vertical_grid: i32) -> IntPoint {
         let rounded_x = if horizontal_grid > 0 {
             (self.x / horizontal_grid as f64).round_ties_even() * horizontal_grid as f64
         } else {
@@ -104,7 +103,7 @@ impl FloatPoint {
         IntPoint::new(rounded_x as i32, rounded_y as i32)
     }
 
-            pub fn round_to_the_left(&self, dir: &Direction) -> IntPoint {
+    pub fn round_to_the_left(&self, dir: &Direction) -> IntPoint {
         let (dir_x, dir_y) = vector_signs(&dir.get_vector());
 
         let rounded_x = if dir_y > 0 {
@@ -125,20 +124,20 @@ impl FloatPoint {
         IntPoint::new(rounded_x, rounded_y)
     }
 
-        pub fn add(&self, other: &FloatPoint) -> FloatPoint {
+    pub fn add(&self, other: &FloatPoint) -> FloatPoint {
         FloatPoint::new(self.x + other.x, self.y + other.y)
     }
 
-        pub fn subtract(&self, other: &FloatPoint) -> FloatPoint {
+    pub fn subtract(&self, other: &FloatPoint) -> FloatPoint {
         FloatPoint::new(self.x - other.x, self.y - other.y)
     }
 
-        pub fn projection_approx(&self, line: &crate::line::Line) -> FloatPoint {
+    pub fn projection_approx(&self, line: &crate::line::Line) -> FloatPoint {
         let float_line = crate::float_line::FloatLine::new(line.a.to_float(), line.b.to_float());
         float_line.perpendicular_projection(self)
     }
 
-                    pub fn scalar_product(&self, p1: &FloatPoint, p2: &FloatPoint) -> f64 {
+    pub fn scalar_product(&self, p1: &FloatPoint, p2: &FloatPoint) -> f64 {
         let dx1 = p1.x - self.x;
         let dx2 = p2.x - self.x;
         let dy1 = p1.y - self.y;
@@ -146,7 +145,7 @@ impl FloatPoint {
         dx1 * dx2 + dy1 * dy2
     }
 
-            pub fn change_size(&self, new_size: f64) -> FloatPoint {
+    pub fn change_size(&self, new_size: f64) -> FloatPoint {
         if self.x == 0.0 && self.y == 0.0 {
             return *self;
         }
@@ -156,7 +155,7 @@ impl FloatPoint {
         FloatPoint::new(new_x, new_y)
     }
 
-                            pub fn change_length(&self, to_point: &FloatPoint, new_length: f64) -> FloatPoint {
+    pub fn change_length(&self, to_point: &FloatPoint, new_length: f64) -> FloatPoint {
         let dx = to_point.x - self.x;
         let dy = to_point.y - self.y;
         if dx == 0.0 && dy == 0.0 {
@@ -168,13 +167,13 @@ impl FloatPoint {
         FloatPoint::new(new_x, new_y)
     }
 
-                        pub fn middle_point(&self, to_point: &FloatPoint) -> FloatPoint {
+    pub fn middle_point(&self, to_point: &FloatPoint) -> FloatPoint {
         let middle_x = 0.5 * (self.x + to_point.x);
         let middle_y = 0.5 * (self.y + to_point.y);
         FloatPoint::new(middle_x, middle_y)
     }
 
-                pub fn side_of(&self, p1: &FloatPoint, p2: &FloatPoint) -> Side {
+    pub fn side_of(&self, p1: &FloatPoint, p2: &FloatPoint) -> Side {
         let d21x = p2.x - p1.x;
         let d21y = p2.y - p1.y;
         let d01x = self.x - p1.x;
@@ -183,7 +182,7 @@ impl FloatPoint {
         Side::of_f64(determinant)
     }
 
-        pub fn rotate(&self, angle: f64, pole: &FloatPoint) -> FloatPoint {
+    pub fn rotate(&self, angle: f64, pole: &FloatPoint) -> FloatPoint {
         if angle == 0.0 {
             return *self;
         }
@@ -196,23 +195,23 @@ impl FloatPoint {
         FloatPoint::new(pole.x + new_dx, pole.y + new_dy)
     }
 
-        pub fn turn_90_degree(&self, factor: i32) -> FloatPoint {
+    pub fn turn_90_degree(&self, factor: i32) -> FloatPoint {
         match factor.rem_euclid(4) {
-            0 => FloatPoint::new(self.x, self.y),   
-            1 => FloatPoint::new(-self.y, self.x),  
-            2 => FloatPoint::new(-self.x, -self.y), 
-            3 => FloatPoint::new(self.y, -self.x),  
+            0 => FloatPoint::new(self.x, self.y),
+            1 => FloatPoint::new(-self.y, self.x),
+            2 => FloatPoint::new(-self.x, -self.y),
+            3 => FloatPoint::new(self.y, -self.x),
             _ => FloatPoint::ZERO,
         }
     }
 
-            pub fn turn_90_degree_pole(&self, factor: i32, pole: &FloatPoint) -> FloatPoint {
+    pub fn turn_90_degree_pole(&self, factor: i32, pole: &FloatPoint) -> FloatPoint {
         let v = self.subtract(pole);
         let v = v.turn_90_degree(factor);
         pole.add(&v)
     }
 
-            pub fn is_contained_in_box(&self, p1: &FloatPoint, p2: &FloatPoint, tolerance: f64) -> bool {
+    pub fn is_contained_in_box(&self, p1: &FloatPoint, p2: &FloatPoint, tolerance: f64) -> bool {
         let (min_x, max_x) = if p1.x < p2.x {
             (p1.x, p2.x)
         } else {
@@ -229,7 +228,7 @@ impl FloatPoint {
         self.y >= min_y - tolerance && self.y <= max_y + tolerance
     }
 
-            pub fn bounding_box(&self) -> crate::int_box::IntBox {
+    pub fn bounding_box(&self) -> crate::int_box::IntBox {
         crate::int_box::IntBox::from_coords(
             self.x.floor() as i32,
             self.y.floor() as i32,
@@ -238,7 +237,7 @@ impl FloatPoint {
         )
     }
 
-                                        pub fn tangential_points(
+    pub fn tangential_points(
         &self,
         to_point: &FloatPoint,
         distance: f64,
@@ -291,7 +290,7 @@ impl FloatPoint {
         }
     }
 
-            pub fn left_tangential_point(
+    pub fn left_tangential_point(
         &self,
         to_point: &FloatPoint,
         distance: f64,
@@ -306,7 +305,7 @@ impl FloatPoint {
         )
     }
 
-            pub fn right_tangential_point(
+    pub fn right_tangential_point(
         &self,
         to_point: &FloatPoint,
         distance: f64,
@@ -321,7 +320,7 @@ impl FloatPoint {
         )
     }
 
-                                            pub fn circle_center(&self, p1: &FloatPoint, p2: &FloatPoint) -> Option<FloatPoint> {
+    pub fn circle_center(&self, p1: &FloatPoint, p2: &FloatPoint) -> Option<FloatPoint> {
         let slope1 = (p1.y - self.y) / (p1.x - self.x);
         let slope2 = (p2.y - p1.y) / (p2.x - p1.x);
         let center_x = (slope1 * slope2 * (self.y - p2.y) + slope2 * (self.x + p1.x)
@@ -335,7 +334,7 @@ impl FloatPoint {
         }
     }
 
-                            pub fn inside_circle(&self, p1: &FloatPoint, p2: &FloatPoint, p3: &FloatPoint) -> bool {
+    pub fn inside_circle(&self, p1: &FloatPoint, p2: &FloatPoint, p3: &FloatPoint) -> bool {
         match p1.circle_center(p2, p3) {
             Some(center) => {
                 let radius_square = center.distance_square(p1);
@@ -345,7 +344,7 @@ impl FloatPoint {
         }
     }
 
-                                                        fn format_component(value: f64) -> String {
+    fn format_component(value: f64) -> String {
         if value.is_nan() {
             return "NaN".to_string();
         }
@@ -387,7 +386,7 @@ fn group_thousands(digits: &str) -> String {
 }
 
 impl fmt::Display for FloatPoint {
-                                                                                        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "({} , {})",

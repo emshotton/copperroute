@@ -10,23 +10,23 @@ use crate::{Arena, ExpansionDrill};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CutoutEntry {
-        pub item: ItemId,
-        pub shape_index: usize,
-                pub skipped: bool,
-                pub cut_out: bool,
+    pub item: ItemId,
+    pub shape_index: usize,
+    pub skipped: bool,
+    pub cut_out: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DrillPage {
-            pub shape: IntBox,
-            id_no: i32,
-            maze_search_elements: Vec<MazeSearchElement>,
-                                            drills: Option<Vec<DrillId>>,
-            net_number: i32,
+    pub shape: IntBox,
+    id_no: i32,
+    maze_search_elements: Vec<MazeSearchElement>,
+    drills: Option<Vec<DrillId>>,
+    net_number: i32,
 }
 
 impl DrillPage {
-                                    pub fn new(shape: IntBox, board: &Board, id_no: i32) -> DrillPage {
+    pub fn new(shape: IntBox, board: &Board, id_no: i32) -> DrillPage {
         DrillPage {
             shape,
             id_no,
@@ -36,7 +36,7 @@ impl DrillPage {
         }
     }
 
-                                                                                                                                                                                    pub fn get_drills(
+    pub fn get_drills(
         &mut self,
         engine: &mut AutorouteEngine,
         board: &mut Board,
@@ -78,9 +78,8 @@ impl DrillPage {
                         calc_pin_center_in_drill(&current_drill_shape, drill_last_layer, board);
                 }
             }
-            let current_drill_location = current_drill_location.unwrap_or_else(|| {
-                Point::Int(current_drill_shape.centre_of_gravity().round())
-            });
+            let current_drill_location = current_drill_location
+                .unwrap_or_else(|| Point::Int(current_drill_shape.centre_of_gravity().round()));
             let mut new_drill = ExpansionDrill::new(
                 current_drill_shape,
                 current_drill_location,
@@ -95,7 +94,7 @@ impl DrillPage {
         self.drills.clone().unwrap_or_default()
     }
 
-                                pub fn obstacle_cutout_trace(
+    pub fn obstacle_cutout_trace(
         &self,
         engine: &AutorouteEngine,
         board: &mut Board,
@@ -112,7 +111,7 @@ impl DrillPage {
         trace
     }
 
-            fn cutout_shapes(
+    fn cutout_shapes(
         &self,
         engine: &AutorouteEngine,
         board: &mut Board,
@@ -192,27 +191,27 @@ impl DrillPage {
         cutout_shapes
     }
 
-            pub fn get_shape(&self) -> TileShape {
+    pub fn get_shape(&self) -> TileShape {
         TileShape::Box(self.shape)
     }
 
-        pub fn get_dimension(&self) -> i32 {
+    pub fn get_dimension(&self) -> i32 {
         2
     }
 
-        pub fn maze_search_element_count(&self) -> usize {
+    pub fn maze_search_element_count(&self) -> usize {
         self.maze_search_elements.len()
     }
 
-                    pub fn get_maze_search_element(&self, index: usize) -> &MazeSearchElement {
+    pub fn get_maze_search_element(&self, index: usize) -> &MazeSearchElement {
         &self.maze_search_elements[index]
     }
 
-            pub fn get_maze_search_element_mut(&mut self, index: usize) -> &mut MazeSearchElement {
+    pub fn get_maze_search_element_mut(&mut self, index: usize) -> &mut MazeSearchElement {
         &mut self.maze_search_elements[index]
     }
 
-                                pub fn reset(&mut self, drills: &mut Arena<ExpansionDrill>) {
+    pub fn reset(&mut self, drills: &mut Arena<ExpansionDrill>) {
         if let Some(ids) = &self.drills {
             for id in ids {
                 if let Some(drill) = drills.get_mut(id.0) {
@@ -225,31 +224,31 @@ impl DrillPage {
         }
     }
 
-                                                                                                                                                                                pub fn invalidate(&mut self, drills: &mut Arena<ExpansionDrill>) {
+    pub fn invalidate(&mut self, drills: &mut Arena<ExpansionDrill>) {
         for id in self.drills.take().into_iter().flatten() {
             drills.remove(id.0);
         }
     }
 
-        pub fn other_room(&self, _room: RoomRef) -> Option<RoomRef> {
+    pub fn other_room(&self, _room: RoomRef) -> Option<RoomRef> {
         None
     }
 
-                                                    pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         self.id_no
     }
 
-            pub fn java_id(&self) -> i32 {
+    pub fn java_id(&self) -> i32 {
         31i32
             .wrapping_mul(self.shape.get_id())
             .wrapping_add(self.net_number)
     }
 
-                            pub fn drills(&self) -> Option<&[DrillId]> {
+    pub fn drills(&self) -> Option<&[DrillId]> {
         self.drills.as_deref()
     }
 
-            pub fn net_number(&self) -> i32 {
+    pub fn net_number(&self) -> i32 {
         self.net_number
     }
 }
@@ -272,13 +271,11 @@ fn calc_pin_center_in_drill(drill_shape: &TileShape, layer: usize, board: &Board
     result
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-            #[test]
+    #[test]
     fn a_fresh_pages_id_is_the_engine_counter_and_javas_hashes_the_minus_one_net() {
         let shape = IntBox::from_coords(-1000, -1000, 1000, 1000);
         assert_eq!(shape.get_id(), -960_000);

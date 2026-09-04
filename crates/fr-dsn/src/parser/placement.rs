@@ -10,35 +10,34 @@ use crate::parser::dsn_file::read_string_scope;
 use crate::parser::library::write_component_placement_scope;
 use crate::parser::scope_parameter::{ReadScopeParameter, WriteScopeParameter, skip_scope};
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ItemClearanceInfo {
-        pub name: String,
-        pub clearance_class: String,
+    pub name: String,
+    pub clearance_class: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentLocation {
-        pub name: String,
-                                pub coor: Option<[f64; 2]>,
-        pub is_front: bool,
-        pub rotation: f64,
-        pub position_fixed: bool,
-        pub pin_infos: BTreeMap<String, ItemClearanceInfo>,
-        pub keepout_infos: BTreeMap<String, ItemClearanceInfo>,
-        pub via_keepout_infos: BTreeMap<String, ItemClearanceInfo>,
-        pub place_keepout_infos: BTreeMap<String, ItemClearanceInfo>,
-                            pub part_number: Option<String>,
+    pub name: String,
+    pub coor: Option<[f64; 2]>,
+    pub is_front: bool,
+    pub rotation: f64,
+    pub position_fixed: bool,
+    pub pin_infos: BTreeMap<String, ItemClearanceInfo>,
+    pub keepout_infos: BTreeMap<String, ItemClearanceInfo>,
+    pub via_keepout_infos: BTreeMap<String, ItemClearanceInfo>,
+    pub place_keepout_infos: BTreeMap<String, ItemClearanceInfo>,
+    pub part_number: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentPlacement {
-            pub lib_name: String,
-            pub locations: Vec<ComponentLocation>,
+    pub lib_name: String,
+    pub locations: Vec<ComponentLocation>,
 }
 
 impl ComponentPlacement {
-        #[must_use]
+    #[must_use]
     pub fn new(lib_name: String) -> ComponentPlacement {
         ComponentPlacement {
             lib_name,
@@ -46,8 +45,6 @@ impl ComponentPlacement {
         }
     }
 }
-
-
 
 pub fn read_component_placement(
     scanner: &mut DsnScanner,
@@ -230,7 +227,6 @@ fn read_lock_type(scanner: &mut DsnScanner) -> Result<bool, DsnError> {
     }
     Ok(result)
 }
-
 
 pub fn write_placement_scope(p: &mut WriteScopeParameter<'_>) {
     p.file.start_scope_nl();

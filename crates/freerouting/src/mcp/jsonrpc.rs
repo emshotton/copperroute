@@ -72,7 +72,7 @@ impl Response {
             },
         )
     }
-                pub fn from_error(id: Value, error: RpcError) -> Self {
+    pub fn from_error(id: Value, error: RpcError) -> Self {
         Self {
             jsonrpc: "2.0",
             id,
@@ -83,14 +83,14 @@ impl Response {
 }
 
 impl RpcError {
-            pub fn invalid_params(msg: impl Into<String>) -> Self {
+    pub fn invalid_params(msg: impl Into<String>) -> Self {
         Self {
             code: INVALID_PARAMS,
             message: msg.into(),
             data: None,
         }
     }
-                        pub fn internal(msg: impl Into<String>) -> Self {
+    pub fn internal(msg: impl Into<String>) -> Self {
         Self {
             code: INTERNAL_ERROR,
             message: msg.into(),

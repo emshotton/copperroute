@@ -1,4 +1,3 @@
-
 use fr_board::Board;
 
 use crate::Error;
@@ -8,7 +7,7 @@ use crate::ctx::{Ctx, RoutingResult};
 pub struct RoutingPipeline;
 
 impl RoutingPipeline {
-                                                                                                        pub fn run(board: &mut Board, ctx: &Ctx<'_>) -> Result<RoutingResult, Error> {
+    pub fn run(board: &mut Board, ctx: &Ctx<'_>) -> Result<RoutingResult, Error> {
         let stop = ctx.cancel.as_router_stop();
 
         let mut sink = ctx.progress.as_pipeline_sink();

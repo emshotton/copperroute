@@ -15,9 +15,9 @@ use super::{Board, item_ctx};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct UndoJournal {
-            pub(crate) created: BTreeSet<ItemId>,
-                pub(crate) saved: BTreeSet<ItemId>,
-            pub(crate) deleted: Vec<ItemId>,
+    pub(crate) created: BTreeSet<ItemId>,
+    pub(crate) saved: BTreeSet<ItemId>,
+    pub(crate) deleted: Vec<ItemId>,
 }
 
 struct HashWriter<'a, H: Hasher>(&'a mut H);
@@ -104,14 +104,14 @@ fn hash_obstacle_area<H: Hasher>(area: &ObstacleAreaData, hasher: &mut H) {
 }
 
 impl Board {
-                                                            pub fn deep_copy(&self) -> Board {
+    pub fn deep_copy(&self) -> Board {
         let mut copy = self.clone();
 
         copy.normalize_suppressed_net_nos.clear();
-        copy.revision = 0; 
-        copy.changed_area = None; 
-        copy.shove_failing_obstacle = None; 
-        copy.shove_failing_layer = 0; 
+        copy.revision = 0;
+        copy.changed_area = None;
+        copy.shove_failing_obstacle = None;
+        copy.shove_failing_layer = 0;
 
         copy.clear_autoroute_scratch();
         copy.finish_autoroute();
@@ -119,27 +119,26 @@ impl Board {
         copy
     }
 
-                            fn clear_autoroute_scratch(&mut self) {
+    fn clear_autoroute_scratch(&mut self) {
         for item in self.items.values_mut() {
             item.clear_autoroute_info();
         }
     }
 
-
-                                                                    pub fn begin_undo_journal(&mut self) {
+    pub fn begin_undo_journal(&mut self) {
         self.undo_journal = Some(UndoJournal::default());
     }
 
-                                pub fn discard_undo_journal(&mut self) {
+    pub fn discard_undo_journal(&mut self) {
         self.undo_journal = None;
     }
 
-                #[cfg(test)]
+    #[cfg(test)]
     pub(crate) fn undo_journal(&self) -> Option<&UndoJournal> {
         self.undo_journal.as_ref()
     }
 
-                                                                    pub(crate) fn save_for_undo(&mut self, id: ItemId) {
+    pub(crate) fn save_for_undo(&mut self, id: ItemId) {
         if let Some(journal) = self.undo_journal.as_mut() {
             if !journal.created.contains(&id) {
                 journal.saved.insert(id);
@@ -147,13 +146,13 @@ impl Board {
         }
     }
 
-            pub(crate) fn journal_insert(&mut self, id: ItemId) {
+    pub(crate) fn journal_insert(&mut self, id: ItemId) {
         if let Some(journal) = self.undo_journal.as_mut() {
             journal.created.insert(id);
         }
     }
 
-                                                        pub(crate) fn journal_remove(&mut self, id: ItemId) {
+    pub(crate) fn journal_remove(&mut self, id: ItemId) {
         if let Some(journal) = self.undo_journal.as_mut() {
             if journal.created.remove(&id) {
                 return;
@@ -163,7 +162,7 @@ impl Board {
         }
     }
 
-                                                                                                                                                                                pub fn undo_from_snapshot(&mut self, snapshot: Board) {
+    pub fn undo_from_snapshot(&mut self, snapshot: Board) {
         let journal = self.undo_journal.take().unwrap_or_default();
         let mut snapshot_items = snapshot.items;
 
@@ -213,9 +212,9 @@ impl Board {
         }
     }
 
-                                    fn finish_autoroute(&mut self) {}
+    fn finish_autoroute(&mut self) {}
 
-                                                                                    pub fn structural_hash(&self) -> u64 {
+    pub fn structural_hash(&self) -> u64 {
         let mut hasher = DefaultHasher::new();
         let ctx = self.ctx();
         self.items.len().hash(&mut hasher);
@@ -278,7 +277,7 @@ impl Board {
         hasher.finish()
     }
 
-                                                pub fn diff_traces(&self, compare_to: &Board) -> usize {
+    pub fn diff_traces(&self, compare_to: &Board) -> usize {
         let mut trace_ids: BTreeSet<ItemId> = self.get_traces().into_iter().collect();
         let mut result = 0usize;
         for id in compare_to.get_traces() {
@@ -466,7 +465,6 @@ mod tests {
         insert_trace(&mut board_b, 3, 200, 300);
         assert_eq!(board_a.diff_traces(&board_b), 2);
     }
-
 
     #[test]
     fn undo_from_snapshot_cancels_the_inserted_items_and_restores_the_removed_ones() {

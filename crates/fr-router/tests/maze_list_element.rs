@@ -7,7 +7,6 @@ use fr_router::arena::DoorId;
 use fr_router::autoroute::expansion::ExpandableRef;
 use fr_router::autoroute::maze::{MazeAdjustment, MazeListElement};
 
-
 fn test_doors(ids: &[i32]) -> impl Fn(ExpandableRef) -> i32 + use<> {
     let map: HashMap<ExpandableRef, i32> = ids
         .iter()
@@ -107,8 +106,6 @@ fn push_for_test(element: MazeListElement) -> bool {
     queue.push(element, &ctrl, &engine, &board)
 }
 
-
-
 #[test]
 fn the_four_tie_breaks_are_taken_in_javas_order() {
     let ids = test_doors(&[1, 2]);
@@ -134,7 +131,6 @@ fn the_four_tie_breaks_are_taken_in_javas_order() {
         Ordering::Equal
     );
 }
-
 
 #[test]
 fn a_non_finite_sorting_value_is_refused_at_add() {
@@ -226,7 +222,6 @@ fn two_paths_at_the_same_cost_are_both_kept() {
         "two different doors that collide on the hash are still two doors"
     );
 }
-
 
 #[test]
 fn pop_first_walks_the_queue_in_sorting_value_order() {

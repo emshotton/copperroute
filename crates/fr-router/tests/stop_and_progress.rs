@@ -12,7 +12,6 @@ use fr_router::route_connection;
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
-
 const TRANSCRIPT: &str = include_str!("data/p7t4-stop-and-counters.txt");
 
 fn section(name: &str) -> Vec<&'static str> {
@@ -59,7 +58,6 @@ fn stop_in(state: StopRequestState) -> RouterStop {
     assert_eq!(stop.state(), state, "cannot reach {state:?}");
     stop
 }
-
 
 #[test]
 fn the_two_queries_match_the_jvm_in_every_state() {
@@ -133,7 +131,6 @@ fn request_stop_auto_router_does_not_downgrade_all() {
     assert!(stop.is_stop_requested());
 }
 
-
 fn optimizer_stage_would_run(stop: &RouterStop) -> bool {
     !stop.is_stop_requested()
 }
@@ -201,7 +198,7 @@ fn max_items_optimises_like_max_passes() {
         return;
     }
 
-            fn route(max_items: Option<i32>, max_passes: i32) -> (StopRequestState, TaskState, u64) {
+    fn route(max_items: Option<i32>, max_passes: i32) -> (StopRequestState, TaskState, u64) {
         let path = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
         let file = std::fs::File::open(&path)
             .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
@@ -293,7 +290,6 @@ fn max_items_optimises_like_max_passes() {
     );
 }
 
-
 #[test]
 fn the_deadline_requests_stop_all_like_the_monitor_thread() {
     let stop = RouterStop::with_deadline(0);
@@ -343,7 +339,6 @@ fn an_unexpired_deadline_is_invisible() {
     );
     assert_eq!(without.routed, with.routed);
 }
-
 
 #[derive(Default)]
 struct RecordingSink {
@@ -438,7 +433,6 @@ fn every_event_shape() -> Vec<RoutingEvent> {
     shapes
 }
 
-
 #[test]
 fn the_enum_variant_lists_match_the_jvm() {
     let lines = section("enums");
@@ -514,7 +508,6 @@ fn variants(lines: &[&str], name: &str) -> Vec<String> {
         .collect()
 }
 
-
 #[test]
 fn router_counters_field_list_matches_java() {
     let lines = section("RouterCounters");
@@ -559,7 +552,6 @@ fn router_counters_field_list_matches_java() {
     assert_eq!(default.phase, None);
     assert_eq!(default.fanout_extra_vias_count, None);
 }
-
 
 #[test]
 fn the_java_literal_budget_carries_javas_four_literals() {
@@ -700,7 +692,6 @@ fn the_disabled_budget_turns_every_wall_clock_off() {
     }
 }
 
-
 #[test]
 fn the_progress_throttler_gates_on_its_interval() {
     let throttler = ProgressThrottler::new(1000);
@@ -761,7 +752,6 @@ fn the_budget_builds_both_gates() {
     assert_eq!(budget.progress_throttler().interval_ms(), 1000);
 }
 
-
 #[test]
 fn a_pass_record_is_a_plain_six_field_value() {
     use fr_router::pipeline::PassRecord;
@@ -794,7 +784,6 @@ fn a_pass_record_is_a_plain_six_field_value() {
         (3, 1.5, 12, 0, 7, 40)
     );
 }
-
 
 fn spin_until(condition: impl Fn() -> bool) -> bool {
     let start = Instant::now();

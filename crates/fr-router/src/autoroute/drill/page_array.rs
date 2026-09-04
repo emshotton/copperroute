@@ -7,16 +7,16 @@ use crate::autoroute::drill::{DrillPage, ExpansionDrill};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DrillPageArray {
-        bounds: IntBox,
-        column_count: i32,
-        row_count: i32,
-        page_width: i32,
-        page_height: i32,
-        pages: Vec<Vec<DrillPage>>,
+    bounds: IntBox,
+    column_count: i32,
+    row_count: i32,
+    page_width: i32,
+    page_height: i32,
+    pages: Vec<Vec<DrillPage>>,
 }
 
 impl DrillPageArray {
-                                                                                                                pub fn new(
+    pub fn new(
         board: &Board,
         max_page_width: i32,
         rooms: &mut crate::autoroute::expansion::ExpansionRoomStore,
@@ -64,13 +64,13 @@ impl DrillPageArray {
         }
     }
 
-                            pub fn invalidate(&mut self, shape: &TileShape, drills: &mut Arena<ExpansionDrill>) {
+    pub fn invalidate(&mut self, shape: &TileShape, drills: &mut Arena<ExpansionDrill>) {
         for page in self.overlapping_pages(shape) {
             self.page_mut(page).invalidate(drills);
         }
     }
 
-                                                                pub fn overlapping_pages(&self, shape: &TileShape) -> Vec<PageId> {
+    pub fn overlapping_pages(&self, shape: &TileShape) -> Vec<PageId> {
         let mut result = Vec::new();
         let shape_box = shape.bounding_box().intersection(&self.bounds);
 
@@ -101,7 +101,7 @@ impl DrillPageArray {
         result
     }
 
-                        pub fn reset(&mut self, drills: &mut Arena<ExpansionDrill>) {
+    pub fn reset(&mut self, drills: &mut Arena<ExpansionDrill>) {
         for row in &mut self.pages {
             for page in row {
                 page.reset(drills);
@@ -109,7 +109,7 @@ impl DrillPageArray {
         }
     }
 
-                            pub fn page_id(&self, i: i32, j: i32) -> PageId {
+    pub fn page_id(&self, i: i32, j: i32) -> PageId {
         assert!(
             i >= 0 && i < self.column_count && j >= 0 && j < self.row_count,
             "DrillPageArray: pages[{j}][{i}] is outside a {}x{} grid — Java throws \
@@ -120,17 +120,17 @@ impl DrillPageArray {
         PageId((j * self.column_count + i) as u32)
     }
 
-                    pub fn page(&self, id: PageId) -> &DrillPage {
+    pub fn page(&self, id: PageId) -> &DrillPage {
         let (i, j) = self.split(id);
         &self.pages[j][i]
     }
 
-        pub fn page_mut(&mut self, id: PageId) -> &mut DrillPage {
+    pub fn page_mut(&mut self, id: PageId) -> &mut DrillPage {
         let (i, j) = self.split(id);
         &mut self.pages[j][i]
     }
 
-        pub(crate) fn split(&self, id: PageId) -> (usize, usize) {
+    pub(crate) fn split(&self, id: PageId) -> (usize, usize) {
         assert!(
             self.column_count > 0,
             "DrillPageArray: an empty grid has no page {id:?}"
@@ -142,36 +142,34 @@ impl DrillPageArray {
         )
     }
 
-        pub fn bounds(&self) -> IntBox {
+    pub fn bounds(&self) -> IntBox {
         self.bounds
     }
 
-        pub fn column_count(&self) -> i32 {
+    pub fn column_count(&self) -> i32 {
         self.column_count
     }
 
-        pub fn row_count(&self) -> i32 {
+    pub fn row_count(&self) -> i32 {
         self.row_count
     }
 
-        pub fn page_width(&self) -> i32 {
+    pub fn page_width(&self) -> i32 {
         self.page_width
     }
 
-        pub fn page_height(&self) -> i32 {
+    pub fn page_height(&self) -> i32 {
         self.page_height
     }
 
-                                            pub(crate) fn take_pages(&mut self) -> Vec<Vec<DrillPage>> {
+    pub(crate) fn take_pages(&mut self) -> Vec<Vec<DrillPage>> {
         std::mem::take(&mut self.pages)
     }
 
-        pub(crate) fn restore_pages(&mut self, pages: Vec<Vec<DrillPage>>) {
+    pub(crate) fn restore_pages(&mut self, pages: Vec<Vec<DrillPage>>) {
         self.pages = pages;
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {

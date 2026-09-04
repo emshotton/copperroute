@@ -11,11 +11,11 @@ pub struct TraceTightenerAnyAngle<'a> {
 }
 
 impl<'a> TraceTightenerAnyAngle<'a> {
-        pub(crate) fn new(base: TightenerBase<'a>) -> TraceTightenerAnyAngle<'a> {
+    pub(crate) fn new(base: TightenerBase<'a>) -> TraceTightenerAnyAngle<'a> {
         TraceTightenerAnyAngle { base }
     }
 
-                        pub(crate) fn pull_tight(
+    pub(crate) fn pull_tight(
         &mut self,
         board: &mut Board,
         polyline: &Polyline,
@@ -59,7 +59,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         if ever_changed { Some(new_result) } else { None }
     }
 
-                    fn reduce_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
+    fn reduce_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
         if polyline.lines().len() < 4 {
             return None;
         }
@@ -242,7 +242,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         Some(new_polyline(new_lines))
     }
 
-            fn smoothen_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
+    fn smoothen_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
         if polyline.lines().len() < 4 {
             return None;
         }
@@ -263,7 +263,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         Some(new_polyline(lines))
     }
 
-            pub(crate) fn reposition_lines(
+    pub(crate) fn reposition_lines(
         &mut self,
         board: &mut Board,
         polyline: &Polyline,
@@ -290,7 +290,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         Some(new_polyline(lines))
     }
 
-                fn reduce_lines(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
+    fn reduce_lines(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
         if polyline.lines().len() < 6 {
             return None;
         }
@@ -401,7 +401,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         Some(new_polyline(lines))
     }
 
-        fn smoothen_corner(
+    fn smoothen_corner(
         &mut self,
         board: &mut Board,
         lines: &[Line],
@@ -437,7 +437,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         }
         let mut current_lines: Vec<Line> = Vec::with_capacity(lines.len() + 1);
         current_lines.extend_from_slice(&lines[..start_no + 2]);
-        current_lines.push(lines[start_no + 2]); 
+        current_lines.push(lines[start_no + 2]);
         current_lines.extend_from_slice(&lines[start_no + 2..]);
         let mut translate_dist = max_translate_dist;
         let mut delta_dist = max_translate_dist;
@@ -489,7 +489,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         result
     }
 
-                                        pub(crate) fn reposition_line(
+    pub(crate) fn reposition_line(
         &mut self,
         board: &mut Board,
         lines: &[Line],
@@ -634,7 +634,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         result
     }
 
-        fn skip_lines(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
+    fn skip_lines(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
         let mut i: usize = 1;
         while i + 3 < polyline.lines().len() {
             for j in 0..=1 {
@@ -727,7 +727,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         None
     }
 
-            pub(crate) fn smoothen_start_corner_at_trace(
+    pub(crate) fn smoothen_start_corner_at_trace(
         &mut self,
         board: &mut Board,
         trace: ItemId,
@@ -813,7 +813,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         None
     }
 
-                        pub(crate) fn smoothen_end_corner_at_trace(
+    pub(crate) fn smoothen_end_corner_at_trace(
         &mut self,
         board: &mut Board,
         trace: ItemId,
@@ -933,7 +933,7 @@ fn splice_and_normalise(
 mod reduce_lines_write_back_tests {
     use super::*;
 
-                                                        #[test]
+    #[test]
     fn splice_and_normalise_writes_the_flipped_line_back_into_the_loops_array() {
         let corners = [
             Point::new(0, 0),

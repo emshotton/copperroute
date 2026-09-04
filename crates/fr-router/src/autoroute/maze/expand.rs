@@ -14,8 +14,7 @@ use crate::autoroute::maze::{
 use crate::board_ext::RoutingBoardExt;
 
 impl MazeSearchEngine<'_> {
-
-                                                    fn p7t14b_room(&self, room: RoomRef) -> String {
+    fn p7t14b_room(&self, room: RoomRef) -> String {
         match room {
             RoomRef::Obstacle(id) => self.engine.rooms.obstacle_room(id).map_or_else(
                 || "obst?".to_string(),
@@ -306,8 +305,7 @@ impl MazeSearchEngine<'_> {
         something_expanded
     }
 
-
-                                    pub fn expand_to_target_doors(
+    pub fn expand_to_target_doors(
         &mut self,
         board: &mut Board,
         list_element: &MazeListElement,
@@ -433,8 +431,7 @@ impl MazeSearchEngine<'_> {
         result
     }
 
-
-                                    pub fn expand_to_door(
+    pub fn expand_to_door(
         &mut self,
         board: &mut Board,
         to_door: DoorId,
@@ -522,8 +519,7 @@ impl MazeSearchEngine<'_> {
         something_expanded
     }
 
-
-                                        #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn expand_to_door_section(
         &mut self,
         board: &mut Board,
@@ -625,8 +621,7 @@ impl MazeSearchEngine<'_> {
         true
     }
 
-
-                                                        pub fn room_shape_is_thick(&self, board: &Board, obstacle_room: ObstacleRoomId) -> bool {
+    pub fn room_shape_is_thick(&self, board: &Board, obstacle_room: ObstacleRoomId) -> bool {
         let Some(room) = self.engine.rooms.obstacle_room(obstacle_room) else {
             return false;
         };
@@ -658,8 +653,7 @@ impl MazeSearchEngine<'_> {
         obstacle_half_width >= f64::from(self.ctrl.compensated_trace_half_width[layer])
     }
 
-
-                                        pub fn shove_trace_room(
+    pub fn shove_trace_room(
         &mut self,
         board: &mut Board,
         list_element: &MazeListElement,
@@ -772,8 +766,7 @@ impl MazeSearchEngine<'_> {
         result
     }
 
-
-                                                        pub fn check_neck_down_at_dest_pin(&self, board: &Board, room: RoomRef) -> f64 {
+    pub fn check_neck_down_at_dest_pin(&self, board: &Board, room: RoomRef) -> f64 {
         let target_doors = self.engine.rooms.room_target_doors(room);
         let ctx = board.ctx();
         for current_target_door in target_doors {
@@ -790,12 +783,11 @@ impl MazeSearchEngine<'_> {
         0.0
     }
 
-
-            fn expandable_dimension(&self, object: ExpandableRef) -> i32 {
+    fn expandable_dimension(&self, object: ExpandableRef) -> i32 {
         self.engine.expandable_dimension(object)
     }
 
-            fn expandable_shape_centre(&self, object: ExpandableRef) -> Option<FloatPoint> {
+    fn expandable_shape_centre(&self, object: ExpandableRef) -> Option<FloatPoint> {
         Some(self.engine.expandable_shape(object)?.centre_of_gravity())
     }
 }

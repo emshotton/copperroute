@@ -8,15 +8,15 @@ use crate::airline::AirLine;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NetIncompletes {
-                pub incompletes: Vec<AirLine>,
-        net_number: i32,
-        draw_marker_radius: f64,
-            length_violation: f64,
-        connected_group_count: usize,
+    pub incompletes: Vec<AirLine>,
+    net_number: i32,
+    draw_marker_radius: f64,
+    length_violation: f64,
+    connected_group_count: usize,
 }
 
 impl NetIncompletes {
-                                pub fn new(net_number: i32, net_items: &[ItemId], board: &Board) -> NetIncompletes {
+    pub fn new(net_number: i32, net_items: &[ItemId], board: &Board) -> NetIncompletes {
         let draw_marker_radius = f64::from(board.rules.get_min_trace_half_width()) * 2.0;
 
         let mut this = NetIncompletes {
@@ -112,27 +112,27 @@ impl NetIncompletes {
         this
     }
 
-        pub fn count(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.incompletes.len()
     }
 
-                pub fn get_connected_group_count(&self) -> usize {
+    pub fn get_connected_group_count(&self) -> usize {
         self.connected_group_count
     }
 
-        pub fn get_marker_radius(&self) -> f64 {
+    pub fn get_marker_radius(&self) -> f64 {
         self.draw_marker_radius
     }
 
-            pub fn get_length_violation(&self) -> f64 {
+    pub fn get_length_violation(&self) -> f64 {
         self.length_violation
     }
 
-            pub fn get_net_number(&self) -> i32 {
+    pub fn get_net_number(&self) -> i32 {
         self.net_number
     }
 
-                                            pub fn calc_length_violation(&mut self, board: &Board) -> bool {
+    pub fn calc_length_violation(&mut self, board: &Board) -> bool {
         let Some(net) = board.rules.nets.get(self.net_number) else {
             self.length_violation = 0.0;
             return false;
@@ -215,7 +215,7 @@ struct Edge {
     from_corner: FloatPoint,
     to_item: usize,
     to_corner: FloatPoint,
-            length_square: f64,
+    length_square: f64,
 }
 
 impl PartialEq for Edge {
@@ -233,7 +233,7 @@ impl PartialOrd for Edge {
 }
 
 impl Ord for Edge {
-                                fn cmp(&self, other: &Edge) -> Ordering {
+    fn cmp(&self, other: &Edge) -> Ordering {
         let mut result = self.length_square - other.length_square;
         if result == 0.0 {
             result = self.from_corner.x - other.from_corner.x;
@@ -257,7 +257,7 @@ impl Ord for Edge {
 
 #[cfg(test)]
 mod tests {
-                use super::*;
+    use super::*;
     use fr_board::prelude::*;
     use fr_geometry::{IntBox, IntPoint, Point, Polyline};
 
@@ -276,7 +276,7 @@ mod tests {
         LayerStructure::new(vec![Layer::new("front", true)])
     }
 
-            fn bare_board() -> Board {
+    fn bare_board() -> Board {
         let ls = layers();
         let matrix = ClearanceMatrix::get_default_instance(&ls, 200);
         let mut rules = BoardRules::new(ls, matrix);
@@ -421,7 +421,6 @@ mod tests {
         assert!(nan_last.insert(long));
         assert!(!nan_last.insert(nan));
         assert_eq!(nan_last.len(), 2);
-
     }
 
     #[test]

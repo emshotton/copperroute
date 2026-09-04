@@ -15,9 +15,9 @@ pub struct EnvironmentVariablesSource {
 const ROUTER_ENV_PREFIX: &str = "FREEROUTING__ROUTER__";
 
 impl EnvironmentVariablesSource {
-        const PRIORITY: i32 = priority::ENVIRONMENT;
+    const PRIORITY: i32 = priority::ENVIRONMENT;
 
-                #[must_use]
+    #[must_use]
     pub fn new(environment: &BTreeMap<String, String>) -> Self {
         let mut settings = RouterSettings::new();
         let mut parsed_variables = BTreeMap::new();
@@ -45,7 +45,7 @@ impl EnvironmentVariablesSource {
         }
     }
 
-                            #[must_use]
+    #[must_use]
     pub fn from_process_env() -> Self {
         let environment: BTreeMap<String, String> = std::env::vars_os()
             .filter_map(|(key, value)| Some((key.into_string().ok()?, value.into_string().ok()?)))
@@ -53,17 +53,17 @@ impl EnvironmentVariablesSource {
         Self::new(&environment)
     }
 
-                        #[must_use]
+    #[must_use]
     pub fn get_parsed_variables(&self) -> &BTreeMap<String, String> {
         &self.parsed_variables
     }
 
-                #[must_use]
+    #[must_use]
     pub fn get_parsed_count(&self) -> usize {
         self.parsed_variables.len()
     }
 
-            #[must_use]
+    #[must_use]
     pub fn errors(&self) -> &[MergeError] {
         &self.errors
     }

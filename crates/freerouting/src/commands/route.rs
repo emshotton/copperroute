@@ -1,4 +1,3 @@
-
 use std::path::{Path, PathBuf};
 
 use fr_core::{
@@ -12,7 +11,6 @@ use crate::cli::RouteArgs;
 use crate::legacy::ExitCode;
 
 pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
-
     let mut job = RoutingJob::new(SessionId::NIL);
 
     if let Err(error) = job.set_input(&args.input) {
@@ -27,7 +25,6 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
         );
         return ExitCode::Failure;
     }
-
 
     let accepted = job.try_to_set_output_file(Some(&args.output));
     let resolved = job.output.as_ref().map(|output| output.format);

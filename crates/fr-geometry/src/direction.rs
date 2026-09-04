@@ -12,77 +12,77 @@ use crate::vector::Vector;
 
 #[derive(Debug, Clone)]
 pub enum Direction {
-        Int(IntDirection),
-        Big(BigIntDirection),
+    Int(IntDirection),
+    Big(BigIntDirection),
 }
 
 impl Direction {
-        pub fn from_vector(vector: &Vector) -> Direction {
+    pub fn from_vector(vector: &Vector) -> Direction {
         vector.to_normalized_direction()
     }
 
-            pub fn between(from: &Point, to: &Point) -> Option<Direction> {
+    pub fn between(from: &Point, to: &Point) -> Option<Direction> {
         if from == to {
             return None;
         }
         Some(Direction::from_vector(&to.difference_by(from)))
     }
 
-                            pub fn from_angle_approx(angle: f64) -> Direction {
+    pub fn from_angle_approx(angle: f64) -> Direction {
         const SCALE_FACTOR: f64 = 10000.0;
         let x = java_round(angle.cos() * SCALE_FACTOR) as i32;
         let y = java_round(angle.sin() * SCALE_FACTOR) as i32;
         Direction::Int(IntVector::new(x, y).to_normalized_direction())
     }
 
-        pub fn get_vector(&self) -> Vector {
+    pub fn get_vector(&self) -> Vector {
         match self {
             Direction::Int(d) => Vector::Int(d.get_vector()),
             Direction::Big(d) => d.get_vector(),
         }
     }
 
-        pub fn is_orthogonal(&self) -> bool {
+    pub fn is_orthogonal(&self) -> bool {
         match self {
             Direction::Int(d) => d.is_orthogonal(),
             Direction::Big(d) => d.is_orthogonal(),
         }
     }
 
-        pub fn is_diagonal(&self) -> bool {
+    pub fn is_diagonal(&self) -> bool {
         match self {
             Direction::Int(d) => d.is_diagonal(),
             Direction::Big(d) => d.is_diagonal(),
         }
     }
 
-        pub fn is_multiple_of_45_degree(&self) -> bool {
+    pub fn is_multiple_of_45_degree(&self) -> bool {
         self.is_orthogonal() || self.is_diagonal()
     }
 
-                pub fn turn_45_degree(&self, factor: i32) -> Direction {
+    pub fn turn_45_degree(&self, factor: i32) -> Direction {
         match self {
             Direction::Int(d) => Direction::Int(d.turn_45_degree(factor)),
             Direction::Big(d) => Direction::Big(d.turn_45_degree(factor)),
         }
     }
 
-        pub fn opposite(&self) -> Direction {
+    pub fn opposite(&self) -> Direction {
         match self {
             Direction::Int(d) => Direction::Int(d.opposite()),
             Direction::Big(d) => Direction::Big(d.opposite()),
         }
     }
 
-                pub fn side_of(&self, other: &Direction) -> Side {
+    pub fn side_of(&self, other: &Direction) -> Side {
         self.get_vector().side_of(&other.get_vector())
     }
 
-                pub fn projection(&self, other: &Direction) -> Signum {
+    pub fn projection(&self, other: &Direction) -> Signum {
         self.get_vector().projection(&other.get_vector())
     }
 
-                    pub fn middle_approx(&self, other: &Direction) -> Direction {
+    pub fn middle_approx(&self, other: &Direction) -> Direction {
         let v1 = self.get_vector().to_float();
         let v2 = other.get_vector().to_float();
         let length1 = v1.size();
@@ -97,7 +97,7 @@ impl Direction {
         Direction::Int(vm.to_normalized_direction())
     }
 
-                pub fn compare_from(&self, p1: &Direction, p2: &Direction) -> Ordering {
+    pub fn compare_from(&self, p1: &Direction, p2: &Direction) -> Ordering {
         if p1.compare_to(self) != Ordering::Less {
             if p2.compare_to(self) != Ordering::Less {
                 p1.compare_to(p2)
@@ -111,11 +111,11 @@ impl Direction {
         }
     }
 
-        pub fn angle_approx(&self) -> f64 {
+    pub fn angle_approx(&self) -> f64 {
         self.get_vector().angle_approx()
     }
 
-                                                            pub fn compare_to(&self, other: &Direction) -> Ordering {
+    pub fn compare_to(&self, other: &Direction) -> Ordering {
         match (self, other) {
             (Direction::Int(a), Direction::Int(b)) => a.compare_to(b),
             (Direction::Int(a), Direction::Big(b)) => b.compare_to_int(a).reverse(),
@@ -138,7 +138,7 @@ impl From<BigIntDirection> for Direction {
 }
 
 impl PartialEq for Direction {
-                            fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Direction::Int(a), Direction::Int(b)) => a == b,
             (Direction::Big(a), Direction::Big(b)) => a == b,
@@ -150,7 +150,7 @@ impl PartialEq for Direction {
 impl Eq for Direction {}
 
 impl fmt::Display for Direction {
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         const NAMED: [(IntDirection, &str); 9] = [
             (IntDirection::RIGHT, "RIGHT"),
             (IntDirection::RIGHT45, "UP-RIGHT"),
@@ -248,7 +248,7 @@ mod cross_representation_tests {
         Direction::Big(BigIntDirection::from_int(d))
     }
 
-                #[test]
+    #[test]
     fn all_four_dispatch_arms_agree_on_the_angular_order() {
         let extra = [
             IntDirection::new(3, 1),
@@ -278,7 +278,7 @@ mod cross_representation_tests {
         }
     }
 
-                                    #[test]
+    #[test]
     fn the_dispatch_arms_diverge_at_the_zero_direction_as_in_java() {
         let right = IntDirection::RIGHT;
         let null = IntDirection::NULL;

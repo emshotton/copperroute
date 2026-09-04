@@ -2,21 +2,21 @@ use fr_board::ItemId;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnconnectedItems {
-            pub first_item: ItemId,
-                pub second_item: Option<ItemId>,
-            pub all_items: Vec<ItemId>,
-        pub kind: UnconnectedKind,
+    pub first_item: ItemId,
+    pub second_item: Option<ItemId>,
+    pub all_items: Vec<ItemId>,
+    pub kind: UnconnectedKind,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnconnectedKind {
-        UnconnectedItems,
-        TrackDangling,
-        ViaDangling,
+    UnconnectedItems,
+    TrackDangling,
+    ViaDangling,
 }
 
 impl UnconnectedItems {
-            pub fn new_pair(first_item: ItemId, second_item: ItemId) -> Self {
+    pub fn new_pair(first_item: ItemId, second_item: ItemId) -> Self {
         UnconnectedItems {
             first_item,
             second_item: Some(second_item),
@@ -25,7 +25,7 @@ impl UnconnectedItems {
         }
     }
 
-            pub fn new_with_all_items(
+    pub fn new_with_all_items(
         first_item: ItemId,
         second_item: ItemId,
         all_items: Vec<ItemId>,
@@ -38,7 +38,7 @@ impl UnconnectedItems {
         }
     }
 
-                                                                    pub fn new_typed(
+    pub fn new_typed(
         first_item: ItemId,
         second_item: Option<ItemId>,
         kind: UnconnectedKind,

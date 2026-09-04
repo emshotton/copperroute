@@ -4,15 +4,15 @@ use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Guard {
-        G1aTreeEntryOutOfRange = 0,
-        G1bNullConnectionShape = 1,
-        G2RoomArrayResized = 2,
-        G2RoomIndexOutOfRange = 3,
-        G3TraceCornerOutOfRange = 4,
+    G1aTreeEntryOutOfRange = 0,
+    G1bNullConnectionShape = 1,
+    G2RoomArrayResized = 2,
+    G2RoomIndexOutOfRange = 3,
+    G3TraceCornerOutOfRange = 4,
 }
 
 impl Guard {
-        pub const ALL: [Guard; 5] = [
+    pub const ALL: [Guard; 5] = [
         Guard::G1aTreeEntryOutOfRange,
         Guard::G1bNullConnectionShape,
         Guard::G2RoomArrayResized,
@@ -20,7 +20,7 @@ impl Guard {
         Guard::G3TraceCornerOutOfRange,
     ];
 
-        pub fn tag(self) -> &'static str {
+    pub fn tag(self) -> &'static str {
         match self {
             Guard::G1aTreeEntryOutOfRange => "G1a-tree-entry-out-of-range",
             Guard::G1bNullConnectionShape => "G1b-null-connection-shape",
@@ -33,18 +33,18 @@ impl Guard {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Mutation {
-        None = 0,
-            TiePinReduction = 1,
-        RipupRemoveItems = 2,
-        RemoveTraceTails = 3,
-        ForcedTraceInsert = 4,
-        OptChangedArea = 5,
+    None = 0,
+    TiePinReduction = 1,
+    RipupRemoveItems = 2,
+    RemoveTraceTails = 3,
+    ForcedTraceInsert = 4,
+    OptChangedArea = 5,
 }
 
 impl Mutation {
     const COUNT: usize = 6;
 
-        pub fn tag(self) -> &'static str {
+    pub fn tag(self) -> &'static str {
         match Mutation::from_u8(self as u8) {
             Mutation::None => "none-yet",
             Mutation::TiePinReduction => "reduceTraceShapesAtTiePins",
@@ -138,33 +138,33 @@ pub fn record_guard(guard: Guard, item: u64, index: usize, available: usize, rec
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GuardRow {
-        pub guard: Guard,
-        pub visits: u64,
-        pub fires: u64,
-        pub recoverable: u64,
-        pub by_mutation: Vec<(Mutation, u64)>,
+    pub guard: Guard,
+    pub visits: u64,
+    pub fires: u64,
+    pub recoverable: u64,
+    pub by_mutation: Vec<(Mutation, u64)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Snapshot {
-        pub guards: Vec<GuardRow>,
-        pub mutations: Vec<(Mutation, u64)>,
-        pub samples: Vec<String>,
+    pub guards: Vec<GuardRow>,
+    pub mutations: Vec<(Mutation, u64)>,
+    pub samples: Vec<String>,
 }
 
 impl Snapshot {
-        pub fn total_fires(&self) -> u64 {
+    pub fn total_fires(&self) -> u64 {
         self.guards.iter().map(|row| row.fires).sum()
     }
 
-        pub fn fires(&self, guard: Guard) -> u64 {
+    pub fn fires(&self, guard: Guard) -> u64 {
         self.guards
             .iter()
             .find(|row| row.guard == guard)
             .map_or(0, |row| row.fires)
     }
 
-        pub fn visits(&self, guard: Guard) -> u64 {
+    pub fn visits(&self, guard: Guard) -> u64 {
         self.guards
             .iter()
             .find(|row| row.guard == guard)
@@ -276,7 +276,7 @@ pub fn render(stem: &str, snapshot: &Snapshot) -> String {
 mod tests {
     use super::*;
 
-            static SERIAL: Mutex<()> = Mutex::new(());
+    static SERIAL: Mutex<()> = Mutex::new(());
 
     #[test]
     fn a_recorder_is_inert_while_the_instrumentation_is_off() {

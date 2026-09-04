@@ -3,20 +3,20 @@ use crate::limits::{CRIT_INT, java_min};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FloatLine {
-        pub a: FloatPoint,
-        pub b: FloatPoint,
+    pub a: FloatPoint,
+    pub b: FloatPoint,
 }
 
 impl FloatLine {
-        pub fn new(a: FloatPoint, b: FloatPoint) -> FloatLine {
+    pub fn new(a: FloatPoint, b: FloatPoint) -> FloatLine {
         FloatLine { a, b }
     }
 
-        pub fn opposite(&self) -> FloatLine {
+    pub fn opposite(&self) -> FloatLine {
         FloatLine::new(self.b, self.a)
     }
 
-        pub fn adjust_direction(&self, other: &FloatLine) -> FloatLine {
+    pub fn adjust_direction(&self, other: &FloatLine) -> FloatLine {
         if self.b.side_of(&self.a, &other.a) == other.b.side_of(&self.a, &other.a) {
             *self
         } else {
@@ -24,7 +24,7 @@ impl FloatLine {
         }
     }
 
-            pub fn intersection(&self, other: &FloatLine) -> Option<FloatPoint> {
+    pub fn intersection(&self, other: &FloatLine) -> Option<FloatPoint> {
         let d1x = self.b.x - self.a.x;
         let d1y = self.b.y - self.a.y;
         let d2x = other.b.x - other.a.x;
@@ -40,7 +40,7 @@ impl FloatLine {
         Some(FloatPoint::new(is_x, is_y))
     }
 
-            pub fn translate(&self, dist: f64) -> FloatLine {
+    pub fn translate(&self, dist: f64) -> FloatLine {
         let dx = self.b.x - self.a.x;
         let dy = self.b.y - self.a.y;
         let dxdx = dx * dx;
@@ -57,7 +57,7 @@ impl FloatLine {
         FloatLine::new(new_a, new_b)
     }
 
-            pub fn signed_distance(&self, point: &FloatPoint) -> f64 {
+    pub fn signed_distance(&self, point: &FloatPoint) -> f64 {
         let dx = self.b.x - self.a.x;
         let dy = self.b.y - self.a.y;
         let det = dy * (point.x - self.a.x) - dx * (point.y - self.a.y);
@@ -65,7 +65,7 @@ impl FloatLine {
         det / length
     }
 
-        pub fn perpendicular_projection(&self, point: &FloatPoint) -> FloatPoint {
+    pub fn perpendicular_projection(&self, point: &FloatPoint) -> FloatPoint {
         let dx = self.b.x - self.a.x;
         let dy = self.b.y - self.a.y;
         if dx == 0.0 && dy == 0.0 {
@@ -84,7 +84,7 @@ impl FloatLine {
         FloatPoint::new(x, y)
     }
 
-            pub fn segment_distance(&self, point: &FloatPoint) -> f64 {
+    pub fn segment_distance(&self, point: &FloatPoint) -> f64 {
         let projection = self.perpendicular_projection(point);
         if projection.is_contained_in_box(&self.a, &self.b, 0.01) {
             point.distance(&projection)
@@ -93,7 +93,7 @@ impl FloatLine {
         }
     }
 
-            pub fn segment_projection(&self, line_segment: &FloatLine) -> Option<FloatLine> {
+    pub fn segment_projection(&self, line_segment: &FloatLine) -> Option<FloatLine> {
         if self.b.scalar_product(&self.a, &line_segment.a) < 0.0 {
             return None;
         }
@@ -120,7 +120,7 @@ impl FloatLine {
         Some(FloatLine::new(projected_a, projected_b))
     }
 
-                pub fn segment_projection_2(&self, line_segment: &FloatLine) -> Option<FloatLine> {
+    pub fn segment_projection_2(&self, line_segment: &FloatLine) -> Option<FloatLine> {
         if line_segment.a.scalar_product(&line_segment.b, &self.b) <= 0.0 {
             return None;
         }
@@ -157,7 +157,7 @@ impl FloatLine {
         Some(FloatLine::new(projected_a, projected_b))
     }
 
-            pub fn shrink_segment(&self, offset: f64) -> FloatLine {
+    pub fn shrink_segment(&self, offset: f64) -> FloatLine {
         let dx = self.b.x - self.a.x;
         let dy = self.b.y - self.a.y;
         if dx == 0.0 && dy == 0.0 {
@@ -177,7 +177,7 @@ impl FloatLine {
         FloatLine::new(new_a, new_b)
     }
 
-        pub fn nearest_segment_point(&self, from_point: &FloatPoint) -> FloatPoint {
+    pub fn nearest_segment_point(&self, from_point: &FloatPoint) -> FloatPoint {
         let projection = self.perpendicular_projection(from_point);
         if projection.is_contained_in_box(&self.a, &self.b, 0.01) {
             return projection;
@@ -189,7 +189,7 @@ impl FloatLine {
         }
     }
 
-        pub fn divide_segment_into_sections(&self, count: i32) -> Vec<FloatLine> {
+    pub fn divide_segment_into_sections(&self, count: i32) -> Vec<FloatLine> {
         if count == 0 {
             return Vec::new();
         }

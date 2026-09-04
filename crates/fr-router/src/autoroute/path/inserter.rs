@@ -12,8 +12,8 @@ use crate::board_ext::{ForcedViaInserter, RoutingBoardExt};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FoundConnectionInserter {
-            last_corner: Option<IntPoint>,
-        first_corner: Option<IntPoint>,
+    last_corner: Option<IntPoint>,
+    first_corner: Option<IntPoint>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,14 +24,14 @@ struct TraceSnapshot {
 }
 
 impl FoundConnectionInserter {
-                    fn new() -> FoundConnectionInserter {
+    fn new() -> FoundConnectionInserter {
         FoundConnectionInserter {
             last_corner: None,
             first_corner: None,
         }
     }
 
-                                                                pub fn get_instance(
+    pub fn get_instance(
         connection: Option<&FoundConnectionLocator>,
         board: &mut Board,
         ctrl: &AutorouteControl,
@@ -109,7 +109,7 @@ impl FoundConnectionInserter {
         Ok(Some(new_instance))
     }
 
-                fn trace_snapshot(board: &Board, item: Option<ItemId>) -> Option<TraceSnapshot> {
+    fn trace_snapshot(board: &Board, item: Option<ItemId>) -> Option<TraceSnapshot> {
         let id = item?;
         let item @ Item::Trace(trace) = board.get_item(id)? else {
             return None;
@@ -121,7 +121,7 @@ impl FoundConnectionInserter {
         })
     }
 
-                                                #[allow(clippy::too_many_lines)] 
+    #[allow(clippy::too_many_lines)]
     fn insert_trace(
         &mut self,
         board: &mut Board,
@@ -264,7 +264,7 @@ impl FoundConnectionInserter {
         Ok(result)
     }
 
-                                                                                                                                        #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     fn insert_fanout_micro_neckdown(
         &self,
         board: &mut Board,
@@ -351,7 +351,7 @@ impl FoundConnectionInserter {
         Ok(false)
     }
 
-                                    #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     fn insert_neckdown(
         &self,
         board: &mut Board,
@@ -397,8 +397,8 @@ impl FoundConnectionInserter {
         Ok(false)
     }
 
-                            #[allow(clippy::too_many_arguments)] 
-    #[allow(clippy::too_many_lines)] 
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_lines)]
     fn try_neck_down(
         &self,
         board: &mut Board,
@@ -546,7 +546,7 @@ impl FoundConnectionInserter {
         )
     }
 
-                        #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn forced_segment(
         &self,
         board: &mut Board,
@@ -578,7 +578,7 @@ impl FoundConnectionInserter {
         )
     }
 
-                                                                                                                            fn insert_via(
+    fn insert_via(
         &self,
         board: &mut Board,
         ctrl: &AutorouteControl,
@@ -588,7 +588,7 @@ impl FoundConnectionInserter {
         stop: StopCheck<'_>,
     ) -> Result<bool, BoardError> {
         if input_from_layer == input_to_layer {
-            return Ok(true); 
+            return Ok(true);
         }
         let (from_layer, to_layer) = if input_from_layer < input_to_layer {
             (input_from_layer, input_to_layer)
@@ -676,7 +676,7 @@ mod tests {
 
     const T15: &str = include_str!("../../../tests/data/p6t15-inserter.txt");
 
-        fn section(mode: &str) -> Vec<&'static str> {
+    fn section(mode: &str) -> Vec<&'static str> {
         let header = format!("=== mode {mode} ===");
         let mut rows = Vec::new();
         let mut inside = false;
@@ -717,11 +717,11 @@ mod tests {
         );
     }
 
-                                        fn neck_board(trace_half_width: i32) -> Board {
+    fn neck_board(trace_half_width: i32) -> Board {
         neck_board_widths(trace_half_width, 30, 30)
     }
 
-                                                            fn neck_board_widths(
+    fn neck_board_widths(
         class_half_width: i32,
         seed_half_width: i32,
         board_trace_half_width: i32,
@@ -802,8 +802,8 @@ mod tests {
         board
             .components
             .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg);
-        board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); 
-        board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); 
+        board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+        board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
 
         board.rules.set_default_trace_half_widths(class_half_width);
         let default_class = board.rules.get_default_net_class();
@@ -815,11 +815,11 @@ mod tests {
             vec![2],
             1,
             FixedState::UserFixed,
-        ); 
+        );
         board
     }
 
-        fn neck_control(board: &Board) -> AutorouteControl {
+    fn neck_control(board: &Board) -> AutorouteControl {
         let mut settings = RouterSettings::new();
         settings.set_layer_count(board.get_layer_count());
         settings.apply_board_specific_optimizations(board);
@@ -845,7 +845,7 @@ mod tests {
         }
     }
 
-        fn point_of(point: Option<&Point>) -> String {
+    fn point_of(point: Option<&Point>) -> String {
         match point {
             None => "null".to_string(),
             Some(Point::Int(p)) => format!("({},{})", p.x, p.y),
@@ -856,11 +856,11 @@ mod tests {
         }
     }
 
-        fn line_of(line: &fr_geometry::Line) -> String {
+    fn line_of(line: &fr_geometry::Line) -> String {
         format!("({},{})->({},{})", line.a.x, line.a.y, line.b.x, line.b.y)
     }
 
-            fn poly_of(polyline: &Polyline) -> String {
+    fn poly_of(polyline: &Polyline) -> String {
         let lines: Vec<String> = polyline.lines().iter().map(line_of).collect();
         let corners: Vec<String> = (0..polyline.corner_count())
             .map(|i| match polyline.corner(i) {
@@ -876,7 +876,7 @@ mod tests {
         )
     }
 
-        fn board_dump(board: &Board) -> Vec<String> {
+    fn board_dump(board: &Board) -> Vec<String> {
         let ctx = board.ctx();
         let mut out = vec![format!(
             "    maxId={}",
@@ -920,7 +920,7 @@ mod tests {
     const SMD_CENTER: IntPoint = IntPoint { x: -400, y: 0 };
     const THRU_CENTER: IntPoint = IntPoint { x: 400, y: 0 };
 
-                                    #[test]
+    #[test]
     fn the_neckdown_retry_matches_the_jvm() {
         let pairs: [(IntPoint, IntPoint); 5] = [
             (IntPoint::new(-200, 0), SMD_CENTER),
@@ -1006,7 +1006,7 @@ mod tests {
         assert_rows_match("neck", &rows);
     }
 
-                                        #[test]
+    #[test]
     fn the_micro_neckdown_candidate_order_is_javas_insertion_order() {
         let widths = [100, 66];
         let pairs: [(IntPoint, IntPoint); 2] = [
@@ -1078,8 +1078,7 @@ mod tests {
         assert_rows_match("micro", &rows);
     }
 
-
-                                                                #[test]
+    #[test]
     fn the_micro_neckdown_fallback_never_goes_below_the_rules_minimum() {
         let mut board = neck_board_widths(100, 100, 30);
         assert_eq!(
@@ -1123,7 +1122,7 @@ mod tests {
         );
     }
 
-                                #[test]
+    #[test]
     fn the_fallback_still_necks_down_when_the_class_is_above_the_minimum() {
         let mut board = neck_board_widths(100, 50, 30);
         assert_eq!(board.rules.get_min_trace_half_width(), 50);
@@ -1171,7 +1170,7 @@ mod tests {
         );
     }
 
-                                            #[test]
+    #[test]
     fn the_guard_reads_the_rules_minimum_not_the_running_board_minimum() {
         let mut board = neck_board_widths(100, 100, 30);
         board.insert_trace_without_cleaning(

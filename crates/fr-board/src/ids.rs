@@ -63,15 +63,15 @@ const MAX_ID: u32 = i32::MAX as u32 / 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct ItemIdGenerator {
-        last: u32,
+    last: u32,
 }
 
 impl ItemIdGenerator {
-            pub fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
-        pub fn new_id(&mut self) -> ItemId {
+    pub fn new_id(&mut self) -> ItemId {
         if self.last >= MAX_ID {
             self.last = 0;
         }
@@ -79,7 +79,7 @@ impl ItemIdGenerator {
         ItemId(self.last)
     }
 
-            pub fn max_generated_id(&self) -> ItemId {
+    pub fn max_generated_id(&self) -> ItemId {
         ItemId(self.last)
     }
 }

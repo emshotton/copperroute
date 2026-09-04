@@ -9,41 +9,41 @@ use crate::structure::FixedState;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct AutorouteInfo {
-            pub start_info: bool,
-            pub precalculated_connection: Option<ConnectionId>,
-                    pub expansion_rooms: Vec<Option<ObstacleRoomId>>,
-                        pub autoroute_drill_info: Option<DrillId>,
+    pub start_info: bool,
+    pub precalculated_connection: Option<ConnectionId>,
+    pub expansion_rooms: Vec<Option<ObstacleRoomId>>,
+    pub autoroute_drill_info: Option<DrillId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TreeEntries {
-        pub leaves: Option<Vec<Option<LeafId>>>,
-                                                pub shapes: Option<Vec<Option<TileShape>>>,
+    pub leaves: Option<Vec<Option<LeafId>>>,
+    pub shapes: Option<Vec<Option<TileShape>>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ItemHeader {
-            id: ItemId,
+    id: ItemId,
 
-            pub net_nos: Vec<i32>,
+    pub net_nos: Vec<i32>,
 
-            clearance_class: usize,
+    clearance_class: usize,
 
-        fixed_state: FixedState,
+    fixed_state: FixedState,
 
-            component_id: i32,
+    component_id: i32,
 
-            on_the_board: bool,
+    on_the_board: bool,
 
-                                            pub tree_entries: HashMap<TreeId, TreeEntries>,
+    pub tree_entries: HashMap<TreeId, TreeEntries>,
 
-                        pub autoroute_info: Option<Box<AutorouteInfo>>,
+    pub autoroute_info: Option<Box<AutorouteInfo>>,
 
-                pub smallest_clearance: f64,
+    pub smallest_clearance: f64,
 }
 
 impl ItemHeader {
-                                        pub fn new(
+    pub fn new(
         id: ItemId,
         net_nos: Vec<i32>,
         clearance_class: usize,
@@ -63,41 +63,41 @@ impl ItemHeader {
         }
     }
 
-        pub fn id(&self) -> ItemId {
+    pub fn id(&self) -> ItemId {
         self.id
     }
 
-        pub fn net_count(&self) -> usize {
+    pub fn net_count(&self) -> usize {
         self.net_nos.len()
     }
 
-            pub fn get_net_number(&self, no: usize) -> i32 {
+    pub fn get_net_number(&self, no: usize) -> i32 {
         self.net_nos[no]
     }
 
-                pub fn contains_net(&self, net_number: i32) -> bool {
+    pub fn contains_net(&self, net_number: i32) -> bool {
         if net_number <= 0 {
             return false;
         }
         self.net_nos.contains(&net_number)
     }
 
-                        pub fn shares_net_no(&self, net_nos: &[i32]) -> bool {
+    pub fn shares_net_no(&self, net_nos: &[i32]) -> bool {
         self.net_nos.iter().any(|a| net_nos.contains(a))
     }
 
-                            pub fn nets_equal(&self, net_nos: &[i32]) -> bool {
+    pub fn nets_equal(&self, net_nos: &[i32]) -> bool {
         if self.net_nos.len() != net_nos.len() {
             return false;
         }
         net_nos.iter().all(|n| self.contains_net(*n))
     }
 
-        pub fn nets_normal(&self) -> bool {
+    pub fn nets_normal(&self) -> bool {
         self.net_nos.iter().all(|n| Nets::is_normal_net_number(*n))
     }
 
-                            pub fn assign_net_no(&mut self, net_number: i32, nets: &Nets) {
+    pub fn assign_net_no(&mut self, net_number: i32, nets: &Nets) {
         if !Nets::is_normal_net_number(net_number) {
             return;
         }
@@ -108,7 +108,7 @@ impl ItemHeader {
         self.net_nos.push(net_number);
     }
 
-            pub fn remove_from_net(&mut self, net_number: i32) -> bool {
+    pub fn remove_from_net(&mut self, net_number: i32) -> bool {
         match self.net_nos.iter().position(|n| *n == net_number) {
             Some(index) => {
                 self.net_nos.remove(index);
@@ -118,103 +118,103 @@ impl ItemHeader {
         }
     }
 
-        pub fn get_fixed_state(&self) -> FixedState {
+    pub fn get_fixed_state(&self) -> FixedState {
         self.fixed_state
     }
 
-        pub fn set_fixed_state(&mut self, fixed_state: FixedState) {
+    pub fn set_fixed_state(&mut self, fixed_state: FixedState) {
         self.fixed_state = fixed_state;
     }
 
-        pub fn unfix(&mut self) {
+    pub fn unfix(&mut self) {
         if self.fixed_state != FixedState::SystemFixed {
             self.fixed_state = FixedState::Unfixed;
         }
     }
 
-                pub fn is_user_fixed(&self) -> bool {
+    pub fn is_user_fixed(&self) -> bool {
         self.fixed_state >= FixedState::UserFixed
     }
 
-                    pub fn is_shove_fixed(&self) -> bool {
+    pub fn is_shove_fixed(&self) -> bool {
         self.fixed_state >= FixedState::ShoveFixed
     }
 
-        pub fn clearance_class(&self) -> usize {
+    pub fn clearance_class(&self) -> usize {
         self.clearance_class
     }
 
-                        pub fn set_clearance_class(&mut self, index: usize, rules: &BoardRules) {
+    pub fn set_clearance_class(&mut self, index: usize, rules: &BoardRules) {
         if index >= rules.clearance_matrix.get_class_count() {
             return;
         }
         self.clearance_class = index;
     }
 
-        pub fn get_component_id(&self) -> i32 {
+    pub fn get_component_id(&self) -> i32 {
         self.component_id
     }
 
-        pub fn assign_component_id(&mut self, id: i32) {
+    pub fn assign_component_id(&mut self, id: i32) {
         self.component_id = id;
     }
 
-        pub fn is_on_the_board(&self) -> bool {
+    pub fn is_on_the_board(&self) -> bool {
         self.on_the_board
     }
 
-        pub fn set_on_the_board(&mut self, value: bool) {
+    pub fn set_on_the_board(&mut self, value: bool) {
         self.on_the_board = value;
     }
 
-                pub fn get_tree_entries(&self, tree: TreeId) -> Option<&[Option<LeafId>]> {
+    pub fn get_tree_entries(&self, tree: TreeId) -> Option<&[Option<LeafId>]> {
         self.tree_entries
             .get(&tree)
             .and_then(|e| e.leaves.as_deref())
     }
 
-                        pub fn set_tree_entries(&mut self, tree: TreeId, leaves: Vec<Option<LeafId>>) {
+    pub fn set_tree_entries(&mut self, tree: TreeId, leaves: Vec<Option<LeafId>>) {
         self.tree_entries.entry(tree).or_default().leaves = Some(leaves);
     }
 
-                                                pub fn get_precalculated_tree_shapes(&self, tree: TreeId) -> Option<&[Option<TileShape>]> {
+    pub fn get_precalculated_tree_shapes(&self, tree: TreeId) -> Option<&[Option<TileShape>]> {
         self.tree_entries
             .get(&tree)
             .and_then(|e| e.shapes.as_deref())
     }
 
-                            pub fn set_precalculated_tree_shapes(&mut self, tree: TreeId, shapes: Vec<Option<TileShape>>) {
+    pub fn set_precalculated_tree_shapes(&mut self, tree: TreeId, shapes: Vec<Option<TileShape>>) {
         self.tree_entries.entry(tree).or_default().shapes = Some(shapes);
     }
 
-                pub fn clear_precalculated_tree_shapes(&mut self) {
+    pub fn clear_precalculated_tree_shapes(&mut self) {
         for entry in self.tree_entries.values_mut() {
             entry.shapes = None;
         }
     }
 
-            pub fn clear_search_tree_entries(&mut self) {
+    pub fn clear_search_tree_entries(&mut self) {
         self.tree_entries.clear();
     }
 
-            pub fn get_autoroute_info(&mut self) -> &mut AutorouteInfo {
+    pub fn get_autoroute_info(&mut self) -> &mut AutorouteInfo {
         self.autoroute_info
             .get_or_insert_with(|| Box::new(AutorouteInfo::default()))
     }
 
-            pub fn get_autoroute_info_pur(&self) -> Option<&AutorouteInfo> {
+    pub fn get_autoroute_info_pur(&self) -> Option<&AutorouteInfo> {
         self.autoroute_info.as_deref()
     }
 
-                            pub fn get_autoroute_info_pur_mut(&mut self) -> Option<&mut AutorouteInfo> {
+    pub fn get_autoroute_info_pur_mut(&mut self) -> Option<&mut AutorouteInfo> {
         self.autoroute_info.as_deref_mut()
     }
 
-        pub fn clear_autoroute_info(&mut self) {
+    pub fn clear_autoroute_info(&mut self) {
         self.autoroute_info = None;
     }
 
-                            pub fn clear_derived_data(&mut self) {
+    pub fn clear_derived_data(&mut self) {
         self.clear_precalculated_tree_shapes();
         self.autoroute_info = None;
     }
@@ -249,7 +249,6 @@ mod tests {
         BoardRules::new(layer_structure(), matrix)
     }
 
-
     #[test]
     fn assign_net_no_on_an_item_with_no_nets_gives_it_one() {
         let mut h = header(vec![]);
@@ -264,7 +263,7 @@ mod tests {
         assert_eq!(h.net_nos, vec![3]);
     }
 
-                                #[test]
+    #[test]
     fn assign_net_no_replaces_the_whole_array() {
         let mut h = header(vec![1, 2]);
         h.assign_net_no(3, &nets_up_to(3));
@@ -273,7 +272,6 @@ mod tests {
         let mut h = header(vec![1, 2, 3]);
         h.assign_net_no(2, &nets_up_to(3));
         assert_eq!(h.net_nos, vec![2]);
-
     }
 
     #[test]
@@ -302,7 +300,7 @@ mod tests {
         assert_eq!(h.net_nos, vec![1, 3]);
     }
 
-                                        #[test]
+    #[test]
     fn remove_from_net_removes_the_first_duplicate() {
         let mut h = header(vec![5, 7, 5]);
         assert!(h.remove_from_net(5));
@@ -366,7 +364,6 @@ mod tests {
         header(vec![4]).get_net_number(1);
     }
 
-
     #[test]
     fn is_user_fixed_is_true_from_user_fixed_upwards() {
         let cases = [
@@ -418,7 +415,6 @@ mod tests {
         assert_eq!(h.get_fixed_state(), FixedState::UserFixed);
     }
 
-
     #[test]
     fn set_clearance_class_ignores_an_out_of_range_index() {
         let rules = rules_with_classes(4);
@@ -454,7 +450,6 @@ mod tests {
     fn id_is_what_the_constructor_was_given() {
         assert_eq!(header(vec![]).id(), ItemId(7));
     }
-
 
     #[test]
     fn tree_entries_are_absent_until_set() {
@@ -500,7 +495,6 @@ mod tests {
         assert_eq!(h.get_tree_entries(TreeId(0)), None);
         assert_eq!(h.get_precalculated_tree_shapes(TreeId(0)), None);
     }
-
 
     #[test]
     fn autoroute_info_is_created_on_demand_and_cleared() {

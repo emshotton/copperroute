@@ -3,7 +3,6 @@ use fr_drc::DesignRulesChecker;
 use fr_drc::report::{DrcCoordinates, DrcJsonFlavor, DrcReportOptions};
 use fr_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
 
-
 struct Row {
     stem: String,
     dsn: String,
@@ -42,7 +41,6 @@ fn row(stem: &str) -> Row {
 fn base_name(path: &str) -> &str {
     path.rsplit('/').next().expect("a non-empty path")
 }
-
 
 fn read_dsn(rel_path: &str) -> (Board, CoordinateTransform) {
     let path = parity::java_dir().join(rel_path);
@@ -137,7 +135,6 @@ fn port_json(row: &Row, reference: &parity::DrcReportDoc) -> String {
         .expect("the report serialises")
 }
 
-
 fn reference_path(stem: &str) -> std::path::PathBuf {
     parity::reference(stem, "drc.json")
 }
@@ -224,7 +221,7 @@ fn natural_tone_preamp_is_the_reference_minus_three_dangling_tracks() {
     if !parity::require_reference(&reference_path(stem)) {
         return;
     }
-                const EXTRA_DANGLING_UUIDS: [&str; 3] = ["1909", "1696", "1242"];
+    const EXTRA_DANGLING_UUIDS: [&str; 3] = ["1909", "1696", "1242"];
 
     let mut reference = read_reference(stem);
     assert_eq!(
@@ -254,7 +251,6 @@ fn natural_tone_preamp_is_the_reference_minus_three_dangling_tracks() {
     let port = port_json(&row, &reference);
     assert_normalised_parity(stem, &port, &mut reference);
 }
-
 
 #[test]
 fn references_are_from_the_head_jar() {

@@ -20,7 +20,6 @@ use fr_router::autoroute::maze::{AutorouteControl, MazeAdjustment, MazeListEleme
 use fr_router::board_ext::CheckDrillResult;
 use fr_settings::RouterSettings;
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -4_000,
@@ -145,10 +144,10 @@ fn probe_board() -> Board {
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg2);
 
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed); 
-    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed); 
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed);
+    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed);
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[
             Point::new(0, -2000),
@@ -160,7 +159,7 @@ fn probe_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -170,7 +169,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the free via inserts"); 
+        .expect("the free via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, 2500), Point::new(2500, 3500)]),
         0,
@@ -178,7 +177,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -188,7 +187,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the two-contact via inserts"); 
+        .expect("the two-contact via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(2500, -3500)]),
         0,
@@ -196,7 +195,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(3500, -2500)]),
         0,
@@ -204,7 +203,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
 }
 
@@ -328,7 +327,6 @@ fn drain(maze: &mut MazeSearchEngine<'_>) {
     while maze.queue.pop_first().is_some() {}
 }
 
-
 #[test]
 fn the_control_carries_a_real_via_rule_and_the_start_ripup_costs() {
     let board = probe_board();
@@ -353,7 +351,6 @@ fn the_control_carries_a_real_via_rule_and_the_start_ripup_costs() {
     assert_eq!(ctrl.start_ripup_costs, 1);
     assert_eq!(ctrl.add_via_costs, vec![vec![0, 0], vec![0, 0]]);
 }
-
 
 #[test]
 fn a_drill_page_element_costs_one_normal_via_and_keeps_the_room() {
@@ -405,7 +402,6 @@ fn a_drill_page_element_costs_one_normal_via_and_keeps_the_room() {
         )]
     );
 }
-
 
 struct DrillFixture {
     board: Board,
@@ -652,7 +648,6 @@ fn a_thin_room_refuses_a_drill_unless_the_backtrack_door_intersects_it() {
     );
 }
 
-
 #[test]
 fn a_free_space_drill_expands_to_the_other_layer_at_the_add_via_cost() {
     let mut fixture = drill_fixture();
@@ -730,7 +725,6 @@ fn a_free_space_drill_expands_to_the_other_layer_at_the_add_via_cost() {
         )]
     );
 }
-
 
 #[test]
 fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span() {
@@ -904,7 +898,6 @@ fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span()
     }
 }
 
-
 #[test]
 fn check_layer_with_any_matching_via_answers_javas_table() {
     let mut fixture = drill_fixture();
@@ -972,7 +965,6 @@ fn check_layer_with_any_matching_via_answers_javas_table() {
         }
     }
 }
-
 
 #[test]
 fn find_connection_reaches_the_destination_door_in_four_pops() {
@@ -1059,7 +1051,6 @@ fn find_connection_answers_the_result_the_pop_loop_leaves_behind() {
         ]
     );
 }
-
 
 #[test]
 fn an_obstacle_via_room_expands_only_when_ripup_is_allowed_and_marks_the_element_ripped() {

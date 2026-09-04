@@ -12,9 +12,9 @@ pub struct JsonFileSettings {
 }
 
 impl JsonFileSettings {
-        const PRIORITY: i32 = priority::JSON_FILE;
+    const PRIORITY: i32 = priority::JSON_FILE;
 
-                        #[must_use]
+    #[must_use]
     pub fn new(json_file_path: &Path) -> Self {
         let mut errors = Vec::new();
         let settings = load_settings(json_file_path, &mut errors);
@@ -25,32 +25,32 @@ impl JsonFileSettings {
         }
     }
 
-                                                                                                                            #[must_use]
+    #[must_use]
     pub fn from_working_directory() -> Self {
         Self::new(Path::new(CONFIGURATION_FILE_NAME))
     }
 
-            #[must_use]
+    #[must_use]
     pub fn json_file_path(&self) -> &Path {
         &self.json_file_path
     }
 
-                #[must_use]
+    #[must_use]
     pub fn errors(&self) -> &[String] {
         &self.errors
     }
 }
 
 impl SettingsSource for JsonFileSettings {
-        fn get_settings(&self) -> Option<&RouterSettings> {
+    fn get_settings(&self) -> Option<&RouterSettings> {
         Some(&self.settings)
     }
 
-            fn get_source_name(&self) -> String {
+    fn get_source_name(&self) -> String {
         CONFIGURATION_FILE_NAME.to_string()
     }
 
-        fn get_priority(&self) -> i32 {
+    fn get_priority(&self) -> i32 {
         Self::PRIORITY
     }
 
@@ -99,7 +99,7 @@ mod tests {
         path
     }
 
-        struct Scratch(PathBuf);
+    struct Scratch(PathBuf);
 
     impl Scratch {
         fn new(tag: &str) -> Self {

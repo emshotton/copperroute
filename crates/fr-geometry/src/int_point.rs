@@ -7,52 +7,52 @@ use crate::side::Side;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IntPoint {
-        pub x: i32,
-        pub y: i32,
+    pub x: i32,
+    pub y: i32,
 }
 
 impl IntPoint {
-        pub const ZERO: IntPoint = IntPoint { x: 0, y: 0 };
+    pub const ZERO: IntPoint = IntPoint { x: 0, y: 0 };
 
-                        pub fn new(x: i32, y: i32) -> IntPoint {
+    pub fn new(x: i32, y: i32) -> IntPoint {
         IntPoint { x, y }
     }
 
     // not ported: `equals`/`hashCode` — replaced by `#[derive(PartialEq, Eq, Hash)]` (structural
 
-                    pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         31i32.wrapping_mul(self.x).wrapping_add(self.y)
     }
 
-        pub fn translate_by(&self, vector: &IntVector) -> IntPoint {
+    pub fn translate_by(&self, vector: &IntVector) -> IntPoint {
         IntPoint::new(self.x + vector.x, self.y + vector.y)
     }
 
-        pub fn difference_by(&self, other: &IntPoint) -> IntVector {
+    pub fn difference_by(&self, other: &IntPoint) -> IntVector {
         IntVector::new(self.x - other.x, self.y - other.y)
     }
 
-        pub fn determinant(&self, other: &IntPoint) -> i64 {
+    pub fn determinant(&self, other: &IntPoint) -> i64 {
         self.x as i64 * other.y as i64 - self.y as i64 * other.x as i64
     }
 
-            pub fn signed_area(&self, p1: &IntPoint, p2: &IntPoint) -> i64 {
+    pub fn signed_area(&self, p1: &IntPoint, p2: &IntPoint) -> i64 {
         let d21 = p2.difference_by(p1);
         let d01 = self.difference_by(p1);
         d21.determinant(&d01)
     }
 
-        pub fn distance_square(&self, to_point: &IntPoint) -> f64 {
+    pub fn distance_square(&self, to_point: &IntPoint) -> f64 {
         let dx = (to_point.x - self.x) as f64;
         let dy = (to_point.y - self.y) as f64;
         dx * dx + dy * dy
     }
 
-        pub fn distance(&self, to_point: &IntPoint) -> f64 {
+    pub fn distance(&self, to_point: &IntPoint) -> f64 {
         self.distance_square(to_point).sqrt()
     }
 
-            pub fn orthogonal_projection(&self, other: &IntPoint) -> IntPoint {
+    pub fn orthogonal_projection(&self, other: &IntPoint) -> IntPoint {
         let horizontal_distance = (self.x - other.x).abs();
         let vertical_distance = (self.y - other.y).abs();
         if horizontal_distance <= vertical_distance {
@@ -62,15 +62,10 @@ impl IntPoint {
         }
     }
 
-            pub fn fortyfive_degree_projection(&self, other: &IntPoint) -> IntPoint {
+    pub fn fortyfive_degree_projection(&self, other: &IntPoint) -> IntPoint {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
-        let dist_arr = [
-            dx.abs() as f64,
-            dy.abs() as f64,
-            0.0, 
-            0.0,
-        ];
+        let dist_arr = [dx.abs() as f64, dy.abs() as f64, 0.0, 0.0];
         let diagonal1 = (dy as f64 - dx as f64) / 2.0;
         let diagonal2 = (dy as f64 + dx as f64) / 2.0;
         let dist_arr = [dist_arr[0], dist_arr[1], diagonal1.abs(), diagonal2.abs()];
@@ -93,14 +88,13 @@ impl IntPoint {
         }
     }
 
-                        pub fn fortyfive_degree_corner(
+    pub fn fortyfive_degree_corner(
         &self,
         to_point: &IntPoint,
         left_turn: bool,
     ) -> Option<IntPoint> {
         let dx = to_point.x - self.x;
         let dy = to_point.y - self.y;
-
 
         let result = if dy > 0 && dy < dx {
             if left_turn {
@@ -156,10 +150,9 @@ impl IntPoint {
         Some(result)
     }
 
-                    pub fn ninety_degree_corner(&self, to_point: &IntPoint, left_turn: bool) -> Option<IntPoint> {
+    pub fn ninety_degree_corner(&self, to_point: &IntPoint, left_turn: bool) -> Option<IntPoint> {
         let dx = to_point.x - self.x;
         let dy = to_point.y - self.y;
-
 
         let result = if (dx > 0 && dy > 0) || (dx < 0 && dy < 0) {
             if left_turn {
@@ -179,56 +172,56 @@ impl IntPoint {
         Some(result)
     }
 
-            pub fn compare_x(&self, other: &IntPoint) -> Ordering {
+    pub fn compare_x(&self, other: &IntPoint) -> Ordering {
         self.x.cmp(&other.x)
     }
 
-            pub fn compare_y(&self, other: &IntPoint) -> Ordering {
+    pub fn compare_y(&self, other: &IntPoint) -> Ordering {
         self.y.cmp(&other.y)
     }
 
-            pub fn compare_xy(&self, other: &IntPoint) -> Ordering {
+    pub fn compare_xy(&self, other: &IntPoint) -> Ordering {
         match self.compare_x(other) {
             Ordering::Equal => self.compare_y(other),
             result => result,
         }
     }
 
-                pub fn side_of(&self, p1: &IntPoint, p2: &IntPoint) -> Side {
+    pub fn side_of(&self, p1: &IntPoint, p2: &IntPoint) -> Side {
         let v1 = self.difference_by(p1);
         let v2 = p2.difference_by(p1);
         v1.side_of(&v2)
     }
 
-        pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> IntPoint {
+    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> IntPoint {
         let v = self.difference_by(pole);
         let v = v.turn_90_degree(factor);
         pole.translate_by(&v)
     }
 
-        pub fn mirror_vertical(&self, pole: &IntPoint) -> IntPoint {
+    pub fn mirror_vertical(&self, pole: &IntPoint) -> IntPoint {
         let v = self.difference_by(pole);
         let v = v.mirror_at_y_axis();
         pole.translate_by(&v)
     }
 
-        pub fn mirror_horizontal(&self, pole: &IntPoint) -> IntPoint {
+    pub fn mirror_horizontal(&self, pole: &IntPoint) -> IntPoint {
         let v = self.difference_by(pole);
         let v = v.mirror_at_x_axis();
         pole.translate_by(&v)
     }
 
-        pub fn to_float(&self) -> FloatPoint {
+    pub fn to_float(&self) -> FloatPoint {
         FloatPoint::new(self.x as f64, self.y as f64)
     }
 
-                        pub fn side_of_line(&self, line: &crate::line::Line) -> Side {
+    pub fn side_of_line(&self, line: &crate::line::Line) -> Side {
         let v1 = self.difference_by(&line.a);
         let v2 = line.b.difference_by(&line.a);
         v1.side_of(&v2)
     }
 
-                                            pub fn perpendicular_projection(&self, line: &crate::line::Line) -> crate::point::Point {
+    pub fn perpendicular_projection(&self, line: &crate::line::Line) -> crate::point::Point {
         use num_bigint::BigInt;
         use num_integer::Integer;
         use num_traits::{Signed, ToPrimitive, Zero};
@@ -277,16 +270,15 @@ impl IntPoint {
         ))
     }
 
-
-            pub fn surrounding_box(&self) -> crate::int_box::IntBox {
+    pub fn surrounding_box(&self) -> crate::int_box::IntBox {
         crate::int_box::IntBox::new(*self, *self)
     }
 
-            pub fn is_contained_in(&self, box_: &crate::int_box::IntBox) -> bool {
+    pub fn is_contained_in(&self, box_: &crate::int_box::IntBox) -> bool {
         self.x >= box_.ll.x && self.y >= box_.ll.y && self.x <= box_.ur.x && self.y <= box_.ur.y
     }
 
-                pub fn surrounding_octagon(&self) -> crate::int_octagon::IntOctagon {
+    pub fn surrounding_octagon(&self) -> crate::int_octagon::IntOctagon {
         let tmp1 = self.x - self.y;
         let tmp2 = self.x + self.y;
 
@@ -357,7 +349,7 @@ mod tests {
             a.fortyfive_degree_corner(&b, false),
             Some(IntPoint::new(4, 4))
         );
-        assert_eq!(a.fortyfive_degree_corner(&IntPoint::new(5, 5), true), None); 
+        assert_eq!(a.fortyfive_degree_corner(&IntPoint::new(5, 5), true), None);
         assert_eq!(a.ninety_degree_corner(&b, true), Some(IntPoint::new(10, 0)));
         assert_eq!(a.ninety_degree_corner(&b, false), Some(IntPoint::new(0, 4)));
         assert_eq!(a.ninety_degree_corner(&IntPoint::new(0, 9), true), None);

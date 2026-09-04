@@ -53,7 +53,6 @@ fn settings_snapshot(manifest: &Path) -> serde_json::Value {
         .unwrap_or_else(|| panic!("manifest has no settings_snapshot: {text}"))
 }
 
-
 #[test]
 fn a_failed_run_leaves_the_previous_result_on_disk() {
     let dir = scratch("failed-run-keeps-previous");
@@ -861,7 +860,6 @@ fn the_via_net_number_fixture_routes_instead_of_hanging() {
     );
 }
 
-
 fn drc_dsn() -> PathBuf {
     parity::fixture("Issue575-drc_dev-board_4_hole_clearance_violations.dsn")
 }
@@ -1021,7 +1019,7 @@ fn the_session_is_imported_after_the_rules() {
     let dsn = parity::fixture("Issue593-BBD_Mars-64.dsn");
     let ses = parity::fixture("Issue593-BBD_Mars-64.ses");
 
-            fn one_rule(dir: &Path, name: &str, clearance: f64, pair: Option<&str>) -> PathBuf {
+    fn one_rule(dir: &Path, name: &str, clearance: f64, pair: Option<&str>) -> PathBuf {
         let path = dir.join(name);
         let rule = match pair {
             Some(pair) => format!("(clearance {clearance} (type {pair}))"),
@@ -1035,7 +1033,7 @@ fn the_session_is_imported_after_the_rules() {
         path
     }
 
-            fn build(dsn: &Path, rules: &Path, ses: &Path, rules_first: bool) -> (u64, usize) {
+    fn build(dsn: &Path, rules: &Path, ses: &Path, rules_first: bool) -> (u64, usize) {
         let mut job = fr_core::RoutingJob::new(fr_core::SessionId::NIL);
         job.set_input(dsn).expect("the fixture reads");
         let loaded = fr_core::load_board_if_needed(&mut job).expect("the fixture loads");
@@ -1303,7 +1301,6 @@ fn drc_with_no_output_prints_to_stdout() {
     );
 }
 
-
 #[test]
 fn info_writes_the_board_summary_to_stdout() {
     if !parity::require_java_dir() {
@@ -1423,7 +1420,6 @@ fn the_cli_passes_kicad_flavor_explicitly() {
         "the two flavors must be genuinely different documents"
     );
 }
-
 
 fn climb_one(stem: &parity::CliStem) -> Result<(), String> {
     let dir = scratch(&format!("ref-{}", stem.name));
@@ -1583,7 +1579,6 @@ fn the_cli_refuses_an_unreadable_router_budget_with_exit_2() {
          operator explicitly did not ask for"
     );
 }
-
 
 #[test]
 fn two_runs_of_every_ci_stem_are_byte_identical() {

@@ -12,7 +12,6 @@ fn validatable() -> RouterSettings {
     s
 }
 
-
 #[test]
 fn default_bend_cost() {
     let mut settings = RouterSettings::new();
@@ -85,11 +84,10 @@ fn null_scoring_safety() {
     assert_eq!(settings.get_via_costs(), 3);
 
     assert_eq!(settings.get_preferred_direction_trace_costs(0), 1.0);
-    settings.scoring = None; 
+    settings.scoring = None;
     settings.set_preferred_direction_trace_costs(0, 2.0);
     assert_eq!(settings.get_preferred_direction_trace_costs(0), 2.0);
 }
-
 
 #[test]
 fn neck_width() {
@@ -106,20 +104,19 @@ fn neck_width() {
     assert_eq!(settings.get_neck_width_um(), 0.0);
 }
 
-
 #[test]
 fn accessor_defaults_on_a_fresh_settings_object() {
     let settings = RouterSettings::new();
-    assert!(settings.get_run_router()); 
-    assert!(!settings.get_run_optimizer()); 
-    assert!(settings.get_vias_allowed()); 
-    assert_eq!(settings.get_via_costs(), 1); 
-    assert_eq!(settings.get_plane_via_costs(), 1); 
-    assert_eq!(settings.get_start_ripup_costs(), 1); 
-    assert_eq!(settings.get_neck_width_um(), 0.0); 
-    assert!(!settings.is_strict_drc()); 
-    assert!(!settings.get_automatic_neckdown()); 
-    assert_eq!(settings.get_layer_count(), 0); 
+    assert!(settings.get_run_router());
+    assert!(!settings.get_run_optimizer());
+    assert!(settings.get_vias_allowed());
+    assert_eq!(settings.get_via_costs(), 1);
+    assert_eq!(settings.get_plane_via_costs(), 1);
+    assert_eq!(settings.get_start_ripup_costs(), 1);
+    assert_eq!(settings.get_neck_width_um(), 0.0);
+    assert!(!settings.is_strict_drc());
+    assert!(!settings.get_automatic_neckdown());
+    assert_eq!(settings.get_layer_count(), 0);
 
     assert!(!settings.get_layer_active(0));
     assert_eq!(settings.get_bend_cost(0), 0.0);
@@ -366,7 +363,6 @@ fn trace_costs_are_sized_by_the_cost_array_not_by_the_layer_count() {
     assert_eq!(settings.get_trace_costs().len(), 1);
 }
 
-
 #[test]
 fn set_layer_count_rewipes_costs() {
     let mut settings = RouterSettings::new();
@@ -385,7 +381,6 @@ fn set_layer_count_rewipes_costs() {
     assert!(settings.get_layer_active(1));
 }
 
-
 #[test]
 fn java_clone_replays_javas_sequence() {
     let source = populated();
@@ -393,7 +388,7 @@ fn java_clone_replays_javas_sequence() {
     let mut replay = RouterSettings::new();
     let layer_count = source.get_layer_count();
     if layer_count > 0 {
-        replay.set_layer_count(layer_count); 
+        replay.set_layer_count(layer_count);
     }
     replay.algorithm = source.algorithm.clone();
     replay.job_timeout_string = source.job_timeout_string.clone();
@@ -512,7 +507,6 @@ fn populated() -> RouterSettings {
     s
 }
 
-
 #[test]
 fn validate_matrix() {
     for (input, expected) in [
@@ -610,7 +604,6 @@ fn validate_panics_without_trace_pull_tight_accuracy() {
     s.validate(&host());
 }
 
-
 #[test]
 fn plain_setters() {
     let mut s = RouterSettings::new();
@@ -636,7 +629,6 @@ fn plain_setters() {
     s.strict_drc = Some(true);
     assert!(s.is_strict_drc());
 }
-
 
 #[test]
 fn opt_changed_area_ms_is_a_settable_field() {

@@ -6,7 +6,6 @@ use fr_router::autoroute::drill::{DrillPage, DrillPageArray, ExpansionDrill};
 use fr_router::autoroute::expansion::{ExpansionRoomStore, RoomRef};
 use fr_router::autoroute::maze::engine::AutorouteEngine;
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -10_000,
@@ -207,7 +206,6 @@ fn drill_room_ids(engine: &AutorouteEngine, drill: &ExpansionDrill) -> Vec<Optio
         .collect()
 }
 
-
 #[test]
 fn page_grid_matches_java_for_a_known_bounding_box() {
     let board = probe_board(BOUNDING_BOX);
@@ -295,7 +293,6 @@ fn overlapping_pages_uses_javas_mixed_loop_bounds() {
         vec![(3334, 3334, 10000, 10000)]
     );
 }
-
 
 #[test]
 fn an_smd_pin_is_cut_out_unless_attach_smd_and_drill_allowed() {
@@ -480,7 +477,6 @@ fn a_stopped_split_does_not_memoise_an_empty_page() {
     assert_eq!(page.net_number(), 1);
 }
 
-
 #[test]
 fn calculate_expansion_rooms_fails_when_one_layer_is_blocked() {
     let mut board = probe_board(BOUNDING_BOX);
@@ -612,7 +608,6 @@ fn a_virgin_engine_yields_thirteen_drills() {
     );
     assert!(!after.calculate_expansion_rooms(&mut seeded, &mut seeded_board));
 }
-
 
 #[test]
 fn the_engine_reaches_its_pages_through_invalidate_drill_pages() {

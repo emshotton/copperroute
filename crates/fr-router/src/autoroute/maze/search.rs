@@ -18,32 +18,32 @@ pub const ALREADY_RIPPED_COSTS: i32 = 1;
 
 #[derive(Debug)]
 pub struct MazeSearchEngine<'a> {
-            pub engine: &'a mut AutorouteEngine,
+    pub engine: &'a mut AutorouteEngine,
 
-        pub ctrl: &'a AutorouteControl,
+    pub ctrl: &'a AutorouteControl,
 
-                pub queue: MazeQueue,
+    pub queue: MazeQueue,
 
-                pub destination_distance: DestinationDistance,
+    pub destination_distance: DestinationDistance,
 
-                pub search_tree: TreeId,
+    pub search_tree: TreeId,
 
-                        pub random_generator: JavaRandom,
+    pub random_generator: JavaRandom,
 
-                    destination_door: Option<ExpandableRef>,
+    destination_door: Option<ExpandableRef>,
 
-        section_no_of_destination_door: i32,
+    section_no_of_destination_door: i32,
 }
 
 impl<'a> MazeSearchEngine<'a> {
-                            pub fn new(
+    pub fn new(
         engine: &'a mut AutorouteEngine,
         ctrl: &'a AutorouteControl,
     ) -> MazeSearchEngine<'a> {
         let mut random_generator = JavaRandom::new(0);
         random_generator.set_seed(i64::from(ctrl.ripup_costs));
         MazeSearchEngine {
-            search_tree: engine.tree, 
+            search_tree: engine.tree,
             engine,
             destination_distance: DestinationDistance::new(
                 &ctrl.trace_costs,
@@ -52,14 +52,14 @@ impl<'a> MazeSearchEngine<'a> {
                 ctrl.min_cheap_via_cost,
             ),
             ctrl,
-            queue: MazeQueue::new(), 
+            queue: MazeQueue::new(),
             random_generator,
             destination_door: None,
             section_no_of_destination_door: 0,
         }
     }
 
-                                                pub fn get_instance(
+    pub fn get_instance(
         start_items: &BTreeSet<ItemId>,
         destination_items: &BTreeSet<ItemId>,
         engine: &'a mut AutorouteEngine,
@@ -75,20 +75,19 @@ impl<'a> MazeSearchEngine<'a> {
         }
     }
 
-        pub fn destination_door(&self) -> Option<ExpandableRef> {
+    pub fn destination_door(&self) -> Option<ExpandableRef> {
         self.destination_door
     }
 
-        pub fn section_no_of_destination_door(&self) -> i32 {
+    pub fn section_no_of_destination_door(&self) -> i32 {
         self.section_no_of_destination_door
     }
 
-                        pub fn push(&mut self, element: MazeListElement, board: &Board) -> bool {
+    pub fn push(&mut self, element: MazeListElement, board: &Board) -> bool {
         self.queue.push(element, self.ctrl, self.engine, board)
     }
 
-
-                                                        pub fn init(
+    pub fn init(
         &mut self,
         board: &mut Board,
         start_items: &BTreeSet<ItemId>,
@@ -298,8 +297,7 @@ impl<'a> MazeSearchEngine<'a> {
         start_ok
     }
 
-
-                    pub fn find_connection(
+    pub fn find_connection(
         &mut self,
         board: &mut Board,
         stop: StopCheck<'_>,
@@ -312,7 +310,7 @@ impl<'a> MazeSearchEngine<'a> {
         })
     }
 
-                        pub fn occupy_next_element(&mut self, board: &mut Board, stop: StopCheck<'_>) -> bool {
+    pub fn occupy_next_element(&mut self, board: &mut Board, stop: StopCheck<'_>) -> bool {
         if self.destination_door.is_some() {
             return false;
         }
@@ -446,8 +444,7 @@ impl<'a> MazeSearchEngine<'a> {
         true
     }
 
-
-                                pub fn door_is_small(&self, board: &Board, door: DoorId, trace_width: f64) -> bool {
+    pub fn door_is_small(&self, board: &Board, door: DoorId, trace_width: f64) -> bool {
         let Some(current_door) = self.engine.rooms.door(door) else {
             return false;
         };
@@ -463,20 +460,16 @@ impl<'a> MazeSearchEngine<'a> {
             return true;
         }
         let door_length = match board.rules.trace_angle_restriction {
-            AngleRestriction::NinetyDegree => {
-                door_shape.bounding_box().max_width()
-            }
-            AngleRestriction::FortyFiveDegree => {
-                door_shape
-                    .bounding_octagon()
-                    .unwrap_or_else(|| {
-                        panic!(
-                            "MazeSearchEngine.doorIsSmall: a non-empty door shape with no bounding \
+            AngleRestriction::NinetyDegree => door_shape.bounding_box().max_width(),
+            AngleRestriction::FortyFiveDegree => door_shape
+                .bounding_octagon()
+                .unwrap_or_else(|| {
+                    panic!(
+                        "MazeSearchEngine.doorIsSmall: a non-empty door shape with no bounding \
                              octagon — Java would have NPE'd at MazeSearchEngine.java:780"
-                        )
-                    })
-                    .max_width()
-            }
+                    )
+                })
+                .max_width(),
             AngleRestriction::None => {
                 let door_line_segment = door_shape.diagonal_corner_segment().unwrap_or_else(|| {
                     panic!(
@@ -490,8 +483,7 @@ impl<'a> MazeSearchEngine<'a> {
         door_length < trace_width
     }
 
-
-                                                    pub fn reduce_trace_shapes_at_tie_pins(
+    pub fn reduce_trace_shapes_at_tie_pins(
         board: &mut Board,
         item_list: &BTreeSet<ItemId>,
         own_net_no: i32,
@@ -543,9 +535,7 @@ impl<'a> MazeSearchEngine<'a> {
             }
         }
     }
-
 }
-
 
 pub fn segment_projection(from_segment: &FloatLine, to_segment: &FloatLine) -> Option<FloatLine> {
     let check_segment = from_segment.adjust_direction(to_segment);
@@ -588,23 +578,22 @@ pub fn to_impacted_points(shape_entry: Option<&FloatLine>) -> Option<[Point; 2]>
     ])
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MazeResult {
-        pub destination_door: ExpandableRef,
-        pub section_no_of_door: i32,
+    pub destination_door: ExpandableRef,
+    pub section_no_of_door: i32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShoveResult {
-        pub opposite_door: DoorId,
-            pub side_doors: Vec<DoorId>,
-            pub from_door_passing_point: FloatPoint,
-            pub opposite_door_passing_point: FloatPoint,
+    pub opposite_door: DoorId,
+    pub side_doors: Vec<DoorId>,
+    pub from_door_passing_point: FloatPoint,
+    pub opposite_door_passing_point: FloatPoint,
 }
 
 impl ShoveResult {
-        pub fn new(
+    pub fn new(
         opposite_door: DoorId,
         side_doors: Vec<DoorId>,
         from_door_passing_point: FloatPoint,
@@ -618,5 +607,3 @@ impl ShoveResult {
         }
     }
 }
-
-

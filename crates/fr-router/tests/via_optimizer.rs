@@ -13,7 +13,6 @@ fn never() -> bool {
     false
 }
 
-
 #[test]
 fn is_within_tolerance_matches_java_at_the_boundary() {
     let mut checked = 0;
@@ -95,7 +94,6 @@ fn parse_point(text: &str) -> Point {
         inner.1.parse().expect("y"),
     ))
 }
-
 
 const TRANSCRIPT: &str = include_str!("data/p7t4-via-optimizer.txt");
 
@@ -237,7 +235,6 @@ fn p7t4_rows(tag: &str, mode: i32) -> Vec<String> {
     out.extend(dump_board(&board));
     out
 }
-
 
 const ID_KEYS: [&str; 4] = ["via id=", "item id=", "maxId=", "contacts=["];
 
@@ -409,7 +406,6 @@ fn column<'a>(row: &'a str, key: &str) -> &'a str {
         None => rest,
     }
 }
-
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -622,8 +618,6 @@ fn a_plane_via_moves_through_overload_a() {
     }
 }
 
-
-
 fn routed_rpi() -> Board {
     routed("Issue143-rpi_splitter.dsn")
 }
@@ -704,7 +698,6 @@ fn pick_connections(board: &Board, max_items: usize) -> Vec<(ItemId, i32)> {
     }
     result
 }
-
 
 fn regime_name(angle: AngleRestriction) -> &'static str {
     match angle {

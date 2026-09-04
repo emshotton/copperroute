@@ -17,9 +17,9 @@ pub struct RulesFileSettings {
 }
 
 impl RulesFileSettings {
-        const PRIORITY: i32 = priority::RULES_FILE;
+    const PRIORITY: i32 = priority::RULES_FILE;
 
-                                #[must_use]
+    #[must_use]
     pub fn new(rules: impl Read, file_name: &str) -> Self {
         let settings = match fr_dsn::rules_reader::read_router_settings(rules) {
             Ok(Some(extracted)) => RouterSettings::from(extracted),
@@ -31,7 +31,7 @@ impl RulesFileSettings {
         }
     }
 
-                                #[must_use]
+    #[must_use]
     pub fn from_path(path: &Path) -> Self {
         let file_name = path.file_name().map_or_else(
             || path.display().to_string(),

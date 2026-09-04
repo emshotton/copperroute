@@ -110,7 +110,6 @@ fn issue143_rpi_splitter_ses_matches_java() {
     assert_ses_parity(FIXTURES[3].0, FIXTURES[3].1);
 }
 
-
 #[test]
 fn every_reference_is_byte_for_byte_identical_to_java() {
     if !parity::require_java_dir() {
@@ -164,7 +163,6 @@ fn no_reference_contains_a_wire() {
         );
     }
 }
-
 
 #[test]
 fn valid_header() {
@@ -258,7 +256,6 @@ fn every_fixture_is_balanced_with_unique_library_padstacks() {
         common::assert_unique_library_padstacks(&content);
     }
 }
-
 
 #[test]
 fn ses_writer_writes_a_pins_line_for_every_swapped_pin() {

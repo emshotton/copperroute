@@ -18,7 +18,6 @@ use fr_settings::{HostEnvironment, SettingsInputs, SettingsSource, resolve_headl
 const FIXED_INSTANT: &str = "1970-01-01T00:00:00Z";
 const FIXED_GIT_SHA: &str = "0000000";
 
-
 struct ManifestRow {
     lines: Vec<String>,
     len: usize,
@@ -37,7 +36,7 @@ struct GitShaRow {
     label: String,
     env: Option<String>,
     prop: Option<String>,
-                    legacy_prop: Option<String>,
+    legacy_prop: Option<String>,
     answer: String,
 }
 
@@ -58,7 +57,7 @@ fn transcript() -> Transcript {
         if let Some(rest) = line.strip_prefix("MAN ") {
             let (label, rest) = rest.split_once(' ').expect("a label");
             if label == "root_input" {
-                continue; 
+                continue;
             }
             let entry = manifests.entry(label.to_string()).or_insert(ManifestRow {
                 lines: Vec::new(),
@@ -144,7 +143,6 @@ fn unescape(text: &str) -> String {
     }
     out
 }
-
 
 fn fixtures() -> PathBuf {
     parity::java_dir().join("fixtures")
@@ -339,7 +337,6 @@ fn json_of(manifest: &RoutingResultManifest) -> String {
         .expect("no non-finite float in a corpus manifest")
 }
 
-
 #[test]
 fn the_manifest_transcript_replays_row_for_row() {
     let transcript = transcript();
@@ -422,7 +419,6 @@ fn sha256_hex_matches_the_nist_vectors_and_the_corpus() {
     expect("missing", &scratch.join("definitely-not-here.bin"));
     expect("directory", &fixtures);
 }
-
 
 #[test]
 fn the_key_order_is_declaration_order() {

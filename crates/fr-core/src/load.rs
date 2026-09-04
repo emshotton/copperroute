@@ -7,11 +7,11 @@ use crate::{Error, FileFormat, RoutingJob};
 
 #[derive(Debug)]
 pub struct LoadedBoard {
-        pub board: Board,
-        pub transform: CoordinateTransform,
-                            pub metadata: Option<BoardMetadata>,
-            pub settings: RouterSettings,
-            pub warnings: Vec<String>,
+    pub board: Board,
+    pub transform: CoordinateTransform,
+    pub metadata: Option<BoardMetadata>,
+    pub settings: RouterSettings,
+    pub warnings: Vec<String>,
 }
 
 pub fn load_from_specctra_dsn(
@@ -60,7 +60,6 @@ pub fn load_from_kicad_json(
     apply_parsed_board_result(result, settings)
 }
 
-
 fn kicad_read_board(text: &str) -> BoardReadResult {
     fr_dsn::kicad::read_board(text, None)
 }
@@ -91,10 +90,10 @@ pub fn apply_parsed_board_result(
 
 #[derive(Debug)]
 pub struct ParsedBoard {
-            pub board: Board,
-        pub transform: CoordinateTransform,
-        pub metadata: Option<BoardMetadata>,
-        pub warnings: Vec<String>,
+    pub board: Board,
+    pub transform: CoordinateTransform,
+    pub metadata: Option<BoardMetadata>,
+    pub warnings: Vec<String>,
 }
 
 pub fn parse_board_result(result: BoardReadResult) -> Result<ParsedBoard, Error> {

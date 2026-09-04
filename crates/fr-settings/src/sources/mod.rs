@@ -22,7 +22,6 @@ use fr_dsn::parser::DsnRouterSettings;
 
 use crate::RouterSettings;
 
-
 impl From<DsnRouterSettings> for RouterSettings {
     fn from(dsn: DsnRouterSettings) -> Self {
         Self::from(&dsn)

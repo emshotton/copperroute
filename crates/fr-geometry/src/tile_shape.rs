@@ -17,9 +17,9 @@ use crate::vector::Vector;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TileShape {
-        Box(IntBox),
-        Octagon(IntOctagon),
-        Simplex(Simplex),
+    Box(IntBox),
+    Octagon(IntOctagon),
+    Simplex(Simplex),
 }
 
 impl From<IntBox> for TileShape {
@@ -40,21 +40,20 @@ impl From<Simplex> for TileShape {
     }
 }
 
-
 impl TileShape {
-            pub fn get_instance_from_lines(lines: Vec<Line>) -> TileShape {
+    pub fn get_instance_from_lines(lines: Vec<Line>) -> TileShape {
         Simplex::from_lines(lines).simplify()
     }
 
-                pub fn get_instance_from_points(convex_polygon: &[IntPoint]) -> TileShape {
+    pub fn get_instance_from_points(convex_polygon: &[IntPoint]) -> TileShape {
         Simplex::from_points(convex_polygon).simplify()
     }
 
-            pub fn get_instance_from_line(line: Line) -> TileShape {
+    pub fn get_instance_from_line(line: Line) -> TileShape {
         TileShape::Simplex(Simplex::from_lines(vec![line]))
     }
 
-            #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     pub fn get_instance_octagon(
         lx: i32,
         ly: i32,
@@ -68,7 +67,7 @@ impl TileShape {
         IntOctagon::new(lx, ly, rx, uy, ulx, lrx, llx, urx).normalize()
     }
 
-        pub fn get_instance_from_box(
+    pub fn get_instance_from_box(
         lower_left_x: i32,
         lower_left_y: i32,
         upper_right_x: i32,
@@ -78,14 +77,13 @@ impl TileShape {
             .to_int_octagon()
     }
 
-            pub fn get_instance_from_point(point: &Point) -> IntBox {
+    pub fn get_instance_from_point(point: &Point) -> IntBox {
         point.surrounding_box()
     }
 }
 
-
 impl TileShape {
-        pub fn border_line_count(&self) -> usize {
+    pub fn border_line_count(&self) -> usize {
         match self {
             TileShape::Box(b) => b.border_line_count(),
             TileShape::Octagon(o) => o.border_line_count(),
@@ -93,7 +91,7 @@ impl TileShape {
         }
     }
 
-                            pub fn border_line(&self, no: usize) -> Option<Line> {
+    pub fn border_line(&self, no: usize) -> Option<Line> {
         match self {
             TileShape::Box(b) => Some(b.border_line(no)),
             TileShape::Octagon(o) => Some(o.border_line(no)),
@@ -101,7 +99,7 @@ impl TileShape {
         }
     }
 
-                pub fn corner(&self, no: usize) -> Point {
+    pub fn corner(&self, no: usize) -> Point {
         match self {
             TileShape::Box(b) => Point::Int(b.corner(no)),
             TileShape::Octagon(o) => Point::Int(o.corner(no)),
@@ -109,7 +107,7 @@ impl TileShape {
         }
     }
 
-            pub fn corner_approx(&self, no: usize) -> Option<FloatPoint> {
+    pub fn corner_approx(&self, no: usize) -> Option<FloatPoint> {
         match self {
             TileShape::Box(b) => Some(b.corner(no).to_float()),
             TileShape::Octagon(o) => Some(o.corner(no).to_float()),
@@ -117,7 +115,7 @@ impl TileShape {
         }
     }
 
-        pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
+    pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
         match self {
             TileShape::Simplex(s) => s.corner_approx_arr(),
             _ => (0..self.border_line_count())
@@ -126,7 +124,7 @@ impl TileShape {
         }
     }
 
-            pub fn corner_is_bounded(&self, no: usize) -> bool {
+    pub fn corner_is_bounded(&self, no: usize) -> bool {
         match self {
             TileShape::Box(b) => b.corner_is_bounded(no),
             TileShape::Octagon(o) => o.corner_is_bounded(no),
@@ -134,7 +132,7 @@ impl TileShape {
         }
     }
 
-        pub fn is_bounded(&self) -> bool {
+    pub fn is_bounded(&self) -> bool {
         match self {
             TileShape::Box(b) => b.is_bounded(),
             TileShape::Octagon(o) => o.is_bounded(),
@@ -142,7 +140,7 @@ impl TileShape {
         }
     }
 
-        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         match self {
             TileShape::Box(b) => b.is_empty(),
             TileShape::Octagon(o) => o.is_empty(),
@@ -150,7 +148,7 @@ impl TileShape {
         }
     }
 
-        pub fn dimension(&self) -> i32 {
+    pub fn dimension(&self) -> i32 {
         match self {
             TileShape::Box(b) => b.dimension(),
             TileShape::Octagon(o) => o.dimension(),
@@ -158,7 +156,7 @@ impl TileShape {
         }
     }
 
-                pub fn simplify(&self) -> TileShape {
+    pub fn simplify(&self) -> TileShape {
         match self {
             TileShape::Box(b) => b.simplify(),
             TileShape::Octagon(o) => o.simplify(),
@@ -166,7 +164,7 @@ impl TileShape {
         }
     }
 
-        pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         match self {
             TileShape::Box(b) => b.get_id(),
             TileShape::Octagon(o) => o.get_id(),
@@ -174,7 +172,7 @@ impl TileShape {
         }
     }
 
-        pub fn is_int_box(&self) -> bool {
+    pub fn is_int_box(&self) -> bool {
         match self {
             TileShape::Box(b) => b.is_int_box(),
             TileShape::Octagon(o) => o.is_int_box(),
@@ -182,7 +180,7 @@ impl TileShape {
         }
     }
 
-            pub fn is_int_octagon(&self) -> bool {
+    pub fn is_int_octagon(&self) -> bool {
         match self {
             TileShape::Box(b) => b.is_int_octagon(),
             TileShape::Octagon(o) => o.is_int_octagon(),
@@ -190,7 +188,7 @@ impl TileShape {
         }
     }
 
-            pub fn to_simplex(&self) -> Simplex {
+    pub fn to_simplex(&self) -> Simplex {
         match self {
             TileShape::Box(b) => b.to_simplex(),
             TileShape::Octagon(o) => o.to_simplex(),
@@ -198,7 +196,7 @@ impl TileShape {
         }
     }
 
-                        pub fn border_line_index(&self, line: &Line) -> Option<usize> {
+    pub fn border_line_index(&self, line: &Line) -> Option<usize> {
         match self {
             TileShape::Box(b) => b.border_line_index(line),
             TileShape::Octagon(o) => o.border_line_index(line),
@@ -206,7 +204,7 @@ impl TileShape {
         }
     }
 
-        pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self) -> IntBox {
         match self {
             TileShape::Box(b) => b.bounding_box(),
             TileShape::Octagon(o) => o.bounding_box(),
@@ -214,7 +212,7 @@ impl TileShape {
         }
     }
 
-            pub fn bounding_octagon(&self) -> Option<IntOctagon> {
+    pub fn bounding_octagon(&self) -> Option<IntOctagon> {
         match self {
             TileShape::Box(b) => Some(b.bounding_octagon()),
             TileShape::Octagon(o) => Some(o.bounding_octagon()),
@@ -222,11 +220,11 @@ impl TileShape {
         }
     }
 
-            pub fn bounding_tile(&self) -> TileShape {
+    pub fn bounding_tile(&self) -> TileShape {
         self.clone()
     }
 
-        pub fn translate_by(&self, vector: &Vector) -> TileShape {
+    pub fn translate_by(&self, vector: &Vector) -> TileShape {
         match self {
             TileShape::Box(b) => TileShape::Box(b.translate_by(vector)),
             TileShape::Octagon(o) => TileShape::Octagon(o.translate_by(vector)),
@@ -234,7 +232,7 @@ impl TileShape {
         }
     }
 
-                pub fn offset(&self, dist: f64) -> TileShape {
+    pub fn offset(&self, dist: f64) -> TileShape {
         match self {
             TileShape::Box(b) => TileShape::Box(b.offset(dist)),
             TileShape::Octagon(o) => TileShape::Octagon(o.offset(dist)),
@@ -242,7 +240,7 @@ impl TileShape {
         }
     }
 
-            pub fn enlarge(&self, offset: f64) -> TileShape {
+    pub fn enlarge(&self, offset: f64) -> TileShape {
         match self {
             TileShape::Box(b) => TileShape::Octagon(b.enlarge(offset)),
             TileShape::Octagon(o) => TileShape::Octagon(o.enlarge(offset)),
@@ -250,7 +248,7 @@ impl TileShape {
         }
     }
 
-        pub fn max_width(&self) -> f64 {
+    pub fn max_width(&self) -> f64 {
         match self {
             TileShape::Box(b) => b.max_width(),
             TileShape::Octagon(o) => o.max_width(),
@@ -258,7 +256,7 @@ impl TileShape {
         }
     }
 
-        pub fn min_width(&self) -> f64 {
+    pub fn min_width(&self) -> f64 {
         match self {
             TileShape::Box(b) => b.min_width(),
             TileShape::Octagon(o) => o.min_width(),
@@ -266,7 +264,7 @@ impl TileShape {
         }
     }
 
-            pub fn circumference(&self) -> f64 {
+    pub fn circumference(&self) -> f64 {
         match self {
             TileShape::Box(b) => b.circumference(),
             _ => {
@@ -289,7 +287,7 @@ impl TileShape {
         }
     }
 
-            pub fn centre_of_gravity(&self) -> FloatPoint {
+    pub fn centre_of_gravity(&self) -> FloatPoint {
         let corner_count = self.border_line_count();
         let mut x = 0.0;
         let mut y = 0.0;
@@ -303,24 +301,23 @@ impl TileShape {
         FloatPoint::new(x, y)
     }
 
-            fn border_line_at(&self, no: usize) -> Line {
+    fn border_line_at(&self, no: usize) -> Line {
         self.border_line(no)
             .expect("border line index is below border_line_count()")
     }
 
-        fn corner_approx_at(&self, no: usize) -> FloatPoint {
+    fn corner_approx_at(&self, no: usize) -> FloatPoint {
         self.corner_approx(no)
             .expect("corner index is below border_line_count()")
     }
 }
 
-
 impl TileShape {
-            pub fn intersection_with_simplify(&self, other: &TileShape) -> TileShape {
+    pub fn intersection_with_simplify(&self, other: &TileShape) -> TileShape {
         self.intersection(other).simplify()
     }
 
-                        pub fn intersection(&self, other: &TileShape) -> TileShape {
+    pub fn intersection(&self, other: &TileShape) -> TileShape {
         match (self, other) {
             (TileShape::Box(a), TileShape::Box(b)) => TileShape::Box(b.intersection(a)),
             (TileShape::Box(a), TileShape::Octagon(b)) => TileShape::Octagon(b.intersection_box(a)),
@@ -340,7 +337,7 @@ impl TileShape {
         }
     }
 
-                pub fn intersects(&self, other: &TileShape) -> bool {
+    pub fn intersects(&self, other: &TileShape) -> bool {
         match self {
             TileShape::Box(b) => other.intersects_box(b),
             TileShape::Octagon(o) => other.intersects_octagon(o),
@@ -348,7 +345,7 @@ impl TileShape {
         }
     }
 
-        pub fn intersects_box(&self, other: &IntBox) -> bool {
+    pub fn intersects_box(&self, other: &IntBox) -> bool {
         match self {
             TileShape::Box(b) => b.intersects(other),
             TileShape::Octagon(o) => o.intersects_box(other),
@@ -356,7 +353,7 @@ impl TileShape {
         }
     }
 
-        pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
+    pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
         match self {
             TileShape::Box(b) => b.intersects_octagon(other),
             TileShape::Octagon(o) => o.intersects_octagon(other),
@@ -364,7 +361,7 @@ impl TileShape {
         }
     }
 
-        pub fn intersects_simplex(&self, other: &Simplex) -> bool {
+    pub fn intersects_simplex(&self, other: &Simplex) -> bool {
         match self {
             TileShape::Box(b) => b.intersects_simplex(other),
             TileShape::Octagon(o) => o.intersects_simplex(other),
@@ -372,7 +369,7 @@ impl TileShape {
         }
     }
 
-                pub fn area(&self) -> f64 {
+    pub fn area(&self) -> f64 {
         match self {
             TileShape::Box(b) => b.area(),
             TileShape::Octagon(o) => o.area(),
@@ -399,7 +396,7 @@ impl TileShape {
         }
     }
 
-            pub fn is_outside(&self, point: &Point) -> bool {
+    pub fn is_outside(&self, point: &Point) -> bool {
         let line_count = self.border_line_count();
         if line_count == 0 {
             return true;
@@ -412,18 +409,18 @@ impl TileShape {
         false
     }
 
-            pub fn contains(&self, point: &Point) -> bool {
+    pub fn contains(&self, point: &Point) -> bool {
         !self.is_outside(point)
     }
 
-                    pub fn contains_float(&self, point: &FloatPoint) -> bool {
+    pub fn contains_float(&self, point: &FloatPoint) -> bool {
         match self {
             TileShape::Octagon(o) => o.contains_float(point),
             _ => self.contains_float_tol(point, 0.0),
         }
     }
 
-                    pub fn contains_float_tol(&self, point: &FloatPoint, tolerance: f64) -> bool {
+    pub fn contains_float_tol(&self, point: &FloatPoint, tolerance: f64) -> bool {
         let line_count = self.border_line_count();
         if line_count == 0 {
             return false;
@@ -436,7 +433,7 @@ impl TileShape {
         true
     }
 
-        pub fn contains_tile(&self, other: &TileShape) -> bool {
+    pub fn contains_tile(&self, other: &TileShape) -> bool {
         for i in 0..other.border_line_count() {
             if !self.contains(&other.corner(i)) {
                 return false;
@@ -445,7 +442,7 @@ impl TileShape {
         true
     }
 
-            pub fn contains_inside(&self, point: &Point) -> bool {
+    pub fn contains_inside(&self, point: &Point) -> bool {
         let line_count = self.border_line_count();
         if line_count == 0 {
             return false;
@@ -458,16 +455,16 @@ impl TileShape {
         true
     }
 
-                pub fn side_of_border(&self, point: &FloatPoint, tolerance: f64) -> Side {
+    pub fn side_of_border(&self, point: &FloatPoint, tolerance: f64) -> Side {
         let line_count = self.border_line_count();
         if line_count == 0 {
             return Side::Collinear;
         }
-        let mut result = Side::OnTheRight; 
+        let mut result = Side::OnTheRight;
         for i in 0..line_count {
             let current_side = self.border_line_at(i).side_of_float(point, tolerance);
             if current_side == Side::OnTheLeft {
-                return Side::OnTheLeft; 
+                return Side::OnTheLeft;
             } else if current_side == Side::Collinear {
                 result = current_side;
             }
@@ -475,7 +472,7 @@ impl TileShape {
         result
     }
 
-            pub fn contains_on_border_line_no(&self, point: &Point) -> Option<usize> {
+    pub fn contains_on_border_line_no(&self, point: &Point) -> Option<usize> {
         let line_count = self.border_line_count();
         if line_count == 0 {
             return None;
@@ -493,11 +490,11 @@ impl TileShape {
         containing_line_no
     }
 
-            pub fn contains_on_border(&self, point: &Point) -> bool {
+    pub fn contains_on_border(&self, point: &Point) -> bool {
         self.contains_on_border_line_no(point).is_some()
     }
 
-            pub fn contains_approx(&self, other: &TileShape) -> bool {
+    pub fn contains_approx(&self, other: &TileShape) -> bool {
         for current_corner in other.corner_approx_arr() {
             if !self.contains_float(&current_corner) {
                 return false;
@@ -506,7 +503,7 @@ impl TileShape {
         true
     }
 
-                                            pub fn distance(&self, point: &FloatPoint) -> f64 {
+    pub fn distance(&self, point: &FloatPoint) -> f64 {
         match self {
             TileShape::Box(b) => b.distance(point),
             _ => self
@@ -516,7 +513,7 @@ impl TileShape {
         }
     }
 
-                        pub fn border_distance(&self, point: &FloatPoint) -> f64 {
+    pub fn border_distance(&self, point: &FloatPoint) -> f64 {
         self.nearest_border_point_approx(point)
             .expect(
                 "TileShape.borderDistance: no nearest border point on a shape without border lines",
@@ -524,25 +521,25 @@ impl TileShape {
             .distance(point)
     }
 
-            pub fn smallest_radius(&self) -> f64 {
+    pub fn smallest_radius(&self) -> f64 {
         self.border_distance(&self.centre_of_gravity())
     }
 
-                pub fn nearest_point(&self, from_point: &Point) -> Option<Point> {
+    pub fn nearest_point(&self, from_point: &Point) -> Option<Point> {
         if !self.is_outside(from_point) {
             return Some(from_point.clone());
         }
         self.nearest_border_point(from_point)
     }
 
-        pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
+    pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
         if self.contains_float(from_point) {
             return Some(*from_point);
         }
         self.nearest_border_point_approx(from_point)
     }
 
-            pub fn nearest_border_point(&self, from_point: &Point) -> Option<Point> {
+    pub fn nearest_border_point(&self, from_point: &Point) -> Option<Point> {
         let line_count = self.border_line_count();
         if line_count == 0 {
             return None;
@@ -590,13 +587,13 @@ impl TileShape {
         Some(nearest_point)
     }
 
-            pub fn nearest_border_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
+    pub fn nearest_border_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
         self.nearest_border_points_approx(from_point, 1)
             .first()
             .copied()
     }
 
-                                            pub fn nearest_border_points_approx(
+    pub fn nearest_border_points_approx(
         &self,
         from_point: &FloatPoint,
         count: usize,
@@ -661,7 +658,7 @@ impl TileShape {
         nearest_points.into_iter().flatten().collect()
     }
 
-                                pub fn index_of_nearest_corner(&self, from_point: &Point) -> usize {
+    pub fn index_of_nearest_corner(&self, from_point: &Point) -> usize {
         let from_point_f = from_point.to_float();
         let mut result = 0;
         let corner_count = self.border_line_count();
@@ -676,7 +673,7 @@ impl TileShape {
         result
     }
 
-                pub fn diagonal_corner_segment(&self) -> Option<FloatLine> {
+    pub fn diagonal_corner_segment(&self) -> Option<FloatLine> {
         if self.is_empty() {
             return None;
         }
@@ -685,7 +682,7 @@ impl TileShape {
         Some(FloatLine::new(first_corner, last_corner))
     }
 
-                pub fn nearest_relative_outside_locations(
+    pub fn nearest_relative_outside_locations(
         &self,
         shape: &TileShape,
         count: usize,
@@ -735,7 +732,7 @@ impl TileShape {
         translate_coors.into_iter().flatten().collect()
     }
 
-            pub fn shrink(&self, offset: f64) -> TileShape {
+    pub fn shrink(&self, offset: f64) -> TileShape {
         let result = self.offset(-offset);
         if result.is_empty() {
             let centre_box = self.centre_of_gravity().bounding_box();
@@ -744,7 +741,7 @@ impl TileShape {
         result
     }
 
-            pub fn length(&self) -> f64 {
+    pub fn length(&self) -> f64 {
         if !self.is_bounded() {
             return i32::MAX as f64;
         }
@@ -770,8 +767,7 @@ impl TileShape {
         max_distance + max_distance2
     }
 
-                        pub fn touching_sides(&self, other: &TileShape) -> Option<[usize; 2]> {
-
+    pub fn touching_sides(&self, other: &TileShape) -> Option<[usize; 2]> {
         let mut side_no2 = 0;
         let mut dir2: Option<IntDirection> = None;
         for i in 0..other.border_line_count() {
@@ -807,7 +803,7 @@ impl TileShape {
         None
     }
 
-                pub fn distance_to_the_left(&self, line: &Line) -> f64 {
+    pub fn distance_to_the_left(&self, line: &Line) -> f64 {
         let mut result = i32::MAX as f64;
         for i in 0..self.border_line_count() {
             let current_corner = self.corner_approx_at(i);
@@ -824,7 +820,7 @@ impl TileShape {
         result
     }
 
-                pub fn side_of_line(&self, line: &Line) -> Side {
+    pub fn side_of_line(&self, line: &Line) -> Side {
         let mut on_the_left = false;
         let mut on_the_right = false;
         for i in 0..self.border_line_count() {
@@ -845,7 +841,7 @@ impl TileShape {
         }
     }
 
-            pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> TileShape {
+    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> TileShape {
         if let TileShape::Box(b) = self {
             return TileShape::Box(b.turn_90_degree(factor, pole));
         }
@@ -855,7 +851,7 @@ impl TileShape {
         TileShape::get_instance_from_lines(new_lines)
     }
 
-                                        pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> TileShape {
+    pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> TileShape {
         if angle == 0.0 {
             return self.clone();
         }
@@ -883,21 +879,21 @@ impl TileShape {
         }
     }
 
-        pub fn mirror_vertical(&self, pole: &IntPoint) -> TileShape {
+    pub fn mirror_vertical(&self, pole: &IntPoint) -> TileShape {
         let new_lines: Vec<Line> = (0..self.border_line_count())
             .map(|i| self.border_line_at(i).mirror_vertical(pole))
             .collect();
         TileShape::get_instance_from_lines(new_lines)
     }
 
-        pub fn mirror_horizontal(&self, pole: &IntPoint) -> TileShape {
+    pub fn mirror_horizontal(&self, pole: &IntPoint) -> TileShape {
         let new_lines: Vec<Line> = (0..self.border_line_count())
             .map(|i| self.border_line_at(i).mirror_horizontal(pole))
             .collect();
         TileShape::get_instance_from_lines(new_lines)
     }
 
-                                pub fn intersecting_border_line_no(
+    pub fn intersecting_border_line_no(
         &self,
         point: &Point,
         direction: &Direction,
@@ -917,7 +913,7 @@ impl TileShape {
             let current_border_line = self.border_line_at(i);
             let current_intersection = current_border_line.intersection_approx(&intersection_line);
             if current_intersection.x >= i32::MAX as f64 {
-                continue; 
+                continue;
             }
             let current_distance = current_intersection.distance_square(&from_point);
             if current_distance < min_distance {
@@ -933,11 +929,11 @@ impl TileShape {
         result
     }
 
-            pub fn split_to_convex(&self) -> Vec<TileShape> {
+    pub fn split_to_convex(&self) -> Vec<TileShape> {
         vec![self.clone()]
     }
 
-                        pub fn divide_into_sections(&self, max_section_width: f64) -> Vec<TileShape> {
+    pub fn divide_into_sections(&self, max_section_width: f64) -> Vec<TileShape> {
         if let TileShape::Box(b) = self {
             return b
                 .divide_into_sections(max_section_width)
@@ -959,7 +955,7 @@ impl TileShape {
         section_list
     }
 
-            pub fn is_intersected_interior_by(&self, line_segment: &LineSegment) -> bool {
+    pub fn is_intersected_interior_by(&self, line_segment: &LineSegment) -> bool {
         self.is_intersected_interior_by_points(
             &line_segment.start_point(),
             &line_segment.end_point(),
@@ -967,7 +963,7 @@ impl TileShape {
         )
     }
 
-            pub fn is_intersected_interior_by_points(
+    pub fn is_intersected_interior_by_points(
         &self,
         start_point: &Point,
         end_point: &Point,
@@ -1044,7 +1040,7 @@ impl TileShape {
         false
     }
 
-                            pub fn cutout(&self, shape: &TileShape) -> Option<Vec<TileShape>> {
+    pub fn cutout(&self, shape: &TileShape) -> Option<Vec<TileShape>> {
         let pieces = shape.cutout_from(self)?;
         if matches!(self, TileShape::Box(_)) {
             return Some(pieces.iter().map(|p| p.simplify()).collect());
@@ -1052,7 +1048,7 @@ impl TileShape {
         Some(pieces)
     }
 
-                pub fn cutout_from(&self, outer: &TileShape) -> Option<Vec<TileShape>> {
+    pub fn cutout_from(&self, outer: &TileShape) -> Option<Vec<TileShape>> {
         match (self, outer) {
             (TileShape::Box(a), TileShape::Box(d)) => {
                 Some(a.cutout_from(d).into_iter().map(TileShape::Box).collect())
@@ -1108,7 +1104,7 @@ impl TileShape {
         }
     }
 
-                                            pub fn cutout_polyline(&self, polyline: &Polyline) -> Result<Vec<Polyline>, PolylineError> {
+    pub fn cutout_polyline(&self, polyline: &Polyline) -> Result<Vec<Polyline>, PolylineError> {
         let intersection_no = self.entrance_points(polyline);
         let first_corner = polyline.first_corner();
         let first_corner_is_inside = match &first_corner {
@@ -1187,7 +1183,7 @@ impl TileShape {
         Ok(pieces)
     }
 
-                    pub fn entrance_points(&self, polyline: &Polyline) -> Vec<[usize; 2]> {
+    pub fn entrance_points(&self, polyline: &Polyline) -> Vec<[usize; 2]> {
         let mut result: Vec<[usize; 2]> = Vec::new();
         let mut prev_intersection_line_no: Option<usize> = None;
         let mut prev_intersection_edge_no: Option<usize> = None;
@@ -1207,10 +1203,9 @@ impl TileShape {
         }
         result
     }
-                pub fn intersects_circle(&self, other: &crate::circle::Circle) -> bool {
+    pub fn intersects_circle(&self, other: &crate::circle::Circle) -> bool {
         other.intersects_tile(self)
     }
-
 }
 
 fn insert_sorted(
@@ -1233,32 +1228,31 @@ fn insert_sorted(
     }
 }
 
-
 impl IntBox {
-        pub fn simplify(&self) -> TileShape {
+    pub fn simplify(&self) -> TileShape {
         TileShape::Box(*self)
     }
 
-        pub fn bounding_tile(&self) -> IntBox {
+    pub fn bounding_tile(&self) -> IntBox {
         *self
     }
 }
 
 impl IntOctagon {
-            pub fn simplify(&self) -> TileShape {
+    pub fn simplify(&self) -> TileShape {
         if self.is_int_box() {
             return TileShape::Box(self.bounding_box());
         }
         TileShape::Octagon(*self)
     }
 
-        pub fn bounding_tile(&self) -> IntOctagon {
+    pub fn bounding_tile(&self) -> IntOctagon {
         *self
     }
 }
 
 impl Simplex {
-            pub fn simplify(&self) -> TileShape {
+    pub fn simplify(&self) -> TileShape {
         if self.is_empty() {
             TileShape::Simplex(Simplex::EMPTY)
         } else if self.is_int_box() {
@@ -1275,7 +1269,7 @@ impl Simplex {
 }
 
 impl Line {
-            pub fn is_on_the_left(&self, tile: &TileShape) -> bool {
+    pub fn is_on_the_left(&self, tile: &TileShape) -> bool {
         for i in 0..tile.border_line_count() {
             if self.side_of(&tile.corner(i)) == Side::OnTheRight {
                 return false;
@@ -1284,7 +1278,7 @@ impl Line {
         true
     }
 
-            pub fn is_on_the_right(&self, tile: &TileShape) -> bool {
+    pub fn is_on_the_right(&self, tile: &TileShape) -> bool {
         for i in 0..tile.border_line_count() {
             if self.side_of(&tile.corner(i)) == Side::OnTheLeft {
                 return false;
@@ -1319,7 +1313,7 @@ mod tests {
     fn containment_family() {
         let b = bx();
         assert!(b.contains(&Point::Int(IntPoint::new(5, 5))));
-        assert!(b.contains(&Point::Int(IntPoint::new(0, 5)))); 
+        assert!(b.contains(&Point::Int(IntPoint::new(0, 5))));
         assert!(!b.contains_inside(&Point::Int(IntPoint::new(0, 5))));
         assert!(b.contains_on_border(&Point::Int(IntPoint::new(0, 5))));
         assert_eq!(
@@ -1398,7 +1392,7 @@ mod tests {
         assert!((parts.iter().map(|p| p.area()).sum::<f64>() - 100.0).abs() < 1e-9);
     }
 
-                #[test]
+    #[test]
     fn divide_into_sections_drops_degenerate_pieces() {
         let parts = tri().divide_into_sections(6.0);
         assert_eq!(parts.len(), 3);
@@ -1422,7 +1416,7 @@ mod tests {
             IntPoint::new(10, 10),
             IntPoint::new(0, 10),
         ]);
-        assert_eq!(square, bx()); 
+        assert_eq!(square, bx());
         assert_eq!(
             TileShape::get_instance_from_box(0, 0, 10, 10),
             IntBox::from_coords(0, 0, 10, 10).to_int_octagon()
@@ -1449,8 +1443,8 @@ mod tests {
         assert_eq!(tri().border_line_count(), 3);
         assert!(bx().is_int_box() && bx().is_int_octagon());
         assert!(oct.is_int_box());
-        assert!(!tri().is_int_box()); 
-        assert!(tri().is_int_octagon()); 
+        assert!(!tri().is_int_box());
+        assert!(tri().is_int_octagon());
         assert_eq!(oct.simplify(), bx());
         assert_eq!(
             bx().to_simplex(),
@@ -1502,7 +1496,7 @@ mod tests {
         assert_eq!(m.bounding_box(), IntBox::from_coords(0, -10, 10, 0));
     }
 
-                    #[test]
+    #[test]
     fn index_of_nearest_corner_only_moves_off_zero_at_distance_zero() {
         assert_eq!(
             bx().index_of_nearest_corner(&Point::Int(IntPoint::new(9, 9))),
@@ -1565,7 +1559,7 @@ mod tests {
         );
     }
 
-                                        #[test]
+    #[test]
     fn distance_to_the_left_propagates_nan_for_degenerate_line() {
         let degenerate = Line::from_coords(5, 5, 5, 5);
         assert!(
@@ -1675,7 +1669,7 @@ mod tests {
                 .is_empty()
         );
         assert_eq!(e.diagonal_corner_segment(), None);
-        assert_eq!(e.area(), 0.0); 
+        assert_eq!(e.area(), 0.0);
         assert_eq!(e.length(), 0.0);
         assert_eq!(e.circumference(), 0.0);
         assert_eq!(e.divide_into_sections(4.0), vec![e.clone()]);

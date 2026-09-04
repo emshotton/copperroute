@@ -10,12 +10,12 @@ use crate::vector::Vector;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IntBox {
-        pub ll: IntPoint,
-        pub ur: IntPoint,
+    pub ll: IntPoint,
+    pub ur: IntPoint,
 }
 
 impl IntBox {
-        pub const EMPTY: IntBox = IntBox {
+    pub const EMPTY: IntBox = IntBox {
         ll: IntPoint {
             x: CRIT_INT,
             y: CRIT_INT,
@@ -26,11 +26,11 @@ impl IntBox {
         },
     };
 
-        pub fn new(ll: IntPoint, ur: IntPoint) -> IntBox {
+    pub fn new(ll: IntPoint, ur: IntPoint) -> IntBox {
         IntBox { ll, ur }
     }
 
-        pub fn from_coords(
+    pub fn from_coords(
         lower_left_x: i32,
         lower_left_y: i32,
         upper_right_x: i32,
@@ -42,39 +42,39 @@ impl IntBox {
         }
     }
 
-            pub fn is_int_octagon(&self) -> bool {
+    pub fn is_int_octagon(&self) -> bool {
         true
     }
 
-        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.ll.x > self.ur.x || self.ll.y > self.ur.y
     }
 
-        pub fn width(&self) -> i32 {
+    pub fn width(&self) -> i32 {
         self.ur.x - self.ll.x
     }
 
-        pub fn height(&self) -> i32 {
+    pub fn height(&self) -> i32 {
         self.ur.y - self.ll.y
     }
 
-        pub fn max_width(&self) -> f64 {
+    pub fn max_width(&self) -> f64 {
         (self.ur.x - self.ll.x).max(self.ur.y - self.ll.y) as f64
     }
 
-        pub fn min_width(&self) -> f64 {
+    pub fn min_width(&self) -> f64 {
         (self.ur.x - self.ll.x).min(self.ur.y - self.ll.y) as f64
     }
 
-        pub fn area(&self) -> f64 {
+    pub fn area(&self) -> f64 {
         ((self.ur.x - self.ll.x) as f64) * ((self.ur.y - self.ll.y) as f64)
     }
 
-            pub fn circumference(&self) -> f64 {
+    pub fn circumference(&self) -> f64 {
         (2 * ((self.ur.x - self.ll.x) + (self.ur.y - self.ll.y))) as f64
     }
 
-            pub fn corner(&self, no: usize) -> IntPoint {
+    pub fn corner(&self, no: usize) -> IntPoint {
         match no {
             0 => self.ll,
             1 => IntPoint::new(self.ur.x, self.ll.y),
@@ -84,7 +84,7 @@ impl IntBox {
         }
     }
 
-        pub fn dimension(&self) -> i32 {
+    pub fn dimension(&self) -> i32 {
         if self.is_empty() {
             return -1;
         }
@@ -97,15 +97,15 @@ impl IntBox {
         2
     }
 
-        pub fn contains_inside(&self, point: &IntPoint) -> bool {
+    pub fn contains_inside(&self, point: &IntPoint) -> bool {
         point.x > self.ll.x && point.x < self.ur.x && point.y > self.ll.y && point.y < self.ur.y
     }
 
-        pub fn is_int_box(&self) -> bool {
+    pub fn is_int_box(&self) -> bool {
         true
     }
 
-        pub fn nearest_point(&self, from_point: &FloatPoint) -> FloatPoint {
+    pub fn nearest_point(&self, from_point: &FloatPoint) -> FloatPoint {
         let x = if from_point.x <= self.ll.x as f64 {
             self.ll.x as f64
         } else if from_point.x >= self.ur.x as f64 {
@@ -123,8 +123,8 @@ impl IntBox {
         FloatPoint::new(x, y)
     }
 
-                        /// overwritten below (Java has the identical dead stores); `#[allow]` keeps the port line-for-
-        #[allow(unused_assignments)]
+    /// overwritten below (Java has the identical dead stores); `#[allow]` keeps the port line-for-
+    #[allow(unused_assignments)]
     pub fn nearest_border_projections(
         &self,
         point: &IntPoint,
@@ -197,11 +197,11 @@ impl IntBox {
         result
     }
 
-        pub fn distance(&self, from_point: &FloatPoint) -> f64 {
+    pub fn distance(&self, from_point: &FloatPoint) -> f64 {
         from_point.distance(&self.nearest_point(from_point))
     }
 
-        pub fn weighted_distance(
+    pub fn weighted_distance(
         &self,
         other: &IntBox,
         horizontal_weight: f64,
@@ -223,25 +223,25 @@ impl IntBox {
         }
     }
 
-        pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self) -> IntBox {
         *self
     }
 
-                    pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         31i32
             .wrapping_mul(self.ll.get_id())
             .wrapping_add(self.ur.get_id())
     }
 
-        pub fn is_bounded(&self) -> bool {
+    pub fn is_bounded(&self) -> bool {
         true
     }
 
-        pub fn corner_is_bounded(&self, _no: usize) -> bool {
+    pub fn corner_is_bounded(&self, _no: usize) -> bool {
         true
     }
 
-        pub fn union(&self, other: &IntBox) -> IntBox {
+    pub fn union(&self, other: &IntBox) -> IntBox {
         let lower_left_x = self.ll.x.min(other.ll.x);
         let lower_left_y = self.ll.y.min(other.ll.y);
         let upper_right_x = self.ur.x.max(other.ur.x);
@@ -249,7 +249,7 @@ impl IntBox {
         IntBox::from_coords(lower_left_x, lower_left_y, upper_right_x, upper_right_y)
     }
 
-        pub fn intersection(&self, other: &IntBox) -> IntBox {
+    pub fn intersection(&self, other: &IntBox) -> IntBox {
         if other.ll.x > self.ur.x {
             return IntBox::EMPTY;
         }
@@ -269,7 +269,7 @@ impl IntBox {
         IntBox::from_coords(lower_left_x, lower_left_y, upper_right_x, upper_right_y)
     }
 
-        pub fn intersects(&self, other: &IntBox) -> bool {
+    pub fn intersects(&self, other: &IntBox) -> bool {
         if other.ll.x > self.ur.x {
             return false;
         }
@@ -282,7 +282,7 @@ impl IntBox {
         self.ll.y <= other.ur.y
     }
 
-        pub fn overlaps(&self, other: &IntBox) -> bool {
+    pub fn overlaps(&self, other: &IntBox) -> bool {
         if other.ll.x >= self.ur.x {
             return false;
         }
@@ -295,11 +295,11 @@ impl IntBox {
         self.ll.y < other.ur.y
     }
 
-            pub fn contains(&self, other: &IntBox) -> bool {
+    pub fn contains(&self, other: &IntBox) -> bool {
         other.is_contained_in(self)
     }
 
-        pub fn contains_in_interior(&self, other: &IntBox) -> bool {
+    pub fn contains_in_interior(&self, other: &IntBox) -> bool {
         if other.is_empty() {
             return true;
         }
@@ -309,7 +309,7 @@ impl IntBox {
             && other.ur.y < self.ur.y
     }
 
-                pub fn is_contained_in(&self, other: &IntBox) -> bool {
+    pub fn is_contained_in(&self, other: &IntBox) -> bool {
         if self.is_empty() || self == other {
             return true;
         }
@@ -319,7 +319,7 @@ impl IntBox {
             && self.ur.y <= other.ur.y
     }
 
-                    pub fn translate_by(&self, rel_coor: &Vector) -> IntBox {
+    pub fn translate_by(&self, rel_coor: &Vector) -> IntBox {
         if *rel_coor == Vector::ZERO {
             return *self;
         }
@@ -331,7 +331,7 @@ impl IntBox {
         }
     }
 
-        pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> IntBox {
+    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> IntBox {
         let p1 = self.ll.turn_90_degree(factor, pole);
         let p2 = self.ur.turn_90_degree(factor, pole);
 
@@ -342,21 +342,21 @@ impl IntBox {
         IntBox::from_coords(lower_left_x, lower_left_y, upper_right_x, upper_right_y)
     }
 
-                pub fn border_line(&self, no: usize) -> Line {
+    pub fn border_line(&self, no: usize) -> Line {
         match no {
-            0 => Line::from_coords(0, self.ll.y, 1, self.ll.y), 
-            1 => Line::from_coords(self.ur.x, 0, self.ur.x, 1), 
-            2 => Line::from_coords(0, self.ur.y, -1, self.ur.y), 
-            3 => Line::from_coords(self.ll.x, 0, self.ll.x, -1), 
+            0 => Line::from_coords(0, self.ll.y, 1, self.ll.y),
+            1 => Line::from_coords(self.ur.x, 0, self.ur.x, 1),
+            2 => Line::from_coords(0, self.ur.y, -1, self.ur.y),
+            3 => Line::from_coords(self.ll.x, 0, self.ll.x, -1),
             _ => panic!("IntBox.borderLine: no out of range"),
         }
     }
 
-                        pub fn border_line_index(&self, _line: &Line) -> Option<usize> {
+    pub fn border_line_index(&self, _line: &Line) -> Option<usize> {
         None
     }
 
-            pub fn offset(&self, dist: f64) -> IntBox {
+    pub fn offset(&self, dist: f64) -> IntBox {
         if dist == 0.0 || self.is_empty() {
             return *self;
         }
@@ -369,7 +369,7 @@ impl IntBox {
         )
     }
 
-            pub fn horizontal_offset(&self, dist: f64) -> IntBox {
+    pub fn horizontal_offset(&self, dist: f64) -> IntBox {
         if dist == 0.0 || self.is_empty() {
             return *self;
         }
@@ -382,7 +382,7 @@ impl IntBox {
         )
     }
 
-            pub fn vertical_offset(&self, dist: f64) -> IntBox {
+    pub fn vertical_offset(&self, dist: f64) -> IntBox {
         if dist == 0.0 || self.is_empty() {
             return *self;
         }
@@ -395,7 +395,7 @@ impl IntBox {
         )
     }
 
-            pub fn shrink(&self, width: i32) -> IntBox {
+    pub fn shrink(&self, width: i32) -> IntBox {
         let (lower_left_x, upper_right_x) = if 2 * width <= self.ur.x - self.ll.x {
             (self.ll.x + width, self.ur.x - width)
         } else {
@@ -411,7 +411,7 @@ impl IntBox {
         IntBox::from_coords(lower_left_x, lower_left_y, upper_right_x, upper_right_y)
     }
 
-            pub fn compare(&self, other: &IntBox, edge_index: usize) -> Side {
+    pub fn compare(&self, other: &IntBox, edge_index: usize) -> Side {
         match edge_index {
             0 => {
                 if self.ll.y > other.ll.y {
@@ -453,7 +453,7 @@ impl IntBox {
         }
     }
 
-        pub fn nearest_part(&self, from_box: &IntBox) -> IntBox {
+    pub fn nearest_part(&self, from_box: &IntBox) -> IntBox {
         let ll_x = if from_box.ll.x >= self.ll.x {
             from_box.ll.x
         } else {
@@ -477,7 +477,7 @@ impl IntBox {
         IntBox::from_coords(ll_x, ll_y, ur_x, ur_y)
     }
 
-            pub fn divide_into_sections(&self, max_section_width: f64) -> Vec<IntBox> {
+    pub fn divide_into_sections(&self, max_section_width: f64) -> Vec<IntBox> {
         if max_section_width <= 0.0 {
             return Vec::new();
         }
@@ -514,7 +514,7 @@ impl IntBox {
         result
     }
 
-                pub fn cutout_from(&self, d: &IntBox) -> Vec<IntBox> {
+    pub fn cutout_from(&self, d: &IntBox) -> Vec<IntBox> {
         let c = self.intersection(d);
         if self.is_empty() || c.dimension() < self.dimension() {
             return vec![*d];
@@ -526,7 +526,6 @@ impl IntBox {
             IntBox::from_coords(c.ur.x, d.ll.y, d.ur.x, c.ur.y),
             IntBox::from_coords(c.ll.x, c.ur.y, d.ur.x, d.ur.y),
         ];
-
 
         if c.ll.x - d.ll.x > c.ll.y - d.ll.y {
             let b = result[0];
@@ -555,7 +554,7 @@ impl IntBox {
         result.to_vec()
     }
 
-        pub fn to_int_octagon(&self) -> IntOctagon {
+    pub fn to_int_octagon(&self) -> IntOctagon {
         IntOctagon::new(
             self.ll.x,
             self.ll.y,
@@ -568,39 +567,39 @@ impl IntBox {
         )
     }
 
-        pub fn bounding_octagon(&self) -> IntOctagon {
+    pub fn bounding_octagon(&self) -> IntOctagon {
         self.to_int_octagon()
     }
 
-        pub fn union_octagon(&self, other: &IntOctagon) -> IntOctagon {
+    pub fn union_octagon(&self, other: &IntOctagon) -> IntOctagon {
         other.union(&self.to_int_octagon())
     }
 
-        pub fn intersection_octagon(&self, other: &IntOctagon) -> IntOctagon {
+    pub fn intersection_octagon(&self, other: &IntOctagon) -> IntOctagon {
         other.intersection(&self.to_int_octagon())
     }
 
-        pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
+    pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
         other.intersects_octagon(&self.to_int_octagon())
     }
 
-            pub fn is_contained_in_octagon(&self, other: &IntOctagon) -> bool {
+    pub fn is_contained_in_octagon(&self, other: &IntOctagon) -> bool {
         self.to_int_octagon().is_contained_in_octagon(other)
     }
 
-            pub fn enlarge(&self, offset: f64) -> IntOctagon {
+    pub fn enlarge(&self, offset: f64) -> IntOctagon {
         self.bounding_octagon().offset(offset)
     }
 
-            pub fn compare_octagon(&self, other: &IntOctagon, edge_index: usize) -> Side {
+    pub fn compare_octagon(&self, other: &IntOctagon, edge_index: usize) -> Side {
         self.to_int_octagon().compare_octagon(other, edge_index)
     }
 
-        pub fn cutout_from_octagon(&self, oct: &IntOctagon) -> Vec<IntOctagon> {
+    pub fn cutout_from_octagon(&self, oct: &IntOctagon) -> Vec<IntOctagon> {
         self.to_int_octagon().cutout_from_octagon(oct)
     }
 
-                pub fn to_simplex(&self) -> Simplex {
+    pub fn to_simplex(&self) -> Simplex {
         let lines = if self.is_empty() {
             Vec::new()
         } else {
@@ -614,22 +613,21 @@ impl IntBox {
         Simplex::new(lines)
     }
 
-        pub fn intersection_simplex(&self, other: &Simplex) -> Simplex {
+    pub fn intersection_simplex(&self, other: &Simplex) -> Simplex {
         other.intersection(&self.to_simplex())
     }
 
-        pub fn intersects_simplex(&self, other: &Simplex) -> bool {
+    pub fn intersects_simplex(&self, other: &Simplex) -> bool {
         other.intersects(&self.to_simplex())
     }
 
-        pub fn cutout_from_simplex(&self, simplex: &Simplex) -> Option<Vec<Simplex>> {
+    pub fn cutout_from_simplex(&self, simplex: &Simplex) -> Option<Vec<Simplex>> {
         self.to_simplex().cutout_from(simplex)
     }
 
-        pub fn border_line_count(&self) -> usize {
+    pub fn border_line_count(&self) -> usize {
         4
     }
-
 }
 
 #[cfg(test)]
@@ -667,8 +665,8 @@ mod tests {
         assert_eq!(x.intersection(&y), b(5, 5, 10, 10));
         assert_eq!(x.union(&y), b(0, 0, 20, 20));
         assert!(x.intersects(&y));
-        assert!(x.intersects(&b(10, 10, 12, 12))); 
-        assert!(!x.overlaps(&b(10, 10, 12, 12))); 
+        assert!(x.intersects(&b(10, 10, 12, 12)));
+        assert!(!x.overlaps(&b(10, 10, 12, 12)));
         assert!(x.contains(&b(1, 1, 2, 2)));
         assert!(!x.contains_in_interior(&b(0, 1, 2, 2)));
         assert!(b(1, 1, 2, 2).is_contained_in(&x));
@@ -697,10 +695,10 @@ mod tests {
     fn offsets_and_translation() {
         let x = b(0, 0, 10, 10);
         assert_eq!(x.offset(2.0), b(-2, -2, 12, 12));
-        assert_eq!(x.offset(1.4), b(-1, -1, 11, 11)); 
+        assert_eq!(x.offset(1.4), b(-1, -1, 11, 11));
         assert_eq!(x.horizontal_offset(3.0), b(-3, 0, 13, 10));
         assert_eq!(x.shrink(2), b(2, 2, 8, 8));
-        assert_eq!(x.shrink(50), b(5, 5, 5, 5)); 
+        assert_eq!(x.shrink(50), b(5, 5, 5, 5));
         assert_eq!(
             x.translate_by(&Vector::Int(IntVector::new(1, -1))),
             b(1, -1, 11, 9)

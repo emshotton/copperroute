@@ -232,7 +232,6 @@ fn assert_matches_golden(dsn: &str, golden_name: &str) {
     });
 }
 
-
 #[test]
 fn issue026_matches_javas_item_ids_nets_and_rules() {
     assert_matches_golden(
@@ -253,7 +252,6 @@ fn issue034_matches_javas_item_ids_nets_and_rules() {
 fn empty_board_has_no_network_scope_and_no_via_rule() {
     assert_matches_golden(&fixture("empty_board.dsn"), "empty_board-items.txt");
 }
-
 
 #[test]
 fn via_padstack_names_are_merged_normalised_and_compacted() {
@@ -283,7 +281,6 @@ fn a_network_only_via_padstack_list_survives_because_set_via_padstacks_is_skippe
     });
 }
 
-
 #[test]
 fn class_pairs_write_both_halves_of_the_clearance_matrix() {
     assert_matches_golden(&test_data("class_pair.dsn"), "class_pair-items.txt");
@@ -302,7 +299,6 @@ fn class_pairs_write_both_halves_of_the_clearance_matrix() {
         assert_eq!(cm.get_value(gamma, beta, 0, false), 5000);
     });
 }
-
 
 #[test]
 fn a_net_classs_use_via_list_is_aliased_into_the_merged_via_padstack_names() {

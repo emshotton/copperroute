@@ -12,7 +12,6 @@ use fr_router::{AutorouteAttemptState, AutorouteEngine, route_connection, route_
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -10_000,
@@ -122,7 +121,6 @@ fn corners_of(board: &Board, id: ItemId) -> Vec<(i32, i32)> {
         .collect()
 }
 
-
 fn load_rpi() -> Board {
     let path = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let file = std::fs::File::open(&path)
@@ -211,7 +209,6 @@ fn route_prefix(
     }
     (board, engine, max_ids, last_call_start, last_call_duration)
 }
-
 
 #[test]
 fn the_constants_are_javas_literals() {
@@ -322,7 +319,6 @@ fn retain_autoroute_database_is_false_on_every_path() {
     );
 }
 
-
 #[test]
 fn should_fire_board_update_uses_the_budget() {
     let board = empty_board(200, AngleRestriction::None);
@@ -360,7 +356,6 @@ fn should_fire_board_update_uses_the_budget() {
     assert!(!slow.should_fire_board_update_at(t0 + Duration::from_millis(999)));
     assert!(slow.should_fire_board_update_at(t0 + Duration::from_millis(1001)));
 }
-
 
 #[test]
 fn remove_tails_strips_every_tail_and_clears_the_changed_area() {
@@ -524,7 +519,6 @@ fn remove_tails_forwards_the_stop_connection_option() {
         "the two options must produce different boards, or the argument could be ignored"
     );
 }
-
 
 #[test]
 fn remove_items_and_pull_tight_combines_traces_in_ascending_net_order() {
@@ -734,7 +728,6 @@ const QUIRK_184_CLIPPED_STAIRCASE: &[(i32, i32)] = &[
 
 const QUIRK_184_UNCLIPPED_STAIRCASE: &[(i32, i32)] = &[(-6000, -6000), (0, 0)];
 
-
 #[test]
 fn step_six_runs_only_on_routed() {
     if !parity::require_java_dir() {
@@ -878,7 +871,6 @@ fn step_eight_is_a_no_op_when_strict_drc_is_off() {
         "nothing was rolled back"
     );
 }
-
 
 fn fixed_trace(board: &mut Board, corners: &[Point], net: i32) -> ItemId {
     board

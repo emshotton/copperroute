@@ -40,7 +40,6 @@ fn scan(input: &str) -> DsnScanner {
     DsnScanner::new(input)
 }
 
-
 #[test]
 fn coordinate_transform_scales_both_ways() {
     let transform = CoordinateTransform::new(10.0, 0.0, 0.0).expect("a valid scale");
@@ -110,7 +109,6 @@ fn board_to_dsn_shape_maps_a_box_to_a_rectangle() {
     };
     assert_eq!(rect.coor, [0.0, 0.0, 10.0, 20.0]);
 }
-
 
 #[test]
 fn rectangle_write_scope_matches_the_reference_fixture_line() {
@@ -228,7 +226,6 @@ fn write_hole_scope_wraps_the_shape_in_a_window_scope() {
     );
 }
 
-
 #[test]
 fn read_shape_scope_reads_a_rectangle() {
     let mut scanner = scan("(rect signal 0 0 10 20)");
@@ -326,7 +323,6 @@ fn read_area_scope_skips_window_scopes_when_asked() {
     assert_eq!(area.shape_list.len(), 1);
 }
 
-
 #[test]
 fn layer_structure_get_no_finds_a_named_layer() {
     let layers = DsnLayerStructure::new(vec![
@@ -386,7 +382,6 @@ fn the_two_shared_layer_constants_have_the_java_names_and_numbers() {
     assert_eq!(DsnLayer::signal().no, -1);
     assert!(DsnLayer::signal().is_signal);
 }
-
 
 #[test]
 fn write_parser_scope_uses_the_2_3_0_snake_case_literals() {

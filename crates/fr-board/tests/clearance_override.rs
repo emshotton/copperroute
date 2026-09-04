@@ -32,7 +32,6 @@ fn outline_and_default_area_class(board: &mut Board) -> (usize, usize) {
     (outline_class, default_area_class)
 }
 
-
 #[test]
 fn a_negative_copper_clearance_changes_nothing() {
     let mut board = p2t11_board();
@@ -130,7 +129,6 @@ fn an_odd_board_unit_value_lands_in_the_matrix_rounded_up() {
         .expect("appended");
     assert_eq!(matrix.get_value(board_edge, 1, 0, false), 302);
 }
-
 
 #[test]
 fn a_negative_hole_clearance_changes_nothing() {

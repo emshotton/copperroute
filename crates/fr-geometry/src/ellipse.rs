@@ -2,14 +2,14 @@ use crate::float_point::FloatPoint;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Ellipse {
-        pub center: FloatPoint,
-        pub rotation: f64,
-        pub bigger_radius: f64,
-        pub smaller_radius: f64,
+    pub center: FloatPoint,
+    pub rotation: f64,
+    pub bigger_radius: f64,
+    pub smaller_radius: f64,
 }
 
 impl Ellipse {
-                    pub fn new(center: FloatPoint, rotation: f64, radius_1: f64, radius_2: f64) -> Ellipse {
+    pub fn new(center: FloatPoint, rotation: f64, radius_1: f64, radius_2: f64) -> Ellipse {
         let (bigger_radius, smaller_radius, mut current_rotation) = if radius_1 >= radius_2 {
             (radius_1, radius_2, rotation)
         } else {

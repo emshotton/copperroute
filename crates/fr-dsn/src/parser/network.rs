@@ -23,17 +23,16 @@ use crate::parser::placement::ComponentLocation;
 use crate::parser::scope_parameter::{ReadScopeParameter, WriteScopeParameter, skip_scope};
 use crate::parser::structure::{contains_wire_clearance_pair, read_via_padstacks};
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum DsnRule {
-        Width(f64),
-        Clearance(DsnClearanceRule),
+    Width(f64),
+    Clearance(DsnClearanceRule),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnClearanceRule {
-        pub value: f64,
-            pub clearance_class_pairs: Vec<String>,
+    pub value: f64,
+    pub clearance_class_pairs: Vec<String>,
 }
 
 pub fn read_rule_scope(scanner: &mut DsnScanner) -> Result<Option<Vec<DsnRule>>, DsnError> {
@@ -102,8 +101,8 @@ pub fn read_clearance_rule(scanner: &mut DsnScanner) -> Result<Option<DsnRule>, 
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnLayerRule {
-        pub layer_names: Vec<String>,
-        pub rules: Vec<DsnRule>,
+    pub layer_names: Vec<String>,
+    pub rules: Vec<DsnRule>,
 }
 
 pub fn read_layer_rule_scope(scanner: &mut DsnScanner) -> Result<Option<DsnLayerRule>, DsnError> {
@@ -132,13 +131,12 @@ pub fn read_layer_rule_scope(scanner: &mut DsnScanner) -> Result<Option<DsnLayer
     }))
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnCircuit {
-        pub max_length: f64,
-        pub min_length: f64,
-        pub use_via: Vec<String>,
-        pub use_layer: Vec<String>,
+    pub max_length: f64,
+    pub min_length: f64,
+    pub use_via: Vec<String>,
+    pub use_layer: Vec<String>,
 }
 
 pub fn read_circuit_scope(scanner: &mut DsnScanner) -> Result<Option<DsnCircuit>, DsnError> {
@@ -211,21 +209,20 @@ fn read_length_scope(scanner: &mut DsnScanner) -> Result<Option<[f64; 2]>, DsnEr
     Ok(Some(length_arr))
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnNetClass {
-        pub name: String,
-        pub trace_clearance_class: Option<String>,
-        pub net_list: Vec<String>,
-        pub rules: Vec<DsnRule>,
-        pub layer_rules: Vec<DsnLayerRule>,
-        pub use_via: Vec<String>,
-        pub use_layer: Vec<String>,
-        pub via_rule: Option<String>,
-        pub shove_fixed: bool,
-        pub pull_tight: bool,
-        pub min_trace_length: f64,
-        pub max_trace_length: f64,
+    pub name: String,
+    pub trace_clearance_class: Option<String>,
+    pub net_list: Vec<String>,
+    pub rules: Vec<DsnRule>,
+    pub layer_rules: Vec<DsnLayerRule>,
+    pub use_via: Vec<String>,
+    pub use_layer: Vec<String>,
+    pub via_rule: Option<String>,
+    pub shove_fixed: bool,
+    pub pull_tight: bool,
+    pub min_trace_length: f64,
+    pub max_trace_length: f64,
 }
 
 pub fn read_net_class_scope(scanner: &mut DsnScanner) -> Result<Option<DsnNetClass>, DsnError> {
@@ -303,9 +300,9 @@ pub fn read_net_class_scope(scanner: &mut DsnScanner) -> Result<Option<DsnNetCla
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnClassClass {
-        pub class_names: Vec<String>,
-        pub rules: Vec<DsnRule>,
-        pub layer_rules: Vec<DsnLayerRule>,
+    pub class_names: Vec<String>,
+    pub rules: Vec<DsnRule>,
+    pub layer_rules: Vec<DsnLayerRule>,
 }
 
 pub fn read_class_class_scope(scanner: &mut DsnScanner) -> Result<Option<DsnClassClass>, DsnError> {
@@ -346,15 +343,14 @@ pub fn read_class_class_scope(scanner: &mut DsnScanner) -> Result<Option<DsnClas
     }))
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PinRef {
-        pub component_name: String,
-        pub pin_name: String,
+    pub component_name: String,
+    pub pin_name: String,
 }
 
 impl Ord for PinRef {
-        fn cmp(&self, other: &PinRef) -> std::cmp::Ordering {
+    fn cmp(&self, other: &PinRef) -> std::cmp::Ordering {
         java_string_cmp(&self.component_name, &other.component_name)
             .then_with(|| java_string_cmp(&self.pin_name, &other.pin_name))
     }
@@ -367,7 +363,7 @@ impl PartialOrd for PinRef {
 }
 
 impl PinRef {
-        #[must_use]
+    #[must_use]
     pub fn new(component_name: impl Into<String>, pin_name: impl Into<String>) -> PinRef {
         PinRef {
             component_name: component_name.into(),
@@ -377,19 +373,19 @@ impl PinRef {
 }
 
 impl fmt::Display for PinRef {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Pin{{{}-{}}}", self.component_name, self.pin_name)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NetId {
-        pub name: String,
-        pub subnet_no: i32,
+    pub name: String,
+    pub subnet_no: i32,
 }
 
 impl Ord for NetId {
-        fn cmp(&self, other: &NetId) -> std::cmp::Ordering {
+    fn cmp(&self, other: &NetId) -> std::cmp::Ordering {
         java_string_cmp(&self.name, &other.name).then_with(|| self.subnet_no.cmp(&other.subnet_no))
     }
 }
@@ -401,7 +397,7 @@ impl PartialOrd for NetId {
 }
 
 impl NetId {
-        #[must_use]
+    #[must_use]
     pub fn new(name: impl Into<String>, subnet_no: i32) -> NetId {
         NetId {
             name: name.into(),
@@ -412,44 +408,43 @@ impl NetId {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DsnNet {
-        pub id: NetId,
-                        pins: Option<BTreeSet<PinRef>>,
+    pub id: NetId,
+    pins: Option<BTreeSet<PinRef>>,
 }
 
 impl DsnNet {
-        #[must_use]
+    #[must_use]
     pub fn new(id: NetId) -> DsnNet {
         DsnNet { id, pins: None }
     }
 
-        #[must_use]
+    #[must_use]
     pub fn get_pins(&self) -> Option<&BTreeSet<PinRef>> {
         self.pins.as_ref()
     }
 
-            pub fn set_pins(&mut self, pin_list: impl IntoIterator<Item = PinRef>) {
+    pub fn set_pins(&mut self, pin_list: impl IntoIterator<Item = PinRef>) {
         self.pins = Some(pin_list.into_iter().collect());
     }
 }
 
-
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NetList {
-        nets: BTreeMap<NetId, DsnNet>,
+    nets: BTreeMap<NetId, DsnNet>,
 }
 
 impl NetList {
-        #[must_use]
+    #[must_use]
     pub fn new() -> NetList {
         NetList::default()
     }
 
-        #[must_use]
+    #[must_use]
     pub fn contains(&self, net_id: &NetId) -> bool {
         self.nets.contains_key(net_id)
     }
 
-            pub fn add_net(&mut self, net_id: NetId) -> Option<&mut DsnNet> {
+    pub fn add_net(&mut self, net_id: NetId) -> Option<&mut DsnNet> {
         if self.nets.contains_key(&net_id) {
             return None;
         }
@@ -460,16 +455,16 @@ impl NetList {
         )
     }
 
-        #[must_use]
+    #[must_use]
     pub fn get_net(&self, net_id: &NetId) -> Option<&DsnNet> {
         self.nets.get(net_id)
     }
 
-            pub fn get_net_mut(&mut self, net_id: &NetId) -> Option<&mut DsnNet> {
+    pub fn get_net_mut(&mut self, net_id: &NetId) -> Option<&mut DsnNet> {
         self.nets.get_mut(net_id)
     }
 
-            #[must_use]
+    #[must_use]
     pub fn get_nets(&self, component_name: &str, pin_name: &str) -> Vec<&DsnNet> {
         let search_pin = PinRef::new(component_name, pin_name);
         self.nets
@@ -481,16 +476,15 @@ impl NetList {
             .collect()
     }
 
-                        pub fn values(&self) -> impl DoubleEndedIterator<Item = &DsnNet> + ExactSizeIterator {
+    pub fn values(&self) -> impl DoubleEndedIterator<Item = &DsnNet> + ExactSizeIterator {
         self.nets.values()
     }
 
-        #[must_use]
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.nets.is_empty()
     }
 }
-
 
 pub fn read_network_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     let mut classes: Vec<DsnNetClass> = Vec::new();
@@ -592,7 +586,6 @@ fn java_split_underscore(text: &str) -> Vec<&str> {
     parts
 }
 
-
 pub const KICAD_DSN_DEFAULT: &str = "kicad_default";
 
 #[must_use]
@@ -610,7 +603,6 @@ pub fn resolve_net_class(rules: &mut BoardRules, name: &str) -> Option<NetClassI
     }
     rules.net_classes.get_no(name)
 }
-
 
 fn read_net_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     let net_name = p.scanner.next_string();
@@ -798,7 +790,6 @@ fn read_net_pins(scanner: &mut DsnScanner, pin_list: &mut Vec<PinRef>) -> Result
     Ok(true)
 }
 
-
 pub(crate) fn read_via_info(
     scanner: &mut DsnScanner,
     board: &mut Board,
@@ -864,7 +855,6 @@ pub(crate) fn read_via_rule(scanner: &mut DsnScanner) -> Result<Option<Vec<Strin
     }
     Ok(Some(result))
 }
-
 
 fn insert_via_infos(via_infos: Vec<ViaInfo>, board: &mut Board, attach_allowed: bool) {
     if via_infos.is_empty() {
@@ -1048,7 +1038,6 @@ pub fn insert_net_class(
         }
     }
 
-
     let mut clearance_rule_found = false;
 
     for current_rule in &net_class.rules {
@@ -1068,7 +1057,6 @@ pub fn insert_net_class(
             }
         }
     }
-
 
     for current_layer_rule in &net_class.layer_rules {
         for current_layer_name in &current_layer_rule.layer_names {
@@ -1541,7 +1529,6 @@ fn get_clearance_class(board: &mut Board, net_class: NetClassId, item_class_name
     result
 }
 
-
 fn insert_components(p: &mut ReadScopeParameter<'_>) {
     let placement_list = std::mem::take(&mut p.placement_list);
     for next_lib_component in &placement_list {
@@ -1957,8 +1944,6 @@ fn search_lib_package(
     None
 }
 
-
-
 pub fn write_rule_scope(net_class: &NetClass, p: &mut WriteScopeParameter<'_>) {
     p.file.start_scope_nl();
     p.file.write("rule");
@@ -2115,7 +2100,6 @@ pub(crate) fn clearance_class_name(rules: &BoardRules, index: usize) -> &str {
     rules.clearance_matrix.get_name(index).unwrap_or("")
 }
 
-
 pub fn write_net_scope(p: &mut WriteScopeParameter<'_>, net_number: i32, pin_list: &[ItemId]) {
     let board = p.board;
     let Some(net) = board.rules.nets.get(net_number) else {
@@ -2191,7 +2175,6 @@ pub fn write_pin(p: &mut WriteScopeParameter<'_>, pin_id: ItemId) {
     p.file.write("-");
     p.identifier_type.write(&lib_pin_name, &mut p.file);
 }
-
 
 pub fn write_network_scope(p: &mut WriteScopeParameter<'_>) {
     p.file.start_scope_nl();
@@ -2360,7 +2343,7 @@ fn write_circuit(net_class: &NetClass, p: &mut WriteScopeParameter<'_>) {
 
 #[cfg(test)]
 mod tests {
-            #[test]
+    #[test]
     fn separator_str_matches_char() {
         assert_eq!(
             CLASS_CLEARANCE_SEPARATOR_STR,
@@ -2407,7 +2390,7 @@ mod tests {
         assert_eq!(clearance.clearance_class_pairs, vec!["via_smd".to_string()]);
     }
 
-                fn scan_body(text: &str) -> DsnScanner {
+    fn scan_body(text: &str) -> DsnScanner {
         let mut scanner = scan(text);
         assert_eq!(scanner.next_token().expect("scan"), Some(Token::Open));
         scanner.next_token().expect("scan");
@@ -2651,7 +2634,7 @@ mod tests {
 
 #[cfg(test)]
 mod component_rejection_tests {
-                            use fr_board::{PackagePin, Packages, PadstackId};
+    use fr_board::{PackagePin, Packages, PadstackId};
     use fr_geometry::{IntVector, Vector};
 
     use super::*;
@@ -2660,7 +2643,7 @@ mod component_rejection_tests {
     use crate::parser::placement::{ComponentLocation, ComponentPlacement};
     use crate::parser::scope_parameter::DsnReadOptions;
 
-        const DSN: &str = "(pcb t103.dsn\n  (parser\n    (string_quote \")\n  )\n  (resolution um \
+    const DSN: &str = "(pcb t103.dsn\n  (parser\n    (string_quote \")\n  )\n  (resolution um \
                        10)\n  (unit um)\n  (structure\n    (layer F.Cu (type signal))\n    \
                        (layer B.Cu (type signal))\n    (boundary\n      (path pcb 0  0 0  \
                        100000 0  100000 100000  0 100000  0 0)\n    )\n  )\n  (library\n    \
@@ -2686,7 +2669,7 @@ mod component_rejection_tests {
         PackagePin::new(name, padstack, Vector::Int(IntVector::new(0, 0)), 0.0)
     }
 
-                    fn package_pair(packages: &mut Packages, name: &str, padstacks: &[PadstackId]) {
+    fn package_pair(packages: &mut Packages, name: &str, padstacks: &[PadstackId]) {
         for is_front in [true, false] {
             let pins = padstacks
                 .iter()
@@ -2731,7 +2714,7 @@ mod component_rejection_tests {
         warnings: Vec<String>,
     }
 
-                fn run(bad_padstack: Option<PadstackId>, placement_list: Vec<ComponentPlacement>) -> Outcome {
+    fn run(bad_padstack: Option<PadstackId>, placement_list: Vec<ComponentPlacement>) -> Outcome {
         let (mut board, ct) = board_and_transform();
         let good = PadstackId(
             board
@@ -2771,7 +2754,7 @@ mod component_rejection_tests {
         }
     }
 
-                                    #[test]
+    #[test]
     fn a_component_with_an_absent_padstack_is_rejected_whole() {
         let both = vec![placed("BAD", "C1"), placed("GOOD", "C2")];
 

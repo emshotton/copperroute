@@ -13,7 +13,6 @@ fn probe() -> TileShape {
     TileShape::Box(IntBox::from_coords(-100, -100, 100, 100))
 }
 
-
 #[test]
 fn the_constructor_inserts_the_board_outline_as_item_one() {
     let board = p2t11_board();
@@ -214,7 +213,6 @@ fn the_scalar_queries_match_the_jvm() {
     );
 }
 
-
 #[test]
 fn insert_and_remove_keep_the_default_tree_in_sync() {
     let mut board = p2t11_board();
@@ -355,7 +353,6 @@ fn insert_trace_without_cleaning_refuses_a_degenerate_or_closed_trace() {
     );
 }
 
-
 #[test]
 fn the_clearance_queries_match_the_jvm() {
     let mut board = p2t11_board();
@@ -489,7 +486,6 @@ fn the_check_queries_match_the_jvm() {
     assert_eq!(board.get_trace_tail(&Point::new(0, 0), Some(0), &[1]), None);
     assert!(!board.contains_trace_tails([ItemId(4), ItemId(5)], &[]));
 }
-
 
 #[test]
 fn normal_contacts_walk_the_pin_trace_via_trace_pin_chain() {
@@ -883,7 +879,6 @@ fn swappable_pins_is_empty_without_a_logical_part() {
     assert!(board.swappable_pins(ItemId(4)).is_empty());
 }
 
-
 #[test]
 fn the_changed_area_accumulates_points_and_shapes_per_layer() {
     let mut board = p2t11_board();
@@ -1192,7 +1187,6 @@ fn the_net_queries_walk_the_item_list() {
     assert_eq!(board.net_via_count(2), 0);
 }
 
-
 #[test]
 fn a_host_cad_communication_lowers_the_obstacle_area_section_width() {
     let mut board = board_builder::p2t11_host_cad_board();
@@ -1317,7 +1311,6 @@ fn check_polyline_trace_uses_the_compensated_tree_shapes() {
         269.0
     );
 }
-
 
 #[test]
 fn shape_entry_side_finds_the_border_a_polyline_enters_through() {
@@ -1493,7 +1486,6 @@ fn cutout_traces_skips_the_own_net_and_cuts_the_rest_in_board_order() {
         (Some(Point::new(-3000, 0)), Some(Point::new(3000, 0)))
     );
 }
-
 
 #[test]
 fn a_trace_reachable_from_itself_by_two_paths_is_a_cycle() {
@@ -1721,7 +1713,6 @@ fn component_obstacle_area_is_front_answers_true_for_an_item_of_no_component() {
     assert!(board.component_obstacle_area_is_front(keepout));
 }
 
-
 #[test]
 fn the_trace_geometry_adapter_wrappers_keep_the_tree_in_step() {
     let mut board = p2t11_board();
@@ -1758,7 +1749,6 @@ fn the_trace_geometry_adapter_wrappers_keep_the_tree_in_step() {
     assert!(!board.merge_trace_entries_at_end(ItemId(4), ItemId(7), &joined, 1, 1));
 }
 
-
 #[test]
 fn item_queries_remain_stable() {
     let mut board = characterization_board();
@@ -1790,7 +1780,6 @@ fn changed_area_lifecycle_matches_the_characterization_test() {
         IntBox::from_coords(0, 0, 1000, 1000)
     );
 }
-
 
 fn characterization_board() -> Board {
     let layers = LayerStructure::new(vec![Layer::new("Top", true)]);
@@ -1835,7 +1824,6 @@ fn a_same_net_via_is_not_an_obstacle_for_an_smd_pin() {
     let through_pin = board.get_item(ItemId(3)).expect("the through pin");
     assert!(through_pin.is_obstacle(via, &ctx));
 }
-
 
 #[test]
 fn has_ignored_nets_reads_the_net_class_flag() {
@@ -2078,7 +2066,6 @@ fn host_is_old_kicad_is_guarded_on_a_version_that_overflows_an_int() {
     assert!(!of("unknown"));
 }
 
-
 #[test]
 fn board_is_send_and_sync_and_clones_independently() {
     fn assert_send_sync<T: Send + Sync + Clone>() {}
@@ -2099,7 +2086,6 @@ fn board_is_send_and_sync_and_clones_independently() {
     assert!(!board.overlapping_objects(&shape, Some(0)).is_empty());
     assert!(copy.overlapping_objects(&shape, Some(0)).is_empty());
 }
-
 
 fn is_obstacle(board: &Board, id: u32) -> bool {
     match board.get_item(ItemId(id)).expect("a conduction area") {

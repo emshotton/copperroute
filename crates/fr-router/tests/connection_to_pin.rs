@@ -5,7 +5,6 @@ use fr_geometry::{IntBox, IntPoint, IntVector, Line, Point, Polyline, Shape, Til
 use fr_router::autoroute::maze::engine::AutorouteEngine;
 use fr_router::board_ext::{PolylineTraceExt, TraceTightener};
 
-
 const TRANSCRIPT: &str = include_str!("data/p7t6-connection-to-pin.txt");
 
 fn section(mode: &str) -> Vec<&'static str> {
@@ -24,7 +23,6 @@ fn section(mode: &str) -> Vec<&'static str> {
     assert!(!rows.is_empty(), "transcript section `{mode}` is empty");
     rows
 }
-
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -189,7 +187,7 @@ struct SwapCase {
     stub_end: Point,
     main_corners: Vec<Point>,
     half_width: i32,
-                    stub_half_width: i32,
+    stub_half_width: i32,
 }
 
 fn swap_table() -> Vec<SwapCase> {
@@ -273,7 +271,6 @@ fn regime_name(angle: AngleRestriction) -> &'static str {
         AngleRestriction::None => "NONE",
     }
 }
-
 
 fn dump_line(line: &Line) -> String {
     format!("({},{})->({},{})", line.a.x, line.a.y, line.b.x, line.b.y)
@@ -370,7 +367,6 @@ fn dump_board(board: &Board) -> Vec<String> {
     out
 }
 
-
 #[test]
 fn check_connection_to_pin_matches_the_jvm_over_the_whole_table() {
     let rows = section("check");
@@ -441,7 +437,6 @@ fn check_connection_to_pin_answers_javas_three_outcomes() {
         &board, trace, true
     ));
 }
-
 
 fn correct_rows_for(angle: AngleRestriction) -> Vec<String> {
     let mut out = Vec::new();
@@ -626,7 +621,6 @@ fn a_successful_swap_reorders_the_stub_into_the_trace() {
     assert_eq!(trace.last_corner(), Some(p(-200, 300)));
 }
 
-
 fn edge_rows_for(angle: AngleRestriction) -> Vec<String> {
     let mut out = Vec::new();
     for edge in EDGE_DISTS {
@@ -739,7 +733,6 @@ fn the_pair_is_skipped_when_pin_edge_to_turn_dist_is_not_positive() {
     ));
     assert_eq!(shove_fixed_traces(&board), 1);
 }
-
 
 #[test]
 fn combine_calls_additional_update_after_change_once_per_merge_and_never_without_one() {

@@ -8,23 +8,23 @@ use super::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoardRules {
-        pub clearance_matrix: ClearanceMatrix,
-        pub nets: Nets,
-        pub via_infos: ViaInfos,
-            pub via_rules: Vec<ViaRule>,
-        pub net_classes: NetClasses,
-                layer_structure: LayerStructure,
-                                pub trace_angle_restriction: AngleRestriction,
-        ignore_conduction: bool,
-            min_trace_half_width: i32,
-        max_trace_half_width: i32,
-        pin_edge_to_turn_dist: f64,
-        use_slow_autoroute_algorithm: bool,
-        hole_clearance: i32,
+    pub clearance_matrix: ClearanceMatrix,
+    pub nets: Nets,
+    pub via_infos: ViaInfos,
+    pub via_rules: Vec<ViaRule>,
+    pub net_classes: NetClasses,
+    layer_structure: LayerStructure,
+    pub trace_angle_restriction: AngleRestriction,
+    ignore_conduction: bool,
+    min_trace_half_width: i32,
+    max_trace_half_width: i32,
+    pin_edge_to_turn_dist: f64,
+    use_slow_autoroute_algorithm: bool,
+    hole_clearance: i32,
 }
 
 impl BoardRules {
-                                pub fn new(layer_structure: LayerStructure, clearance_matrix: ClearanceMatrix) -> BoardRules {
+    pub fn new(layer_structure: LayerStructure, clearance_matrix: ClearanceMatrix) -> BoardRules {
         BoardRules {
             clearance_matrix,
             nets: Nets::new(),
@@ -42,19 +42,19 @@ impl BoardRules {
         }
     }
 
-                pub fn layer_structure(&self) -> &LayerStructure {
+    pub fn layer_structure(&self) -> &LayerStructure {
         &self.layer_structure
     }
 
-        pub fn default_clearance_class() -> usize {
+    pub fn default_clearance_class() -> usize {
         1
     }
 
-            pub fn clearance_class_none() -> usize {
+    pub fn clearance_class_none() -> usize {
         0
     }
 
-                        pub fn get_trace_half_width(&self, net_number: i32, layer: usize) -> i32 {
+    pub fn get_trace_half_width(&self, net_number: i32, layer: usize) -> i32 {
         let net = self
             .nets
             .get(net_number)
@@ -64,29 +64,29 @@ impl BoardRules {
             .get_trace_half_width(layer)
     }
 
-                            pub fn trace_widths_are_layer_dependent(&self, net_number: i32) -> bool {
+    pub fn trace_widths_are_layer_dependent(&self, net_number: i32) -> bool {
         let compare_width = self.get_trace_half_width(net_number, 0);
         (1..self.layer_structure.count())
             .any(|i| self.get_trace_half_width(net_number, i) != compare_width)
     }
 
-                                                pub fn get_min_trace_half_width(&self) -> i32 {
+    pub fn get_min_trace_half_width(&self) -> i32 {
         self.min_trace_half_width
     }
 
-        pub fn get_max_trace_half_width(&self) -> i32 {
+    pub fn get_max_trace_half_width(&self) -> i32 {
         self.max_trace_half_width
     }
 
-        pub fn get_hole_clearance(&self) -> i32 {
+    pub fn get_hole_clearance(&self) -> i32 {
         self.hole_clearance
     }
 
-        pub fn set_hole_clearance(&mut self, value: i32) {
+    pub fn set_hole_clearance(&mut self, value: i32) {
         self.hole_clearance = value.max(0);
     }
 
-                pub fn set_default_trace_half_width(&mut self, layer: usize, value: i32) {
+    pub fn set_default_trace_half_width(&mut self, layer: usize, value: i32) {
         let default_class = self.get_default_net_class();
         self.net_classes
             .get_mut(default_class)
@@ -95,14 +95,14 @@ impl BoardRules {
         self.max_trace_half_width = self.max_trace_half_width.max(value);
     }
 
-        pub fn get_default_trace_half_width(&mut self, layer: usize) -> i32 {
+    pub fn get_default_trace_half_width(&mut self, layer: usize) -> i32 {
         let default_class = self.get_default_net_class();
         self.net_classes
             .get(default_class)
             .get_trace_half_width(layer)
     }
 
-                    pub fn set_default_trace_half_widths(&mut self, value: i32) {
+    pub fn set_default_trace_half_widths(&mut self, value: i32) {
         if value <= 0 {
             // FRLogger.warn("BoardRules.set_trace_half_widths: value out of range")
             return;
@@ -115,14 +115,14 @@ impl BoardRules {
         self.max_trace_half_width = self.max_trace_half_width.max(value);
     }
 
-                    pub fn get_default_net_class(&mut self) -> NetClassId {
+    pub fn get_default_net_class(&mut self) -> NetClassId {
         if self.net_classes.count() == 0 {
             self.create_default_net_class();
         }
         NetClassId(0)
     }
 
-            pub fn create_default_net_class(&mut self) {
+    pub fn create_default_net_class(&mut self) {
         let id = self
             .net_classes
             .append("default", &self.layer_structure, false);
@@ -132,7 +132,7 @@ impl BoardRules {
         net_class.set_trace_clearance_class(1);
     }
 
-                pub fn get_new_net_class(&mut self) -> NetClassId {
+    pub fn get_new_net_class(&mut self) -> NetClassId {
         let result = self
             .net_classes
             .append_with_generated_name(&self.layer_structure);
@@ -140,13 +140,13 @@ impl BoardRules {
         result
     }
 
-        pub fn get_new_net_class_named(&mut self, name: impl Into<String>) -> NetClassId {
+    pub fn get_new_net_class_named(&mut self, name: impl Into<String>) -> NetClassId {
         let result = self.net_classes.append(name, &self.layer_structure, false);
         self.initialize_new_net_class(result);
         result
     }
 
-            fn initialize_new_net_class(&mut self, result: NetClassId) {
+    fn initialize_new_net_class(&mut self, result: NetClassId) {
         let default_class = self.get_default_net_class();
         let trace_clearance_class = self
             .net_classes
@@ -160,7 +160,7 @@ impl BoardRules {
         net_class.set_trace_half_width_on_all_layers(trace_half_width);
     }
 
-                                pub fn append_net_class(&mut self) -> NetClassId {
+    pub fn append_net_class(&mut self) -> NetClassId {
         let new_class = self
             .net_classes
             .append_with_generated_name(&self.layer_structure);
@@ -175,7 +175,7 @@ impl BoardRules {
         new_class
     }
 
-                    pub fn append_net_class_named(&mut self, name: &str) -> NetClassId {
+    pub fn append_net_class_named(&mut self, name: &str) -> NetClassId {
         if let Some(found) = self.net_classes.get_no(name) {
             return found;
         }
@@ -193,7 +193,7 @@ impl BoardRules {
         new_class
     }
 
-                                pub fn create_default_via_rule(
+    pub fn create_default_via_rule(
         &mut self,
         net_class: NetClassId,
         name: impl Into<String>,
@@ -241,11 +241,11 @@ impl BoardRules {
         self.via_rules.push(default_rule);
     }
 
-            pub fn get_default_via_rule(&self) -> Option<&ViaRule> {
+    pub fn get_default_via_rule(&self) -> Option<&ViaRule> {
         self.via_rules.first()
     }
 
-            pub fn get_default_via_rule_id(&self) -> Option<ViaRuleId> {
+    pub fn get_default_via_rule_id(&self) -> Option<ViaRuleId> {
         if self.via_rules.is_empty() {
             None
         } else {
@@ -253,14 +253,14 @@ impl BoardRules {
         }
     }
 
-            pub fn get_via_rule(&self, name: &str) -> Option<ViaRuleId> {
+    pub fn get_via_rule(&self, name: &str) -> Option<ViaRuleId> {
         self.via_rules
             .iter()
             .position(|r| r.name == name)
             .map(ViaRuleId)
     }
 
-                        pub fn change_clearance_class_index<'a, T: ClearanceClassIndexed + 'a>(
+    pub fn change_clearance_class_index<'a, T: ClearanceClassIndexed + 'a>(
         &mut self,
         from_index: usize,
         to_index: usize,
@@ -294,7 +294,7 @@ impl BoardRules {
         }
     }
 
-                                        pub fn remove_clearance_class<'a, T: ClearanceClassIndexed + 'a>(
+    pub fn remove_clearance_class<'a, T: ClearanceClassIndexed + 'a>(
         &mut self,
         index: usize,
         board_items: impl IntoIterator<Item = &'a mut T>,
@@ -353,31 +353,31 @@ impl BoardRules {
         true
     }
 
-        pub fn get_pin_edge_to_turn_dist(&self) -> f64 {
+    pub fn get_pin_edge_to_turn_dist(&self) -> f64 {
         self.pin_edge_to_turn_dist
     }
 
-        pub fn set_pin_edge_to_turn_dist(&mut self, value: f64) {
+    pub fn set_pin_edge_to_turn_dist(&mut self, value: f64) {
         self.pin_edge_to_turn_dist = value;
     }
 
-        pub fn get_ignore_conduction(&self) -> bool {
+    pub fn get_ignore_conduction(&self) -> bool {
         self.ignore_conduction
     }
 
-        pub fn set_ignore_conduction(&mut self, value: bool) {
+    pub fn set_ignore_conduction(&mut self, value: bool) {
         self.ignore_conduction = value;
     }
 
-        pub fn get_use_slow_autoroute_algorithm(&self) -> bool {
+    pub fn get_use_slow_autoroute_algorithm(&self) -> bool {
         self.use_slow_autoroute_algorithm
     }
 
-        pub fn set_use_slow_autoroute_algorithm(&mut self, value: bool) {
+    pub fn set_use_slow_autoroute_algorithm(&mut self, value: bool) {
         self.use_slow_autoroute_algorithm = value;
     }
 
-                            pub fn get_default_via_diameter(&self, padstacks: &impl PadstackLookup) -> f64 {
+    pub fn get_default_via_diameter(&self, padstacks: &impl PadstackLookup) -> f64 {
         let Some(default_via_rule) = self.get_default_via_rule() else {
             return 0.0;
         };
@@ -397,7 +397,6 @@ impl BoardRules {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -405,7 +404,7 @@ mod tests {
     use crate::rules::ViaInfo;
     use crate::structure::Layer;
 
-            struct TestPadstacks;
+    struct TestPadstacks;
 
     impl PadstackLookup for TestPadstacks {
         fn padstack_from_layer(&self, padstack: PadstackId) -> i32 {
@@ -706,7 +705,7 @@ mod tests {
         );
     }
 
-                                                #[test]
+    #[test]
     fn clearance_class_renumbering_does_not_reach_a_rules_copy() {
         let mut rules = rules();
         rules.clearance_matrix.append_class("power");

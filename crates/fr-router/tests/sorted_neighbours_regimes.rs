@@ -12,7 +12,6 @@ use fr_router::autoroute::expansion::{
 use fr_router::autoroute::item_info;
 use fr_router::autoroute::tree_ext::AutorouteSearchTreeExt;
 
-
 const GRID_OBSTACLES: [(i32, i32, i32, i32, usize); 30] = [
     (-3500, 0, -2000, 2000, 0),
     (-500, 7000, 1500, 9000, 1),
@@ -249,7 +248,6 @@ fn seed_free_space_room(
     ))
 }
 
-
 fn shp(s: &TileShape) -> String {
     match s {
         TileShape::Box(x) => format!("Box[{},{}..{},{}]", x.ll.x, x.ll.y, x.ur.x, x.ur.y),
@@ -471,7 +469,6 @@ fn assert_script(actual: &[String], expected: &str) {
     assert_eq!(actual.len(), expected.len(), "line count");
 }
 
-
 #[test]
 fn the_45_degree_sorter_matches_the_p6t3_script() {
     let (mut board, tree_id) = p6t3_board(AngleRestriction::FortyFiveDegree, &GRID_OBSTACLES);
@@ -512,7 +509,6 @@ fn the_45_degree_sorter_matches_the_p6t3_script() {
 "#,
     );
 }
-
 
 #[test]
 fn the_orthogonal_sorter_matches_the_p6t3_script() {
@@ -606,7 +602,6 @@ fn an_own_net_object_becomes_a_target_door_inside_the_neighbour_loop() {
     );
 }
 
-
 #[test]
 fn an_eight_sided_obstacle_room_gets_eight_doors() {
     let (mut board, tree_id) = p6t3_board(AngleRestriction::FortyFiveDegree, &RANDOM_OBSTACLES);
@@ -681,7 +676,6 @@ fn an_eight_sided_obstacle_room_gets_eight_doors() {
     );
 }
 
-
 #[test]
 fn an_orthogonal_obstacle_room_with_no_neighbours_gets_one_room_per_board_side() {
     let (mut board, tree_id) = p6t3_board(AngleRestriction::NinetyDegree, &RANDOM_OBSTACLES);
@@ -725,7 +719,6 @@ fn an_orthogonal_obstacle_room_with_no_neighbours_gets_one_room_per_board_side()
 "#,
     );
 }
-
 
 fn overlap_probe_rooms(
     board: &mut Board,
@@ -810,7 +803,6 @@ fn a_two_dimensional_overlap_is_an_orthogonal_neighbour_with_a_two_dimensional_d
     assert_eq!(doors.len(), 1);
     assert_eq!(rooms.door(doors[0]).expect("a live door").dimension, 2);
 }
-
 
 fn tiny_board(angle: AngleRestriction, obstacles: &[IntBox]) -> (Board, TreeId) {
     let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
@@ -916,7 +908,6 @@ fn the_three_regimes_disagree_on_the_same_room() {
             .all(|line| line.contains("shape=Box["))
     );
 }
-
 
 type Neighbour45 = fr_router::autoroute::expansion::sorted_neighbours_45::SortedRoomNeighbour;
 type NeighbourOrthogonal =

@@ -3,35 +3,33 @@ use fr_settings::prelude::{
     legacy_flag_value_is_consumed,
 };
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(i32)]
 pub enum ExitCode {
-        Ok = 0,
-        Failure = 1,
-        UsageError = 2,
-                                                                                            NotImplemented = 3,
+    Ok = 0,
+    Failure = 1,
+    UsageError = 2,
+    NotImplemented = 3,
 }
 
 impl ExitCode {
-        #[must_use]
+    #[must_use]
     pub fn code(self) -> i32 {
         self as i32
     }
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Level {
-        Warn,
-        Error,
+    Warn,
+    Error,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostic {
-        pub level: Level,
-        pub message: String,
-                    pub java_site: &'static str,
+    pub level: Level,
+    pub message: String,
+    pub java_site: &'static str,
 }
 
 impl Diagnostic {
@@ -67,16 +65,15 @@ pub const DESIGN_DIRECTORY_IGNORED: &str =
 pub const COMPARE_BOARDS_IGNORED: &str =
     "The --compare-boards= option is not supported by this port and is ignored.";
 
-
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LegacySlots {
-        pub initial_input_file: Option<String>,
-        pub initial_output_file: Option<String>,
-        pub initial_rules_file: Option<String>,
-            pub design_session_filename: Option<String>,
-            pub drc_report_file: Option<String>,
-        pub show_help_option: bool,
-            pub stdio_mode: bool,
+    pub initial_input_file: Option<String>,
+    pub initial_output_file: Option<String>,
+    pub initial_rules_file: Option<String>,
+    pub design_session_filename: Option<String>,
+    pub drc_report_file: Option<String>,
+    pub show_help_option: bool,
+    pub stdio_mode: bool,
 }
 
 const SUBCOMMANDS: &[&str] = &["route", "drc", "info", "mcp", "help"];
@@ -113,7 +110,6 @@ pub fn resolve_slots(argv: &[String]) -> (LegacySlots, Vec<Diagnostic>) {
             i += 1;
             continue;
         }
-
 
         if let Some(body) = arg.strip_prefix("--") {
             if body.starts_with("compare-boards=") {
@@ -544,7 +540,7 @@ mod tests {
         assert_eq!(ExitCode::NotImplemented.code(), 3);
     }
 
-                                    #[test]
+    #[test]
     fn no_command_runner_answers_not_implemented() {
         let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
         let mut offenders = Vec::new();

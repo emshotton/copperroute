@@ -10,55 +10,53 @@ use crate::PARITY_VERSION;
 use crate::job::{RoutingJob, java_path};
 use crate::stats_json::GsonBoardStatistics;
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize)]
 pub struct RouterJobResourceUsage {
-                                    #[serde(rename = "cpu_time")]
+    #[serde(rename = "cpu_time")]
     pub cpu_time_used: f32,
-                #[serde(rename = "max_memory")]
+    #[serde(rename = "max_memory")]
     pub max_memory_used: f32,
-            #[serde(rename = "peak_memory")]
+    #[serde(rename = "peak_memory")]
     pub peak_memory_used: f32,
-        #[serde(rename = "io_read")]
+    #[serde(rename = "io_read")]
     pub io_read: f32,
-        #[serde(rename = "io_written")]
+    #[serde(rename = "io_written")]
     pub io_write: f32,
 }
-
 
 pub const SCHEMA_VERSION: i32 = 1;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct RoutingResultManifest {
-        #[serde(rename = "schema_version")]
+    #[serde(rename = "schema_version")]
     pub schema_version: i32,
-                #[serde(rename = "generated_at", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "generated_at", skip_serializing_if = "Option::is_none")]
     pub generated_at: Option<String>,
-            #[serde(rename = "app_version", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "app_version", skip_serializing_if = "Option::is_none")]
     pub app_version: Option<String>,
-        #[serde(rename = "git_sha", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "git_sha", skip_serializing_if = "Option::is_none")]
     pub git_sha: Option<String>,
-            #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fixture: Option<FixtureInfo>,
-                    #[serde(rename = "settings_snapshot", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "settings_snapshot", skip_serializing_if = "Option::is_none")]
     pub settings_snapshot: Option<fr_settings::RouterSettings>,
-            #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub phases: Option<PhaseMetrics>,
-                        #[serde(
+    #[serde(
         rename = "board_statistics",
         skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_board_statistics"
     )]
     pub board_statistics: Option<BoardStatistics>,
-            #[serde(rename = "normalized_score", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "normalized_score", skip_serializing_if = "Option::is_none")]
     pub normalized_score: Option<f32>,
-                #[serde(rename = "resource_usage", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "resource_usage", skip_serializing_if = "Option::is_none")]
     pub resource_usage: Option<RouterJobResourceUsage>,
-        #[serde(rename = "final_state", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "final_state", skip_serializing_if = "Option::is_none")]
     pub final_state: Option<String>,
-        #[serde(rename = "exit_code")]
+    #[serde(rename = "exit_code")]
     pub exit_code: i32,
-        #[serde(rename = "output_written")]
+    #[serde(rename = "output_written")]
     pub output_written: bool,
 }
 
@@ -73,7 +71,7 @@ fn serialize_board_statistics<S: Serializer>(
 }
 
 impl Default for RoutingResultManifest {
-                fn default() -> RoutingResultManifest {
+    fn default() -> RoutingResultManifest {
         RoutingResultManifest {
             schema_version: SCHEMA_VERSION,
             generated_at: None,
@@ -94,24 +92,24 @@ impl Default for RoutingResultManifest {
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct FixtureInfo {
-            #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub filename: Option<String>,
-            #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct PhaseMetrics {
-        #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fanout: Option<PhaseDetail>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub autorouter: Option<PhaseDetail>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub optimizer: Option<PhaseDetail>,
 }
 
 impl Default for PhaseMetrics {
-        fn default() -> PhaseMetrics {
+    fn default() -> PhaseMetrics {
         PhaseMetrics {
             fanout: Some(PhaseDetail::default()),
             autorouter: Some(PhaseDetail::default()),
@@ -122,15 +120,14 @@ impl Default for PhaseMetrics {
 
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize)]
 pub struct PhaseDetail {
-        #[serde(rename = "duration_seconds", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "duration_seconds", skip_serializing_if = "Option::is_none")]
     pub duration_seconds: Option<f32>,
-        #[serde(rename = "passes_completed", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "passes_completed", skip_serializing_if = "Option::is_none")]
     pub passes_completed: Option<i32>,
 }
 
-
 impl RoutingResultManifest {
-                                                                                                        // `clippy::field_reassign_with_default` objects to: a struct literal would put `:114`'s
+    // `clippy::field_reassign_with_default` objects to: a struct literal would put `:114`'s
     #[allow(clippy::field_reassign_with_default)]
     pub fn from_job(
         job: &RoutingJob,
@@ -189,7 +186,7 @@ impl RoutingResultManifest {
         manifest
     }
 
-                                                                pub fn write(path: &Path, manifest: &RoutingResultManifest) -> std::io::Result<()> {
+    pub fn write(path: &Path, manifest: &RoutingResultManifest) -> std::io::Result<()> {
         let normalized = java_path::of_to_string(&path.to_string_lossy());
         if let Some(parent) = java_path::parent_of_normalized(&normalized) {
             std::fs::create_dir_all(&parent)?;
@@ -199,11 +196,10 @@ impl RoutingResultManifest {
         std::fs::write(&normalized, json.as_bytes())
     }
 
-                                    pub fn to_gson_string(&self) -> Result<String, serde_json::Error> {
+    pub fn to_gson_string(&self) -> Result<String, serde_json::Error> {
         to_gson_string_pretty(self)
     }
 }
-
 
 pub fn resolve_git_sha() -> String {
     if let Ok(value) = std::env::var("FREEROUTING_GIT_SHA")
@@ -234,7 +230,6 @@ fn java_is_whitespace(c: char) -> bool {
 fn java_trim(value: &str) -> String {
     value.trim_matches(|c: char| c <= '\u{20}').to_string()
 }
-
 
 pub fn sha256_hex(path: &Path) -> Option<String> {
     let bytes = std::fs::read(path).ok()?;
@@ -342,11 +337,11 @@ fn sha256(data: &[u8]) -> [u8; 32] {
 mod tests {
     use super::*;
 
-        fn hex_of(bytes: &[u8]) -> String {
+    fn hex_of(bytes: &[u8]) -> String {
         hex_lower(&sha256(bytes))
     }
 
-                    #[test]
+    #[test]
     fn sha256_matches_the_nist_vectors() {
         assert_eq!(
             hex_of(b"abc"),
@@ -366,7 +361,7 @@ mod tests {
         );
     }
 
-        #[test]
+    #[test]
     fn sha256_pads_across_the_block_boundary() {
         assert_eq!(
             hex_of(&[b'a'; 55]),
@@ -382,12 +377,12 @@ mod tests {
         );
     }
 
-        #[test]
+    #[test]
     fn hex_is_lower_case_and_zero_padded() {
         assert_eq!(hex_lower(&[0x00, 0x0f, 0xa0, 0xff]), "000fa0ff");
     }
 
-                                    #[test]
+    #[test]
     fn whitespace_sets_are_the_measured_ones() {
         fn jvm_is_whitespace(c: char) -> bool {
             matches!(
@@ -442,7 +437,7 @@ mod tests {
         }
     }
 
-        #[test]
+    #[test]
     fn java_blankness_and_trimming_are_not_rusts() {
         assert!(java_is_blank(""));
         assert!(java_is_blank(" \t\r\n"));
@@ -468,7 +463,6 @@ mod tests {
         assert!(!java_is_blank("abc"));
     }
 }
-
 
 #[must_use]
 pub fn now_utc_iso8601() -> String {
@@ -533,7 +527,7 @@ mod instant_tests {
     use super::*;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-        #[test]
+    #[test]
     fn the_rendering_is_the_jvms_instant_to_string() {
         let base = 1_756_800_000u64;
         for (nanos, expected) in [
@@ -555,7 +549,7 @@ mod instant_tests {
         assert_eq!(format_utc_iso8601(UNIX_EPOCH), "1970-01-01T00:00:00Z");
     }
 
-            #[test]
+    #[test]
     fn the_calendar_is_proleptic_gregorian() {
         for (secs, expected) in [
             (951_782_400u64, "2000-02-29T00:00:00Z"),
@@ -572,7 +566,7 @@ mod instant_tests {
         }
     }
 
-            #[test]
+    #[test]
     fn now_is_well_formed() {
         let now = now_utc_iso8601();
         assert!(now.ends_with('Z'), "{now}");

@@ -9,31 +9,31 @@ use crate::autoroute::maze::{AutorouteControl, AutorouteEngine, MazeResult};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResultItem {
-        pub corners: Vec<IntPoint>,
-        pub layer: usize,
+    pub corners: Vec<IntPoint>,
+    pub layer: usize,
 }
 
 impl ResultItem {
-                        pub fn new(corners: Vec<IntPoint>, layer: usize) -> ResultItem {
+    pub fn new(corners: Vec<IntPoint>, layer: usize) -> ResultItem {
         ResultItem { corners, layer }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BacktrackElement {
-        pub door: ExpandableRef,
-        pub section_no_of_door: i32,
-        pub next_room: Option<RoomRef>,
+    pub door: ExpandableRef,
+    pub section_no_of_door: i32,
+    pub next_room: Option<RoomRef>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocatorKind {
-        FortyFiveDegree,
-        AnyAngle,
+    FortyFiveDegree,
+    AnyAngle,
 }
 
 impl LocatorKind {
-        pub fn of(angle_restriction: AngleRestriction) -> LocatorKind {
+    pub fn of(angle_restriction: AngleRestriction) -> LocatorKind {
         if angle_restriction == AngleRestriction::NinetyDegree
             || angle_restriction == AngleRestriction::FortyFiveDegree
         {
@@ -46,21 +46,21 @@ impl LocatorKind {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FoundConnectionLocator {
-                                        pub connection_items: Vec<ResultItem>,
+    pub connection_items: Vec<ResultItem>,
 
-            pub start_item: Option<ItemId>,
+    pub start_item: Option<ItemId>,
 
-        pub start_layer: usize,
+    pub start_layer: usize,
 
-            pub target_item: Option<ItemId>,
+    pub target_item: Option<ItemId>,
 
-        pub target_layer: usize,
+    pub target_layer: usize,
 
-                        pub backtrack_array: Vec<BacktrackElement>,
+    pub backtrack_array: Vec<BacktrackElement>,
 }
 
 impl FoundConnectionLocator {
-                                                        pub fn get_instance(
+    pub fn get_instance(
         maze_search_result: Option<&MazeResult>,
         ctrl: &AutorouteControl,
         engine: &mut AutorouteEngine,
@@ -81,7 +81,7 @@ impl FoundConnectionLocator {
         ))
     }
 
-                    #[allow(clippy::too_many_lines)]
+    #[allow(clippy::too_many_lines)]
     fn new(
         maze_search_result: &MazeResult,
         ctrl: &AutorouteControl,
@@ -513,55 +513,54 @@ pub fn calculate_additional_corner(
     }
 }
 
-
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct LocatedCorner {
     pub(crate) point: FloatPoint,
-                pub(crate) id: u64,
+    pub(crate) id: u64,
 }
 
 pub(crate) struct LocatorWalk<'a> {
     pub(crate) engine: &'a mut AutorouteEngine,
     pub(crate) ctrl: &'a AutorouteControl,
-        pub(crate) angle_restriction: AngleRestriction,
-        pub(crate) kind: LocatorKind,
-        pub(crate) current_from_point: FloatPoint,
-        pub(crate) current_from_id: u64,
-        pub(crate) previous_from_point: FloatPoint,
-        pub(crate) current_trace_layer: usize,
-        pub(crate) current_from_door_index: i32,
-        pub(crate) current_to_door_index: i32,
-        pub(crate) current_target_door_index: i32,
-        pub(crate) current_target_shape: TileShape,
+    pub(crate) angle_restriction: AngleRestriction,
+    pub(crate) kind: LocatorKind,
+    pub(crate) current_from_point: FloatPoint,
+    pub(crate) current_from_id: u64,
+    pub(crate) previous_from_point: FloatPoint,
+    pub(crate) current_trace_layer: usize,
+    pub(crate) current_from_door_index: i32,
+    pub(crate) current_to_door_index: i32,
+    pub(crate) current_target_door_index: i32,
+    pub(crate) current_target_shape: TileShape,
     next_corner_id: u64,
 }
 
 impl LocatorWalk<'_> {
-        pub(crate) fn new_corner_id(&mut self) -> u64 {
+    pub(crate) fn new_corner_id(&mut self) -> u64 {
         self.next_corner_id += 1;
         self.next_corner_id
     }
 
-        pub(crate) fn fresh(&mut self, point: FloatPoint) -> LocatedCorner {
+    pub(crate) fn fresh(&mut self, point: FloatPoint) -> LocatedCorner {
         LocatedCorner {
             point,
             id: self.new_corner_id(),
         }
     }
 
-            pub(crate) fn same_as_current_from_point(&self) -> LocatedCorner {
+    pub(crate) fn same_as_current_from_point(&self) -> LocatedCorner {
         LocatedCorner {
             point: self.current_from_point,
             id: self.current_from_id,
         }
     }
 
-            pub(crate) fn set_current_from_point(&mut self, corner: LocatedCorner) {
+    pub(crate) fn set_current_from_point(&mut self, corner: LocatedCorner) {
         self.current_from_point = corner.point;
         self.current_from_id = corner.id;
     }
 
-                                fn calculate_next_trace(
+    fn calculate_next_trace(
         &mut self,
         board: &mut Board,
         backtrack_array: &[BacktrackElement],
@@ -629,7 +628,7 @@ impl LocatorWalk<'_> {
         result
     }
 
-                        fn adjust_start_corner(&self, backtrack_array: &[BacktrackElement]) -> Option<FloatPoint> {
+    fn adjust_start_corner(&self, backtrack_array: &[BacktrackElement]) -> Option<FloatPoint> {
         if self.current_from_door_index < 0 {
             return None;
         }
@@ -658,7 +657,7 @@ impl LocatorWalk<'_> {
         )
     }
 
-            fn calculate_next_trace_corners(
+    fn calculate_next_trace_corners(
         &mut self,
         backtrack_array: &[BacktrackElement],
     ) -> Vec<LocatedCorner> {
@@ -672,5 +671,3 @@ impl LocatorWalk<'_> {
         }
     }
 }
-
-

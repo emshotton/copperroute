@@ -35,7 +35,6 @@ fn fixture(name: &str) -> String {
         .unwrap_or_else(|e| panic!("fixture {name}: {e}"))
 }
 
-
 #[test]
 fn a_place_scope_reads_name_coordinates_side_and_rotation() {
     read_placement(
@@ -179,7 +178,6 @@ fn several_components_and_several_places_all_land_in_the_placement_list() {
     );
 }
 
-
 fn write_placement(
     add: impl FnOnce(&mut fr_board::Board),
     flip_style_rotate_first: bool,
@@ -298,7 +296,6 @@ fn a_placed_component_writes_coordinates_side_rotation_and_pin_clearance_classes
         )
     );
 }
-
 
 #[test]
 fn the_lock_type_position_arm_survives_a_whole_file_read() {

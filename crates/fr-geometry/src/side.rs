@@ -6,7 +6,7 @@ pub enum Side {
 }
 
 impl Side {
-        pub fn of_i64(value: i64) -> Side {
+    pub fn of_i64(value: i64) -> Side {
         match value.signum() {
             1 => Side::OnTheLeft,
             -1 => Side::OnTheRight,
@@ -14,7 +14,7 @@ impl Side {
         }
     }
 
-        pub fn of_f64(value: f64) -> Side {
+    pub fn of_f64(value: f64) -> Side {
         if value > 0.0 {
             Side::OnTheLeft
         } else if value < 0.0 {
@@ -24,7 +24,7 @@ impl Side {
         }
     }
 
-        pub fn negate(self) -> Side {
+    pub fn negate(self) -> Side {
         match self {
             Side::OnTheLeft => Side::OnTheRight,
             Side::OnTheRight => Side::OnTheLeft,

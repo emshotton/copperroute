@@ -10,30 +10,30 @@ const YYEOF: i32 = -1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LexicalState {
-        YyInitial = 0,
-        String1 = 1,
-        String2 = 2,
-            Name = 3,
-            LayerName = 4,
-            ComponentName = 5,
-        SpecChar = 6,
-            IgnoreQuote = 7,
+    YyInitial = 0,
+    String1 = 1,
+    String2 = 2,
+    Name = 3,
+    LayerName = 4,
+    ComponentName = 5,
+    SpecChar = 6,
+    IgnoreQuote = 7,
 }
 
 #[derive(Debug)]
 pub struct DsnScanner {
-        buffer: Vec<u16>,
-            zz_start_read: isize,
-        zz_marked_pos: isize,
-        zz_current_pos: isize,
-        zz_state: usize,
-        zz_lexical_state: LexicalState,
-                string_buffer: Vec<u16>,
-            scope_identifier: String,
+    buffer: Vec<u16>,
+    zz_start_read: isize,
+    zz_marked_pos: isize,
+    zz_current_pos: isize,
+    zz_state: usize,
+    zz_lexical_state: LexicalState,
+    string_buffer: Vec<u16>,
+    scope_identifier: String,
 }
 
 impl DsnScanner {
-                            #[must_use]
+    #[must_use]
     pub fn new(input: &str) -> Self {
         Self {
             buffer: input.encode_utf16().collect(),
@@ -47,41 +47,40 @@ impl DsnScanner {
         }
     }
 
-        pub fn yybegin(&mut self, new_state: LexicalState) {
+    pub fn yybegin(&mut self, new_state: LexicalState) {
         self.zz_lexical_state = new_state;
     }
 
-        pub fn yystate(&self) -> LexicalState {
+    pub fn yystate(&self) -> LexicalState {
         self.zz_lexical_state
     }
 
-        pub fn scope_identifier(&self) -> &str {
+    pub fn scope_identifier(&self) -> &str {
         &self.scope_identifier
     }
 
-        pub fn set_scope_identifier(&mut self, identifier: &str) {
+    pub fn set_scope_identifier(&mut self, identifier: &str) {
         self.scope_identifier = identifier.to_string();
     }
 
-                        pub fn yytext(&self) -> String {
+    pub fn yytext(&self) -> String {
         String::from_utf16_lossy(self.matched_units())
     }
 
-        fn matched_units(&self) -> &[u16] {
+    fn matched_units(&self) -> &[u16] {
         let start = self.zz_start_read.max(0) as usize;
         let end = self.zz_marked_pos.max(0) as usize;
         &self.buffer[start.min(self.buffer.len())..end.min(self.buffer.len())]
     }
 
-            fn unit_at(&self, pos: isize) -> Option<u16> {
+    fn unit_at(&self, pos: isize) -> Option<u16> {
         if pos < 0 {
             return None;
         }
         self.buffer.get(pos as usize).copied()
     }
 
-
-                        pub fn next_token(&mut self) -> Result<Option<Token>, DsnError> {
+    pub fn next_token(&mut self) -> Result<Option<Token>, DsnError> {
         let zz_end_read_l = self.buffer.len() as isize;
 
         loop {
@@ -550,15 +549,15 @@ impl DsnScanner {
         }
     }
 
-        pub fn next_string(&mut self) -> String {
+    pub fn next_string(&mut self) -> String {
         self.next_string_with(false, ' ')
     }
 
-        pub fn next_string_ignoring_newline(&mut self, ignore_newline: bool) -> String {
+    pub fn next_string_ignoring_newline(&mut self, ignore_newline: bool) -> String {
         self.next_string_with(ignore_newline, ' ')
     }
 
-                                        pub fn next_string_with(&mut self, ignore_newline: bool, leading: char) -> String {
+    pub fn next_string_with(&mut self, ignore_newline: bool, leading: char) -> String {
         let leading = u32::from(leading);
         let mut i: isize = 0;
 
@@ -624,11 +623,11 @@ impl DsnScanner {
         string_buffer
     }
 
-        pub fn next_string_list(&mut self) -> Vec<String> {
+    pub fn next_string_list(&mut self) -> Vec<String> {
         self.next_string_list_sep(' ')
     }
 
-                    pub fn next_string_list_sep(&mut self, separator: char) -> Vec<String> {
+    pub fn next_string_list_sep(&mut self, separator: char) -> Vec<String> {
         let mut result = Vec::new();
 
         let first_string = self.next_string_with(true, separator);
@@ -650,12 +649,12 @@ impl DsnScanner {
         result
     }
 
-                                pub fn next_double(&mut self) -> Option<f64> {
+    pub fn next_double(&mut self) -> Option<f64> {
         let s = self.next_string();
         java_number_format_parse(&s)
     }
 
-                        pub fn next_closing_bracket(&mut self) -> Result<bool, DsnError> {
+    pub fn next_closing_bracket(&mut self) -> Result<bool, DsnError> {
         match self.next_token()? {
             None => Ok(false),
             Some(token) => Ok(matches!(token, Token::Close)),
@@ -747,7 +746,7 @@ pub fn java_number_format_parse(text: &str) -> Option<f64> {
 mod tests {
     use super::*;
 
-                    #[test]
+    #[test]
     fn non_ascii_unicode_digits_are_not_parsed() {
         for text in ["\u{ff11}\u{ff12}", "\u{663}", "\u{661}\u{662}\u{663}"] {
             assert_eq!(java_number_format_parse(text), None, "{text:?}");
@@ -756,7 +755,7 @@ mod tests {
         assert_eq!(java_number_format_parse("12"), Some(12.0));
     }
 
-                #[test]
+    #[test]
     fn a_token_running_to_the_end_of_the_input_stops_there() {
         let mut scanner = DsnScanner::new(" foo");
         assert_eq!(scanner.next_string(), "foo");

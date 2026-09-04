@@ -6,22 +6,22 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MergeMode {
-        Overwrite,
-        FillAbsent,
+    Overwrite,
+    FillAbsent,
 }
 
 pub trait CopyFields {
-        fn merge_fields_into(&self, target: &mut Self, mode: MergeMode, report: &mut MergeReport);
+    fn merge_fields_into(&self, target: &mut Self, mode: MergeMode, report: &mut MergeReport);
 
-            fn copy_fields_into(&self, target: &mut Self, report: &mut MergeReport) {
+    fn copy_fields_into(&self, target: &mut Self, report: &mut MergeReport) {
         self.merge_fields_into(target, MergeMode::Overwrite, report);
     }
 }
 
 pub trait JavaEnum: Copy + Sized {
-        fn java_name(self) -> &'static str;
+    fn java_name(self) -> &'static str;
 
-            fn from_java_name(name: &str) -> Option<Self>;
+    fn from_java_name(name: &str) -> Option<Self>;
 }
 
 impl JavaEnum for BoardUpdateStrategy {
@@ -54,7 +54,6 @@ impl JavaEnum for ItemSelectionStrategy {
     }
 }
 
-
 pub fn scalar_copy<T: PartialEq + Clone>(
     src: &Option<T>,
     dst: &mut Option<T>,
@@ -62,7 +61,7 @@ pub fn scalar_copy<T: PartialEq + Clone>(
     report: &mut MergeReport,
 ) {
     let Some(value) = src else {
-        return; 
+        return;
     };
     if mode == MergeMode::FillAbsent && dst.is_some() {
         return;
@@ -111,11 +110,11 @@ pub fn primitive_array_copy<T: Clone>(
     report: &mut MergeReport,
 ) {
     let Some(source) = src else {
-        return; 
+        return;
     };
     let should_copy = match dst {
-        None => true,                                            
-        Some(target) => target.is_empty() && !source.is_empty(), 
+        None => true,
+        Some(target) => target.is_empty() && !source.is_empty(),
     };
     if should_copy {
         *dst = Some(source.clone());
@@ -137,7 +136,7 @@ pub fn object_array_merge<T: CopyFields + Default + Clone>(
     report: &mut MergeReport,
 ) {
     let Some(source) = src else {
-        return; 
+        return;
     };
     let mut inner = MergeReport::default();
     let target_len = dst.as_ref().map_or(0, Vec::len);
@@ -173,7 +172,7 @@ pub fn nested_copy<T: CopyFields + Default>(
     report: &mut MergeReport,
 ) {
     let Some(source) = src else {
-        return; 
+        return;
     };
     let target = dst.get_or_insert_with(T::default);
     source.merge_fields_into(target, mode, report);
@@ -195,9 +194,8 @@ pub fn primitive_i32_copy(src: i32, dst: &mut i32, report: &mut MergeReport) {
     report.fields_changed += 1;
 }
 
-
 impl CopyFields for LayerSettings {
-        fn merge_fields_into(&self, target: &mut Self, mode: MergeMode, report: &mut MergeReport) {
+    fn merge_fields_into(&self, target: &mut Self, mode: MergeMode, report: &mut MergeReport) {
         scalar_copy(&self.routable, &mut target.routable, mode, report);
         scalar_copy(
             &self.preferred_direction_horizontal,
@@ -210,7 +208,7 @@ impl CopyFields for LayerSettings {
 }
 
 impl CopyFields for ScoringSettings {
-        fn merge_fields_into(&self, target: &mut Self, mode: MergeMode, report: &mut MergeReport) {
+    fn merge_fields_into(&self, target: &mut Self, mode: MergeMode, report: &mut MergeReport) {
         primitive_array_copy(
             &self.preferred_direction_trace_cost,
             &mut target.preferred_direction_trace_cost,
@@ -269,7 +267,7 @@ impl CopyFields for ScoringSettings {
 }
 
 impl CopyFields for OptimizerSettings {
-            fn merge_fields_into(&self, target: &mut Self, mode: MergeMode, report: &mut MergeReport) {
+    fn merge_fields_into(&self, target: &mut Self, mode: MergeMode, report: &mut MergeReport) {
         scalar_copy(&self.enabled, &mut target.enabled, mode, report);
         scalar_copy(&self.algorithm, &mut target.algorithm, mode, report);
         scalar_copy(&self.max_passes, &mut target.max_passes, mode, report);
@@ -330,7 +328,7 @@ impl CopyFields for OptimizerSettings {
 }
 
 impl CopyFields for FanoutSettings {
-        fn merge_fields_into(&self, target: &mut Self, mode: MergeMode, report: &mut MergeReport) {
+    fn merge_fields_into(&self, target: &mut Self, mode: MergeMode, report: &mut MergeReport) {
         scalar_copy(&self.enabled, &mut target.enabled, mode, report);
         scalar_copy(&self.max_passes, &mut target.max_passes, mode, report);
         scalar_copy(&self.max_items, &mut target.max_items, mode, report);
@@ -387,7 +385,7 @@ impl CopyFields for FanoutSettings {
 }
 
 impl CopyFields for DesignRulesCheckerSettings {
-            fn merge_fields_into(&self, target: &mut Self, _mode: MergeMode, report: &mut MergeReport) {
+    fn merge_fields_into(&self, target: &mut Self, _mode: MergeMode, report: &mut MergeReport) {
         primitive_bool_copy(self.enabled, &mut target.enabled, report);
         primitive_bool_copy(self.include_warnings, &mut target.include_warnings, report);
         primitive_bool_copy(self.include_errors, &mut target.include_errors, report);
@@ -395,7 +393,7 @@ impl CopyFields for DesignRulesCheckerSettings {
 }
 
 impl CopyFields for DebugSettings {
-            fn merge_fields_into(&self, target: &mut Self, _mode: MergeMode, report: &mut MergeReport) {
+    fn merge_fields_into(&self, target: &mut Self, _mode: MergeMode, report: &mut MergeReport) {
         primitive_bool_copy(
             self.enable_detailed_logging,
             &mut target.enable_detailed_logging,
@@ -421,7 +419,7 @@ impl CopyFields for DebugSettings {
 }
 
 impl CopyFields for RouterSettings {
-                fn merge_fields_into(&self, target: &mut Self, mode: MergeMode, report: &mut MergeReport) {
+    fn merge_fields_into(&self, target: &mut Self, mode: MergeMode, report: &mut MergeReport) {
         scalar_copy(&self.enabled, &mut target.enabled, mode, report);
         scalar_copy(&self.algorithm, &mut target.algorithm, mode, report);
         nested_copy(&self.fanout, &mut target.fanout, mode, report);
@@ -491,13 +489,13 @@ impl CopyFields for RouterSettings {
 }
 
 impl RouterSettings {
-                            pub fn apply_new_values_from(&mut self, source: &RouterSettings) -> MergeReport {
+    pub fn apply_new_values_from(&mut self, source: &RouterSettings) -> MergeReport {
         let mut report = MergeReport::default();
         source.copy_fields_into(self, &mut report);
         report
     }
 
-                                pub fn fill_absent_from(&mut self, source: &RouterSettings) -> MergeReport {
+    pub fn fill_absent_from(&mut self, source: &RouterSettings) -> MergeReport {
         let mut report = MergeReport::default();
         source.merge_fields_into(self, MergeMode::FillAbsent, &mut report);
         report
@@ -508,7 +506,7 @@ impl RouterSettings {
 mod tests {
     use super::*;
 
-                                #[test]
+    #[test]
     fn board_specific_flag_is_never_copied() {
         let mut source = RouterSettings::new();
         source.board_specific_trace_costs_applied = Some(true);

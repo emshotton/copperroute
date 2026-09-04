@@ -28,27 +28,27 @@ use crate::pipeline::{BatchAutorouter, RouterBudget};
 
 #[derive(Debug)]
 pub struct AutorouteEngine {
-                        pub rooms: ExpansionRoomStore,
+    pub rooms: ExpansionRoomStore,
 
-                        pub tree: TreeId,
+    pub tree: TreeId,
 
-            pub maintain_database: bool,
+    pub maintain_database: bool,
 
-                pub max_drill_page_width: i32,
+    pub max_drill_page_width: i32,
 
-                                drill_page_array: DrillPageArray,
+    drill_page_array: DrillPageArray,
 
-                                                                    complete_expansion_rooms: Vec<RoomId>,
+    complete_expansion_rooms: Vec<RoomId>,
 
-            net_number: i32,
+    net_number: i32,
 
-        time_limit: Option<TimeLimit>,
+    time_limit: Option<TimeLimit>,
 
-                                                pub connections: Arena<Connection>,
+    pub connections: Arena<Connection>,
 }
 
 impl AutorouteEngine {
-                                pub fn new(
+    pub fn new(
         board: &mut Board,
         trace_clearance_class_index: usize,
         maintain_database: bool,
@@ -89,7 +89,7 @@ impl AutorouteEngine {
         }
     }
 
-                                    pub fn init_connection(
+    pub fn init_connection(
         &mut self,
         board: &mut Board,
         net_number: i32,
@@ -127,19 +127,19 @@ impl AutorouteEngine {
         self.time_limit = time_limit;
     }
 
-                                            pub fn time_limit(&self) -> Option<TimeLimit> {
+    pub fn time_limit(&self) -> Option<TimeLimit> {
         self.time_limit
     }
 
-                pub fn complete_expansion_rooms(&self) -> &[RoomId] {
+    pub fn complete_expansion_rooms(&self) -> &[RoomId] {
         &self.complete_expansion_rooms
     }
 
-            pub fn get_net_number(&self) -> i32 {
+    pub fn get_net_number(&self) -> i32 {
         self.net_number
     }
 
-                                            pub fn is_stop_requested(&self, stop: StopCheck<'_>) -> bool {
+    pub fn is_stop_requested(&self, stop: StopCheck<'_>) -> bool {
         if let Some(time_limit) = &self.time_limit
             && time_limit.is_exceeded()
         {
@@ -148,7 +148,7 @@ impl AutorouteEngine {
         stop()
     }
 
-                            pub fn clear(&mut self, board: &mut Board) {
+    pub fn clear(&mut self, board: &mut Board) {
         {
             let tree = tree_mut(board, self.tree);
             self.rooms.clear(tree);
@@ -157,7 +157,7 @@ impl AutorouteEngine {
         board.clear_all_item_temporary_autoroute_data();
     }
 
-                            pub fn add_incomplete_expansion_room(
+    pub fn add_incomplete_expansion_room(
         &mut self,
         shape: Option<TileShape>,
         layer: usize,
@@ -167,7 +167,7 @@ impl AutorouteEngine {
             .new_incomplete_room(shape, layer, contained_shape)
     }
 
-                        pub fn get_first_incomplete_expansion_room(&self) -> Option<IncompleteRoomId> {
+    pub fn get_first_incomplete_expansion_room(&self) -> Option<IncompleteRoomId> {
         self.rooms
             .incomplete_rooms
             .iter()
@@ -175,28 +175,28 @@ impl AutorouteEngine {
             .map(|(index, _)| IncompleteRoomId(index))
     }
 
-            pub fn remove_incomplete_expansion_room(&mut self, room: IncompleteRoomId) {
+    pub fn remove_incomplete_expansion_room(&mut self, room: IncompleteRoomId) {
         self.rooms.remove_incomplete_expansion_room(room);
     }
 
-            pub fn remove_all_doors(&mut self, room: RoomRef) {
+    pub fn remove_all_doors(&mut self, room: RoomRef) {
         self.rooms.remove_all_doors(room);
     }
 
-                                                        pub fn invalidate_drill_pages(&mut self, shape: &TileShape) {
+    pub fn invalidate_drill_pages(&mut self, shape: &TileShape) {
         self.drill_page_array
             .invalidate(shape, &mut self.rooms.drills);
     }
 
-        pub fn drill_pages(&self) -> &DrillPageArray {
+    pub fn drill_pages(&self) -> &DrillPageArray {
         &self.drill_page_array
     }
 
-        pub fn drill_pages_mut(&mut self) -> &mut DrillPageArray {
+    pub fn drill_pages_mut(&mut self) -> &mut DrillPageArray {
         &mut self.drill_page_array
     }
 
-                                                                                        pub fn drill_page_drills(
+    pub fn drill_page_drills(
         &mut self,
         board: &mut Board,
         page: PageId,
@@ -215,11 +215,11 @@ impl AutorouteEngine {
         }
     }
 
-                            pub fn generate_room_id_no(&mut self) -> i32 {
+    pub fn generate_room_id_no(&mut self) -> i32 {
         self.rooms.next_room_id_no()
     }
 
-                                                                pub fn expandable_id_no(&self, object: ExpandableRef) -> i32 {
+    pub fn expandable_id_no(&self, object: ExpandableRef) -> i32 {
         match object {
             ExpandableRef::Door(door) => self
                 .rooms
@@ -239,7 +239,7 @@ impl AutorouteEngine {
         }
     }
 
-                                pub fn expandable_shape(&self, object: ExpandableRef) -> Option<TileShape> {
+    pub fn expandable_shape(&self, object: ExpandableRef) -> Option<TileShape> {
         match object {
             ExpandableRef::Door(door) => self.rooms.door_shape(door),
             ExpandableRef::TargetDoor(door) => {
@@ -254,14 +254,14 @@ impl AutorouteEngine {
         }
     }
 
-                                pub fn expandable_dimension(&self, object: ExpandableRef) -> i32 {
+    pub fn expandable_dimension(&self, object: ExpandableRef) -> i32 {
         match object {
             ExpandableRef::Door(door) => self.rooms.door(door).map_or(0, |door| door.dimension),
             ExpandableRef::TargetDoor(_) | ExpandableRef::Drill(_) | ExpandableRef::Page(_) => 2,
         }
     }
 
-                                                        pub fn maze_search_element(
+    pub fn maze_search_element(
         &self,
         object: ExpandableRef,
         section: i32,
@@ -285,7 +285,7 @@ impl AutorouteEngine {
         }
     }
 
-                                        pub fn expandable_other_room(&self, object: ExpandableRef, room: RoomRef) -> Option<RoomRef> {
+    pub fn expandable_other_room(&self, object: ExpandableRef, room: RoomRef) -> Option<RoomRef> {
         match object {
             ExpandableRef::Door(door) => self.rooms.door(door)?.other_complete_room(room),
             ExpandableRef::TargetDoor(door) => self.rooms.target_door(door)?.other_room(room),
@@ -294,7 +294,7 @@ impl AutorouteEngine {
         }
     }
 
-                            pub fn maze_search_element_count(&self, object: ExpandableRef) -> Option<usize> {
+    pub fn maze_search_element_count(&self, object: ExpandableRef) -> Option<usize> {
         match object {
             ExpandableRef::Door(door) => self.rooms.door(door)?.maze_search_element_count(),
             ExpandableRef::TargetDoor(door) => {
@@ -309,7 +309,7 @@ impl AutorouteEngine {
         }
     }
 
-            pub fn maze_search_element_mut(
+    pub fn maze_search_element_mut(
         &mut self,
         object: ExpandableRef,
         section: i32,
@@ -342,8 +342,7 @@ impl AutorouteEngine {
         }
     }
 
-
-                                                        pub fn remove_complete_expansion_room(&mut self, board: &mut Board, room: RoomId) -> bool {
+    pub fn remove_complete_expansion_room(&mut self, board: &mut Board, room: RoomId) -> bool {
         let room_ref = RoomRef::Complete(room);
         let Some(room_shape) = self.rooms.room_shape(room_ref).cloned() else {
             return false;
@@ -411,7 +410,7 @@ impl AutorouteEngine {
         removed
     }
 
-                                                                            pub fn complete_expansion_room(
+    pub fn complete_expansion_room(
         &mut self,
         board: &mut Board,
         room: IncompleteRoomId,
@@ -435,7 +434,7 @@ impl AutorouteEngine {
         }
     }
 
-                                pub fn complete_expansion_room_or_committed(
+    pub fn complete_expansion_room_or_committed(
         &mut self,
         board: &mut Board,
         room: IncompleteRoomId,
@@ -447,7 +446,7 @@ impl AutorouteEngine {
         }
     }
 
-                    fn complete_expansion_room_inner(
+    fn complete_expansion_room_inner(
         &mut self,
         board: &mut Board,
         room: IncompleteRoomId,
@@ -540,7 +539,7 @@ impl AutorouteEngine {
         }
     }
 
-                fn complete_shape(
+    fn complete_shape(
         &self,
         board: &Board,
         room: IncompleteRoomId,
@@ -566,7 +565,7 @@ impl AutorouteEngine {
         )
     }
 
-                                                                        fn add_complete_room(
+    fn add_complete_room(
         &mut self,
         board: &mut Board,
         room: IncompleteFreeSpaceExpansionRoom,
@@ -624,11 +623,11 @@ impl AutorouteEngine {
         Some(completed_room)
     }
 
-                fn calculate_doors(&mut self, board: &mut Board, room: RoomRef) -> Option<RoomRef> {
+    fn calculate_doors(&mut self, board: &mut Board, room: RoomRef) -> Option<RoomRef> {
         SortedRoomNeighbours::complete(room, self.net_number, board, &mut self.rooms, self.tree)
     }
 
-                                                pub fn complete_neighbour_rooms(&mut self, board: &mut Board, room: RoomRef) {
+    pub fn complete_neighbour_rooms(&mut self, board: &mut Board, room: RoomRef) {
         let mut index = 0usize;
         loop {
             let doors = self.rooms.room_doors(room).to_vec();
@@ -666,8 +665,7 @@ impl AutorouteEngine {
         }
     }
 
-
-                                            pub fn rooms_with_target_items(&self, items: &BTreeSet<ItemId>) -> BTreeSet<RoomId> {
+    pub fn rooms_with_target_items(&self, items: &BTreeSet<ItemId>) -> BTreeSet<RoomId> {
         let mut result = BTreeSet::new();
         for current_room in &self.complete_expansion_rooms {
             let Some(room) = self.rooms.complete_room(*current_room) else {
@@ -685,7 +683,7 @@ impl AutorouteEngine {
         result
     }
 
-                            pub fn validate(&self, board: &Board) -> bool {
+    pub fn validate(&self, board: &Board) -> bool {
         let mut result = true;
         for current_room in &self.complete_expansion_rooms {
             let Some(room) = self.rooms.complete_room(*current_room) else {
@@ -698,7 +696,7 @@ impl AutorouteEngine {
         result
     }
 
-                                                    pub fn reset_all_doors(&mut self, board: &mut Board) {
+    pub fn reset_all_doors(&mut self, board: &mut Board) {
         let complete = self.complete_expansion_rooms.clone();
         for room in complete {
             self.rooms.reset_doors(RoomRef::Complete(room));
@@ -727,7 +725,7 @@ impl AutorouteEngine {
         self.drill_page_array.reset(&mut self.rooms.drills);
     }
 
-                                                                                                                                    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn autoroute_connection(
         &mut self,
         board: &mut Board,
@@ -741,7 +739,7 @@ impl AutorouteEngine {
         self.autoroute_connection_impl(board, start, dest, ctrl, ripped, ripup_costs, stop, false)
     }
 
-                                    #[doc(hidden)]
+    #[doc(hidden)]
     #[allow(clippy::too_many_arguments)]
     pub fn autoroute_connection_with_forced_locator_failure(
         &mut self,
@@ -757,7 +755,7 @@ impl AutorouteEngine {
         self.autoroute_connection_impl(board, start, dest, ctrl, ripped, ripup_costs, stop, force)
     }
 
-                                            #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
     fn autoroute_connection_impl(
         &mut self,
         board: &mut Board,
@@ -867,7 +865,6 @@ impl AutorouteEngine {
             );
         }
 
-
         let mut ripped_connections: BTreeSet<ItemId> = BTreeSet::new();
         let mut changed_nets: BTreeSet<i32> = BTreeSet::new();
         let stop_connection_option = if ctrl.remove_unconnected_vias {
@@ -934,7 +931,6 @@ impl AutorouteEngine {
         }
     }
 }
-
 
 pub(crate) fn tree_of(board: &Board, tree_id: TreeId) -> &ShapeSearchTree {
     board
@@ -1025,19 +1021,19 @@ pub fn route_connection(
 }
 
 struct RouteContext {
-                autoroute_control: AutorouteControl,
-        current_via_costs: i32,
-        route_start_set: BTreeSet<ItemId>,
-        route_dest_set: BTreeSet<ItemId>,
-        max_item_id_before_route: ItemId,
-            strict_drc_board_snapshot: Option<Board>,
+    autoroute_control: AutorouteControl,
+    current_via_costs: i32,
+    route_start_set: BTreeSet<ItemId>,
+    route_dest_set: BTreeSet<ItemId>,
+    max_item_id_before_route: ItemId,
+    strict_drc_board_snapshot: Option<Board>,
 }
 
 enum Steps1To5 {
-            Early(AutorouteAttemptResult),
-        Ran {
-                result: AutorouteAttemptResult,
-                context: Box<RouteContext>,
+    Early(AutorouteAttemptResult),
+    Ran {
+        result: AutorouteAttemptResult,
+        context: Box<RouteContext>,
     },
 }
 
@@ -1144,7 +1140,6 @@ fn route_connection_steps_1_to_5(
         }),
     }
 }
-
 
 #[allow(clippy::too_many_arguments)]
 pub fn route_connection_full(
@@ -1402,8 +1397,6 @@ fn apply_strict_drc_after_route(
     }
     rejection
 }
-
-
 
 fn p7t14b_shape(shape: Option<&TileShape>) -> String {
     let Some(shape) = shape else {

@@ -6,13 +6,13 @@ use crate::autoroute::expansion::{ExpansionDoor, FreeSpaceExpansionRoom, RoomRef
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IncompleteFreeSpaceExpansionRoom {
-        pub base: FreeSpaceExpansionRoom,
-            contained_shape: Option<TileShape>,
-            id_no: i32,
+    pub base: FreeSpaceExpansionRoom,
+    contained_shape: Option<TileShape>,
+    id_no: i32,
 }
 
 impl IncompleteFreeSpaceExpansionRoom {
-            pub fn new(
+    pub fn new(
         shape: Option<TileShape>,
         layer: usize,
         contained_shape: Option<TileShape>,
@@ -24,27 +24,27 @@ impl IncompleteFreeSpaceExpansionRoom {
         }
     }
 
-                                pub fn set_id_no(&mut self, id_no: i32) {
+    pub fn set_id_no(&mut self, id_no: i32) {
         self.id_no = id_no;
     }
 
-        pub fn get_contained_shape(&self) -> Option<&TileShape> {
+    pub fn get_contained_shape(&self) -> Option<&TileShape> {
         self.contained_shape.as_ref()
     }
 
-        pub fn set_contained_shape(&mut self, shape: Option<TileShape>) {
+    pub fn set_contained_shape(&mut self, shape: Option<TileShape>) {
         self.contained_shape = shape;
     }
 
-                pub fn get_target_doors(&self) -> &[TargetDoorId] {
+    pub fn get_target_doors(&self) -> &[TargetDoorId] {
         &[]
     }
 
-                                                                                    pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         self.id_no
     }
 
-                        pub fn java_id(&self) -> i32 {
+    pub fn java_id(&self) -> i32 {
         let shape = self.base.get_shape().unwrap_or_else(|| {
             panic!(
                 "IncompleteFreeSpaceExpansionRoom.getId: the room has no shape — Java NPEs here \
@@ -57,40 +57,39 @@ impl IncompleteFreeSpaceExpansionRoom {
             .wrapping_add(self.base.get_layer() as i32)
     }
 
-
-        pub fn get_shape(&self) -> Option<&TileShape> {
+    pub fn get_shape(&self) -> Option<&TileShape> {
         self.base.get_shape()
     }
 
-        pub fn set_shape(&mut self, shape: Option<TileShape>) {
+    pub fn set_shape(&mut self, shape: Option<TileShape>) {
         self.base.set_shape(shape);
     }
 
-        pub fn get_layer(&self) -> usize {
+    pub fn get_layer(&self) -> usize {
         self.base.get_layer()
     }
 
-        pub fn add_door(&mut self, door: DoorId) {
+    pub fn add_door(&mut self, door: DoorId) {
         self.base.add_door(door);
     }
 
-        pub fn get_doors(&self) -> &[DoorId] {
+    pub fn get_doors(&self) -> &[DoorId] {
         self.base.get_doors()
     }
 
-        pub fn clear_doors(&mut self) {
+    pub fn clear_doors(&mut self) {
         self.base.clear_doors();
     }
 
-        pub fn remove_door(&mut self, door: DoorId) -> bool {
+    pub fn remove_door(&mut self, door: DoorId) -> bool {
         self.base.remove_door(door)
     }
 
-        pub fn reset_doors(&self, doors: &mut Arena<ExpansionDoor>) {
+    pub fn reset_doors(&self, doors: &mut Arena<ExpansionDoor>) {
         self.base.reset_doors(doors);
     }
 
-        pub fn door_exists(&self, doors: &Arena<ExpansionDoor>, other: RoomRef) -> bool {
+    pub fn door_exists(&self, doors: &Arena<ExpansionDoor>, other: RoomRef) -> bool {
         self.base.door_exists(doors, other)
     }
 }

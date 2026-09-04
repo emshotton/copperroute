@@ -51,7 +51,6 @@ fn fixture_bytes(name: &str) -> Vec<u8> {
     std::fs::read(&path).unwrap_or_else(|e| panic!("cannot read fixture {}: {e}", path.display()))
 }
 
-
 #[test]
 fn ses_round_trip_preserves_wire_count() {
     let (mut board, ct) = load_board("Issue593-BBD_Mars-64.dsn");
@@ -215,7 +214,6 @@ fn issue742_ses_round_trips_without_errors() {
     );
     assert_eq!(0, reimported.errors_encountered);
 }
-
 
 const JVM_SUMMARIES: [(&str, usize, usize, usize); 6] = [
     ("Issue026-J2_reference", 89, 10, 0),

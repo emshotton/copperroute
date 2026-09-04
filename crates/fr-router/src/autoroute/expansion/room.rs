@@ -4,27 +4,27 @@ use crate::arena::{DoorId, DrillId, IncompleteRoomId, PageId, TargetDoorId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RoomRef {
-            Complete(RoomId),
-        Obstacle(ObstacleRoomId),
-        Incomplete(IncompleteRoomId),
+    Complete(RoomId),
+    Obstacle(ObstacleRoomId),
+    Incomplete(IncompleteRoomId),
 }
 
 impl RoomRef {
-        pub fn is_complete(self) -> bool {
+    pub fn is_complete(self) -> bool {
         matches!(self, RoomRef::Complete(_) | RoomRef::Obstacle(_))
     }
 
-            pub fn is_free_space(self) -> bool {
+    pub fn is_free_space(self) -> bool {
         matches!(self, RoomRef::Complete(_) | RoomRef::Incomplete(_))
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ExpandableRef {
-        Door(DoorId),
-        TargetDoor(TargetDoorId),
-        Drill(DrillId),
-        Page(PageId),
+    Door(DoorId),
+    TargetDoor(TargetDoorId),
+    Drill(DrillId),
+    Page(PageId),
 }
 
 #[cfg(test)]

@@ -18,7 +18,6 @@ use fr_router::autoroute::maze::trace_shover::{DoorSection, MazeTraceShover};
 use fr_router::autoroute::maze::{AutorouteControl, MazeAdjustment, MazeListElement};
 use fr_settings::RouterSettings;
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -10_000,
@@ -234,7 +233,6 @@ fn door_at(maze: &mut MazeSearchEngine<'_>, x: i32, y: i32, id1: i32, id2: i32) 
         .new_door(RoomRef::Complete(a), RoomRef::Complete(b), 1)
 }
 
-
 #[test]
 fn the_first_pop_expands_the_start_room_through_every_door_of_it() {
     let mut board = probe_board();
@@ -391,7 +389,6 @@ fn an_inactive_layer_is_never_expanded_into() {
     assert_eq!(queue_rows(&maze), before);
     assert_eq!(maze.engine.complete_expansion_rooms().len(), 3);
 }
-
 
 fn bend_fixture(
     maze: &mut MazeSearchEngine<'_>,
@@ -652,7 +649,6 @@ fn an_occupied_section_and_a_null_shape_entry_are_both_refused() {
     assert_eq!(maze.queue.len(), 0);
 }
 
-
 #[test]
 fn room_shape_is_thick_at_the_compensated_half_width_boundary() {
     let mut board = probe_board();
@@ -764,7 +760,6 @@ fn check_neck_down_at_dest_pin_answers_the_first_pin_target_door_whichever_it_is
     );
 }
 
-
 #[test]
 fn a_small_door_refuses_the_whole_round() {
     for (half_width, door_is_small, expanded) in [(1600, false, true), (100_000, true, false)] {
@@ -861,7 +856,7 @@ fn the_door_list_is_snapshotted_after_completing_neighbours() {
     maze.engine.complete_neighbour_rooms(&mut board, room);
     let after: Vec<DoorId> = maze.engine.rooms.room_doors(room).to_vec();
     assert_eq!(after.len(), 3, "doorsAfterCompletion=3");
-        type DoorRow = (i32, i32, bool, (i32, i32, i32, i32));
+    type DoorRow = (i32, i32, bool, (i32, i32, i32, i32));
     let rows: Vec<DoorRow> = after
         .iter()
         .map(|door| {
@@ -939,7 +934,6 @@ fn a_stale_tree_entry_is_skipped_silently() {
     assert!(!maze.expand_to_target_doors(&mut board, &seed, true, false, &mid));
     assert_eq!(maze.queue.len(), 0);
 }
-
 
 #[test]
 fn shove_trace_room_does_not_mutate_the_board() {

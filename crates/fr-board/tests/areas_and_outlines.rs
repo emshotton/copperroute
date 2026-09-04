@@ -4,7 +4,6 @@ use fr_geometry::{
     Vector,
 };
 
-
 struct Fixture {
     library: BoardLibrary,
     components: Components,
@@ -38,7 +37,7 @@ impl Fixture {
         }
     }
 
-                fn set_flip_style_rotate_first(&mut self, value: bool) {
+    fn set_flip_style_rotate_first(&mut self, value: bool) {
         self.components.set_flip_style_rotate_first(value);
     }
 }
@@ -107,7 +106,6 @@ fn boxes(tiles: &[TileShape]) -> Vec<IntBox> {
 fn bx(llx: i32, lly: i32, urx: i32, ury: i32) -> IntBox {
     IntBox::from_coords(llx, lly, urx, ury)
 }
-
 
 #[test]
 fn an_l_shaped_obstacle_area_splits_into_two_tiles_and_carries_the_translation() {
@@ -195,7 +193,6 @@ fn the_mirror_is_a_vertical_mirror_through_the_origin() {
     assert_eq!(boxes(tiles), vec![bx(-30, 0, -10, 10), bx(-10, 0, 0, 20)]);
 }
 
-
 #[test]
 fn translate_by_adds_to_the_translation_and_drops_the_absolute_area_cache() {
     let f = Fixture::new();
@@ -257,7 +254,6 @@ fn change_placement_side_flips_the_layer_and_mirrors_the_translation() {
     assert_eq!(area.get_layer(), 2);
 }
 
-
 #[test]
 fn copy_carries_the_whole_geometry_and_the_name() {
     let f = Fixture::new();
@@ -289,7 +285,6 @@ fn the_three_subclasses_share_the_obstacle_area_geometry() {
     assert_eq!(component_keepout.tile_shape_count(&f.ctx()), 2);
     assert_eq!(conduction.tile_shape_count(&f.ctx()), 2);
 }
-
 
 #[test]
 fn conduction_area_is_obstacle_toggles_with_its_own_flag() {
@@ -352,7 +347,6 @@ fn conduction_area_clear_derived_data_drops_the_absolute_area() {
     assert_eq!(item.get_autoroute_info_pur(), None);
     assert_eq!(item.bounding_box(&f.ctx()), bx(100, 200, 120, 220));
 }
-
 
 fn component_outline(id: u32, is_front: bool, rotation_in_degree: f64) -> ComponentOutline {
     ComponentOutline::new(
@@ -448,7 +442,6 @@ fn component_outline_copy_carries_the_geometry_but_drops_the_nets() {
     assert_eq!(copy.get_rotation_in_degree(), 90.0);
     assert_eq!(copy.bounding_box(&f.ctx()), original.bounding_box(&f.ctx()));
 }
-
 
 fn outline_square() -> PolylineShapeRef {
     PolylineShapeRef::Polygon(PolygonShape::from_points(&[
@@ -628,7 +621,6 @@ fn generate_keepout_outside_is_a_no_op_when_the_value_does_not_change() {
     assert!(outline.keepout_outside_outline_generated());
 }
 
-
 #[test]
 fn item_dispatch_reaches_every_area_body() {
     let f = Fixture::new();
@@ -666,7 +658,6 @@ fn item_dispatch_reaches_every_area_body() {
         item.clear_derived_data();
     }
 }
-
 
 #[test]
 fn split_to_convex_is_memoised_and_hands_back_the_same_slice() {

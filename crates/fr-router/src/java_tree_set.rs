@@ -20,7 +20,7 @@ pub struct JavaTreeSet<T> {
     nodes: Vec<Node<T>>,
     root: Option<usize>,
     size: usize,
-                    free: Vec<usize>,
+    free: Vec<usize>,
 }
 
 impl<T> Default for JavaTreeSet<T> {
@@ -35,25 +35,25 @@ impl<T> Default for JavaTreeSet<T> {
 }
 
 impl<T: Ord> JavaTreeSet<T> {
-            pub fn add(&mut self, key: T) -> bool {
+    pub fn add(&mut self, key: T) -> bool {
         self.add_by(key, T::cmp)
     }
 }
 
 impl<T> JavaTreeSet<T> {
-        pub fn new() -> JavaTreeSet<T> {
+    pub fn new() -> JavaTreeSet<T> {
         JavaTreeSet::default()
     }
 
-        pub fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.size
     }
 
-        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.size == 0
     }
 
-                                                pub fn add_by<F>(&mut self, key: T, mut cmp: F) -> bool
+    pub fn add_by<F>(&mut self, key: T, mut cmp: F) -> bool
     where
         F: FnMut(&T, &T) -> Ordering,
     {
@@ -91,7 +91,7 @@ impl<T> JavaTreeSet<T> {
         true
     }
 
-        fn alloc(&mut self, key: T, parent: Option<usize>, color: Color) -> usize {
+    fn alloc(&mut self, key: T, parent: Option<usize>, color: Color) -> usize {
         let node = Node {
             key: Some(key),
             left: None,
@@ -111,14 +111,14 @@ impl<T> JavaTreeSet<T> {
         }
     }
 
-        fn key(&self, index: usize) -> &T {
+    fn key(&self, index: usize) -> &T {
         self.nodes[index]
             .key
             .as_ref()
             .expect("a node reachable from the tree always holds its key")
     }
 
-                            pub fn poll_first(&mut self) -> Option<T> {
+    pub fn poll_first(&mut self) -> Option<T> {
         let p = self.first_entry()?;
         let key = self.nodes[p]
             .key
@@ -128,7 +128,7 @@ impl<T> JavaTreeSet<T> {
         Some(key)
     }
 
-                        fn delete_entry(&mut self, p: usize) {
+    fn delete_entry(&mut self, p: usize) {
         let mut p = p;
         self.size -= 1;
 
@@ -183,14 +183,14 @@ impl<T> JavaTreeSet<T> {
         self.free.push(p);
     }
 
-                        pub fn iter(&self) -> JavaTreeSetIter<'_, T> {
+    pub fn iter(&self) -> JavaTreeSetIter<'_, T> {
         JavaTreeSetIter {
             set: self,
             next: self.first_entry(),
         }
     }
 
-            pub fn last(&self) -> Option<&T> {
+    pub fn last(&self) -> Option<&T> {
         let mut p = self.root?;
         while let Some(right) = self.nodes[p].right {
             p = right;
@@ -198,7 +198,7 @@ impl<T> JavaTreeSet<T> {
         Some(self.key(p))
     }
 
-        fn first_entry(&self) -> Option<usize> {
+    fn first_entry(&self) -> Option<usize> {
         let mut p = self.root?;
         while let Some(left) = self.nodes[p].left {
             p = left;
@@ -206,7 +206,7 @@ impl<T> JavaTreeSet<T> {
         Some(p)
     }
 
-        fn successor(&self, t: usize) -> Option<usize> {
+    fn successor(&self, t: usize) -> Option<usize> {
         if let Some(right) = self.nodes[t].right {
             let mut p = right;
             while let Some(left) = self.nodes[p].left {
@@ -225,30 +225,29 @@ impl<T> JavaTreeSet<T> {
         p
     }
 
-
-        fn color_of(&self, p: Option<usize>) -> Color {
+    fn color_of(&self, p: Option<usize>) -> Color {
         p.map_or(Color::Black, |p| self.nodes[p].color)
     }
 
-        fn parent_of(&self, p: Option<usize>) -> Option<usize> {
+    fn parent_of(&self, p: Option<usize>) -> Option<usize> {
         p.and_then(|p| self.nodes[p].parent)
     }
 
-        fn left_of(&self, p: Option<usize>) -> Option<usize> {
+    fn left_of(&self, p: Option<usize>) -> Option<usize> {
         p.and_then(|p| self.nodes[p].left)
     }
 
-        fn right_of(&self, p: Option<usize>) -> Option<usize> {
+    fn right_of(&self, p: Option<usize>) -> Option<usize> {
         p.and_then(|p| self.nodes[p].right)
     }
 
-        fn set_color(&mut self, p: Option<usize>, color: Color) {
+    fn set_color(&mut self, p: Option<usize>, color: Color) {
         if let Some(p) = p {
             self.nodes[p].color = color;
         }
     }
 
-        fn rotate_left(&mut self, p: Option<usize>) {
+    fn rotate_left(&mut self, p: Option<usize>) {
         let Some(p) = p else { return };
         let Some(r) = self.nodes[p].right else { return };
         let r_left = self.nodes[r].left;
@@ -272,7 +271,7 @@ impl<T> JavaTreeSet<T> {
         self.nodes[p].parent = Some(r);
     }
 
-        fn rotate_right(&mut self, p: Option<usize>) {
+    fn rotate_right(&mut self, p: Option<usize>) {
         let Some(p) = p else { return };
         let Some(l) = self.nodes[p].left else { return };
         let l_right = self.nodes[l].right;
@@ -296,7 +295,7 @@ impl<T> JavaTreeSet<T> {
         self.nodes[p].parent = Some(l);
     }
 
-        fn fix_after_insertion(&mut self, x: usize) {
+    fn fix_after_insertion(&mut self, x: usize) {
         let mut x = Some(x);
         self.set_color(x, Color::Red);
         while let Some(node) = x
@@ -343,7 +342,7 @@ impl<T> JavaTreeSet<T> {
         self.set_color(root, Color::Black);
     }
 
-        fn fix_after_deletion(&mut self, x: usize) {
+    fn fix_after_deletion(&mut self, x: usize) {
         let mut x = Some(x);
         while x != self.root && self.color_of(x) == Color::Black {
             if x == self.left_of(self.parent_of(x)) {
@@ -473,7 +472,7 @@ mod tests {
         );
     }
 
-                    #[test]
+    #[test]
     fn poll_first_agrees_with_a_btreeset_over_interleaved_adds_and_removes() {
         use std::collections::BTreeSet;
 
@@ -509,7 +508,7 @@ mod tests {
         assert_eq!(set.poll_first(), None);
     }
 
-                #[test]
+    #[test]
     fn a_drained_set_reuses_its_slots() {
         let mut set = JavaTreeSet::new();
         for value in 0..64 {

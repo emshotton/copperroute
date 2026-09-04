@@ -6,17 +6,17 @@ use crate::autoroute::AutorouteAttemptState;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RoutingFailureLog {
-            failures: BTreeMap<ItemId, ItemFailureInfo>,
+    failures: BTreeMap<ItemId, ItemFailureInfo>,
 }
 
 impl RoutingFailureLog {
-                        pub const FAILURE_THRESHOLD: i32 = 50;
+    pub const FAILURE_THRESHOLD: i32 = 50;
 
-        pub fn new() -> RoutingFailureLog {
+    pub fn new() -> RoutingFailureLog {
         RoutingFailureLog::default()
     }
 
-                                                                            pub fn record_failure(
+    pub fn record_failure(
         &mut self,
         board: &Board,
         item: ItemId,
@@ -24,43 +24,44 @@ impl RoutingFailureLog {
         state: AutorouteAttemptState,
         reason: Option<&str>,
     ) {
-        let info = self.failures.entry(item).or_insert_with(|| {
-            ItemFailureInfo::new(board, item)
-        });
+        let info = self
+            .failures
+            .entry(item)
+            .or_insert_with(|| ItemFailureInfo::new(board, item));
         info.record_failure(pass_no, state, reason);
     }
 
-                                            pub fn failure_count(&self, item: ItemId) -> i32 {
+    pub fn failure_count(&self, item: ItemId) -> i32 {
         self.failures
             .get(&item)
             .map_or(0, |info| info.failure_count)
     }
 
-                    pub fn entry(&self, item: ItemId) -> Option<&ItemFailureInfo> {
+    pub fn entry(&self, item: ItemId) -> Option<&ItemFailureInfo> {
         self.failures.get(&item)
     }
 
-            pub fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.failures.len()
     }
 
-        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.failures.is_empty()
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ItemFailureInfo {
-        pub item: ItemId,
-        pub net_number: i32,
-        pub failure_count: i32,
-                pub last_failure_state: Option<AutorouteAttemptState>,
-        pub last_failure_reason: String,
-            pub last_attempt_pass: i64,
+    pub item: ItemId,
+    pub net_number: i32,
+    pub failure_count: i32,
+    pub last_failure_state: Option<AutorouteAttemptState>,
+    pub last_failure_reason: String,
+    pub last_attempt_pass: i64,
 }
 
 impl ItemFailureInfo {
-                            fn new(board: &Board, item: ItemId) -> ItemFailureInfo {
+    fn new(board: &Board, item: ItemId) -> ItemFailureInfo {
         let net_number = board
             .get_item(item)
             .filter(|i| i.net_count() > 0)
@@ -75,7 +76,7 @@ impl ItemFailureInfo {
         }
     }
 
-            fn record_failure(&mut self, pass_no: i32, state: AutorouteAttemptState, reason: Option<&str>) {
+    fn record_failure(&mut self, pass_no: i32, state: AutorouteAttemptState, reason: Option<&str>) {
         self.failure_count += 1;
         self.last_attempt_pass = i64::from(pass_no);
         self.last_failure_state = Some(state);

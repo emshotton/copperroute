@@ -12,7 +12,6 @@ fn boxed<S: SettingsSource + 'static>(source: S) -> Box<dyn SettingsSource> {
     Box::new(source)
 }
 
-
 fn two_merge_form(
     case: &matrix::Case,
     board: Option<&Board>,
@@ -182,7 +181,6 @@ fn ses_tier_is_a_no_op() {
     }
 }
 
-
 fn dsn_settings(layer_count: usize, via_costs: i32) -> RouterSettings {
     let mut settings = RouterSettings::new();
     settings.set_layer_count(layer_count);
@@ -245,8 +243,8 @@ fn rules_per_layer_trace_costs_are_discarded_in_the_headless_path() {
     let host = host();
     let case = matrix::Case {
         id: "q9".to_string(),
-        dsn: &matrix::DSN_CASES[1], 
-        rules: &matrix::RULES_CASES[2], 
+        dsn: &matrix::DSN_CASES[1],
+        rules: &matrix::RULES_CASES[2],
         env: &matrix::ENV_CASES[0],
         cli: &matrix::CLI_CASES[0],
     };
@@ -377,7 +375,6 @@ fn dsn_source_stub(settings: &RouterSettings) -> impl SettingsSource + use<> {
     }
     Stub(settings.clone())
 }
-
 
 #[test]
 fn scheduler_rules_path_follows_javas_else_if_chain() {

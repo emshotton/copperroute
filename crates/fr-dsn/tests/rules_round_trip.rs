@@ -7,7 +7,6 @@ use fr_dsn::parser::DsnRouterSettings;
 use fr_dsn::parser::scope_parameter::DsnReadOptions;
 use fr_dsn::{BoardReadResult, CoordinateTransform, rules_reader, rules_writer};
 
-
 fn load_board(name: &str) -> (Board, CoordinateTransform) {
     let bytes = fixture_bytes(name);
     let options = DsnReadOptions::default();
@@ -61,7 +60,6 @@ fn write_rules(
     rules_writer::write(board, ct, settings, &mut out, design_name).expect("writing to a Vec");
     out
 }
-
 
 #[test]
 fn rules_round_trip() {
@@ -151,10 +149,10 @@ fn invalid_rules_file_returns_false() {
 fn every_bad_header_token_returns_false() {
     let (mut board, ct) = load_board("Issue029-hw48na.dsn");
     for input in [
-        &b""[..],                    
-        &b"rules pcb x"[..],         
-        &b"(pcb x)"[..],             
-        &b"(rules structure x)"[..], 
+        &b""[..],
+        &b"rules pcb x"[..],
+        &b"(pcb x)"[..],
+        &b"(rules structure x)"[..],
     ] {
         let ok = rules_reader::read(input, "x", &mut board, &ct, None).expect("no scanner error");
         assert!(
@@ -175,7 +173,6 @@ fn read_existing_rules_fixture() {
         "RulesReader.read must return true for a known-valid rules fixture"
     );
 }
-
 
 #[test]
 fn rules_state_matches_java_issue593() {
@@ -333,7 +330,6 @@ fn dump_rules(board: &mut Board, ok: bool) -> Vec<String> {
     out
 }
 
-
 #[test]
 fn rules_writer_matches_java_issue593() {
     let (board, ct) = load_board("Issue593-BBD_Mars-64.dsn");
@@ -373,7 +369,6 @@ fn assert_bytes_match(actual: &[u8], golden_name: &str) {
     );
     assert_eq!(actual, expected.as_slice(), "{golden_name}: bytes differ");
 }
-
 
 #[test]
 fn apply_via_info_leaves_via_rules_on_their_own_copies() {
@@ -470,7 +465,6 @@ fn re_declared_via_info_leaves_the_rule_on_the_detached_original_like_java() {
     );
 }
 
-
 #[test]
 fn a_layer_rule_naming_an_unknown_layer_is_dropped_not_widened() {
     let (mut board, ct) = load_board("Issue029-hw48na.dsn");
@@ -498,7 +492,6 @@ fn default_half_widths(board: &mut Board) -> Vec<i32> {
         .map(|layer| board.rules.get_default_trace_half_width(layer))
         .collect()
 }
-
 
 #[test]
 fn read_router_settings_extracts_the_autoroute_scope() {
@@ -592,9 +585,9 @@ fn apply_new_values_from_skips_absent_scalars() {
 #[test]
 fn read_router_settings_returns_none_without_a_scope() {
     for input in [
-        &b""[..],                                 
-        &b"not a rules file"[..],                 
-        &b"(rules PCB x (rule (width 1.0)))"[..], 
+        &b""[..],
+        &b"not a rules file"[..],
+        &b"(rules PCB x (rule (width 1.0)))"[..],
     ] {
         assert_eq!(
             rules_reader::read_router_settings(input).expect("no scanner error"),

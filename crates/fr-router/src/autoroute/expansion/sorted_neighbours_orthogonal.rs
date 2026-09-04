@@ -15,16 +15,16 @@ use crate::autoroute::tree_ext::AutorouteSearchTreeExt;
 
 #[derive(Debug, Clone)]
 pub struct SortedOrthogonalRoomNeighbours {
-        pub completed_room: RoomRef,
-        pub sorted_neighbours: JavaTreeSet<SortedRoomNeighbour>,
-        pub from_room: RoomRef,
-            pub is_obstacle_expansion_room: bool,
-            pub room_shape: IntBox,
-            pub edge_interior_touches_obstacle: [bool; 4],
+    pub completed_room: RoomRef,
+    pub sorted_neighbours: JavaTreeSet<SortedRoomNeighbour>,
+    pub from_room: RoomRef,
+    pub is_obstacle_expansion_room: bool,
+    pub room_shape: IntBox,
+    pub edge_interior_touches_obstacle: [bool; 4],
 }
 
 impl SortedOrthogonalRoomNeighbours {
-        fn new(
+    fn new(
         from_room: RoomRef,
         completed_room: RoomRef,
         room_shape: IntBox,
@@ -39,7 +39,7 @@ impl SortedOrthogonalRoomNeighbours {
         }
     }
 
-                                pub fn calculate(
+    pub fn calculate(
         room: RoomRef,
         net_number: i32,
         board: &mut Board,
@@ -70,7 +70,7 @@ impl SortedOrthogonalRoomNeighbours {
         }
     }
 
-                        pub fn calculate_neighbours(
+    pub fn calculate_neighbours(
         room: RoomRef,
         net_number: i32,
         board: &mut Board,
@@ -254,7 +254,7 @@ impl SortedOrthogonalRoomNeighbours {
         Some(result)
     }
 
-                fn add_sorted_neighbour(
+    fn add_sorted_neighbour(
         &mut self,
         search_tree_object: TreeObject,
         rooms: &ExpansionRoomStore,
@@ -272,7 +272,7 @@ impl SortedOrthogonalRoomNeighbours {
         self.sorted_neighbours.add(new_neighbour);
     }
 
-                fn try_remove_edge(
+    fn try_remove_edge(
         &self,
         net_number: i32,
         board: &mut Board,
@@ -373,7 +373,7 @@ impl SortedOrthogonalRoomNeighbours {
         true
     }
 
-                            fn insert_incomplete_room(
+    fn insert_incomplete_room(
         &self,
         board: &mut Board,
         rooms: &mut ExpansionRoomStore,
@@ -409,7 +409,7 @@ impl SortedOrthogonalRoomNeighbours {
         rooms.add_door(new_room, new_door);
     }
 
-            pub fn calculate_new_incomplete_rooms(
+    pub fn calculate_new_incomplete_rooms(
         &self,
         board: &mut Board,
         rooms: &mut ExpansionRoomStore,
@@ -625,7 +625,6 @@ impl SortedOrthogonalRoomNeighbours {
     }
 }
 
-
 fn calculate_incomplete_rooms_with_empty_neighbours(
     room: RoomRef,
     board: &mut Board,
@@ -707,19 +706,18 @@ fn remove_border_line(room_box: &IntBox, remove_edge_no: i32) -> Option<IntBox> 
     }
 }
 
-
 #[derive(Debug, Clone)]
 pub struct SortedRoomNeighbour {
-        pub search_tree_object: TreeObject,
-        pub object_id: i32,
-        pub shape: IntBox,
-            pub intersection: IntBox,
-                pub first_touching_side: i32,
-            pub last_touching_side: i32,
+    pub search_tree_object: TreeObject,
+    pub object_id: i32,
+    pub shape: IntBox,
+    pub intersection: IntBox,
+    pub first_touching_side: i32,
+    pub last_touching_side: i32,
 }
 
 impl SortedRoomNeighbour {
-                            pub fn new(
+    pub fn new(
         search_tree_object: TreeObject,
         object_id: i32,
         neighbour_shape: IntBox,
@@ -788,7 +786,7 @@ impl SortedRoomNeighbour {
         }
     }
 
-                pub fn compare_to(&self, other: &SortedRoomNeighbour) -> Ordering {
+    pub fn compare_to(&self, other: &SortedRoomNeighbour) -> Ordering {
         if self.first_touching_side > other.first_touching_side {
             return Ordering::Greater;
         }

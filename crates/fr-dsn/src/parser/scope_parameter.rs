@@ -17,7 +17,7 @@ use crate::parser::{header, library, network, part_library, placement, structure
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DsnReadOptions {
-                                        pub normalize_time_limit: Duration,
+    pub normalize_time_limit: Duration,
 }
 
 impl Default for DsnReadOptions {
@@ -29,7 +29,7 @@ impl Default for DsnReadOptions {
 }
 
 impl DsnReadOptions {
-            #[must_use]
+    #[must_use]
     pub fn normalize_time_limit_ms(&self) -> i32 {
         i32::try_from(self.normalize_time_limit.as_millis()).unwrap_or(i32::MAX)
     }
@@ -37,36 +37,36 @@ impl DsnReadOptions {
 
 #[derive(Debug)]
 pub struct ReadScopeParameter<'a> {
-        pub scanner: DsnScanner,
-            pub board: Option<Board>,
-        pub netlist: NetList,
-        pub plane_list: Vec<DsnPlane>,
-        pub placement_list: Vec<ComponentPlacement>,
-                pub logical_part_mappings: Vec<DsnLogicalPartMapping>,
-        pub logical_parts: Vec<DsnLogicalPart>,
-        pub constants: Vec<Vec<String>>,
-                                                    pub via_padstack_names: Option<Vec<String>>,
-        pub string_quote: String,
-        pub host_cad: Option<String>,
-        pub host_version: Option<String>,
-        pub dsn_file_generated_by_host: bool,
-                    pub write_resolution: Option<fr_board::WriteResolution>,
-                    pub via_at_smd_allowed: bool,
-        pub board_outline_ok: bool,
-        pub coordinate_transform: Option<CoordinateTransform>,
-        pub layer_structure: Option<DsnLayerStructure>,
-        pub autoroute_settings: Option<DsnRouterSettings>,
-        pub unit: Unit,
-        pub resolution: i32,
-        pub snap_angle: AngleRestriction,
-        pub warnings: Vec<String>,
-                    pub truncation: Option<String>,
-                        pub id_generator: ItemIdGenerator,
-        pub options: &'a DsnReadOptions,
+    pub scanner: DsnScanner,
+    pub board: Option<Board>,
+    pub netlist: NetList,
+    pub plane_list: Vec<DsnPlane>,
+    pub placement_list: Vec<ComponentPlacement>,
+    pub logical_part_mappings: Vec<DsnLogicalPartMapping>,
+    pub logical_parts: Vec<DsnLogicalPart>,
+    pub constants: Vec<Vec<String>>,
+    pub via_padstack_names: Option<Vec<String>>,
+    pub string_quote: String,
+    pub host_cad: Option<String>,
+    pub host_version: Option<String>,
+    pub dsn_file_generated_by_host: bool,
+    pub write_resolution: Option<fr_board::WriteResolution>,
+    pub via_at_smd_allowed: bool,
+    pub board_outline_ok: bool,
+    pub coordinate_transform: Option<CoordinateTransform>,
+    pub layer_structure: Option<DsnLayerStructure>,
+    pub autoroute_settings: Option<DsnRouterSettings>,
+    pub unit: Unit,
+    pub resolution: i32,
+    pub snap_angle: AngleRestriction,
+    pub warnings: Vec<String>,
+    pub truncation: Option<String>,
+    pub id_generator: ItemIdGenerator,
+    pub options: &'a DsnReadOptions,
 }
 
 impl<'a> ReadScopeParameter<'a> {
-            #[must_use]
+    #[must_use]
     pub fn new(scanner: DsnScanner, options: &'a DsnReadOptions) -> ReadScopeParameter<'a> {
         ReadScopeParameter {
             scanner,
@@ -100,15 +100,15 @@ impl<'a> ReadScopeParameter<'a> {
 }
 
 pub struct WriteScopeParameter<'a> {
-        pub board: &'a Board,
-        pub file: IndentFileWriter<&'a mut dyn Write>,
-                pub identifier_type: IdentifierType,
-        pub coordinate_transform: &'a CoordinateTransform,
-        pub compat_mode: bool,
+    pub board: &'a Board,
+    pub file: IndentFileWriter<&'a mut dyn Write>,
+    pub identifier_type: IdentifierType,
+    pub coordinate_transform: &'a CoordinateTransform,
+    pub compat_mode: bool,
 }
 
 impl<'a> WriteScopeParameter<'a> {
-                    #[must_use]
+    #[must_use]
     pub fn new(
         board: &'a Board,
         file: IndentFileWriter<&'a mut dyn Write>,

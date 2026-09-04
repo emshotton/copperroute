@@ -29,15 +29,14 @@ pub use crate::parser::geometry::{DsnLayer, DsnLayerStructure};
 
 const CRIT_INT: f64 = fr_geometry::CRIT_INT as f64;
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnPlane {
-        pub area: ReadAreaScopeResult,
-        pub net_name: String,
+    pub area: ReadAreaScopeResult,
+    pub net_name: String,
 }
 
 impl DsnPlane {
-        #[must_use]
+    #[must_use]
     pub fn new(area: ReadAreaScopeResult, net_name: impl Into<String>) -> DsnPlane {
         DsnPlane {
             area,
@@ -67,7 +66,6 @@ pub fn read_plane_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError
     Ok(true)
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum KeepoutType {
     Keepout,
@@ -77,13 +75,13 @@ enum KeepoutType {
 
 #[derive(Debug, Default)]
 struct BoardConstructionInfo {
-        layer_info: Vec<DsnLayer>,
-        bounding_shape: Option<DsnShape>,
-        outline_shapes: Vec<DsnShape>,
-        outline_clearance_class_name: Option<String>,
-        found_layer_count: i32,
-        default_rules: Vec<DsnRule>,
-        layer_dependent_rules: Vec<StructureLayerRule>,
+    layer_info: Vec<DsnLayer>,
+    bounding_shape: Option<DsnShape>,
+    outline_shapes: Vec<DsnShape>,
+    outline_clearance_class_name: Option<String>,
+    found_layer_count: i32,
+    default_rules: Vec<DsnRule>,
+    layer_dependent_rules: Vec<StructureLayerRule>,
 }
 
 #[derive(Debug)]
@@ -92,7 +90,7 @@ struct StructureLayerRule {
     rule: Vec<DsnRule>,
 }
 
-#[allow(clippy::too_many_lines)] 
+#[allow(clippy::too_many_lines)]
 pub fn read_structure_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
     let mut info = BoardConstructionInfo::default();
 
@@ -241,7 +239,6 @@ pub fn read_structure_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnE
     }
 
     insert_missing_power_planes(&info.layer_info, p);
-
 
     Ok(result)
 }
@@ -424,7 +421,6 @@ pub fn read_snap_angle(
     }
     Ok(Some(snap_angle))
 }
-
 
 fn insert_keepout(
     area: Option<&ReadAreaScopeResult>,
@@ -677,7 +673,6 @@ fn insert_missing_power_planes(layer_info: &[DsnLayer], p: &mut ReadScopeParamet
     }
 }
 
-
 fn update_board_rules(
     p: &ReadScopeParameter<'_>,
     info: &BoardConstructionInfo,
@@ -738,8 +733,8 @@ fn update_board_rules(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuleLayerScope {
-        AllLayers,
-        One(usize),
+    AllLayers,
+    One(usize),
 }
 
 pub fn set_clearance_rule(
@@ -804,7 +799,7 @@ pub fn set_clearance_rule(
         };
 
         let mut first_class_no = if current_pair[0] == "wire" {
-            Some(1) 
+            Some(1)
         } else {
             board_rules.clearance_matrix.get_no(&current_pair[0])
         };
@@ -812,7 +807,7 @@ pub fn set_clearance_rule(
             first_class_no = Some(append_clearance_class(board_rules, &current_pair[0]));
         }
         let mut second_class_no = if current_pair[1] == "wire" {
-            Some(1) 
+            Some(1)
         } else {
             board_rules.clearance_matrix.get_no(&current_pair[1])
         };
@@ -893,7 +888,6 @@ fn append_clearance_class(board_rules: &mut BoardRules, name: &str) -> usize {
     result
 }
 
-
 struct OutlineShape {
     shape: PolylineShapeRef,
     bounding_box: IntBox,
@@ -902,7 +896,7 @@ struct OutlineShape {
 }
 
 impl OutlineShape {
-        fn new(shape: PolylineShapeRef) -> OutlineShape {
+    fn new(shape: PolylineShapeRef) -> OutlineShape {
         let bounding_box = shape.as_ops().bounding_box();
         let convex_shapes = shape.split_to_convex();
         OutlineShape {
@@ -913,7 +907,7 @@ impl OutlineShape {
         }
     }
 
-        fn contains_all_corners(&self, other_shape: &OutlineShape) -> bool {
+    fn contains_all_corners(&self, other_shape: &OutlineShape) -> bool {
         let Some(convex_shapes) = &self.convex_shapes else {
             return false;
         };
@@ -958,7 +952,7 @@ fn separate_holes(outline_shapes: &mut Vec<PolylineShapeRef>) -> Vec<PolylineSha
     hole_list
 }
 
-#[allow(clippy::too_many_lines)] 
+#[allow(clippy::too_many_lines)]
 fn create_board(
     p: &mut ReadScopeParameter<'_>,
     info: &mut BoardConstructionInfo,
@@ -1081,7 +1075,6 @@ fn create_board(
         )
     };
 
-
     update_board_rules(p, info, &mut board_rules);
     board_rules.trace_angle_restriction = p.snap_angle;
 
@@ -1136,7 +1129,6 @@ fn to_polyline_shape(shape: Shape) -> Option<PolylineShapeRef> {
         Shape::Circle(_) => None,
     }
 }
-
 
 pub fn write_structure_scope(
     p: &mut WriteScopeParameter<'_>,

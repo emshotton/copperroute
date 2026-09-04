@@ -5,15 +5,15 @@ use fr_geometry::FloatPoint;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AirLine {
-        pub net_number: i32,
-        pub from_item: ItemId,
-        pub from_corner: FloatPoint,
-        pub to_item: ItemId,
-        pub to_corner: FloatPoint,
+    pub net_number: i32,
+    pub from_item: ItemId,
+    pub from_corner: FloatPoint,
+    pub to_item: ItemId,
+    pub to_corner: FloatPoint,
 }
 
 impl AirLine {
-        pub fn new(
+    pub fn new(
         net_number: i32,
         from_item: ItemId,
         from_corner: FloatPoint,
@@ -29,7 +29,7 @@ impl AirLine {
         }
     }
 
-                                pub fn compare_by_net_name(&self, other: &AirLine, nets: &Nets) -> Ordering {
+    pub fn compare_by_net_name(&self, other: &AirLine, nets: &Nets) -> Ordering {
         let name = |number: i32| nets.get(number).map(|net| net.name.as_str()).unwrap_or("");
         java_string_compare(name(self.net_number), name(other.net_number))
     }

@@ -1,4 +1,3 @@
-
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
@@ -9,12 +8,12 @@ use crate::timespan::GRACE_PERIOD_SECONDS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Deadline {
-            pub stop_at: Instant,
-                pub timed_out_at: Instant,
+    pub stop_at: Instant,
+    pub timed_out_at: Instant,
 }
 
 impl Deadline {
-                                            pub fn from_base(base: Instant, seconds: i64) -> Deadline {
+    pub fn from_base(base: Instant, seconds: i64) -> Deadline {
         let stop_at = offset(base, seconds);
         Deadline {
             stop_at,
@@ -22,15 +21,15 @@ impl Deadline {
         }
     }
 
-            pub fn in_seconds(seconds: i64) -> Deadline {
+    pub fn in_seconds(seconds: i64) -> Deadline {
         Deadline::from_base(Instant::now(), seconds)
     }
 
-        pub fn is_stop_due_at(&self, now: Instant) -> bool {
+    pub fn is_stop_due_at(&self, now: Instant) -> bool {
         now >= self.stop_at
     }
 
-        pub fn is_timed_out_at(&self, now: Instant) -> bool {
+    pub fn is_timed_out_at(&self, now: Instant) -> bool {
         now >= self.timed_out_at
     }
 }
@@ -47,30 +46,30 @@ fn offset(base: Instant, seconds: i64) -> Instant {
 
 #[derive(Debug, Clone, Default)]
 pub struct CancelToken {
-                cancel_all: Arc<AtomicBool>,
-            cancel_auto_router: Arc<AtomicBool>,
-            deadline: Option<Deadline>,
+    cancel_all: Arc<AtomicBool>,
+    cancel_auto_router: Arc<AtomicBool>,
+    deadline: Option<Deadline>,
 }
 
 impl CancelToken {
-                pub fn new() -> CancelToken {
+    pub fn new() -> CancelToken {
         CancelToken::default()
     }
 
-                            pub fn with_timeout(total: Duration) -> CancelToken {
+    pub fn with_timeout(total: Duration) -> CancelToken {
         CancelToken::with_deadline(Deadline::in_seconds(
             total.as_secs().min(i64::MAX as u64) as i64
         ))
     }
 
-            pub fn with_deadline(deadline: Deadline) -> CancelToken {
+    pub fn with_deadline(deadline: Deadline) -> CancelToken {
         CancelToken {
             deadline: Some(deadline),
             ..CancelToken::default()
         }
     }
 
-                                    #[must_use]
+    #[must_use]
     pub fn with_deadline_from(&self, deadline: Deadline) -> CancelToken {
         CancelToken {
             deadline: Some(deadline),
@@ -78,32 +77,32 @@ impl CancelToken {
         }
     }
 
-        pub fn deadline(&self) -> Option<Deadline> {
+    pub fn deadline(&self) -> Option<Deadline> {
         self.deadline
     }
 
-                            pub fn cancel(&self) {
+    pub fn cancel(&self) {
         self.cancel_all.store(true, Ordering::SeqCst);
     }
 
-                            pub fn cancel_auto_router(&self) {
+    pub fn cancel_auto_router(&self) {
         self.cancel_auto_router.store(true, Ordering::SeqCst);
     }
 
-            pub fn is_cancelled(&self) -> bool {
+    pub fn is_cancelled(&self) -> bool {
         self.cancel_all.load(Ordering::SeqCst)
     }
 
-        pub fn is_auto_router_cancelled(&self) -> bool {
+    pub fn is_auto_router_cancelled(&self) -> bool {
         self.cancel_auto_router.load(Ordering::SeqCst)
     }
 
-            pub fn is_timed_out(&self) -> bool {
+    pub fn is_timed_out(&self) -> bool {
         self.deadline
             .is_some_and(|d| d.is_timed_out_at(Instant::now()))
     }
 
-                                                        pub fn apply_to(&self, stop: &RouterStop) {
+    pub fn apply_to(&self, stop: &RouterStop) {
         if self.is_cancelled() {
             stop.request_stop();
         }
@@ -112,7 +111,7 @@ impl CancelToken {
         }
     }
 
-                                            pub fn as_router_stop(&self) -> RouterStop {
+    pub fn as_router_stop(&self) -> RouterStop {
         let stop = match self.deadline {
             None => RouterStop::new(),
             Some(deadline) => {

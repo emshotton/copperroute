@@ -567,14 +567,14 @@ fn write_conduction_area<W: Write>(
 mod tests {
     use super::*;
 
-        #[test]
+    #[test]
     fn session_name_replaces_every_dsn_occurrence() {
         assert_eq!("board.ses", "board.dsn".replace(".dsn", ".ses"));
         assert_eq!("a.ses.b.ses", "a.dsn.b.dsn".replace(".dsn", ".ses"));
         assert_eq!("tutorial_board", "tutorial_board".replace(".dsn", ".ses"));
     }
 
-        #[test]
+    #[test]
     fn fixed_state_is_written_only_above_shove_fixed() {
         fn rendered(state: FixedState) -> String {
             let mut out: Vec<u8> = Vec::new();

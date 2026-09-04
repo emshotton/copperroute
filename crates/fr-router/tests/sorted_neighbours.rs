@@ -13,8 +13,6 @@ use fr_router::autoroute::expansion::{
 use fr_router::autoroute::item_info;
 use fr_router::autoroute::tree_ext::AutorouteSearchTreeExt;
 
-
-
 fn corner_neighbour(
     room_shape: &TileShape,
     neighbour: IntBox,
@@ -213,7 +211,6 @@ fn a_room_id_is_never_subtracted_from_an_item_id() {
     assert_eq!(set.len(), 3);
 }
 
-
 struct Xorshift64(u64);
 
 impl Xorshift64 {
@@ -232,15 +229,15 @@ impl Xorshift64 {
         self.0
     }
 
-        fn rnd(&mut self, bound: u64) -> i32 {
+    fn rnd(&mut self, bound: u64) -> i32 {
         (self.next() % bound) as i32
     }
 
-        fn coord(&mut self, range: i32) -> i32 {
+    fn coord(&mut self, range: i32) -> i32 {
         self.rnd(2 * range as u64 + 1) - range
     }
 
-        fn box_(&mut self, range: i32, min_size: i32, max_size: i32) -> IntBox {
+    fn box_(&mut self, range: i32, min_size: i32, max_size: i32) -> IntBox {
         let w = min_size + self.rnd((max_size - min_size + 1) as u64);
         let h = min_size + self.rnd((max_size - min_size + 1) as u64);
         let x = self.coord(range);
@@ -350,7 +347,6 @@ fn the_neighbour_comparator_is_a_total_order() {
          is 0 in both, which is what makes the JavaTreeSet replaceable"
     );
 }
-
 
 fn p6t3_board() -> (Board, TreeId) {
     let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
@@ -781,7 +777,6 @@ fn calculate_new_incomplete_rooms_terminates_on_the_pinned_trigger() {
     );
 }
 
-
 #[test]
 fn a_non_obstacle_of_the_routed_net_is_deferred_to_the_own_net_list() {
     let (mut board, tree_id) = p6t3_board();
@@ -823,7 +818,6 @@ fn a_non_obstacle_of_the_routed_net_is_deferred_to_the_own_net_list() {
     );
 }
 
-
 #[test]
 fn remove_all_doors_unlinks_both_sides_and_drops_incomplete_neighbours() {
     let mut rooms = ExpansionRoomStore::new();
@@ -860,7 +854,6 @@ fn remove_all_doors_unlinks_both_sides_and_drops_incomplete_neighbours() {
         "an incomplete neighbour is removed from the engine's list as well"
     );
 }
-
 
 #[test]
 fn a_room_bearing_tree_answers_queries_through_the_room_lookup() {

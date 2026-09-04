@@ -5,8 +5,8 @@ use crate::tile_shape::TileShape;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RegularTileShape {
-        Box(IntBox),
-        Octagon(IntOctagon),
+    Box(IntBox),
+    Octagon(IntOctagon),
 }
 
 impl From<IntBox> for RegularTileShape {
@@ -28,7 +28,7 @@ impl From<RegularTileShape> for TileShape {
 }
 
 impl RegularTileShape {
-                                    pub fn compare(&self, other: &RegularTileShape, edge_index: usize) -> Side {
+    pub fn compare(&self, other: &RegularTileShape, edge_index: usize) -> Side {
         match (self, other) {
             (RegularTileShape::Box(a), RegularTileShape::Box(b)) => {
                 b.compare(a, edge_index).negate()
@@ -45,7 +45,7 @@ impl RegularTileShape {
         }
     }
 
-                pub fn union(&self, other: &RegularTileShape) -> RegularTileShape {
+    pub fn union(&self, other: &RegularTileShape) -> RegularTileShape {
         match (self, other) {
             (RegularTileShape::Box(a), RegularTileShape::Box(b)) => {
                 RegularTileShape::Box(b.union(a))
@@ -62,7 +62,7 @@ impl RegularTileShape {
         }
     }
 
-            pub fn contains(&self, other: &RegularTileShape) -> bool {
+    pub fn contains(&self, other: &RegularTileShape) -> bool {
         match (self, other) {
             (RegularTileShape::Box(a), RegularTileShape::Box(b)) => b.is_contained_in(a),
             (RegularTileShape::Box(a), RegularTileShape::Octagon(b)) => b.is_contained_in(a),
@@ -75,42 +75,42 @@ impl RegularTileShape {
         }
     }
 
-        pub fn is_contained_in_box(&self, other: &IntBox) -> bool {
+    pub fn is_contained_in_box(&self, other: &IntBox) -> bool {
         match self {
             RegularTileShape::Box(b) => b.is_contained_in(other),
             RegularTileShape::Octagon(o) => o.is_contained_in(other),
         }
     }
 
-        pub fn is_contained_in_octagon(&self, other: &IntOctagon) -> bool {
+    pub fn is_contained_in_octagon(&self, other: &IntOctagon) -> bool {
         match self {
             RegularTileShape::Box(b) => b.is_contained_in_octagon(other),
             RegularTileShape::Octagon(o) => o.is_contained_in_octagon(other),
         }
     }
 
-            pub fn to_tile_shape(&self) -> TileShape {
+    pub fn to_tile_shape(&self) -> TileShape {
         match self {
             RegularTileShape::Box(b) => TileShape::Box(*b),
             RegularTileShape::Octagon(o) => TileShape::Octagon(*o),
         }
     }
 
-        pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self) -> IntBox {
         match self {
             RegularTileShape::Box(b) => b.bounding_box(),
             RegularTileShape::Octagon(o) => o.bounding_box(),
         }
     }
 
-        pub fn area(&self) -> f64 {
+    pub fn area(&self) -> f64 {
         match self {
             RegularTileShape::Box(b) => b.area(),
             RegularTileShape::Octagon(o) => o.area(),
         }
     }
 
-            pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         match self {
             RegularTileShape::Box(b) => b.get_id(),
             RegularTileShape::Octagon(o) => o.get_id(),
@@ -158,7 +158,7 @@ mod tests {
         let oct = ShapeBoundingDirections::FortyfiveDegree
             .bounds_simplex(&tri)
             .expect("the triangle is bounded");
-        assert!((oct.area() - 50.0).abs() < 1e-9); 
+        assert!((oct.area() - 50.0).abs() < 1e-9);
     }
 
     #[test]

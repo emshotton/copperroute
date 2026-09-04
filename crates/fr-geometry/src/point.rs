@@ -14,14 +14,14 @@ use crate::vector::Vector;
 
 #[derive(Debug, Clone)]
 pub enum Point {
-        Int(IntPoint),
-        Rational(RationalPoint),
+    Int(IntPoint),
+    Rational(RationalPoint),
 }
 
 impl Point {
-        pub const ZERO: Point = Point::Int(IntPoint::ZERO);
+    pub const ZERO: Point = Point::Int(IntPoint::ZERO);
 
-                        pub fn new(x: i32, y: i32) -> Point {
+    pub fn new(x: i32, y: i32) -> Point {
         let result = IntPoint::new(x, y);
         if x.wrapping_abs() > CRIT_INT || y.wrapping_abs() > CRIT_INT {
             Point::Rational(RationalPoint::from_int(&result))
@@ -30,7 +30,7 @@ impl Point {
         }
     }
 
-                                pub fn from_big(x: BigInt, y: BigInt, z: BigInt) -> Point {
+    pub fn from_big(x: BigInt, y: BigInt, z: BigInt) -> Point {
         let (mut x, mut y, mut z) = if z.is_negative() {
             (-x, -y, -z)
         } else {
@@ -53,21 +53,21 @@ impl Point {
         Point::Rational(RationalPoint::new(x, y, z))
     }
 
-        pub fn is_infinite(&self) -> bool {
+    pub fn is_infinite(&self) -> bool {
         match self {
             Point::Int(_) => false,
             Point::Rational(p) => p.is_infinite(),
         }
     }
 
-        pub fn translate_by(&self, vector: &Vector) -> Point {
+    pub fn translate_by(&self, vector: &Vector) -> Point {
         if *vector == Vector::ZERO {
             return self.clone();
         }
         vector.add_to(self)
     }
 
-        pub fn difference_by(&self, other: &Point) -> Vector {
+    pub fn difference_by(&self, other: &Point) -> Vector {
         match (self, other) {
             (Point::Int(a), Point::Int(b)) => Vector::Int(a.difference_by(b)),
             (Point::Int(a), Point::Rational(b)) => {
@@ -80,7 +80,7 @@ impl Point {
         }
     }
 
-            pub fn compare_x(&self, other: &Point) -> Ordering {
+    pub fn compare_x(&self, other: &Point) -> Ordering {
         match (self, other) {
             (Point::Int(a), Point::Int(b)) => a.compare_x(b),
             (Point::Int(a), Point::Rational(b)) => b.compare_x_int(a).reverse(),
@@ -89,7 +89,7 @@ impl Point {
         }
     }
 
-            pub fn compare_y(&self, other: &Point) -> Ordering {
+    pub fn compare_y(&self, other: &Point) -> Ordering {
         match (self, other) {
             (Point::Int(a), Point::Int(b)) => a.compare_y(b),
             (Point::Int(a), Point::Rational(b)) => b.compare_y_int(a).reverse(),
@@ -98,66 +98,66 @@ impl Point {
         }
     }
 
-            pub fn compare_xy(&self, other: &Point) -> Ordering {
+    pub fn compare_xy(&self, other: &Point) -> Ordering {
         match self.compare_x(other) {
             Ordering::Equal => self.compare_y(other),
             result => result,
         }
     }
 
-                pub fn side_of(&self, p1: &Point, p2: &Point) -> Side {
+    pub fn side_of(&self, p1: &Point, p2: &Point) -> Side {
         let v1 = self.difference_by(p1);
         let v2 = p2.difference_by(p1);
         v1.side_of(&v2)
     }
 
-        pub fn turn_90_degree(&self, factor: i32, pole: &Point) -> Point {
+    pub fn turn_90_degree(&self, factor: i32, pole: &Point) -> Point {
         let v = self.difference_by(pole);
         let v = v.turn_90_degree(factor);
         pole.translate_by(&v)
     }
 
-        pub fn mirror_vertical(&self, pole: &Point) -> Point {
+    pub fn mirror_vertical(&self, pole: &Point) -> Point {
         let v = self.difference_by(pole);
         let v = v.mirror_at_y_axis();
         pole.translate_by(&v)
     }
 
-        pub fn mirror_horizontal(&self, pole: &Point) -> Point {
+    pub fn mirror_horizontal(&self, pole: &Point) -> Point {
         let v = self.difference_by(pole);
         let v = v.mirror_at_x_axis();
         pole.translate_by(&v)
     }
 
-                                pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         match self {
             Point::Int(p) => p.get_id(),
             Point::Rational(p) => p.get_id(),
         }
     }
 
-        pub fn to_float(&self) -> FloatPoint {
+    pub fn to_float(&self) -> FloatPoint {
         match self {
             Point::Int(p) => p.to_float(),
             Point::Rational(p) => p.to_float(),
         }
     }
 
-            pub fn side_of_line(&self, line: &crate::line::Line) -> Side {
+    pub fn side_of_line(&self, line: &crate::line::Line) -> Side {
         match self {
             Point::Int(p) => p.side_of_line(line),
             Point::Rational(p) => p.side_of_line(line),
         }
     }
 
-                pub fn perpendicular_projection(&self, line: &crate::line::Line) -> Point {
+    pub fn perpendicular_projection(&self, line: &crate::line::Line) -> Point {
         match self {
             Point::Int(p) => p.perpendicular_projection(line),
             Point::Rational(p) => p.perpendicular_projection(line),
         }
     }
 
-                                pub fn perpendicular_direction(&self, line: &crate::line::Line) -> crate::direction::Direction {
+    pub fn perpendicular_direction(&self, line: &crate::line::Line) -> crate::direction::Direction {
         let side = self.side_of_line(line);
         if side == Side::Collinear {
             return crate::direction::Direction::Int(crate::int_direction::IntDirection::NULL);
@@ -169,21 +169,21 @@ impl Point {
         }
     }
 
-            pub fn surrounding_box(&self) -> crate::int_box::IntBox {
+    pub fn surrounding_box(&self) -> crate::int_box::IntBox {
         match self {
             Point::Int(p) => p.surrounding_box(),
             Point::Rational(p) => p.surrounding_box(),
         }
     }
 
-            pub fn is_contained_in(&self, box_: &crate::int_box::IntBox) -> bool {
+    pub fn is_contained_in(&self, box_: &crate::int_box::IntBox) -> bool {
         match self {
             Point::Int(p) => p.is_contained_in(box_),
             Point::Rational(p) => p.is_contained_in(box_),
         }
     }
 
-            pub fn surrounding_octagon(&self) -> crate::int_octagon::IntOctagon {
+    pub fn surrounding_octagon(&self) -> crate::int_octagon::IntOctagon {
         match self {
             Point::Int(p) => p.surrounding_octagon(),
             Point::Rational(p) => p.surrounding_octagon(),
@@ -204,7 +204,7 @@ impl From<RationalPoint> for Point {
 }
 
 impl PartialEq for Point {
-                    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Point::Int(a), Point::Int(b)) => a == b,
             (Point::Rational(a), Point::Rational(b)) => a == b,
@@ -216,7 +216,7 @@ impl PartialEq for Point {
 impl Eq for Point {}
 
 impl Hash for Point {
-        fn hash<H: Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
             Point::Int(p) => {
                 0u8.hash(state);
@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn translate_and_difference_mix_representations() {
-        let half = Point::from_big(BigInt::from(1), BigInt::from(1), BigInt::from(2)); 
+        let half = Point::from_big(BigInt::from(1), BigInt::from(1), BigInt::from(2));
         let moved = half.translate_by(&Vector::Int(IntVector::new(1, 1)));
         assert_eq!(
             moved,
@@ -339,7 +339,7 @@ mod cross_representation_tests {
         IntPoint { x: -2, y: -7 },
     ];
 
-                #[test]
+    #[test]
     fn surrounding_octagon_dispatches_and_agrees_on_integral_points() {
         for p in &SAMPLES {
             let expected = p.surrounding_octagon();
@@ -353,7 +353,7 @@ mod cross_representation_tests {
         );
     }
 
-                #[test]
+    #[test]
     fn representations_agree_on_binary_operations() {
         for a in &SAMPLES {
             for c in &SAMPLES {
@@ -441,7 +441,7 @@ mod cross_representation_tests {
 
         let int_point = Point::Int(IntPoint::new(2, 4));
         let rational_point = Point::from_big(b(2), b(4), b(1));
-        assert_eq!(rational_point, int_point); 
+        assert_eq!(rational_point, int_point);
         assert_ne!(
             Point::Rational(RationalPoint::new(b(2), b(4), b(1))),
             int_point
@@ -504,7 +504,7 @@ mod cross_representation_tests {
         );
     }
 
-                        #[test]
+    #[test]
     fn rational_perpendicular_projection_keeps_javas_sign_bug() {
         use crate::line::Line;
         let line = Line::from_coords(0, 1, 1, 2);

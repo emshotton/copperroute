@@ -5,21 +5,21 @@ use crate::score::BoardStatistics;
 
 #[derive(Debug, Clone)]
 pub struct BoardHistory {
-                    boards: Vec<BoardHistoryEntry>,
-        max_history_size: usize,
-        scoring: ScoringSettings,
+    boards: Vec<BoardHistoryEntry>,
+    max_history_size: usize,
+    scoring: ScoringSettings,
 }
 
 #[derive(Debug, Clone)]
 pub struct BoardHistoryEntry {
-                                pub board: Board,
-                            pub hash: u64,
-        pub score: f32,
-        pub restore_count: i32,
+    pub board: Board,
+    pub hash: u64,
+    pub score: f32,
+    pub restore_count: i32,
 }
 
 impl BoardHistoryEntry {
-                            fn new(board: &mut Board, scoring: &ScoringSettings) -> BoardHistoryEntry {
+    fn new(board: &mut Board, scoring: &ScoringSettings) -> BoardHistoryEntry {
         let snapshot = board.clone();
         let hash = board.structural_hash();
         let score = BoardStatistics::new(board).normalized_score(scoring);
@@ -33,13 +33,13 @@ impl BoardHistoryEntry {
 }
 
 impl BoardHistory {
-                        pub const MAX_HISTORY_SIZE: usize = 30;
+    pub const MAX_HISTORY_SIZE: usize = 30;
 
-        pub fn new(scoring: &ScoringSettings) -> BoardHistory {
+    pub fn new(scoring: &ScoringSettings) -> BoardHistory {
         BoardHistory::with_capacity(scoring, BoardHistory::MAX_HISTORY_SIZE)
     }
 
-                                    pub fn with_capacity(scoring: &ScoringSettings, max_history_size: usize) -> BoardHistory {
+    pub fn with_capacity(scoring: &ScoringSettings, max_history_size: usize) -> BoardHistory {
         BoardHistory {
             boards: Vec::new(),
             max_history_size,
@@ -47,7 +47,7 @@ impl BoardHistory {
         }
     }
 
-                                                                    pub fn add(&mut self, board: &mut Board) {
+    pub fn add(&mut self, board: &mut Board) {
         if self.contains(board) {
             return;
         }
@@ -74,11 +74,11 @@ impl BoardHistory {
         self.boards.push(entry);
     }
 
-        pub fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.boards.clear();
     }
 
-            pub fn contains(&self, board: &Board) -> bool {
+    pub fn contains(&self, board: &Board) -> bool {
         let hash = board.structural_hash();
         for entry in &self.boards {
             if entry.hash == hash {
@@ -88,7 +88,7 @@ impl BoardHistory {
         false
     }
 
-                pub fn remove(&mut self, board: &Board) {
+    pub fn remove(&mut self, board: &Board) {
         let hash = board.structural_hash();
         for i in 0..self.boards.len() {
             if self.boards[i].hash == hash {
@@ -98,7 +98,7 @@ impl BoardHistory {
         }
     }
 
-                                    pub fn max_score(&self) -> f32 {
+    pub fn max_score(&self) -> f32 {
         let mut max_score = 0.0f32;
         for entry in &self.boards {
             if entry.score > max_score {
@@ -108,7 +108,7 @@ impl BoardHistory {
         max_score
     }
 
-                                                                    pub fn restore_board(&mut self, max_allowed_restore_count: i32) -> Option<Board> {
+    pub fn restore_board(&mut self, max_allowed_restore_count: i32) -> Option<Board> {
         let max_allowed_restore_count = if max_allowed_restore_count <= 0 {
             i32::MAX
         } else {
@@ -127,15 +127,15 @@ impl BoardHistory {
         None
     }
 
-            pub fn restore_best_board(&mut self) -> Option<Board> {
+    pub fn restore_best_board(&mut self) -> Option<Board> {
         self.restore_board(0)
     }
 
-        pub fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.boards.len()
     }
 
-                                    pub fn rank(&self, board: &Board) -> i32 {
+    pub fn rank(&self, board: &Board) -> i32 {
         let hash = board.structural_hash();
         for (i, entry) in self.boards.iter().enumerate() {
             if entry.hash == hash {
@@ -145,7 +145,7 @@ impl BoardHistory {
         -1
     }
 
-                            pub fn entries(&self) -> &[BoardHistoryEntry] {
+    pub fn entries(&self) -> &[BoardHistoryEntry] {
         &self.boards
     }
 }

@@ -5,7 +5,6 @@ use fr_settings::{
     OptimizerSettings, RouterSettings, ScoringSettings,
 };
 
-
 #[test]
 fn set_simple_property() {
     let mut settings = RouterSettings::new();
@@ -92,7 +91,6 @@ fn pdh(settings: &RouterSettings) -> Vec<Option<bool>> {
         .collect()
 }
 
-
 #[test]
 fn hyphen_and_colon_are_path_separators() {
     let mut settings = RouterSettings::new();
@@ -115,7 +113,6 @@ fn separator_characters_in_the_value_survive() {
     set_field_value(&mut settings, "algorithm", "freerouting-router").expect("resolves");
     assert_eq!(settings.algorithm.as_deref(), Some("freerouting-router"));
 }
-
 
 #[test]
 fn extra_array_tokens_are_dropped() {
@@ -156,7 +153,6 @@ fn a_trailing_comma_does_not_add_an_array_element() {
     assert_eq!(settings.layers.as_ref().expect("allocated").len(), 2);
 }
 
-
 #[test]
 fn boolean_conversion_silently_falls_back_to_false() {
     let mut settings = RouterSettings::new();
@@ -189,7 +185,6 @@ fn array_tokens_are_trimmed_but_scalar_leaves_are_not() {
     set_field_value(&mut settings, "enabled", " true ").expect("resolves");
     assert_eq!(settings.enabled, Some(false));
 }
-
 
 #[test]
 fn enum_matching_is_case_insensitive_on_the_java_constant_name() {
@@ -249,7 +244,6 @@ fn enum_matching_is_case_insensitive_on_the_java_constant_name() {
         Some(ItemSelectionStrategy::Prioritized)
     );
 }
-
 
 #[test]
 fn int_rejects_whitespace_but_double_trims_it() {
@@ -360,7 +354,6 @@ fn long_and_float_fields_use_their_own_parsers() {
     );
 }
 
-
 #[test]
 fn double_array_leaf_splits_and_trims() {
     let mut settings = RouterSettings::new();
@@ -405,7 +398,6 @@ fn string_array_leaf_follows_java_split() {
         Some(["a".to_string(), String::new(), "b".to_string()].as_slice())
     );
 }
-
 
 #[test]
 fn serialized_alternate_and_java_names_all_resolve() {
@@ -487,7 +479,7 @@ fn an_unknown_name_is_no_such_field() {
 
 #[test]
 fn a_null_nested_object_is_instantiated() {
-    let mut settings = RouterSettings::default(); 
+    let mut settings = RouterSettings::default();
     assert_eq!(settings.fanout, None);
     set_field_value(&mut settings, "fanout.max_passes", "3").expect("resolves");
     assert_eq!(settings.fanout.as_ref().unwrap().max_passes, Some(3));
@@ -505,7 +497,6 @@ fn empty_path_segments_follow_java_split() {
         Err(MergeError::NoSuchField { .. })
     ));
 }
-
 
 #[test]
 fn java_static_constants_are_not_settable_fields() {
@@ -591,7 +582,6 @@ fn an_all_separator_path_is_an_error_not_a_panic() {
     }
 }
 
-
 #[test]
 fn field_tables_match_the_declaration_order_pins() {
     fn rust_names(fields: &[fr_settings::field_path::FieldSpec]) -> Vec<&'static str> {
@@ -639,92 +629,92 @@ fn field_kinds_match_the_java_field_types() {
         "RouterSettings",
         RouterSettings::FIELDS,
         &[
-            ("enabled", Bool),                    
-            ("algorithm", Str),                   
-            ("fanout", Nested),                   
-            ("copper_to_edge_clearance_um", F64), 
-            ("hole_clearance_um", F64),           
-            ("neck_width_um", F64),               
-            ("strict_drc", Bool),                 
-            ("job_timeout_string", Str),          
-            ("max_passes", I32),                  
-            ("max_items", I32),                   
-            ("layers", ObjectArray),              
-            ("save_intermediate_stages", Bool),   
-            ("ignore_net_classes", StringVec),    
-            ("trace_pull_tight_accuracy", I32),   
-            ("vias_allowed", Bool),               
-            ("automatic_neckdown", Bool),         
-            ("optimizer", Nested),                
-            ("scoring", Nested),                  
-            ("max_threads", I32),                 
-            ("result_json_path", Str),            
+            ("enabled", Bool),
+            ("algorithm", Str),
+            ("fanout", Nested),
+            ("copper_to_edge_clearance_um", F64),
+            ("hole_clearance_um", F64),
+            ("neck_width_um", F64),
+            ("strict_drc", Bool),
+            ("job_timeout_string", Str),
+            ("max_passes", I32),
+            ("max_items", I32),
+            ("layers", ObjectArray),
+            ("save_intermediate_stages", Bool),
+            ("ignore_net_classes", StringVec),
+            ("trace_pull_tight_accuracy", I32),
+            ("vias_allowed", Bool),
+            ("automatic_neckdown", Bool),
+            ("optimizer", Nested),
+            ("scoring", Nested),
+            ("max_threads", I32),
+            ("result_json_path", Str),
             ("board_specific_trace_costs_applied", Bool),
-            ("opt_changed_area_ms", I32), 
+            ("opt_changed_area_ms", I32),
         ],
     );
     check(
         "LayerSettings",
         LayerSettings::FIELDS,
         &[
-            ("routable", Bool),                       
-            ("preferred_direction_horizontal", Bool), 
-            ("bend_cost", F64),                       
+            ("routable", Bool),
+            ("preferred_direction_horizontal", Bool),
+            ("bend_cost", F64),
         ],
     );
     check(
         "ScoringSettings",
         ScoringSettings::FIELDS,
         &[
-            ("preferred_direction_trace_cost", F64Vec), 
-            ("undesired_direction_trace_cost", F64Vec), 
-            ("default_preferred_direction_trace_cost", F64), 
-            ("default_undesired_direction_trace_cost", F64), 
-            ("via_costs", I32),                         
-            ("plane_via_costs", I32),                   
-            ("start_ripup_costs", I32),                 
-            ("unrouted_net_penalty", F32),              
-            ("clearance_violation_penalty", F32),       
-            ("bend_penalty", F32),                      
-            ("default_bend_cost", F64),                 
+            ("preferred_direction_trace_cost", F64Vec),
+            ("undesired_direction_trace_cost", F64Vec),
+            ("default_preferred_direction_trace_cost", F64),
+            ("default_undesired_direction_trace_cost", F64),
+            ("via_costs", I32),
+            ("plane_via_costs", I32),
+            ("start_ripup_costs", I32),
+            ("unrouted_net_penalty", F32),
+            ("clearance_violation_penalty", F32),
+            ("bend_penalty", F32),
+            ("default_bend_cost", F64),
         ],
     );
     check(
         "OptimizerSettings",
         OptimizerSettings::FIELDS,
         &[
-            ("enabled", Bool),                              
-            ("algorithm", Str),                             
-            ("max_passes", I32),                            
-            ("max_items", I32),                             
-            ("max_threads", I32),                           
-            ("optimization_improvement_threshold", F32),    
-            ("max_consecutive_failures", I32),              
-            ("additional_ripup_cost_factor_at_start", I32), 
-            ("trace_ripup_cost_factor", F32),               
-            ("max_autoroute_passes", I32),                  
-            ("board_update_strategy", Enum(BUS)),           
-            ("hybrid_ratio", Str),                          
-            ("item_selection_strategy", Enum(ISS)),         
-            ("timeout_string", Str),                        
+            ("enabled", Bool),
+            ("algorithm", Str),
+            ("max_passes", I32),
+            ("max_items", I32),
+            ("max_threads", I32),
+            ("optimization_improvement_threshold", F32),
+            ("max_consecutive_failures", I32),
+            ("additional_ripup_cost_factor_at_start", I32),
+            ("trace_ripup_cost_factor", F32),
+            ("max_autoroute_passes", I32),
+            ("board_update_strategy", Enum(BUS)),
+            ("hybrid_ratio", Str),
+            ("item_selection_strategy", Enum(ISS)),
+            ("timeout_string", Str),
         ],
     );
     check(
         "FanoutSettings",
         FanoutSettings::FIELDS,
         &[
-            ("enabled", Bool),                 
-            ("max_passes", I32),               
-            ("max_items", I32),                
-            ("max_milliseconds_per_pin", I64), 
-            ("ripup_allowed", Bool),           
-            ("min_escape_length_mm", F64),     
-            ("max_escape_length_mm", F64),     
-            ("start_via_diameter_mm", F64),    
-            ("end_via_diameter_mm", F64),      
-            ("pin_sorting_order", Str),        
-            ("fallback_to_board_vias", Bool),  
-            ("timeout_string", Str),           
+            ("enabled", Bool),
+            ("max_passes", I32),
+            ("max_items", I32),
+            ("max_milliseconds_per_pin", I64),
+            ("ripup_allowed", Bool),
+            ("min_escape_length_mm", F64),
+            ("max_escape_length_mm", F64),
+            ("start_via_diameter_mm", F64),
+            ("end_via_diameter_mm", F64),
+            ("pin_sorting_order", Str),
+            ("fallback_to_board_vias", Bool),
+            ("timeout_string", Str),
         ],
     );
 }

@@ -28,7 +28,7 @@ impl Default for JavaNumberFormatter<'_> {
 }
 
 impl Formatter for JavaNumberFormatter<'_> {
-                        #[inline]
+    #[inline]
     fn write_null<W>(&mut self, _writer: &mut W) -> io::Result<()>
     where
         W: ?Sized + io::Write,
@@ -36,7 +36,7 @@ impl Formatter for JavaNumberFormatter<'_> {
         Err(io::Error::new(io::ErrorKind::InvalidData, NON_FINITE))
     }
 
-        #[inline]
+    #[inline]
     fn write_f32<W>(&mut self, writer: &mut W, value: f32) -> io::Result<()>
     where
         W: ?Sized + io::Write,
@@ -44,7 +44,7 @@ impl Formatter for JavaNumberFormatter<'_> {
         writer.write_all(java_float_to_string(value).as_bytes())
     }
 
-        #[inline]
+    #[inline]
     fn write_f64<W>(&mut self, writer: &mut W, value: f64) -> io::Result<()>
     where
         W: ?Sized + io::Write,
@@ -52,7 +52,7 @@ impl Formatter for JavaNumberFormatter<'_> {
         writer.write_all(java_double_to_string(value).as_bytes())
     }
 
-                    #[inline]
+    #[inline]
     fn write_string_fragment<W>(&mut self, writer: &mut W, fragment: &str) -> io::Result<()>
     where
         W: ?Sized + io::Write,
@@ -70,7 +70,6 @@ impl Formatter for JavaNumberFormatter<'_> {
         }
         writer.write_all(rest.as_bytes())
     }
-
 
     #[inline]
     fn begin_array<W>(&mut self, writer: &mut W) -> io::Result<()>

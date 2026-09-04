@@ -4,7 +4,7 @@ pub struct HostEnvironment {
 }
 
 impl HostEnvironment {
-                pub fn detect() -> Self {
+    pub fn detect() -> Self {
         let available_processors = std::thread::available_parallelism()
             .map(std::num::NonZero::get)
             .unwrap_or(1);
@@ -13,17 +13,17 @@ impl HostEnvironment {
         }
     }
 
-                pub fn with_processors(n: usize) -> Self {
+    pub fn with_processors(n: usize) -> Self {
         Self {
             available_processors: n,
         }
     }
 
-        pub fn available_processors(&self) -> usize {
+    pub fn available_processors(&self) -> usize {
         self.available_processors
     }
 
-                                pub fn default_max_threads(&self) -> i32 {
+    pub fn default_max_threads(&self) -> i32 {
         if self.available_processors == 0 {
             return 1;
         }

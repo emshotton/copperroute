@@ -52,7 +52,6 @@ pub use fr_router::pipeline::{
 };
 pub use fr_router::score::BoardStatistics;
 
-
 pub const PARITY_VERSION: &str = "2.3.1-SNAPSHOT";
 
 pub const PARITY_BUILD_DATE: &str = "2026-09-01";
@@ -61,27 +60,24 @@ pub const PARITY_JAR_REVISION: &str = "278fe14123c49376667239659c98d41a597acce9"
 
 pub const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {
-                #[error(transparent)]
+    #[error(transparent)]
     Router(#[from] fr_router::RouterError),
 
-        #[error(transparent)]
+    #[error(transparent)]
     Board(#[from] fr_board::BoardError),
 
-        #[error(transparent)]
+    #[error(transparent)]
     Io(#[from] std::io::Error),
 
-                            #[error("{0}")]
+    #[error("{0}")]
     Load(String),
 
-                #[error("{0}")]
+    #[error("{0}")]
     Session(String),
 }
-
-
 
 #[cfg(test)]
 mod tests {

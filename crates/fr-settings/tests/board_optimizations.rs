@@ -4,7 +4,6 @@ use fr_dsn::parser::scope_parameter::DsnReadOptions;
 use fr_geometry::{IntBox, PolylineShapeRef, TileShape};
 use fr_settings::{LayerSettings, RouterSettings};
 
-
 fn synthetic_board(width: i32, height: i32, is_signal: &[bool]) -> Board {
     let layers = LayerStructure::new(
         is_signal
@@ -59,7 +58,6 @@ fn sized_settings(layer_count: usize) -> RouterSettings {
     settings.set_layer_count(layer_count);
     settings
 }
-
 
 #[test]
 fn apply_board_specific_optimizations_initializes_trace_costs_once() {
@@ -144,7 +142,6 @@ fn apply_board_specific_optimizations_if_needed_runs_when_layer_count_mismatch()
     );
 }
 
-
 #[test]
 fn apply_board_specific_optimizations_preserves_settings() {
     let board = synthetic_board(2_000_000, 2_000_000, &[true, true]);
@@ -169,7 +166,6 @@ fn apply_board_specific_optimizations_preserves_settings() {
     assert_eq!(settings.get_against_preferred_direction_trace_costs(0), 2.0);
     assert_eq!(settings.get_against_preferred_direction_trace_costs(1), 2.0);
 }
-
 
 #[test]
 fn outer_layer_bonus_on_a_four_signal_layer_board() {
@@ -250,7 +246,6 @@ fn a_short_layer_array_is_grown_by_index_and_keeps_its_entries() {
     assert!(settings.are_board_specific_trace_costs_applied());
     assert_eq!(settings.get_preferred_direction_trace_costs(0), 1.8);
 }
-
 
 #[test]
 fn jvm_golden_issue026_j2_reference() {

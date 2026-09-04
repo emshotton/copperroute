@@ -11,42 +11,42 @@ use crate::vector::Vector;
 
 #[derive(Debug, Clone)]
 pub struct BigIntDirection {
-        pub x: BigInt,
-        pub y: BigInt,
+    pub x: BigInt,
+    pub y: BigInt,
 }
 
 impl BigIntDirection {
-        pub fn new(x: BigInt, y: BigInt) -> BigIntDirection {
+    pub fn new(x: BigInt, y: BigInt) -> BigIntDirection {
         BigIntDirection { x, y }
     }
 
-        pub fn from_int(dir: &IntDirection) -> BigIntDirection {
+    pub fn from_int(dir: &IntDirection) -> BigIntDirection {
         BigIntDirection {
             x: BigInt::from(dir.x),
             y: BigInt::from(dir.y),
         }
     }
 
-                    pub fn from_rational_vector(vector: &RationalVector) -> BigIntDirection {
+    pub fn from_rational_vector(vector: &RationalVector) -> BigIntDirection {
         BigIntDirection {
             x: vector.x.clone(),
             y: vector.y.clone(),
         }
     }
 
-        pub fn is_orthogonal(&self) -> bool {
+    pub fn is_orthogonal(&self) -> bool {
         self.x.is_zero() || self.y.is_zero()
     }
 
-        pub fn is_diagonal(&self) -> bool {
+    pub fn is_diagonal(&self) -> bool {
         self.x.abs() == self.y.abs()
     }
 
-        pub fn is_multiple_of_45_degree(&self) -> bool {
+    pub fn is_multiple_of_45_degree(&self) -> bool {
         self.is_orthogonal() || self.is_diagonal()
     }
 
-        pub fn get_vector(&self) -> Vector {
+    pub fn get_vector(&self) -> Vector {
         Vector::Rational(RationalVector::new(
             self.x.clone(),
             self.y.clone(),
@@ -54,19 +54,19 @@ impl BigIntDirection {
         ))
     }
 
-                            pub fn turn_45_degree(&self, _factor: i32) -> BigIntDirection {
+    pub fn turn_45_degree(&self, _factor: i32) -> BigIntDirection {
         self.clone()
     }
 
-        pub fn opposite(&self) -> BigIntDirection {
+    pub fn opposite(&self) -> BigIntDirection {
         BigIntDirection::new(-self.x.clone(), -self.y.clone())
     }
 
-        pub fn compare_to_int(&self, other: &IntDirection) -> Ordering {
+    pub fn compare_to_int(&self, other: &IntDirection) -> Ordering {
         self.compare_to_big(&BigIntDirection::from_int(other))
     }
 
-                            pub fn compare_to_big(&self, other: &BigIntDirection) -> Ordering {
+    pub fn compare_to_big(&self, other: &BigIntDirection) -> Ordering {
         let x1 = big_sign(&self.x);
         let y1 = big_sign(&self.y);
         let x2 = big_sign(&other.x);
@@ -113,17 +113,17 @@ impl BigIntDirection {
         }
     }
 
-            pub fn side_of(&self, other: &BigIntDirection) -> Side {
+    pub fn side_of(&self, other: &BigIntDirection) -> Side {
         self.get_vector().side_of(&other.get_vector())
     }
 
-        pub fn projection(&self, other: &BigIntDirection) -> Signum {
+    pub fn projection(&self, other: &BigIntDirection) -> Signum {
         self.get_vector().projection(&other.get_vector())
     }
 }
 
 impl PartialEq for BigIntDirection {
-                                    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         (self.x == other.x && self.y == other.y)
             || (self.side_of(other) == Side::Collinear
                 && self.projection(other) == Signum::Positive)

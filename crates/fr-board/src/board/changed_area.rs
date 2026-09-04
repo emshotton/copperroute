@@ -2,23 +2,23 @@ use fr_geometry::{FloatPoint, IntBox, IntOctagon, TileShape};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChangedArea {
-        layer_count: usize,
-        arr: Vec<MutableOctagon>,
+    layer_count: usize,
+    arr: Vec<MutableOctagon>,
 }
 
 impl ChangedArea {
-        pub fn new(layer_count: usize) -> ChangedArea {
+    pub fn new(layer_count: usize) -> ChangedArea {
         ChangedArea {
             layer_count,
             arr: vec![MutableOctagon::empty(); layer_count],
         }
     }
 
-            pub fn layer_count(&self) -> usize {
+    pub fn layer_count(&self) -> usize {
         self.layer_count
     }
 
-            pub fn join(&mut self, point: &FloatPoint, layer: usize) {
+    pub fn join(&mut self, point: &FloatPoint, layer: usize) {
         let current = &mut self.arr[layer];
         current.lx = current.lx.min(point.x);
         current.ly = current.ly.min(point.y);
@@ -34,7 +34,7 @@ impl ChangedArea {
         current.urx = current.urx.max(tmp);
     }
 
-                                pub fn join_shape(&mut self, shape: &TileShape, layer: usize) {
+    pub fn join_shape(&mut self, shape: &TileShape, layer: usize) {
         for i in 0..shape.border_line_count() {
             if let Some(corner) = shape.corner_approx(i) {
                 self.join(&corner, layer);
@@ -42,11 +42,11 @@ impl ChangedArea {
         }
     }
 
-        pub fn get_area(&self, layer: usize) -> IntOctagon {
+    pub fn get_area(&self, layer: usize) -> IntOctagon {
         self.arr[layer].to_int()
     }
 
-        pub fn surrounding_box(&self) -> IntBox {
+    pub fn surrounding_box(&self) -> IntBox {
         let mut llx = i32::MAX;
         let mut lly = i32::MAX;
         let mut urx = i32::MIN;
@@ -63,7 +63,7 @@ impl ChangedArea {
         IntBox::from_coords(llx, lly, urx, ury)
     }
 
-        pub fn set_empty(&mut self, layer: usize) {
+    pub fn set_empty(&mut self, layer: usize) {
         self.arr[layer] = MutableOctagon::empty();
     }
 }
@@ -89,7 +89,7 @@ struct MutableOctagon {
 }
 
 impl MutableOctagon {
-                fn empty() -> MutableOctagon {
+    fn empty() -> MutableOctagon {
         MutableOctagon {
             lx: f64::from(i32::MAX),
             ly: f64::from(i32::MAX),
@@ -102,7 +102,7 @@ impl MutableOctagon {
         }
     }
 
-        fn to_int(self) -> IntOctagon {
+    fn to_int(self) -> IntOctagon {
         if self.rx < self.lx || self.uy < self.ly || self.lrx < self.ulx || self.urx < self.llx {
             return IntOctagon::EMPTY;
         }

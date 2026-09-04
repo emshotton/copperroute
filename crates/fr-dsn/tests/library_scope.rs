@@ -78,7 +78,6 @@ fn synthetic(body: &str) -> String {
     )
 }
 
-
 #[test]
 fn issue026_library_scope_reads_five_padstacks_and_two_packages() {
     let text = fixture("Issue026-J2_reference.dsn");
@@ -282,7 +281,6 @@ fn a_repeated_padstack_name_keeps_the_first_definition() {
     });
 }
 
-
 #[test]
 fn write_padstack_scope_emits_the_2_3_0_bytes_for_a_round_via_pad() {
     let text = synthetic(
@@ -312,7 +310,6 @@ fn write_library_scope_reproduces_the_2_3_0_reference_bytes() {
     let out = write_with(&text, write_library_scope);
     assert_eq!(out, reference_scope("Issue026-J2_reference", "library"));
 }
-
 
 #[test]
 fn part_library_scope_reads_logical_parts_and_mappings() {

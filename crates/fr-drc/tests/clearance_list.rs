@@ -3,7 +3,6 @@ use fr_drc::{ClearanceViolation, DesignRulesChecker};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{IntBox, IntPoint, IntVector, Point, Shape, TileShape};
 
-
 fn fixture_board(name: &str) -> Board {
     let path = parity::fixture(name);
     let bytes = std::fs::read(&path)
@@ -26,7 +25,6 @@ fn violation_count(fixture: &str) -> usize {
         .get_all_clearance_violations()
         .len()
 }
-
 
 #[test]
 fn dev_board_has_two_deduplicated_violations() {
@@ -59,7 +57,6 @@ fn empty_board_has_none() {
     }
     assert_eq!(violation_count("empty_board.dsn"), 0);
 }
-
 
 #[test]
 fn the_surviving_first_item_is_the_higher_id() {
@@ -122,7 +119,6 @@ fn a_pair_on_two_layers_yields_two_entries() {
         .collect();
     assert_eq!(rows, vec![(3, 2, 0), (3, 2, 1)]);
 }
-
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {

@@ -12,15 +12,15 @@ pub struct TraceTightener45<'a> {
 }
 
 impl<'a> TraceTightener45<'a> {
-            pub(crate) fn new(base: TightenerBase<'a>) -> TraceTightener45<'a> {
+    pub(crate) fn new(base: TightenerBase<'a>) -> TraceTightener45<'a> {
         TraceTightener45 { base }
     }
 
-            pub fn get_angle_restriction(&self) -> AngleRestriction {
+    pub fn get_angle_restriction(&self) -> AngleRestriction {
         AngleRestriction::FortyFiveDegree
     }
 
-                pub(crate) fn pull_tight(
+    pub(crate) fn pull_tight(
         &mut self,
         board: &mut Board,
         polyline: &Polyline,
@@ -52,7 +52,7 @@ impl<'a> TraceTightener45<'a> {
         if ever_changed { Some(new_result) } else { None }
     }
 
-                                fn reduce_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
+    fn reduce_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
         let line_count = polyline.lines().len();
         if line_count <= 4 {
             return None;
@@ -179,7 +179,7 @@ impl<'a> TraceTightener45<'a> {
         Some(Polyline::from_points(&adjusted_corners))
     }
 
-            fn two_step_check(
+    fn two_step_check(
         &mut self,
         board: &mut Board,
         new_corner: &Point,
@@ -209,7 +209,7 @@ impl<'a> TraceTightener45<'a> {
         self.base.check(board, &shape_to_check)
     }
 
-            fn two_step_check_without_shortcut(
+    fn two_step_check_without_shortcut(
         &mut self,
         board: &mut Board,
         new_corner: &Point,
@@ -236,7 +236,7 @@ impl<'a> TraceTightener45<'a> {
         self.base.check(board, &shape_to_check)
     }
 
-                fn smoothen_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
+    fn smoothen_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
         let mut result: Option<Polyline> = None;
         let mut polyline_changed = true;
         while polyline_changed {
@@ -275,7 +275,7 @@ impl<'a> TraceTightener45<'a> {
         result
     }
 
-                    fn smoothen_sharp_corner(
+    fn smoothen_sharp_corner(
         &mut self,
         board: &mut Board,
         lines: &[Line],
@@ -315,7 +315,7 @@ impl<'a> TraceTightener45<'a> {
         Some(result)
     }
 
-                fn smoothen_non_integer_corner(&mut self, lines: &[Line], no: usize) -> Option<Line> {
+    fn smoothen_non_integer_corner(&mut self, lines: &[Line], no: usize) -> Option<Line> {
         let prev_line = lines[no];
         let next_line = lines[no + 1];
         if prev_line.is_equal_or_opposite(&next_line) {
@@ -369,7 +369,7 @@ impl<'a> TraceTightener45<'a> {
         )
     }
 
-                    fn smoothen_corner(&mut self, board: &mut Board, lines: &[Line], no: usize) -> Option<Line> {
+    fn smoothen_corner(&mut self, board: &mut Board, lines: &[Line], no: usize) -> Option<Line> {
         let prev_corner = lines[no].intersection_approx(&lines[no - 1]);
         let current_corner = lines[no].intersection_approx(&lines[no + 1]);
         let next_corner = lines[no + 1].intersection_approx(&lines[no + 2]);
@@ -449,7 +449,7 @@ impl<'a> TraceTightener45<'a> {
         result
     }
 
-        pub(crate) fn smoothen_start_corner_at_trace(
+    pub(crate) fn smoothen_start_corner_at_trace(
         &mut self,
         board: &mut Board,
         trace: ItemId,
@@ -514,7 +514,7 @@ impl<'a> TraceTightener45<'a> {
         None
     }
 
-        pub(crate) fn smoothen_end_corner_at_trace(
+    pub(crate) fn smoothen_end_corner_at_trace(
         &mut self,
         board: &mut Board,
         trace: ItemId,
@@ -585,7 +585,7 @@ impl<'a> TraceTightener45<'a> {
         None
     }
 
-                    pub(crate) fn acute_add_line(
+    pub(crate) fn acute_add_line(
         &self,
         current_end_corner: &Point,
         current_prev_end_corner: &Point,

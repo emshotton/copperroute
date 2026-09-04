@@ -12,19 +12,18 @@ use crate::tile_shape::TileShape;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FortyfiveDegreeDirection {
-        Right,
-        Right45,
-        Up,
-        Up45,
-        Left,
-        Left45,
-        Down,
-        Down45,
+    Right,
+    Right45,
+    Up,
+    Up45,
+    Left,
+    Left45,
+    Down,
+    Down45,
 }
 
-
 impl FortyfiveDegreeDirection {
-            pub const VALUES: [FortyfiveDegreeDirection; 8] = [
+    pub const VALUES: [FortyfiveDegreeDirection; 8] = [
         FortyfiveDegreeDirection::Right,
         FortyfiveDegreeDirection::Right45,
         FortyfiveDegreeDirection::Up,
@@ -35,7 +34,7 @@ impl FortyfiveDegreeDirection {
         FortyfiveDegreeDirection::Down45,
     ];
 
-        pub fn to_int_direction(self) -> IntDirection {
+    pub fn to_int_direction(self) -> IntDirection {
         match self {
             FortyfiveDegreeDirection::Right => IntDirection::RIGHT,
             FortyfiveDegreeDirection::Right45 => IntDirection::RIGHT45,
@@ -51,19 +50,19 @@ impl FortyfiveDegreeDirection {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ShapeBoundingDirections {
-        Orthogonal,
-        FortyfiveDegree,
+    Orthogonal,
+    FortyfiveDegree,
 }
 
 impl ShapeBoundingDirections {
-            pub fn count(self) -> usize {
+    pub fn count(self) -> usize {
         match self {
             ShapeBoundingDirections::Orthogonal => 4,
             ShapeBoundingDirections::FortyfiveDegree => 8,
         }
     }
 
-            pub fn bounds_box(self, box_: &IntBox) -> RegularTileShape {
+    pub fn bounds_box(self, box_: &IntBox) -> RegularTileShape {
         match self {
             ShapeBoundingDirections::Orthogonal => RegularTileShape::Box(*box_),
             ShapeBoundingDirections::FortyfiveDegree => {
@@ -72,14 +71,14 @@ impl ShapeBoundingDirections {
         }
     }
 
-            pub fn bounds_octagon(self, oct: &IntOctagon) -> RegularTileShape {
+    pub fn bounds_octagon(self, oct: &IntOctagon) -> RegularTileShape {
         match self {
             ShapeBoundingDirections::Orthogonal => RegularTileShape::Box(oct.bounding_box()),
             ShapeBoundingDirections::FortyfiveDegree => RegularTileShape::Octagon(*oct),
         }
     }
 
-            pub fn bounds_simplex(self, simplex: &Simplex) -> Option<RegularTileShape> {
+    pub fn bounds_simplex(self, simplex: &Simplex) -> Option<RegularTileShape> {
         match self {
             ShapeBoundingDirections::Orthogonal => {
                 Some(RegularTileShape::Box(simplex.bounding_box()))
@@ -90,7 +89,7 @@ impl ShapeBoundingDirections {
         }
     }
 
-            pub fn bounds_tile(self, shape: &TileShape) -> Option<RegularTileShape> {
+    pub fn bounds_tile(self, shape: &TileShape) -> Option<RegularTileShape> {
         match shape {
             TileShape::Box(b) => Some(self.bounds_box(b)),
             TileShape::Octagon(o) => Some(self.bounds_octagon(o)),
@@ -98,7 +97,7 @@ impl ShapeBoundingDirections {
         }
     }
 
-            pub fn bounds_circle(self, circle: &Circle) -> RegularTileShape {
+    pub fn bounds_circle(self, circle: &Circle) -> RegularTileShape {
         match self {
             ShapeBoundingDirections::Orthogonal => RegularTileShape::Box(circle.bounding_box()),
             ShapeBoundingDirections::FortyfiveDegree => {
@@ -107,7 +106,7 @@ impl ShapeBoundingDirections {
         }
     }
 
-                pub fn bounds_polygon(self, polygon: &PolygonShape) -> RegularTileShape {
+    pub fn bounds_polygon(self, polygon: &PolygonShape) -> RegularTileShape {
         match self {
             ShapeBoundingDirections::Orthogonal => RegularTileShape::Box(polygon.bounding_box()),
             ShapeBoundingDirections::FortyfiveDegree => {
@@ -116,7 +115,7 @@ impl ShapeBoundingDirections {
         }
     }
 
-                                pub fn bounds_shape(self, shape: &Shape) -> Option<RegularTileShape> {
+    pub fn bounds_shape(self, shape: &Shape) -> Option<RegularTileShape> {
         match shape {
             Shape::Tile(t) => self.bounds_tile(t),
             Shape::Polygon(p) => Some(self.bounds_polygon(p)),
@@ -126,17 +125,17 @@ impl ShapeBoundingDirections {
 }
 
 impl IntBox {
-            pub fn bounding_shape(&self, dirs: ShapeBoundingDirections) -> RegularTileShape {
+    pub fn bounding_shape(&self, dirs: ShapeBoundingDirections) -> RegularTileShape {
         dirs.bounds_box(self)
     }
 }
 
 impl IntOctagon {
-            pub fn bounding_shape(&self, dirs: ShapeBoundingDirections) -> RegularTileShape {
+    pub fn bounding_shape(&self, dirs: ShapeBoundingDirections) -> RegularTileShape {
         dirs.bounds_octagon(self)
     }
 
-                            pub fn border_point(&self, point: &IntPoint, dir: FortyfiveDegreeDirection) -> IntPoint {
+    pub fn border_point(&self, point: &IntPoint, dir: FortyfiveDegreeDirection) -> IntPoint {
         let (result_x, result_y) = match dir {
             FortyfiveDegreeDirection::Right => {
                 let mut x = self.right_x.min(self.upper_right_diagonal_x - point.y);
@@ -190,7 +189,7 @@ impl IntOctagon {
         IntPoint::new(result_x, result_y)
     }
 
-                                        pub fn nearest_border_projections(
+    pub fn nearest_border_projections(
         &self,
         point: &IntPoint,
         max_result_points: usize,
@@ -222,7 +221,7 @@ impl IntOctagon {
 }
 
 impl Simplex {
-                pub fn bounding_shape(&self, dirs: ShapeBoundingDirections) -> Option<RegularTileShape> {
+    pub fn bounding_shape(&self, dirs: ShapeBoundingDirections) -> Option<RegularTileShape> {
         dirs.bounds_simplex(self)
     }
 }

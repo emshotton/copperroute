@@ -4,25 +4,25 @@ use fr_geometry::{IntPoint, Point, Vector};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Component {
-        pub name: String,
+    pub name: String,
 
-                        pub id: i32,
+    pub id: i32,
 
-        pub position_fixed: bool,
+    pub position_fixed: bool,
 
-                lib_package_front: usize,
+    lib_package_front: usize,
 
-            lib_package_back: usize,
+    lib_package_back: usize,
 
-            part_number: Option<String>,
+    part_number: Option<String>,
 
-            location: Option<Point>,
+    location: Option<Point>,
 
-            rotation_in_degree: f64,
+    rotation_in_degree: f64,
 
-            logical_part: Option<usize>,
+    logical_part: Option<usize>,
 
-        on_front: bool,
+    on_front: bool,
 }
 
 fn normalize_rotation(mut rotation_in_degree: f64) -> f64 {
@@ -36,7 +36,7 @@ fn normalize_rotation(mut rotation_in_degree: f64) -> f64 {
 }
 
 impl Component {
-                    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         name: impl Into<String>,
         location: Option<Point>,
@@ -62,27 +62,27 @@ impl Component {
         }
     }
 
-        pub fn get_location(&self) -> Option<&Point> {
+    pub fn get_location(&self) -> Option<&Point> {
         self.location.as_ref()
     }
 
-        pub fn get_rotation_in_degree(&self) -> f64 {
+    pub fn get_rotation_in_degree(&self) -> f64 {
         self.rotation_in_degree
     }
 
-        pub fn is_placed(&self) -> bool {
+    pub fn is_placed(&self) -> bool {
         self.location.is_some()
     }
 
-        pub fn placed_on_front(&self) -> bool {
+    pub fn placed_on_front(&self) -> bool {
         self.on_front
     }
 
-        pub fn get_part_number(&self) -> Option<&str> {
+    pub fn get_part_number(&self) -> Option<&str> {
         self.part_number.as_deref()
     }
 
-            pub fn get_package(&self) -> usize {
+    pub fn get_package(&self) -> usize {
         if self.on_front {
             self.lib_package_front
         } else {
@@ -90,21 +90,21 @@ impl Component {
         }
     }
 
-        pub fn get_logical_part(&self) -> Option<usize> {
+    pub fn get_logical_part(&self) -> Option<usize> {
         self.logical_part
     }
 
-        pub fn set_logical_part(&mut self, logical_part: Option<usize>) {
+    pub fn set_logical_part(&mut self, logical_part: Option<usize>) {
         self.logical_part = logical_part;
     }
 
-            pub fn translate_by(&mut self, vector: &Vector) {
+    pub fn translate_by(&mut self, vector: &Vector) {
         if let Some(location) = &self.location {
             self.location = Some(location.translate_by(vector));
         }
     }
 
-                    pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
+    pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
         if factor == 0 {
             return;
         }
@@ -115,7 +115,7 @@ impl Component {
         }
     }
 
-                            pub fn rotate(&mut self, angle_in_degree: f64, pole: &IntPoint, flip_style_rotate_first: bool) {
+    pub fn rotate(&mut self, angle_in_degree: f64, pole: &IntPoint, flip_style_rotate_first: bool) {
         if angle_in_degree == 0.0 {
             return;
         }
@@ -134,7 +134,7 @@ impl Component {
         }
     }
 
-            pub fn change_side(&mut self, pole: &IntPoint) {
+    pub fn change_side(&mut self, pole: &IntPoint) {
         if let Some(location) = &self.location {
             let mirrored = location.mirror_vertical(&Point::Int(*pole));
             self.on_front = !self.on_front;
@@ -142,7 +142,7 @@ impl Component {
         }
     }
 
-                        pub fn compare_to(&self, other: &Component) -> Ordering {
+    pub fn compare_to(&self, other: &Component) -> Ordering {
         self.name.to_lowercase().cmp(&other.name.to_lowercase())
     }
 }
@@ -155,17 +155,17 @@ impl std::fmt::Display for Component {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Components {
-            components: Vec<Component>,
+    components: Vec<Component>,
 
-            flip_style_rotate_first: bool,
+    flip_style_rotate_first: bool,
 }
 
 impl Components {
-            pub fn new() -> Components {
+    pub fn new() -> Components {
         Components::default()
     }
 
-                            #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn add(
         &mut self,
         name: impl Into<String>,
@@ -192,7 +192,7 @@ impl Components {
         self.components.last().expect("just pushed")
     }
 
-                pub fn add_with_generated_name(
+    pub fn add_with_generated_name(
         &mut self,
         location: Option<Point>,
         rotation: f64,
@@ -212,11 +212,11 @@ impl Components {
         )
     }
 
-            pub fn get_by_name(&self, name: &str) -> Option<&Component> {
+    pub fn get_by_name(&self, name: &str) -> Option<&Component> {
         self.components.iter().find(|c| c.name == name)
     }
 
-                                pub fn get(&self, component_id: i32) -> &Component {
+    pub fn get(&self, component_id: i32) -> &Component {
         let index = usize::try_from(component_id - 1).unwrap_or_else(|_| {
             panic!(
                 "Components.get({component_id}): Java's elementAt({}) throws \
@@ -232,7 +232,7 @@ impl Components {
         result
     }
 
-        pub fn get_mut(&mut self, component_id: i32) -> &mut Component {
+    pub fn get_mut(&mut self, component_id: i32) -> &mut Component {
         let index = usize::try_from(component_id - 1).unwrap_or_else(|_| {
             panic!(
                 "Components.get({component_id}): Java's elementAt({}) throws \
@@ -243,37 +243,37 @@ impl Components {
         &mut self.components[index]
     }
 
-        pub fn count(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.components.len()
     }
 
-        pub fn get_all(&self) -> std::slice::Iter<'_, Component> {
+    pub fn get_all(&self) -> std::slice::Iter<'_, Component> {
         self.components.iter()
     }
 
-        pub fn move_component(&mut self, component_id: i32, vector: &Vector) {
+    pub fn move_component(&mut self, component_id: i32, vector: &Vector) {
         self.get_mut(component_id).translate_by(vector);
     }
 
-        pub fn turn_90_degree(&mut self, component_id: i32, factor: i32, pole: &IntPoint) {
+    pub fn turn_90_degree(&mut self, component_id: i32, factor: i32, pole: &IntPoint) {
         self.get_mut(component_id).turn_90_degree(factor, pole);
     }
 
-            pub fn rotate(&mut self, component_id: i32, rotation_in_degree: f64, pole: &IntPoint) {
+    pub fn rotate(&mut self, component_id: i32, rotation_in_degree: f64, pole: &IntPoint) {
         let flip_style_rotate_first = self.flip_style_rotate_first;
         self.get_mut(component_id)
             .rotate(rotation_in_degree, pole, flip_style_rotate_first);
     }
 
-        pub fn change_side(&mut self, component_id: i32, pole: &IntPoint) {
+    pub fn change_side(&mut self, component_id: i32, pole: &IntPoint) {
         self.get_mut(component_id).change_side(pole);
     }
 
-        pub fn get_flip_style_rotate_first(&self) -> bool {
+    pub fn get_flip_style_rotate_first(&self) -> bool {
         self.flip_style_rotate_first
     }
 
-        pub fn set_flip_style_rotate_first(&mut self, value: bool) {
+    pub fn set_flip_style_rotate_first(&mut self, value: bool) {
         self.flip_style_rotate_first = value;
     }
 }
@@ -302,7 +302,6 @@ mod tests {
         );
         c
     }
-
 
     #[test]
     fn add_assigns_consecutive_ids_from_one() {
@@ -382,7 +381,6 @@ mod tests {
         assert!(c.get_flip_style_rotate_first());
     }
 
-
     #[test]
     fn the_constructor_normalises_the_rotation_into_zero_to_360() {
         let mut c = Components::new();
@@ -404,8 +402,8 @@ mod tests {
     #[test]
     fn get_package_picks_the_side() {
         let c = components();
-        assert_eq!(c.get(1).get_package(), 1); 
-        assert_eq!(c.get(2).get_package(), 4); 
+        assert_eq!(c.get(1).get_package(), 1);
+        assert_eq!(c.get(2).get_package(), 4);
     }
 
     #[test]
@@ -483,10 +481,10 @@ mod tests {
         c.change_side(1, &IntPoint::new(0, 0));
         assert!(!c.get(1).placed_on_front());
         assert_eq!(c.get(1).get_location(), Some(&point(-10, 20)));
-        assert_eq!(c.get(1).get_package(), 2); 
+        assert_eq!(c.get(1).get_package(), 2);
     }
 
-                #[test]
+    #[test]
     fn change_side_on_an_unplaced_component_is_guarded() {
         let mut c = components();
         let before_side = c.get(2).placed_on_front();
@@ -501,7 +499,7 @@ mod tests {
     #[test]
     fn compare_to_orders_by_name_ignoring_case() {
         let c = components();
-        assert_eq!(c.get(2).compare_to(c.get(1)), Ordering::Less); 
+        assert_eq!(c.get(2).compare_to(c.get(1)), Ordering::Less);
         assert_eq!(c.get(1).compare_to(c.get(1)), Ordering::Equal);
         let mut other = Components::new();
         other.add("r1", None, 0.0, true, 1, 1, false, None);

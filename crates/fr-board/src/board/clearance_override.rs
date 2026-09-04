@@ -14,7 +14,7 @@ pub const HOLE_EDGE_CLEARANCE_CLASS_NAME: &str = "hole_edge";
 pub const DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM: f64 = 500.0;
 
 impl Board {
-                                                            pub fn clearance_override_board_units(&self, clearance_um: f64) -> i32 {
+    pub fn clearance_override_board_units(&self, clearance_um: f64) -> i32 {
         let board_resolution = self.communication.resolution.max(1);
         java_round(Unit::scale(
             clearance_um * f64::from(board_resolution),
@@ -23,7 +23,7 @@ impl Board {
         )) as i32
     }
 
-                                                                                pub fn apply_copper_to_edge_clearance_override(&mut self, clearance_um: f64) -> bool {
+    pub fn apply_copper_to_edge_clearance_override(&mut self, clearance_um: f64) -> bool {
         if clearance_um < 0.0 {
             return false;
         }
@@ -92,7 +92,7 @@ impl Board {
         true
     }
 
-                                                                pub fn apply_hole_clearance_override(&mut self, clearance_um: f64) -> bool {
+    pub fn apply_hole_clearance_override(&mut self, clearance_um: f64) -> bool {
         if clearance_um < 0.0 {
             return false;
         }
@@ -111,12 +111,12 @@ impl Board {
         changed || hole_keepouts > 0
     }
 
-                                                        pub fn assign_hole_keepout_clearance_class(&mut self, clearance_um: f64) -> bool {
+    pub fn assign_hole_keepout_clearance_class(&mut self, clearance_um: f64) -> bool {
         let board_units = self.clearance_override_board_units(clearance_um);
         self.assign_hole_keepout_clearance_class_board_units(board_units) > 0
     }
 
-            fn assign_hole_keepout_clearance_class_board_units(
+    fn assign_hole_keepout_clearance_class_board_units(
         &mut self,
         hole_clearance_board_units: i32,
     ) -> usize {
@@ -186,4 +186,3 @@ impl Board {
         reclassified
     }
 }
-

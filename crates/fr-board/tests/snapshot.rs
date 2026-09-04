@@ -5,7 +5,6 @@ use fr_geometry::{
     TileShape, Vector,
 };
 
-
 struct Fixture {
     board: Board,
     smd_pad: PadstackId,
@@ -100,7 +99,6 @@ fn straight_trace(board: &mut Board, layer: usize, x1: i32, x2: i32, net_no: i32
         .expect("a straight two-corner trace")
 }
 
-
 #[test]
 fn trace_free_boards_with_different_items_no_longer_collide() {
     let a = fixture().board;
@@ -117,7 +115,6 @@ fn trace_free_boards_with_different_items_no_longer_collide() {
     assert_ne!(a.structural_hash(), c.structural_hash());
     assert_ne!(b.structural_hash(), c.structural_hash());
 }
-
 
 #[test]
 fn the_item_id_reaches_the_hash() {
@@ -200,7 +197,6 @@ fn the_on_the_board_flag_reaches_the_hash() {
         .set_on_the_board(false);
     assert_ne!(a.structural_hash(), before);
 }
-
 
 #[test]
 fn the_trace_layer_reaches_the_hash() {
@@ -292,7 +288,6 @@ fn the_line_identity_token_does_not_reach_the_hash() {
 
     assert_eq!(a.structural_hash(), b.structural_hash());
 }
-
 
 #[test]
 fn the_via_centre_and_padstack_reach_the_hash() {
@@ -389,7 +384,6 @@ fn the_via_escape_flags_reach_the_hash() {
     v.escape_via_smd_layer = 1;
     assert_ne!(fa.board.structural_hash(), after_escape);
 }
-
 
 #[test]
 fn the_obstacle_area_geometry_and_layer_reach_the_hash() {
@@ -501,7 +495,6 @@ fn the_conduction_area_flags_reach_the_hash() {
     assert_ne!(a.structural_hash(), after, "isFilled");
 }
 
-
 #[test]
 fn the_component_outline_fields_reach_the_hash() {
     let make = |is_front: bool,
@@ -587,7 +580,6 @@ fn the_board_outline_shapes_and_keepout_flag_reach_the_hash() {
     assert_ne!(c.structural_hash(), before, "keepoutOutsideOutline");
 }
 
-
 #[test]
 fn reordering_the_item_list_changes_the_hash() {
     let mut a = fixture().board;
@@ -601,7 +593,6 @@ fn reordering_the_item_list_changes_the_hash() {
     assert_eq!(a.get_traces().len(), b.get_traces().len());
     assert_ne!(a.structural_hash(), b.structural_hash());
 }
-
 
 #[test]
 fn filling_the_pin_centre_cache_does_not_move_the_hash() {
@@ -657,7 +648,6 @@ fn filling_the_via_layer_caches_does_not_move_the_hash() {
 
     assert_eq!(fx.board.structural_hash(), before);
 }
-
 
 #[test]
 fn diff_traces_is_the_symmetric_difference() {

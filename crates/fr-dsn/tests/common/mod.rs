@@ -249,7 +249,6 @@ pub fn assert_matches_golden(board: &Board, warnings: &[String], golden_name: &s
     );
 }
 
-
 pub fn assert_balanced_scopes(content: &str) {
     let opens = content.chars().filter(|&c| c == '(').count();
     let closes = content.chars().filter(|&c| c == ')').count();
@@ -293,7 +292,6 @@ pub fn assert_unique_library_padstacks(content: &str) {
         "library_out must declare at least one via padstack"
     );
 }
-
 
 pub fn read_directed(path_name: &str) -> (Board, fr_dsn::CoordinateTransform) {
     let name = format!("p8t13-{path_name}.dsn");

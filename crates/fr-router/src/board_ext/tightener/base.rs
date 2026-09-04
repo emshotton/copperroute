@@ -24,22 +24,22 @@ pub(crate) fn new_polyline_in_place(lines: &mut Vec<Line>) -> Polyline {
 static NEVER_STOP: fn() -> bool = || false;
 
 pub(crate) struct TightenerBase<'a> {
-            pub(crate) only_net_no_arr: Vec<i32>,
-        stoppable_thread: Option<StopCheck<'a>>,
-            time_limit: Option<TimeLimit>,
-            keep_point: Option<Point>,
-        keep_point_layer: i32,
-        pub(crate) current_layer: usize,
-        pub(crate) current_half_width: i32,
-                                    pub(crate) current_net_numbers: Vec<i32>,
-        pub(crate) current_clearance_class_index: usize,
-        pub(crate) current_clip_shape: Option<IntOctagon>,
-                pub(crate) contact_pins: Option<BTreeSet<ItemId>>,
-            pub(crate) min_translate_dist: i32,
+    pub(crate) only_net_no_arr: Vec<i32>,
+    stoppable_thread: Option<StopCheck<'a>>,
+    time_limit: Option<TimeLimit>,
+    keep_point: Option<Point>,
+    keep_point_layer: i32,
+    pub(crate) current_layer: usize,
+    pub(crate) current_half_width: i32,
+    pub(crate) current_net_numbers: Vec<i32>,
+    pub(crate) current_clearance_class_index: usize,
+    pub(crate) current_clip_shape: Option<IntOctagon>,
+    pub(crate) contact_pins: Option<BTreeSet<ItemId>>,
+    pub(crate) min_translate_dist: i32,
 }
 
 impl<'a> TightenerBase<'a> {
-                            pub(crate) fn new(
+    pub(crate) fn new(
         only_net_no_arr: Vec<i32>,
         stoppable_thread: Option<StopCheck<'a>>,
         time_limit: i32,
@@ -66,7 +66,7 @@ impl<'a> TightenerBase<'a> {
         }
     }
 
-            pub(crate) fn is_stop_requested(&self) -> bool {
+    pub(crate) fn is_stop_requested(&self) -> bool {
         if let Some(stop) = self.stoppable_thread
             && stop()
         {
@@ -78,11 +78,11 @@ impl<'a> TightenerBase<'a> {
         time_limit.is_exceeded()
     }
 
-                    pub(crate) fn stop_check(&self) -> StopCheck<'a> {
+    pub(crate) fn stop_check(&self) -> StopCheck<'a> {
         self.stoppable_thread.unwrap_or(&NEVER_STOP)
     }
 
-                pub(crate) fn check(&self, board: &mut Board, shape: &fr_geometry::TileShape) -> bool {
+    pub(crate) fn check(&self, board: &mut Board, shape: &fr_geometry::TileShape) -> bool {
         board.check_trace_shape(
             shape,
             self.current_layer,
@@ -92,25 +92,25 @@ impl<'a> TightenerBase<'a> {
         )
     }
 
-            pub(crate) fn clip_is_outside(&self, point: &Point) -> bool {
+    pub(crate) fn clip_is_outside(&self, point: &Point) -> bool {
         match &self.current_clip_shape {
             Some(clip) => fr_geometry::TileShape::Octagon(*clip).is_outside(point),
             None => false,
         }
     }
 
-            pub(crate) fn clip_contains(&self, point: &FloatPoint) -> bool {
+    pub(crate) fn clip_contains(&self, point: &FloatPoint) -> bool {
         match &self.current_clip_shape {
             Some(clip) => clip.contains_float(point),
             None => true,
         }
     }
 
-                                                    pub(crate) fn avoid_acid_traps(&self, _polyline: &Polyline) -> Option<Polyline> {
+    pub(crate) fn avoid_acid_traps(&self, _polyline: &Polyline) -> Option<Polyline> {
         None
     }
 
-                                    pub(crate) fn reposition_lines(
+    pub(crate) fn reposition_lines(
         &mut self,
         board: &mut Board,
         polyline: &Polyline,
@@ -133,7 +133,7 @@ impl<'a> TightenerBase<'a> {
         None
     }
 
-                                                #[allow(unused_assignments)]
+    #[allow(unused_assignments)]
     pub(crate) fn reposition_line(
         &mut self,
         board: &mut Board,
@@ -225,7 +225,7 @@ impl<'a> TightenerBase<'a> {
         new_line
     }
 
-                        pub(crate) fn skip_segments_of_length_0(
+    pub(crate) fn skip_segments_of_length_0(
         &mut self,
         board: &mut Board,
         polyline: &Polyline,
@@ -285,7 +285,7 @@ impl<'a> TightenerBase<'a> {
         Some(current_polyline)
     }
 
-                                                pub(crate) fn split_traces_at_keep_point(
+    pub(crate) fn split_traces_at_keep_point(
         &mut self,
         board: &mut Board,
     ) -> Result<bool, BoardError> {
@@ -306,7 +306,7 @@ impl<'a> TightenerBase<'a> {
         Ok(false)
     }
 
-            pub(crate) fn line_through(corner: &FloatPoint, dir: &fr_geometry::Direction) -> Line {
+    pub(crate) fn line_through(corner: &FloatPoint, dir: &fr_geometry::Direction) -> Line {
         let rounded: IntPoint = corner.round();
         Line::from_direction_any(rounded, dir)
             .expect("a Direction built from IntPoint differences is an IntDirection")

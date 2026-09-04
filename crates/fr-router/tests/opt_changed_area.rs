@@ -13,7 +13,6 @@ use fr_settings::{ExpansionCostFactor, HostEnvironment, RouterSettings, Settings
 use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -10_000,
@@ -113,7 +112,6 @@ fn never() -> bool {
     false
 }
 
-
 #[test]
 fn a_null_changed_area_returns_immediately() {
     let mut board = detour_board(200);
@@ -194,7 +192,6 @@ fn an_empty_clip_shape_skips_the_tightener_but_still_clears_the_area() {
     assert!(board.changed_area.is_none(), ":78 runs either way");
 }
 
-
 #[test]
 fn the_layer_region_is_emptied_before_the_work() {
     let mut board = detour_board(200);
@@ -254,7 +251,6 @@ fn the_enlarge_offset_is_javas_formula() {
         }
     }
 }
-
 
 #[test]
 fn the_item_loop_does_not_break_after_a_plain_pull_tight() {
@@ -379,7 +375,6 @@ fn the_budget_trips_the_sweep() {
     assert!(!router_stop.is_stop_requested());
 }
 
-
 #[test]
 fn offering_trace_costs_does_not_change_the_trace_arms() {
     let mut board = detour_board(200);
@@ -415,7 +410,6 @@ fn offering_trace_costs_does_not_change_the_trace_arms() {
         "the ViaOptimizer arm must not reach the trace arms"
     );
 }
-
 
 const TRANSCRIPT: &str = include_str!("data/p7t3-opt-changed-area.txt");
 
@@ -632,7 +626,6 @@ fn the_whole_sweep_matches_the_jvm_on_a_real_board() {
     }
 }
 
-
 fn build_settings(board: &Board) -> RouterSettings {
     let mut settings = DefaultSettings::new(&HostEnvironment::detect())
         .get_settings()
@@ -664,7 +657,6 @@ fn pick_connections(board: &Board, max_items: usize) -> Vec<(ItemId, i32)> {
     }
     result
 }
-
 
 fn regime_name(angle: AngleRestriction) -> &'static str {
     match angle {

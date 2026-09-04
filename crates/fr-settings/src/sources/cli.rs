@@ -7,7 +7,6 @@ use crate::{
     SourceKind, merger::priority, set_field_value,
 };
 
-
 #[derive(Debug, Clone)]
 pub struct CliSettings {
     settings: RouterSettings,
@@ -16,19 +15,19 @@ pub struct CliSettings {
 }
 
 impl CliSettings {
-        const PRIORITY: i32 = priority::CLI;
+    const PRIORITY: i32 = priority::CLI;
 
-                            #[must_use]
+    #[must_use]
     pub fn new(args: &[String]) -> Self {
         Self::parse(args, false)
     }
 
-                                                                                                                        #[must_use]
+    #[must_use]
     pub fn new_with_set_alias(args: &[String]) -> Self {
         Self::parse(args, true)
     }
 
-            fn parse(args: &[String], set_alias: bool) -> Self {
+    fn parse(args: &[String], set_alias: bool) -> Self {
         let mut this = Self {
             settings: RouterSettings::new(),
             parsed_arguments: BTreeMap::new(),
@@ -62,8 +61,7 @@ impl CliSettings {
                             this.apply_router_setting(property_name, value);
                         }
                     }
-                }
-                else if body.contains('=') {
+                } else if body.contains('=') {
                     let (property_name, value) = body.split_once('=').expect("contains checked");
 
                     if property_name == "router.enabled" {
@@ -109,7 +107,7 @@ impl CliSettings {
         this
     }
 
-            fn apply_router_setting(&mut self, property_name: &str, value: &str) {
+    fn apply_router_setting(&mut self, property_name: &str, value: &str) {
         let field_path = property_name
             .strip_prefix("router.")
             .unwrap_or(property_name);
@@ -123,12 +121,12 @@ impl CliSettings {
         }
     }
 
-                        #[must_use]
+    #[must_use]
     pub fn get_parsed_arguments(&self) -> &BTreeMap<String, String> {
         &self.parsed_arguments
     }
 
-            #[must_use]
+    #[must_use]
     pub fn errors(&self) -> &[MergeError] {
         &self.errors
     }
@@ -160,31 +158,30 @@ fn map_flag_to_property(flag: &str) -> Option<&'static str> {
     }
 }
 
-
 /// What `GlobalSettings.applyCommandLineArguments` writes into the `@Deprecated public final
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LegacyBridge {
-                                        pub max_passes: Option<i32>,
+    pub max_passes: Option<i32>,
 
-                                    pub optimizer_max_threads: Option<i32>,
+    pub optimizer_max_threads: Option<i32>,
 
-                                pub optimization_improvement_threshold: Option<f32>,
+    pub optimization_improvement_threshold: Option<f32>,
 
-                            pub board_update_strategy: Option<BoardUpdateStrategy>,
+    pub board_update_strategy: Option<BoardUpdateStrategy>,
 
-                            pub item_selection_strategy: Option<ItemSelectionStrategy>,
+    pub item_selection_strategy: Option<ItemSelectionStrategy>,
 
-                        pub hybrid_ratio: Option<String>,
+    pub hybrid_ratio: Option<String>,
 
-                            pub ignore_net_classes: Option<Vec<String>>,
+    pub ignore_net_classes: Option<Vec<String>>,
 
-                    pub router_enabled: Option<bool>,
+    pub router_enabled: Option<bool>,
 
-                    pub drc_enabled: Option<bool>,
+    pub drc_enabled: Option<bool>,
 }
 
 impl LegacyBridge {
-                                                fn absorb_router_settings(&mut self, scratch: &RouterSettings) {
+    fn absorb_router_settings(&mut self, scratch: &RouterSettings) {
         if scratch.enabled.is_some() {
             self.router_enabled = scratch.enabled;
         }
@@ -418,12 +415,11 @@ fn java_integer_decode(nm: &str) -> Option<i32> {
     }
 }
 
-
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DeSlots {
-            pub initial_input_file: Option<String>,
-            pub design_session_filename: Option<String>,
-        pub initial_rules_file: Option<String>,
+    pub initial_input_file: Option<String>,
+    pub design_session_filename: Option<String>,
+    pub initial_rules_file: Option<String>,
 }
 
 #[must_use]

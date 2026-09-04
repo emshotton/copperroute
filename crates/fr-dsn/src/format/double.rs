@@ -1,4 +1,4 @@
-pub use fr_geometry::java_round; 
+pub use fr_geometry::java_round;
 
 pub fn java_rint(x: f64) -> f64 {
     x.round_ties_even()
@@ -85,7 +85,7 @@ pub fn java_format_fixed(x: f64, precision: usize) -> String {
     if keep >= ds.len() {
         ds.resize(keep, b'0');
     } else {
-        let round_up = ds[keep] >= b'5'; 
+        let round_up = ds[keep] >= b'5';
         ds.truncate(keep);
         if round_up {
             let mut i = keep;

@@ -10,7 +10,7 @@ use crate::board_ext::tightener::PolylineTraceExt;
 pub struct ViaOptimizer;
 
 impl ViaOptimizer {
-                                                                pub fn opt_via_location(
+    pub fn opt_via_location(
         board: &mut Board,
         via: ItemId,
         trace_costs: Option<&[ExpansionCostFactor]>,
@@ -147,7 +147,7 @@ impl ViaOptimizer {
         Ok(true)
     }
 
-                                    pub fn opt_plane_or_fanout_via(
+    pub fn opt_plane_or_fanout_via(
         board: &mut Board,
         via: ItemId,
         trace_pull_tight_accuracy: i32,
@@ -319,7 +319,7 @@ impl ViaOptimizer {
         Ok(true)
     }
 
-                                                        pub fn is_within_tolerance(p1: Option<&Point>, p2: &Point, tolerance: i32) -> bool {
+    pub fn is_within_tolerance(p1: Option<&Point>, p2: &Point, tolerance: i32) -> bool {
         let Some(p1) = p1 else {
             return false;
         };
@@ -330,8 +330,7 @@ impl ViaOptimizer {
         (dx + dy) <= f64::from(tolerance)
     }
 
-
-                                                                                    pub fn reposition_via_toward_location(
+    pub fn reposition_via_toward_location(
         board: &mut Board,
         via: ItemId,
         to_location: &IntPoint,
@@ -391,7 +390,7 @@ impl ViaOptimizer {
         result
     }
 
-                                                                    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn reposition_via_check_candidate(
         board: &mut Board,
         via: ItemId,
@@ -445,7 +444,7 @@ impl ViaOptimizer {
         DrillItemMover::check(board, via, &delta, 0, 0, None, None)
     }
 
-                                                                                                                        #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn reposition_via_general(
         board: &mut Board,
         via: ItemId,
@@ -628,7 +627,6 @@ impl ViaOptimizer {
             }
         }
 
-
         if !first_delta.is_orthogonal() {
             let mut float_check_location =
                 FloatPoint::new(float_via_location.x, float_first_trace_from_corner.y);
@@ -785,8 +783,7 @@ impl ViaOptimizer {
         None
     }
 
-
-        fn contact_role(board: &Board, contact: ItemId) -> ContactRole {
+    fn contact_role(board: &Board, contact: ItemId) -> ContactRole {
         let Some(item) = board.get_item(contact) else {
             return ContactRole::Unusable;
         };
@@ -801,7 +798,7 @@ impl ViaOptimizer {
         }
     }
 
-        fn via_tolerance(board: &Board, via: ItemId) -> i32 {
+    fn via_tolerance(board: &Board, via: ItemId) -> i32 {
         let ctx = board.ctx();
         let min_width = match board.get_item(via) {
             Some(Item::Via(v)) => v.min_width(&ctx),
@@ -811,7 +808,7 @@ impl ViaOptimizer {
         (min_width / 2.0) as i32 + 1
     }
 
-                                    fn from_corner(
+    fn from_corner(
         board: &Board,
         trace: ItemId,
         via_center: &Point,
@@ -872,9 +869,9 @@ impl ViaOptimizer {
 }
 
 enum ContactRole {
-        FreeTrace,
-        Plane,
-        Unusable,
+    FreeTrace,
+    Plane,
+    Unusable,
 }
 
 enum TraceEnd {

@@ -11,7 +11,6 @@ use fr_router::score::BoardStatistics;
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, ScoringSettings, SettingsSource};
 
-
 const RPI_SPLITTER: &str = "fixtures/Issue143-rpi_splitter.dsn";
 const EMPTY_BOARD: &str = "fixtures/empty_board.dsn";
 const SETONIX: &str = "fixtures/Issue159-setonix_2hp-pcb.dsn";
@@ -122,7 +121,6 @@ fn build_pool(rel_path: &str) -> Vec<Board> {
     POOL_K.iter().map(|&k| snapshots[k].clone()).collect()
 }
 
-
 #[derive(Default)]
 struct HashLabels(Vec<u64>);
 
@@ -163,7 +161,7 @@ impl Transcript {
         java_float_to_string(BoardStatistics::new(board).normalized_score(&self.scoring))
     }
 
-                    fn describe_board(&mut self, name: &str, board: &mut Board) {
+    fn describe_board(&mut self, name: &str, board: &mut Board) {
         let score = self.score(board);
         let label = self.labels.label(board.structural_hash());
         let line = format!(
@@ -174,7 +172,7 @@ impl Transcript {
         self.push(line);
     }
 
-        fn call(&mut self, history: &BoardHistory, op: &str, ret: &str) {
+    fn call(&mut self, history: &BoardHistory, op: &str, ret: &str) {
         self.call_no += 1;
         let call_no = self.call_no;
         self.push(format!("call={call_no} {op} ret={ret}"));
@@ -189,7 +187,7 @@ impl Transcript {
         }
     }
 
-        fn restore(&mut self, history: &BoardHistory, op: &str, restored: Option<&mut Board>) {
+    fn restore(&mut self, history: &BoardHistory, op: &str, restored: Option<&mut Board>) {
         self.call(
             history,
             op,
@@ -209,7 +207,7 @@ impl Transcript {
         self.push(line);
     }
 
-            fn dump_items(&mut self, board: &Board) {
+    fn dump_items(&mut self, board: &Board) {
         self.push(format!(
             "  items maxId={}",
             board.communication.id_gen.max_generated_id().0
@@ -300,7 +298,6 @@ fn dump_corners(polyline: &Polyline) -> String {
         .collect();
     format!("[{}]", corners.join(","))
 }
-
 
 const T2: &str = include_str!("data/p7t2-board-history.txt");
 
@@ -558,7 +555,6 @@ fn java_float_compare_is_the_jdks() {
     assert_eq!(neg_nan.total_cmp(&f32::NEG_INFINITY), Less);
 }
 
-
 fn two_boards() -> (Board, Board, ScoringSettings) {
     let b0 = build_board(RPI_SPLITTER, 0);
     let b1 = build_board(RPI_SPLITTER, 1);
@@ -747,7 +743,6 @@ fn the_top_level_board_history_entry_class_is_unreachable() {
     );
 }
 
-
 fn set_up() -> (Board, Board, ScoringSettings) {
     let board1 = load_board(EMPTY_BOARD);
     let board2 = load_board(SETONIX);
@@ -886,7 +881,6 @@ fn a_restored_board_is_javas_deserialize_round_trip() {
     assert!(second.changed_area.is_none());
     assert_eq!(second.structural_hash(), restored.structural_hash());
 }
-
 
 #[test]
 fn trace_free_boards_are_distinguishable() {

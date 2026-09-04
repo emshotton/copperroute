@@ -11,12 +11,10 @@ use crate::structure::FixedState;
 
 use super::Board;
 
-
 const PROTECT_FANOUT_LENGTH: f64 = 400.0;
 
 impl Board {
-
-                pub fn get_connectable_items(&self, net_number: i32) -> Vec<ItemId> {
+    pub fn get_connectable_items(&self, net_number: i32) -> Vec<ItemId> {
         self.items
             .iter()
             .rev()
@@ -25,14 +23,14 @@ impl Board {
             .collect()
     }
 
-            pub fn connectable_item_count(&self, net_number: i32) -> usize {
+    pub fn connectable_item_count(&self, net_number: i32) -> usize {
         self.items
             .values()
             .filter(|item| item.as_connectable().is_some() && item.contains_net(net_number))
             .count()
     }
 
-            pub fn get_component_items(&self, component_id: i32) -> Vec<ItemId> {
+    pub fn get_component_items(&self, component_id: i32) -> Vec<ItemId> {
         self.items
             .iter()
             .rev()
@@ -41,7 +39,7 @@ impl Board {
             .collect()
     }
 
-            pub fn get_component_pins(&self, component_id: i32) -> Vec<ItemId> {
+    pub fn get_component_pins(&self, component_id: i32) -> Vec<ItemId> {
         self.items
             .iter()
             .rev()
@@ -50,7 +48,7 @@ impl Board {
             .collect()
     }
 
-                        pub fn get_pin(&self, component_id: i32, pin_index: i32) -> Option<ItemId> {
+    pub fn get_pin(&self, component_id: i32, pin_index: i32) -> Option<ItemId> {
         self.items
             .iter()
             .rev()
@@ -63,7 +61,7 @@ impl Board {
             .map(|(id, _)| *id)
     }
 
-                                pub fn get_connected_sets(&self, net_number: i32) -> Vec<BTreeSet<ItemId>> {
+    pub fn get_connected_sets(&self, net_number: i32) -> Vec<BTreeSet<ItemId>> {
         let mut result = Vec::new();
         if net_number <= 0 {
             return result;
@@ -85,12 +83,11 @@ impl Board {
         result
     }
 
-
-                    pub fn all_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
+    pub fn all_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
         self.all_contacts_impl(id, None)
     }
 
-            pub fn all_contacts_on_layer(&self, id: ItemId, layer: usize) -> BTreeSet<ItemId> {
+    pub fn all_contacts_on_layer(&self, id: ItemId, layer: usize) -> BTreeSet<ItemId> {
         self.all_contacts_impl(id, Some(layer))
     }
 
@@ -131,15 +128,15 @@ impl Board {
         result
     }
 
-        pub fn is_connected(&self, id: ItemId) -> bool {
+    pub fn is_connected(&self, id: ItemId) -> bool {
         !self.all_contacts(id).is_empty()
     }
 
-        pub fn is_connected_on_layer(&self, id: ItemId, layer: usize) -> bool {
+    pub fn is_connected_on_layer(&self, id: ItemId, layer: usize) -> bool {
         !self.all_contacts_on_layer(id, layer).is_empty()
     }
 
-                                pub fn normal_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
+    pub fn normal_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
         let Some(item) = self.items.get(&id) else {
             return BTreeSet::new();
         };
@@ -160,7 +157,7 @@ impl Board {
         }
     }
 
-                            pub fn trace_normal_contacts_at(
+    pub fn trace_normal_contacts_at(
         &self,
         id: ItemId,
         point: &Point,
@@ -208,7 +205,7 @@ impl Board {
         result
     }
 
-        pub fn trace_start_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
+    pub fn trace_start_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
         match self.items.get(&id) {
             Some(Item::Trace(trace)) => match trace.first_corner() {
                 Some(corner) => self.trace_normal_contacts_at(id, &corner, false),
@@ -218,7 +215,7 @@ impl Board {
         }
     }
 
-        pub fn trace_end_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
+    pub fn trace_end_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
         match self.items.get(&id) {
             Some(Item::Trace(trace)) => match trace.last_corner() {
                 Some(corner) => self.trace_normal_contacts_at(id, &corner, false),
@@ -228,7 +225,7 @@ impl Board {
         }
     }
 
-            fn drill_item_normal_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
+    fn drill_item_normal_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
         let mut result = BTreeSet::new();
         let Some(drill_center) = self.drill_center(id) else {
             return result;
@@ -267,7 +264,7 @@ impl Board {
         result
     }
 
-            fn conduction_area_normal_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
+    fn conduction_area_normal_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
         let mut result = BTreeSet::new();
         let Some(item @ Item::ConductionArea(area)) = self.items.get(&id) else {
             return result;
@@ -313,7 +310,7 @@ impl Board {
         result
     }
 
-                            pub fn normal_contact_point(&self, a: ItemId, b: ItemId) -> Option<Point> {
+    pub fn normal_contact_point(&self, a: ItemId, b: ItemId) -> Option<Point> {
         let item_a = self.items.get(&a)?;
         let item_b = self.items.get(&b)?;
         let ctx = self.ctx();
@@ -353,7 +350,7 @@ impl Board {
         }
     }
 
-        fn drill_trace_contact_point(
+    fn drill_trace_contact_point(
         &self,
         drill_id: ItemId,
         trace: &crate::items::PolylineTrace,
@@ -370,14 +367,13 @@ impl Board {
         .then_some(drill_center)
     }
 
-            pub fn first_common_layer(&self, a: ItemId, b: ItemId) -> Option<usize> {
+    pub fn first_common_layer(&self, a: ItemId, b: ItemId) -> Option<usize> {
         let item_a = self.items.get(&a)?;
         let item_b = self.items.get(&b)?;
         item_a.first_common_layer(item_b, &self.ctx())
     }
 
-
-                                pub fn connected_set(
+    pub fn connected_set(
         &self,
         id: ItemId,
         net_number: i32,
@@ -395,7 +391,7 @@ impl Board {
         result
     }
 
-                    fn connected_set_recu(
+    fn connected_set_recu(
         &self,
         id: ItemId,
         result: &mut BTreeSet<ItemId>,
@@ -421,7 +417,7 @@ impl Board {
         }
     }
 
-            pub fn unconnected_set(&self, id: ItemId, net_number: i32) -> BTreeSet<ItemId> {
+    pub fn unconnected_set(&self, id: ItemId, net_number: i32) -> BTreeSet<ItemId> {
         let mut result = BTreeSet::new();
         let Some(item) = self.items.get(&id) else {
             return result;
@@ -442,7 +438,7 @@ impl Board {
         result
     }
 
-                                                pub fn connection_items(
+    pub fn connection_items(
         &self,
         id: ItemId,
         stop_option: StopConnectionOption,
@@ -451,7 +447,7 @@ impl Board {
             .expect("a `|| false` stop check never trips")
     }
 
-                                                                    pub fn connection_items_checked(
+    pub fn connection_items_checked(
         &self,
         id: ItemId,
         stop_option: StopConnectionOption,
@@ -557,8 +553,7 @@ impl Board {
         Ok(result)
     }
 
-
-                                pub fn is_tail(&self, id: ItemId) -> bool {
+    pub fn is_tail(&self, id: ItemId) -> bool {
         let Some(item) = self.items.get(&id) else {
             return false;
         };
@@ -586,7 +581,7 @@ impl Board {
         }
     }
 
-            pub fn is_overlap(&self, id: ItemId) -> bool {
+    pub fn is_overlap(&self, id: ItemId) -> bool {
         match self.items.get(&id) {
             Some(Item::Trace(_)) => {
                 let start = self.trace_start_contacts(id);
@@ -597,7 +592,7 @@ impl Board {
         }
     }
 
-                                                                                            pub fn is_cycle_recu(
+    pub fn is_cycle_recu(
         &self,
         id: ItemId,
         visited_items: &mut BTreeSet<ItemId>,
@@ -624,7 +619,7 @@ impl Board {
         false
     }
 
-                    pub fn is_trace_cycle(&self, id: ItemId) -> bool {
+    pub fn is_trace_cycle(&self, id: ItemId) -> bool {
         let Some(item @ Item::Trace(_)) = self.items.get(&id) else {
             return false;
         };
@@ -651,7 +646,7 @@ impl Board {
         false
     }
 
-            pub fn is_fanout_via(&self, id: ItemId, ignore_items: Option<&BTreeSet<ItemId>>) -> bool {
+    pub fn is_fanout_via(&self, id: ItemId, ignore_items: Option<&BTreeSet<ItemId>>) -> bool {
         let ctx = self.ctx();
         let is_lonely_smd_pin = |candidate: ItemId| -> bool {
             let Some(item) = self.items.get(&candidate) else {
@@ -691,7 +686,7 @@ impl Board {
         false
     }
 
-                pub fn ratsnest_corners(&self, id: ItemId) -> Vec<Point> {
+    pub fn ratsnest_corners(&self, id: ItemId) -> Vec<Point> {
         let ctx = self.ctx();
         let Some(item) = self.items.get(&id) else {
             return Vec::new();
@@ -724,7 +719,7 @@ impl Board {
         }
     }
 
-                                        pub fn swappable_pins(&self, id: ItemId) -> BTreeSet<ItemId> {
+    pub fn swappable_pins(&self, id: ItemId) -> BTreeSet<ItemId> {
         let mut result = BTreeSet::new();
         let Some(Item::Pin(pin)) = self.items.get(&id) else {
             return result;
@@ -764,7 +759,6 @@ impl Board {
         }
         result
     }
-
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

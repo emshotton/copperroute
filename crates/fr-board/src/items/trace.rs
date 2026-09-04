@@ -1,4 +1,3 @@
-
 use fr_geometry::{
     FloatPoint, IntBox, IntOctagon, IntPoint, Line, LineSegment, Point, Polyline, PolylineError,
     TileShape, Vector,
@@ -10,14 +9,14 @@ use crate::items::{Connectable, ItemCtx, copied_header};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PolylineTrace {
-        pub hdr: ItemHeader,
-        lines: Polyline,
-        layer: usize,
-        half_width: i32,
+    pub hdr: ItemHeader,
+    lines: Polyline,
+    layer: usize,
+    half_width: i32,
 }
 
 impl PolylineTrace {
-                                                                                    pub fn new(
+    pub fn new(
         hdr: ItemHeader,
         lines: Polyline,
         layer: usize,
@@ -39,7 +38,7 @@ impl PolylineTrace {
         }
     }
 
-                                        pub fn copy(&self, new_id: ItemId) -> PolylineTrace {
+    pub fn copy(&self, new_id: ItemId) -> PolylineTrace {
         PolylineTrace {
             hdr: copied_header(&self.hdr, new_id),
             lines: self.lines.clone(),
@@ -48,65 +47,63 @@ impl PolylineTrace {
         }
     }
 
-
-        pub fn polyline(&self) -> &Polyline {
+    pub fn polyline(&self) -> &Polyline {
         &self.lines
     }
 
-                            pub fn set_polyline(&mut self, new_polyline: Polyline) {
+    pub fn set_polyline(&mut self, new_polyline: Polyline) {
         self.lines = new_polyline;
     }
 
-        pub fn get_layer(&self) -> usize {
+    pub fn get_layer(&self) -> usize {
         self.layer
     }
 
-            pub fn set_layer(&mut self, layer: usize) {
+    pub fn set_layer(&mut self, layer: usize) {
         self.layer = layer;
     }
 
-        pub fn first_layer(&self) -> usize {
+    pub fn first_layer(&self) -> usize {
         self.get_layer()
     }
 
-        pub fn last_layer(&self) -> usize {
+    pub fn last_layer(&self) -> usize {
         self.get_layer()
     }
 
-        pub fn get_half_width(&self) -> i32 {
+    pub fn get_half_width(&self) -> i32 {
         self.half_width
     }
 
-
-                        pub fn first_corner(&self) -> Option<Point> {
+    pub fn first_corner(&self) -> Option<Point> {
         self.lines.corner(0)
     }
 
-                pub fn last_corner(&self) -> Option<Point> {
+    pub fn last_corner(&self) -> Option<Point> {
         self.lines.last_corner()
     }
 
-                pub fn corner_count(&self) -> usize {
+    pub fn corner_count(&self) -> usize {
         self.lines.corner_count()
     }
 
-            pub fn get_length(&self) -> f64 {
+    pub fn get_length(&self) -> f64 {
         self.lines.length_approx()
     }
 
-                        pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self) -> IntBox {
         self.lines.bounding_box().offset(f64::from(self.half_width))
     }
 
-                        pub fn tile_shape_count(&self) -> usize {
+    pub fn tile_shape_count(&self) -> usize {
         self.lines.lines().len().saturating_sub(2)
     }
 
-                                pub fn offset_shapes(&self, half_width: i32) -> Vec<TileShape> {
+    pub fn offset_shapes(&self, half_width: i32) -> Vec<TileShape> {
         self.lines.offset_shapes(half_width)
     }
 
-                            pub fn nearest_end_point(&self, from_point: &Point) -> Option<Point> {
+    pub fn nearest_end_point(&self, from_point: &Point) -> Option<Point> {
         let p1 = self.first_corner()?;
         let p2 = self.last_corner()?;
         let from_point_float = from_point.to_float();
@@ -115,24 +112,23 @@ impl PolylineTrace {
         Some(if d1 < d2 { p1 } else { p2 })
     }
 
-
-                        pub fn translate_by(&mut self, vector: &Vector) -> Result<(), PolylineError> {
+    pub fn translate_by(&mut self, vector: &Vector) -> Result<(), PolylineError> {
         self.lines = self.lines.translate_by(vector)?;
         self.hdr.clear_derived_data();
         Ok(())
     }
 
-            pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) -> Result<(), PolylineError> {
+    pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) -> Result<(), PolylineError> {
         self.lines = self.lines.turn_90_degree(factor, pole)?;
         self.hdr.clear_derived_data();
         Ok(())
     }
 
-            pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint) {
+    pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint) {
         self.lines = self.lines.rotate_approx(angle_in_degree.to_radians(), pole);
     }
 
-                                            pub fn change_placement_side(
+    pub fn change_placement_side(
         &mut self,
         pole: &IntPoint,
         ctx: &ItemCtx<'_>,
@@ -147,8 +143,7 @@ impl PolylineTrace {
         Ok(())
     }
 
-
-                                pub fn split_polyline_at_line(
+    pub fn split_polyline_at_line(
         &self,
         line_index: usize,
         new_end_line: &Line,
@@ -156,7 +151,7 @@ impl PolylineTrace {
         self.lines.split(line_index, new_end_line)
     }
 
-                                                        pub fn perpendicular_split_line(&self, segment_index: usize, point: &Point) -> Option<Line> {
+    pub fn perpendicular_split_line(&self, segment_index: usize, point: &Point) -> Option<Line> {
         let segment = LineSegment::from_polyline(&self.lines, segment_index + 1)?;
         if !segment.contains(point) {
             return None;
@@ -168,7 +163,7 @@ impl PolylineTrace {
         Some(Line::from_direction(*int_point, &split_line_direction))
     }
 
-                                                                    pub fn split_polyline_at_point(
+    pub fn split_polyline_at_point(
         &self,
         point: &Point,
     ) -> Result<Option<[Polyline; 2]>, PolylineError> {
@@ -183,7 +178,7 @@ impl PolylineTrace {
         Ok(None)
     }
 
-                        pub fn clip_intersects_segment(&self, index: usize, clip: &IntOctagon) -> bool {
+    pub fn clip_intersects_segment(&self, index: usize, clip: &IntOctagon) -> bool {
         match LineSegment::from_polyline(&self.lines, index + 1) {
             Some(segment) => clip.intersects_box(&segment.bounding_box()),
             None => false,
@@ -196,7 +191,7 @@ impl Connectable for PolylineTrace {
         &self.hdr
     }
 
-                            fn get_trace_connection_shape(
+    fn get_trace_connection_shape(
         &self,
         _tree: TreeId,
         index: usize,

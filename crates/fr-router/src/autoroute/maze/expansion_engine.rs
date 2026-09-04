@@ -12,8 +12,7 @@ use crate::board_ext::{CheckDrillResult, ForcedViaInserter};
 pub struct MazeExpansionEngine;
 
 impl MazeExpansionEngine {
-
-                                                            pub fn expand_to_drill(
+    pub fn expand_to_drill(
         search: &mut MazeSearchEngine<'_>,
         board: &mut Board,
         drill: DrillId,
@@ -140,8 +139,7 @@ impl MazeExpansionEngine {
         search.push(new_element, board);
     }
 
-
-                                                                                        pub fn expand_to_drill_page(
+    pub fn expand_to_drill_page(
         search: &mut MazeSearchEngine<'_>,
         board: &mut Board,
         drill_page: PageId,
@@ -190,8 +188,7 @@ impl MazeExpansionEngine {
         search.push(new_element, board);
     }
 
-
-                                                    pub fn expand_to_drills_of_page(
+    pub fn expand_to_drills_of_page(
         search: &mut MazeSearchEngine<'_>,
         board: &mut Board,
         from_element: &MazeListElement,
@@ -232,8 +229,7 @@ impl MazeExpansionEngine {
         }
     }
 
-
-                                                                                pub fn expand_to_other_layers(
+    pub fn expand_to_other_layers(
         search: &mut MazeSearchEngine<'_>,
         board: &mut Board,
         list_element: &MazeListElement,
@@ -459,8 +455,7 @@ impl MazeExpansionEngine {
         }
     }
 
-
-                                            pub fn check_layer_with_any_matching_via(
+    pub fn check_layer_with_any_matching_via(
         search: &mut MazeSearchEngine<'_>,
         board: &mut Board,
         room_shape: &TileShape,
@@ -518,12 +513,11 @@ impl MazeExpansionEngine {
         }
     }
 
-
-            fn expandable_shape(engine: &AutorouteEngine, object: ExpandableRef) -> Option<TileShape> {
+    fn expandable_shape(engine: &AutorouteEngine, object: ExpandableRef) -> Option<TileShape> {
         engine.expandable_shape(object)
     }
 
-        fn drill_room_shape(
+    fn drill_room_shape(
         search: &MazeSearchEngine<'_>,
         drill_rooms: &[Option<RoomRef>],
         index: i32,
@@ -533,7 +527,6 @@ impl MazeExpansionEngine {
         search.engine.rooms.room_shape(room).cloned()
     }
 }
-
 
 pub fn via_autoroute_drill_info(
     engine: &mut AutorouteEngine,
@@ -571,5 +564,3 @@ pub fn via_autoroute_drill_info(
         .autoroute_drill_info = Some(id);
     Some(id)
 }
-
-

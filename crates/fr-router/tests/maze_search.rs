@@ -17,7 +17,6 @@ use fr_router::autoroute::maze::search::{
 use fr_router::autoroute::maze::{AutorouteControl, MazeListElement};
 use fr_settings::RouterSettings;
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -10_000,
@@ -264,7 +263,6 @@ fn row_of(maze: &MazeSearchEngine<'_>, e: &MazeListElement) -> QueueRow {
     )
 }
 
-
 #[test]
 fn the_boards_item_ids_are_the_probes() {
     let mut board = probe_board();
@@ -278,7 +276,6 @@ fn the_boards_item_ids_are_the_probes() {
     assert_eq!(board.item_tree_shape_count(ItemId(3), tree), 2);
     assert_eq!(board.item_tree_shape_count(ItemId(2), tree), 1);
 }
-
 
 #[test]
 fn init_seeds_one_element_per_non_destination_target_door() {
@@ -422,7 +419,6 @@ fn init_returns_none_when_no_start_door_exists() {
     assert_eq!(counter.calls(), 0);
 }
 
-
 fn init_with_trip(trip: u32) -> (bool, u32, bool, usize, usize) {
     let mut board = probe_board();
     let mut engine = probe_engine(&mut board, 1);
@@ -466,7 +462,6 @@ fn the_pop_loops_stop_check_aborts_before_the_queue_is_touched() {
     assert_eq!(maze.queue.len(), 2, "nothing was popped");
     assert_eq!(maze.destination_door(), None);
 }
-
 
 fn destination_door_of_room(
     maze: &MazeSearchEngine<'_>,
@@ -639,7 +634,6 @@ fn find_connection_answers_none_when_the_queue_is_empty() {
     );
 }
 
-
 #[test]
 fn an_empty_queue_makes_get_instance_answer_none() {
     let mut board = probe_board();
@@ -665,7 +659,6 @@ fn an_empty_queue_makes_get_instance_answer_none() {
          the jar answers an engine here whose queue is empty (`instance=ok`, `queue n=0`)"
     );
 }
-
 
 #[test]
 fn door_is_small_matches_the_three_angle_restrictions() {
@@ -756,7 +749,6 @@ fn door_is_small_answers_false_for_a_two_dimensional_door_onto_an_obstacle_room(
     }
 }
 
-
 #[test]
 fn segment_projection_matches_the_jvm() {
     let line = |ax: f64, ay: f64, bx: f64, by: f64| {
@@ -824,7 +816,6 @@ fn to_impacted_points_rounds_both_ends_and_passes_null_through() {
         Some([Point::new(1, -1), Point::new(3, -2)])
     );
 }
-
 
 #[test]
 fn reduce_trace_shapes_at_tie_pins_cuts_only_the_foreign_net_contact() {

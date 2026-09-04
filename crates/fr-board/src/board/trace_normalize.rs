@@ -9,7 +9,6 @@ use crate::items::Item;
 
 use super::{Board, item_ctx};
 
-
 fn p7t8b_change_ledger() -> bool {
     static ON: std::sync::LazyLock<bool> =
         std::sync::LazyLock::new(|| std::env::var_os("P7T8B_CHANGE").is_some());
@@ -33,8 +32,7 @@ fn join_lines(lines: &[Line]) -> String {
 pub const MAX_NORMALIZATION_DEPTH: u32 = 16;
 
 impl Board {
-
-                                                                                pub fn combine_trace(&mut self, id: ItemId) -> Result<bool, BoardError> {
+    pub fn combine_trace(&mut self, id: ItemId) -> Result<bool, BoardError> {
         let mut something_changed = false;
         while self.items.get(&id).is_some_and(Item::is_on_the_board)
             && (self.combine_trace_at_start(id, true)? || self.combine_trace_at_end(id, true)?)
@@ -44,7 +42,7 @@ impl Board {
         Ok(something_changed)
     }
 
-                                            pub fn combine_trace_at_start(
+    pub fn combine_trace_at_start(
         &mut self,
         id: ItemId,
         ignore_areas: bool,
@@ -72,7 +70,7 @@ impl Board {
         )
     }
 
-            pub fn combine_trace_at_end(
+    pub fn combine_trace_at_end(
         &mut self,
         id: ItemId,
         ignore_areas: bool,
@@ -93,7 +91,7 @@ impl Board {
         self.combine_join(id, other_id, reverse_order, CombineEnd::End, &end_corner)
     }
 
-            fn single_combine_contact(
+    fn single_combine_contact(
         &self,
         id: ItemId,
         corner: &Point,
@@ -112,7 +110,7 @@ impl Board {
         Some(contacts[0])
     }
 
-                            fn combine_partner(
+    fn combine_partner(
         &self,
         id: ItemId,
         other_id: ItemId,
@@ -146,7 +144,7 @@ impl Board {
         }
     }
 
-                fn combine_join(
+    fn combine_join(
         &mut self,
         id: ItemId,
         other_id: ItemId,
@@ -255,8 +253,7 @@ impl Board {
         Ok(true)
     }
 
-
-                                                                                                                                                                    // the `#[ignore]`d `a_four_rung_ladder_never_finishes_normalizing`.
+    // the `#[ignore]`d `a_four_rung_ladder_never_finishes_normalizing`.
     pub fn split_trace(
         &mut self,
         id: ItemId,
@@ -265,7 +262,7 @@ impl Board {
         self.split_trace_checked(id, clip, &|| false)
     }
 
-                                pub fn split_trace_checked(
+    pub fn split_trace_checked(
         &mut self,
         id: ItemId,
         clip: Option<&IntOctagon>,
@@ -446,7 +443,7 @@ impl Board {
         Ok(result)
     }
 
-                                fn split_current_shape(
+    fn split_current_shape(
         &mut self,
         id: ItemId,
         snapshot: &Item,
@@ -465,7 +462,7 @@ impl Board {
             .flatten()
     }
 
-                fn split_overlapping_entries(
+    fn split_overlapping_entries(
         &mut self,
         shape: &TileShape,
         layer: usize,
@@ -489,7 +486,7 @@ impl Board {
         entries
     }
 
-                                    pub fn split_trace_at_line(
+    pub fn split_trace_at_line(
         &mut self,
         id: ItemId,
         line_index: usize,
@@ -543,7 +540,7 @@ impl Board {
         Ok(Some([a, b]))
     }
 
-                                    pub fn split_trace_at_point(
+    pub fn split_trace_at_point(
         &mut self,
         id: ItemId,
         point: &Point,
@@ -566,7 +563,7 @@ impl Board {
         Ok(None)
     }
 
-                            fn split_inside_drill_pad_prohibited(
+    fn split_inside_drill_pad_prohibited(
         &self,
         id: ItemId,
         line_index: usize,
@@ -614,8 +611,7 @@ impl Board {
         pad_found
     }
 
-
-                    pub fn normalize_trace(
+    pub fn normalize_trace(
         &mut self,
         id: ItemId,
         clip: Option<&IntOctagon>,
@@ -623,7 +619,7 @@ impl Board {
         self.normalize_trace_at_depth(id, clip, 0)
     }
 
-            pub fn normalize_trace_checked(
+    pub fn normalize_trace_checked(
         &mut self,
         id: ItemId,
         clip: Option<&IntOctagon>,
@@ -632,7 +628,7 @@ impl Board {
         self.normalize_trace_at_depth_checked(id, clip, 0, stop)
     }
 
-                                                    pub fn normalize_trace_at_depth(
+    pub fn normalize_trace_at_depth(
         &mut self,
         id: ItemId,
         clip: Option<&IntOctagon>,
@@ -641,7 +637,7 @@ impl Board {
         self.normalize_trace_at_depth_checked(id, clip, depth, &|| false)
     }
 
-                pub fn normalize_trace_at_depth_checked(
+    pub fn normalize_trace_at_depth_checked(
         &mut self,
         id: ItemId,
         clip: Option<&IntOctagon>,
@@ -682,12 +678,12 @@ impl Board {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CombineEnd {
-        Start,
-        End,
+    Start,
+    End,
 }
 
 impl Board {
-                                                                                                                                pub fn change_trace(&mut self, id: ItemId, new_polyline: Polyline) {
+    pub fn change_trace(&mut self, id: ItemId, new_polyline: Polyline) {
         let Some(item) = self.items.get(&id) else {
             return;
         };

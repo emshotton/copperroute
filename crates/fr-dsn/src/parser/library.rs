@@ -1,4 +1,3 @@
-
 use fr_board::{Keepout, PackagePin, Padstack, PadstackId, Padstacks, equals_ignore_case};
 use fr_geometry::{Area, Circle, IntVector, Shape, ShapeOps, TileShape, Vector};
 
@@ -14,24 +13,23 @@ use crate::parser::geometry::{
 use crate::parser::placement::write_component_scope;
 use crate::parser::scope_parameter::{ReadScopeParameter, WriteScopeParameter, skip_scope};
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnPinInfo {
-        pub padstack_name: String,
-        pub pin_name: String,
-        pub rel_coor: [f64; 2],
-        pub rotation: f64,
+    pub padstack_name: String,
+    pub pin_name: String,
+    pub rel_coor: [f64; 2],
+    pub rotation: f64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnPackage {
-        pub name: String,
-        pub pin_info_arr: Vec<DsnPinInfo>,
-        pub outline: Vec<DsnShape>,
-        pub keepouts: Vec<ReadAreaScopeResult>,
-        pub via_keepouts: Vec<ReadAreaScopeResult>,
-        pub place_keepouts: Vec<ReadAreaScopeResult>,
-        pub is_front: bool,
+    pub name: String,
+    pub pin_info_arr: Vec<DsnPinInfo>,
+    pub outline: Vec<DsnShape>,
+    pub keepouts: Vec<ReadAreaScopeResult>,
+    pub via_keepouts: Vec<ReadAreaScopeResult>,
+    pub place_keepouts: Vec<ReadAreaScopeResult>,
+    pub is_front: bool,
 }
 
 pub fn read_image_scope(
@@ -326,7 +324,6 @@ pub fn write_component_placement_scope(p: &mut WriteScopeParameter<'_>, package_
         p.file.end_scope();
     }
 }
-
 
 pub fn write_library_scope(p: &mut WriteScopeParameter<'_>) {
     p.file.start_scope_nl();

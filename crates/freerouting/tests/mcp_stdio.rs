@@ -58,7 +58,6 @@ fn initialize_ping_and_list_over_pipes() {
     assert!(status.success());
 }
 
-
 use freerouting::mcp::server::{State, ToolDef};
 use freerouting::mcp::stdio::run_with;
 use serde_json::{Value, json};
@@ -72,8 +71,8 @@ struct Script {
     lines: Receiver<String>,
     pending: Vec<u8>,
     at: usize,
-            fail: bool,
-                        eof: Arc<AtomicBool>,
+    fail: bool,
+    eof: Arc<AtomicBool>,
 }
 
 impl Read for Script {
@@ -124,7 +123,7 @@ struct Harness {
     lines: Option<Sender<String>>,
     out: Captured,
     server: Option<std::thread::JoinHandle<i32>>,
-        stdin_eof: Arc<AtomicBool>,
+    stdin_eof: Arc<AtomicBool>,
 }
 
 impl Harness {
@@ -132,7 +131,7 @@ impl Harness {
         Harness::start_with(state, false, None)
     }
 
-            fn start_with(state: State, fail_reads: bool, fail_writes_after: Option<usize>) -> Harness {
+    fn start_with(state: State, fail_reads: bool, fail_writes_after: Option<usize>) -> Harness {
         let (tx, rx) = channel::<String>();
         let out = Captured(Arc::new(Mutex::new(Vec::new())), fail_writes_after);
         let stdin_eof = Arc::new(AtomicBool::new(false));
@@ -169,7 +168,7 @@ impl Harness {
             .unwrap();
     }
 
-        fn finish(mut self) -> (i32, Vec<String>) {
+    fn finish(mut self) -> (i32, Vec<String>) {
         drop(self.lines.take());
         let code = self.server.take().unwrap().join().unwrap();
         let text = String::from_utf8(self.out.0.lock().unwrap().clone()).unwrap();
@@ -689,7 +688,6 @@ fn a_reused_in_flight_id_is_refused_and_the_first_call_survives() {
     );
 }
 
-
 use std::process::{Child, ChildStdin, ChildStdout};
 
 struct Pipes {
@@ -703,7 +701,7 @@ impl Pipes {
         Pipes::start_with_env(&[])
     }
 
-                    fn start_with_env(env: &[(&str, &str)]) -> Pipes {
+    fn start_with_env(env: &[(&str, &str)]) -> Pipes {
         let mut command = Command::new(env!("CARGO_BIN_EXE_freerouting"));
         command.arg("mcp");
         for (key, value) in env {
@@ -724,12 +722,12 @@ impl Pipes {
         }
     }
 
-        fn write(&mut self, message: &Value) {
+    fn write(&mut self, message: &Value) {
         writeln!(self.stdin, "{message}").expect("the server is still reading");
         self.stdin.flush().expect("the server is still reading");
     }
 
-        fn read(&mut self) -> Value {
+    fn read(&mut self) -> Value {
         let mut line = String::new();
         let read = self
             .stdout
@@ -739,7 +737,7 @@ impl Pipes {
         serde_json::from_str(&line).unwrap_or_else(|e| panic!("not JSON: {line:?} ({e})"))
     }
 
-            fn read_response(&mut self) -> Value {
+    fn read_response(&mut self) -> Value {
         loop {
             let message = self.read();
             if message.get("id").is_some() {
@@ -748,14 +746,14 @@ impl Pipes {
         }
     }
 
-        fn request(&mut self, id: i64, method: &str, params: Value) -> Value {
+    fn request(&mut self, id: i64, method: &str, params: Value) -> Value {
         self.write(&json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params}));
         let answer = self.read_response();
         assert_eq!(answer["id"], id, "responses are paired by id");
         answer
     }
 
-            fn call(&mut self, id: i64, name: &str, arguments: Value) -> Value {
+    fn call(&mut self, id: i64, name: &str, arguments: Value) -> Value {
         let answer = self.request(
             id,
             "tools/call",
@@ -770,7 +768,7 @@ impl Pipes {
         result["structuredContent"].clone()
     }
 
-        fn finish(mut self) -> i32 {
+    fn finish(mut self) -> i32 {
         drop(self.stdin);
         self.child
             .wait()

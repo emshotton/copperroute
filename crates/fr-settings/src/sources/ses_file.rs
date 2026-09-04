@@ -7,9 +7,9 @@ pub struct SesFileSettings {
 }
 
 impl SesFileSettings {
-        const PRIORITY: i32 = priority::SES_FILE;
+    const PRIORITY: i32 = priority::SES_FILE;
 
-                        #[must_use]
+    #[must_use]
     pub fn new(file_name: &str) -> Self {
         Self {
             settings: RouterSettings::new(),

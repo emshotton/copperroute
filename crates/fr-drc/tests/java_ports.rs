@@ -9,7 +9,6 @@ use fr_drc::{
 };
 use fr_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
 
-
 const ISSUE555_BBD_MARS_64: &str = "Issue555-BBD_Mars-64.dsn";
 const DEV_BOARD: &str = "Issue575-drc_dev-board_4_hole_clearance_violations.dsn";
 const BBD_MARS_64: &str = "Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn";
@@ -54,7 +53,6 @@ fn options(source: &str) -> DrcReportOptions {
         quality_score: None,
     }
 }
-
 
 #[test]
 fn report_structure_on_issue555_bbd_mars_64() {
@@ -108,7 +106,6 @@ fn report_json_has_every_head_key() {
     }
 }
 
-
 #[test]
 fn coordinates_are_in_a_plausible_mm_range() {
     if !parity::require_java_dir() {
@@ -142,7 +139,6 @@ fn coordinates_are_in_a_plausible_mm_range() {
     assert!(x.abs() > 10.0, "X should be greater than 10mm, but was {x}");
     assert!(y.abs() > 10.0, "Y should be greater than 10mm, but was {y}");
 }
-
 
 const EXPECTED_UNCONNECTED: usize = 9;
 const EXPECTED_UNIQUE_VIOLATIONS: usize = 2;
@@ -219,7 +215,6 @@ fn empty_board_has_no_incompletes_and_no_violations() {
     }
     assert!(board.aggregate_violations_sorted_by_severity().is_empty());
 }
-
 
 const EXPECTED_UNCONNECTED_NET_GROUPS: usize = 9;
 const EXPECTED_DANGLING_TRACKS: usize = 24;
@@ -315,7 +310,6 @@ fn issue575_drc_reproduction_single_pass() {
     );
     assert_eq!(report.violations.len(), 112);
 }
-
 
 #[test]
 fn the_board_statistics_oracle() {

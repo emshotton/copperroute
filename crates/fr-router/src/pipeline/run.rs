@@ -9,7 +9,6 @@ use crate::pipeline::{ProgressSink, TaskState};
 use crate::score::BoardStatistics;
 use fr_board::Board;
 
-
 pub fn run_pipeline(
     board: &mut Board,
     settings: &RouterSettings,
@@ -17,10 +16,8 @@ pub fn run_pipeline(
     budget: RouterBudget,
     progress: &mut dyn ProgressSink,
 ) -> Result<PipelineResult, RouterError> {
-
     let router_enabled =
         settings.get_run_router() && settings.max_passes.is_none_or(|max| max >= 0);
-
 
     let router_loop: Option<BatchLoopResult> =
         if router_enabled && !stop.is_stop_auto_router_requested() {
@@ -41,9 +38,6 @@ pub fn run_pipeline(
             None
         };
 
-
-
-
     let mut optimizer_timed_out = false;
     let mut optimizer_last_reported_pass = 0;
     let optimizer_state = if settings.get_run_optimizer() {
@@ -60,7 +54,6 @@ pub fn run_pipeline(
     } else {
         None
     };
-
 
     let final_statistics = BoardStatistics::new(board);
 
@@ -92,14 +85,14 @@ pub fn run_pipeline(
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PipelineResult {
-                pub router_state: TaskState,
-                    pub optimizer_state: Option<TaskState>,
-                        pub router_passes_completed: i32,
-                                    pub optimizer_passes_completed: i32,
-            pub fanout: Option<FanoutRunSummary>,
-            pub per_pass: Vec<PassRecord>,
-            pub final_statistics: BoardStatistics,
-            pub timed_out: bool,
+    pub router_state: TaskState,
+    pub optimizer_state: Option<TaskState>,
+    pub router_passes_completed: i32,
+    pub optimizer_passes_completed: i32,
+    pub fanout: Option<FanoutRunSummary>,
+    pub per_pass: Vec<PassRecord>,
+    pub final_statistics: BoardStatistics,
+    pub timed_out: bool,
 }
 
 pub fn normalize_router_algorithm(algorithm: &str) -> String {

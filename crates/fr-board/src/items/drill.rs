@@ -14,17 +14,17 @@ use crate::structure::{Component, Components};
 
 #[derive(Debug, Clone, Copy)]
 pub struct ItemCtx<'a> {
-        pub library: &'a BoardLibrary,
-        pub components: &'a Components,
-        pub rules: &'a BoardRules,
-                                pub bounding_box: &'a IntBox,
-                                        pub max_tree_shape_width: f64,
+    pub library: &'a BoardLibrary,
+    pub components: &'a Components,
+    pub rules: &'a BoardRules,
+    pub bounding_box: &'a IntBox,
+    pub max_tree_shape_width: f64,
 }
 
 pub const DEFAULT_MAX_TREE_SHAPE_WIDTH: f64 = 50000.0;
 
 impl<'a> ItemCtx<'a> {
-                                                fn component(&self, component_id: i32) -> Option<&'a Component> {
+    fn component(&self, component_id: i32) -> Option<&'a Component> {
         if component_id < 1 || component_id as usize > self.components.count() {
             return None;
         }
@@ -34,10 +34,10 @@ impl<'a> ItemCtx<'a> {
 
 #[derive(Debug, Clone, Default)]
 pub struct DrillItemData {
-                center: OnceLock<Point>,
-            min_width: OnceLock<f64>,
-        first_layer: OnceLock<usize>,
-        last_layer: OnceLock<usize>,
+    center: OnceLock<Point>,
+    min_width: OnceLock<f64>,
+    first_layer: OnceLock<usize>,
+    last_layer: OnceLock<usize>,
 }
 
 impl PartialEq for DrillItemData {
@@ -47,7 +47,7 @@ impl PartialEq for DrillItemData {
 }
 
 impl DrillItemData {
-        pub fn new(center: Option<Point>) -> DrillItemData {
+    pub fn new(center: Option<Point>) -> DrillItemData {
         let data = DrillItemData::default();
         if let Some(center) = center {
             data.center
@@ -57,40 +57,39 @@ impl DrillItemData {
         data
     }
 
-            pub fn raw_center(&self) -> Option<&Point> {
+    pub fn raw_center(&self) -> Option<&Point> {
         self.center.get()
     }
 
-            fn init_center(&self, calculate: impl FnOnce() -> Point) -> &Point {
+    fn init_center(&self, calculate: impl FnOnce() -> Point) -> &Point {
         self.center.get_or_init(calculate)
     }
 
-            fn clear_center(&mut self) {
+    fn clear_center(&mut self) {
         self.center.take();
     }
 
-            fn map_center(&mut self, transform: impl FnOnce(&Point) -> Point) {
+    fn map_center(&mut self, transform: impl FnOnce(&Point) -> Point) {
         if let Some(center) = self.center.get_mut() {
             let moved = transform(center);
             *center = moved;
         }
     }
 
-            fn clear_derived_data(&mut self) {
+    fn clear_derived_data(&mut self) {
         self.first_layer.take();
         self.last_layer.take();
     }
 }
 
-
 trait DrillItemBase {
     fn drill(&self) -> &DrillItemData;
 
-        fn padstack_of<'a>(&self, ctx: &ItemCtx<'a>) -> Option<&'a Padstack>;
+    fn padstack_of<'a>(&self, ctx: &ItemCtx<'a>) -> Option<&'a Padstack>;
 
-        fn shape_of(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<Shape>;
+    fn shape_of(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<Shape>;
 
-            fn placed_on_front(&self, ctx: &ItemCtx<'_>) -> bool;
+    fn placed_on_front(&self, ctx: &ItemCtx<'_>) -> bool;
 }
 
 fn layer_index(value: i32, what: &str) -> usize {
@@ -200,16 +199,15 @@ fn trace_connection_shape_of(center: &Point) -> TileShape {
     TileShape::Box(TileShape::get_instance_from_point(center))
 }
 
-
 #[derive(Debug, Clone)]
 pub struct Via {
-        pub hdr: ItemHeader,
-        pub drill: DrillItemData,
-            padstack: PadstackId,
-            pub attach_allowed: bool,
-        pub is_escape_via: bool,
-        pub escape_via_smd_layer: i32,
-        shapes: OnceLock<Vec<Option<Shape>>>,
+    pub hdr: ItemHeader,
+    pub drill: DrillItemData,
+    padstack: PadstackId,
+    pub attach_allowed: bool,
+    pub is_escape_via: bool,
+    pub escape_via_smd_layer: i32,
+    shapes: OnceLock<Vec<Option<Shape>>>,
 }
 
 impl PartialEq for Via {
@@ -236,13 +234,13 @@ impl DrillItemBase for Via {
         self.get_shape(index, ctx)
     }
 
-            fn placed_on_front(&self, _ctx: &ItemCtx<'_>) -> bool {
+    fn placed_on_front(&self, _ctx: &ItemCtx<'_>) -> bool {
         true
     }
 }
 
 impl Via {
-            pub fn new(hdr: ItemHeader, padstack: PadstackId, center: Point, attach_allowed: bool) -> Via {
+    pub fn new(hdr: ItemHeader, padstack: PadstackId, center: Point, attach_allowed: bool) -> Via {
         Via {
             hdr,
             drill: DrillItemData::new(Some(center)),
@@ -254,7 +252,7 @@ impl Via {
         }
     }
 
-            pub fn copy(&self, new_id: ItemId) -> Via {
+    pub fn copy(&self, new_id: ItemId) -> Via {
         let mut copy = Via::new(
             copied_header(&self.hdr, new_id),
             self.padstack,
@@ -266,26 +264,26 @@ impl Via {
         copy
     }
 
-            pub fn get_center(&self) -> Point {
+    pub fn get_center(&self) -> Point {
         self.drill
             .raw_center()
             .expect("a Via is always constructed with a centre (Via.java:65)")
             .clone()
     }
 
-                pub fn get_padstack_id(&self) -> PadstackId {
+    pub fn get_padstack_id(&self) -> PadstackId {
         self.padstack
     }
 
-            pub fn get_padstack<'a>(&self, ctx: &ItemCtx<'a>) -> Option<&'a Padstack> {
+    pub fn get_padstack<'a>(&self, ctx: &ItemCtx<'a>) -> Option<&'a Padstack> {
         ctx.library.get_padstack(self.padstack)
     }
 
-        pub fn set_padstack(&mut self, padstack: PadstackId) {
+    pub fn set_padstack(&mut self, padstack: PadstackId) {
         self.padstack = padstack;
     }
 
-                                pub fn get_shape(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<Shape> {
+    pub fn get_shape(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<Shape> {
         let padstack = self.get_padstack(ctx)?;
         let shapes = self.shapes.get_or_init(|| {
             let count = layer_index(
@@ -305,11 +303,11 @@ impl Via {
         shapes.get(index).cloned().flatten()
     }
 
-        pub fn get_shape_on_layer(&self, layer: usize, ctx: &ItemCtx<'_>) -> Option<Shape> {
+    pub fn get_shape_on_layer(&self, layer: usize, ctx: &ItemCtx<'_>) -> Option<Shape> {
         shape_on_layer_of(self, layer, ctx)
     }
 
-                    pub fn get_tile_shape_on_layer(
+    pub fn get_tile_shape_on_layer(
         &self,
         tree: TreeId,
         layer: usize,
@@ -318,7 +316,7 @@ impl Via {
         self.get_tree_shape_on_layer(tree, layer, ctx)
     }
 
-            pub fn get_tree_shape_on_layer(
+    pub fn get_tree_shape_on_layer(
         &self,
         tree: TreeId,
         layer: usize,
@@ -334,54 +332,54 @@ impl Via {
             .and_then(Option::as_ref)
     }
 
-        pub fn first_layer(&self, ctx: &ItemCtx<'_>) -> usize {
+    pub fn first_layer(&self, ctx: &ItemCtx<'_>) -> usize {
         first_layer_of(self, ctx)
     }
 
-        pub fn last_layer(&self, ctx: &ItemCtx<'_>) -> usize {
+    pub fn last_layer(&self, ctx: &ItemCtx<'_>) -> usize {
         last_layer_of(self, ctx)
     }
 
-        pub fn is_on_layer(&self, layer: usize, ctx: &ItemCtx<'_>) -> bool {
+    pub fn is_on_layer(&self, layer: usize, ctx: &ItemCtx<'_>) -> bool {
         layer >= self.first_layer(ctx) && layer <= self.last_layer(ctx)
     }
 
-        pub fn shape_layer(&self, index: usize, ctx: &ItemCtx<'_>) -> usize {
+    pub fn shape_layer(&self, index: usize, ctx: &ItemCtx<'_>) -> usize {
         shape_layer_of(self, index, ctx)
     }
 
-        pub fn is_placed_on_front(&self, _ctx: &ItemCtx<'_>) -> bool {
+    pub fn is_placed_on_front(&self, _ctx: &ItemCtx<'_>) -> bool {
         true
     }
 
-        pub fn bounding_box(&self, ctx: &ItemCtx<'_>) -> IntBox {
+    pub fn bounding_box(&self, ctx: &ItemCtx<'_>) -> IntBox {
         bounding_box_of(self, ctx)
     }
 
-        pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
+    pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
         tile_shape_count_of(self, ctx)
     }
 
-        pub fn smallest_radius(&self, ctx: &ItemCtx<'_>) -> f64 {
+    pub fn smallest_radius(&self, ctx: &ItemCtx<'_>) -> f64 {
         smallest_radius_of(self, &self.get_center(), ctx)
     }
 
-        pub fn min_width(&self, ctx: &ItemCtx<'_>) -> f64 {
+    pub fn min_width(&self, ctx: &ItemCtx<'_>) -> f64 {
         min_width_of(self, ctx)
     }
 
-        pub fn translate_by(&mut self, vector: &Vector) {
+    pub fn translate_by(&mut self, vector: &Vector) {
         self.drill.map_center(|c| c.translate_by(vector));
         self.clear_derived_data();
     }
 
-        pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
+    pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
         self.drill
             .map_center(|c| c.turn_90_degree(factor, &Point::Int(*pole)));
         self.clear_derived_data();
     }
 
-        pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint) {
+    pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint) {
         self.drill.map_center(|c| {
             Point::Int(
                 c.to_float()
@@ -392,7 +390,7 @@ impl Via {
         self.clear_derived_data();
     }
 
-                            pub fn change_placement_side(&mut self, pole: &IntPoint, ctx: &ItemCtx<'_>) {
+    pub fn change_placement_side(&mut self, pole: &IntPoint, ctx: &ItemCtx<'_>) {
         let Some(new_padstack) = ctx.library.get_mirrored_via_padstack(self.padstack) else {
             return;
         };
@@ -402,16 +400,16 @@ impl Via {
         self.clear_derived_data();
     }
 
-                pub fn clear_derived_data(&mut self) {
+    pub fn clear_derived_data(&mut self) {
         self.hdr.clear_derived_data();
         self.drill.clear_derived_data();
         self.shapes.take();
         self.clear_autoroute_drill_info();
     }
 
-                                pub fn clear_autoroute_drill_info(&self) {}
+    pub fn clear_autoroute_drill_info(&self) {}
 
-        pub fn clear_autoroute_info(&mut self) {
+    pub fn clear_autoroute_info(&mut self) {
         self.hdr.clear_autoroute_info();
         self.clear_autoroute_drill_info();
     }
@@ -422,7 +420,7 @@ impl Connectable for Via {
         &self.hdr
     }
 
-            fn get_trace_connection_shape(
+    fn get_trace_connection_shape(
         &self,
         _tree: TreeId,
         _index: usize,
@@ -432,14 +430,13 @@ impl Connectable for Via {
     }
 }
 
-
 #[derive(Debug, Clone)]
 pub struct Pin {
-        pub hdr: ItemHeader,
-            pub drill: DrillItemData,
-            pin_index: i32,
-                        changed_to: Option<ItemId>,
-        shapes: OnceLock<Vec<Option<Shape>>>,
+    pub hdr: ItemHeader,
+    pub drill: DrillItemData,
+    pin_index: i32,
+    changed_to: Option<ItemId>,
+    shapes: OnceLock<Vec<Option<Shape>>>,
 }
 
 impl PartialEq for Pin {
@@ -470,7 +467,7 @@ impl DrillItemBase for Pin {
 }
 
 impl Pin {
-                pub fn new(hdr: ItemHeader, pin_index: i32) -> Pin {
+    pub fn new(hdr: ItemHeader, pin_index: i32) -> Pin {
         Pin {
             hdr,
             drill: DrillItemData::new(None),
@@ -480,28 +477,28 @@ impl Pin {
         }
     }
 
-            pub fn copy(&self, new_id: ItemId) -> Pin {
+    pub fn copy(&self, new_id: ItemId) -> Pin {
         Pin::new(copied_header(&self.hdr, new_id), self.pin_index)
     }
 
-        pub fn get_pin_index(&self) -> i32 {
+    pub fn get_pin_index(&self) -> i32 {
         self.pin_index
     }
 
-            fn component<'a>(&self, ctx: &ItemCtx<'a>) -> Option<&'a Component> {
+    fn component<'a>(&self, ctx: &ItemCtx<'a>) -> Option<&'a Component> {
         ctx.component(self.hdr.get_component_id())
     }
 
-        fn package<'a>(&self, ctx: &ItemCtx<'a>) -> Option<&'a Package> {
+    fn package<'a>(&self, ctx: &ItemCtx<'a>) -> Option<&'a Package> {
         let component = self.component(ctx)?;
         Some(ctx.library.get_package(component.get_package()))
     }
 
-            pub fn is_placed_on_front(&self, ctx: &ItemCtx<'_>) -> bool {
+    pub fn is_placed_on_front(&self, ctx: &ItemCtx<'_>) -> bool {
         self.component(ctx).is_none_or(Component::placed_on_front)
     }
 
-            pub fn get_padstack<'a>(&self, ctx: &ItemCtx<'a>) -> Option<&'a Padstack> {
+    pub fn get_padstack<'a>(&self, ctx: &ItemCtx<'a>) -> Option<&'a Padstack> {
         let package = self.package(ctx)?;
         let package_pin = package
             .get_pin(self.pin_index)
@@ -509,7 +506,7 @@ impl Pin {
         ctx.library.padstacks.get(package_pin.padstack_no)
     }
 
-                pub fn name<'a>(&self, ctx: &ItemCtx<'a>) -> Option<&'a str> {
+    pub fn name<'a>(&self, ctx: &ItemCtx<'a>) -> Option<&'a str> {
         let package = self.package(ctx)?;
         let package_pin = package
             .get_pin(self.pin_index)
@@ -517,7 +514,7 @@ impl Pin {
         Some(&package_pin.name)
     }
 
-                pub fn relative_location(&self, ctx: &ItemCtx<'_>) -> Vector {
+    pub fn relative_location(&self, ctx: &ItemCtx<'_>) -> Vector {
         let component = self
             .component(ctx)
             .expect("Pin.relativeLocation: Java NPEs on a missing component (Pin.java:66-67)");
@@ -547,7 +544,7 @@ impl Pin {
         rel_location
     }
 
-                pub fn get_center(&self, ctx: &ItemCtx<'_>) -> Point {
+    pub fn get_center(&self, ctx: &ItemCtx<'_>) -> Point {
         self.drill
             .init_center(|| {
                 let component = self
@@ -577,7 +574,7 @@ impl Pin {
             .clone()
     }
 
-                        pub fn get_padstack_layer(&self, index: i32, ctx: &ItemCtx<'_>) -> i32 {
+    pub fn get_padstack_layer(&self, index: i32, ctx: &ItemCtx<'_>) -> i32 {
         let padstack = self
             .get_padstack(ctx)
             .expect("Pin.getPadstackLayer: Java NPEs on a null padstack (Pin.java:249)");
@@ -592,7 +589,7 @@ impl Pin {
         }
     }
 
-                                                pub fn get_shape(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<Shape> {
+    pub fn get_shape(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<Shape> {
         if self.shapes.get().is_none() {
             let shapes = self.calculate_shapes(ctx)?;
             let _ = self.shapes.set(shapes);
@@ -605,7 +602,7 @@ impl Pin {
             .flatten()
     }
 
-                fn calculate_shapes(&self, ctx: &ItemCtx<'_>) -> Option<Vec<Option<Shape>>> {
+    fn calculate_shapes(&self, ctx: &ItemCtx<'_>) -> Option<Vec<Option<Shape>>> {
         {
             let padstack = self
                 .get_padstack(ctx)
@@ -671,11 +668,11 @@ impl Pin {
         }
     }
 
-        pub fn get_shape_on_layer(&self, layer: usize, ctx: &ItemCtx<'_>) -> Option<Shape> {
+    pub fn get_shape_on_layer(&self, layer: usize, ctx: &ItemCtx<'_>) -> Option<Shape> {
         shape_on_layer_of(self, layer, ctx)
     }
 
-            pub fn get_tile_shape_on_layer(
+    pub fn get_tile_shape_on_layer(
         &self,
         tree: TreeId,
         layer: usize,
@@ -684,7 +681,7 @@ impl Pin {
         self.get_tree_shape_on_layer(tree, layer, ctx)
     }
 
-            pub fn get_tree_shape_on_layer(
+    pub fn get_tree_shape_on_layer(
         &self,
         tree: TreeId,
         layer: usize,
@@ -700,49 +697,49 @@ impl Pin {
             .and_then(Option::as_ref)
     }
 
-        pub fn first_layer(&self, ctx: &ItemCtx<'_>) -> usize {
+    pub fn first_layer(&self, ctx: &ItemCtx<'_>) -> usize {
         first_layer_of(self, ctx)
     }
 
-        pub fn last_layer(&self, ctx: &ItemCtx<'_>) -> usize {
+    pub fn last_layer(&self, ctx: &ItemCtx<'_>) -> usize {
         last_layer_of(self, ctx)
     }
 
-        pub fn is_on_layer(&self, layer: usize, ctx: &ItemCtx<'_>) -> bool {
+    pub fn is_on_layer(&self, layer: usize, ctx: &ItemCtx<'_>) -> bool {
         layer >= self.first_layer(ctx) && layer <= self.last_layer(ctx)
     }
 
-        pub fn shape_layer(&self, index: usize, ctx: &ItemCtx<'_>) -> usize {
+    pub fn shape_layer(&self, index: usize, ctx: &ItemCtx<'_>) -> usize {
         shape_layer_of(self, index, ctx)
     }
 
-        pub fn bounding_box(&self, ctx: &ItemCtx<'_>) -> IntBox {
+    pub fn bounding_box(&self, ctx: &ItemCtx<'_>) -> IntBox {
         bounding_box_of(self, ctx)
     }
 
-        pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
+    pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
         tile_shape_count_of(self, ctx)
     }
 
-        pub fn smallest_radius(&self, ctx: &ItemCtx<'_>) -> f64 {
+    pub fn smallest_radius(&self, ctx: &ItemCtx<'_>) -> f64 {
         smallest_radius_of(self, &self.get_center(ctx), ctx)
     }
 
-            pub fn min_width(&self, ctx: &ItemCtx<'_>) -> f64 {
+    pub fn min_width(&self, ctx: &ItemCtx<'_>) -> f64 {
         min_width_of(self, ctx)
     }
 
-            pub fn get_min_width(&self, layer: usize, ctx: &ItemCtx<'_>) -> f64 {
+    pub fn get_min_width(&self, layer: usize, ctx: &ItemCtx<'_>) -> f64 {
         self.padstack_bounding_box(layer, ctx)
             .map_or(0.0, |b| b.min_width())
     }
 
-        pub fn get_max_width(&self, layer: usize, ctx: &ItemCtx<'_>) -> f64 {
+    pub fn get_max_width(&self, layer: usize, ctx: &ItemCtx<'_>) -> f64 {
         self.padstack_bounding_box(layer, ctx)
             .map_or(0.0, |b| b.max_width())
     }
 
-        fn padstack_bounding_box(&self, layer: usize, ctx: &ItemCtx<'_>) -> Option<IntBox> {
+    fn padstack_bounding_box(&self, layer: usize, ctx: &ItemCtx<'_>) -> Option<IntBox> {
         let padstack_layer =
             self.get_padstack_layer(layer as i32 - first_layer_of(self, ctx) as i32, ctx);
         let padstack = self
@@ -753,16 +750,16 @@ impl Pin {
             .map(ShapeOps::bounding_box)
     }
 
-            pub fn get_trace_neckdown_halfwidth(&self, layer: usize, ctx: &ItemCtx<'_>) -> i32 {
+    pub fn get_trace_neckdown_halfwidth(&self, layer: usize, ctx: &ItemCtx<'_>) -> i32 {
         let result = java_max(0.5 * self.get_min_width(layer, ctx) - 1.0, 1.0);
         result as i32
     }
 
-                    pub fn drill_allowed(&self, ctx: &ItemCtx<'_>) -> bool {
+    pub fn drill_allowed(&self, ctx: &ItemCtx<'_>) -> bool {
         self.first_layer(ctx) == self.last_layer(ctx)
     }
 
-                                                                // two `.expect(...)`s that used to fire on the missing component are simply no longer reached
+    // two `.expect(...)`s that used to fire on the missing component are simply no longer reached
     pub fn get_trace_exit_restrictions(
         &self,
         layer: usize,
@@ -839,12 +836,12 @@ impl Pin {
         result
     }
 
-        pub fn has_trace_exit_restrictions(&self, ctx: &ItemCtx<'_>) -> bool {
+    pub fn has_trace_exit_restrictions(&self, ctx: &ItemCtx<'_>) -> bool {
         (self.first_layer(ctx)..=self.last_layer(ctx))
             .any(|layer| !self.get_trace_exit_restrictions(layer, ctx).is_empty())
     }
 
-                            pub fn calc_nearest_exit_restriction_direction(
+    pub fn calc_nearest_exit_restriction_direction(
         &self,
         trace_polyline: &Polyline,
         trace_half_width: i32,
@@ -913,7 +910,7 @@ impl Pin {
         pin_exit_direction
     }
 
-        pub fn nearest_trace_exit_corner(
+    pub fn nearest_trace_exit_corner(
         &self,
         from_point: &FloatPoint,
         trace_half_width: i32,
@@ -945,7 +942,7 @@ impl Pin {
         nearest_exit_corner
     }
 
-                fn offset_pad_shape(
+    fn offset_pad_shape(
         &self,
         layer: usize,
         trace_half_width: i32,
@@ -962,7 +959,7 @@ impl Pin {
         Some(pin_shape.offset(edge_to_turn_dist + f64::from(trace_half_width)))
     }
 
-            fn exit_corner(
+    fn exit_corner(
         &self,
         offset_pin_shape: &TileShape,
         pin_center: &Point,
@@ -977,7 +974,7 @@ impl Pin {
         Some(pin_exit_ray.intersection_approx(&border_line))
     }
 
-                            pub fn swap(&mut self, other: &mut Pin, nets: &Nets) -> bool {
+    pub fn swap(&mut self, other: &mut Pin, nets: &Nets) -> bool {
         if self.hdr.net_count() > 1 || other.hdr.net_count() > 1 {
             return false;
         }
@@ -992,32 +989,31 @@ impl Pin {
         true
     }
 
-
-            pub fn get_changed_to(&self) -> ItemId {
+    pub fn get_changed_to(&self) -> ItemId {
         self.changed_to.unwrap_or_else(|| self.hdr.id())
     }
 
-            pub fn turn_90_degree(&mut self, _factor: i32, _pole: &IntPoint) {
+    pub fn turn_90_degree(&mut self, _factor: i32, _pole: &IntPoint) {
         self.drill.clear_center();
         self.clear_derived_data();
     }
 
-        pub fn rotate_approx(&mut self, _angle_in_degree: f64, _pole: &FloatPoint) {
+    pub fn rotate_approx(&mut self, _angle_in_degree: f64, _pole: &FloatPoint) {
         self.drill.clear_center();
         self.clear_derived_data();
     }
 
-        pub fn change_placement_side(&mut self, _pole: &IntPoint) {
+    pub fn change_placement_side(&mut self, _pole: &IntPoint) {
         self.drill.clear_center();
         self.clear_derived_data();
     }
 
-                pub fn translate_by(&mut self, vector: &Vector) {
+    pub fn translate_by(&mut self, vector: &Vector) {
         self.drill.map_center(|c| c.translate_by(vector));
         self.clear_derived_data();
     }
 
-            pub fn clear_derived_data(&mut self) {
+    pub fn clear_derived_data(&mut self) {
         self.hdr.clear_derived_data();
         self.drill.clear_derived_data();
         self.shapes.take();
@@ -1037,7 +1033,7 @@ impl Connectable for Pin {
         &self.hdr
     }
 
-        fn get_trace_connection_shape(
+    fn get_trace_connection_shape(
         &self,
         _tree: TreeId,
         _index: usize,
@@ -1049,8 +1045,8 @@ impl Connectable for Pin {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TraceExitRestriction {
-        pub direction: Direction,
-        pub min_length: f64,
+    pub direction: Direction,
+    pub min_length: f64,
 }
 
 #[cfg(test)]
@@ -1058,7 +1054,7 @@ mod tests {
     use super::*;
     use crate::items::Item;
 
-                #[test]
+    #[test]
     fn item_is_send_and_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<DrillItemData>();

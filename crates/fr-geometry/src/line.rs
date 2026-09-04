@@ -20,9 +20,9 @@ use crate::vector::Vector;
 
 #[derive(Clone, Copy)]
 pub struct Line {
-        pub a: IntPoint,
-        pub b: IntPoint,
-                                                                                                                                                                                                identity: u64,
+    pub a: IntPoint,
+    pub b: IntPoint,
+    identity: u64,
 }
 
 static LINE_IDENTITY: AtomicU64 = AtomicU64::new(1);
@@ -32,7 +32,7 @@ fn next_line_identity() -> u64 {
 }
 
 impl PartialEq for Line {
-        fn eq(&self, other: &Line) -> bool {
+    fn eq(&self, other: &Line) -> bool {
         self.a == other.a && self.b == other.b
     }
 }
@@ -56,11 +56,11 @@ impl std::fmt::Debug for Line {
 }
 
 impl Line {
-                            pub fn is_same_object(&self, other: &Line) -> bool {
+    pub fn is_same_object(&self, other: &Line) -> bool {
         self.identity == other.identity
     }
 
-        pub fn new(a: IntPoint, b: IntPoint) -> Line {
+    pub fn new(a: IntPoint, b: IntPoint) -> Line {
         Line {
             a,
             b,
@@ -68,35 +68,35 @@ impl Line {
         }
     }
 
-        pub fn from_coords(ax: i32, ay: i32, bx: i32, by: i32) -> Line {
+    pub fn from_coords(ax: i32, ay: i32, bx: i32, by: i32) -> Line {
         Line::new(IntPoint::new(ax, ay), IntPoint::new(bx, by))
     }
 
-                        pub fn from_direction(a: IntPoint, dir: &IntDirection) -> Line {
+    pub fn from_direction(a: IntPoint, dir: &IntDirection) -> Line {
         Line::new(a, a.translate_by(&dir.get_vector()))
     }
 
-                    pub fn from_direction_any(a: IntPoint, dir: &Direction) -> Option<Line> {
+    pub fn from_direction_any(a: IntPoint, dir: &Direction) -> Option<Line> {
         match dir {
             Direction::Int(d) => Some(Line::from_direction(a, d)),
             Direction::Big(_) => None,
         }
     }
 
-            pub fn direction(&self) -> IntDirection {
+    pub fn direction(&self) -> IntDirection {
         let d = self.b.difference_by(&self.a);
         d.to_normalized_direction()
     }
 
-                pub fn side_of(&self, point: &Point) -> Side {
+    pub fn side_of(&self, point: &Point) -> Side {
         point.side_of_line(self).negate()
     }
 
-            fn side_of_int_point(&self, point: &IntPoint) -> Side {
+    fn side_of_int_point(&self, point: &IntPoint) -> Side {
         point.side_of_line(self).negate()
     }
 
-                            pub fn side_of_float(&self, point: &FloatPoint, tolerance: f64) -> Side {
+    pub fn side_of_float(&self, point: &FloatPoint, tolerance: f64) -> Side {
         let det = (self.b.y - self.a.y) as f64 * (point.x - self.a.x as f64)
             - (self.b.x - self.a.x) as f64 * (point.y - self.a.y as f64);
         if det - tolerance > 0.0 {
@@ -108,11 +108,11 @@ impl Line {
         }
     }
 
-        pub fn side_of_float_exact(&self, point: &FloatPoint) -> Side {
+    pub fn side_of_float_exact(&self, point: &FloatPoint) -> Side {
         self.side_of_float(point, 0.0)
     }
 
-                pub fn side_of_intersection(&self, p1: &Line, p2: &Line) -> Side {
+    pub fn side_of_intersection(&self, p1: &Line, p2: &Line) -> Side {
         let intersection_approx = p1.intersection_approx(p2);
         let result = self.side_of_float(&intersection_approx, 1.0);
         if result == Side::Collinear {
@@ -122,7 +122,7 @@ impl Line {
         result
     }
 
-            pub fn signed_distance(&self, point: &FloatPoint) -> f64 {
+    pub fn signed_distance(&self, point: &FloatPoint) -> f64 {
         let dx = (self.b.x - self.a.x) as f64;
         let dy = (self.b.y - self.a.y) as f64;
         let det = dy * (point.x - self.a.x as f64) - dx * (point.y - self.a.y as f64);
@@ -130,16 +130,16 @@ impl Line {
         det / length
     }
 
-            pub fn overlaps(&self, other: &Line) -> bool {
+    pub fn overlaps(&self, other: &Line) -> bool {
         self.side_of_int_point(&other.a) == Side::Collinear
             && self.side_of_int_point(&other.b) == Side::Collinear
     }
 
-        pub fn opposite(&self) -> Line {
+    pub fn opposite(&self) -> Line {
         Line::new(self.b, self.a)
     }
 
-                                pub fn intersection(&self, other: &Line) -> Point {
+    pub fn intersection(&self, other: &Line) -> Point {
         let delta1 = self.b.difference_by(&self.a);
         let delta2 = other.b.difference_by(&other.a);
         if delta1.x == 0 {
@@ -224,7 +224,7 @@ impl Line {
         Point::Rational(RationalPoint::new(is_x, is_y, det))
     }
 
-                    pub fn intersection_approx(&self, other: &Line) -> FloatPoint {
+    pub fn intersection_approx(&self, other: &Line) -> FloatPoint {
         let d1x = (self.b.x - self.a.x) as f64;
         let d1y = (self.b.y - self.a.y) as f64;
         let d2x = (other.b.x - other.a.x) as f64;
@@ -243,11 +243,11 @@ impl Line {
         FloatPoint::new(is_x, is_y)
     }
 
-        pub fn perpendicular_projection(&self, point: &Point) -> Point {
+    pub fn perpendicular_projection(&self, point: &Point) -> Point {
         point.perpendicular_projection(self)
     }
 
-            pub fn translate(&self, dist: f64) -> Line {
+    pub fn translate(&self, dist: f64) -> Line {
         let ai = self.a;
         let direction = self.direction();
         let v = direction.get_vector();
@@ -264,54 +264,54 @@ impl Line {
         Line::from_direction(new_a, &direction)
     }
 
-                    pub fn translate_by(&self, vector: &IntVector) -> Line {
+    pub fn translate_by(&self, vector: &IntVector) -> Line {
         if *vector == IntVector::ZERO {
             return *self;
         }
         Line::new(self.a.translate_by(vector), self.b.translate_by(vector))
     }
 
-            pub fn translate_by_any(&self, vector: &Vector) -> Option<Line> {
+    pub fn translate_by_any(&self, vector: &Vector) -> Option<Line> {
         match vector {
             Vector::Int(v) => Some(self.translate_by(v)),
             Vector::Rational(_) => None,
         }
     }
 
-        pub fn is_orthogonal(&self) -> bool {
+    pub fn is_orthogonal(&self) -> bool {
         self.direction().is_orthogonal()
     }
 
-        pub fn is_diagonal(&self) -> bool {
+    pub fn is_diagonal(&self) -> bool {
         self.direction().is_diagonal()
     }
 
-        pub fn is_multiple_of_45_degree(&self) -> bool {
+    pub fn is_multiple_of_45_degree(&self) -> bool {
         self.direction().is_multiple_of_45_degree()
     }
 
-        pub fn is_parallel(&self, other: &Line) -> bool {
+    pub fn is_parallel(&self, other: &Line) -> bool {
         self.direction().side_of(&other.direction()) == Side::Collinear
     }
 
-        pub fn is_perpendicular(&self, other: &Line) -> bool {
+    pub fn is_perpendicular(&self, other: &Line) -> bool {
         let v1 = self.direction().get_vector();
         let v2 = other.direction().get_vector();
         v1.projection(&v2) == Signum::Zero
     }
 
-            pub fn is_equal_or_opposite(&self, other: &Line) -> bool {
+    pub fn is_equal_or_opposite(&self, other: &Line) -> bool {
         self.side_of_int_point(&other.a) == Side::Collinear
             && self.side_of_int_point(&other.b) == Side::Collinear
     }
 
-        pub fn cos_angle(&self, other: &Line) -> f64 {
+    pub fn cos_angle(&self, other: &Line) -> f64 {
         let v1 = self.b.difference_by(&self.a);
         let v2 = other.b.difference_by(&other.a);
         v1.cos_angle(&v2)
     }
 
-                                                                                                    pub fn compare_to(&self, other: &Line) -> Ordering {
+    pub fn compare_to(&self, other: &Line) -> Ordering {
         let d1 = self.b.difference_by(&self.a);
         let d2 = other.b.difference_by(&other.a);
         IntDirection::new(d2.x, d2.y)
@@ -319,7 +319,7 @@ impl Line {
             .reverse()
     }
 
-                        pub fn function_value_approx(&self, x: f64) -> f64 {
+    pub fn function_value_approx(&self, x: f64) -> f64 {
         let p1 = self.a.to_float();
         let p2 = self.b.to_float();
         let dx = p2.x - p1.x;
@@ -331,7 +331,7 @@ impl Line {
         (dy * x - det) / dx
     }
 
-                pub fn function_in_y_value_approx(&self, y: f64) -> f64 {
+    pub fn function_in_y_value_approx(&self, y: f64) -> f64 {
         let p1 = self.a.to_float();
         let p2 = self.b.to_float();
         let dy = p2.y - p1.y;
@@ -343,7 +343,7 @@ impl Line {
         (dx * y + det) / dy
     }
 
-            pub fn perpendicular_direction(&self, from_point: &Point) -> Option<Direction> {
+    pub fn perpendicular_direction(&self, from_point: &Point) -> Option<Direction> {
         let line_side = self.side_of(from_point);
         if line_side == Side::Collinear {
             return None;
@@ -369,32 +369,32 @@ impl Line {
         }
     }
 
-        pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Line {
+    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Line {
         Line::new(
             self.a.turn_90_degree(factor, pole),
             self.b.turn_90_degree(factor, pole),
         )
     }
 
-            pub fn mirror_vertical(&self, pole: &IntPoint) -> Line {
+    pub fn mirror_vertical(&self, pole: &IntPoint) -> Line {
         Line::new(self.b.mirror_vertical(pole), self.a.mirror_vertical(pole))
     }
 
-            pub fn mirror_horizontal(&self, pole: &IntPoint) -> Line {
+    pub fn mirror_horizontal(&self, pole: &IntPoint) -> Line {
         Line::new(
             self.b.mirror_horizontal(pole),
             self.a.mirror_horizontal(pole),
         )
     }
 
-                        pub fn length(&self) -> f32 {
+    pub fn length(&self) -> f32 {
         let dx = self.b.x.wrapping_sub(self.a.x);
         let dy = self.b.y.wrapping_sub(self.a.y);
         let sum = dx.wrapping_mul(dx).wrapping_add(dy.wrapping_mul(dy));
         (sum as f64).sqrt() as f32
     }
 
-                                                                                pub fn equals_geometric(&self, other: &Line) -> bool {
+    pub fn equals_geometric(&self, other: &Line) -> bool {
         if self.side_of_int_point(&other.a) != Side::Collinear {
             return false;
         }
@@ -406,7 +406,7 @@ impl Line {
         dir1.projection(&dir2) == Signum::Positive
     }
 
-                                                            pub fn fast_equals(&self, other: &Line) -> bool {
+    pub fn fast_equals(&self, other: &Line) -> bool {
         let dx1 = other.a.x as i64 - self.a.x as i64;
         let dy1 = other.a.y as i64 - self.a.y as i64;
         let dx2 = self.b.x as i64 - self.a.x as i64;
@@ -418,12 +418,11 @@ impl Line {
         self.direction() == other.direction()
     }
 
-                pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         31i32
             .wrapping_mul(self.a.get_id())
             .wrapping_add(self.b.get_id())
     }
-
 }
 
 #[cfg(test)]
@@ -493,7 +492,7 @@ mod tests {
 
     #[test]
     fn side_of_and_direction() {
-        let line = l(0, 0, 10, 0); 
+        let line = l(0, 0, 10, 0);
         assert_eq!(line.direction(), IntDirection::RIGHT);
         let above = Point::Int(IntPoint::new(3, 4));
         let below = Point::Int(IntPoint::new(3, -4));
@@ -534,7 +533,7 @@ mod tests {
 
     #[test]
     fn function_values() {
-        let line = l(0, 0, 2, 4); 
+        let line = l(0, 0, 2, 4);
         assert_eq!(line.function_value_approx(3.0), 6.0);
         assert_eq!(line.function_in_y_value_approx(6.0), 3.0);
     }
@@ -575,7 +574,7 @@ mod tests {
     #[test]
     fn side_of_intersection_falls_back_to_the_exact_check() {
         let p1 = l(0, 0, 1, 1);
-        let p2 = l(0, 10, 1, 9); 
+        let p2 = l(0, 10, 1, 9);
         assert_eq!(
             l(0, 5, 1, 5).side_of_intersection(&p1, &p2),
             Side::Collinear
@@ -652,17 +651,17 @@ mod tests {
         assert_eq!(Line::from_direction_any(a, &big), None);
     }
 
-            #[test]
+    #[test]
     fn compare_to_is_the_counterclockwise_angular_order() {
         let ccw = [
-            l(0, 0, 1, 0),   
-            l(0, 0, 1, 1),   
-            l(0, 0, 0, 1),   
-            l(0, 0, -1, 1),  
-            l(0, 0, -1, 0),  
-            l(0, 0, -1, -1), 
-            l(0, 0, 0, -1),  
-            l(0, 0, 1, -1),  
+            l(0, 0, 1, 0),
+            l(0, 0, 1, 1),
+            l(0, 0, 0, 1),
+            l(0, 0, -1, 1),
+            l(0, 0, -1, 0),
+            l(0, 0, -1, -1),
+            l(0, 0, 0, -1),
+            l(0, 0, 1, -1),
         ];
         for i in 0..ccw.len() {
             for j in 0..ccw.len() {
@@ -676,7 +675,7 @@ mod tests {
         assert_ne!(a, b);
     }
 
-                #[test]
+    #[test]
     fn compare_to_is_not_antisymmetric_at_the_degenerate_line() {
         let degenerate = l(0, 0, 0, 0);
         let right = l(0, 0, 1, 0);
@@ -684,12 +683,12 @@ mod tests {
         assert_eq!(right.compare_to(&degenerate), std::cmp::Ordering::Equal);
     }
 
-            #[test]
+    #[test]
     fn equals_geometric_and_fast_equals() {
         let base = l(0, 0, 10, 0);
         let same_line_other_points = l(-7, 0, 3, 0);
-        assert_ne!(base, same_line_other_points); 
-        assert!(base.equals_geometric(&same_line_other_points)); 
+        assert_ne!(base, same_line_other_points);
+        assert!(base.equals_geometric(&same_line_other_points));
         assert!(base.fast_equals(&same_line_other_points));
         let opposite = base.opposite();
         assert!(!base.equals_geometric(&opposite));
@@ -737,7 +736,7 @@ mod tests {
         );
     }
 
-                    #[test]
+    #[test]
     fn is_same_object_is_java_reference_identity_and_not_value_equality() {
         let line = l(0, 0, 10, 0);
         let copy = line;
@@ -765,7 +764,7 @@ mod tests {
         assert!(!line.opposite().is_same_object(&line));
     }
 
-        #[test]
+    #[test]
     fn debug_does_not_show_the_identity_token() {
         let rendered = format!("{:?}", l(1, 2, 3, 4));
         assert_eq!(rendered, format!("{:?}", l(1, 2, 3, 4)));

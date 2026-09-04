@@ -12,15 +12,15 @@ use crate::board_ext::trace_shover::TraceShover;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CheckDrillResult {
-        Drillable,
-            DrillableWithAttachSmd,
-        NotDrillable,
+    Drillable,
+    DrillableWithAttachSmd,
+    NotDrillable,
 }
 
 pub struct ForcedPadRouter;
 
 impl ForcedPadRouter {
-                                                            #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn check_forced_pad(
         board: &mut Board,
         pad_shape: &TileShape,
@@ -188,7 +188,7 @@ impl ForcedPadRouter {
         result
     }
 
-                                                                                                        #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn forced_pad(
         board: &mut Board,
         pad_shape: &TileShape,
@@ -345,7 +345,7 @@ impl ForcedPadRouter {
         Ok(true)
     }
 
-                                                    pub fn calc_from_side(
+    pub fn calc_from_side(
         board: &mut Board,
         shape: &TileShape,
         shape_center: &Point,
@@ -374,7 +374,7 @@ impl ForcedPadRouter {
         ShapeEntrySide::NOT_CALCULATED
     }
 
-                                                                        pub fn in_front_of_pad(
+    pub fn in_front_of_pad(
         line: &Line,
         pad_shape: &TileShape,
         from_side: i32,
@@ -514,4 +514,3 @@ fn calc_check_shape_for_from_side(shape_center: &Point, border_line: &Line) -> O
     let check_line = Polyline::from_lines(lines).ok()?;
     check_line.offset_shape(1, 0)
 }
-

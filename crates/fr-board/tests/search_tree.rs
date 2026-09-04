@@ -5,7 +5,6 @@ use board_builder::{BoardFixture, WIDE_CLEARANCE_CLASS};
 use fr_board::prelude::*;
 use fr_geometry::{IntBox, IntOctagon, Point, Polyline, TileShape};
 
-
 fn bx(llx: i32, lly: i32, urx: i32, ury: i32) -> TileShape {
     TileShape::Box(IntBox::from_coords(llx, lly, urx, ury))
 }
@@ -66,7 +65,6 @@ fn probe() -> TileShape {
     bx(-600, -100, 600, 500)
 }
 
-
 #[test]
 fn tree_keys_reproduce_the_java_strings() {
     assert_eq!(
@@ -102,7 +100,6 @@ fn the_default_tree_is_the_base_class_whatever_the_board_angle_is() {
         assert!(!f.manager.is_clearance_compensation_used());
     }
 }
-
 
 #[test]
 fn clearance_compensation_values_match_the_jvm() {
@@ -150,7 +147,6 @@ fn clearance_compensation_values_match_the_jvm() {
     );
     assert_eq!(f.tree(auto1).compensated_half_width(trace, &f.rules), 130);
 }
-
 
 #[test]
 fn the_default_tree_stores_what_the_jvm_stores() {
@@ -299,7 +295,6 @@ fn the_base_class_enlarges_where_the_45_degree_subclass_offsets() {
         ]
     );
 }
-
 
 #[test]
 fn overlapping_objects_and_entries_come_back_in_java_order() {
@@ -570,7 +565,6 @@ fn the_entry_id_counter_only_ever_grows() {
     );
 }
 
-
 #[test]
 fn change_item_shape_replaces_one_leaf_and_leaves_the_rest_alone() {
     let mut f = BoardFixture::new();
@@ -688,7 +682,6 @@ fn change_entries_skips_the_removal_loop_when_more_tail_is_kept_than_exists() {
         .get_default_tree_mut()
         .change_entries(trace, &shifted, 0, 4, rules);
 }
-
 
 #[test]
 fn insert_and_remove_track_on_the_board_and_the_entry_arrays() {
@@ -869,7 +862,6 @@ fn reinsert_tree_shapes_recomputes_after_a_rule_change() {
     assert!(f.items.values().all(Item::is_on_the_board));
 }
 
-
 fn area_shapes(f: &board_builder::AreaFixture, tree: TreeId, id: u32) -> Vec<Option<TileShape>> {
     let item = &f.items[&ItemId(id)];
     (0..item.tree_shape_count(tree))
@@ -994,7 +986,6 @@ fn a_drill_layer_without_a_pad_has_no_leaf_when_hole_clearance_is_off() {
         Some(oct(920, -80, 1080, 80, 840, 1160, 840, 1160))
     );
 }
-
 
 fn joined_polyline() -> Polyline {
     Polyline::from_points(&[

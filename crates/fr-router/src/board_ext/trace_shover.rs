@@ -17,14 +17,14 @@ use crate::board_ext::swallow_normalize_error;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SpringOverOutcome {
-        Unchanged,
-        Changed(Polyline),
+    Unchanged,
+    Changed(Polyline),
 }
 
 pub struct TraceShover;
 
 impl TraceShover {
-                                                            #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn check_segment(
         board: &mut Board,
         line_segment: &LineSegment,
@@ -252,7 +252,7 @@ impl TraceShover {
         result
     }
 
-                                                                                        #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn check(
         board: &mut Board,
         trace_shape: &TileShape,
@@ -301,7 +301,6 @@ impl TraceShover {
             return false;
         }
         let trace_piece_count = shape_entries.substitute_trace_count();
-
 
         if shape_entries.stack_depth() > 1 {
             let found = shape_entries.get_found_obstacle();
@@ -456,7 +455,7 @@ impl TraceShover {
         true
     }
 
-                                                                                                                            #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn insert(
         board: &mut Board,
         trace_shape: &TileShape,
@@ -523,7 +522,6 @@ impl TraceShover {
             return Ok(false);
         }
         let trace_piece_count = shape_entries.substitute_trace_count();
-
 
         if trace_piece_count == 0 {
             return Ok(true);
@@ -650,7 +648,7 @@ impl TraceShover {
         Ok(true)
     }
 
-                                            pub fn ignore_items_at_tie_pins(
+    pub fn ignore_items_at_tie_pins(
         board: &Board,
         trace_shape: &TileShape,
         layer: usize,
@@ -672,7 +670,7 @@ impl TraceShover {
         result.into_iter().rev().collect()
     }
 
-                                                    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn spring_over(
         board: &mut Board,
         polyline: Polyline,
@@ -938,7 +936,7 @@ impl TraceShover {
         }
     }
 
-                                                                                                                            #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn spring_over_obstacles(
         board: &mut Board,
         polyline: &Polyline,
@@ -1003,4 +1001,3 @@ fn java_reverse(polyline: &Polyline) -> Polyline {
         .reverse()
         .unwrap_or_else(|e| panic!("Polyline.reverse() threw (Polyline.java:148, quirk #22): {e}"))
 }
-

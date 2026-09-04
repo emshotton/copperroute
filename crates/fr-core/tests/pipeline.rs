@@ -130,7 +130,7 @@ fn routing_result_carries_the_drc_violations_and_the_incompletes() {
 
 struct Run {
     result: RoutingResult,
-                ses: String,
+    ses: String,
 }
 
 fn route(sink: &SyncProgressSink) -> Run {

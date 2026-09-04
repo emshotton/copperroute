@@ -5,7 +5,7 @@ use fr_geometry::{IntBox, IntOctagon, Line, LineSegment, RegularTileShape, Side,
 use crate::autoroute::expansion::{ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom};
 
 pub trait AutorouteSearchTreeExt {
-                                                                                                                    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn complete_shape(
         &self,
         room: &IncompleteFreeSpaceExpansionRoom,
@@ -17,7 +17,7 @@ pub trait AutorouteSearchTreeExt {
         ctx: &ItemCtx<'_>,
     ) -> Vec<IncompleteFreeSpaceExpansionRoom>;
 
-                                                                fn divide_large_room(
+    fn divide_large_room(
         &self,
         rooms: Vec<IncompleteFreeSpaceExpansionRoom>,
         board_bounds: &IntBox,
@@ -105,7 +105,6 @@ impl AutorouteSearchTreeExt for ShapeSearchTree {
     }
 }
 
-
 fn divide_large_room_base(
     room_list: Vec<IncompleteFreeSpaceExpansionRoom>,
     board_bounding_box: &IntBox,
@@ -151,7 +150,6 @@ fn divide_large_room_base(
     }
     result
 }
-
 
 fn object_is_trace_obstacle(object: TreeObject, net_no: i32, items: &impl ItemLookup) -> bool {
     match object {
@@ -227,7 +225,6 @@ fn node_bounds(node: &Node<TreeObject>) -> RegularTileShape {
         Node::Free { .. } => unreachable!("ShapeTree::node rejects freed slots"),
     }
 }
-
 
 #[allow(clippy::too_many_arguments)]
 fn complete_shape_base(
@@ -477,7 +474,6 @@ fn room_shape_is_intersected(
         None => false,
     }
 }
-
 
 #[allow(clippy::too_many_arguments)]
 fn complete_shape_45(
@@ -884,7 +880,6 @@ fn calc_inside_restrained_shape(
     result.normalize()
 }
 
-
 #[allow(clippy::too_many_arguments)]
 fn complete_shape_90(
     tree: &ShapeSearchTree,
@@ -1177,7 +1172,6 @@ fn restrain_shape_90(
     }
     result
 }
-
 
 fn p7t14b_fp_ledger() -> bool {
     static ON: std::sync::LazyLock<bool> =

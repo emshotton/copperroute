@@ -11,9 +11,9 @@ pub struct DsnFileSettings {
 }
 
 impl DsnFileSettings {
-        const PRIORITY: i32 = priority::DSN_FILE;
+    const PRIORITY: i32 = priority::DSN_FILE;
 
-                                        #[must_use]
+    #[must_use]
     pub fn new(dsn: impl Read, filename: &str) -> Self {
         let mut extracted: Option<RouterSettings> = None;
         let mut layer_count = 0usize;

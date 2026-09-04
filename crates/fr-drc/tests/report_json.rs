@@ -5,7 +5,6 @@ use fr_drc::report::{
 };
 use fr_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
 
-
 mod common;
 use common::JAR_VERSION;
 
@@ -122,7 +121,6 @@ fn bare_report(source: &str) -> KiCadDrcReport {
     KiCadDrcReport::new("mm", source, "Freerouting probe", "2026-08-29T00:00:00Z")
 }
 
-
 #[test]
 fn head_flavor_key_order() {
     if !parity::require_java_dir() {
@@ -221,7 +219,6 @@ fn flavors_differ_only_in_the_key_tables_eight_strings() {
     }
 }
 
-
 #[test]
 fn head_flavor_is_the_jvms_gson_bytes() {
     if !parity::require_java_dir() {
@@ -310,7 +307,6 @@ fn dates_are_iso_offset() {
     }
 }
 
-
 #[test]
 fn kicad_flavor_matches_the_real_kicad_schema() {
     if !parity::require_java_dir() {
@@ -386,7 +382,6 @@ fn kicad_flavor_matches_the_real_kicad_schema() {
         assert!(!kicad_types.contains(head_only), "{head_only}");
     }
 }
-
 
 #[test]
 fn report_to_json_is_generate_report_then_to_json() {

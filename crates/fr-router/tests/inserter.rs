@@ -15,7 +15,6 @@ use fr_router::autoroute::maze::search::MazeSearchEngine;
 use fr_router::autoroute::path::{FoundConnectionInserter, FoundConnectionLocator};
 use fr_settings::RouterSettings;
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -4_000,
@@ -125,8 +124,8 @@ fn simple_board() -> Board {
     board
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg);
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); 
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
     board
 }
 
@@ -145,7 +144,7 @@ fn to_trace_board() -> Board {
         vec![1],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
 }
 
@@ -179,10 +178,10 @@ fn probe_board() -> Board {
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg2);
 
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed); 
-    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed); 
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed);
+    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed);
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[
             Point::new(0, -2000),
@@ -194,7 +193,7 @@ fn probe_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -204,7 +203,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the free via inserts"); 
+        .expect("the free via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, 2500), Point::new(2500, 3500)]),
         0,
@@ -212,7 +211,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -222,7 +221,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the two-contact via inserts"); 
+        .expect("the two-contact via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(2500, -3500)]),
         0,
@@ -230,7 +229,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(3500, -2500)]),
         0,
@@ -238,10 +237,9 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
 }
-
 
 fn probe_settings(board: &Board) -> RouterSettings {
     let mut settings = RouterSettings::new();
@@ -336,7 +334,6 @@ fn locate(
         ripped,
     }
 }
-
 
 const T15: &str = include_str!("data/p6t15-inserter.txt");
 
@@ -441,7 +438,6 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
          KNOWN_DIVERGENCES, not left to rot"
     );
 }
-
 
 fn t15_line(line: &fr_geometry::Line) -> String {
     format!("({},{})->({},{})", line.a.x, line.a.y, line.b.x, line.b.y)
@@ -609,7 +605,6 @@ fn regime_name(angle: AngleRestriction) -> &'static str {
     }
 }
 
-
 #[test]
 fn a_two_corner_connection_produces_one_trace_with_javas_polyline() {
     let mut rows = Vec::new();
@@ -667,7 +662,7 @@ fn diag_trace_board() -> Board {
         vec![1],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
 }
 

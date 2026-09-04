@@ -34,13 +34,13 @@ pub(crate) fn big_to_f64(value: &BigInt) -> f64 {
 
 #[derive(Debug, Clone)]
 pub struct RationalVector {
-        pub x: BigInt,
-        pub y: BigInt,
-        pub z: BigInt,
+    pub x: BigInt,
+    pub y: BigInt,
+    pub z: BigInt,
 }
 
 impl RationalVector {
-                        pub fn new(x: BigInt, y: BigInt, z: BigInt) -> RationalVector {
+    pub fn new(x: BigInt, y: BigInt, z: BigInt) -> RationalVector {
         if z.sign() != Sign::Minus {
             RationalVector { x, y, z }
         } else {
@@ -52,7 +52,7 @@ impl RationalVector {
         }
     }
 
-        pub fn from_int(vector: &IntVector) -> RationalVector {
+    pub fn from_int(vector: &IntVector) -> RationalVector {
         RationalVector {
             x: BigInt::from(vector.x),
             y: BigInt::from(vector.y),
@@ -60,19 +60,19 @@ impl RationalVector {
         }
     }
 
-        pub fn is_zero(&self) -> bool {
+    pub fn is_zero(&self) -> bool {
         self.x.is_zero() && self.y.is_zero()
     }
 
-        pub fn negate(&self) -> RationalVector {
+    pub fn negate(&self) -> RationalVector {
         RationalVector::new(-self.x.clone(), -self.y.clone(), self.z.clone())
     }
 
-        pub fn add_int(&self, other: &IntVector) -> Vector {
+    pub fn add_int(&self, other: &IntVector) -> Vector {
         self.add_rational(&RationalVector::from_int(other))
     }
 
-        pub fn add_rational(&self, other: &RationalVector) -> Vector {
+    pub fn add_rational(&self, other: &RationalVector) -> Vector {
         let result = bigint_aux::add_rational_coordinates(
             &[self.x.clone(), self.y.clone(), self.z.clone()],
             &[other.x.clone(), other.y.clone(), other.z.clone()],
@@ -81,73 +81,73 @@ impl RationalVector {
         Vector::Rational(RationalVector::new(rx, ry, rz))
     }
 
-        pub fn side_of_int(&self, other: &IntVector) -> Side {
+    pub fn side_of_int(&self, other: &IntVector) -> Side {
         self.side_of_rational(&RationalVector::from_int(other))
     }
 
-                pub fn side_of_rational(&self, other: &RationalVector) -> Side {
+    pub fn side_of_rational(&self, other: &RationalVector) -> Side {
         let tmp1 = &self.y * &other.x;
         let tmp2 = &self.x * &other.y;
         let determinant = tmp1 - tmp2;
         Side::of_i64(big_sign(&determinant))
     }
 
-        pub fn is_orthogonal(&self) -> bool {
+    pub fn is_orthogonal(&self) -> bool {
         self.x.is_zero() || self.y.is_zero()
     }
 
-        pub fn is_diagonal(&self) -> bool {
+    pub fn is_diagonal(&self) -> bool {
         self.x.abs() == self.y.abs()
     }
 
-        pub fn is_multiple_of_45_degree(&self) -> bool {
+    pub fn is_multiple_of_45_degree(&self) -> bool {
         self.is_orthogonal() || self.is_diagonal()
     }
 
-            pub fn projection_int(&self, other: &IntVector) -> Signum {
+    pub fn projection_int(&self, other: &IntVector) -> Signum {
         RationalVector::from_int(other).projection_rational(self)
     }
 
-            pub fn projection_rational(&self, other: &RationalVector) -> Signum {
+    pub fn projection_rational(&self, other: &RationalVector) -> Signum {
         let tmp1 = &self.x * &other.x;
         let tmp2 = &self.y * &other.y;
         Signum::of_i64(big_sign(&(tmp1 + tmp2)))
     }
 
-        pub fn scalar_product_int(&self, other: &IntVector) -> f64 {
+    pub fn scalar_product_int(&self, other: &IntVector) -> f64 {
         RationalVector::from_int(other).scalar_product_rational(self)
     }
 
-            pub fn scalar_product_rational(&self, other: &RationalVector) -> f64 {
+    pub fn scalar_product_rational(&self, other: &RationalVector) -> f64 {
         let v1 = self.to_float();
         let v2 = other.to_float();
         v1.x * v2.x + v1.y * v2.y
     }
 
-            pub fn to_float(&self) -> FloatPoint {
+    pub fn to_float(&self) -> FloatPoint {
         let zd = big_to_f64(&self.z);
         FloatPoint::new(big_to_f64(&self.x) / zd, big_to_f64(&self.y) / zd)
     }
 
-        pub fn turn_90_degree(&self, factor: i32) -> RationalVector {
+    pub fn turn_90_degree(&self, factor: i32) -> RationalVector {
         match factor.rem_euclid(4) {
-            0 => self.clone(), 
-            1 => RationalVector::new(-self.y.clone(), self.x.clone(), self.z.clone()), 
-            2 => RationalVector::new(-self.x.clone(), -self.y.clone(), self.z.clone()), 
-            3 => RationalVector::new(self.y.clone(), -self.x.clone(), self.z.clone()), 
+            0 => self.clone(),
+            1 => RationalVector::new(-self.y.clone(), self.x.clone(), self.z.clone()),
+            2 => RationalVector::new(-self.x.clone(), -self.y.clone(), self.z.clone()),
+            3 => RationalVector::new(self.y.clone(), -self.x.clone(), self.z.clone()),
             _ => self.clone(),
         }
     }
 
-        pub fn mirror_at_y_axis(&self) -> RationalVector {
+    pub fn mirror_at_y_axis(&self) -> RationalVector {
         RationalVector::new(-self.x.clone(), self.y.clone(), self.z.clone())
     }
 
-        pub fn mirror_at_x_axis(&self) -> RationalVector {
+    pub fn mirror_at_x_axis(&self) -> RationalVector {
         RationalVector::new(self.x.clone(), -self.y.clone(), self.z.clone())
     }
 
-                                pub fn to_normalized_direction(&self) -> Direction {
+    pub fn to_normalized_direction(&self) -> Direction {
         let gcd = self.x.gcd(&self.y);
         let dx = &self.x / &gcd;
         let dy = &self.y / &gcd;
@@ -162,13 +162,13 @@ impl RationalVector {
         }
     }
 
-        pub fn add_to_int(&self, point: &IntPoint) -> Point {
+    pub fn add_to_int(&self, point: &IntPoint) -> Point {
         let new_x = &self.z * BigInt::from(point.x) + &self.x;
         let new_y = &self.z * BigInt::from(point.y) + &self.y;
         Point::Rational(RationalPoint::new(new_x, new_y, self.z.clone()))
     }
 
-        pub fn add_to_rational(&self, point: &RationalPoint) -> Point {
+    pub fn add_to_rational(&self, point: &RationalPoint) -> Point {
         let [rx, ry, rz] = bigint_aux::add_rational_coordinates(
             &[self.x.clone(), self.y.clone(), self.z.clone()],
             &[point.x.clone(), point.y.clone(), point.z.clone()],
@@ -176,17 +176,17 @@ impl RationalVector {
         Point::Rational(RationalPoint::new(rx, ry, rz))
     }
 
-                            pub fn determinant(&self, other: &RationalVector) -> BigInt {
+    pub fn determinant(&self, other: &RationalVector) -> BigInt {
         bigint_aux::determinant(&self.x, &self.y, &other.x, &other.y)
     }
 
-                    pub fn change_length_approx(&self, _length: f64) -> Vector {
+    pub fn change_length_approx(&self, _length: f64) -> Vector {
         Vector::Rational(self.clone())
     }
 }
 
 impl PartialEq for RationalVector {
-                            fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         let det = bigint_aux::determinant(&self.x, &other.x, &self.z, &other.z);
         if !det.is_zero() {
             return false;

@@ -8,7 +8,6 @@ use fr_geometry::{
 use fr_router::autoroute::expansion::{ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom};
 use fr_router::autoroute::tree_ext::AutorouteSearchTreeExt;
 
-
 const BOARD: IntBox = IntBox {
     ll: IntPoint { x: 0, y: 0 },
     ur: IntPoint { x: 1000, y: 1000 },
@@ -80,7 +79,7 @@ impl TestBoard {
         }
     }
 
-            fn insert_room(&mut self, shape: TileShape, layer: usize) -> RoomId {
+    fn insert_room(&mut self, shape: TileShape, layer: usize) -> RoomId {
         let id_no = self.rooms.next_room_id_no();
         let room = self.rooms.new_complete_room(Some(shape), layer, id_no);
         self.rooms.insert_complete_room(&mut self.tree, room);
@@ -126,7 +125,6 @@ fn describe(rooms: &[IncompleteFreeSpaceExpansionRoom]) -> Vec<(usize, i32, IntB
         })
         .collect()
 }
-
 
 #[test]
 fn an_empty_board_returns_the_seed_room_unchanged() {
@@ -361,7 +359,6 @@ fn the_ninety_degree_override_keeps_the_room_it_ignores_by_shape() {
          the third, unregistered difference — the 90-degree override does not divide"
     );
 }
-
 
 const P6T2_BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -739,7 +736,6 @@ fn the_45_degree_regime_matches_the_p6t2_script() {
         .divide_large_room(completed, &P6T2_BOUNDING_BOX);
     assert_eq!(render(&divided), expected);
 }
-
 
 const NINETY_DEGREE_STEM: &str = "p9t8-ninety-degree";
 

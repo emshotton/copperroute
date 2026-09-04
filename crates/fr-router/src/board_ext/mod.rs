@@ -26,4 +26,3 @@ pub(crate) fn swallow_normalize_error(
         Ok(_) | Err(_) => Ok(()),
     }
 }
-

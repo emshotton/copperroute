@@ -10,12 +10,11 @@ use crate::error::DrcError;
 use crate::report::build::{DrcCoordinates, DrcReportOptions};
 use crate::report::{KiCadDrcPosition, KiCadDrcReport, KiCadDrcViolation, KiCadDrcViolationItem};
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DrcJsonFlavor {
-        #[default]
+    #[default]
     FreeroutingHead,
-        KiCad,
+    KiCad,
 }
 
 struct FlavorKeys {
@@ -61,7 +60,7 @@ impl DrcJsonFlavor {
 }
 
 impl FlavorKeys {
-            fn violation_type<'a>(&'static self, stored: &'a str) -> &'a str {
+    fn violation_type<'a>(&'static self, stored: &'a str) -> &'a str {
         if stored == HEAD.hole_clearance_type {
             self.hole_clearance_type
         } else if stored == HEAD.unconnected_items_type {
@@ -72,9 +71,8 @@ impl FlavorKeys {
     }
 }
 
-
 impl KiCadDrcReport {
-                                        pub fn to_json(&self, flavor: DrcJsonFlavor) -> Result<String, DrcError> {
+    pub fn to_json(&self, flavor: DrcJsonFlavor) -> Result<String, DrcError> {
         Ok(to_gson_string_pretty(&ReportSer {
             report: self,
             keys: flavor.keys(),
@@ -83,7 +81,7 @@ impl KiCadDrcReport {
 }
 
 impl DesignRulesChecker<'_> {
-                                            pub fn report_to_json(
+    pub fn report_to_json(
         &mut self,
         coords: &DrcCoordinates,
         options: &DrcReportOptions,
@@ -92,7 +90,6 @@ impl DesignRulesChecker<'_> {
         self.generate_report(coords, options).to_json(flavor)
     }
 }
-
 
 struct ReportSer<'a> {
     report: &'a KiCadDrcReport,

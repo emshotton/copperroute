@@ -13,8 +13,7 @@ const FANOUT_COST_CONSTANT: f64 = 20000.0;
 pub struct MazeRipupResolver;
 
 impl MazeRipupResolver {
-
-                                                        pub fn calc_fanout_via_ripup_cost_factor(board: &Board, trace: ItemId) -> f64 {
+    pub fn calc_fanout_via_ripup_cost_factor(board: &Board, trace: ItemId) -> f64 {
         let Some(Item::Trace(obstacle_trace)) = board.get_item(trace) else {
             return 1.0;
         };
@@ -62,8 +61,7 @@ impl MazeRipupResolver {
         1.0
     }
 
-
-                                                                                    pub fn check_ripup(
+    pub fn check_ripup(
         search: &mut MazeSearchEngine<'_>,
         board: &mut Board,
         list_element: &MazeListElement,
@@ -169,8 +167,7 @@ impl MazeRipupResolver {
         result.min(max_ripup_costs)
     }
 
-
-                                            pub fn check_leaving_ripped_item(
+    pub fn check_leaving_ripped_item(
         search: &mut MazeSearchEngine<'_>,
         board: &mut Board,
         list_element: &MazeListElement,
@@ -203,8 +200,7 @@ impl MazeRipupResolver {
         Self::enter_through_small_door(search, board, list_element, current_item)
     }
 
-
-                                                                pub fn enter_through_small_door(
+    pub fn enter_through_small_door(
         search: &mut MazeSearchEngine<'_>,
         board: &mut Board,
         list_element: &MazeListElement,
@@ -289,7 +285,7 @@ impl MazeRipupResolver {
         true
     }
 
-                    fn expandable_dimension(search: &MazeSearchEngine<'_>, object: ExpandableRef) -> i32 {
+    fn expandable_dimension(search: &MazeSearchEngine<'_>, object: ExpandableRef) -> i32 {
         search.engine.expandable_dimension(object)
     }
 }
@@ -300,5 +296,3 @@ fn shares_net(board: &Board, a: ItemId, b: ItemId) -> bool {
         _ => false,
     }
 }
-
-

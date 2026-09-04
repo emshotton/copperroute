@@ -16,78 +16,78 @@ use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Circle {
-        pub center: IntPoint,
-        pub radius: i32,
+    pub center: IntPoint,
+    pub radius: i32,
 }
 
 impl Circle {
-            pub fn new(center: IntPoint, radius: i32) -> Circle {
+    pub fn new(center: IntPoint, radius: i32) -> Circle {
         Circle {
             center,
             radius: if radius < 0 { -radius } else { radius },
         }
     }
 
-        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         false
     }
 
-        pub fn is_bounded(&self) -> bool {
+    pub fn is_bounded(&self) -> bool {
         true
     }
 
-        pub fn dimension(&self) -> i32 {
+    pub fn dimension(&self) -> i32 {
         if self.radius == 0 {
             return 0;
         }
         2
     }
 
-        pub fn circumference(&self) -> f64 {
+    pub fn circumference(&self) -> f64 {
         2.0 * std::f64::consts::PI * self.radius as f64
     }
 
-                pub fn area(&self) -> f64 {
+    pub fn area(&self) -> f64 {
         (std::f64::consts::PI * self.radius as f64) * self.radius as f64
     }
 
-        pub fn centre_of_gravity(&self) -> FloatPoint {
+    pub fn centre_of_gravity(&self) -> FloatPoint {
         self.center.to_float()
     }
 
-        pub fn is_outside(&self, point: &Point) -> bool {
+    pub fn is_outside(&self, point: &Point) -> bool {
         let fp = point.to_float();
         fp.distance_square(&self.center.to_float()) > self.radius as f64 * self.radius as f64
     }
 
-        pub fn contains(&self, point: &Point) -> bool {
+    pub fn contains(&self, point: &Point) -> bool {
         !self.is_outside(point)
     }
 
-        pub fn contains_float(&self, point: &FloatPoint) -> bool {
+    pub fn contains_float(&self, point: &FloatPoint) -> bool {
         point.distance_square(&self.center.to_float()) <= self.radius as f64 * self.radius as f64
     }
 
-        pub fn contains_inside(&self, point: &Point) -> bool {
+    pub fn contains_inside(&self, point: &Point) -> bool {
         let fp = point.to_float();
         fp.distance_square(&self.center.to_float()) < self.radius as f64 * self.radius as f64
     }
 
-        pub fn contains_on_border(&self, point: &Point) -> bool {
+    pub fn contains_on_border(&self, point: &Point) -> bool {
         let fp = point.to_float();
         fp.distance_square(&self.center.to_float()) == self.radius as f64 * self.radius as f64
     }
 
-            pub fn distance(&self, point: &FloatPoint) -> f64 {
+    pub fn distance(&self, point: &FloatPoint) -> f64 {
         let d = point.distance(&self.center.to_float()) - self.radius as f64;
         java_max(d, 0.0)
     }
 
-        pub fn smallest_radius(&self) -> f64 {
+    pub fn smallest_radius(&self) -> f64 {
         self.radius as f64
     }
 
-        pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self) -> IntBox {
         let lower_left_x = self.center.x - self.radius;
         let upper_right_x = self.center.x + self.radius;
         let lower_left_y = self.center.y - self.radius;
@@ -95,7 +95,7 @@ impl Circle {
         IntBox::from_coords(lower_left_x, lower_left_y, upper_right_x, upper_right_y)
     }
 
-                            pub fn bounding_octagon(&self) -> IntOctagon {
+    pub fn bounding_octagon(&self) -> IntOctagon {
         let left_x = self.center.x - self.radius;
         let right_x = self.center.x + self.radius;
         let bottom_y = self.center.y - self.radius;
@@ -121,11 +121,11 @@ impl Circle {
         )
     }
 
-                pub fn bounding_tile(&self) -> TileShape {
+    pub fn bounding_tile(&self) -> TileShape {
         TileShape::Octagon(self.bounding_octagon())
     }
 
-                        pub fn bounding_tile_max_seg(&self, max_segment_length: i32) -> TileShape {
+    pub fn bounding_tile_max_seg(&self, max_segment_length: i32) -> TileShape {
         let quadrant_division_count = self.radius / max_segment_length + 1;
         if quadrant_division_count <= 2 {
             return TileShape::Octagon(self.bounding_octagon());
@@ -160,7 +160,7 @@ impl Circle {
         TileShape::get_instance_from_lines(lines)
     }
 
-        pub fn is_contained_in(&self, b: &IntBox) -> bool {
+    pub fn is_contained_in(&self, b: &IntBox) -> bool {
         if b.ll.x > self.center.x - self.radius {
             return false;
         }
@@ -173,51 +173,51 @@ impl Circle {
         b.ur.y >= self.center.y + self.radius
     }
 
-        pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Circle {
+    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Circle {
         Circle::new(self.center.turn_90_degree(factor, pole), self.radius)
     }
 
-        pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Circle {
+    pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Circle {
         Circle::new(
             self.center.to_float().rotate(angle, pole).round(),
             self.radius,
         )
     }
 
-        pub fn mirror_vertical(&self, pole: &IntPoint) -> Circle {
+    pub fn mirror_vertical(&self, pole: &IntPoint) -> Circle {
         Circle::new(self.center.mirror_vertical(pole), self.radius)
     }
 
-        pub fn mirror_horizontal(&self, pole: &IntPoint) -> Circle {
+    pub fn mirror_horizontal(&self, pole: &IntPoint) -> Circle {
         Circle::new(self.center.mirror_horizontal(pole), self.radius)
     }
 
-        pub fn max_width(&self) -> f64 {
+    pub fn max_width(&self) -> f64 {
         2.0 * self.radius as f64
     }
 
-        pub fn min_width(&self) -> f64 {
+    pub fn min_width(&self) -> f64 {
         2.0 * self.radius as f64
     }
 
-        pub fn bounding_shape(
+    pub fn bounding_shape(
         &self,
         dirs: crate::bounding_directions::ShapeBoundingDirections,
     ) -> RegularTileShape {
         dirs.bounds_circle(self)
     }
 
-        pub fn offset(&self, offset: f64) -> Circle {
+    pub fn offset(&self, offset: f64) -> Circle {
         let new_radius = self.radius as f64 + offset;
         Circle::new(self.center, java_round(new_radius) as i32)
     }
 
-            pub fn shrink(&self, offset: f64) -> Circle {
+    pub fn shrink(&self, offset: f64) -> Circle {
         let new_radius = self.radius as f64 - offset;
         Circle::new(self.center, (java_round(new_radius) as i32).max(1))
     }
 
-                        pub fn translate_by(&self, vector: &Vector) -> Circle {
+    pub fn translate_by(&self, vector: &Vector) -> Circle {
         if *vector == Vector::ZERO {
             return *self;
         }
@@ -228,45 +228,45 @@ impl Circle {
         Circle::new(self.center.translate_by(int_vector), self.radius)
     }
 
-            pub fn nearest_point_approx(&self, _point: &FloatPoint) -> Option<FloatPoint> {
+    pub fn nearest_point_approx(&self, _point: &FloatPoint) -> Option<FloatPoint> {
         None
     }
 
-        pub fn border_distance(&self, point: &FloatPoint) -> f64 {
+    pub fn border_distance(&self, point: &FloatPoint) -> f64 {
         let d = point.distance(&self.center.to_float()) - self.radius as f64;
         d.abs()
     }
 
-        pub fn enlarge(&self, offset: f64) -> Circle {
+    pub fn enlarge(&self, offset: f64) -> Circle {
         if offset == 0.0 {
             return *self;
         }
         Circle::new(self.center, self.radius + java_round(offset) as i32)
     }
 
-            pub fn intersects(&self, other: &crate::shape::Shape) -> bool {
+    pub fn intersects(&self, other: &crate::shape::Shape) -> bool {
         other.intersects_circle(self)
     }
 
-        pub fn intersects_circle(&self, other: &Circle) -> bool {
+    pub fn intersects_circle(&self, other: &Circle) -> bool {
         let mut radius_sum_square = (self.radius + other.radius) as f64;
         radius_sum_square *= radius_sum_square;
         self.center.distance_square(&other.center) <= radius_sum_square
     }
 
-        pub fn intersects_box(&self, b: &IntBox) -> bool {
+    pub fn intersects_box(&self, b: &IntBox) -> bool {
         b.distance(&self.center.to_float()) <= self.radius as f64
     }
 
-        pub fn intersects_octagon(&self, oct: &IntOctagon) -> bool {
+    pub fn intersects_octagon(&self, oct: &IntOctagon) -> bool {
         TileShape::Octagon(*oct).distance(&self.center.to_float()) <= self.radius as f64
     }
 
-        pub fn intersects_simplex(&self, simplex: &Simplex) -> bool {
+    pub fn intersects_simplex(&self, simplex: &Simplex) -> bool {
         TileShape::Simplex(simplex.clone()).distance(&self.center.to_float()) <= self.radius as f64
     }
 
-            pub fn intersects_tile(&self, tile: &TileShape) -> bool {
+    pub fn intersects_tile(&self, tile: &TileShape) -> bool {
         match tile {
             TileShape::Box(b) => self.intersects_box(b),
             TileShape::Octagon(o) => self.intersects_octagon(o),
@@ -274,29 +274,29 @@ impl Circle {
         }
     }
 
-            pub fn cutout(&self, _polyline: &Polyline) -> Option<Vec<Polyline>> {
+    pub fn cutout(&self, _polyline: &Polyline) -> Option<Vec<Polyline>> {
         None
     }
 
-            pub fn split_to_convex(&self) -> Vec<TileShape> {
+    pub fn split_to_convex(&self) -> Vec<TileShape> {
         vec![self.bounding_tile()]
     }
 
-        pub fn get_border(&self) -> Circle {
+    pub fn get_border(&self) -> Circle {
         *self
     }
 
-        pub fn get_holes(&self) -> Vec<crate::shape::Shape> {
+    pub fn get_holes(&self) -> Vec<crate::shape::Shape> {
         Vec::new()
     }
 
-        pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
+    pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
         Vec::new()
     }
 }
 
 impl fmt::Display for Circle {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Circle: ")?;
         if self.center != IntPoint::new(0, 0) {
             write!(f, "center {}", self.center)?;
@@ -367,7 +367,7 @@ mod tests {
         assert_eq!(c.shrink(2.4).radius, 8);
         assert_eq!(c.shrink(100.0).radius, 1);
         assert_eq!(c.enlarge(0.0), c);
-        assert_eq!(c.enlarge(2.5).radius, 13); 
+        assert_eq!(c.enlarge(2.5).radius, 13);
         assert_eq!(c.max_width(), 20.0);
         assert_eq!(c.min_width(), 20.0);
     }

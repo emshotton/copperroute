@@ -1,7 +1,5 @@
-
 use fr_board::prelude::*;
 use fr_geometry::{FloatPoint, IntBox, IntPoint, IntVector, Point, Polyline, TileShape, Vector};
-
 
 struct Fixture {
     library: BoardLibrary,
@@ -74,7 +72,6 @@ fn trace(id: u32, lines: Polyline, layer: usize, half_width: i32) -> PolylineTra
     PolylineTrace::new(hdr(id), lines, layer, half_width, None)
 }
 
-
 #[test]
 fn trace_geometry_characterization() {
     let t = trace(1, two_point_polyline(), 0, 1000);
@@ -89,7 +86,6 @@ fn trace_geometry_characterization() {
             .is_some()
     );
 }
-
 
 #[test]
 fn constructor_clamps_the_layer_into_the_board_stack() {
@@ -117,7 +113,6 @@ fn polyline_accessor_returns_the_stored_geometry() {
     let t = trace(1, lines.clone(), 0, 500);
     assert_eq!(t.polyline(), &lines);
 }
-
 
 #[test]
 fn corners_and_corner_count_follow_the_polyline() {
@@ -208,7 +203,6 @@ fn offset_shapes_are_the_traces_tree_shapes_before_clearance_compensation() {
     );
 }
 
-
 #[test]
 fn trace_connection_shape_is_the_segments_one_dimensional_simplex() {
     let f = Fixture::new();
@@ -275,7 +269,6 @@ fn trace_connection_shape_out_of_range_is_none() {
     assert_eq!(t.get_trace_connection_shape(TreeId(0), 2, &f.ctx()), None);
 }
 
-
 #[test]
 fn translate_by_moves_the_polyline_and_clears_the_derived_data() {
     let mut t = trace(1, two_point_polyline(), 0, 1000);
@@ -335,7 +328,6 @@ fn change_placement_side_mirrors_vertically_and_flips_the_layer() {
     assert_eq!(t.hdr.get_precalculated_tree_shapes(TreeId(0)), None);
 }
 
-
 #[test]
 fn copy_carries_the_geometry_and_takes_the_new_id() {
     let mut t = trace(7, l_polyline(), 2, 500);
@@ -348,7 +340,6 @@ fn copy_carries_the_geometry_and_takes_the_new_id() {
     assert_eq!(c.hdr.net_nos, vec![1]);
     assert!(!c.hdr.is_on_the_board());
 }
-
 
 #[test]
 fn nearest_end_point_picks_the_closer_corner_and_ties_go_to_the_last() {
@@ -366,7 +357,6 @@ fn nearest_end_point_picks_the_closer_corner_and_ties_go_to_the_last() {
         Some(p(20_000, 10_000))
     );
 }
-
 
 #[test]
 fn split_polyline_at_point_cuts_the_segment_the_point_lies_on() {
@@ -449,7 +439,6 @@ fn split_polyline_at_line_is_the_private_java_overload() {
     assert_eq!(t.split_polyline_at_line(1, &horizontal), Ok(None));
     assert_eq!(t.split_polyline_at_line(0, &vertical), Ok(None));
 }
-
 
 #[test]
 fn item_dispatch_reaches_the_trace_geometry() {

@@ -5,14 +5,14 @@ use crate::autoroute::maze::{MazeSearchElement, TRACE_WIDTH_TOLERANCE};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExpansionDoor {
-        pub first_room: RoomRef,
-        pub second_room: RoomRef,
-            pub dimension: i32,
-                                        sections: Option<Vec<MazeSearchElement>>,
+    pub first_room: RoomRef,
+    pub second_room: RoomRef,
+    pub dimension: i32,
+    sections: Option<Vec<MazeSearchElement>>,
 }
 
 impl ExpansionDoor {
-        pub fn new(first_room: RoomRef, second_room: RoomRef, dimension: i32) -> ExpansionDoor {
+    pub fn new(first_room: RoomRef, second_room: RoomRef, dimension: i32) -> ExpansionDoor {
         ExpansionDoor {
             first_room,
             second_room,
@@ -21,7 +21,7 @@ impl ExpansionDoor {
         }
     }
 
-                            pub fn new_with_computed_dimension(
+    pub fn new_with_computed_dimension(
         first_room: RoomRef,
         second_room: RoomRef,
         first_shape: &TileShape,
@@ -34,15 +34,15 @@ impl ExpansionDoor {
         )
     }
 
-                        pub fn get_shape(&self, first_shape: &TileShape, second_shape: &TileShape) -> TileShape {
+    pub fn get_shape(&self, first_shape: &TileShape, second_shape: &TileShape) -> TileShape {
         first_shape.intersection(second_shape)
     }
 
-        pub fn get_dimension(&self) -> i32 {
+    pub fn get_dimension(&self) -> i32 {
         self.dimension
     }
 
-                        pub fn other_room(&self, room: RoomRef) -> Option<RoomRef> {
+    pub fn other_room(&self, room: RoomRef) -> Option<RoomRef> {
         if room == self.first_room {
             Some(self.second_room)
         } else if room == self.second_room {
@@ -52,23 +52,23 @@ impl ExpansionDoor {
         }
     }
 
-                                pub fn other_complete_room(&self, room: RoomRef) -> Option<RoomRef> {
+    pub fn other_complete_room(&self, room: RoomRef) -> Option<RoomRef> {
         self.other_room(room).filter(|other| other.is_complete())
     }
 
-                            pub fn maze_search_element_count(&self) -> Option<usize> {
+    pub fn maze_search_element_count(&self) -> Option<usize> {
         self.sections.as_ref().map(|s| s.len())
     }
 
-                pub fn get_maze_search_element(&self, index: usize) -> Option<&MazeSearchElement> {
+    pub fn get_maze_search_element(&self, index: usize) -> Option<&MazeSearchElement> {
         self.sections.as_ref()?.get(index)
     }
 
-            pub fn get_maze_search_element_mut(&mut self, index: usize) -> Option<&mut MazeSearchElement> {
+    pub fn get_maze_search_element_mut(&mut self, index: usize) -> Option<&mut MazeSearchElement> {
         self.sections.as_mut()?.get_mut(index)
     }
 
-                pub fn reset(&mut self) {
+    pub fn reset(&mut self) {
         if let Some(sections) = self.sections.as_mut() {
             for section in sections.iter_mut() {
                 section.reset();
@@ -76,18 +76,18 @@ impl ExpansionDoor {
         }
     }
 
-                                pub fn get_id(&self, first_id: i32, second_id: i32) -> i32 {
+    pub fn get_id(&self, first_id: i32, second_id: i32) -> i32 {
         ExpansionDoor::id(first_id, second_id)
     }
 
-        pub fn id(first_id: i32, second_id: i32) -> i32 {
+    pub fn id(first_id: i32, second_id: i32) -> i32 {
         first_id
             .min(second_id)
             .wrapping_mul(31)
             .wrapping_add(first_id.max(second_id))
     }
 
-                                                                                                                                pub fn get_section_segments(
+    pub fn get_section_segments(
         &mut self,
         first_shape: &TileShape,
         second_shape: &TileShape,
@@ -118,7 +118,7 @@ impl ExpansionDoor {
                 return Vec::new();
             }
             door_line_segment = segment;
-            shrinked_line_segment = door_line_segment.shrink_segment(offset); 
+            shrinked_line_segment = door_line_segment.shrink_segment(offset);
         } else {
             let gravity_point = door_shape.centre_of_gravity();
             door_line_segment = FloatLine::new(gravity_point, gravity_point);
@@ -139,7 +139,7 @@ impl ExpansionDoor {
         shrinked_line_segment.divide_segment_into_sections(section_count)
     }
 
-                                            fn calc_door_line_segment(
+    fn calc_door_line_segment(
         &self,
         door_shape: &TileShape,
         first_room_shape: &TileShape,
@@ -147,9 +147,9 @@ impl ExpansionDoor {
     ) -> Option<FloatLine> {
         let mut first_corner: Option<Point> = None;
         let mut second_corner: Option<Point> = None;
-        let corner_count = door_shape.border_line_count(); 
+        let corner_count = door_shape.border_line_count();
         for i in 0..corner_count {
-            let current_corner = door_shape.corner(i); 
+            let current_corner = door_shape.corner(i);
             if first_room_shape.contains_inside(&current_corner)
                 || second_room_shape.contains_inside(&current_corner)
             {
@@ -170,13 +170,13 @@ impl ExpansionDoor {
         ))
     }
 
-                        pub fn allocate_sections(&mut self, section_count: usize) {
+    pub fn allocate_sections(&mut self, section_count: usize) {
         if self
             .sections
             .as_ref()
             .is_some_and(|s| s.len() == section_count)
         {
-            return; 
+            return;
         }
         self.sections = Some(
             std::iter::repeat_with(MazeSearchElement::new)
@@ -249,7 +249,7 @@ mod tests {
         let mut d = door();
         assert_eq!(d.maze_search_element_count(), None);
         assert_eq!(d.get_maze_search_element(0), None);
-        d.reset(); 
+        d.reset();
     }
 
     #[test]

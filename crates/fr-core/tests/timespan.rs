@@ -4,10 +4,10 @@ use fr_core::{
 };
 
 struct Row {
-        input: &'static str,
-        conv: &'static str,
-            parse: Option<i64>,
-        capped: Option<i64>,
+    input: &'static str,
+    conv: &'static str,
+    parse: Option<i64>,
+    capped: Option<i64>,
 }
 
 const ROWS: &[Row] = &[

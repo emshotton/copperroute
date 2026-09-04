@@ -1,10 +1,10 @@
 struct Row {
-        path: &'static str,
-        java: &'static str,
-        test: &'static str,
+    path: &'static str,
+    java: &'static str,
+    test: &'static str,
     suite: &'static str,
-        source: &'static str,
-                    control: Option<&'static str>,
+    source: &'static str,
+    control: Option<&'static str>,
 }
 
 const ROWS: [Row; 4] = [

@@ -2,20 +2,20 @@ use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum AutorouteAttemptState {
-                        #[default]
+    #[default]
     Unknown,
-        Skipped,
-        NoUnconnectedNets,
-        ConnectedToPlane,
-        AlreadyConnected,
-        NoConnections,
-        Routed,
-        Failed,
-                                            InsertError,
+    Skipped,
+    NoUnconnectedNets,
+    ConnectedToPlane,
+    AlreadyConnected,
+    NoConnections,
+    Routed,
+    Failed,
+    InsertError,
 }
 
 impl AutorouteAttemptState {
-        pub const ALL: [AutorouteAttemptState; 9] = [
+    pub const ALL: [AutorouteAttemptState; 9] = [
         AutorouteAttemptState::Unknown,
         AutorouteAttemptState::Skipped,
         AutorouteAttemptState::NoUnconnectedNets,
@@ -27,7 +27,7 @@ impl AutorouteAttemptState {
         AutorouteAttemptState::InsertError,
     ];
 
-        pub fn name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             AutorouteAttemptState::Unknown => "UNKNOWN",
             AutorouteAttemptState::Skipped => "SKIPPED",
@@ -50,30 +50,30 @@ impl fmt::Display for AutorouteAttemptState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct AutorouteAttemptResult {
-        pub state: AutorouteAttemptState,
-                                pub details: Option<String>,
+    pub state: AutorouteAttemptState,
+    pub details: Option<String>,
 }
 
 impl AutorouteAttemptResult {
-            pub fn new(state: AutorouteAttemptState) -> AutorouteAttemptResult {
+    pub fn new(state: AutorouteAttemptState) -> AutorouteAttemptResult {
         AutorouteAttemptResult {
             state,
             details: None,
         }
     }
 
-                        pub fn with_details(state: AutorouteAttemptState, details: String) -> AutorouteAttemptResult {
+    pub fn with_details(state: AutorouteAttemptState, details: String) -> AutorouteAttemptResult {
         AutorouteAttemptResult {
             state,
             details: Some(details),
         }
     }
 
-        pub fn details(&self) -> &str {
+    pub fn details(&self) -> &str {
         self.details.as_deref().unwrap_or("")
     }
 
-        pub fn is_routed(&self) -> bool {
+    pub fn is_routed(&self) -> bool {
         self.state == AutorouteAttemptState::Routed
     }
 }

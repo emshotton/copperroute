@@ -21,7 +21,7 @@ struct Tuple {
 }
 
 impl Tuple {
-        fn build(&self) -> ItemRouteResult {
+    fn build(&self) -> ItemRouteResult {
         ItemRouteResult::new(
             ItemId(self.item_id),
             self.via_count_before,
@@ -75,7 +75,6 @@ fn tuples() -> Vec<Tuple> {
         .collect()
 }
 
-
 #[test]
 fn the_first_rung_is_the_incomplete_count() {
     let better = ItemRouteResult::new(ItemId(1), 0, 9, 0.0, 9.0, 3, 2);
@@ -106,7 +105,6 @@ fn the_third_rung_is_the_trace_length_and_a_tie_is_not_an_improvement() {
     assert!(!tied.improved(), "ItemRouteResult.java:53-54");
 }
 
-
 #[test]
 fn improvement_percentage_truncates_the_via_term() {
     let r = ItemRouteResult::new(ItemId(1), 4, 2, 100.0, 50.0, 1, 1);
@@ -133,7 +131,6 @@ fn improvement_percentage_is_zero_when_either_denominator_is_zero() {
     let neither = ItemRouteResult::new(ItemId(1), 0, 0, 0.0, 0.0, 1, 1);
     assert_eq!(neither.improvement_percentage(), 0.0_f32, ":61");
 }
-
 
 #[test]
 fn the_unimproved_constructor_matches_the_jvm() {

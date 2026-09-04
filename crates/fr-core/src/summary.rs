@@ -5,49 +5,49 @@ use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct LayerSummary {
-        pub index: usize,
-        pub name: String,
-        pub signal: bool,
+    pub index: usize,
+    pub name: String,
+    pub signal: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct NetSummary {
-        pub number: i32,
-        pub name: String,
-            pub class: String,
-        pub contains_plane: bool,
+    pub number: i32,
+    pub name: String,
+    pub class: String,
+    pub contains_plane: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ComponentSummary {
-        pub id: i32,
-        pub name: String,
-        pub placed: bool,
-        pub on_front: bool,
+    pub id: i32,
+    pub name: String,
+    pub placed: bool,
+    pub on_front: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SummaryMetadata {
-        #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub host_cad: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub host_version: Option<String>,
-        pub unit: String,
-        pub resolution: i32,
-            pub snap_angle: String,
+    pub unit: String,
+    pub resolution: i32,
+    pub snap_angle: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct BoardSummary {
-        pub layers: Vec<LayerSummary>,
-        pub nets: Vec<NetSummary>,
-        pub components: Vec<ComponentSummary>,
-            pub statistics: serde_json::Value,
-        pub metadata: SummaryMetadata,
+    pub layers: Vec<LayerSummary>,
+    pub nets: Vec<NetSummary>,
+    pub components: Vec<ComponentSummary>,
+    pub statistics: serde_json::Value,
+    pub metadata: SummaryMetadata,
 }
 
 impl BoardSummary {
-                                                        #[must_use]
+    #[must_use]
     pub fn to_json_pretty(&self) -> String {
         serde_json::to_string_pretty(self).expect("a BoardSummary serializes")
     }

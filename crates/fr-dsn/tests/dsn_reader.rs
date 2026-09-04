@@ -26,7 +26,6 @@ fn success(result: &BoardReadResult) -> (&fr_board::Board, &[String]) {
     }
 }
 
-
 #[test]
 fn read_board_returns_success() {
     let result = read(&fixture("Issue143-rpi_splitter.dsn"));
@@ -289,7 +288,6 @@ fn warnings_are_exposed() {
     assert!(warnings[0].contains("degenerate wire"));
 }
 
-
 #[test]
 fn read_board_io_error_for_an_unreadable_stream() {
     struct Broken;
@@ -304,7 +302,6 @@ fn read_board_io_error_for_an_unreadable_stream() {
         "got {result:?}"
     );
 }
-
 
 #[test]
 fn issue413_wiring_matches_javas_traces_and_vias() {
@@ -381,7 +378,6 @@ fn a_supplied_id_generator_reaches_the_boards_communication() {
     let first = *board.items.keys().next().expect("at least one item");
     assert_eq!(first.0, 101, "the outline takes the generator's 101st id");
 }
-
 
 #[test]
 fn read_metadata_extracts_layer_count() {
@@ -484,7 +480,6 @@ fn try_correct_net_takes_the_highest_id_contact() {
     assert_matches_golden(board, warnings, "wiring_try_correct_net-items.txt");
 }
 
-
 #[test]
 fn warnings_for_every_reachable_wiring_site() {
     let result = read(&common::test_data("wiring_warnings.dsn"));
@@ -520,7 +515,6 @@ fn a_missing_via_padstack_fails_the_read_and_loses_its_warning() {
     assert_eq!(location, "(pcb");
     assert_eq!(detail, "DSN structure parsing failed");
 }
-
 
 fn corpus_dir() -> std::path::PathBuf {
     parity::java_dir().join("fixtures")
@@ -686,5 +680,3 @@ fn every_fixture_in_the_corpus_matches_javas_result_and_warnings() {
     }
     assert_eq!(actual.len(), expected.len(), "corpus line count differs");
 }
-
-

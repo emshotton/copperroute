@@ -19,10 +19,10 @@ pub fn run(settings_argv: &[String]) -> i32 {
 }
 
 enum Event {
-                Line(String),
-        Eof,
-            ReadFailed,
-            ToolDone(String),
+    Line(String),
+    Eof,
+    ReadFailed,
+    ToolDone(String),
 }
 
 pub fn run_with<R: BufRead + Send + 'static, W: Write + Send + 'static>(
@@ -46,7 +46,7 @@ pub fn run_with<R: BufRead + Send + 'static, W: Write + Send + 'static>(
                     }
                 };
                 if events.send(event).is_err() {
-                    return; 
+                    return;
                 }
             }
             let _ = events.send(Event::Eof);
@@ -196,7 +196,7 @@ fn spawn_tool_call(
 
 struct ToolDoneGuard {
     events: Sender<Event>,
-        key: Option<String>,
+    key: Option<String>,
 }
 
 impl Drop for ToolDoneGuard {
@@ -219,6 +219,3 @@ fn cancel_in_flight(in_flight: &HashMap<String, CancelToken>, params: Option<&Va
 fn request_key(id: &Value) -> String {
     id.to_string()
 }
-
-
-

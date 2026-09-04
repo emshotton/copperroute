@@ -15,7 +15,7 @@ use crate::structure::AngleRestriction;
 const DRILL_HOLE_CLEARANCE_MARGIN: i32 = 10;
 
 pub trait ItemLookup {
-        fn item(&self, id: ItemId) -> Option<&Item>;
+    fn item(&self, id: ItemId) -> Option<&Item>;
 }
 
 impl ItemLookup for BTreeMap<ItemId, Item> {
@@ -25,9 +25,9 @@ impl ItemLookup for BTreeMap<ItemId, Item> {
 }
 
 pub trait RoomLookup {
-            fn room_tree_shape(&self, id: RoomId) -> Option<&TileShape>;
+    fn room_tree_shape(&self, id: RoomId) -> Option<&TileShape>;
 
-            fn room_shape_layer(&self, id: RoomId) -> Option<usize>;
+    fn room_shape_layer(&self, id: RoomId) -> Option<usize>;
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -45,27 +45,27 @@ impl RoomLookup for NoRooms {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct EntrySortedByClearance {
-        clearance: i32,
-        entry_id: u64,
-            entry: TreeEntry<TreeObject>,
+    clearance: i32,
+    entry_id: u64,
+    entry: TreeEntry<TreeObject>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShapeSearchTree {
-                id: TreeId,
-        angle: AngleRestriction,
-        tree: ShapeTree<TreeObject>,
-            compensated_clearance_class: usize,
+    id: TreeId,
+    angle: AngleRestriction,
+    tree: ShapeTree<TreeObject>,
+    compensated_clearance_class: usize,
 }
 
 impl std::fmt::Display for ShapeSearchTree {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.get_key())
     }
 }
 
 impl ShapeSearchTree {
-                                        pub fn new(
+    pub fn new(
         id: TreeId,
         angle: AngleRestriction,
         compensated_clearance_class: usize,
@@ -78,7 +78,7 @@ impl ShapeSearchTree {
         }
     }
 
-                        pub fn bounding_directions_for(angle: AngleRestriction) -> ShapeBoundingDirections {
+    pub fn bounding_directions_for(angle: AngleRestriction) -> ShapeBoundingDirections {
         match angle {
             AngleRestriction::NinetyDegree => ShapeBoundingDirections::Orthogonal,
             AngleRestriction::None | AngleRestriction::FortyFiveDegree => {
@@ -87,27 +87,27 @@ impl ShapeSearchTree {
         }
     }
 
-            pub fn id(&self) -> TreeId {
+    pub fn id(&self) -> TreeId {
         self.id
     }
 
-        pub fn angle(&self) -> AngleRestriction {
+    pub fn angle(&self) -> AngleRestriction {
         self.angle
     }
 
-            pub fn compensated_clearance_class(&self) -> usize {
+    pub fn compensated_clearance_class(&self) -> usize {
         self.compensated_clearance_class
     }
 
-        pub fn tree(&self) -> &ShapeTree<TreeObject> {
+    pub fn tree(&self) -> &ShapeTree<TreeObject> {
         &self.tree
     }
 
-        pub fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.tree.leaf_count()
     }
 
-                            pub fn get_key(&self) -> String {
+    pub fn get_key(&self) -> String {
         let class = match self.angle {
             AngleRestriction::None => "ShapeSearchTree",
             AngleRestriction::FortyFiveDegree => "ShapeSearchTree45Degree",
@@ -123,11 +123,11 @@ impl ShapeSearchTree {
         )
     }
 
-        pub fn is_clearance_compensation_used(&self) -> bool {
+    pub fn is_clearance_compensation_used(&self) -> bool {
         self.compensated_clearance_class > 0
     }
 
-                                pub fn clearance_compensation_value(
+    pub fn clearance_compensation_value(
         &self,
         clearance_class_index: usize,
         layer: usize,
@@ -147,7 +147,7 @@ impl ShapeSearchTree {
         result.max(0)
     }
 
-            pub fn compensated_half_width(&self, trace: &PolylineTrace, rules: &BoardRules) -> i32 {
+    pub fn compensated_half_width(&self, trace: &PolylineTrace, rules: &BoardRules) -> i32 {
         trace.get_half_width()
             + self.clearance_compensation_value(
                 trace.hdr.clearance_class(),
@@ -157,9 +157,8 @@ impl ShapeSearchTree {
     }
 }
 
-
 impl ShapeSearchTree {
-                                                        pub fn calculate_tree_shapes(&self, item: &Item, ctx: &ItemCtx<'_>) -> Vec<Option<TileShape>> {
+    pub fn calculate_tree_shapes(&self, item: &Item, ctx: &ItemCtx<'_>) -> Vec<Option<TileShape>> {
         match item {
             Item::Via(_) | Item::Pin(_) => self.calculate_drill_item_tree_shapes(item, ctx),
             Item::ObstacleArea(_)
@@ -172,7 +171,7 @@ impl ShapeSearchTree {
         }
     }
 
-                                                                                    fn calculate_drill_item_tree_shapes(
+    fn calculate_drill_item_tree_shapes(
         &self,
         item: &Item,
         ctx: &ItemCtx<'_>,
@@ -221,7 +220,7 @@ impl ShapeSearchTree {
             .collect()
     }
 
-                    fn drill_hole_obstacle(&self, item: &Item, ctx: &ItemCtx<'_>) -> Option<Shape> {
+    fn drill_hole_obstacle(&self, item: &Item, ctx: &ItemCtx<'_>) -> Option<Shape> {
         if ctx.rules.get_hole_clearance() <= 0 {
             return None;
         }
@@ -240,7 +239,7 @@ impl ShapeSearchTree {
         )))
     }
 
-                fn drill_hole_clearance_delta(
+    fn drill_hole_clearance_delta(
         &self,
         item: &Item,
         shape: &Shape,
@@ -290,7 +289,7 @@ impl ShapeSearchTree {
         (raw as i32).max(0)
     }
 
-                                fn calculate_obstacle_area_tree_shapes(
+    fn calculate_obstacle_area_tree_shapes(
         &self,
         item: &Item,
         ctx: &ItemCtx<'_>,
@@ -314,7 +313,7 @@ impl ShapeSearchTree {
             .collect()
     }
 
-                                            fn calculate_board_outline_tree_shapes(
+    fn calculate_board_outline_tree_shapes(
         &self,
         item: &Item,
         ctx: &ItemCtx<'_>,
@@ -374,7 +373,7 @@ impl ShapeSearchTree {
         result
     }
 
-                fn calculate_trace_tree_shapes(
+    fn calculate_trace_tree_shapes(
         &self,
         trace: &PolylineTrace,
         ctx: &ItemCtx<'_>,
@@ -385,7 +384,7 @@ impl ShapeSearchTree {
             .collect()
     }
 
-                                fn regularise(&self, shape: TileShape) -> TileShape {
+    fn regularise(&self, shape: TileShape) -> TileShape {
         match self.angle {
             AngleRestriction::None => shape,
             AngleRestriction::FortyFiveDegree => {
@@ -395,7 +394,7 @@ impl ShapeSearchTree {
         }
     }
 
-                    pub fn offset_shape(
+    pub fn offset_shape(
         &self,
         polyline: &Polyline,
         half_width: i32,
@@ -409,7 +408,7 @@ impl ShapeSearchTree {
         }
     }
 
-                                pub fn offset_shapes(
+    pub fn offset_shapes(
         &self,
         polyline: &Polyline,
         half_width: i32,
@@ -467,9 +466,8 @@ fn obstacle_area_split_to_convex<'a>(item: &'a Item, ctx: &ItemCtx<'_>) -> Optio
     }
 }
 
-
 impl ShapeSearchTree {
-                                                        pub fn insert_item(&mut self, item: &mut Item, ctx: &ItemCtx<'_>) {
+    pub fn insert_item(&mut self, item: &mut Item, ctx: &ItemCtx<'_>) {
         self.fill_tree_shapes(item, ctx);
         let shapes = item
             .header()
@@ -485,23 +483,23 @@ impl ShapeSearchTree {
         item.set_tree_entries(self.id, entries);
     }
 
-                                pub fn remove_item(&mut self, item: &mut Item) {
+    pub fn remove_item(&mut self, item: &mut Item) {
         if let Some(entries) = item.get_search_tree_entries(self.id) {
             let entries = entries.to_vec();
             self.tree.remove_opt(&entries);
         }
     }
 
-                                                                                                            pub fn insert_room(&mut self, room: RoomId, shape: &TileShape) -> Option<LeafId> {
+    pub fn insert_room(&mut self, room: RoomId, shape: &TileShape) -> Option<LeafId> {
         let bounds = self.tree.bounding_shape(shape)?;
         Some(self.tree.insert_leaf(TreeObject::Room(room), 0, bounds))
     }
 
-                                pub fn remove_room(&mut self, leaf: Option<LeafId>) {
+    pub fn remove_room(&mut self, leaf: Option<LeafId>) {
         self.tree.remove_leaf_opt(leaf);
     }
 
-            fn fill_tree_shapes(&self, item: &mut Item, ctx: &ItemCtx<'_>) {
+    fn fill_tree_shapes(&self, item: &mut Item, ctx: &ItemCtx<'_>) {
         if item
             .header()
             .get_precalculated_tree_shapes(self.id)
@@ -512,7 +510,7 @@ impl ShapeSearchTree {
         }
     }
 
-                                                                pub fn get_tree_shape<'a>(
+    pub fn get_tree_shape<'a>(
         &self,
         item: &'a Item,
         index: usize,
@@ -530,7 +528,7 @@ impl ShapeSearchTree {
         shapes.swap_remove(index).map(Cow::Owned)
     }
 
-                fn tree_shape_of<'a>(
+    fn tree_shape_of<'a>(
         &self,
         entry: TreeEntry<TreeObject>,
         items: &'a impl ItemLookup,
@@ -562,9 +560,8 @@ impl ShapeSearchTree {
     }
 }
 
-
 impl ShapeSearchTree {
-                                            pub fn overlapping_objects(
+    pub fn overlapping_objects(
         &self,
         shape: &TileShape,
         layer: Option<usize>,
@@ -575,7 +572,7 @@ impl ShapeSearchTree {
         self.overlapping_objects_with_rooms(shape, layer, ignore_net_nos, items, &NoRooms, ctx)
     }
 
-                            #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn overlapping_objects_with_rooms(
         &self,
         shape: &TileShape,
@@ -591,7 +588,7 @@ impl ShapeSearchTree {
             .collect()
     }
 
-                                                    pub fn overlapping_tree_entries(
+    pub fn overlapping_tree_entries(
         &self,
         shape: &TileShape,
         layer: Option<usize>,
@@ -602,7 +599,7 @@ impl ShapeSearchTree {
         self.overlapping_tree_entries_with_rooms(shape, layer, ignore_net_nos, items, &NoRooms, ctx)
     }
 
-                                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn overlapping_tree_entries_with_rooms(
         &self,
         shape: &TileShape,
@@ -632,7 +629,7 @@ impl ShapeSearchTree {
             .collect()
     }
 
-                            fn ignore_object(
+    fn ignore_object(
         &self,
         entry: TreeEntry<TreeObject>,
         layer: Option<usize>,
@@ -668,7 +665,7 @@ impl ShapeSearchTree {
         }
     }
 
-                                                                                                                    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn overlapping_tree_entries_with_clearance(
         &self,
         shape: &TileShape,
@@ -732,7 +729,7 @@ impl ShapeSearchTree {
         result
     }
 
-                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn overlapping_tree_entries_with_clearance_auto(
         &self,
         shape: &TileShape,
@@ -758,7 +755,7 @@ impl ShapeSearchTree {
         }
     }
 
-                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn overlapping_objects_with_clearance(
         &self,
         shape: &TileShape,
@@ -783,7 +780,7 @@ impl ShapeSearchTree {
         .collect()
     }
 
-                                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn overlapping_items_with_clearance(
         &self,
         shape: &TileShape,
@@ -811,7 +808,7 @@ impl ShapeSearchTree {
         .collect()
     }
 
-                            pub fn validate_entries(&self, item: &Item) -> bool {
+    pub fn validate_entries(&self, item: &Item) -> bool {
         let Some(entries) = item.get_search_tree_entries(self.id) else {
             return true;
         };
@@ -829,9 +826,8 @@ fn offset_regular(bounds: RegularTileShape, dist: f64) -> RegularTileShape {
     }
 }
 
-
 impl ShapeSearchTree {
-                    fn insert_index(
+    fn insert_index(
         &mut self,
         id: ItemId,
         shapes: &[Option<TileShape>],
@@ -842,14 +838,14 @@ impl ShapeSearchTree {
         Some(self.tree.insert_leaf(TreeObject::Item(id), index, bounds))
     }
 
-                fn rekey(&mut self, leaf: Option<LeafId>, id: ItemId, shape_index: usize) {
+    fn rekey(&mut self, leaf: Option<LeafId>, id: ItemId, shape_index: usize) {
         if let Some(leaf) = leaf {
             self.tree
                 .set_leaf_entry(leaf, TreeObject::Item(id), shape_index);
         }
     }
 
-                                    pub fn change_entries(
+    pub fn change_entries(
         &mut self,
         trace: &mut PolylineTrace,
         new_polyline: &Polyline,
@@ -928,7 +924,7 @@ impl ShapeSearchTree {
         trace.hdr.set_tree_entries(self.id, new_leaves);
     }
 
-                pub fn merge_entries_in_front(
+    pub fn merge_entries_in_front(
         &mut self,
         from_trace: &mut PolylineTrace,
         to_trace: &mut PolylineTrace,
@@ -1008,7 +1004,7 @@ impl ShapeSearchTree {
         to_trace.hdr.set_tree_entries(self.id, new_leaves);
     }
 
-                pub fn merge_entries_at_end(
+    pub fn merge_entries_at_end(
         &mut self,
         from_trace: &mut PolylineTrace,
         to_trace: &mut PolylineTrace,
@@ -1088,7 +1084,7 @@ impl ShapeSearchTree {
         to_trace.hdr.set_tree_entries(self.id, new_leaves);
     }
 
-                                                        pub fn reuse_entries_after_cutout(
+    pub fn reuse_entries_after_cutout(
         &mut self,
         from_trace: &mut PolylineTrace,
         start_piece: &mut PolylineTrace,
@@ -1131,7 +1127,7 @@ impl ShapeSearchTree {
         end_piece.hdr.set_tree_entries(self.id, end_leaves);
     }
 
-            fn tree_shapes_for(
+    fn tree_shapes_for(
         &self,
         trace: &mut PolylineTrace,
         ctx: &ItemCtx<'_>,
@@ -1147,7 +1143,7 @@ impl ShapeSearchTree {
             .to_vec()
     }
 
-                            pub fn change_item_shape(&mut self, item: &mut Item, shape_index: usize, new_shape: TileShape) {
+    pub fn change_item_shape(&mut self, item: &mut Item, shape_index: usize, new_shape: TileShape) {
         let id = item.id();
         let old_entries: Vec<Option<LeafId>> = item
             .get_search_tree_entries(self.id)
@@ -1174,7 +1170,7 @@ impl ShapeSearchTree {
         item.set_tree_entries(self.id, new_leaves);
     }
 
-                                    pub fn reduce_trace_shape_at_tie_pin(
+    pub fn reduce_trace_shape_at_tie_pin(
         &mut self,
         tie_pin: &crate::items::Pin,
         trace: &mut PolylineTrace,
@@ -1227,4 +1223,3 @@ impl ShapeSearchTree {
         }
     }
 }
-

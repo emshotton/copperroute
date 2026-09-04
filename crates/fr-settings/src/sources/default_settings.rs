@@ -9,29 +9,29 @@ pub struct DefaultSettings {
 }
 
 impl DefaultSettings {
-            pub const DEFAULT_UNROUTED_NET_PENALTY: f32 = 5_000_000.0;
+    pub const DEFAULT_UNROUTED_NET_PENALTY: f32 = 5_000_000.0;
 
-        pub const DEFAULT_CLEARANCE_VIOLATION_PENALTY: f32 = 1_000_000.0;
+    pub const DEFAULT_CLEARANCE_VIOLATION_PENALTY: f32 = 1_000_000.0;
 
-        pub const DEFAULT_BEND_PENALTY: f32 = 10.0;
+    pub const DEFAULT_BEND_PENALTY: f32 = 10.0;
 
-        pub const DEFAULT_VIA_COSTS: i32 = 50;
+    pub const DEFAULT_VIA_COSTS: i32 = 50;
 
-        pub const DEFAULT_PLANE_VIA_COSTS: i32 = 5;
+    pub const DEFAULT_PLANE_VIA_COSTS: i32 = 5;
 
-        pub const DEFAULT_START_RIPUP_COSTS: i32 = 100;
+    pub const DEFAULT_START_RIPUP_COSTS: i32 = 100;
 
-        pub const DEFAULT_PREFERRED_DIRECTION_TRACE_COST: f64 = 1.0;
+    pub const DEFAULT_PREFERRED_DIRECTION_TRACE_COST: f64 = 1.0;
 
-        pub const DEFAULT_UNDESIRED_DIRECTION_TRACE_COST: f64 = 1.0;
+    pub const DEFAULT_UNDESIRED_DIRECTION_TRACE_COST: f64 = 1.0;
 
-        pub const DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM: f64 = 500.0;
+    pub const DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM: f64 = 500.0;
 
-        pub const DEFAULT_HOLE_CLEARANCE_UM: f64 = 0.0;
+    pub const DEFAULT_HOLE_CLEARANCE_UM: f64 = 0.0;
 
-        const PRIORITY: i32 = priority::DEFAULT;
+    const PRIORITY: i32 = priority::DEFAULT;
 
-                        #[must_use]
+    #[must_use]
     pub fn new(host: &HostEnvironment) -> Self {
         let mut settings = RouterSettings::new();
 
@@ -50,7 +50,6 @@ impl DefaultSettings {
         settings.hole_clearance_um = Some(Self::DEFAULT_HOLE_CLEARANCE_UM);
         settings.neck_width_um = Some(0.0);
         settings.strict_drc = Some(false);
-
 
         let fanout = settings
             .fanout

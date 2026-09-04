@@ -14,11 +14,10 @@ use fr_router::autoroute::expansion::sorted_neighbours::{
 use fr_router::autoroute::maze::{AutorouteControl, MazeAdjustment, MazeListElement};
 use fr_settings::RouterSettings;
 
-
 mod maze_list_element_test {
     use super::*;
 
-            fn test_doors(ids: &[i32]) -> impl Fn(ExpandableRef) -> i32 + use<> {
+    fn test_doors(ids: &[i32]) -> impl Fn(ExpandableRef) -> i32 + use<> {
         let map: HashMap<ExpandableRef, i32> = ids
             .iter()
             .map(|id| (ExpandableRef::Door(DoorId(*id as u32)), *id))
@@ -26,7 +25,7 @@ mod maze_list_element_test {
         move |door| *map.get(&door).expect("a TestDoor the test registered")
     }
 
-                    fn element(door: i32, expansion: f64, sorting: f64) -> MazeListElement {
+    fn element(door: i32, expansion: f64, sorting: f64) -> MazeListElement {
         MazeListElement {
             door: ExpandableRef::Door(DoorId(door as u32)),
             section_no_of_door: 0,
@@ -43,7 +42,7 @@ mod maze_list_element_test {
         }
     }
 
-        #[test]
+    #[test]
     fn compare_to_returns_zero_for_same_instance() {
         let ids = test_doors(&[1]);
         let element = element(1, 0.0, 1.0);
@@ -51,7 +50,7 @@ mod maze_list_element_test {
         assert_eq!(element.compare_to(&element, &ids), Ordering::Equal);
     }
 
-                            #[test]
+    #[test]
     fn compare_to_sorts_by_sorting_value() {
         let ids = test_doors(&[1, 2]);
         let lower_cost = element(1, 0.0, 1.0);
@@ -69,7 +68,6 @@ mod maze_list_element_test {
     }
 }
 
-
 mod sorted_room_neighbours_factory_test {
     use super::*;
 
@@ -77,7 +75,7 @@ mod sorted_room_neighbours_factory_test {
         ShapeSearchTree::new(TreeId(1), angle, 0)
     }
 
-        #[test]
+    #[test]
     fn selects_orthogonal_calculation_for_orthogonal_search_tree() {
         assert_eq!(
             select_calculation_mode(&tree(AngleRestriction::NinetyDegree)),
@@ -85,7 +83,7 @@ mod sorted_room_neighbours_factory_test {
         );
     }
 
-        #[test]
+    #[test]
     fn selects_45_degree_calculation_for_45_degree_search_tree() {
         assert_eq!(
             select_calculation_mode(&tree(AngleRestriction::FortyFiveDegree)),
@@ -93,7 +91,7 @@ mod sorted_room_neighbours_factory_test {
         );
     }
 
-        #[test]
+    #[test]
     fn selects_any_angle_calculation_for_other_search_trees() {
         assert_eq!(
             select_calculation_mode(&tree(AngleRestriction::None)),
@@ -102,11 +100,10 @@ mod sorted_room_neighbours_factory_test {
     }
 }
 
-
 mod routable_layers_safety_check_test {
     use super::*;
 
-                fn load(name: &str) -> Board {
+    fn load(name: &str) -> Board {
         let path = parity::fixture(name);
         let file = std::fs::File::open(&path)
             .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
@@ -119,7 +116,7 @@ mod routable_layers_safety_check_test {
         }
     }
 
-                                                                #[test]
+    #[test]
     fn routing_fails_when_all_layers_disabled_current() {
         let board = load("Issue508-DAC2020_bm01.dsn");
 

@@ -3,39 +3,39 @@ use fr_settings::ExpansionCostFactor;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DestinationDistance {
-        trace_costs: Vec<ExpansionCostFactor>,
-            #[allow(dead_code)]
+    trace_costs: Vec<ExpansionCostFactor>,
+    #[allow(dead_code)]
     layer_active: Vec<bool>,
-        layer_count: usize,
-        active_layer_count: usize,
-            min_cheap_via_cost: f64,
-        pub min_component_side_trace_cost: f64,
-        pub max_component_side_trace_cost: f64,
-        pub min_solder_side_trace_cost: f64,
-        pub max_solder_side_trace_cost: f64,
-            pub max_inner_side_trace_cost: f64,
-            pub min_component_inner_trace_cost: f64,
-            pub min_solder_inner_trace_cost: f64,
-            pub min_component_solder_inner_trace_cost: f64,
-                        min_normal_via_cost: f64,
-        component_side_box: IntBox,
-        solder_side_box: IntBox,
-        inner_side_box: IntBox,
-        box_is_empty: bool,
-        component_side_box_is_empty: bool,
-        solder_side_box_is_empty: bool,
-        inner_side_box_is_empty: bool,
+    layer_count: usize,
+    active_layer_count: usize,
+    min_cheap_via_cost: f64,
+    pub min_component_side_trace_cost: f64,
+    pub max_component_side_trace_cost: f64,
+    pub min_solder_side_trace_cost: f64,
+    pub max_solder_side_trace_cost: f64,
+    pub max_inner_side_trace_cost: f64,
+    pub min_component_inner_trace_cost: f64,
+    pub min_solder_inner_trace_cost: f64,
+    pub min_component_solder_inner_trace_cost: f64,
+    min_normal_via_cost: f64,
+    component_side_box: IntBox,
+    solder_side_box: IntBox,
+    inner_side_box: IntBox,
+    box_is_empty: bool,
+    component_side_box_is_empty: bool,
+    solder_side_box_is_empty: bool,
+    inner_side_box_is_empty: bool,
 }
 
 impl DestinationDistance {
-            pub fn new(
+    pub fn new(
         trace_costs: &[ExpansionCostFactor],
         layer_active: &[bool],
         min_normal_via_cost: f64,
         min_cheap_via_cost: f64,
     ) -> DestinationDistance {
-        let layer_count = layer_active.len(); 
-        let active_layer_count = layer_active.iter().filter(|a| **a).count(); 
+        let layer_count = layer_active.len();
+        let active_layer_count = layer_active.iter().filter(|a| **a).count();
 
         let (min_component_side_trace_cost, max_component_side_trace_cost) = if layer_active[0] {
             let c = trace_costs[0];
@@ -64,7 +64,7 @@ impl DestinationDistance {
             java_min(max_component_side_trace_cost, max_solder_side_trace_cost);
         for ind2 in 1..layer_count.saturating_sub(1) {
             if !layer_active[ind2] {
-                continue; 
+                continue;
             }
             let current_max_cost =
                 java_max(trace_costs[ind2].horizontal, trace_costs[ind2].vertical);
@@ -102,7 +102,7 @@ impl DestinationDistance {
         }
     }
 
-                        pub fn join(&mut self, box_to_join: &IntBox, layer: usize) {
+    pub fn join(&mut self, box_to_join: &IntBox, layer: usize) {
         if layer == 0 {
             self.component_side_box = self.component_side_box.union(box_to_join);
             self.component_side_box_is_empty = false;
@@ -116,19 +116,19 @@ impl DestinationDistance {
         self.box_is_empty = false;
     }
 
-                            pub fn calculate_from_point(&self, point: &FloatPoint, layer: usize) -> f64 {
+    pub fn calculate_from_point(&self, point: &FloatPoint, layer: usize) -> f64 {
         self.calculate(&point.bounding_box(), layer)
     }
 
-            pub fn calculate(&self, box_: &IntBox, layer: usize) -> f64 {
+    pub fn calculate(&self, box_: &IntBox, layer: usize) -> f64 {
         self.calculate_with_via_cost(box_, layer, self.min_normal_via_cost)
     }
 
-                                                        pub fn calculate_cheap_distance(&self, box_: &IntBox, layer: usize) -> f64 {
+    pub fn calculate_cheap_distance(&self, box_: &IntBox, layer: usize) -> f64 {
         self.calculate_with_via_cost(box_, layer, self.min_cheap_via_cost)
     }
 
-            fn calculate_with_via_cost(
+    fn calculate_with_via_cost(
         &self,
         box_: &IntBox,
         layer: usize,
@@ -150,7 +150,7 @@ impl DestinationDistance {
         let (inner_side_max_delta, inner_side_min_delta) =
             max_min(inner_side_delta_x, inner_side_delta_y);
 
-        let mut result = f64::from(i32::MAX); 
+        let mut result = f64::from(i32::MAX);
 
         if layer == 0 {
             if !self.component_side_box_is_empty {
@@ -161,7 +161,7 @@ impl DestinationDistance {
                 );
             }
             if self.active_layer_count <= 1 {
-                return result; 
+                return result;
             }
 
             let mut tmp_distance =
@@ -174,21 +174,21 @@ impl DestinationDistance {
                         + self.min_solder_side_trace_cost * solder_side_min_delta
                         + min_normal_via_cost
                 };
-            result = java_min(result, tmp_distance); 
+            result = java_min(result, tmp_distance);
 
             tmp_distance = component_side_max_delta
                 + component_side_min_delta * self.min_component_inner_trace_cost
                 + 2.0 * min_normal_via_cost;
-            result = java_min(result, tmp_distance); 
+            result = java_min(result, tmp_distance);
 
             if self.active_layer_count == 2 {
-                return result; 
+                return result;
             }
 
             tmp_distance = inner_side_max_delta
                 + inner_side_min_delta * self.min_component_inner_trace_cost
                 + min_normal_via_cost;
-            result = java_min(result, tmp_distance); 
+            result = java_min(result, tmp_distance);
 
             tmp_distance = solder_side_max_delta
                 + self.min_component_solder_inner_trace_cost * solder_side_min_delta
@@ -200,7 +200,7 @@ impl DestinationDistance {
             result = java_min(result, tmp_distance);
 
             if self.active_layer_count == 3 {
-                return result; 
+                return result;
             }
 
             tmp_distance = inner_side_max_delta + inner_side_min_delta + 2.0 * min_normal_via_cost;
@@ -230,7 +230,7 @@ impl DestinationDistance {
                         + self.min_component_side_trace_cost * component_side_min_delta
                         + min_normal_via_cost
                 };
-            result = java_min(result, tmp_distance); 
+            result = java_min(result, tmp_distance);
 
             tmp_distance = solder_side_max_delta
                 + solder_side_min_delta * self.min_solder_inner_trace_cost
@@ -238,7 +238,7 @@ impl DestinationDistance {
             result = java_min(result, tmp_distance);
 
             if self.active_layer_count <= 2 {
-                return result; 
+                return result;
             }
 
             tmp_distance = inner_side_min_delta * self.min_solder_inner_trace_cost
@@ -256,7 +256,7 @@ impl DestinationDistance {
             result = java_min(result, tmp_distance);
 
             if self.active_layer_count == 3 {
-                return result; 
+                return result;
             }
 
             tmp_distance = inner_side_max_delta + inner_side_min_delta + 2.0 * min_normal_via_cost;

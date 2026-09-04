@@ -57,7 +57,6 @@ pub fn register_all(state: &mut State) {
     );
 }
 
-
 pub fn board_input(args: &Value) -> Result<RoutingJob, RpcError> {
     let path = optional_string(args, "dsn_path")?;
     let text = optional_string(args, "dsn_text")?;
@@ -126,7 +125,6 @@ pub fn file_payload_fields(details: &fr_core::BoardFileDetails) -> Value {
     })
 }
 
-
 pub fn mint_job_id() -> Uuid128 {
     use std::io::Read;
     let mut bytes = [0u8; 16];
@@ -136,11 +134,10 @@ pub fn mint_job_id() -> Uuid128 {
     if device.read_exact(&mut bytes).is_err() {
         return Uuid128::NIL;
     }
-    bytes[6] = (bytes[6] & 0x0f) | 0x40; 
-    bytes[8] = (bytes[8] & 0x3f) | 0x80; 
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
     Uuid128::from_bytes(bytes)
 }
-
 
 pub fn base64_encode(input: &[u8]) -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -170,7 +167,7 @@ pub fn base64_encode(input: &[u8]) -> String {
 mod tests {
     use super::*;
 
-        #[test]
+    #[test]
     fn rfc_4648_section_10_vectors() {
         for (input, expected) in [
             ("", ""),
@@ -185,7 +182,7 @@ mod tests {
         }
     }
 
-            #[test]
+    #[test]
     fn every_alphabet_index_is_reachable_and_the_length_is_the_rfcs() {
         let all: Vec<u8> = (0..=255u8).collect();
         let encoded = base64_encode(&all);
@@ -200,7 +197,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn a_multibyte_document_is_encoded_by_bytes_not_by_characters() {
         let text = "(session \"börd\")";
         assert_eq!(

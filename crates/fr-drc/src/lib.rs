@@ -34,9 +34,3 @@ pub mod prelude {
     pub use crate::unconnected::{UnconnectedItems, UnconnectedKind};
     pub use fr_board::ClearanceViolation;
 }
-
-
-
-
-
-

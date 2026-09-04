@@ -1,4 +1,3 @@
-
 use crate::direction::Direction;
 use crate::float_point::FloatPoint;
 use crate::int_box::IntBox;
@@ -18,7 +17,7 @@ const USE_BOUNDING_OCTAGON_FOR_OFFSET_SHAPES: bool = true;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PolylineError {
-            NormalizationIndexUnderflow,
+    NormalizationIndexUnderflow,
 }
 
 impl std::fmt::Display for PolylineError {
@@ -39,9 +38,8 @@ pub struct Polyline {
     lines: Vec<Line>,
 }
 
-
 impl Polyline {
-                                        pub fn from_polygon(polygon: &Polygon) -> Polyline {
+    pub fn from_polygon(polygon: &Polygon) -> Polyline {
         let points = polygon.corner_array();
         if points.len() < 2 {
             // Java: FRLogger.warn("Polyline: must contain at least 2 different points")
@@ -65,11 +63,11 @@ impl Polyline {
         Polyline { lines }
     }
 
-        pub fn from_points(points: &[Point]) -> Polyline {
+    pub fn from_points(points: &[Point]) -> Polyline {
         Polyline::from_polygon(&Polygon::new(points.to_vec()))
     }
 
-                        pub fn from_two_points(from_corner: &Point, to_corner: &Point) -> Polyline {
+    pub fn from_two_points(from_corner: &Point, to_corner: &Point) -> Polyline {
         if from_corner == to_corner {
             return Polyline { lines: Vec::new() };
         }
@@ -85,11 +83,11 @@ impl Polyline {
         }
     }
 
-                                                        pub fn from_lines(input_lines: Vec<Line>) -> Result<Polyline, PolylineError> {
+    pub fn from_lines(input_lines: Vec<Line>) -> Result<Polyline, PolylineError> {
         Ok(Polyline::build(input_lines)?.0)
     }
 
-                                                                                                            pub fn from_lines_in_place(input_lines: &mut Vec<Line>) -> Result<Polyline, PolylineError> {
+    pub fn from_lines_in_place(input_lines: &mut Vec<Line>) -> Result<Polyline, PolylineError> {
         let (polyline, writes_through) = Polyline::build(input_lines.clone())?;
         if writes_through {
             input_lines.clone_from(&polyline.lines);
@@ -97,7 +95,7 @@ impl Polyline {
         Ok(polyline)
     }
 
-                        fn build(input_lines: Vec<Line>) -> Result<(Polyline, bool), PolylineError> {
+    fn build(input_lines: Vec<Line>) -> Result<(Polyline, bool), PolylineError> {
         let input_len = input_lines.len();
         let filtered_lines = remove_consecutive_parallel_lines(input_lines);
         let mut filtered_lines = remove_overlaps(filtered_lines)?;
@@ -198,21 +196,20 @@ fn remove_overlaps(lines: Vec<Line>) -> Result<Vec<Line>, PolylineError> {
     Ok(tmp_arr)
 }
 
-
 impl Polyline {
-        pub fn lines(&self) -> &[Line] {
+    pub fn lines(&self) -> &[Line] {
         &self.lines
     }
 
-                pub fn corner_count(&self) -> usize {
+    pub fn corner_count(&self) -> usize {
         self.lines.len().saturating_sub(1)
     }
 
-        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.lines.len() < 3
     }
 
-            pub fn is_point(&self) -> bool {
+    pub fn is_point(&self) -> bool {
         if self.lines.len() < 3 {
             return true;
         }
@@ -225,26 +222,26 @@ impl Polyline {
         true
     }
 
-        pub fn is_orthogonal(&self) -> bool {
+    pub fn is_orthogonal(&self) -> bool {
         self.lines.iter().all(Line::is_orthogonal)
     }
 
-        pub fn is_multiple_of_45_degree(&self) -> bool {
+    pub fn is_multiple_of_45_degree(&self) -> bool {
         self.lines.iter().all(Line::is_multiple_of_45_degree)
     }
 
-        pub fn first_corner(&self) -> Option<Point> {
+    pub fn first_corner(&self) -> Option<Point> {
         self.corner(0)
     }
 
-            pub fn last_corner(&self) -> Option<Point> {
+    pub fn last_corner(&self) -> Option<Point> {
         if self.lines.len() < 2 {
             return None;
         }
         self.corner(self.lines.len() - 2)
     }
 
-        pub fn corners(&self) -> Vec<Point> {
+    pub fn corners(&self) -> Vec<Point> {
         if self.lines.len() < 2 {
             return Vec::new();
         }
@@ -253,7 +250,7 @@ impl Polyline {
             .collect()
     }
 
-            pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
+    pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
         if self.lines.len() < 2 {
             return Vec::new();
         }
@@ -262,31 +259,31 @@ impl Polyline {
             .collect()
     }
 
-                        pub fn corner_approx(&self, no: usize) -> Option<FloatPoint> {
+    pub fn corner_approx(&self, no: usize) -> Option<FloatPoint> {
         if self.lines.len() < 2 {
             return None;
         }
         Some(self.corner_approx_at(no))
     }
 
-            pub fn corner(&self, no: usize) -> Option<Point> {
+    pub fn corner(&self, no: usize) -> Option<Point> {
         if self.lines.len() < 2 {
             return None;
         }
         Some(self.corner_at(no))
     }
 
-            fn corner_at(&self, no: usize) -> Point {
+    fn corner_at(&self, no: usize) -> Point {
         let no = self.clamp_corner_index(no as i64);
         self.lines[no].intersection(&self.lines[no + 1])
     }
 
-        fn corner_approx_at(&self, no: usize) -> FloatPoint {
+    fn corner_approx_at(&self, no: usize) -> FloatPoint {
         let no = self.clamp_corner_index(no as i64);
         self.lines[no].intersection_approx(&self.lines[no + 1])
     }
 
-                fn clamp_corner_index(&self, corner_index: i64) -> usize {
+    fn clamp_corner_index(&self, corner_index: i64) -> usize {
         debug_assert!(self.lines.len() >= 2);
         if corner_index < 0 {
             0
@@ -298,14 +295,13 @@ impl Polyline {
     }
 }
 
-
 impl Polyline {
-                pub fn reverse(&self) -> Result<Polyline, PolylineError> {
+    pub fn reverse(&self) -> Result<Polyline, PolylineError> {
         let reversed: Vec<Line> = self.lines.iter().rev().map(Line::opposite).collect();
         Polyline::from_lines(reversed)
     }
 
-            pub fn length_approx_between(&self, from_corner: usize, to_corner: usize) -> f64 {
+    pub fn length_approx_between(&self, from_corner: usize, to_corner: usize) -> f64 {
         if self.lines.len() < 2 {
             return 0.0;
         }
@@ -321,7 +317,7 @@ impl Polyline {
         result
     }
 
-        pub fn length_approx(&self) -> f64 {
+    pub fn length_approx(&self) -> f64 {
         if self.lines.len() < 2 {
             return 0.0;
         }
@@ -329,16 +325,15 @@ impl Polyline {
     }
 }
 
-
 impl Polyline {
-                pub fn offset_shapes(&self, half_width: i32) -> Vec<TileShape> {
+    pub fn offset_shapes(&self, half_width: i32) -> Vec<TileShape> {
         if self.lines.is_empty() {
             return Vec::new();
         }
         self.offset_shapes_between(half_width, 0, self.lines.len() - 1)
     }
 
-                pub fn offset_shapes_between(
+    pub fn offset_shapes_between(
         &self,
         half_width: i32,
         from_no: usize,
@@ -485,7 +480,7 @@ impl Polyline {
         shapes
     }
 
-                pub fn offset_shape(&self, half_width: i32, no: usize) -> Option<TileShape> {
+    pub fn offset_shape(&self, half_width: i32, no: usize) -> Option<TileShape> {
         if no + 3 > self.lines.len() {
             // Java: FRLogger.warn("Polyline.offsetShape: no out of range")
             return None;
@@ -494,7 +489,7 @@ impl Polyline {
         result.into_iter().next()
     }
 
-                        pub fn offset_box(&self, half_width: i32, no: usize) -> Option<IntBox> {
+    pub fn offset_box(&self, half_width: i32, no: usize) -> Option<IntBox> {
         let current_line_segment = LineSegment::from_polyline(self, no + 1)?;
         Some(
             current_line_segment
@@ -504,9 +499,8 @@ impl Polyline {
     }
 }
 
-
 impl Polyline {
-                    pub fn translate_by(&self, vector: &Vector) -> Result<Polyline, PolylineError> {
+    pub fn translate_by(&self, vector: &Vector) -> Result<Polyline, PolylineError> {
         if *vector == Vector::ZERO {
             return Ok(self.clone());
         }
@@ -519,7 +513,7 @@ impl Polyline {
         Polyline::from_lines(self.lines.iter().map(|l| l.translate_by(&v)).collect())
     }
 
-            pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Result<Polyline, PolylineError> {
+    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Result<Polyline, PolylineError> {
         Polyline::from_lines(
             self.lines
                 .iter()
@@ -528,7 +522,7 @@ impl Polyline {
         )
     }
 
-        pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Polyline {
+    pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Polyline {
         if angle == 0.0 {
             return self.clone();
         }
@@ -538,11 +532,11 @@ impl Polyline {
         Polyline::from_points(&new_corners)
     }
 
-        pub fn mirror_vertical(&self, pole: &IntPoint) -> Result<Polyline, PolylineError> {
+    pub fn mirror_vertical(&self, pole: &IntPoint) -> Result<Polyline, PolylineError> {
         Polyline::from_lines(self.lines.iter().map(|l| l.mirror_vertical(pole)).collect())
     }
 
-        pub fn mirror_horizontal(&self, pole: &IntPoint) -> Result<Polyline, PolylineError> {
+    pub fn mirror_horizontal(&self, pole: &IntPoint) -> Result<Polyline, PolylineError> {
         Polyline::from_lines(
             self.lines
                 .iter()
@@ -552,9 +546,8 @@ impl Polyline {
     }
 }
 
-
 impl Polyline {
-            pub fn bounding_box_between(&self, from_corner_no: usize, to_corner_no: usize) -> IntBox {
+    pub fn bounding_box_between(&self, from_corner_no: usize, to_corner_no: usize) -> IntBox {
         let mut llx = i32::MAX as f64;
         let mut lly = llx;
         let mut urx = i32::MIN as f64;
@@ -576,11 +569,11 @@ impl Polyline {
         IntBox::new(lower_left, upper_right)
     }
 
-            pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self) -> IntBox {
         self.bounding_box_between(0, self.corner_count().saturating_sub(1))
     }
 
-            pub fn bounding_octagon_between(
+    pub fn bounding_octagon_between(
         &self,
         from_corner_no: usize,
         to_corner_no: usize,
@@ -623,7 +616,7 @@ impl Polyline {
         )
     }
 
-                pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
+    pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
         let mut min_distance = f64::MAX;
         let mut nearest_point: Option<FloatPoint> = None;
         let corners = self.corner_approx_arr();
@@ -651,7 +644,7 @@ impl Polyline {
         nearest_point
     }
 
-                        pub fn distance(&self, from_point: &FloatPoint) -> f64 {
+    pub fn distance(&self, from_point: &FloatPoint) -> f64 {
         match self.nearest_point_approx(from_point) {
             Some(p) => from_point.distance(&p),
             None => f64::MAX,
@@ -659,9 +652,8 @@ impl Polyline {
     }
 }
 
-
 impl Polyline {
-                                    pub fn combine(&self, other: &Polyline) -> Result<Polyline, PolylineError> {
+    pub fn combine(&self, other: &Polyline) -> Result<Polyline, PolylineError> {
         if self.lines.len() < 3 || other.lines.len() < 3 {
             return Ok(self.clone());
         }
@@ -675,7 +667,7 @@ impl Polyline {
             } else if self.last_corner() == other.last_corner() {
                 (false, false)
             } else {
-                return Ok(self.clone()); 
+                return Ok(self.clone());
             };
         let mut new_lines: Vec<Line> = Vec::with_capacity(self.lines.len() + other.lines.len() - 2);
         if combine_at_start {
@@ -700,7 +692,7 @@ impl Polyline {
         Polyline::from_lines(new_lines)
     }
 
-                            pub fn split(
+    pub fn split(
         &self,
         line_index: usize,
         end_line: &Line,
@@ -745,11 +737,11 @@ impl Polyline {
         Ok(Some(result))
     }
 
-            pub fn skip_lines(&self, from_no: usize, to_no: usize) -> Result<Polyline, PolylineError> {
+    pub fn skip_lines(&self, from_no: usize, to_no: usize) -> Result<Polyline, PolylineError> {
         self.skip_lines_i64(from_no as i64, to_no as i64)
     }
 
-            fn skip_lines_i64(&self, from_no: i64, to_no: i64) -> Result<Polyline, PolylineError> {
+    fn skip_lines_i64(&self, from_no: i64, to_no: i64) -> Result<Polyline, PolylineError> {
         if from_no < 0 || to_no > self.lines.len() as i64 - 1 || from_no > to_no {
             return Ok(self.clone());
         }
@@ -760,7 +752,7 @@ impl Polyline {
         Polyline::from_lines(new_lines)
     }
 
-        pub fn contains(&self, point: &Point) -> bool {
+    pub fn contains(&self, point: &Point) -> bool {
         for i in 1..self.lines.len().saturating_sub(1) {
             if let Some(current_segment) = LineSegment::from_polyline(self, i)
                 && current_segment.contains(point)
@@ -772,9 +764,8 @@ impl Polyline {
     }
 }
 
-
 impl Polyline {
-                                                pub fn projection_line(&self, point: &Point) -> Option<LineSegment> {
+    pub fn projection_line(&self, point: &Point) -> Option<LineSegment> {
         let from_point = point.to_float();
         let mut min_distance = f64::MAX;
         let mut result_line: Option<Line> = None;
@@ -813,7 +804,7 @@ impl Polyline {
         ))
     }
 
-                pub fn shorten(
+    pub fn shorten(
         &self,
         new_line_count: usize,
         last_segment_length: f64,
@@ -841,12 +832,12 @@ impl Polyline {
         Polyline::from_lines(new_lines)
     }
 
-            fn corner_approx_at_i64(&self, corner_index: i64) -> FloatPoint {
+    fn corner_approx_at_i64(&self, corner_index: i64) -> FloatPoint {
         let no = self.clamp_corner_index(corner_index);
         self.lines[no].intersection_approx(&self.lines[no + 1])
     }
 
-        fn corner_at_i64(&self, corner_index: i64) -> Point {
+    fn corner_at_i64(&self, corner_index: i64) -> Point {
         let no = self.clamp_corner_index(corner_index);
         self.lines[no].intersection(&self.lines[no + 1])
     }
@@ -874,7 +865,7 @@ mod tests {
     fn corners_roundtrip_and_length() {
         let p = l_shape();
         assert_eq!(p.corner_count(), 3);
-        assert_eq!(p.lines().len(), 4); 
+        assert_eq!(p.lines().len(), 4);
         assert_eq!(p.corners(), pts(&[(0, 0), (10, 0), (10, 10)]));
         assert_eq!(p.first_corner().unwrap(), Point::Int(IntPoint::new(0, 0)));
         assert_eq!(p.last_corner().unwrap(), Point::Int(IntPoint::new(10, 10)));
@@ -1061,7 +1052,7 @@ mod tests {
         let p = Polyline::from_lines(vec![
             Line::from_coords(0, 0, 0, 1),
             Line::from_coords(0, 0, 10, 0),
-            Line::from_coords(3, 0, 13, 0), 
+            Line::from_coords(3, 0, 13, 0),
             Line::from_coords(10, 0, 10, 10),
             Line::from_coords(10, 10, 11, 10),
         ])
@@ -1090,7 +1081,7 @@ mod tests {
         assert_eq!(degenerate.lines().len(), 0);
     }
 
-                            #[test]
+    #[test]
     fn from_lines_in_place_writes_the_normalised_lines_back_to_the_caller() {
         let base = Polyline::from_points(&pts(&[(0, 0), (10000, 0)]));
         let mut arr = vec![base.lines()[0], base.lines()[1].opposite(), base.lines()[2]];
@@ -1118,7 +1109,7 @@ mod tests {
         assert!(same_input[1].is_same_object(&handed_in[1]));
     }
 
-                #[test]
+    #[test]
     fn from_lines_in_place_leaves_the_caller_alone_when_a_line_is_skipped() {
         let mut arr = vec![
             Line::from_coords(0, 0, 0, 1),

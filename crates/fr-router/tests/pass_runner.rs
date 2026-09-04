@@ -10,7 +10,6 @@ use fr_router::pipeline::{
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -10_000,
@@ -102,7 +101,6 @@ fn run_one_pass(
     let mut sink = NoopProgressSink;
     AutoroutePassRunner::run_single_thread(board, router, &mut failure_log, 1, stop, &mut sink)
 }
-
 
 #[test]
 fn a_two_net_item_is_routed_once_per_qualifying_net() {
@@ -296,7 +294,6 @@ fn an_item_with_ignored_nets_is_skipped() {
         "BatchAutorouter.java:375 — hasIgnoredNets() drops the item"
     );
 }
-
 
 #[test]
 fn an_empty_item_list_returns_false_without_touching_the_board() {
@@ -508,7 +505,6 @@ fn the_pass_ends_with_remove_tails() {
     );
 }
 
-
 #[test]
 fn the_failure_log_records_what_java_records() {
     let mut board = empty_board();
@@ -643,7 +639,6 @@ fn only_a_non_routable_connectable_item_is_a_candidate() {
     assert!(get(fixed).as_connectable().is_some(), "Trace.java:28");
     assert!(matches!(get(fixed), Item::Trace(_)));
 }
-
 
 #[test]
 fn calculate_airline_takes_the_closest_drill_item_pair() {

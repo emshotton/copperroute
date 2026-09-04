@@ -13,35 +13,35 @@ use super::dtos::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct BoardStatisticsFanout {
-        pub total_smd_pins: i32,
-        pub pins_to_escape: i32,
-        pub escaped_count: i32,
+    pub total_smd_pins: i32,
+    pub pins_to_escape: i32,
+    pub escaped_count: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct BoardStatistics {
-        pub host: String,
-            pub unit: String,
-        pub board: BoardStatisticsBoard,
-        pub layers: BoardStatisticsLayers,
-        pub items: BoardStatisticsItems,
-        pub components: BoardStatisticsComponents,
-        pub pads: BoardStatisticsPads,
-        pub nets: BoardStatisticsNets,
-        pub connections: BoardStatisticsConnections,
-        pub traces: BoardStatisticsTraces,
-        pub bends: BoardStatisticsBends,
-        pub vias: BoardStatisticsVias,
-            pub clearance_violations: BoardStatisticsClearanceViolations,
-        pub fanout: BoardStatisticsFanout,
+    pub host: String,
+    pub unit: String,
+    pub board: BoardStatisticsBoard,
+    pub layers: BoardStatisticsLayers,
+    pub items: BoardStatisticsItems,
+    pub components: BoardStatisticsComponents,
+    pub pads: BoardStatisticsPads,
+    pub nets: BoardStatisticsNets,
+    pub connections: BoardStatisticsConnections,
+    pub traces: BoardStatisticsTraces,
+    pub bends: BoardStatisticsBends,
+    pub vias: BoardStatisticsVias,
+    pub clearance_violations: BoardStatisticsClearanceViolations,
+    pub fanout: BoardStatisticsFanout,
 }
 
 impl BoardStatistics {
-            pub fn new(board: &mut Board) -> BoardStatistics {
+    pub fn new(board: &mut Board) -> BoardStatistics {
         BoardStatistics::with_options(board, None, true)
     }
 
-                pub fn with_options(
+    pub fn with_options(
         board: &mut Board,
         unit: Option<Unit>,
         include_clearance_violations: bool,
@@ -49,7 +49,7 @@ impl BoardStatistics {
         BoardStatistics::compute(board, unit, include_clearance_violations, true)
     }
 
-                                                pub fn compute(
+    pub fn compute(
         board: &mut Board,
         unit: Option<Unit>,
         include_clearance_violations: bool,
@@ -386,7 +386,7 @@ impl BoardStatistics {
         stats
     }
 
-                                                        pub fn is_pin_escaped(board: &mut Board, pin: ItemId) -> bool {
+    pub fn is_pin_escaped(board: &mut Board, pin: ItemId) -> bool {
         let contacts: Vec<ItemId> = board.normal_contacts(pin).into_iter().rev().collect();
         for contact in contacts {
             let kind = match board.get_item(contact) {

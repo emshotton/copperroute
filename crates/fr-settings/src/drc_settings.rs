@@ -3,13 +3,13 @@ use std::collections::HashSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DesignRulesCheckerSettings {
-                        #[serde(skip)]
+    #[serde(skip)]
     pub enabled: bool,
 
-            #[serde(rename = "include_warnings")]
+    #[serde(rename = "include_warnings")]
     pub include_warnings: bool,
 
-            #[serde(rename = "include_errors")]
+    #[serde(rename = "include_errors")]
     pub include_errors: bool,
 }
 
@@ -24,31 +24,30 @@ impl Default for DesignRulesCheckerSettings {
 }
 
 impl DesignRulesCheckerSettings {
-        pub const FIELD_NAMES: &'static [&'static str] =
+    pub const FIELD_NAMES: &'static [&'static str] =
         &["enabled", "include_warnings", "include_errors"];
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DebugSettings {
-        #[serde(rename = "enable_detailed_logging")]
+    #[serde(rename = "enable_detailed_logging")]
     pub enable_detailed_logging: bool,
 
-        #[serde(rename = "single_step_execution")]
+    #[serde(rename = "single_step_execution")]
     pub single_step_execution: bool,
 
-        #[serde(rename = "trace_insertion_delay")]
+    #[serde(rename = "trace_insertion_delay")]
     pub trace_insertion_delay: i32,
 
-            #[serde(rename = "filter_by_net")]
+    #[serde(rename = "filter_by_net")]
     pub filter_by_net: HashSet<String>,
 
-            #[serde(rename = "operation_filters")]
+    #[serde(rename = "operation_filters")]
     pub operation_filters: Vec<String>,
 }
 
 impl Default for DebugSettings {
-        fn default() -> Self {
+    fn default() -> Self {
         Self {
             enable_detailed_logging: false,
             single_step_execution: false,
@@ -69,7 +68,7 @@ impl Default for DebugSettings {
 }
 
 impl DebugSettings {
-        pub const FIELD_NAMES: &'static [&'static str] = &[
+    pub const FIELD_NAMES: &'static [&'static str] = &[
         "enable_detailed_logging",
         "single_step_execution",
         "trace_insertion_delay",
@@ -77,11 +76,11 @@ impl DebugSettings {
         "operation_filters",
     ];
 
-            pub fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
-                                    pub fn is_net_permitted(&self, net_number: i32, net_name: Option<&str>) -> bool {
+    pub fn is_net_permitted(&self, net_number: i32, net_name: Option<&str>) -> bool {
         if self.filter_by_net.is_empty() {
             return true;
         }

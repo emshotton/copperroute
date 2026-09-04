@@ -5,7 +5,6 @@ use fr_settings::prelude::*;
 #[path = "matrix/mod.rs"]
 mod matrix;
 
-
 fn fully_populated() -> RouterSettings {
     let mut s = RouterSettings::new();
     s.set_layer_count(2);
@@ -207,7 +206,6 @@ fn keys_at(json: &str, depth: usize) -> Vec<String> {
         .collect()
 }
 
-
 #[test]
 fn emitted_key_set_matches_gson() {
     let json = fully_populated()
@@ -348,7 +346,6 @@ fn non_finite_floats_are_refused_like_gson() {
         .bend_penalty = Some(f32::NAN);
     assert!(s.to_json_string_pretty().is_err());
 }
-
 
 #[test]
 fn partial_object_deserialises_as_a_source() {
@@ -523,7 +520,6 @@ fn the_unicode_line_separators_are_escaped_and_the_html_set_is_not() {
     );
 }
 
-
 fn golden_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/p4t1-mode1/all.txt")
 }
@@ -593,7 +589,6 @@ fn split_cases(text: &str) -> Vec<(String, String)> {
     }
     cases
 }
-
 
 fn json_file_source(name: &str, body: &str) -> JsonFileSettings {
     let dir = std::env::temp_dir()

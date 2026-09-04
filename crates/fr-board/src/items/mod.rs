@@ -37,9 +37,8 @@ pub enum ItemKind {
     ComponentObstacleArea,
     BoardOutline,
     ComponentOutline,
-                    Other,
+    Other,
 }
-
 
 pub(crate) const BOARD_OUTLINE_HALF_WIDTH: i32 = 100;
 
@@ -57,8 +56,7 @@ pub enum Item {
 }
 
 impl Item {
-
-            pub fn header(&self) -> &ItemHeader {
+    pub fn header(&self) -> &ItemHeader {
         match self {
             Item::Trace(i) => &i.hdr,
             Item::Via(i) => &i.hdr,
@@ -72,7 +70,7 @@ impl Item {
         }
     }
 
-        pub fn header_mut(&mut self) -> &mut ItemHeader {
+    pub fn header_mut(&mut self) -> &mut ItemHeader {
         match self {
             Item::Trace(i) => &mut i.hdr,
             Item::Via(i) => &mut i.hdr,
@@ -86,15 +84,15 @@ impl Item {
         }
     }
 
-        pub fn id(&self) -> ItemId {
+    pub fn id(&self) -> ItemId {
         self.header().id()
     }
 
-                                    pub fn compare_to(&self, other: &Item) -> Ordering {
+    pub fn compare_to(&self, other: &Item) -> Ordering {
         other.id().cmp(&self.id())
     }
 
-        pub fn kind(&self) -> ItemKind {
+    pub fn kind(&self) -> ItemKind {
         match self {
             Item::Trace(_) => ItemKind::Trace,
             Item::Via(_) => ItemKind::Via,
@@ -108,16 +106,15 @@ impl Item {
         }
     }
 
-
-                    pub fn is_trace(&self) -> bool {
+    pub fn is_trace(&self) -> bool {
         matches!(self, Item::Trace(_))
     }
 
-                pub fn is_drill_item(&self) -> bool {
+    pub fn is_drill_item(&self) -> bool {
         matches!(self, Item::Via(_) | Item::Pin(_))
     }
 
-                            pub fn is_obstacle_area(&self) -> bool {
+    pub fn is_obstacle_area(&self) -> bool {
         matches!(
             self,
             Item::ObstacleArea(_)
@@ -127,56 +124,55 @@ impl Item {
         )
     }
 
-
-            pub fn net_nos(&self) -> &[i32] {
+    pub fn net_nos(&self) -> &[i32] {
         &self.header().net_nos
     }
 
-        pub fn net_count(&self) -> usize {
+    pub fn net_count(&self) -> usize {
         self.header().net_count()
     }
 
-        pub fn get_net_number(&self, no: usize) -> i32 {
+    pub fn get_net_number(&self, no: usize) -> i32 {
         self.header().get_net_number(no)
     }
 
-        pub fn contains_net(&self, net_number: i32) -> bool {
+    pub fn contains_net(&self, net_number: i32) -> bool {
         self.header().contains_net(net_number)
     }
 
-        pub fn shares_net(&self, other: &Item) -> bool {
+    pub fn shares_net(&self, other: &Item) -> bool {
         self.shares_net_no(other.net_nos())
     }
 
-        pub fn shares_net_no(&self, net_nos: &[i32]) -> bool {
+    pub fn shares_net_no(&self, net_nos: &[i32]) -> bool {
         self.header().shares_net_no(net_nos)
     }
 
-        pub fn nets_equal(&self, other: &Item) -> bool {
+    pub fn nets_equal(&self, other: &Item) -> bool {
         self.header().nets_equal(other.net_nos())
     }
 
-        pub fn nets_equal_to(&self, net_nos: &[i32]) -> bool {
+    pub fn nets_equal_to(&self, net_nos: &[i32]) -> bool {
         self.header().nets_equal(net_nos)
     }
 
-        pub fn nets_normal(&self) -> bool {
+    pub fn nets_normal(&self) -> bool {
         self.header().nets_normal()
     }
 
-            pub fn assign_net_no(&mut self, net_number: i32, nets: &Nets) {
+    pub fn assign_net_no(&mut self, net_number: i32, nets: &Nets) {
         self.header_mut().assign_net_no(net_number, nets);
     }
 
-        pub fn remove_from_net(&mut self, net_number: i32) -> bool {
+    pub fn remove_from_net(&mut self, net_number: i32) -> bool {
         self.header_mut().remove_from_net(net_number)
     }
 
-        pub fn is_connectable(&self) -> bool {
+    pub fn is_connectable(&self) -> bool {
         self.as_connectable().is_some() && self.net_count() > 0
     }
 
-                        pub fn as_connectable(&self) -> Option<ConnectableRef<'_>> {
+    pub fn as_connectable(&self) -> Option<ConnectableRef<'_>> {
         match self {
             Item::Trace(i) => Some(ConnectableRef::Trace(i)),
             Item::Via(i) => Some(ConnectableRef::Via(i)),
@@ -186,24 +182,23 @@ impl Item {
         }
     }
 
-
-        pub fn get_fixed_state(&self) -> FixedState {
+    pub fn get_fixed_state(&self) -> FixedState {
         self.header().get_fixed_state()
     }
 
-        pub fn set_fixed_state(&mut self, fixed_state: FixedState) {
+    pub fn set_fixed_state(&mut self, fixed_state: FixedState) {
         self.header_mut().set_fixed_state(fixed_state);
     }
 
-        pub fn unfix(&mut self) {
+    pub fn unfix(&mut self) {
         self.header_mut().unfix();
     }
 
-        pub fn is_user_fixed(&self) -> bool {
+    pub fn is_user_fixed(&self) -> bool {
         self.header().is_user_fixed()
     }
 
-                                pub fn is_shove_fixed(&self, rules: &BoardRules) -> bool {
+    pub fn is_shove_fixed(&self, rules: &BoardRules) -> bool {
         if self.header().is_shove_fixed() {
             return true;
         }
@@ -222,7 +217,7 @@ impl Item {
             })
     }
 
-                                pub fn is_deletion_forbidden(&self, rules: &BoardRules) -> bool {
+    pub fn is_deletion_forbidden(&self, rules: &BoardRules) -> bool {
         if self.header().get_component_id() > 0 || self.is_user_fixed() {
             return true;
         }
@@ -234,33 +229,31 @@ impl Item {
         }
     }
 
-
-        pub fn clearance_class(&self) -> usize {
+    pub fn clearance_class(&self) -> usize {
         self.header().clearance_class()
     }
 
-                                pub fn set_clearance_class(&mut self, index: usize, rules: &BoardRules) {
+    pub fn set_clearance_class(&mut self, index: usize, rules: &BoardRules) {
         self.header_mut().set_clearance_class(index, rules);
     }
 
-        pub fn component_id(&self) -> i32 {
+    pub fn component_id(&self) -> i32 {
         self.header().get_component_id()
     }
 
-        pub fn assign_component_id(&mut self, id: i32) {
+    pub fn assign_component_id(&mut self, id: i32) {
         self.header_mut().assign_component_id(id);
     }
 
-        pub fn is_on_the_board(&self) -> bool {
+    pub fn is_on_the_board(&self) -> bool {
         self.header().is_on_the_board()
     }
 
-        pub fn set_on_the_board(&mut self, value: bool) {
+    pub fn set_on_the_board(&mut self, value: bool) {
         self.header_mut().set_on_the_board(value);
     }
 
-
-                                                                                                                pub fn is_obstacle(&self, other: &Item, ctx: &ItemCtx<'_>) -> bool {
+    pub fn is_obstacle(&self, other: &Item, ctx: &ItemCtx<'_>) -> bool {
         match self {
             Item::Trace(_) => {
                 if other.id() == self.id()
@@ -336,11 +329,11 @@ impl Item {
         }
     }
 
-                pub fn is_obstacle_for_net(&self, net_number: i32) -> bool {
+    pub fn is_obstacle_for_net(&self, net_number: i32) -> bool {
         !self.contains_net(net_number)
     }
 
-                    pub fn is_trace_obstacle(&self, net_number: i32) -> bool {
+    pub fn is_trace_obstacle(&self, net_number: i32) -> bool {
         match self {
             Item::ConductionArea(area) => area.get_is_obstacle() && !self.contains_net(net_number),
             Item::ViaObstacleArea(_) | Item::ComponentObstacleArea(_) => false,
@@ -348,7 +341,7 @@ impl Item {
         }
     }
 
-            pub fn is_drillable(&self, net_number: i32) -> bool {
+    pub fn is_drillable(&self, net_number: i32) -> bool {
         match self {
             Item::Trace(_) => self.contains_net(net_number),
             Item::ConductionArea(area) => !area.get_is_obstacle() || self.contains_net(net_number),
@@ -356,15 +349,14 @@ impl Item {
         }
     }
 
-                pub fn is_routable(&self) -> bool {
+    pub fn is_routable(&self) -> bool {
         match self {
             Item::Trace(_) | Item::Via(_) => !self.is_user_fixed() && self.net_count() > 0,
             _ => false,
         }
     }
 
-
-        pub fn first_layer(&self, ctx: &ItemCtx<'_>) -> usize {
+    pub fn first_layer(&self, ctx: &ItemCtx<'_>) -> usize {
         match self {
             Item::Trace(i) => i.first_layer(),
             Item::Via(i) => i.first_layer(ctx),
@@ -378,7 +370,7 @@ impl Item {
         }
     }
 
-        pub fn last_layer(&self, ctx: &ItemCtx<'_>) -> usize {
+    pub fn last_layer(&self, ctx: &ItemCtx<'_>) -> usize {
         match self {
             Item::Trace(i) => i.last_layer(),
             Item::Via(i) => i.last_layer(ctx),
@@ -392,7 +384,7 @@ impl Item {
         }
     }
 
-        pub fn is_on_layer(&self, layer: usize, ctx: &ItemCtx<'_>) -> bool {
+    pub fn is_on_layer(&self, layer: usize, ctx: &ItemCtx<'_>) -> bool {
         match self {
             Item::Via(i) => i.is_on_layer(layer, ctx),
             Item::Pin(i) => i.is_on_layer(layer, ctx),
@@ -401,7 +393,7 @@ impl Item {
         }
     }
 
-                    pub fn shape_layer(&self, index: usize, ctx: &ItemCtx<'_>) -> usize {
+    pub fn shape_layer(&self, index: usize, ctx: &ItemCtx<'_>) -> usize {
         match self {
             Item::Via(i) => i.shape_layer(index, ctx),
             Item::Pin(i) => i.shape_layer(index, ctx),
@@ -410,25 +402,24 @@ impl Item {
         }
     }
 
-        pub fn shares_layer(&self, other: &Item, ctx: &ItemCtx<'_>) -> bool {
+    pub fn shares_layer(&self, other: &Item, ctx: &ItemCtx<'_>) -> bool {
         self.first_layer(ctx).max(other.first_layer(ctx))
             <= self.last_layer(ctx).min(other.last_layer(ctx))
     }
 
-        pub fn first_common_layer(&self, other: &Item, ctx: &ItemCtx<'_>) -> Option<usize> {
+    pub fn first_common_layer(&self, other: &Item, ctx: &ItemCtx<'_>) -> Option<usize> {
         let max_first = self.first_layer(ctx).max(other.first_layer(ctx));
         let min_last = self.last_layer(ctx).min(other.last_layer(ctx));
         (max_first <= min_last).then_some(max_first)
     }
 
-        pub fn last_common_layer(&self, other: &Item, ctx: &ItemCtx<'_>) -> Option<usize> {
+    pub fn last_common_layer(&self, other: &Item, ctx: &ItemCtx<'_>) -> Option<usize> {
         let max_first = self.first_layer(ctx).max(other.first_layer(ctx));
         let min_last = self.last_layer(ctx).min(other.last_layer(ctx));
         (max_first <= min_last).then_some(min_last)
     }
 
-
-        pub fn bounding_box(&self, ctx: &ItemCtx<'_>) -> IntBox {
+    pub fn bounding_box(&self, ctx: &ItemCtx<'_>) -> IntBox {
         match self {
             Item::Trace(i) => i.bounding_box(),
             Item::Via(i) => i.bounding_box(ctx),
@@ -442,7 +433,7 @@ impl Item {
         }
     }
 
-        pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
+    pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
         match self {
             Item::Trace(i) => i.tile_shape_count(),
             Item::Via(i) => i.tile_shape_count(ctx),
@@ -456,7 +447,7 @@ impl Item {
         }
     }
 
-                                pub fn get_tile_shape(
+    pub fn get_tile_shape(
         &self,
         default_tree: TreeId,
         index: usize,
@@ -471,56 +462,56 @@ impl Item {
         }
     }
 
-                    pub fn tree_shape_count(&self, tree: TreeId) -> usize {
+    pub fn tree_shape_count(&self, tree: TreeId) -> usize {
         self.header()
             .get_precalculated_tree_shapes(tree)
             .map_or(0, <[Option<TileShape>]>::len)
     }
 
-                pub fn get_tree_shape(&self, tree: TreeId, index: usize) -> Option<&TileShape> {
+    pub fn get_tree_shape(&self, tree: TreeId, index: usize) -> Option<&TileShape> {
         self.header()
             .get_precalculated_tree_shapes(tree)
             .and_then(|shapes| shapes.get(index))
             .and_then(Option::as_ref)
     }
 
-        pub fn set_tree_entries(&mut self, tree: TreeId, leaves: Vec<Option<LeafId>>) {
+    pub fn set_tree_entries(&mut self, tree: TreeId, leaves: Vec<Option<LeafId>>) {
         self.header_mut().set_tree_entries(tree, leaves);
     }
 
-        pub fn get_search_tree_entries(&self, tree: TreeId) -> Option<&[Option<LeafId>]> {
+    pub fn get_search_tree_entries(&self, tree: TreeId) -> Option<&[Option<LeafId>]> {
         self.header().get_tree_entries(tree)
     }
 
-        pub fn set_precalculated_tree_shapes(&mut self, tree: TreeId, shapes: Vec<Option<TileShape>>) {
+    pub fn set_precalculated_tree_shapes(&mut self, tree: TreeId, shapes: Vec<Option<TileShape>>) {
         self.header_mut()
             .set_precalculated_tree_shapes(tree, shapes);
     }
 
-                        pub fn clear_tree_entries(&mut self) {
+    pub fn clear_tree_entries(&mut self) {
         self.header_mut().clear_search_tree_entries();
     }
 
-                    pub fn get_autoroute_info(&mut self) -> &mut AutorouteInfo {
+    pub fn get_autoroute_info(&mut self) -> &mut AutorouteInfo {
         self.header_mut().get_autoroute_info()
     }
 
-            pub fn get_autoroute_info_pur(&self) -> Option<&AutorouteInfo> {
+    pub fn get_autoroute_info_pur(&self) -> Option<&AutorouteInfo> {
         self.header().get_autoroute_info_pur()
     }
 
-                pub fn get_autoroute_info_pur_mut(&mut self) -> Option<&mut AutorouteInfo> {
+    pub fn get_autoroute_info_pur_mut(&mut self) -> Option<&mut AutorouteInfo> {
         self.header_mut().get_autoroute_info_pur_mut()
     }
 
-                pub fn clear_autoroute_info(&mut self) {
+    pub fn clear_autoroute_info(&mut self) {
         match self {
             Item::Via(i) => i.clear_autoroute_info(),
             _ => self.header_mut().clear_autoroute_info(),
         }
     }
 
-                        pub fn clear_derived_data(&mut self) {
+    pub fn clear_derived_data(&mut self) {
         match self {
             Item::Via(i) => i.clear_derived_data(),
             Item::Pin(i) => i.clear_derived_data(),
@@ -533,8 +524,7 @@ impl Item {
         }
     }
 
-
-                            pub fn translate_by(&mut self, vector: &Vector) -> Result<(), PolylineError> {
+    pub fn translate_by(&mut self, vector: &Vector) -> Result<(), PolylineError> {
         match self {
             Item::Trace(i) => return i.translate_by(vector),
             Item::Via(i) => i.translate_by(vector),
@@ -549,7 +539,7 @@ impl Item {
         Ok(())
     }
 
-                pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) -> Result<(), PolylineError> {
+    pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) -> Result<(), PolylineError> {
         match self {
             Item::Trace(i) => return i.turn_90_degree(factor, pole),
             Item::Via(i) => i.turn_90_degree(factor, pole),
@@ -564,7 +554,7 @@ impl Item {
         Ok(())
     }
 
-                        pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint, ctx: &ItemCtx<'_>) {
+    pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint, ctx: &ItemCtx<'_>) {
         match self {
             Item::Trace(i) => i.rotate_approx(angle_in_degree, pole),
             Item::Via(i) => i.rotate_approx(angle_in_degree, pole),
@@ -578,7 +568,7 @@ impl Item {
         }
     }
 
-                        pub fn change_placement_side(
+    pub fn change_placement_side(
         &mut self,
         pole: &IntPoint,
         ctx: &ItemCtx<'_>,
@@ -597,8 +587,7 @@ impl Item {
         Ok(())
     }
 
-
-                                                                            pub fn copy(&self, new_id: ItemId) -> Option<Item> {
+    pub fn copy(&self, new_id: ItemId) -> Option<Item> {
         match self {
             Item::Trace(i) => Some(Item::Trace(i.copy(new_id))),
             Item::Via(i) => Some(Item::Via(i.copy(new_id))),
@@ -612,7 +601,7 @@ impl Item {
         }
     }
 
-        // renamed: Item.clone -> Item::java_clone, because `#[derive(Clone)]` already gives this
+    // renamed: Item.clone -> Item::java_clone, because `#[derive(Clone)]` already gives this
     pub fn java_clone(&self) -> Option<Item> {
         let mut dup = self.copy(self.id())?;
         dup.set_on_the_board(self.is_on_the_board());
@@ -659,19 +648,18 @@ impl std::fmt::Display for Item {
     }
 }
 
-
 pub trait Connectable {
-        fn header(&self) -> &ItemHeader;
+    fn header(&self) -> &ItemHeader;
 
-            fn contains_net(&self, net_number: i32) -> bool {
+    fn contains_net(&self, net_number: i32) -> bool {
         self.header().contains_net(net_number)
     }
 
-            fn shares_net_no(&self, net_nos: &[i32]) -> bool {
+    fn shares_net_no(&self, net_nos: &[i32]) -> bool {
         self.header().shares_net_no(net_nos)
     }
 
-            fn get_trace_connection_shape(
+    fn get_trace_connection_shape(
         &self,
         tree: TreeId,
         index: usize,
@@ -688,7 +676,7 @@ pub enum ConnectableRef<'a> {
 }
 
 impl ConnectableRef<'_> {
-        pub fn as_dyn(&self) -> &dyn Connectable {
+    pub fn as_dyn(&self) -> &dyn Connectable {
         match self {
             ConnectableRef::Trace(i) => *i,
             ConnectableRef::Via(i) => *i,
@@ -697,7 +685,6 @@ impl ConnectableRef<'_> {
         }
     }
 }
-
 
 pub(crate) fn copied_header(hdr: &ItemHeader, new_id: ItemId) -> ItemHeader {
     ItemHeader::new(
@@ -719,15 +706,15 @@ mod tests {
     use crate::rules::ClearanceMatrix;
     use crate::structure::{Components, Layer, LayerStructure};
 
-                struct Fixture {
+    struct Fixture {
         library: BoardLibrary,
         components: Components,
         rules: BoardRules,
         bounding_box: IntBox,
     }
 
-        const SMD_COMPONENT: i32 = 1;
-        const THT_COMPONENT: i32 = 2;
+    const SMD_COMPONENT: i32 = 1;
+    const THT_COMPONENT: i32 = 2;
     const VIA_PADSTACK: PadstackId = PadstackId(1);
 
     impl Fixture {
@@ -817,21 +804,21 @@ mod tests {
         ))
     }
 
-        fn pin(id: u32, net_nos: Vec<i32>) -> Item {
+    fn pin(id: u32, net_nos: Vec<i32>) -> Item {
         Item::Pin(Pin::new(
             ItemHeader::new(ItemId(id), net_nos, 1, SMD_COMPONENT, FixedState::Unfixed),
             0,
         ))
     }
 
-        fn tht_pin(id: u32, net_nos: Vec<i32>) -> Item {
+    fn tht_pin(id: u32, net_nos: Vec<i32>) -> Item {
         Item::Pin(Pin::new(
             ItemHeader::new(ItemId(id), net_nos, 1, THT_COMPONENT, FixedState::Unfixed),
             0,
         ))
     }
 
-            fn area_data() -> ObstacleAreaData {
+    fn area_data() -> ObstacleAreaData {
         ObstacleAreaData::new(
             fr_geometry::Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
                 0, 0, 10, 10,
@@ -889,7 +876,7 @@ mod tests {
         ))
     }
 
-        fn one_of_each() -> Vec<Item> {
+    fn one_of_each() -> Vec<Item> {
         vec![
             trace(1, vec![1]),
             via(2, vec![1], true),
@@ -902,7 +889,6 @@ mod tests {
             board_outline(9),
         ]
     }
-
 
     #[test]
     fn kind_matches_get_board_item_type() {
@@ -940,7 +926,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn as_connectable_matches_javas_implements_clauses() {
         let expected = [true, true, true, false, true, false, false, false, false];
@@ -964,7 +949,6 @@ mod tests {
         assert!(!connectable.as_dyn().contains_net(5));
         assert!(connectable.as_dyn().shares_net_no(&[9, 4]));
     }
-
 
     #[test]
     fn trace_is_obstacle_matches_trace_java() {
@@ -1062,7 +1046,7 @@ mod tests {
         let k = component_keepout(1, 7);
         assert!(k.is_obstacle(&component_keepout(2, 8), &f.ctx()));
         assert!(!k.is_obstacle(&component_keepout(3, 7), &f.ctx()));
-        assert!(!k.is_obstacle(&component_keepout(1, 8), &f.ctx())); 
+        assert!(!k.is_obstacle(&component_keepout(1, 8), &f.ctx()));
         assert!(!k.is_obstacle(&trace(4, vec![9]), &f.ctx()));
     }
 
@@ -1084,7 +1068,6 @@ mod tests {
             assert_eq!(b.is_obstacle(other, &f.ctx()), is_obstacle, "{other}");
         }
     }
-
 
     #[test]
     fn is_obstacle_for_net_is_plain_non_membership() {
@@ -1130,12 +1113,11 @@ mod tests {
         assert!(shoved.is_routable());
     }
 
-
     fn layer_structure() -> LayerStructure {
         LayerStructure::new(vec![Layer::new("F.Cu", true), Layer::new("B.Cu", true)])
     }
 
-            fn rules_with_a_shove_fixed_net() -> BoardRules {
+    fn rules_with_a_shove_fixed_net() -> BoardRules {
         let layers = layer_structure();
         let matrix = ClearanceMatrix::new(2, &layers, &["default", "c1"]);
         let mut rules = BoardRules::new(layers.clone(), matrix);
@@ -1228,7 +1210,6 @@ mod tests {
         assert!(conduction_area(1, vec![1], true).is_deletion_forbidden(&power_plane));
     }
 
-
     #[test]
     fn compare_to_orders_by_descending_id_like_java() {
         let low = trace(1, vec![]);
@@ -1263,7 +1244,6 @@ mod tests {
             "componentobstaclearea of component #5"
         );
     }
-
 
     #[test]
     fn copy_carries_the_header_and_takes_the_new_id() {
@@ -1378,7 +1358,6 @@ mod tests {
         assert_eq!(copy.escape_via_smd_layer, 1);
         assert_eq!(copy.hdr.id(), ItemId(2));
     }
-
 
     #[test]
     fn header_dispatch_reaches_every_variant() {

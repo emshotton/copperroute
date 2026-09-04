@@ -3,19 +3,19 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum LogLevel {
-        Off,
-        Error,
-        Warn,
-        #[default]
+    Off,
+    Error,
+    Warn,
+    #[default]
     Info,
     /// `Level.DEBUG`.
     Debug,
-        Trace,
+    Trace,
 }
 
 impl LogLevel {
-                /// `Level.valueOf` knows eight names — `OFF`, `FATAL`, `ERROR`, `WARN`, `INFO`, `DEBUG`,
-                        #[must_use]
+    /// `Level.valueOf` knows eight names — `OFF`, `FATAL`, `ERROR`, `WARN`, `INFO`, `DEBUG`,
+    #[must_use]
     pub fn parse_java(level: &str) -> Self {
         match level.to_uppercase().as_str() {
             "OFF" => Self::Off,
@@ -27,7 +27,7 @@ impl LogLevel {
         }
     }
 
-        #[must_use]
+    #[must_use]
     pub fn as_filter(self) -> &'static str {
         match self {
             Self::Off => "off",
@@ -206,7 +206,6 @@ pub const MESSAGE_MAP: &[(&str, &str)] = &[
     ("Freerouting.java:1120", "Freerouting {}"),
     ("Freerouting.java:1450", "Couldn't initialize the GUI"),
 ];
-
 
 #[cfg(test)]
 mod tests {

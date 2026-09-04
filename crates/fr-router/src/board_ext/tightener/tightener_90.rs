@@ -8,11 +8,11 @@ pub struct TraceTightener90<'a> {
 }
 
 impl<'a> TraceTightener90<'a> {
-            pub(crate) fn new(base: TightenerBase<'a>) -> TraceTightener90<'a> {
+    pub(crate) fn new(base: TightenerBase<'a>) -> TraceTightener90<'a> {
         TraceTightener90 { base }
     }
 
-                        pub(crate) fn pull_tight(
+    pub(crate) fn pull_tight(
         &mut self,
         board: &mut Board,
         polyline: &Polyline,
@@ -44,7 +44,7 @@ impl<'a> TraceTightener90<'a> {
         if ever_changed { Some(new_result) } else { None }
     }
 
-                            fn try_skip_second_corner(
+    fn try_skip_second_corner(
         &mut self,
         board: &mut Board,
         polyline: &Polyline,
@@ -81,7 +81,7 @@ impl<'a> TraceTightener90<'a> {
         Some(new_polyline(new_lines))
     }
 
-                                            fn try_skip_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
+    fn try_skip_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
         let lines = polyline.lines();
         let mut new_lines: Vec<Line> = vec![lines[0]; lines.len()];
         new_lines[0] = lines[0];
@@ -166,7 +166,7 @@ impl<'a> TraceTightener90<'a> {
         Some(new_polyline(new_lines))
     }
 
-            pub(crate) fn smoothen_start_corner_at_trace(
+    pub(crate) fn smoothen_start_corner_at_trace(
         &mut self,
         _board: &mut Board,
         _trace: ItemId,
@@ -174,7 +174,7 @@ impl<'a> TraceTightener90<'a> {
         None
     }
 
-            pub(crate) fn smoothen_end_corner_at_trace(
+    pub(crate) fn smoothen_end_corner_at_trace(
         &mut self,
         _board: &mut Board,
         _trace: ItemId,

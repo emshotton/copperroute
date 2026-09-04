@@ -11,7 +11,7 @@ use crate::board_ext::forced_pad_router::{CheckDrillResult, ForcedPadRouter};
 pub struct DrillItemMover;
 
 impl DrillItemMover {
-                                                                                pub fn check(
+    pub fn check(
         board: &mut Board,
         drill_item: ItemId,
         vector: &Vector,
@@ -103,7 +103,7 @@ impl DrillItemMover {
         true
     }
 
-                                                                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn insert(
         board: &mut Board,
         drill_item: ItemId,
@@ -185,7 +185,7 @@ impl DrillItemMover {
         Ok(true)
     }
 
-                                                                                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn shove_vias(
         board: &mut Board,
         obstacle_shape: &TileShape,
@@ -296,7 +296,7 @@ impl DrillItemMover {
         Ok(true)
     }
 
-                            pub fn try_shove_via_points(
+    pub fn try_shove_via_points(
         board: &mut Board,
         obstacle_shape: &TileShape,
         layer: usize,
@@ -416,4 +416,3 @@ pub(crate) fn tree_by_id(board: &Board, tree: TreeId) -> &ShapeSearchTree {
         .find(|candidate| candidate.id() == tree)
         .unwrap_or_else(|| panic!("board_ext: no search tree with id {tree:?}"))
 }
-

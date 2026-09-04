@@ -2,12 +2,12 @@ use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Layer {
-        pub name: String,
-            pub is_signal: bool,
+    pub name: String,
+    pub is_signal: bool,
 }
 
 impl Layer {
-        pub fn new(name: impl Into<String>, is_signal: bool) -> Layer {
+    pub fn new(name: impl Into<String>, is_signal: bool) -> Layer {
         Layer {
             name: name.into(),
             is_signal,
@@ -23,31 +23,31 @@ impl fmt::Display for Layer {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LayerStructure {
-        pub layers: Vec<Layer>,
+    pub layers: Vec<Layer>,
 }
 
 impl LayerStructure {
-        pub fn new(layers: Vec<Layer>) -> LayerStructure {
+    pub fn new(layers: Vec<Layer>) -> LayerStructure {
         LayerStructure { layers }
     }
 
-                pub fn count(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.layers.len()
     }
 
-            pub fn get_no(&self, name: &str) -> Option<usize> {
+    pub fn get_no(&self, name: &str) -> Option<usize> {
         self.layers.iter().position(|l| l.name == name)
     }
 
-                    pub fn get_no_of_layer(&self, layer: &Layer) -> Option<usize> {
+    pub fn get_no_of_layer(&self, layer: &Layer) -> Option<usize> {
         self.layers.iter().position(|l| std::ptr::eq(l, layer))
     }
 
-        pub fn signal_layer_count(&self) -> usize {
+    pub fn signal_layer_count(&self) -> usize {
         self.layers.iter().filter(|l| l.is_signal).count()
     }
 
-                            pub fn get_signal_layer(&self, no: usize) -> &Layer {
+    pub fn get_signal_layer(&self, no: usize) -> &Layer {
         let mut found = 0usize;
         for layer in &self.layers {
             if layer.is_signal {
@@ -63,14 +63,14 @@ impl LayerStructure {
         )
     }
 
-                                        pub fn get_signal_layer_no(&self, no: usize) -> Option<usize> {
+    pub fn get_signal_layer_no(&self, no: usize) -> Option<usize> {
         if no >= self.layers.len() {
             return None;
         }
         Some(self.layers[..no].iter().filter(|l| l.is_signal).count())
     }
 
-                        pub fn get_layer_no_of_signal_layer(&self, signal_layer_no: usize) -> usize {
+    pub fn get_layer_no_of_signal_layer(&self, signal_layer_no: usize) -> usize {
         let layer = self.get_signal_layer(signal_layer_no);
         self.layers
             .iter()
@@ -88,7 +88,7 @@ pub enum Unit {
 }
 
 impl Unit {
-        fn micrometers(self) -> f64 {
+    fn micrometers(self) -> f64 {
         match self {
             Unit::Mil => 25.4,
             Unit::Inch => 25_400.0,
@@ -97,11 +97,11 @@ impl Unit {
         }
     }
 
-        pub fn scale(value: f64, from_unit: Unit, to_unit: Unit) -> f64 {
+    pub fn scale(value: f64, from_unit: Unit, to_unit: Unit) -> f64 {
         value * from_unit.micrometers() / to_unit.micrometers()
     }
 
-                pub fn from_string(string: &str) -> Option<Unit> {
+    pub fn from_string(string: &str) -> Option<Unit> {
         match string.to_uppercase().as_str() {
             "MIL" => Some(Unit::Mil),
             "INCH" => Some(Unit::Inch),
@@ -132,7 +132,7 @@ pub enum AngleRestriction {
 }
 
 impl AngleRestriction {
-                    pub fn value_of(i: usize) -> Option<AngleRestriction> {
+    pub fn value_of(i: usize) -> Option<AngleRestriction> {
         match i {
             0 => Some(AngleRestriction::None),
             1 => Some(AngleRestriction::FortyFiveDegree),
@@ -141,7 +141,7 @@ impl AngleRestriction {
         }
     }
 
-        pub fn get_value(self) -> usize {
+    pub fn get_value(self) -> usize {
         match self {
             AngleRestriction::None => 0,
             AngleRestriction::FortyFiveDegree => 1,
@@ -152,10 +152,10 @@ impl AngleRestriction {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum FixedState {
-        Unfixed,
-        ShoveFixed,
-        UserFixed,
-        SystemFixed,
+    Unfixed,
+    ShoveFixed,
+    UserFixed,
+    SystemFixed,
 }
 
 #[cfg(test)]
@@ -169,7 +169,7 @@ mod tests {
     fn structure() -> LayerStructure {
         LayerStructure::new(vec![
             layer("F.Cu", true),
-            layer("In1.Cu", false), 
+            layer("In1.Cu", false),
             layer("In2.Cu", true),
             layer("B.Cu", true),
         ])
@@ -192,7 +192,7 @@ mod tests {
     fn get_no_of_layer_uses_identity() {
         let s = structure();
         assert_eq!(s.get_no_of_layer(&s.layers[2]), Some(2));
-        let other = layer("In2.Cu", true); 
+        let other = layer("In2.Cu", true);
         assert_eq!(s.get_no_of_layer(&other), None);
     }
 
@@ -230,18 +230,18 @@ mod tests {
     #[test]
     fn get_signal_layer_no_counts_preceding_signal_layers() {
         let s = structure();
-        assert_eq!(s.get_signal_layer_no(0), Some(0)); 
-        assert_eq!(s.get_signal_layer_no(2), Some(1)); 
-        assert_eq!(s.get_signal_layer_no(3), Some(2)); 
-        assert_eq!(s.get_signal_layer_no(4), None); 
+        assert_eq!(s.get_signal_layer_no(0), Some(0));
+        assert_eq!(s.get_signal_layer_no(2), Some(1));
+        assert_eq!(s.get_signal_layer_no(3), Some(2));
+        assert_eq!(s.get_signal_layer_no(4), None);
     }
 
     #[test]
     fn get_layer_no_of_signal_layer_round_trips_get_signal_layer() {
         let s = structure();
-        assert_eq!(s.get_layer_no_of_signal_layer(0), 0); 
-        assert_eq!(s.get_layer_no_of_signal_layer(1), 2); 
-        assert_eq!(s.get_layer_no_of_signal_layer(2), 3); 
+        assert_eq!(s.get_layer_no_of_signal_layer(0), 0);
+        assert_eq!(s.get_layer_no_of_signal_layer(1), 2);
+        assert_eq!(s.get_layer_no_of_signal_layer(2), 3);
     }
 
     #[test]

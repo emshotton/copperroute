@@ -44,7 +44,6 @@ fn build_autoroute_tree(board: &mut Board, clearance_class_index: usize) -> Tree
     id
 }
 
-
 #[test]
 fn insert_remove_round_trips_leave_leaf_count_and_queries_unchanged() {
     let mut board = p2t11_board();
@@ -92,7 +91,6 @@ fn insert_remove_round_trips_leave_leaf_count_and_queries_unchanged() {
     }
 }
 
-
 #[test]
 fn deep_copy_is_hash_equal_and_query_equal() {
     let mut board = p2t11_board();
@@ -125,7 +123,6 @@ fn deep_copy_is_hash_equal_and_query_equal() {
         "the copy must still have item 4 after the original removes it"
     );
 }
-
 
 fn normalize_fixture_board() -> Board {
     let ls = LayerStructure::new(vec![Layer::new("l0", true)]);
@@ -209,7 +206,6 @@ fn normalize_traces_is_idempotent() {
     );
 }
 
-
 #[test]
 fn forty_five_degree_tile_shapes_are_never_looser_than_ninety_degree_ones() {
     let mut board_45 = p2t11_board();
@@ -267,7 +263,6 @@ fn forty_five_degree_tile_shapes_are_never_looser_than_ninety_degree_ones() {
     );
 }
 
-
 #[test]
 fn item_iteration_is_descending_board_order() {
     let board = p2t11_board();
@@ -286,7 +281,6 @@ fn item_iteration_is_descending_board_order() {
         "get_items() and items_in_board_order() must agree"
     );
 }
-
 
 #[test]
 fn board_is_send_sync_and_clone() {

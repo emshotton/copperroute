@@ -19,9 +19,9 @@ use crate::autoroute::tree_ext::AutorouteSearchTreeExt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CalculationMode {
-        Orthogonal,
-        FortyFiveDegree,
-        AnyAngle,
+    Orthogonal,
+    FortyFiveDegree,
+    AnyAngle,
 }
 
 pub fn select_calculation_mode(tree: &ShapeSearchTree) -> CalculationMode {
@@ -34,18 +34,17 @@ pub fn select_calculation_mode(tree: &ShapeSearchTree) -> CalculationMode {
     CalculationMode::AnyAngle
 }
 
-
 #[derive(Debug, Clone)]
 pub struct SortedRoomNeighbours {
-        pub from_room: RoomRef,
-        pub completed_room: RoomRef,
-                    pub room_shape: TileShape,
-            pub sorted_neighbours: JavaTreeSet<SortedRoomNeighbour>,
-        pub own_net_objects: Vec<TreeEntry<TreeObject>>,
+    pub from_room: RoomRef,
+    pub completed_room: RoomRef,
+    pub room_shape: TileShape,
+    pub sorted_neighbours: JavaTreeSet<SortedRoomNeighbour>,
+    pub own_net_objects: Vec<TreeEntry<TreeObject>>,
 }
 
 impl SortedRoomNeighbours {
-                                                        pub fn complete(
+    pub fn complete(
         room: RoomRef,
         net_number: i32,
         board: &mut Board,
@@ -65,7 +64,7 @@ impl SortedRoomNeighbours {
         }
     }
 
-                                            pub fn calculate(
+    pub fn calculate(
         room: RoomRef,
         net_number: i32,
         board: &mut Board,
@@ -107,7 +106,7 @@ impl SortedRoomNeighbours {
         }
     }
 
-                                        pub fn calculate_neighbours(
+    pub fn calculate_neighbours(
         room: RoomRef,
         net_number: i32,
         board: &mut Board,
@@ -316,11 +315,11 @@ impl SortedRoomNeighbours {
         Some(result)
     }
 
-                    fn add_sorted_neighbour(&mut self, neighbour: SortedRoomNeighbour) {
+    fn add_sorted_neighbour(&mut self, neighbour: SortedRoomNeighbour) {
         self.sorted_neighbours.add(neighbour);
     }
 
-                    fn try_remove_edge(
+    fn try_remove_edge(
         &self,
         net_number: i32,
         board: &mut Board,
@@ -412,7 +411,7 @@ impl SortedRoomNeighbours {
         true
     }
 
-                                        pub fn calculate_new_incomplete_rooms(
+    pub fn calculate_new_incomplete_rooms(
         &self,
         board: &mut Board,
         rooms: &mut ExpansionRoomStore,
@@ -624,7 +623,6 @@ impl SortedRoomNeighbours {
         }
     }
 }
-
 
 fn calculate_incomplete_rooms_with_empty_neighbours(
     room: RoomRef,
@@ -847,25 +845,23 @@ pub fn create_overlap_door(
     true
 }
 
-
-
 #[derive(Debug, Clone)]
 pub struct SortedRoomNeighbour {
-        pub search_tree_object: TreeObject,
-                pub object_id: i32,
-        pub neighbour_shape: TileShape,
-            pub intersection: TileShape,
-                        pub touching_side_no_of_room: i32,
-            pub touching_side_no_of_neighbour_room: i32,
-            pub room_touch_is_corner: bool,
-            pub neighbour_room_touch_is_corner: bool,
-        pub room_shape: TileShape,
-                first_corner: OnceCell<Point>,
-        last_corner: OnceCell<Point>,
+    pub search_tree_object: TreeObject,
+    pub object_id: i32,
+    pub neighbour_shape: TileShape,
+    pub intersection: TileShape,
+    pub touching_side_no_of_room: i32,
+    pub touching_side_no_of_neighbour_room: i32,
+    pub room_touch_is_corner: bool,
+    pub neighbour_room_touch_is_corner: bool,
+    pub room_shape: TileShape,
+    first_corner: OnceCell<Point>,
+    last_corner: OnceCell<Point>,
 }
 
 impl SortedRoomNeighbour {
-                            #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         search_tree_object: TreeObject,
         object_id: i32,
@@ -892,7 +888,7 @@ impl SortedRoomNeighbour {
         }
     }
 
-            pub fn first_corner(&self) -> &Point {
+    pub fn first_corner(&self) -> &Point {
         self.first_corner.get_or_init(|| {
             if self.room_touch_is_corner {
                 self.room_shape.corner(index_of(
@@ -937,7 +933,7 @@ impl SortedRoomNeighbour {
         })
     }
 
-            pub fn last_corner(&self) -> &Point {
+    pub fn last_corner(&self) -> &Point {
         self.last_corner.get_or_init(|| {
             if self.room_touch_is_corner {
                 self.room_shape.corner(index_of(
@@ -980,7 +976,7 @@ impl SortedRoomNeighbour {
         })
     }
 
-                                                                                                                                                                                                                                                                                                                        pub fn compare_to(&self, other: &SortedRoomNeighbour) -> Ordering {
+    pub fn compare_to(&self, other: &SortedRoomNeighbour) -> Ordering {
         match self
             .touching_side_no_of_room
             .cmp(&other.touching_side_no_of_room)
@@ -1140,7 +1136,6 @@ impl Ord for SortedRoomNeighbour {
         self.compare_to(other)
     }
 }
-
 
 pub(crate) fn tree_of(board: &Board, tree_id: TreeId) -> &ShapeSearchTree {
     board

@@ -8,14 +8,14 @@ use crate::rules::{compare_to_ignore_case, equals_ignore_case};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PackagePin {
-        pub name: String,
-            pub padstack_no: PadstackId,
-        pub relative_location: Vector,
-        pub rotation_in_degree: f64,
+    pub name: String,
+    pub padstack_no: PadstackId,
+    pub relative_location: Vector,
+    pub rotation_in_degree: f64,
 }
 
 impl PackagePin {
-        pub fn new(
+    pub fn new(
         name: impl Into<String>,
         padstack_no: PadstackId,
         relative_location: Vector,
@@ -32,13 +32,13 @@ impl PackagePin {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Keepout {
-        pub name: String,
-        pub area: Area,
-        pub layer: i32,
+    pub name: String,
+    pub area: Area,
+    pub layer: i32,
 }
 
 impl Keepout {
-        pub fn new(name: impl Into<String>, area: Area, layer: i32) -> Keepout {
+    pub fn new(name: impl Into<String>, area: Area, layer: i32) -> Keepout {
         Keepout {
             name: name.into(),
             area,
@@ -49,20 +49,20 @@ impl Keepout {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Package {
-        pub name: String,
-            pub no: usize,
-            pub outline: Option<Vec<Shape>>,
-        pub outline_widths: Option<Vec<f64>>,
-        pub outline_is_closed: Option<Vec<bool>>,
-        pub keepouts: Vec<Keepout>,
-        pub via_keepouts: Vec<Keepout>,
-        pub place_keepouts: Vec<Keepout>,
-        pub is_front: bool,
-        pins: Vec<PackagePin>,
+    pub name: String,
+    pub no: usize,
+    pub outline: Option<Vec<Shape>>,
+    pub outline_widths: Option<Vec<f64>>,
+    pub outline_is_closed: Option<Vec<bool>>,
+    pub keepouts: Vec<Keepout>,
+    pub via_keepouts: Vec<Keepout>,
+    pub place_keepouts: Vec<Keepout>,
+    pub is_front: bool,
+    pins: Vec<PackagePin>,
 }
 
 impl Package {
-            #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: impl Into<String>,
         no: usize,
@@ -89,26 +89,26 @@ impl Package {
         }
     }
 
-            pub fn compare_to(&self, other: &Package) -> Ordering {
+    pub fn compare_to(&self, other: &Package) -> Ordering {
         compare_to_ignore_case(&self.name, &other.name)
     }
 
-            pub fn get_pin(&self, pin_index: i32) -> Option<&PackagePin> {
+    pub fn get_pin(&self, pin_index: i32) -> Option<&PackagePin> {
         if pin_index < 0 || pin_index as usize >= self.pins.len() {
             return None;
         }
         Some(&self.pins[pin_index as usize])
     }
 
-                pub fn get_pin_index(&self, name: &str) -> Option<usize> {
+    pub fn get_pin_index(&self, name: &str) -> Option<usize> {
         self.pins.iter().position(|p| p.name == name)
     }
 
-            pub fn get_pin_by_name(&self, name: &str) -> Option<&PackagePin> {
+    pub fn get_pin_by_name(&self, name: &str) -> Option<&PackagePin> {
         self.pins.iter().find(|p| p.name == name)
     }
 
-        pub fn pin_count(&self) -> usize {
+    pub fn pin_count(&self) -> usize {
         self.pins.len()
     }
 }
@@ -121,15 +121,15 @@ impl fmt::Display for Package {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Packages {
-        list: Vec<Package>,
+    list: Vec<Package>,
 }
 
 impl Packages {
-        pub fn new() -> Packages {
+    pub fn new() -> Packages {
         Packages::default()
     }
 
-                                pub fn get_by_name(&self, name: &str, is_front: bool) -> Option<&Package> {
+    pub fn get_by_name(&self, name: &str, is_front: bool) -> Option<&Package> {
         let mut other_side_package = None;
         for pkg in &self.list {
             if equals_ignore_case(&pkg.name, name) {
@@ -153,7 +153,7 @@ impl Packages {
         other_side_package
     }
 
-                                    pub fn get(&self, no: usize) -> &Package {
+    pub fn get(&self, no: usize) -> &Package {
         let result = &self.list[no - 1];
         debug_assert_eq!(
             result.no, no,
@@ -162,11 +162,11 @@ impl Packages {
         result
     }
 
-        pub fn count(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.list.len()
     }
 
-                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn add(
         &mut self,
         name: impl Into<String>,
@@ -195,7 +195,7 @@ impl Packages {
         no
     }
 
-            pub fn add_pins(&mut self, pins: Vec<PackagePin>) -> usize {
+    pub fn add_pins(&mut self, pins: Vec<PackagePin>) -> usize {
         let name = format!("Package#{}", self.list.len() + 1);
         self.add(
             name,

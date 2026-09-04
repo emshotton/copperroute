@@ -10,21 +10,21 @@ use crate::unconnected::{UnconnectedItems, UnconnectedKind};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DrcReportOptions {
-            pub source: String,
-                pub coordinate_unit: String,
-                pub date: String,
-            pub freerouting_version: String,
-                                                        pub quality_score: Option<f32>,
+    pub source: String,
+    pub coordinate_unit: String,
+    pub date: String,
+    pub freerouting_version: String,
+    pub quality_score: Option<f32>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DrcCoordinates {
-        pub transform: CoordinateTransform,
-        pub board_unit: Unit,
+    pub transform: CoordinateTransform,
+    pub board_unit: Unit,
 }
 
 impl DrcCoordinates {
-                                            pub fn convert_coordinate(&self, board_coordinate: f64, coordinate_unit: &str) -> f64 {
+    pub fn convert_coordinate(&self, board_coordinate: f64, coordinate_unit: &str) -> f64 {
         let dsn_coordinate = self.transform.board_to_dsn(board_coordinate);
 
         let target_unit = match coordinate_unit {
@@ -43,7 +43,7 @@ impl DrcCoordinates {
 }
 
 impl DesignRulesChecker<'_> {
-                                                                    pub fn generate_report(
+    pub fn generate_report(
         &mut self,
         coords: &DrcCoordinates,
         options: &DrcReportOptions,

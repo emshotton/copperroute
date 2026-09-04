@@ -6,7 +6,6 @@ use fr_drc::report::{
 use fr_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
 use fr_geometry::{Area, IntBox, IntPoint, IntVector, Point, Polyline, Shape, TileShape};
 
-
 const DEV_BOARD: &str = "Issue575-drc_dev-board_4_hole_clearance_violations.dsn";
 const BBD_MARS_64: &str = "Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn";
 const NATURAL_TONE_PREAMP: &str = "Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.dsn";
@@ -56,7 +55,6 @@ fn report_for(fixture: &str, unit: &str) -> KiCadDrcReport {
     };
     DesignRulesChecker::new(&mut board).generate_report(&coords, &options(fixture, unit))
 }
-
 
 #[test]
 fn dev_board_report_shape() {
@@ -163,7 +161,6 @@ fn a_dangling_track_carries_the_detailed_description() {
         "Track [GND] on F.Cu, length 1.4000 mm"
     );
 }
-
 
 fn render(report: &KiCadDrcReport) -> String {
     let mut out = String::new();
@@ -294,7 +291,6 @@ fn natural_tone_preamp_is_the_jvms_maximal_run_minus_three_dangling_tracks() {
     assert_eq!(missing_uuids, vec!["1909", "1696", "1242"]);
 }
 
-
 #[test]
 fn coordinates_are_in_a_plausible_mm_range() {
     if !parity::require_java_dir() {
@@ -393,7 +389,6 @@ fn percent_four_f_uses_a_dot() {
     assert!(has_comma_decimal("expected: 0,0500 mm"));
 }
 
-
 #[test]
 fn smd_pins_are_classified_as_holes() {
     let mut board = smd_pad_board();
@@ -422,7 +417,6 @@ fn smd_pins_are_classified_as_holes() {
     );
 }
 
-
 #[test]
 fn item_description_maps_every_item_variant() {
     let (board, ids) = all_variants_board();
@@ -442,7 +436,6 @@ fn item_description_maps_every_item_variant() {
         ],
     );
 }
-
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -559,7 +552,7 @@ fn all_variants_board() -> Board2 {
     );
     board.rules.nets.add("N1", 1, false, default_class);
 
-    let mut ids = vec![ItemId(1)]; 
+    let mut ids = vec![ItemId(1)];
     ids.push(
         board
             .insert_trace_without_cleaning(

@@ -1,11 +1,10 @@
-
 use std::sync::{Arc, Mutex};
 
 use fr_router::pipeline::{ProgressSink, RoutingEvent};
 
 #[derive(Clone)]
 pub struct SyncProgressSink {
-                #[allow(clippy::type_complexity)]
+    #[allow(clippy::type_complexity)]
     handler: Option<Arc<Mutex<dyn FnMut(&RoutingEvent) + Send>>>,
 }
 
@@ -31,25 +30,25 @@ impl Default for SyncProgressSink {
 }
 
 impl SyncProgressSink {
-            pub fn noop() -> SyncProgressSink {
+    pub fn noop() -> SyncProgressSink {
         SyncProgressSink { handler: None }
     }
 
-            pub fn new(f: impl FnMut(&RoutingEvent) + Send + 'static) -> SyncProgressSink {
+    pub fn new(f: impl FnMut(&RoutingEvent) + Send + 'static) -> SyncProgressSink {
         SyncProgressSink {
             handler: Some(Arc::new(Mutex::new(f))),
         }
     }
 
-            pub fn is_noop(&self) -> bool {
+    pub fn is_noop(&self) -> bool {
         self.handler.is_none()
     }
 
-                    pub fn as_pipeline_sink(&self) -> SyncProgressSinkView<'_> {
+    pub fn as_pipeline_sink(&self) -> SyncProgressSinkView<'_> {
         SyncProgressSinkView { sink: self }
     }
 
-                            pub fn emit(&self, event: &RoutingEvent) {
+    pub fn emit(&self, event: &RoutingEvent) {
         let Some(handler) = self.handler.as_ref() else {
             return;
         };

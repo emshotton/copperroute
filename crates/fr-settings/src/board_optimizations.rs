@@ -4,7 +4,7 @@ use fr_geometry::java_round;
 use crate::{LayerSettings, RouterSettings, ScoringSettings};
 
 impl RouterSettings {
-                                            pub fn apply_board_specific_optimizations_if_needed(&mut self, board: &Board) {
+    pub fn apply_board_specific_optimizations_if_needed(&mut self, board: &Board) {
         let board_layer_count = board.get_layer_count();
         if self.get_layer_count() != board_layer_count
             || !self.are_board_specific_trace_costs_applied()
@@ -13,11 +13,11 @@ impl RouterSettings {
         }
     }
 
-            pub fn are_board_specific_trace_costs_applied(&self) -> bool {
+    pub fn are_board_specific_trace_costs_applied(&self) -> bool {
         matches!(self.board_specific_trace_costs_applied, Some(true))
     }
 
-                                                                                                pub fn apply_board_specific_optimizations(&mut self, board: &Board) {
+    pub fn apply_board_specific_optimizations(&mut self, board: &Board) {
         let bounding_box = board.get_bounding_box();
         let horizontal_width = f64::from(bounding_box.width());
         let vertical_width = f64::from(bounding_box.height());

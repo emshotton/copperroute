@@ -3,7 +3,6 @@ use fr_drc::{BoardStatisticsClearanceViolations, DesignRulesChecker};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{Area, IntBox, IntPoint, IntVector, Point, Polyline, Shape, TileShape};
 
-
 fn fixture_board(name: &str) -> Board {
     let path = parity::fixture(name);
     let bytes = std::fs::read(&path)
@@ -69,7 +68,6 @@ fn empty_board_has_no_incompletes() {
     let mut drc = DesignRulesChecker::new(&mut board);
     assert!(drc.get_all_clearance_violations().is_empty());
 }
-
 
 const FIXTURES: [&str; 4] = [
     "Issue575-drc_dev-board_4_hole_clearance_violations",
@@ -159,7 +157,6 @@ fn the_four_fixtures_match_the_jvm() {
         );
     }
 }
-
 
 #[test]
 fn a_multi_net_item_lands_in_every_net_list() {
@@ -312,7 +309,6 @@ fn recalculate_net_incompletes_initialises_and_returns() {
     );
 }
 
-
 #[test]
 fn statistics_block() {
     if !parity::require_java_dir() {
@@ -379,7 +375,6 @@ fn the_serialised_keys_are_gsons() {
         r#"{"total_count":0,"min_violation_um":0.0,"max_violation_um":0.0,"avg_violation_um":0.0}"#,
     );
 }
-
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -460,9 +455,9 @@ fn insert_trace(board: &mut Board, from: (i32, i32), to: (i32, i32), net: i32) -
 
 fn two_net_pin_board() -> Board {
     let mut board = bare_board(&[0, 4000, 8000]);
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(1, 2, vec![2], 1, FixedState::Unfixed); 
-    board.insert_pin(1, 1, vec![1, 2], 1, FixedState::Unfixed); 
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 2, vec![2], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1, 2], 1, FixedState::Unfixed);
     board
 }
 
@@ -476,9 +471,9 @@ fn three_trace_net_board() -> Board {
 
 fn two_group_net_board() -> Board {
     let mut board = bare_board(&[0, 8000, 4000]);
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(1, 2, vec![2], 1, FixedState::Unfixed); 
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 2, vec![2], 1, FixedState::Unfixed);
     board
 }
 

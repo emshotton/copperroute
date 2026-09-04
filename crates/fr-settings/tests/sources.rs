@@ -59,7 +59,6 @@ impl SettingsSource for FixedSource {
     }
 }
 
-
 #[test]
 fn default_settings_only() {
     let host = host();
@@ -163,7 +162,6 @@ fn add_or_replace_sources_replaces_on_the_same_kind() {
     assert_eq!(merger.sources()[1].get_source_name(), "SES file: b.ses");
 }
 
-
 #[test]
 #[allow(clippy::too_many_lines)]
 fn default_settings_pins_every_java_value() {
@@ -187,7 +185,7 @@ fn default_settings_pins_every_java_value() {
     assert_eq!(s.trace_pull_tight_accuracy, Some(500));
     assert_eq!(s.vias_allowed, Some(true));
     assert_eq!(s.automatic_neckdown, Some(true));
-    assert_eq!(s.max_threads, Some(3)); 
+    assert_eq!(s.max_threads, Some(3));
     assert_eq!(s.result_json_path, None);
     assert_eq!(s.layers, None);
     assert_eq!(s.get_layer_count(), 0);
@@ -220,7 +218,7 @@ fn default_settings_pins_every_java_value() {
     );
     assert_eq!(optimizer.max_passes, Some(100));
     assert_eq!(optimizer.max_items, Some(i32::MAX));
-    assert_eq!(optimizer.max_threads, Some(3)); 
+    assert_eq!(optimizer.max_threads, Some(3));
     assert_eq!(optimizer.optimization_improvement_threshold, Some(0.01));
     assert_eq!(optimizer.max_consecutive_failures, Some(50));
     assert_eq!(optimizer.additional_ripup_cost_factor_at_start, Some(10));
@@ -322,7 +320,6 @@ fn default_settings_are_not_mutated_by_a_merge() {
     );
 }
 
-
 #[test]
 fn ses_file_settings_is_a_structural_no_op() {
     let ses = SesFileSettings::new("board.ses");
@@ -354,7 +351,6 @@ fn api_settings_wraps_or_blanks() {
         Some(7)
     );
 }
-
 
 #[test]
 fn rules_file_settings_priority_is_40() {
@@ -452,7 +448,6 @@ fn rules_file_settings_parses_hw48na_rules() {
         Some(&[2.0, 2.0][..])
     );
 }
-
 
 #[test]
 fn dsn_file_settings_seeds_the_layer_count() {
@@ -616,7 +611,6 @@ fn is_fanout_enabled_defaults_to_false_when_absent() {
             .is_fanout_enabled()
     );
 }
-
 
 #[test]
 fn dsn_router_settings_converts_into_router_settings() {

@@ -12,12 +12,11 @@ use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 use parity::{RouterConnectionDoc, RouterMetrics, RouterTraceDoc, RouterViaDoc};
 
-
 struct Row {
     stem: String,
     dsn: String,
     max_items: usize,
-            ripup_pass_no: i32,
+    ripup_pass_no: i32,
 }
 
 fn rows() -> Vec<Row> {
@@ -72,7 +71,6 @@ fn read_reference(stem: &str) -> Vec<RouterConnectionDoc> {
         .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
     parity::parse_router_jsonl(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
-
 
 fn load_board(rel_path: &str) -> Board {
     let path = parity::java_dir().join(rel_path);
@@ -308,9 +306,8 @@ fn corner(p: &fr_geometry::Polyline, i: usize) -> String {
     }
 }
 
-
 struct Ladder {
-        geometry_diffs: Vec<String>,
+    geometry_diffs: Vec<String>,
     connections: usize,
 }
 
@@ -466,7 +463,6 @@ fn check_all_rungs(stem: &str) -> Option<Ladder> {
     Some(ladder)
 }
 
-
 #[test]
 fn router_rpi_splitter() {
     let Some(ladder) = check_all_rungs("router-rpi-splitter") else {
@@ -521,7 +517,6 @@ fn router_ecc83_input() {
     };
     assert_eq!(ladder.connections, 22);
 }
-
 
 #[test]
 fn references_are_from_the_head_jar() {
@@ -598,7 +593,6 @@ fn geometry_is_required_where_it_was_reached() {
         );
     }
 }
-
 
 fn steps18_reference_path(stem: &str) -> std::path::PathBuf {
     parity::reference(stem, "router-steps18.jsonl")

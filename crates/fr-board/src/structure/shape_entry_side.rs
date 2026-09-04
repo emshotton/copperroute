@@ -6,24 +6,24 @@ use crate::items::{Item, PolylineTrace};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ShapeEntrySide {
-                    pub no: i32,
-        pub border_intersection: Option<FloatPoint>,
+    pub no: i32,
+    pub border_intersection: Option<FloatPoint>,
 }
 
 impl ShapeEntrySide {
-        pub const NOT_CALCULATED: ShapeEntrySide = ShapeEntrySide {
+    pub const NOT_CALCULATED: ShapeEntrySide = ShapeEntrySide {
         no: -1,
         border_intersection: None,
     };
 
-            pub fn new(no: i32, border_intersection: Option<FloatPoint>) -> ShapeEntrySide {
+    pub fn new(no: i32, border_intersection: Option<FloatPoint>) -> ShapeEntrySide {
         ShapeEntrySide {
             no,
             border_intersection,
         }
     }
 
-                                pub fn from_polyline(polyline: &Polyline, no: usize, shape: &TileShape) -> ShapeEntrySide {
+    pub fn from_polyline(polyline: &Polyline, no: usize, shape: &TileShape) -> ShapeEntrySide {
         let mut fromside_no: i32 = -1;
         let mut intersection: Option<FloatPoint> = None;
         let mut border_intersection_found = false;
@@ -65,8 +65,8 @@ impl ShapeEntrySide {
         ShapeEntrySide::new(fromside_no, intersection)
     }
 
-                /// Java's `FRLogger.warn("CalcFromSide: this.no >= 0 expected")` (:72) is dropped; the `-1`
-        pub fn from_point(from_point: &Point, shape: &TileShape) -> ShapeEntrySide {
+    /// Java's `FRLogger.warn("CalcFromSide: this.no >= 0 expected")` (:72) is dropped; the `-1`
+    pub fn from_point(from_point: &Point, shape: &TileShape) -> ShapeEntrySide {
         let Some(border_projection) = shape.nearest_border_point(from_point) else {
             return ShapeEntrySide::NOT_CALCULATED;
         };
@@ -76,7 +76,7 @@ impl ShapeEntrySide {
         ShapeEntrySide::new(no, Some(border_projection.to_float()))
     }
 
-                                pub fn from_line_segment(
+    pub fn from_line_segment(
         line_segment: &LineSegment,
         shape: &TileShape,
         shove_to_the_left: bool,
@@ -167,12 +167,12 @@ fn middle_of_side(shape: &TileShape, no: usize, border_line_count: usize) -> Opt
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShapeAndEntrySide {
-        pub shape: TileShape,
-        pub from_side: Option<ShapeEntrySide>,
+    pub shape: TileShape,
+    pub from_side: Option<ShapeEntrySide>,
 }
 
 impl ShapeAndEntrySide {
-                            pub fn new(
+    pub fn new(
         board: &Board,
         trace_id: ItemId,
         index: usize,
@@ -196,7 +196,7 @@ impl ShapeAndEntrySide {
         ))
     }
 
-                                                                    pub fn from_free_trace(
+    pub fn from_free_trace(
         board: &Board,
         trace: &PolylineTrace,
         tree_shape: TileShape,
@@ -207,7 +207,7 @@ impl ShapeAndEntrySide {
         Self::build(board, trace, tree_shape, index, orthogonal, in_shove_check)
     }
 
-                    fn build(
+    fn build(
         board: &Board,
         trace: &PolylineTrace,
         current_shape: TileShape,

@@ -4,7 +4,6 @@ use fr_geometry::{FloatPoint, IntBox};
 use fr_router::ExpansionCostFactor;
 use fr_router::autoroute::maze::DestinationDistance;
 
-
 fn costs_4() -> Vec<ExpansionCostFactor> {
     vec![
         ExpansionCostFactor {
@@ -74,7 +73,6 @@ fn case(tag: &str) -> DestinationDistance {
     }
     d
 }
-
 
 fn transcript() -> String {
     let path =
@@ -200,7 +198,6 @@ fn parse_box_row(line: &str, tag: &str) -> Option<(IntBox, usize, String, String
         again,
     ))
 }
-
 
 #[test]
 fn calculate_cheap_does_not_mutate_the_receiver() {

@@ -40,16 +40,15 @@ pub use unrouted_report::build_unrouted_report;
 
 use fr_board::ItemId;
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NamedAlgorithmType {
-        Router,
+    Router,
     /// `OPTIMIZER` (`:6`) — `BatchOptimizer`.
     Optimizer,
 }
 
 impl NamedAlgorithmType {
-        pub fn ordinal(self) -> i32 {
+    pub fn ordinal(self) -> i32 {
         match self {
             NamedAlgorithmType::Router => 0,
             NamedAlgorithmType::Optimizer => 1,
@@ -59,17 +58,17 @@ impl NamedAlgorithmType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum TaskState {
-        #[default]
+    #[default]
     Idle,
-        Started,
-        Running,
-        Finished,
-        Cancelled,
-            TimedOut,
+    Started,
+    Running,
+    Finished,
+    Cancelled,
+    TimedOut,
 }
 
 impl TaskState {
-        pub fn ordinal(self) -> i32 {
+    pub fn ordinal(self) -> i32 {
         match self {
             TaskState::Idle => 0,
             TaskState::Started => 1,
@@ -81,9 +80,8 @@ impl TaskState {
     }
 }
 
-
 pub trait ProgressSink {
-            fn on_event(&mut self, event: &RoutingEvent) {
+    fn on_event(&mut self, event: &RoutingEvent) {
         let _ = event;
     }
 }
@@ -95,24 +93,24 @@ impl ProgressSink for NoopProgressSink {}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RoutingEvent {
-        TaskStateChanged {
-                algorithm: NamedAlgorithmType,
-                state: TaskState,
+    TaskStateChanged {
+        algorithm: NamedAlgorithmType,
+        state: TaskState,
     },
-            BoardUpdated {
-                counters: RouterCounters,
+    BoardUpdated {
+        counters: RouterCounters,
     },
-            BoardSnapshot {
-                pass: i32,
+    BoardSnapshot {
+        pass: i32,
     },
-                FanoutProgress {
-                        pass: i32,
-                routed: i32,
-                pins_to_go: i32,
+    FanoutProgress {
+        pass: i32,
+        routed: i32,
+        pins_to_go: i32,
     },
-            OptimizerImproved {
-                item: ItemId,
-                score_before: f32,
-                score_after: f32,
+    OptimizerImproved {
+        item: ItemId,
+        score_before: f32,
+        score_after: f32,
     },
 }

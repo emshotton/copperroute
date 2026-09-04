@@ -1,4 +1,3 @@
-
 mod base;
 mod tightener_45;
 mod tightener_90;
@@ -29,13 +28,13 @@ pub use tightener_90::TraceTightener90;
 pub use tightener_any_angle::TraceTightenerAnyAngle;
 
 pub enum TraceTightener<'a> {
-        Ninety(TraceTightener90<'a>),
-        FortyFive(TraceTightener45<'a>),
-        AnyAngle(TraceTightenerAnyAngle<'a>),
+    Ninety(TraceTightener90<'a>),
+    FortyFive(TraceTightener45<'a>),
+    AnyAngle(TraceTightenerAnyAngle<'a>),
 }
 
 impl<'a> TraceTightener<'a> {
-                                    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn get_instance(
         board: &mut Board,
         only_net_no_arr: Vec<i32>,
@@ -66,7 +65,7 @@ impl<'a> TraceTightener<'a> {
         result
     }
 
-        pub(crate) fn base(&self) -> &TightenerBase<'a> {
+    pub(crate) fn base(&self) -> &TightenerBase<'a> {
         match self {
             TraceTightener::Ninety(t) => &t.base,
             TraceTightener::FortyFive(t) => &t.base,
@@ -74,7 +73,7 @@ impl<'a> TraceTightener<'a> {
         }
     }
 
-        pub(crate) fn base_mut(&mut self) -> &mut TightenerBase<'a> {
+    pub(crate) fn base_mut(&mut self) -> &mut TightenerBase<'a> {
         match self {
             TraceTightener::Ninety(t) => &mut t.base,
             TraceTightener::FortyFive(t) => &mut t.base,
@@ -82,15 +81,15 @@ impl<'a> TraceTightener<'a> {
         }
     }
 
-        pub fn only_net_no_arr(&self) -> &[i32] {
+    pub fn only_net_no_arr(&self) -> &[i32] {
         &self.base().only_net_no_arr
     }
 
-        pub fn min_translate_dist(&self) -> i32 {
+    pub fn min_translate_dist(&self) -> i32 {
         self.base().min_translate_dist
     }
 
-                                                                                                            pub fn opt_changed_area(
+    pub fn opt_changed_area(
         &mut self,
         board: &mut Board,
         mut engine: Option<&mut AutorouteEngine>,
@@ -203,7 +202,7 @@ impl<'a> TraceTightener<'a> {
         Ok(())
     }
 
-                                        pub(crate) fn pull_tight_opt(
+    pub(crate) fn pull_tight_opt(
         &mut self,
         board: &mut Board,
         polyline: &Polyline,
@@ -215,7 +214,7 @@ impl<'a> TraceTightener<'a> {
         }
     }
 
-                                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn pull_tight_polyline(
         &mut self,
         board: &mut Board,
@@ -240,7 +239,7 @@ impl<'a> TraceTightener<'a> {
         }
     }
 
-        #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn pull_tight_polyline_opt(
         &mut self,
         board: &mut Board,
@@ -265,7 +264,7 @@ impl<'a> TraceTightener<'a> {
         self.pull_tight_opt(board, polyline)
     }
 
-                    pub fn reposition_lines(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
+    pub fn reposition_lines(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
         match self {
             TraceTightener::Ninety(t) => t.base.reposition_lines(board, polyline),
             TraceTightener::FortyFive(t) => t.base.reposition_lines(board, polyline),
@@ -273,7 +272,7 @@ impl<'a> TraceTightener<'a> {
         }
     }
 
-                pub fn reposition_line(
+    pub fn reposition_line(
         &mut self,
         board: &mut Board,
         lines: &[Line],
@@ -286,7 +285,7 @@ impl<'a> TraceTightener<'a> {
         }
     }
 
-            pub fn skip_segments_of_length_0(
+    pub fn skip_segments_of_length_0(
         &mut self,
         board: &mut Board,
         polyline: &Polyline,
@@ -294,11 +293,11 @@ impl<'a> TraceTightener<'a> {
         self.base_mut().skip_segments_of_length_0(board, polyline)
     }
 
-        pub fn split_traces_at_keep_point(&mut self, board: &mut Board) -> Result<bool, BoardError> {
+    pub fn split_traces_at_keep_point(&mut self, board: &mut Board) -> Result<bool, BoardError> {
         self.base_mut().split_traces_at_keep_point(board)
     }
 
-                                                            pub fn smoothen_start_corner_at_trace(
+    pub fn smoothen_start_corner_at_trace(
         &mut self,
         board: &mut Board,
         trace: ItemId,
@@ -310,7 +309,7 @@ impl<'a> TraceTightener<'a> {
         }
     }
 
-                pub fn smoothen_end_corner_at_trace(
+    pub fn smoothen_end_corner_at_trace(
         &mut self,
         board: &mut Board,
         trace: ItemId,
@@ -322,7 +321,7 @@ impl<'a> TraceTightener<'a> {
         }
     }
 
-            pub fn smoothen_end_corners_at_trace(
+    pub fn smoothen_end_corners_at_trace(
         &mut self,
         board: &mut Board,
         trace: ItemId,
@@ -347,7 +346,7 @@ impl<'a> TraceTightener<'a> {
         self.smoothen_end_corners_at_trace_1(board, trace)
     }
 
-                                        fn smoothen_end_corners_at_trace_1(
+    fn smoothen_end_corners_at_trace_1(
         &mut self,
         board: &mut Board,
         trace: ItemId,
@@ -452,7 +451,7 @@ impl<'a> TraceTightener<'a> {
         Ok(result)
     }
 
-                fn smoothen_end_corners_at_trace_2(
+    fn smoothen_end_corners_at_trace_2(
         &mut self,
         board: &mut Board,
         trace: ItemId,
@@ -496,7 +495,6 @@ impl<'a> TraceTightener<'a> {
         )
     }
 }
-
 
 pub(crate) struct ContactScan {
     pub(crate) acute_angle: bool,
@@ -629,18 +627,17 @@ pub(crate) fn p7t8b_line(l: &Line) -> String {
     format!("({},{})-({},{})", l.a.x, l.a.y, l.b.x, l.b.y)
 }
 
-
 pub trait PolylineTraceExt {
-                                fn pull_tight_with(board: &mut Board, trace: ItemId, algo: &mut TraceTightener<'_>) -> bool;
+    fn pull_tight_with(board: &mut Board, trace: ItemId, algo: &mut TraceTightener<'_>) -> bool;
 
-                fn pull_tight_with_engine(
+    fn pull_tight_with_engine(
         board: &mut Board,
         trace: ItemId,
         algo: &mut TraceTightener<'_>,
         engine: Option<&mut AutorouteEngine>,
     ) -> bool;
 
-                fn pull_tight(
+    fn pull_tight(
         board: &mut Board,
         trace: ItemId,
         own_net_only: bool,
@@ -648,9 +645,9 @@ pub trait PolylineTraceExt {
         stop: StopCheck<'_>,
     ) -> Result<bool, BoardError>;
 
-                                                                fn check_connection_to_pin(board: &Board, trace: ItemId, at_start: bool) -> bool;
+    fn check_connection_to_pin(board: &Board, trace: ItemId, at_start: bool) -> bool;
 
-                                                        fn correct_connection_to_pin(
+    fn correct_connection_to_pin(
         board: &mut Board,
         engine: Option<&mut AutorouteEngine>,
         trace: ItemId,
@@ -658,7 +655,7 @@ pub trait PolylineTraceExt {
         angle_restriction: AngleRestriction,
     ) -> Result<bool, BoardError>;
 
-                                                                fn swap_connection_to_pin(
+    fn swap_connection_to_pin(
         board: &mut Board,
         engine: Option<&mut AutorouteEngine>,
         trace: ItemId,

@@ -7,7 +7,6 @@ use fr_router::autoroute::expansion::RoomRef;
 use fr_router::autoroute::item_info;
 use fr_router::autoroute::maze::engine::AutorouteEngine;
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -10_000,
@@ -98,7 +97,6 @@ fn tree_size(board: &Board, engine: &AutorouteEngine) -> usize {
         .expect("the autoroute tree")
         .size()
 }
-
 
 #[test]
 fn completing_a_seed_room_on_an_empty_board_yields_no_rooms_at_all() {
@@ -211,7 +209,6 @@ fn complete_expansion_room_answers_javas_empty_collection_on_an_injected_failure
     assert_eq!(rooms.len(), 6);
 }
 
-
 #[test]
 fn completing_a_neighbour_restarts_the_iterator() {
     let mut board = bare_board();
@@ -253,7 +250,6 @@ fn completing_a_neighbour_restarts_the_iterator() {
     assert_eq!(engine.rooms.incomplete_rooms.len(), 5, "incomplete=5");
     assert_eq!(tree_size(&board, &engine), 6, "treeSize=6");
 }
-
 
 #[test]
 fn init_connection_on_a_new_net_drops_the_net_dependent_rooms() {
@@ -369,7 +365,6 @@ fn init_connection_leaves_the_rooms_when_maintain_database_is_false() {
     assert_eq!(tree_size(&board, &engine), tree_before);
 }
 
-
 #[test]
 fn clear_empties_the_room_database_the_tree_and_the_items_scratch() {
     let (mut board, mut engine) = net_dependent_run(true);
@@ -447,7 +442,6 @@ fn a_freshly_completed_database_validates() {
     let empty = AutorouteEngine::new(&mut empty_board, 1, false);
     assert!(empty.validate(&empty_board));
 }
-
 
 #[test]
 fn the_room_id_counter_is_consecutive_and_the_stop_check_is_two_tests() {
@@ -642,7 +636,6 @@ fn a_committed_room_survives_the_catch() {
     );
     assert_eq!(rooms.len(), 6);
 }
-
 
 fn one_obstacle_run() -> (Board, AutorouteEngine, Vec<RoomId>) {
     let mut board = bare_board();

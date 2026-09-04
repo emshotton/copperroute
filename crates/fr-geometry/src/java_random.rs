@@ -1,29 +1,29 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct JavaRandom {
-        seed: i64,
+    seed: i64,
 }
 
 impl JavaRandom {
-        const MULTIPLIER: i64 = 0x5DEECE66D_i64;
-        const ADDEND: i64 = 0xB;
-        const MASK: i64 = (1 << 48) - 1;
-            const DOUBLE_UNIT: f64 = 1.0 / ((1_u64 << 53) as f64);
+    const MULTIPLIER: i64 = 0x5DEECE66D_i64;
+    const ADDEND: i64 = 0xB;
+    const MASK: i64 = (1 << 48) - 1;
+    const DOUBLE_UNIT: f64 = 1.0 / ((1_u64 << 53) as f64);
 
-        pub fn new(seed: i64) -> JavaRandom {
+    pub fn new(seed: i64) -> JavaRandom {
         JavaRandom {
             seed: JavaRandom::initial_scramble(seed),
         }
     }
 
-                    pub fn set_seed(&mut self, seed: i64) {
+    pub fn set_seed(&mut self, seed: i64) {
         self.seed = JavaRandom::initial_scramble(seed);
     }
 
-        fn initial_scramble(seed: i64) -> i64 {
+    fn initial_scramble(seed: i64) -> i64 {
         (seed ^ JavaRandom::MULTIPLIER) & JavaRandom::MASK
     }
 
-        fn next(&mut self, bits: u32) -> i32 {
+    fn next(&mut self, bits: u32) -> i32 {
         self.seed = self
             .seed
             .wrapping_mul(JavaRandom::MULTIPLIER)
@@ -32,7 +32,7 @@ impl JavaRandom {
         (self.seed >> (48 - bits)) as i32
     }
 
-                                pub fn next_int(&mut self, bound: i32) -> i32 {
+    pub fn next_int(&mut self, bound: i32) -> i32 {
         assert!(bound > 0, "bound must be positive");
         let mut r = self.next(31);
         let m = bound - 1;
@@ -51,7 +51,7 @@ impl JavaRandom {
         r
     }
 
-                    pub fn next_double(&mut self) -> f64 {
+    pub fn next_double(&mut self) -> f64 {
         let high = self.next(26) as i64;
         let low = self.next(27) as i64;
         (((high) << 27) + low) as f64 * JavaRandom::DOUBLE_UNIT

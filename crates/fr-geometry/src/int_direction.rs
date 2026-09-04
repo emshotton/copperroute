@@ -14,66 +14,66 @@ pub struct IntDirection {
 
 impl IntDirection {
     pub const NULL: IntDirection = IntDirection { x: 0, y: 0 };
-        pub const RIGHT: IntDirection = IntDirection { x: 1, y: 0 };
-        pub const RIGHT45: IntDirection = IntDirection { x: 1, y: 1 };
-        pub const UP: IntDirection = IntDirection { x: 0, y: 1 };
-        pub const UP45: IntDirection = IntDirection { x: -1, y: 1 };
-        pub const LEFT: IntDirection = IntDirection { x: -1, y: 0 };
-        pub const LEFT45: IntDirection = IntDirection { x: -1, y: -1 };
-        pub const DOWN: IntDirection = IntDirection { x: 0, y: -1 };
-        pub const DOWN45: IntDirection = IntDirection { x: 1, y: -1 };
+    pub const RIGHT: IntDirection = IntDirection { x: 1, y: 0 };
+    pub const RIGHT45: IntDirection = IntDirection { x: 1, y: 1 };
+    pub const UP: IntDirection = IntDirection { x: 0, y: 1 };
+    pub const UP45: IntDirection = IntDirection { x: -1, y: 1 };
+    pub const LEFT: IntDirection = IntDirection { x: -1, y: 0 };
+    pub const LEFT45: IntDirection = IntDirection { x: -1, y: -1 };
+    pub const DOWN: IntDirection = IntDirection { x: 0, y: -1 };
+    pub const DOWN45: IntDirection = IntDirection { x: 1, y: -1 };
 
-        pub fn new(x: i32, y: i32) -> IntDirection {
+    pub fn new(x: i32, y: i32) -> IntDirection {
         IntDirection { x, y }
     }
 
-        pub fn is_orthogonal(&self) -> bool {
+    pub fn is_orthogonal(&self) -> bool {
         self.x == 0 || self.y == 0
     }
 
-        pub fn is_diagonal(&self) -> bool {
+    pub fn is_diagonal(&self) -> bool {
         self.x.abs() == self.y.abs()
     }
 
-        pub fn is_multiple_of_45_degree(&self) -> bool {
+    pub fn is_multiple_of_45_degree(&self) -> bool {
         self.is_orthogonal() || self.is_diagonal()
     }
 
-        pub fn get_vector(&self) -> IntVector {
+    pub fn get_vector(&self) -> IntVector {
         IntVector::new(self.x, self.y)
     }
 
-        pub fn opposite(&self) -> IntDirection {
+    pub fn opposite(&self) -> IntDirection {
         IntDirection::new(-self.x, -self.y)
     }
 
-                                pub fn turn_45_degree(&self, factor: i32) -> IntDirection {
+    pub fn turn_45_degree(&self, factor: i32) -> IntDirection {
         match factor % 8 {
-            0 => IntDirection::new(self.x, self.y), 
-            1 => IntDirection::new(self.x - self.y, self.x + self.y), 
-            2 => IntDirection::new(-self.y, self.x), 
-            3 => IntDirection::new(-self.x - self.y, self.x - self.y), 
-            4 => IntDirection::new(-self.x, -self.y), 
-            5 => IntDirection::new(self.y - self.x, -self.x - self.y), 
-            6 => IntDirection::new(self.y, -self.x), 
-            7 => IntDirection::new(self.x + self.y, self.y - self.x), 
+            0 => IntDirection::new(self.x, self.y),
+            1 => IntDirection::new(self.x - self.y, self.x + self.y),
+            2 => IntDirection::new(-self.y, self.x),
+            3 => IntDirection::new(-self.x - self.y, self.x - self.y),
+            4 => IntDirection::new(-self.x, -self.y),
+            5 => IntDirection::new(self.y - self.x, -self.x - self.y),
+            6 => IntDirection::new(self.y, -self.x),
+            7 => IntDirection::new(self.x + self.y, self.y - self.x),
             _ => IntDirection::new(0, 0),
         }
     }
 
-            pub fn determinant(&self, other: &IntDirection) -> i64 {
+    pub fn determinant(&self, other: &IntDirection) -> i64 {
         self.x as i64 * other.y as i64 - self.y as i64 * other.x as i64
     }
 
-                    pub fn side_of(&self, other: &IntDirection) -> Side {
+    pub fn side_of(&self, other: &IntDirection) -> Side {
         self.get_vector().side_of(&other.get_vector())
     }
 
-                pub fn projection(&self, other: &IntDirection) -> Signum {
+    pub fn projection(&self, other: &IntDirection) -> Signum {
         self.get_vector().projection(&other.get_vector())
     }
 
-                    pub fn compare_from(&self, p1: &IntDirection, p2: &IntDirection) -> Ordering {
+    pub fn compare_from(&self, p1: &IntDirection, p2: &IntDirection) -> Ordering {
         if p1.compare_to(self) != Ordering::Less {
             if p2.compare_to(self) != Ordering::Less {
                 p1.compare_to(p2)
@@ -87,7 +87,7 @@ impl IntDirection {
         }
     }
 
-                    pub fn middle_approx(&self, other: &IntDirection) -> IntDirection {
+    pub fn middle_approx(&self, other: &IntDirection) -> IntDirection {
         let v1 = self.get_vector().to_float();
         let v2 = other.get_vector().to_float();
         let length1 = v1.size();
@@ -102,13 +102,13 @@ impl IntDirection {
         vm.to_normalized_direction()
     }
 
-        pub fn angle_approx(&self) -> f64 {
+    pub fn angle_approx(&self) -> f64 {
         self.get_vector().angle_approx()
     }
 }
 
 impl IntDirection {
-                                                fn compare_direct(receiver: &IntDirection, param: &IntDirection) -> Ordering {
+    fn compare_direct(receiver: &IntDirection, param: &IntDirection) -> Ordering {
         if receiver.y > 0 {
             if param.y < 0 {
                 return Ordering::Less;
@@ -149,13 +149,13 @@ impl IntDirection {
         }
     }
 
-                                                                    pub fn compare_to(&self, other: &IntDirection) -> Ordering {
+    pub fn compare_to(&self, other: &IntDirection) -> Ordering {
         Self::compare_direct(other, self).reverse()
     }
 }
 
 impl PartialEq for IntDirection {
-                                                                    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         (self.x == other.x && self.y == other.y)
             || (self.side_of(other) == Side::Collinear
                 && self.projection(other) == Signum::Positive)
@@ -165,7 +165,7 @@ impl PartialEq for IntDirection {
 impl Eq for IntDirection {}
 
 impl Hash for IntDirection {
-                    fn hash<H: Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         let gcd = crate::bigint_aux::binary_gcd(self.x.abs(), self.y.abs());
         let normalized = if gcd > 0 {
             (self.x / gcd, self.y / gcd)
@@ -177,7 +177,7 @@ impl Hash for IntDirection {
 }
 
 impl fmt::Display for IntDirection {
-                                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = if self.compare_to(&IntDirection::RIGHT) == Ordering::Equal {
             "RIGHT"
         } else if self.compare_to(&IntDirection::RIGHT45) == Ordering::Equal {
@@ -303,7 +303,7 @@ mod tests {
     #[test]
     fn display_names() {
         assert_eq!(IntDirection::UP45.to_string(), "UP-LEFT");
-        assert_eq!(IntDirection::new(2, 2).to_string(), "UP-RIGHT"); 
+        assert_eq!(IntDirection::new(2, 2).to_string(), "UP-RIGHT");
         assert_eq!(IntDirection::new(5, 1).to_string(), "UNKNOWN");
     }
 

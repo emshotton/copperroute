@@ -62,7 +62,7 @@ fn to_string_breaks_exact_ties_to_an_even_last_digit() {
     assert_eq!(java_double_to_string(tied), "1.0559870148965022E15");
     assert_eq!(java_double_to_string(-tied), "-1.0559870148965022E15");
 
-    let tied_float = f32::from_bits(0x4825_ebe8); 
+    let tied_float = f32::from_bits(0x4825_ebe8);
     assert_eq!(format!("{tied_float:e}"), "1.6990363e5");
     assert_eq!(java_float_to_string(tied_float), "169903.62");
 

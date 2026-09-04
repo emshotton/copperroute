@@ -23,52 +23,49 @@ use crate::score::BoardStatistics;
 
 #[derive(Debug)]
 pub struct BatchAutorouter<'a> {
-        settings: &'a RouterSettings,
+    settings: &'a RouterSettings,
 
-                remove_unconnected_vias: bool,
-        trace_costs: Vec<ExpansionCostFactor>,
-                                retain_autoroute_database: bool,
-        start_ripup_costs: i32,
-        trace_pull_tight_accuracy: i32,
+    remove_unconnected_vias: bool,
+    trace_costs: Vec<ExpansionCostFactor>,
+    retain_autoroute_database: bool,
+    start_ripup_costs: i32,
+    trace_pull_tight_accuracy: i32,
 
-            pub total_items_routed: i32,
-            pub fanout_timed_out: bool,
-        pub initial_unrouted_count: i32,
-                pub session_start_time: Option<Instant>,
-            pub is_optimizer_autorouter: bool,
+    pub total_items_routed: i32,
+    pub fanout_timed_out: bool,
+    pub initial_unrouted_count: i32,
+    pub session_start_time: Option<Instant>,
+    pub is_optimizer_autorouter: bool,
 
-                    board_update_gate: ProgressThrottler,
-                pub progress_statistics: Option<BoardStatistics>,
-        pub progress_items_since_statistics: i32,
+    board_update_gate: ProgressThrottler,
+    pub progress_statistics: Option<BoardStatistics>,
+    pub progress_items_since_statistics: i32,
 
-                    budget: RouterBudget,
+    budget: RouterBudget,
 }
 
 impl<'a> BatchAutorouter<'a> {
+    pub const BOARD_RANK_LIMIT: usize = BoardHistory::MAX_HISTORY_SIZE;
+    pub const MAXIMUM_TRIES_ON_THE_SAME_BOARD: i32 = 3;
+    pub const TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP: i32 = 1000;
+    pub const STOP_AT_PASS_MINIMUM: i32 = 8;
+    pub const STOP_AT_PASS_MODULO: i32 = 4;
+    pub const STAGNATION_PASS_LIMIT: i32 = 10;
+    pub const FANOUT_RECOVERY_STAGNATION_PASSES: i32 = 3;
+    pub const PROGRESS_STATISTICS_ITEM_INTERVAL: i32 = 10;
+    pub const STAGNATION_SCORE_THRESHOLD: f32 = 0.5;
 
-                        pub const BOARD_RANK_LIMIT: usize = BoardHistory::MAX_HISTORY_SIZE;
-        pub const MAXIMUM_TRIES_ON_THE_SAME_BOARD: i32 = 3;
-                    pub const TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP: i32 = 1000;
-            pub const STOP_AT_PASS_MINIMUM: i32 = 8;
-        pub const STOP_AT_PASS_MODULO: i32 = 4;
-        pub const STAGNATION_PASS_LIMIT: i32 = 10;
-        pub const FANOUT_RECOVERY_STAGNATION_PASSES: i32 = 3;
-        pub const PROGRESS_STATISTICS_ITEM_INTERVAL: i32 = 10;
-            pub const STAGNATION_SCORE_THRESHOLD: f32 = 0.5;
+    pub const BENCHMARK_PROFILE_ENABLED: bool = false;
 
-                                pub const BENCHMARK_PROFILE_ENABLED: bool = false;
+    pub const BENCHMARK_RETAIN_AUTOROUTE_DATABASE: bool = false;
 
-                                                            pub const BENCHMARK_RETAIN_AUTOROUTE_DATABASE: bool = false;
+    pub const ID: &'static str = "freerouting-router";
+    pub const NAME: &'static str = "Freerouting Auto-router";
+    pub const VERSION: &'static str = "1.0";
+    pub const DESCRIPTION: &'static str = "Freerouting Auto-router v1.0";
+    pub const TYPE: NamedAlgorithmType = NamedAlgorithmType::Router;
 
-
-        pub const ID: &'static str = "freerouting-router";
-        pub const NAME: &'static str = "Freerouting Auto-router";
-        pub const VERSION: &'static str = "1.0";
-        pub const DESCRIPTION: &'static str = "Freerouting Auto-router v1.0";
-        pub const TYPE: NamedAlgorithmType = NamedAlgorithmType::Router;
-
-
-                                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         board: &Board,
         settings: &'a RouterSettings,
@@ -113,7 +110,7 @@ impl<'a> BatchAutorouter<'a> {
         }
     }
 
-                                                            pub fn for_routing_job(
+    pub fn for_routing_job(
         board: &Board,
         settings: &'a RouterSettings,
         budget: RouterBudget,
@@ -129,53 +126,51 @@ impl<'a> BatchAutorouter<'a> {
         )
     }
 
-
-        pub fn is_benchmark_profile_enabled() -> bool {
+    pub fn is_benchmark_profile_enabled() -> bool {
         BatchAutorouter::BENCHMARK_PROFILE_ENABLED
     }
 
-        pub fn is_remove_unconnected_vias(&self) -> bool {
+    pub fn is_remove_unconnected_vias(&self) -> bool {
         self.remove_unconnected_vias
     }
 
-        pub fn get_trace_costs(&self) -> &[ExpansionCostFactor] {
+    pub fn get_trace_costs(&self) -> &[ExpansionCostFactor] {
         &self.trace_costs
     }
 
-            pub fn is_retain_autoroute_database(&self) -> bool {
+    pub fn is_retain_autoroute_database(&self) -> bool {
         self.retain_autoroute_database
     }
 
-        pub fn get_start_ripup_costs(&self) -> i32 {
+    pub fn get_start_ripup_costs(&self) -> i32 {
         self.start_ripup_costs
     }
 
-        pub fn get_trace_pull_tight_accuracy(&self) -> i32 {
+    pub fn get_trace_pull_tight_accuracy(&self) -> i32 {
         self.trace_pull_tight_accuracy
     }
 
-        pub fn is_fanout_timed_out(&self) -> bool {
+    pub fn is_fanout_timed_out(&self) -> bool {
         self.fanout_timed_out
     }
 
-        pub fn get_initial_unrouted_count(&self) -> i32 {
+    pub fn get_initial_unrouted_count(&self) -> i32 {
         self.initial_unrouted_count
     }
 
-        pub fn get_session_start_time(&self) -> Option<Instant> {
+    pub fn get_session_start_time(&self) -> Option<Instant> {
         self.session_start_time
     }
 
-        pub fn settings(&self) -> &'a RouterSettings {
+    pub fn settings(&self) -> &'a RouterSettings {
         self.settings
     }
 
-        pub fn budget(&self) -> RouterBudget {
+    pub fn budget(&self) -> RouterBudget {
         self.budget
     }
 
-
-                                                                                        pub fn impacted_points(board: &Board, item: ItemId) -> Vec<Point> {
+    pub fn impacted_points(board: &Board, item: ItemId) -> Vec<Point> {
         let ctx = board.ctx();
         match board.get_item(item) {
             Some(Item::Trace(trace)) => {
@@ -194,8 +189,7 @@ impl<'a> BatchAutorouter<'a> {
         }
     }
 
-
-                                                                                                        pub fn enforce_strict_drc(
+    pub fn enforce_strict_drc(
         board: &mut Board,
         route_net_no: i32,
         max_item_id_before: ItemId,
@@ -230,17 +224,15 @@ impl<'a> BatchAutorouter<'a> {
         ))
     }
 
-
-                                                        pub fn should_fire_board_update(&self) -> bool {
+    pub fn should_fire_board_update(&self) -> bool {
         self.board_update_gate.should_update()
     }
 
-            pub fn should_fire_board_update_at(&self, now: Instant) -> bool {
+    pub fn should_fire_board_update_at(&self, now: Instant) -> bool {
         self.board_update_gate.should_update_at(now)
     }
 
-
-                                                                                    pub fn remove_tails(
+    pub fn remove_tails(
         &self,
         board: &mut Board,
         engine: Option<&mut AutorouteEngine>,
@@ -260,8 +252,7 @@ impl<'a> BatchAutorouter<'a> {
         )
     }
 
-
-                            #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn autoroute_item(
         &self,
         board: &mut Board,
@@ -291,12 +282,11 @@ impl<'a> BatchAutorouter<'a> {
         )
     }
 
-
-                                                                                                                                                                                                    pub fn autoroute_items(&self, board: &Board) -> Vec<(ItemId, i32)> {
+    pub fn autoroute_items(&self, board: &Board) -> Vec<(ItemId, i32)> {
         self.autoroute_items_with_handled(board).0
     }
 
-                                                                                                                    pub fn autoroute_items_with_handled(
+    pub fn autoroute_items_with_handled(
         &self,
         board: &Board,
     ) -> (Vec<(ItemId, i32)>, BTreeSet<ItemId>) {
@@ -362,8 +352,7 @@ impl<'a> BatchAutorouter<'a> {
         (autoroute_item_list, handled_items)
     }
 
-
-                                pub fn autoroute_pass(
+    pub fn autoroute_pass(
         &mut self,
         board: &mut Board,
         failure_log: &mut RoutingFailureLog,
@@ -374,8 +363,7 @@ impl<'a> BatchAutorouter<'a> {
         AutoroutePassRunner::run_single_thread(board, self, failure_log, pass_no, stop, progress)
     }
 
-
-                                                                                                                                                                                                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn autoroute_passes_for_optimizing_item(
         board: &mut Board,
         settings: &RouterSettings,
@@ -425,14 +413,11 @@ impl<'a> BatchAutorouter<'a> {
         Ok(current_pass_no)
     }
 
-
-                                        pub fn calculate_incomplete_count(board: &mut Board) -> usize {
+    pub fn calculate_incomplete_count(board: &mut Board) -> usize {
         let mut temp_drc = DesignRulesChecker::new(board);
         temp_drc.calculate_all_incompletes();
         temp_drc.get_incomplete_count()
     }
 }
-
-
 
 pub type BatchAutorouterStop = RouterStop;

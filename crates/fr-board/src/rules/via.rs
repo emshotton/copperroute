@@ -8,15 +8,15 @@ use super::PadstackLookup;
 
 #[derive(Clone, Eq)]
 pub struct ViaInfo {
-        name: String,
-        padstack: PadstackId,
-        clearance_class_index: usize,
-        attach_smd_allowed: bool,
-                                                                                    serial: Option<NonZeroU64>,
+    name: String,
+    padstack: PadstackId,
+    clearance_class_index: usize,
+    attach_smd_allowed: bool,
+    serial: Option<NonZeroU64>,
 }
 
 impl ViaInfo {
-            pub fn new(
+    pub fn new(
         name: impl Into<String>,
         padstack: PadstackId,
         clearance_class_index: usize,
@@ -31,43 +31,43 @@ impl ViaInfo {
         }
     }
 
-                                pub fn is_same_object(&self, other: &ViaInfo) -> bool {
+    pub fn is_same_object(&self, other: &ViaInfo) -> bool {
         self.serial.is_some() && self.serial == other.serial
     }
 
-        pub fn get_name(&self) -> &str {
+    pub fn get_name(&self) -> &str {
         &self.name
     }
 
-        pub fn set_name(&mut self, name: impl Into<String>) {
+    pub fn set_name(&mut self, name: impl Into<String>) {
         self.name = name.into();
     }
 
-        pub fn get_padstack(&self) -> PadstackId {
+    pub fn get_padstack(&self) -> PadstackId {
         self.padstack
     }
 
-        pub fn set_padstack(&mut self, padstack: PadstackId) {
+    pub fn set_padstack(&mut self, padstack: PadstackId) {
         self.padstack = padstack;
     }
 
-        pub fn get_clearance_class_index(&self) -> usize {
+    pub fn get_clearance_class_index(&self) -> usize {
         self.clearance_class_index
     }
 
-        pub fn set_clearance_class_index(&mut self, clearance_class_index: usize) {
+    pub fn set_clearance_class_index(&mut self, clearance_class_index: usize) {
         self.clearance_class_index = clearance_class_index;
     }
 
-        pub fn attach_smd_allowed(&self) -> bool {
+    pub fn attach_smd_allowed(&self) -> bool {
         self.attach_smd_allowed
     }
 
-        pub fn set_attach_smd_allowed(&mut self, attach_smd_allowed: bool) {
+    pub fn set_attach_smd_allowed(&mut self, attach_smd_allowed: bool) {
         self.attach_smd_allowed = attach_smd_allowed;
     }
 
-                                    pub fn compare_to(&self, other: &ViaInfo) -> Ordering {
+    pub fn compare_to(&self, other: &ViaInfo) -> Ordering {
         self.name.cmp(&other.name)
     }
 }
@@ -100,8 +100,8 @@ impl fmt::Display for ViaInfo {
 
 #[derive(Debug, Clone, Eq)]
 pub struct ViaInfos {
-        list: Vec<ViaInfo>,
-                                next_serial: NonZeroU64,
+    list: Vec<ViaInfo>,
+    next_serial: NonZeroU64,
 }
 
 impl Default for ViaInfos {
@@ -120,11 +120,11 @@ impl PartialEq for ViaInfos {
 }
 
 impl ViaInfos {
-        pub fn new() -> ViaInfos {
+    pub fn new() -> ViaInfos {
         ViaInfos::default()
     }
 
-                                                            pub fn add(&mut self, mut via_info: ViaInfo) -> bool {
+    pub fn add(&mut self, mut via_info: ViaInfo) -> bool {
         if self.name_exists(via_info.get_name()) {
             return false;
         }
@@ -137,35 +137,35 @@ impl ViaInfos {
         true
     }
 
-        pub fn count(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.list.len()
     }
 
-            pub fn get(&self, index: ViaInfoId) -> &ViaInfo {
+    pub fn get(&self, index: ViaInfoId) -> &ViaInfo {
         &self.list[index.0]
     }
 
-        pub fn get_mut(&mut self, index: ViaInfoId) -> &mut ViaInfo {
+    pub fn get_mut(&mut self, index: ViaInfoId) -> &mut ViaInfo {
         &mut self.list[index.0]
     }
 
-            pub fn get_by_name(&self, name: &str) -> Option<&ViaInfo> {
+    pub fn get_by_name(&self, name: &str) -> Option<&ViaInfo> {
         self.get_no(name).map(|id| self.get(id))
     }
 
-            pub fn get_no(&self, name: &str) -> Option<ViaInfoId> {
+    pub fn get_no(&self, name: &str) -> Option<ViaInfoId> {
         self.list.iter().position(|v| v.name == name).map(ViaInfoId)
     }
 
-            pub fn iter(&self) -> std::slice::Iter<'_, ViaInfo> {
+    pub fn iter(&self) -> std::slice::Iter<'_, ViaInfo> {
         self.list.iter()
     }
 
-        pub fn name_exists(&self, name: &str) -> bool {
+    pub fn name_exists(&self, name: &str) -> bool {
         self.get_no(name).is_some()
     }
 
-                                                                                pub fn remove(&mut self, index: ViaInfoId) -> bool {
+    pub fn remove(&mut self, index: ViaInfoId) -> bool {
         if index.0 >= self.list.len() {
             return false;
         }
@@ -175,7 +175,7 @@ impl ViaInfos {
 }
 
 impl super::BoardRules {
-                                                                                                    pub fn replace_via_info(&mut self, old_id: ViaInfoId, new_info: ViaInfo) -> ViaInfoId {
+    pub fn replace_via_info(&mut self, old_id: ViaInfoId, new_info: ViaInfo) -> ViaInfoId {
         assert!(
             self.via_infos.remove(old_id),
             "replace_via_info: old_id {} out of range",
@@ -188,7 +188,7 @@ impl super::BoardRules {
         ViaInfoId(self.via_infos.count() - 1)
     }
 
-                                                                                                                            pub fn replace_via_rule(&mut self, old_id: ViaRuleId, new_rule: ViaRule) -> ViaRuleId {
+    pub fn replace_via_rule(&mut self, old_id: ViaRuleId, new_rule: ViaRule) -> ViaRuleId {
         assert!(
             old_id.0 < self.via_rules.len(),
             "replace_via_rule: old_id {} out of range",
@@ -202,27 +202,27 @@ impl super::BoardRules {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ViaRule {
-        pub name: String,
-            vias: Vec<ViaInfo>,
+    pub name: String,
+    vias: Vec<ViaInfo>,
 }
 
 impl ViaRule {
-        pub fn new(name: impl Into<String>) -> ViaRule {
+    pub fn new(name: impl Into<String>) -> ViaRule {
         ViaRule {
             name: name.into(),
             vias: Vec::new(),
         }
     }
 
-                            pub fn empty() -> ViaRule {
+    pub fn empty() -> ViaRule {
         ViaRule::new("empty")
     }
 
-            pub fn append_via(&mut self, via: ViaInfo) {
+    pub fn append_via(&mut self, via: ViaInfo) {
         self.vias.push(via);
     }
 
-                                                            pub fn remove_via(&mut self, via: &ViaInfo) -> bool {
+    pub fn remove_via(&mut self, via: &ViaInfo) -> bool {
         match self.vias.iter().position(|v| v == via) {
             Some(index) => {
                 self.vias.remove(index);
@@ -232,27 +232,27 @@ impl ViaRule {
         }
     }
 
-        pub fn via_count(&self) -> usize {
+    pub fn via_count(&self) -> usize {
         self.vias.len()
     }
 
-                                            pub fn get_via(&self, index: usize) -> &ViaInfo {
+    pub fn get_via(&self, index: usize) -> &ViaInfo {
         &self.vias[index]
     }
 
-            pub fn iter(&self) -> std::slice::Iter<'_, ViaInfo> {
+    pub fn iter(&self) -> std::slice::Iter<'_, ViaInfo> {
         self.vias.iter()
     }
 
-                                                                                                                                                            pub fn contains(&self, via_info: &ViaInfo) -> bool {
+    pub fn contains(&self, via_info: &ViaInfo) -> bool {
         self.vias.iter().any(|v| v.is_same_object(via_info))
     }
 
-                pub fn contains_padstack(&self, padstack: PadstackId) -> bool {
+    pub fn contains_padstack(&self, padstack: PadstackId) -> bool {
         self.vias.iter().any(|v| v.get_padstack() == padstack)
     }
 
-                        pub fn get_layer_range(
+    pub fn get_layer_range(
         &self,
         from_layer: i32,
         to_layer: i32,
@@ -276,7 +276,7 @@ impl fmt::Display for ViaRule {
 mod tests {
     use super::*;
 
-            struct TestPadstacks;
+    struct TestPadstacks;
 
     impl PadstackLookup for TestPadstacks {
         fn padstack_from_layer(&self, padstack: PadstackId) -> i32 {
@@ -328,7 +328,7 @@ mod tests {
         assert!(!infos.remove(ViaInfoId(7)));
     }
 
-                            #[test]
+    #[test]
     fn replace_via_info_leaves_every_rule_alone() {
         let layer_structure = crate::structure::LayerStructure::new(vec![
             crate::structure::Layer::new("F.Cu", true),
@@ -347,9 +347,9 @@ mod tests {
             .via_infos
             .add(ViaInfo::new("C", PadstackId(3), 1, false));
         let mut rule = ViaRule::new("r");
-        rule.append_via(rules.via_infos.get(ViaInfoId(0)).clone()); 
-        rule.append_via(rules.via_infos.get(ViaInfoId(2)).clone()); 
-        rule.append_via(rules.via_infos.get(ViaInfoId(1)).clone()); 
+        rule.append_via(rules.via_infos.get(ViaInfoId(0)).clone());
+        rule.append_via(rules.via_infos.get(ViaInfoId(2)).clone());
+        rule.append_via(rules.via_infos.get(ViaInfoId(1)).clone());
         rules.via_rules.push(rule);
 
         let old_id = rules.via_infos.get_no("A").expect("A is present");
@@ -368,7 +368,7 @@ mod tests {
         assert!(!rule.get_via(0).attach_smd_allowed());
     }
 
-                    #[test]
+    #[test]
     fn a_via_rule_holds_its_own_copy() {
         let mut infos = via_infos();
         let mut rule = ViaRule::new("r");
@@ -383,7 +383,7 @@ mod tests {
         assert_eq!(rule.get_via(0).get_clearance_class_index(), 1);
     }
 
-            #[test]
+    #[test]
     fn remove_via_removes_the_first_equal_element() {
         let a = ViaInfo::new("a", PadstackId(0), 1, false);
         let b = ViaInfo::new("b", PadstackId(1), 1, false);
@@ -403,7 +403,7 @@ mod tests {
         assert!(!rule.remove_via(&a));
     }
 
-                                                #[test]
+    #[test]
     fn a_rule_cannot_hold_two_equal_via_infos() {
         let layer_structure = crate::structure::LayerStructure::new(vec![
             crate::structure::Layer::new("F.Cu", true),
@@ -449,7 +449,7 @@ mod tests {
         }
     }
 
-                        #[test]
+    #[test]
     fn replace_via_rule_leaves_every_net_class_holding_what_it_held() {
         let layer_structure = crate::structure::LayerStructure::new(vec![
             crate::structure::Layer::new("F.Cu", true),

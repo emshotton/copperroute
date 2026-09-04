@@ -18,11 +18,10 @@ use crate::score::BoardStatistics;
 
 pub const PORT_OPTIMIZER_ROUTE_WORK_BUDGET: i64 = 1800;
 
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ReadSortedRouteItems {
-        pub min_item_coor: FloatPoint,
-        pub min_item_layer: i32,
+    pub min_item_coor: FloatPoint,
+    pub min_item_layer: i32,
 }
 
 impl Default for ReadSortedRouteItems {
@@ -32,7 +31,7 @@ impl Default for ReadSortedRouteItems {
 }
 
 impl ReadSortedRouteItems {
-                        #[must_use]
+    #[must_use]
     pub fn new() -> ReadSortedRouteItems {
         ReadSortedRouteItems {
             min_item_coor: FloatPoint {
@@ -43,7 +42,7 @@ impl ReadSortedRouteItems {
         }
     }
 
-                                                                                                                                #[must_use]
+    #[must_use]
     pub fn next(&mut self, board: &Board) -> Option<ItemId> {
         let mut result: Option<ItemId> = None;
         let mut current_min_coor = FloatPoint {
@@ -147,7 +146,7 @@ impl ReadSortedRouteItems {
         result
     }
 
-            #[must_use]
+    #[must_use]
     pub fn get_current_position(&self) -> FloatPoint {
         self.min_item_coor
     }
@@ -157,24 +156,23 @@ fn layer_index(layer: usize) -> i32 {
     i32::try_from(layer).expect("a board layer index fits in an i32")
 }
 
-
 #[derive(Debug)]
 pub struct BatchOptimizer<'a> {
-        pub settings: &'a RouterSettings,
+    pub settings: &'a RouterSettings,
 
-            pub progress_throttler: ProgressThrottler,
-            pub sorted_route_items: Option<ReadSortedRouteItems>,
-                pub use_increased_ripup_costs: bool,
-                pub min_cumulative_trace_length: f64,
-        pub total_items_optimized: i32,
-            /// quantity [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`] bounds. A complete-board item adds 0, so
-        pub total_route_work: i64,
-                                                                            pub deadline: Option<std::time::Instant>,
-        pub is_timed_out: bool,
+    pub progress_throttler: ProgressThrottler,
+    pub sorted_route_items: Option<ReadSortedRouteItems>,
+    pub use_increased_ripup_costs: bool,
+    pub min_cumulative_trace_length: f64,
+    pub total_items_optimized: i32,
+    /// quantity [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`] bounds. A complete-board item adds 0, so
+    pub total_route_work: i64,
+    pub deadline: Option<std::time::Instant>,
+    pub is_timed_out: bool,
 }
 
 impl<'a> BatchOptimizer<'a> {
-                            #[must_use]
+    #[must_use]
     pub fn new(settings: &'a RouterSettings) -> BatchOptimizer<'a> {
         BatchOptimizer {
             settings,
@@ -189,12 +187,12 @@ impl<'a> BatchOptimizer<'a> {
         }
     }
 
-        #[must_use]
+    #[must_use]
     pub fn is_timed_out(&self) -> bool {
         self.is_timed_out
     }
 
-                                                #[must_use]
+    #[must_use]
     pub fn contains_only_unfixed_traces(board: &Board, item_list: &BTreeSet<ItemId>) -> bool {
         for current_item in item_list.iter().rev() {
             let Some(item) = board.get_item(*current_item) else {
@@ -207,21 +205,21 @@ impl<'a> BatchOptimizer<'a> {
         true
     }
 
-                                        #[must_use]
+    #[must_use]
     pub fn calculate_incomplete_count(board: &mut Board) -> usize {
         let mut temp_drc = DesignRulesChecker::new(board);
         temp_drc.calculate_all_incompletes();
         temp_drc.get_incomplete_count()
     }
 
-            #[must_use]
+    #[must_use]
     pub fn get_current_position(&self) -> Option<FloatPoint> {
         self.sorted_route_items
             .as_ref()
             .map(ReadSortedRouteItems::get_current_position)
     }
 
-                                                                                                                                                                                                                                            #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn opt_route_item(
         &mut self,
         board: &mut Board,
@@ -232,7 +230,6 @@ impl<'a> BatchOptimizer<'a> {
         budget: RouterBudget,
         progress: &mut dyn ProgressSink,
     ) -> Result<ItemRouteResult, RouterError> {
-
         let board_statistics_before = BoardStatistics::with_options(board, None, false);
         let incomplete_count_before =
             count_as_i32(BatchOptimizer::calculate_incomplete_count(board));
@@ -268,7 +265,6 @@ impl<'a> BatchOptimizer<'a> {
             ripped_connections
                 .extend(board.connection_items(*current_item, StopConnectionOption::None));
         }
-
 
         let snapshot = if disable_snapshots {
             None
@@ -391,29 +387,28 @@ fn count_as_i32(value: usize) -> i32 {
     i32::try_from(value).unwrap_or(i32::MAX)
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct OptimizerResult {
-                pub state: TaskState,
-                pub passes_run: i32,
-                                                        pub last_reported_pass: i32,
-                pub items_optimized: i32,
-        pub timed_out: bool,
-        pub per_pass: Vec<OptimizerPassRecord>,
+    pub state: TaskState,
+    pub passes_run: i32,
+    pub last_reported_pass: i32,
+    pub items_optimized: i32,
+    pub timed_out: bool,
+    pub per_pass: Vec<OptimizerPassRecord>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct OptimizerPassRecord {
-        pub pass: i32,
-            pub with_preferred_directions: bool,
-        pub score_before: f32,
-        pub score_after: f32,
-        pub pass_improvement: f64,
-                                        pub force_another_pass: bool,
-            pub use_increased_ripup_costs: bool,
-            pub route_improved: f32,
-        pub total_items_optimized: i32,
-                pub record: PassRecord,
+    pub pass: i32,
+    pub with_preferred_directions: bool,
+    pub score_before: f32,
+    pub score_after: f32,
+    pub pass_improvement: f64,
+    pub force_another_pass: bool,
+    pub use_increased_ripup_costs: bool,
+    pub route_improved: f32,
+    pub total_items_optimized: i32,
+    pub record: PassRecord,
 }
 
 #[must_use]
@@ -437,14 +432,13 @@ pub fn optimizer_route_improved(
 }
 
 impl BatchOptimizer<'_> {
+    pub const ID: &'static str = "freerouting-optimizer";
+    pub const NAME: &'static str = "Freerouting Optimizer";
+    pub const VERSION: &'static str = "1.0";
+    pub const DESCRIPTION: &'static str = "Freerouting Optimizer v1.0";
+    pub const TYPE: NamedAlgorithmType = NamedAlgorithmType::Optimizer;
 
-            pub const ID: &'static str = "freerouting-optimizer";
-        pub const NAME: &'static str = "Freerouting Optimizer";
-        pub const VERSION: &'static str = "1.0";
-        pub const DESCRIPTION: &'static str = "Freerouting Optimizer v1.0";
-        pub const TYPE: NamedAlgorithmType = NamedAlgorithmType::Optimizer;
-
-                                                                        #[must_use]
+    #[must_use]
     pub fn normalize_algorithm(algorithm: &str) -> String {
         if BatchOptimizer::ID != algorithm {
             return BatchOptimizer::ID.to_string();
@@ -452,19 +446,19 @@ impl BatchOptimizer<'_> {
         algorithm.to_string()
     }
 
-        /// budget? See [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`] for the full argument: it bounds the #227
-            #[must_use]
+    /// budget? See [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`] for the full argument: it bounds the #227
+    #[must_use]
     pub fn route_work_budget_spent(&self) -> bool {
         self.total_route_work >= PORT_OPTIMIZER_ROUTE_WORK_BUDGET
     }
 
-                            #[must_use]
+    #[must_use]
     pub fn is_deadline_reached(&self) -> bool {
         self.deadline
             .is_some_and(|deadline| std::time::Instant::now() >= deadline)
     }
 
-                                                                                                                                                                pub fn run_batch_loop(
+    pub fn run_batch_loop(
         &mut self,
         board: &mut Board,
         stop: &RouterStop,
@@ -607,7 +601,7 @@ impl BatchOptimizer<'_> {
         })
     }
 
-                                                                                    pub fn apply_pass_improvement(&mut self, score_before: f32, score_after: f32) -> (f64, bool) {
+    pub fn apply_pass_improvement(&mut self, score_before: f32, score_after: f32) -> (f64, bool) {
         let pass_improvement = if score_before > 0.0 {
             f64::from(score_after - score_before) / f64::from(score_before)
         } else {
@@ -622,7 +616,7 @@ impl BatchOptimizer<'_> {
         (pass_improvement, force_another_pass)
     }
 
-                                                                                                                                                        #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn opt_route_pass(
         &mut self,
         board: &mut Board,
@@ -730,5 +724,3 @@ impl BatchOptimizer<'_> {
         Ok(route_improved)
     }
 }
-
-

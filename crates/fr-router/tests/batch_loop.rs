@@ -16,7 +16,6 @@ use fr_router::score::BoardStatistics;
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, ScoringSettings, SettingsSource};
 
-
 const RPI: &str = "fixtures/Issue143-rpi_splitter.dsn";
 
 const ECC83: &str = "fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn";
@@ -98,7 +97,6 @@ fn scoring_of(settings: &RouterSettings) -> ScoringSettings {
         .expect("DefaultSettings always writes a scoring block")
 }
 
-
 #[test]
 fn a_board_with_no_signal_layer_errors_and_reports_cancelled() {
     if !parity::require_java_dir() {
@@ -179,7 +177,6 @@ fn an_active_non_signal_layer_is_not_routable() {
         "AutorouteBatchLoop.java:46 wants layerActive(i) AND layers[i].isSignal, got {result:?}"
     );
 }
-
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
@@ -297,7 +294,6 @@ fn only_a_pass_that_routes_nothing_reaches_finished() {
     );
 }
 
-
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn max_passes_zero_is_unlimited() {
@@ -347,7 +343,6 @@ fn max_passes_zero_is_unlimited() {
     );
 }
 
-
 #[test]
 fn the_restore_gate_needs_eight_entries_and_a_pass_multiple_of_four() {
     assert_eq!(STOP_AT_PASS_MINIMUM, 8, "BatchAutorouter.java:46");
@@ -380,7 +375,6 @@ fn the_restore_gate_needs_eight_entries_and_a_pass_multiple_of_four() {
         "and only with the flag raised — an empty history at pass 1 opens neither gate"
     );
 }
-
 
 #[test]
 fn the_rank_limit_can_never_fire() {
@@ -524,7 +518,6 @@ fn the_rank_the_loop_tests_is_read_after_restore_boards_reorder() {
     assert!(!rank_limit_exceeded(bh.rank(&restored)));
 }
 
-
 #[test]
 fn the_stagnation_counter_resets_only_from_pass_eight() {
     for pass in 1..STOP_AT_PASS_MINIMUM {
@@ -566,7 +559,6 @@ fn the_stagnation_counter_resets_only_from_pass_eight() {
 
     assert_eq!(STAGNATION_PASS_LIMIT, 10, "BatchAutorouter.java:52");
 }
-
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
@@ -657,7 +649,6 @@ fn an_empty_history_never_swaps() {
     assert_eq!(board.structural_hash(), before);
 }
 
-
 #[test]
 fn the_dead_hash_set_is_javas_only_allocation() {
     let source = include_str!("../src/pipeline/batch_loop.rs");
@@ -672,7 +663,6 @@ fn the_dead_hash_set_is_javas_only_allocation() {
         "the marker must name both commented-out readers, which is what makes the set dead"
     );
 }
-
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
@@ -739,7 +729,6 @@ fn the_stagnation_report_is_discharged_and_names_task_15() {
         ":457 and :487 both call buildUnroutedConnectionsReport"
     );
 }
-
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]

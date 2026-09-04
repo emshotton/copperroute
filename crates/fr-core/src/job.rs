@@ -13,9 +13,8 @@ pub const EAGLE_SCRIPT_FILE_EXTENSION: &str = "scr";
 
 pub const FILE_SEPARATOR: char = '/';
 
-
 pub(crate) mod java_path {
-            pub(crate) fn of_to_string(s: &str) -> String {
+    pub(crate) fn of_to_string(s: &str) -> String {
         let absolute = s.starts_with(super::FILE_SEPARATOR);
         let segments: Vec<&str> = s
             .split(super::FILE_SEPARATOR)
@@ -36,16 +35,16 @@ pub(crate) mod java_path {
         }
     }
 
-        pub(crate) fn parent_of_normalized(normalized: &str) -> Option<String> {
+    pub(crate) fn parent_of_normalized(normalized: &str) -> Option<String> {
         match normalized.rfind(super::FILE_SEPARATOR) {
             None => None,
-            Some(0) if normalized.len() == 1 => None, 
+            Some(0) if normalized.len() == 1 => None,
             Some(0) => Some("/".to_string()),
             Some(i) => Some(normalized[..i].to_string()),
         }
     }
 
-            pub(crate) fn file_name_of_normalized(normalized: &str) -> Option<String> {
+    pub(crate) fn file_name_of_normalized(normalized: &str) -> Option<String> {
         if normalized == "/" {
             return None;
         }
@@ -61,7 +60,7 @@ pub(crate) mod java_path {
         )
     }
 
-                pub(crate) fn to_absolute_path(s: &str) -> String {
+    pub(crate) fn to_absolute_path(s: &str) -> String {
         let normalized = of_to_string(s);
         if normalized.starts_with(super::FILE_SEPARATOR) {
             return normalized;
@@ -75,7 +74,7 @@ pub(crate) mod java_path {
         join2(&cwd, &normalized)
     }
 
-        pub(crate) fn join2(first: &str, second: &str) -> String {
+    pub(crate) fn join2(first: &str, second: &str) -> String {
         if first.is_empty() {
             return of_to_string(second);
         }
@@ -89,7 +88,7 @@ pub(crate) mod java_path {
         }
     }
 
-                                pub(crate) fn split_on_dot(s: &str) -> Vec<&str> {
+    pub(crate) fn split_on_dot(s: &str) -> Vec<&str> {
         if !s.contains('.') {
             return vec![s];
         }
@@ -101,25 +100,24 @@ pub(crate) mod java_path {
     }
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum FileFormat {
-        #[default]
+    #[default]
     Unknown,
-        Dsn,
-        Frb,
-        Ses,
-        Rules,
-        Scr,
-        DrcJson,
-        KicadDesignJson,
-        KicadSessionJson,
+    Dsn,
+    Frb,
+    Ses,
+    Rules,
+    Scr,
+    DrcJson,
+    KicadDesignJson,
+    KicadSessionJson,
 }
 
 const SHIFT_LOOP_BOUND: usize = 5;
 
 impl FileFormat {
-        pub fn java_name(self) -> &'static str {
+    pub fn java_name(self) -> &'static str {
         match self {
             FileFormat::Unknown => "UNKNOWN",
             FileFormat::Dsn => "DSN",
@@ -133,7 +131,7 @@ impl FileFormat {
         }
     }
 
-        pub fn from_java_name(name: &str) -> Option<FileFormat> {
+    pub fn from_java_name(name: &str) -> Option<FileFormat> {
         Some(match name {
             "UNKNOWN" => FileFormat::Unknown,
             "DSN" => FileFormat::Dsn,
@@ -148,23 +146,22 @@ impl FileFormat {
         })
     }
 
-                                                                                                    pub fn sniff_bytes(content: &[u8]) -> FileFormat {
+    pub fn sniff_bytes(content: &[u8]) -> FileFormat {
         FileFormat::sniff_bytes_inner(content).0
     }
 
-                                            pub fn sniff_bytes_opt(content: Option<&[u8]>) -> FileFormat {
+    pub fn sniff_bytes_opt(content: Option<&[u8]>) -> FileFormat {
         match content {
-            None => FileFormat::Unknown, 
+            None => FileFormat::Unknown,
             Some(content) => FileFormat::sniff_bytes(content),
         }
     }
 
-                                            pub fn java_shift_loop_hangs(content: &[u8]) -> bool {
+    pub fn java_shift_loop_hangs(content: &[u8]) -> bool {
         FileFormat::sniff_bytes_inner(content).1
     }
 
-        fn sniff_bytes_inner(content: &[u8]) -> (FileFormat, bool) {
-
+    fn sniff_bytes_inner(content: &[u8]) -> (FileFormat, bool) {
         for &b in content {
             if b == b' ' || b == b'\t' || b == b'\r' || b == b'\n' {
                 continue;
@@ -220,7 +217,7 @@ impl FileFormat {
         (FileFormat::Unknown, hangs)
     }
 
-                                                pub fn from_path(path: &Path) -> FileFormat {
+    pub fn from_path(path: &Path) -> FileFormat {
         let filename = java_path::of_to_string(&path.to_string_lossy()).to_lowercase();
         let parts = java_path::split_on_dot(&filename);
         if parts.len() > 1 {
@@ -238,7 +235,7 @@ impl FileFormat {
         FileFormat::Unknown
     }
 
-                        pub fn default_extension(self) -> &'static str {
+    pub fn default_extension(self) -> &'static str {
         match self {
             FileFormat::Ses => "ses",
             FileFormat::Dsn => "dsn",
@@ -250,24 +247,23 @@ impl FileFormat {
     }
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum RoutingJobState {
-        #[default]
+    #[default]
     Invalid,
-        Queued,
-        ReadyToStart,
-        Running,
-        Paused,
-        Completed,
-        TimedOut,
-        Stopping,
-        Cancelled,
-        Terminated,
+    Queued,
+    ReadyToStart,
+    Running,
+    Paused,
+    Completed,
+    TimedOut,
+    Stopping,
+    Cancelled,
+    Terminated,
 }
 
 impl RoutingJobState {
-            pub fn java_name(self) -> &'static str {
+    pub fn java_name(self) -> &'static str {
         match self {
             RoutingJobState::Invalid => "INVALID",
             RoutingJobState::Queued => "QUEUED",
@@ -282,7 +278,7 @@ impl RoutingJobState {
         }
     }
 
-                                                        pub fn is_cli_terminal(self) -> bool {
+    pub fn is_cli_terminal(self) -> bool {
         matches!(
             self,
             RoutingJobState::Completed
@@ -296,14 +292,14 @@ impl RoutingJobState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum RoutingStage {
-        #[default]
+    #[default]
     Idle,
-        Routing,
-        Optimization,
+    Routing,
+    Optimization,
 }
 
 impl RoutingStage {
-        pub fn java_name(self) -> &'static str {
+    pub fn java_name(self) -> &'static str {
         match self {
             RoutingStage::Idle => "IDLE",
             RoutingStage::Routing => "ROUTING",
@@ -311,7 +307,6 @@ impl RoutingStage {
         }
     }
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Uuid128([u8; 16]);
@@ -321,17 +316,17 @@ pub type JobId = Uuid128;
 pub type SessionId = Uuid128;
 
 impl Uuid128 {
-        pub const NIL: Uuid128 = Uuid128([0u8; 16]);
+    pub const NIL: Uuid128 = Uuid128([0u8; 16]);
 
-        pub fn from_bytes(bytes: [u8; 16]) -> Uuid128 {
+    pub fn from_bytes(bytes: [u8; 16]) -> Uuid128 {
         Uuid128(bytes)
     }
 
-        pub fn as_bytes(&self) -> &[u8; 16] {
+    pub fn as_bytes(&self) -> &[u8; 16] {
         &self.0
     }
 
-        pub fn to_java_string(self) -> String {
+    pub fn to_java_string(self) -> String {
         let h: Vec<String> = self.0.iter().map(|b| format!("{b:02x}")).collect();
         format!(
             "{}{}{}{}-{}{}-{}{}-{}{}-{}{}{}{}{}{}",
@@ -354,7 +349,7 @@ impl Uuid128 {
         )
     }
 
-            pub fn short_upper6(self) -> String {
+    pub fn short_upper6(self) -> String {
         self.to_java_string()
             .chars()
             .take(6)
@@ -385,32 +380,31 @@ pub fn validate_session_host(host: Option<&str>) -> Result<String, Error> {
     Ok(host.to_string())
 }
 
-
 #[derive(Debug, Clone)]
 pub struct RoutingJob {
-        pub id: JobId,
-                pub created_at: Instant,
-        pub short_name: String,
-        pub name: String,
-        pub started_at: Option<Instant>,
-        pub finished_at: Option<Instant>,
-        pub state: RoutingJobState,
-            pub stage: RoutingStage,
-        pub session_id: Option<SessionId>,
-        pub input: Option<BoardFileDetails>,
-        pub output: Option<BoardFileDetails>,
-        pub rules: Option<BoardFileDetails>,
-        pub drc: Option<BoardFileDetails>,
-            pub router_settings: RouterSettings,
-        pub drc_settings: DesignRulesCheckerSettings,
-                        pub resource_usage: RouterJobResourceUsage,
-            current_pass: i32,
-                                    optimizer_pass: i32,
-        is_cancelled_by_user: bool,
+    pub id: JobId,
+    pub created_at: Instant,
+    pub short_name: String,
+    pub name: String,
+    pub started_at: Option<Instant>,
+    pub finished_at: Option<Instant>,
+    pub state: RoutingJobState,
+    pub stage: RoutingStage,
+    pub session_id: Option<SessionId>,
+    pub input: Option<BoardFileDetails>,
+    pub output: Option<BoardFileDetails>,
+    pub rules: Option<BoardFileDetails>,
+    pub drc: Option<BoardFileDetails>,
+    pub router_settings: RouterSettings,
+    pub drc_settings: DesignRulesCheckerSettings,
+    pub resource_usage: RouterJobResourceUsage,
+    current_pass: i32,
+    optimizer_pass: i32,
+    is_cancelled_by_user: bool,
 }
 
 impl Default for RoutingJob {
-        fn default() -> RoutingJob {
+    fn default() -> RoutingJob {
         let id = JobId::NIL;
         let short6 = id.short_upper6();
         RoutingJob {
@@ -438,11 +432,11 @@ impl Default for RoutingJob {
 }
 
 impl RoutingJob {
-                    pub fn new(session_id: SessionId) -> RoutingJob {
+    pub fn new(session_id: SessionId) -> RoutingJob {
         RoutingJob::with_id(session_id, JobId::NIL)
     }
 
-            pub fn with_id(session_id: SessionId, id: JobId) -> RoutingJob {
+    pub fn with_id(session_id: SessionId, id: JobId) -> RoutingJob {
         let mut job = RoutingJob {
             id,
             ..RoutingJob::default()
@@ -454,36 +448,35 @@ impl RoutingJob {
         job
     }
 
-
-            pub fn get_current_pass(&self) -> i32 {
+    pub fn get_current_pass(&self) -> i32 {
         self.current_pass
     }
 
-            pub fn set_current_pass(&mut self, current_pass: i32) {
+    pub fn set_current_pass(&mut self, current_pass: i32) {
         self.current_pass = current_pass;
     }
 
-            pub fn get_optimizer_pass(&self) -> i32 {
+    pub fn get_optimizer_pass(&self) -> i32 {
         self.optimizer_pass
     }
 
-            pub fn set_optimizer_pass(&mut self, optimizer_pass: i32) {
+    pub fn set_optimizer_pass(&mut self, optimizer_pass: i32) {
         self.optimizer_pass = optimizer_pass;
     }
 
-        pub fn is_cancelled_by_user(&self) -> bool {
+    pub fn is_cancelled_by_user(&self) -> bool {
         self.is_cancelled_by_user
     }
 
-        pub fn set_cancelled_by_user(&mut self, cancelled: bool) {
+    pub fn set_cancelled_by_user(&mut self, cancelled: bool) {
         self.is_cancelled_by_user = cancelled;
     }
 
-        pub fn get_input(&self) -> Option<&BoardFileDetails> {
+    pub fn get_input(&self) -> Option<&BoardFileDetails> {
         self.input.as_ref()
     }
 
-            pub fn get_duration(&self) -> Option<Duration> {
+    pub fn get_duration(&self) -> Option<Duration> {
         let started = self.started_at?;
         match self.finished_at {
             Some(finished) => Some(finished.saturating_duration_since(started)),
@@ -491,19 +484,18 @@ impl RoutingJob {
         }
     }
 
-                pub fn log_prefix(&self) -> String {
+    pub fn log_prefix(&self) -> String {
         format!("[{}] ", self.short_name)
     }
 
-
-                                                pub fn set_input_bytes(&mut self, content: Option<&[u8]>) -> bool {
+    pub fn set_input_bytes(&mut self, content: Option<&[u8]>) -> bool {
         self.input = Some(BoardFileDetails::default());
         self.try_to_set_input(content)
     }
 
-        fn try_to_set_input(&mut self, content: Option<&[u8]>) -> bool {
+    fn try_to_set_input(&mut self, content: Option<&[u8]>) -> bool {
         let Some(content) = content else {
-            return false; 
+            return false;
         };
         let input = self
             .input
@@ -518,14 +510,14 @@ impl RoutingJob {
         false
     }
 
-                                                                                pub fn set_input(&mut self, input_file: &Path) -> Result<(), Error> {
+    pub fn set_input(&mut self, input_file: &Path) -> Result<(), Error> {
         let content = std::fs::read(input_file)?;
 
-        self.set_input_bytes(Some(&content)); 
+        self.set_input_bytes(Some(&content));
         let absolute = java_path::to_absolute_path(&input_file.to_string_lossy());
         {
             let input = self.input.as_mut().expect("set_input_bytes assigns it");
-            input.set_filename(Some(&absolute)); 
+            input.set_filename(Some(&absolute));
             if input.format == FileFormat::Unknown {
                 input.format = FileFormat::from_path(Path::new(&input.get_absolute_path()));
             }
@@ -561,23 +553,22 @@ impl RoutingJob {
         Ok(())
     }
 
-
-                                pub fn set_rules_bytes(&mut self, content: &[u8]) -> bool {
+    pub fn set_rules_bytes(&mut self, content: &[u8]) -> bool {
         let mut rules = BoardFileDetails::default();
-        rules.format = FileFormat::Rules; 
+        rules.format = FileFormat::Rules;
         let format = FileFormat::sniff_bytes(content);
         rules.set_data(content.to_vec(), format);
         self.rules = Some(rules);
         true
     }
 
-                                                        pub fn set_rules(&mut self, rules_file: &Path) -> Result<(), Error> {
+    pub fn set_rules(&mut self, rules_file: &Path) -> Result<(), Error> {
         if !rules_file.exists() {
-            return Ok(()); 
+            return Ok(());
         }
         let content = std::fs::read(rules_file)?;
         let mut rules = BoardFileDetails::default();
-        rules.format = FileFormat::Rules; 
+        rules.format = FileFormat::Rules;
         let name = rules_file
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
@@ -589,12 +580,11 @@ impl RoutingJob {
         Ok(())
     }
 
-
-                                                                                                                pub fn try_to_set_output_file(&mut self, output_file: Option<&Path>) -> bool {
+    pub fn try_to_set_output_file(&mut self, output_file: Option<&Path>) -> bool {
         let Some(output_file) = output_file else {
-            return false; 
+            return false;
         };
-        let ff = FileFormat::from_path(output_file); 
+        let ff = FileFormat::from_path(output_file);
         if !matches!(
             ff,
             FileFormat::Dsn
@@ -603,11 +593,11 @@ impl RoutingJob {
                 | FileFormat::Scr
                 | FileFormat::KicadDesignJson
         ) {
-            return false; 
+            return false;
         }
-        let mut output = BoardFileDetails::from_file(output_file); 
+        let mut output = BoardFileDetails::from_file(output_file);
         output.format = if ff == FileFormat::KicadDesignJson {
-            FileFormat::KicadSessionJson 
+            FileFormat::KicadSessionJson
         } else {
             ff
         };
@@ -615,7 +605,7 @@ impl RoutingJob {
         true
     }
 
-            pub fn get_rules_file(&self) -> Option<PathBuf> {
+    pub fn get_rules_file(&self) -> Option<PathBuf> {
         let output = self.output.as_ref()?;
         Some(PathBuf::from(RoutingJob::change_file_extension(
             &output.get_absolute_path(),
@@ -623,7 +613,7 @@ impl RoutingJob {
         )))
     }
 
-        pub fn get_eagle_script_file(&self) -> Option<PathBuf> {
+    pub fn get_eagle_script_file(&self) -> Option<PathBuf> {
         let output = self.output.as_ref()?;
         Some(PathBuf::from(RoutingJob::change_file_extension(
             &output.get_absolute_path(),
@@ -631,7 +621,7 @@ impl RoutingJob {
         )))
     }
 
-                            pub fn set_dummy_input_file(&mut self, filename: Option<&str>) {
+    pub fn set_dummy_input_file(&mut self, filename: Option<&str>) {
         self.input = Some(BoardFileDetails::default());
         self.output = Some(BoardFileDetails::default());
         if let Some(filename) = filename
@@ -643,9 +633,8 @@ impl RoutingJob {
         }
     }
 
-
-                                                                                                    pub fn change_file_extension(filename: &str, new_file_extension: &str) -> String {
-        let normalized = java_path::of_to_string(filename); 
+    pub fn change_file_extension(filename: &str, new_file_extension: &str) -> String {
+        let normalized = java_path::of_to_string(filename);
 
         let original_full_path_without_filename = match java_path::parent_of_normalized(&normalized)
         {
@@ -654,15 +643,15 @@ impl RoutingJob {
         };
         let original_filename = java_path::file_name_of_normalized(&normalized).unwrap_or_default();
 
-        let name_parts = java_path::split_on_dot(&original_filename); 
+        let name_parts = java_path::split_on_dot(&original_filename);
         if name_parts.len() > 1 {
-            let extension = name_parts[name_parts.len() - 1].to_lowercase(); 
+            let extension = name_parts[name_parts.len() - 1].to_lowercase();
             if extension == new_file_extension {
-                return normalized; 
+                return normalized;
             }
             let keep = original_filename.len() - extension.len() - 1;
             let new_filename = format!("{}.{new_file_extension}", &original_filename[..keep]);
-            return java_path::join2(&original_full_path_without_filename, &new_filename); 
+            return java_path::join2(&original_full_path_without_filename, &new_filename);
         }
 
         java_path::join2(
@@ -671,4 +660,3 @@ impl RoutingJob {
         )
     }
 }
-

@@ -6,9 +6,9 @@ pub struct ApiSettings {
 }
 
 impl ApiSettings {
-        const PRIORITY: i32 = priority::API;
+    const PRIORITY: i32 = priority::API;
 
-                        #[allow(clippy::unwrap_or_default)]
+    #[allow(clippy::unwrap_or_default)]
     #[must_use]
     pub fn new(settings: Option<RouterSettings>) -> Self {
         Self {

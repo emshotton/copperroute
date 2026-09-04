@@ -11,11 +11,11 @@ pub struct NodeId {
 }
 
 impl NodeId {
-        pub fn index(self) -> usize {
+    pub fn index(self) -> usize {
         self.index as usize
     }
 
-        pub fn generation(self) -> u32 {
+    pub fn generation(self) -> u32 {
         self.generation
     }
 }
@@ -27,15 +27,15 @@ pub struct LeafId {
 }
 
 impl LeafId {
-        pub fn index(self) -> usize {
+    pub fn index(self) -> usize {
         self.index as usize
     }
 
-        pub fn generation(self) -> u32 {
+    pub fn generation(self) -> u32 {
         self.generation
     }
 
-        pub fn node(self) -> NodeId {
+    pub fn node(self) -> NodeId {
         NodeId {
             index: self.index,
             generation: self.generation,
@@ -52,28 +52,28 @@ impl LeafId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Node<O> {
-        Inner {
-                bounds: RegularTileShape,
-                parent: Option<NodeId>,
-                first_child: NodeId,
-                second_child: NodeId,
-                generation: u32,
+    Inner {
+        bounds: RegularTileShape,
+        parent: Option<NodeId>,
+        first_child: NodeId,
+        second_child: NodeId,
+        generation: u32,
     },
-        Leaf {
-                bounds: RegularTileShape,
-                parent: Option<NodeId>,
-                        object: O,
-                        shape_index: usize,
-                generation: u32,
+    Leaf {
+        bounds: RegularTileShape,
+        parent: Option<NodeId>,
+        object: O,
+        shape_index: usize,
+        generation: u32,
     },
-        Free {
-                next_free: Option<NodeId>,
-                generation: u32,
+    Free {
+        next_free: Option<NodeId>,
+        generation: u32,
     },
 }
 
 impl<O> Node<O> {
-        fn generation(&self) -> u32 {
+    fn generation(&self) -> u32 {
         match self {
             Node::Inner { generation, .. }
             | Node::Leaf { generation, .. }
@@ -84,21 +84,21 @@ impl<O> Node<O> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TreeEntry<O> {
-        pub object: O,
-        pub shape_index: usize,
+    pub object: O,
+    pub shape_index: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShapeTree<O> {
-            bounding_directions: ShapeBoundingDirections,
-        nodes: Vec<Node<O>>,
-        root: Option<NodeId>,
-        leaf_count: usize,
-        first_free: Option<NodeId>,
+    bounding_directions: ShapeBoundingDirections,
+    nodes: Vec<Node<O>>,
+    root: Option<NodeId>,
+    leaf_count: usize,
+    first_free: Option<NodeId>,
 }
 
 impl<O> ShapeTree<O> {
-        pub fn new(bounding_directions: ShapeBoundingDirections) -> Self {
+    pub fn new(bounding_directions: ShapeBoundingDirections) -> Self {
         Self {
             bounding_directions,
             nodes: Vec::new(),
@@ -108,23 +108,23 @@ impl<O> ShapeTree<O> {
         }
     }
 
-            pub fn bounding_directions(&self) -> ShapeBoundingDirections {
+    pub fn bounding_directions(&self) -> ShapeBoundingDirections {
         self.bounding_directions
     }
 
-                pub fn leaf_count(&self) -> usize {
+    pub fn leaf_count(&self) -> usize {
         self.leaf_count
     }
 
-        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.leaf_count == 0
     }
 
-            pub fn root(&self) -> Option<NodeId> {
+    pub fn root(&self) -> Option<NodeId> {
         self.root
     }
 
-                                    pub fn node(&self, id: NodeId) -> &Node<O> {
+    pub fn node(&self, id: NodeId) -> &Node<O> {
         self.resolve(id)
     }
 
@@ -163,17 +163,17 @@ impl<O> ShapeTree<O> {
         node
     }
 
-            pub fn is_live(&self, id: NodeId) -> bool {
+    pub fn is_live(&self, id: NodeId) -> bool {
         self.nodes.get(id.index()).is_some_and(|node| {
             node.generation() == id.generation && !matches!(node, Node::Free { .. })
         })
     }
 
-            pub fn node_count(&self) -> usize {
+    pub fn node_count(&self) -> usize {
         self.nodes.len()
     }
 
-        pub fn free_slot_count(&self) -> usize {
+    pub fn free_slot_count(&self) -> usize {
         let mut count = 0;
         let mut next = self.first_free;
         while let Some(id) = next {
@@ -186,7 +186,7 @@ impl<O> ShapeTree<O> {
         count
     }
 
-                                pub fn bounding_shape(&self, shape: &TileShape) -> Option<RegularTileShape> {
+    pub fn bounding_shape(&self, shape: &TileShape) -> Option<RegularTileShape> {
         self.bounding_directions.bounds_tile(shape)
     }
 
@@ -218,7 +218,7 @@ impl<O> ShapeTree<O> {
         }
     }
 
-        fn children_of(&self, id: NodeId) -> (NodeId, NodeId) {
+    fn children_of(&self, id: NodeId) -> (NodeId, NodeId) {
         match self.resolve(id) {
             Node::Inner {
                 first_child,
@@ -229,7 +229,7 @@ impl<O> ShapeTree<O> {
         }
     }
 
-                    fn replace_child(&mut self, id: NodeId, old: NodeId, new: NodeId) -> bool {
+    fn replace_child(&mut self, id: NodeId, old: NodeId, new: NodeId) -> bool {
         match self.resolve_mut(id) {
             Node::Inner {
                 first_child,
@@ -250,7 +250,7 @@ impl<O> ShapeTree<O> {
         }
     }
 
-                    fn alloc(&mut self, build: impl FnOnce(u32) -> Node<O>) -> NodeId {
+    fn alloc(&mut self, build: impl FnOnce(u32) -> Node<O>) -> NodeId {
         match self.first_free {
             Some(id) => {
                 let slot = &self.nodes[id.index()];
@@ -278,7 +278,7 @@ impl<O> ShapeTree<O> {
         }
     }
 
-                fn free(&mut self, id: NodeId) {
+    fn free(&mut self, id: NodeId) {
         let generation = self.nodes[id.index()].generation().wrapping_add(1);
         self.nodes[id.index()] = Node::Free {
             next_free: self.first_free,
@@ -292,7 +292,7 @@ impl<O> ShapeTree<O> {
 }
 
 impl<O: Copy + Ord> ShapeTree<O> {
-                                                                                            pub fn insert(&mut self, object: O, shapes: &[RegularTileShape]) -> Vec<LeafId> {
+    pub fn insert(&mut self, object: O, shapes: &[RegularTileShape]) -> Vec<LeafId> {
         shapes
             .iter()
             .enumerate()
@@ -300,7 +300,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
             .collect()
     }
 
-                                                                                                                            pub fn insert_tiles(&mut self, object: O, shapes: &[TileShape]) -> Vec<Option<LeafId>> {
+    pub fn insert_tiles(&mut self, object: O, shapes: &[TileShape]) -> Vec<Option<LeafId>> {
         shapes
             .iter()
             .enumerate()
@@ -311,7 +311,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
             .collect()
     }
 
-                                            pub fn insert_tiles_opt(
+    pub fn insert_tiles_opt(
         &mut self,
         object: O,
         shapes: &[Option<TileShape>],
@@ -327,7 +327,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
             .collect()
     }
 
-                    pub fn insert_leaf(
+    pub fn insert_leaf(
         &mut self,
         object: O,
         shape_index: usize,
@@ -376,7 +376,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
         LeafId::from_node(leaf)
     }
 
-                                                        fn position_locate(&mut self, start: NodeId, leaf_bounds: RegularTileShape) -> NodeId {
+    fn position_locate(&mut self, start: NodeId, leaf_bounds: RegularTileShape) -> NodeId {
         let mut node = start;
         loop {
             let (first_child, second_child) = match self.resolve(node) {
@@ -406,25 +406,25 @@ impl<O: Copy + Ord> ShapeTree<O> {
         }
     }
 
-                    pub fn remove(&mut self, entries: &[LeafId]) {
+    pub fn remove(&mut self, entries: &[LeafId]) {
         for entry in entries {
             self.remove_leaf(*entry);
         }
     }
 
-                                                        pub fn remove_opt(&mut self, entries: &[Option<LeafId>]) {
+    pub fn remove_opt(&mut self, entries: &[Option<LeafId>]) {
         for entry in entries {
             self.remove_leaf_opt(*entry);
         }
     }
 
-                        pub fn remove_leaf_opt(&mut self, leaf: Option<LeafId>) {
+    pub fn remove_leaf_opt(&mut self, leaf: Option<LeafId>) {
         if let Some(leaf) = leaf {
             self.remove_leaf(leaf);
         }
     }
 
-                                                                        pub fn remove_leaf(&mut self, leaf: LeafId) {
+    pub fn remove_leaf(&mut self, leaf: LeafId) {
         let leaf = leaf.node();
         assert!(
             matches!(self.resolve(leaf), Node::Leaf { .. }),
@@ -481,7 +481,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
         }
     }
 
-                                    pub fn overlaps(&self, shape: &RegularTileShape) -> BTreeSet<TreeEntry<O>> {
+    pub fn overlaps(&self, shape: &RegularTileShape) -> BTreeSet<TreeEntry<O>> {
         let mut found_overlaps = BTreeSet::new();
         let Some(root) = self.root else {
             return found_overlaps;
@@ -522,14 +522,14 @@ impl<O: Copy + Ord> ShapeTree<O> {
         found_overlaps
     }
 
-        pub fn leaf_bounds(&self, leaf: LeafId) -> RegularTileShape {
+    pub fn leaf_bounds(&self, leaf: LeafId) -> RegularTileShape {
         match self.resolve(leaf.node()) {
             Node::Leaf { bounds, .. } => *bounds,
             _ => panic!("ShapeTree: node {} is not a leaf", leaf.index()),
         }
     }
 
-            pub fn leaf_entry(&self, leaf: LeafId) -> TreeEntry<O> {
+    pub fn leaf_entry(&self, leaf: LeafId) -> TreeEntry<O> {
         match self.resolve(leaf.node()) {
             Node::Leaf {
                 object,
@@ -543,7 +543,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
         }
     }
 
-                                                                            pub fn set_leaf_entry(&mut self, leaf: LeafId, object: O, shape_index: usize) {
+    pub fn set_leaf_entry(&mut self, leaf: LeafId, object: O, shape_index: usize) {
         match self.resolve_mut(leaf.node()) {
             Node::Leaf {
                 object: stored_object,
@@ -557,7 +557,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
         }
     }
 
-            pub fn to_array(&self) -> Vec<LeafId> {
+    pub fn to_array(&self) -> Vec<LeafId> {
         let mut result = Vec::with_capacity(self.leaf_count);
         let Some(root) = self.root else {
             return result;
@@ -585,7 +585,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
         result
     }
 
-                                    pub fn distance_to_root(&self, leaf: LeafId) -> usize {
+    pub fn distance_to_root(&self, leaf: LeafId) -> usize {
         let mut result = 1;
         let mut current_parent = self.parent_of(leaf.node()).expect(
             "Java bug: ShapeTree.Leaf.distanceToRoot NPEs on the leaf of a one-element tree \

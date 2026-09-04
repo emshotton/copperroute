@@ -9,7 +9,6 @@ use fr_router::pipeline::{
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
-
 const RPI: &str = "fixtures/Issue143-rpi_splitter.dsn";
 
 const ECC83: &str = "fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn";
@@ -59,7 +58,6 @@ impl ProgressSink for Recorder {
         self.events.push(event.clone());
     }
 }
-
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
@@ -253,7 +251,6 @@ fn the_four_stops_are_tested_in_javas_order() {
     assert!(!hash_taken, ":153 is never evaluated");
 }
 
-
 #[test]
 fn ripup_costs_scale_with_the_pass_number() {
     if !parity::require_java_dir() {
@@ -338,7 +335,6 @@ fn a_null_net_pin_skips_the_via_gate() {
     assert!(board.rules.via_rules[0].via_count() > 0);
     assert!(fanout_pin_can_use_vias(&board, &settings, 1));
 }
-
 
 #[test]
 fn the_max_items_gate_treats_a_non_positive_limit_as_no_limit() {
@@ -505,7 +501,6 @@ fn a_recording_sink_changes_no_fanout_byte() {
     );
 }
 
-
 #[test]
 fn the_documented_fanout_timeout_examples_both_parse_to_nothing_in_java() {
     assert_eq!(parse_timespan_seconds_java("5m"), None);
@@ -547,7 +542,6 @@ fn the_timespan_grammar_matches_the_jvms() {
     );
     assert_eq!(parse_timespan_seconds_java("9223372036854775807:0:0"), None);
 }
-
 
 #[test]
 fn the_documented_timeout_spellings_parse() {
@@ -679,7 +673,6 @@ fn an_unparseable_fanout_timeout_is_refused() {
     )
     .expect("`5m` is 300 seconds and the stage runs");
 }
-
 
 #[test]
 fn the_fanout_recovery_in_the_batch_loop_fires_once() {

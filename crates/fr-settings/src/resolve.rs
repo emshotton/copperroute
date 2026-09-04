@@ -8,24 +8,24 @@ use crate::{HostEnvironment, RouterSettings, SettingsSource, sources::DefaultSet
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SettingsInputs<'a> {
-                                            pub json_file: Option<&'a RouterSettings>,
-                pub dsn: Option<&'a RouterSettings>,
-                pub cli_rules: Option<&'a [u8]>,
-                                                                                pub scheduler_rules: Option<&'a [u8]>,
-        pub env: Option<&'a RouterSettings>,
-        pub cli: Option<&'a RouterSettings>,
+    pub json_file: Option<&'a RouterSettings>,
+    pub dsn: Option<&'a RouterSettings>,
+    pub cli_rules: Option<&'a [u8]>,
+    pub scheduler_rules: Option<&'a [u8]>,
+    pub env: Option<&'a RouterSettings>,
+    pub cli: Option<&'a RouterSettings>,
 }
 
 #[derive(Debug, Clone, Copy)]
 struct Steps {
-        first_board_layer_count: bool,
-        first_board_optimization: bool,
-        post_merge_rules_reapply: bool,
-        second_validate: bool,
+    first_board_layer_count: bool,
+    first_board_optimization: bool,
+    post_merge_rules_reapply: bool,
+    second_validate: bool,
 }
 
 impl Steps {
-        const JAVA: Self = Self {
+    const JAVA: Self = Self {
         first_board_layer_count: true,
         first_board_optimization: true,
         post_merge_rules_reapply: true,
@@ -55,19 +55,19 @@ fn resolve_headless_steps(
         .java_clone();
 
     if let Some(json_file) = inputs.json_file {
-        settings.apply_new_values_from(json_file); 
+        settings.apply_new_values_from(json_file);
     }
     if let Some(dsn) = inputs.dsn {
-        settings.apply_new_values_from(dsn); 
+        settings.apply_new_values_from(dsn);
     }
     if let Some(cli_rules) = parse_rules_file(inputs.cli_rules) {
-        settings.apply_new_values_from(&cli_rules); 
+        settings.apply_new_values_from(&cli_rules);
     }
     if let Some(env) = inputs.env {
-        settings.apply_new_values_from(env); 
+        settings.apply_new_values_from(env);
     }
     if let Some(cli) = inputs.cli {
-        settings.apply_new_values_from(cli); 
+        settings.apply_new_values_from(cli);
     }
     settings.validate(host);
 
@@ -90,7 +90,7 @@ fn resolve_headless_steps(
         settings.fill_absent_from(&scheduler_rules);
     }
     if steps.second_validate {
-        settings.validate(host); 
+        settings.validate(host);
     }
 
     if let (true, Some(bytes), Some(board)) = (
@@ -159,7 +159,7 @@ mod tests {
         HostEnvironment::with_processors(4)
     }
 
-                    fn board(layer_count: usize) -> Board {
+    fn board(layer_count: usize) -> Board {
         named_board(
             &(0..layer_count)
                 .map(|i| format!("L{i}"))
@@ -167,7 +167,7 @@ mod tests {
         )
     }
 
-            fn named_board(names: &[String]) -> Board {
+    fn named_board(names: &[String]) -> Board {
         let layers = LayerStructure::new(
             names
                 .iter()
@@ -189,18 +189,18 @@ mod tests {
         )
     }
 
-            fn bare_dsn(layer_count: usize) -> RouterSettings {
+    fn bare_dsn(layer_count: usize) -> RouterSettings {
         let mut settings = RouterSettings::new();
         settings.set_layer_count(layer_count);
         settings
     }
 
-                                fn rules_bytes() -> Vec<u8> {
+    fn rules_bytes() -> Vec<u8> {
         b"(rules PCB unit\n  (autoroute_settings\n    (vias on)\n    (via_costs 99)\n    (layer_rule L0\n      (active on)\n      (preferred_direction horizontal)\n    )\n  )\n)\n"
             .to_vec()
     }
 
-                                                    /// (quirk #142). Both switches are `#[cfg(test)]`; Java runs every step.
+    /// (quirk #142). Both switches are `#[cfg(test)]`; Java runs every step.
     #[test]
     fn adjacent_rules_reach_only_the_fields_merge_one_left_null() {
         let host = host();
@@ -242,7 +242,7 @@ mod tests {
         );
     }
 
-                        #[test]
+    #[test]
     fn the_first_board_pass_closes_the_direction_channel() {
         let host = host();
         let board = board(2);
@@ -272,7 +272,7 @@ mod tests {
         assert!(!without_reapply.get_preferred_direction_is_horizontal(1));
     }
 
-                                    #[test]
+    #[test]
     fn a_rules_file_is_parsed_twice_against_two_layer_structures() {
         let bytes = b"(rules PCB unit\n  (autoroute_settings\n    (layer_rule L0\n      (active on)\n      (preferred_direction horizontal)\n    )\n    (layer_rule L3\n      (active off)\n      (preferred_direction horizontal)\n    )\n  )\n)\n";
 
@@ -294,7 +294,7 @@ mod tests {
         assert!(!target.get_layer_active(3), "`L3` landed at index 3");
     }
 
-        fn env_and_cli() -> (EnvironmentVariablesSource, CliSettings) {
+    fn env_and_cli() -> (EnvironmentVariablesSource, CliSettings) {
         let cli = CliSettings::new(&[
             "--router.max_passes=88".to_string(),
             "--router.optimizer.enabled=false".to_string(),
@@ -316,7 +316,7 @@ mod tests {
         (env, cli)
     }
 
-                                        #[test]
+    #[test]
     fn the_first_board_optimization_pass_leaves_no_trace_in_the_final_result() {
         let host = host();
         let (env, cli) = env_and_cli();
@@ -354,7 +354,7 @@ mod tests {
         }
     }
 
-                                        #[test]
+    #[test]
     fn the_first_board_layer_count_discards_a_mis_sized_layer_array() {
         let host = host();
         let (env, cli) = env_and_cli();
@@ -386,7 +386,7 @@ mod tests {
         assert_eq!(directions, vec![true, true, true, false]);
     }
 
-                    #[test]
+    #[test]
     fn a_rules_file_source_drives_the_same_answer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests")

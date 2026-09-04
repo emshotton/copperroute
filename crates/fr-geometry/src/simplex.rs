@@ -15,19 +15,18 @@ pub struct Simplex {
     lines: Vec<Line>,
 }
 
-
 impl Simplex {
-        pub const EMPTY: Simplex = Simplex { lines: Vec::new() };
+    pub const EMPTY: Simplex = Simplex { lines: Vec::new() };
 
-                pub fn new(lines: Vec<Line>) -> Simplex {
+    pub fn new(lines: Vec<Line>) -> Simplex {
         Simplex { lines }
     }
 
-        pub fn lines(&self) -> &[Line] {
+    pub fn lines(&self) -> &[Line] {
         &self.lines
     }
 
-                            pub fn from_lines(lines: Vec<Line>) -> Simplex {
+    pub fn from_lines(lines: Vec<Line>) -> Simplex {
         if lines.is_empty() {
             return Simplex::EMPTY;
         }
@@ -37,7 +36,7 @@ impl Simplex {
         current_simplex.remove_redundant_lines()
     }
 
-                pub fn from_points(convex_polygon: &[IntPoint]) -> Simplex {
+    pub fn from_points(convex_polygon: &[IntPoint]) -> Simplex {
         let n = convex_polygon.len();
         let mut lines: Vec<Line> = Vec::with_capacity(n);
         for j in 0..n.saturating_sub(1) {
@@ -49,11 +48,11 @@ impl Simplex {
         Simplex::from_lines(lines)
     }
 
-        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.lines.is_empty()
     }
 
-                pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         let mut result: i32 = 0;
         for current in &self.lines {
             result = 31i32.wrapping_mul(result).wrapping_add(current.get_id());
@@ -61,7 +60,7 @@ impl Simplex {
         result
     }
 
-                                pub fn corner_is_bounded(&self, corner_index: usize) -> bool {
+    pub fn corner_is_bounded(&self, corner_index: usize) -> bool {
         if self.lines.is_empty() {
             return false;
         }
@@ -83,7 +82,7 @@ impl Simplex {
         prev_dir.determinant(&current_direction) > 0
     }
 
-        pub fn is_bounded(&self) -> bool {
+    pub fn is_bounded(&self) -> bool {
         if self.lines.is_empty() {
             return true;
         }
@@ -93,11 +92,11 @@ impl Simplex {
         (0..self.lines.len()).all(|i| self.corner_is_bounded(i))
     }
 
-        pub fn border_line_count(&self) -> usize {
+    pub fn border_line_count(&self) -> usize {
         self.lines.len()
     }
 
-                                        pub fn corner(&self, corner_index: usize) -> Point {
+    pub fn corner(&self, corner_index: usize) -> Point {
         let no = if corner_index >= self.lines.len() {
             self.lines.len() - 1
         } else {
@@ -111,7 +110,7 @@ impl Simplex {
         self.lines[no].intersection(&prev)
     }
 
-                        pub fn corner_approx(&self, corner_index: usize) -> Option<FloatPoint> {
+    pub fn corner_approx(&self, corner_index: usize) -> Option<FloatPoint> {
         if self.lines.is_empty() {
             return None;
         }
@@ -128,7 +127,7 @@ impl Simplex {
         Some(self.lines[no].intersection_approx(&prev))
     }
 
-        pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
+    pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
         let count = self.lines.len();
         (0..count)
             .map(|i| {
@@ -142,7 +141,7 @@ impl Simplex {
             .collect()
     }
 
-                pub fn border_line(&self, edge_index: usize) -> Option<Line> {
+    pub fn border_line(&self, edge_index: usize) -> Option<Line> {
         if self.lines.is_empty() {
             return None;
         }
@@ -154,7 +153,7 @@ impl Simplex {
         Some(self.lines[no])
     }
 
-            pub fn dimension(&self) -> i32 {
+    pub fn dimension(&self) -> i32 {
         let lines = &self.lines;
         if lines.is_empty() {
             return -1;
@@ -199,7 +198,7 @@ impl Simplex {
         2
     }
 
-                        pub fn centre_of_gravity(&self) -> FloatPoint {
+    pub fn centre_of_gravity(&self) -> FloatPoint {
         let corner_count = self.border_line_count();
         let mut x = 0.0;
         let mut y = 0.0;
@@ -212,7 +211,7 @@ impl Simplex {
         FloatPoint::new(x, y)
     }
 
-            pub fn max_width(&self) -> f64 {
+    pub fn max_width(&self) -> f64 {
         if !self.is_bounded() {
             return i32::MAX as f64;
         }
@@ -232,7 +231,7 @@ impl Simplex {
         max_distance + max_distance2
     }
 
-            pub fn min_width(&self) -> f64 {
+    pub fn min_width(&self) -> f64 {
         if !self.is_bounded() {
             return i32::MAX as f64;
         }
@@ -252,23 +251,22 @@ impl Simplex {
         min_distance + min_distance2
     }
 
-                        pub fn is_int_box(&self) -> bool {
+    pub fn is_int_box(&self) -> bool {
         (0..self.lines.len()).all(|i| self.lines[i].is_orthogonal() && self.corner_is_bounded(i))
     }
 
-            pub fn is_int_octagon(&self) -> bool {
+    pub fn is_int_octagon(&self) -> bool {
         (0..self.lines.len())
             .all(|i| self.lines[i].is_multiple_of_45_degree() && self.corner_is_bounded(i))
     }
 
-            pub fn to_int_octagon(&self) -> Option<IntOctagon> {
+    pub fn to_int_octagon(&self) -> Option<IntOctagon> {
         if !self.is_int_octagon() {
             return None;
         }
         if self.is_empty() {
             return Some(IntOctagon::EMPTY);
         }
-
 
         let mut rx = CRIT_INT;
         let mut uy = CRIT_INT;
@@ -315,7 +313,7 @@ impl Simplex {
         Some(result.normalize())
     }
 
-                            pub fn translate_by(&self, vector: &Vector) -> Simplex {
+    pub fn translate_by(&self, vector: &Vector) -> Simplex {
         if *vector == Vector::ZERO {
             return self.clone();
         }
@@ -328,7 +326,7 @@ impl Simplex {
         Simplex::new(self.lines.iter().map(|l| l.translate_by(v)).collect())
     }
 
-            pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self) -> IntBox {
         if self.lines.is_empty() {
             return IntBox::EMPTY;
         }
@@ -347,7 +345,7 @@ impl Simplex {
         IntBox::new(lower_left, upper_right)
     }
 
-            pub fn bounding_octagon(&self) -> Option<IntOctagon> {
+    pub fn bounding_octagon(&self) -> Option<IntOctagon> {
         let mut lx = i32::MAX as f64;
         let mut ly = i32::MAX as f64;
         let mut rx = i32::MIN as f64;
@@ -389,11 +387,11 @@ impl Simplex {
         ))
     }
 
-        pub fn bounding_tile(&self) -> Simplex {
+    pub fn bounding_tile(&self) -> Simplex {
         self.clone()
     }
 
-            pub fn offset(&self, width: f64) -> Simplex {
+    pub fn offset(&self, width: f64) -> Simplex {
         if width == 0.0 {
             return self.clone();
         }
@@ -405,7 +403,7 @@ impl Simplex {
         offset_simplex
     }
 
-            pub fn enlarge(&self, offset: f64) -> Simplex {
+    pub fn enlarge(&self, offset: f64) -> Simplex {
         if offset == 0.0 {
             return self.clone();
         }
@@ -417,7 +415,7 @@ impl Simplex {
         offset_simplex.intersection(&offset_oct.to_simplex())
     }
 
-            pub fn index_of_right_most_corner(&self, from_point: &Point) -> usize {
+    pub fn index_of_right_most_corner(&self, from_point: &Point) -> usize {
         let pole = from_point;
         let mut right_most_corner = self.corner(0);
         let mut result = 0;
@@ -431,15 +429,15 @@ impl Simplex {
         result
     }
 
-        pub fn intersection_box(&self, box_: &IntBox) -> Simplex {
+    pub fn intersection_box(&self, box_: &IntBox) -> Simplex {
         self.intersection(&box_.to_simplex())
     }
 
-        pub fn intersection_octagon(&self, other: &IntOctagon) -> Simplex {
+    pub fn intersection_octagon(&self, other: &IntOctagon) -> Simplex {
         self.intersection(&other.to_simplex())
     }
 
-        pub fn intersection(&self, other: &Simplex) -> Simplex {
+    pub fn intersection(&self, other: &Simplex) -> Simplex {
         if self.is_empty() || other.is_empty() {
             return Simplex::EMPTY;
         }
@@ -450,23 +448,23 @@ impl Simplex {
         Simplex::new(new_arr).remove_redundant_lines()
     }
 
-        pub fn intersects(&self, other: &Simplex) -> bool {
+    pub fn intersects(&self, other: &Simplex) -> bool {
         !self.intersection(other).is_empty()
     }
 
-        pub fn intersects_box(&self, box_: &IntBox) -> bool {
+    pub fn intersects_box(&self, box_: &IntBox) -> bool {
         self.intersects(&box_.to_simplex())
     }
 
-        pub fn intersects_octagon(&self, octagon: &IntOctagon) -> bool {
+    pub fn intersects_octagon(&self, octagon: &IntOctagon) -> bool {
         self.intersects(&octagon.to_simplex())
     }
 
-                pub fn border_line_index(&self, line: &Line) -> Option<usize> {
+    pub fn border_line_index(&self, line: &Line) -> Option<usize> {
         (0..self.lines.len()).find(|&i| line.equals_geometric(&self.lines[i]))
     }
 
-            pub fn remove_border_line(&self, no: usize) -> Simplex {
+    pub fn remove_border_line(&self, no: usize) -> Simplex {
         if no >= self.lines.len() {
             return self.clone();
         }
@@ -475,19 +473,19 @@ impl Simplex {
         Simplex::new(new_lines)
     }
 
-        pub fn to_simplex(&self) -> Simplex {
+    pub fn to_simplex(&self) -> Simplex {
         self.clone()
     }
 
-        pub fn cutout_from_octagon(&self, oct: &IntOctagon) -> Option<Vec<Simplex>> {
+    pub fn cutout_from_octagon(&self, oct: &IntOctagon) -> Option<Vec<Simplex>> {
         self.cutout_from(&oct.to_simplex())
     }
 
-        pub fn cutout_from_box(&self, box_: &IntBox) -> Option<Vec<Simplex>> {
+    pub fn cutout_from_box(&self, box_: &IntBox) -> Option<Vec<Simplex>> {
         self.cutout_from(&box_.to_simplex())
     }
 
-                        #[allow(clippy::too_many_lines)] 
+    #[allow(clippy::too_many_lines)]
     pub fn cutout_from(&self, outer_simplex: &Simplex) -> Option<Vec<Simplex>> {
         if self.dimension() < 2 {
             return None;
@@ -597,7 +595,7 @@ impl Simplex {
         Some(result_list)
     }
 
-            #[allow(clippy::too_many_lines)] 
+    #[allow(clippy::too_many_lines)]
     pub fn remove_redundant_lines(&self) -> Simplex {
         if self.lines.is_empty() {
             return Simplex::EMPTY;
@@ -710,7 +708,7 @@ impl Simplex {
             }
         }
         if new_length == original_len {
-            return self.clone(); 
+            return self.clone();
         }
         if new_length == 0 {
             return Simplex::EMPTY;
@@ -719,7 +717,7 @@ impl Simplex {
         Simplex::new(lines)
     }
 
-                            fn calc_division_lines(
+    fn calc_division_lines(
         &self,
         inner_corner_no: usize,
         outer_simplex: &Simplex,
@@ -747,7 +745,6 @@ impl Simplex {
         let prev_inner_dir = prev_inner_line.direction().opposite();
         let next_inner_dir = current_inner_line.direction();
         let mut outer_line_no = 0usize;
-
 
         let mut min_distance = i32::MAX as f64;
         let last_outer = outer_simplex.lines.len() - 1;
@@ -822,7 +819,6 @@ impl Simplex {
             ])
         }
     }
-
 }
 
 fn perpendicular_int_direction(point: IntPoint, line: &Line) -> IntDirection {
@@ -925,7 +921,7 @@ mod tests {
         assert!(!s.corner_is_bounded(0));
     }
 
-                #[test]
+    #[test]
     fn cutout_from_pieces_tile_the_difference() {
         let outer = IntBox::from_coords(0, 0, 20, 20).to_simplex();
         let inner = Simplex::from_points(&[
@@ -949,7 +945,7 @@ mod tests {
         a / 2.0
     }
 
-            #[test]
+    #[test]
     fn cutout_from_edge_cases() {
         let outer = IntBox::from_coords(0, 0, 20, 20).to_simplex();
         let disjoint = Simplex::from_points(&[

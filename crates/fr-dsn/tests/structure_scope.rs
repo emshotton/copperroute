@@ -28,7 +28,6 @@ fn fixture(name: &str) -> String {
         .unwrap_or_else(|e| panic!("fixture {name}: {e}"))
 }
 
-
 #[test]
 fn empty_board_dsn_builds_a_two_layer_board_with_javas_bounding_box() {
     let text = fixture("empty_board.dsn");
@@ -123,7 +122,6 @@ fn the_plan_datum_for_the_overflow_loop_stops_at_a_scale_factor_of_100() {
     });
 }
 
-
 #[test]
 fn a_clearance_rule_writes_both_index_orders() {
     let text = synthetic(
@@ -156,7 +154,6 @@ fn a_clearance_rule_writes_both_index_orders() {
         assert!((board.rules.get_pin_edge_to_turn_dist() - 762.0).abs() < 1e-12);
     });
 }
-
 
 #[test]
 fn a_snap_angle_scope_sets_the_boards_trace_angle_restriction() {
@@ -199,7 +196,6 @@ fn a_place_control_scope_sets_flip_style_rotate_first() {
         assert!(board.components.get_flip_style_rotate_first());
     });
 }
-
 
 #[test]
 fn a_signal_layer_keepout_is_inserted_on_every_signal_layer() {
@@ -244,7 +240,6 @@ fn a_plane_scope_inserts_a_conduction_area_and_creates_its_net() {
         );
     });
 }
-
 
 #[test]
 fn write_autoroute_settings_scope_matches_javas_bytes_on_a_two_layer_board() {
@@ -382,7 +377,6 @@ fn the_corpus_sweep_counts_boards_whose_settings_were_read() {
         "the corpus boards whose (autoroute_settings …) scope reaches the reader"
     );
 }
-
 
 #[test]
 fn insertion_order_matches_java_item_for_item() {

@@ -8,16 +8,16 @@ use crate::autoroute::maze::search_element::MazeSearchElement;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExpansionDrill {
-        pub location: Point,
-        pub first_layer: usize,
-        pub last_layer: usize,
-                                        pub rooms: Vec<Option<RoomRef>>,
-        maze_search_elements: Vec<MazeSearchElement>,
-                        shape: TileShape,
+    pub location: Point,
+    pub first_layer: usize,
+    pub last_layer: usize,
+    pub rooms: Vec<Option<RoomRef>>,
+    maze_search_elements: Vec<MazeSearchElement>,
+    shape: TileShape,
 }
 
 impl ExpansionDrill {
-                                            pub fn new(
+    pub fn new(
         shape: TileShape,
         location: Point,
         first_layer: usize,
@@ -39,7 +39,7 @@ impl ExpansionDrill {
         }
     }
 
-                                                                                                                pub fn calculate_expansion_rooms(
+    pub fn calculate_expansion_rooms(
         &mut self,
         engine: &mut AutorouteEngine,
         board: &mut Board,
@@ -98,37 +98,37 @@ impl ExpansionDrill {
         true
     }
 
-        pub fn get_shape(&self) -> &TileShape {
+    pub fn get_shape(&self) -> &TileShape {
         &self.shape
     }
 
-        pub fn get_dimension(&self) -> i32 {
+    pub fn get_dimension(&self) -> i32 {
         2
     }
 
-                pub fn other_room(&self, _room: RoomRef) -> Option<RoomRef> {
+    pub fn other_room(&self, _room: RoomRef) -> Option<RoomRef> {
         None
     }
 
-        pub fn maze_search_element_count(&self) -> usize {
+    pub fn maze_search_element_count(&self) -> usize {
         self.maze_search_elements.len()
     }
 
-                    pub fn get_maze_search_element(&self, index: usize) -> &MazeSearchElement {
+    pub fn get_maze_search_element(&self, index: usize) -> &MazeSearchElement {
         &self.maze_search_elements[index]
     }
 
-            pub fn get_maze_search_element_mut(&mut self, index: usize) -> &mut MazeSearchElement {
+    pub fn get_maze_search_element_mut(&mut self, index: usize) -> &mut MazeSearchElement {
         &mut self.maze_search_elements[index]
     }
 
-            pub fn reset(&mut self) {
+    pub fn reset(&mut self) {
         for element in &mut self.maze_search_elements {
             element.reset();
         }
     }
 
-                            pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         let inner = 31i32
             .wrapping_mul(self.location.get_id())
             .wrapping_add(self.first_layer as i32);
@@ -137,8 +137,6 @@ impl ExpansionDrill {
             .wrapping_add(self.last_layer as i32)
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {

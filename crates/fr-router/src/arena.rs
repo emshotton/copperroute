@@ -1,40 +1,40 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Arena<T> {
-        items: Vec<Option<T>>,
-        live: usize,
+    items: Vec<Option<T>>,
+    live: usize,
 }
 
 impl<T> Arena<T> {
-        pub fn new() -> Self {
+    pub fn new() -> Self {
         Arena {
             items: Vec::new(),
             live: 0,
         }
     }
 
-        pub fn with_capacity(capacity: usize) -> Self {
+    pub fn with_capacity(capacity: usize) -> Self {
         Arena {
             items: Vec::with_capacity(capacity),
             live: 0,
         }
     }
 
-                            pub fn insert(&mut self, value: T) -> u32 {
+    pub fn insert(&mut self, value: T) -> u32 {
         let index = u32::try_from(self.items.len()).expect("arena index overflowed u32");
         self.items.push(Some(value));
         self.live += 1;
         index
     }
 
-        pub fn get(&self, index: u32) -> Option<&T> {
+    pub fn get(&self, index: u32) -> Option<&T> {
         self.items.get(index as usize)?.as_ref()
     }
 
-        pub fn get_mut(&mut self, index: u32) -> Option<&mut T> {
+    pub fn get_mut(&mut self, index: u32) -> Option<&mut T> {
         self.items.get_mut(index as usize)?.as_mut()
     }
 
-        pub fn remove(&mut self, index: u32) -> Option<T> {
+    pub fn remove(&mut self, index: u32) -> Option<T> {
         let slot = self.items.get_mut(index as usize)?;
         let taken = slot.take();
         if taken.is_some() {
@@ -43,33 +43,33 @@ impl<T> Arena<T> {
         taken
     }
 
-        pub fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.live
     }
 
-        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.live == 0
     }
 
-            pub fn slot_count(&self) -> usize {
+    pub fn slot_count(&self) -> usize {
         self.items.len()
     }
 
-        pub fn iter(&self) -> impl Iterator<Item = (u32, &T)> {
+    pub fn iter(&self) -> impl Iterator<Item = (u32, &T)> {
         self.items
             .iter()
             .enumerate()
             .filter_map(|(i, slot)| slot.as_ref().map(|v| (i as u32, v)))
     }
 
-        pub fn iter_mut(&mut self) -> impl Iterator<Item = (u32, &mut T)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (u32, &mut T)> {
         self.items
             .iter_mut()
             .enumerate()
             .filter_map(|(i, slot)| slot.as_mut().map(|v| (i as u32, v)))
     }
 
-            pub fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.items.clear();
         self.live = 0;
     }
@@ -80,7 +80,6 @@ impl<T> Default for Arena<T> {
         Arena::new()
     }
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct IncompleteRoomId(pub u32);

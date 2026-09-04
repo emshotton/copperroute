@@ -120,7 +120,7 @@ pub fn adjust_plane_autoroute_settings(board: &mut Board) -> Result<bool, DsnErr
         }
     }
 
-                struct PlaneChange {
+    struct PlaneChange {
         id: ItemId,
         net_numbers: Vec<i32>,
         bump_fixed_state: bool,
@@ -247,16 +247,16 @@ mod tests {
         );
     }
 
-                    #[test]
+    #[test]
     fn a_malformed_scalar_scope_is_resynchronised_whatever_the_offending_token() {
         for body in [
-            "5.0) tail",          
-            "(5)) tail",          
-            ") tail",             
-            "on) tail",           
-            "5 junk) tail",       
-            "5 (junk 1)) tail",   
-            "5 (a (b c)) ) tail", 
+            "5.0) tail",
+            "(5)) tail",
+            ") tail",
+            "on) tail",
+            "5 junk) tail",
+            "5 (junk 1)) tail",
+            "5 (a (b c)) ) tail",
         ] {
             let mut scanner = scan(body);
             let integer = read_integer_scope(&mut scanner).expect("no scan error");

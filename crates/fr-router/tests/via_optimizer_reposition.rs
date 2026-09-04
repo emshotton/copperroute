@@ -12,7 +12,6 @@ fn never() -> bool {
     false
 }
 
-
 const TRANSCRIPT: &str = include_str!("data/p7t4-via-optimizer.txt");
 
 fn transcript_section(name: &str) -> Vec<&'static str> {
@@ -270,7 +269,6 @@ fn assert_overload_rows(tag: &str, mode: i32, prefix: &str) {
     );
 }
 
-
 #[test]
 fn overload_a_matches_the_jvm_on_every_scripted_target() {
     assert_overload_rows("rpi", 3, "repA ");
@@ -285,7 +283,6 @@ fn overload_b_matches_the_jvm_on_every_scripted_candidate() {
 fn overload_c_matches_the_jvm_on_every_cost_pair() {
     assert_overload_rows("rpi", 5, "repC ");
 }
-
 
 #[test]
 fn a_one_contact_via_takes_overload_a() {
@@ -355,7 +352,6 @@ fn a_one_contact_via_takes_overload_a() {
     }
 }
 
-
 #[test]
 fn overload_b_is_reached_only_from_c() {
     const SOURCE: &str = include_str!("../src/board_ext/via_optimizer.rs");
@@ -374,8 +370,6 @@ fn overload_b_is_reached_only_from_c() {
         "overload A is called once from the plane/fanout arm and eight times from overload C"
     );
 }
-
-
 
 #[test]
 fn the_general_case_leaves_the_board_untouched_when_no_candidate_improves() {
@@ -435,7 +429,6 @@ fn the_general_case_leaves_the_board_untouched_when_no_candidate_improves() {
     assert!(refusals > 0, "the fall-through at :712 is exercised");
     assert!(successes > 0, "and so is the success path");
 }
-
 
 const COST_PAIRS: [[f64; 4]; 5] = [
     [1.0, 1.0, 1.0, 1.0],
@@ -616,7 +609,6 @@ fn dump_point(point: &Point) -> String {
     let rounded = point.to_float().round();
     format!("({},{})", rounded.x, rounded.y)
 }
-
 
 fn routed(design_name: &str) -> Board {
     let path = parity::fixture(design_name);

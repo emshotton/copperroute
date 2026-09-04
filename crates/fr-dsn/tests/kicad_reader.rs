@@ -7,7 +7,6 @@ use fr_dsn::format::java_double_to_string;
 use fr_dsn::kicad::{UnitJson, read_board};
 use fr_geometry::PolylineShapeRef;
 
-
 const TRANSCRIPT: &str = include_str!("data/p8t8-kicad-read-a.txt");
 
 fn fixture(relative: &str) -> String {
@@ -725,7 +724,6 @@ fn emit_the_port_transcripts() {
     }
 }
 
-
 const TRANSCRIPT_B: &str = include_str!("data/p8t8-kicad-read-b.txt");
 
 fn transcript_b_cases() -> Vec<Case> {
@@ -1017,7 +1015,6 @@ fn the_part_b_port_golden_differs_from_the_jar_only_where_a_fix_says_so() {
     );
 }
 
-
 fn board_of(json: &str) -> (Box<Board>, BoardMetadata, Vec<String>) {
     match read_board(json, None) {
         BoardReadResult::Success {
@@ -1170,7 +1167,6 @@ fn an_unknown_unit_falls_through_to_the_documented_arm() {
     );
 }
 
-
 #[test]
 fn every_null_list_is_a_parse_error_somewhere_in_read_board() {
     for key in ["layers", "netClasses", "clearanceRules", "nets"] {
@@ -1239,7 +1235,7 @@ fn the_auto_registered_nets_take_first_reference_order_not_java_hash_set_order()
     let names: Vec<&str> = (1..=board.rules.nets.max_net_number())
         .map(|no| board.rules.nets.get(no).expect("in range").name.as_str())
         .collect();
-            const JAR: [&str; 13] = [
+    const JAR: [&str; 13] = [
         "unconnected-(P7-Pad1)",
         "unconnected-(P6-Pad1)",
         "unconnected-(P8-Pad1)",
@@ -1366,7 +1362,7 @@ fn the_reader_builds_its_own_coordinate_transform() {
         ("{}", 10000.0),
         (r#"{"unit":"MIL","resolution":1.0}"#, 1.0),
         (r#"{"unit":"UM","resolution":10.0}"#, 10.0),
-        (r#"{"resolution":2.75}"#, 2.0), 
+        (r#"{"resolution":2.75}"#, 2.0),
     ] {
         let BoardReadResult::Success {
             coordinate_transform,
@@ -1405,7 +1401,6 @@ fn a_missing_outline_generates_a_padded_box_and_one_warning() {
     let (_, _, warnings) = board_of(json);
     assert!(warnings.is_empty());
 }
-
 
 fn kicad_board(body: &str) -> String {
     format!(

@@ -66,7 +66,6 @@ fn hdr(id: u32, net_nos: Vec<i32>, component_id: i32) -> ItemHeader {
 const THT_PADSTACK: PadstackId = PadstackId(1);
 const VIA_PADSTACK: PadstackId = PadstackId(3);
 
-
 const BOARD_BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -10_000,
@@ -167,7 +166,6 @@ fn pin_min_width_takes_the_smallest_bounding_box_side_over_signal_layers() {
     assert_eq!(pin.get_trace_neckdown_halfwidth(0, &ctx), 9);
 }
 
-
 #[test]
 fn an_attachable_via_is_not_an_obstacle_to_a_same_net_smd_pin() {
     let library = library();
@@ -230,7 +228,6 @@ fn a_through_hole_pin_is_an_obstacle_to_a_same_net_via() {
     assert!(tht_pin.is_obstacle(&via, &ctx));
     assert!(via.is_obstacle(&tht_pin, &ctx));
 }
-
 
 fn dirs_and_lengths(restrictions: &[TraceExitRestriction]) -> Vec<(Direction, f64)> {
     restrictions
@@ -325,7 +322,6 @@ fn trace_exit_restrictions_follow_the_component_rotation() {
         ]
     );
 }
-
 
 fn empty_ctx_parts() -> (BoardLibrary, Components, BoardRules) {
     (library(), Components::new(), rules())
@@ -431,7 +427,6 @@ fn min_width_survives_clear_derived_data() {
     assert_eq!(via.min_width(&ctx), 100.0);
 }
 
-
 #[test]
 fn swapping_two_pins_exchanges_their_nets_and_their_changed_to_aliases() {
     let mut rules = rules();
@@ -484,7 +479,6 @@ fn a_pin_on_more_than_one_net_refuses_to_swap() {
     assert_eq!(a.hdr.net_nos, vec![1, 2]);
     assert_eq!(b.hdr.net_nos, vec![3]);
 }
-
 
 fn smd_exit_fixture(pin_edge_to_turn_dist: f64) -> (BoardLibrary, Components, BoardRules, Pin) {
     let library = library();
@@ -583,7 +577,6 @@ fn calc_nearest_exit_restriction_direction_follows_where_the_trace_leaves_the_pa
     );
 }
 
-
 #[test]
 fn pin_transforms_throw_the_centre_away_instead_of_moving_it() {
     let library = library();
@@ -653,7 +646,6 @@ fn shape_layer_clamps_the_index_into_the_pin_layer_range() {
     assert_eq!(pin.shape_layer(1, &ctx), 1);
     assert_eq!(pin.shape_layer(99, &ctx), 1);
 }
-
 
 #[test]
 fn item_dispatch_reaches_the_drill_item_bodies() {

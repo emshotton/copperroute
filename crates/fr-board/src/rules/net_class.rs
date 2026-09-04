@@ -15,7 +15,7 @@ pub enum ItemClass {
 }
 
 impl ItemClass {
-            pub const VALUES: [ItemClass; 6] = [
+    pub const VALUES: [ItemClass; 6] = [
         ItemClass::None,
         ItemClass::Trace,
         ItemClass::Via,
@@ -24,7 +24,7 @@ impl ItemClass {
         ItemClass::Area,
     ];
 
-        pub fn ordinal(self) -> usize {
+    pub fn ordinal(self) -> usize {
         match self {
             ItemClass::None => 0,
             ItemClass::Trace => 1,
@@ -38,7 +38,7 @@ impl ItemClass {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DefaultItemClearanceClasses {
-        clearance_classes: [usize; ItemClass::VALUES.len()],
+    clearance_classes: [usize; ItemClass::VALUES.len()],
 }
 
 impl Default for DefaultItemClearanceClasses {
@@ -48,7 +48,7 @@ impl Default for DefaultItemClearanceClasses {
 }
 
 impl DefaultItemClearanceClasses {
-                        pub fn new() -> DefaultItemClearanceClasses {
+    pub fn new() -> DefaultItemClearanceClasses {
         let mut result = DefaultItemClearanceClasses {
             clearance_classes: [0; ItemClass::VALUES.len()],
         };
@@ -56,15 +56,15 @@ impl DefaultItemClearanceClasses {
         result
     }
 
-        pub fn get(&self, item_class: ItemClass) -> usize {
+    pub fn get(&self, item_class: ItemClass) -> usize {
         self.clearance_classes[item_class.ordinal()]
     }
 
-                    pub fn set(&mut self, item_class: ItemClass, index: usize) {
+    pub fn set(&mut self, item_class: ItemClass, index: usize) {
         self.clearance_classes[item_class.ordinal()] = index;
     }
 
-                    pub fn set_all(&mut self, index: usize) {
+    pub fn set_all(&mut self, index: usize) {
         for i in 1..self.clearance_classes.len() {
             self.clearance_classes[i] = index;
         }
@@ -73,22 +73,22 @@ impl DefaultItemClearanceClasses {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NetClass {
-        name: String,
-        trace_half_width: Vec<i32>,
-        active_routing_layer: Vec<bool>,
-        pub default_item_clearance_classes: DefaultItemClearanceClasses,
-        pub is_ignored_by_autorouter: bool,
-                                                        via_rule: Option<ViaRule>,
-        trace_clearance_class: usize,
-        shove_fixed: bool,
-        pull_tight: bool,
-        ignore_cycles_with_areas: bool,
-        minimum_trace_length: f64,
-        maximum_trace_length: f64,
+    name: String,
+    trace_half_width: Vec<i32>,
+    active_routing_layer: Vec<bool>,
+    pub default_item_clearance_classes: DefaultItemClearanceClasses,
+    pub is_ignored_by_autorouter: bool,
+    via_rule: Option<ViaRule>,
+    trace_clearance_class: usize,
+    shove_fixed: bool,
+    pull_tight: bool,
+    ignore_cycles_with_areas: bool,
+    minimum_trace_length: f64,
+    maximum_trace_length: f64,
 }
 
 impl NetClass {
-                        pub fn new(
+    pub fn new(
         name: impl Into<String>,
         layer_structure: &LayerStructure,
         ignored_by_autorouter: bool,
@@ -109,123 +109,123 @@ impl NetClass {
         }
     }
 
-        pub fn get_name(&self) -> &str {
+    pub fn get_name(&self) -> &str {
         &self.name
     }
 
-        pub fn set_name(&mut self, name: impl Into<String>) {
+    pub fn set_name(&mut self, name: impl Into<String>) {
         self.name = name.into();
     }
 
-        pub fn set_trace_half_width_on_all_layers(&mut self, value: i32) {
+    pub fn set_trace_half_width_on_all_layers(&mut self, value: i32) {
         self.trace_half_width.fill(value);
     }
 
-            pub fn set_trace_half_width(&mut self, layer: usize, value: i32) {
+    pub fn set_trace_half_width(&mut self, layer: usize, value: i32) {
         self.trace_half_width[layer] = value;
     }
 
-            pub fn set_trace_half_width_on_inner(&mut self, value: i32) {
+    pub fn set_trace_half_width_on_inner(&mut self, value: i32) {
         for i in 1..self.trace_half_width.len().saturating_sub(1) {
             self.trace_half_width[i] = value;
         }
     }
 
-        pub fn layer_count(&self) -> usize {
+    pub fn layer_count(&self) -> usize {
         self.trace_half_width.len()
     }
 
-            pub fn get_trace_half_width(&self, layer: usize) -> i32 {
+    pub fn get_trace_half_width(&self, layer: usize) -> i32 {
         self.trace_half_width.get(layer).copied().unwrap_or(0)
     }
 
-        pub fn get_trace_clearance_class(&self) -> usize {
+    pub fn get_trace_clearance_class(&self) -> usize {
         self.trace_clearance_class
     }
 
-        pub fn set_trace_clearance_class(&mut self, clearance_class: usize) {
+    pub fn set_trace_clearance_class(&mut self, clearance_class: usize) {
         self.trace_clearance_class = clearance_class;
     }
 
-                    pub fn get_via_rule(&self) -> Option<&ViaRule> {
+    pub fn get_via_rule(&self) -> Option<&ViaRule> {
         self.via_rule.as_ref()
     }
 
-        pub fn set_via_rule(&mut self, via_rule: Option<ViaRule>) {
+    pub fn set_via_rule(&mut self, via_rule: Option<ViaRule>) {
         self.via_rule = via_rule;
     }
 
-        pub fn is_shove_fixed(&self) -> bool {
+    pub fn is_shove_fixed(&self) -> bool {
         self.shove_fixed
     }
 
-        pub fn set_shove_fixed(&mut self, value: bool) {
+    pub fn set_shove_fixed(&mut self, value: bool) {
         self.shove_fixed = value;
     }
 
-        pub fn get_pull_tight(&self) -> bool {
+    pub fn get_pull_tight(&self) -> bool {
         self.pull_tight
     }
 
-        pub fn set_pull_tight(&mut self, value: bool) {
+    pub fn set_pull_tight(&mut self, value: bool) {
         self.pull_tight = value;
     }
 
-        pub fn get_ignore_cycles_with_areas(&self) -> bool {
+    pub fn get_ignore_cycles_with_areas(&self) -> bool {
         self.ignore_cycles_with_areas
     }
 
-        pub fn set_ignore_cycles_with_areas(&mut self, value: bool) {
+    pub fn set_ignore_cycles_with_areas(&mut self, value: bool) {
         self.ignore_cycles_with_areas = value;
     }
 
-            pub fn get_minimum_trace_length(&self) -> f64 {
+    pub fn get_minimum_trace_length(&self) -> f64 {
         self.minimum_trace_length
     }
 
-        pub fn set_minimum_trace_length(&mut self, value: f64) {
+    pub fn set_minimum_trace_length(&mut self, value: f64) {
         self.minimum_trace_length = value;
     }
 
-            pub fn get_maximum_trace_length(&self) -> f64 {
+    pub fn get_maximum_trace_length(&self) -> f64 {
         self.maximum_trace_length
     }
 
-        pub fn set_maximum_trace_length(&mut self, value: f64) {
+    pub fn set_maximum_trace_length(&mut self, value: f64) {
         self.maximum_trace_length = value;
     }
 
-            pub fn is_active_routing_layer(&self, layer_number: usize) -> bool {
+    pub fn is_active_routing_layer(&self, layer_number: usize) -> bool {
         self.active_routing_layer
             .get(layer_number)
             .copied()
             .unwrap_or(false)
     }
 
-            pub fn set_active_routing_layer(&mut self, layer_number: usize, active: bool) {
+    pub fn set_active_routing_layer(&mut self, layer_number: usize, active: bool) {
         if let Some(slot) = self.active_routing_layer.get_mut(layer_number) {
             *slot = active;
         }
     }
 
-        pub fn set_all_layers_active(&mut self, value: bool) {
+    pub fn set_all_layers_active(&mut self, value: bool) {
         self.active_routing_layer.fill(value);
     }
 
-                        pub fn set_all_inner_layers_active(&mut self, value: bool) {
+    pub fn set_all_inner_layers_active(&mut self, value: bool) {
         for i in 1..self.active_routing_layer.len().saturating_sub(1) {
             self.active_routing_layer[i] = value;
         }
     }
 
-                        pub fn trace_width_is_layer_dependent(&self, layer_structure: &LayerStructure) -> bool {
+    pub fn trace_width_is_layer_dependent(&self, layer_structure: &LayerStructure) -> bool {
         let compare_value = self.trace_half_width[0];
         (1..self.trace_half_width.len()).any(|i| {
             layer_structure.layers[i].is_signal && self.trace_half_width[i] != compare_value
         })
     }
 
-            pub fn trace_width_is_inner_layer_dependent(&self, layer_structure: &LayerStructure) -> bool {
+    pub fn trace_width_is_inner_layer_dependent(&self, layer_structure: &LayerStructure) -> bool {
         if self.trace_half_width.len() <= 3 {
             return false;
         }
@@ -251,42 +251,42 @@ impl fmt::Display for NetClass {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct NetClasses {
-        classes: Vec<NetClass>,
+    classes: Vec<NetClass>,
 }
 
 impl NetClasses {
-            pub fn new() -> NetClasses {
+    pub fn new() -> NetClasses {
         NetClasses::default()
     }
 
-        pub fn count(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.classes.len()
     }
 
-            pub fn get(&self, index: NetClassId) -> &NetClass {
+    pub fn get(&self, index: NetClassId) -> &NetClass {
         &self.classes[index.0]
     }
 
-        pub fn get_mut(&mut self, index: NetClassId) -> &mut NetClass {
+    pub fn get_mut(&mut self, index: NetClassId) -> &mut NetClass {
         &mut self.classes[index.0]
     }
 
-            pub fn get_by_name(&self, name: &str) -> Option<&NetClass> {
+    pub fn get_by_name(&self, name: &str) -> Option<&NetClass> {
         self.get_no(name).map(|id| self.get(id))
     }
 
-            pub fn get_no(&self, name: &str) -> Option<NetClassId> {
+    pub fn get_no(&self, name: &str) -> Option<NetClassId> {
         self.classes
             .iter()
             .position(|c| c.name == name)
             .map(NetClassId)
     }
 
-            pub fn iter(&self) -> std::slice::Iter<'_, NetClass> {
+    pub fn iter(&self) -> std::slice::Iter<'_, NetClass> {
         self.classes.iter()
     }
 
-            pub fn append(
+    pub fn append(
         &mut self,
         name: impl Into<String>,
         layer_structure: &LayerStructure,
@@ -297,7 +297,7 @@ impl NetClasses {
         NetClassId(self.classes.len() - 1)
     }
 
-                pub fn append_with_generated_name(&mut self, layer_structure: &LayerStructure) -> NetClassId {
+    pub fn append_with_generated_name(&mut self, layer_structure: &LayerStructure) -> NetClassId {
         let mut index = 0;
         let new_name = loop {
             index += 1;
@@ -309,7 +309,7 @@ impl NetClasses {
         self.append(new_name, layer_structure, false)
     }
 
-                                                                    pub fn find(
+    pub fn find(
         &self,
         trace_half_width: i32,
         trace_clearance_class: usize,
@@ -325,7 +325,7 @@ impl NetClasses {
             .map(NetClassId)
     }
 
-                pub fn find_per_layer(
+    pub fn find_per_layer(
         &self,
         trace_half_width: &[i32],
         trace_clearance_class: usize,

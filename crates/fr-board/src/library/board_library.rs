@@ -5,19 +5,19 @@ use super::package::{Package, Packages};
 use super::padstack::{Padstack, Padstacks};
 
 pub trait DrillItemPadstackLookup {
-        fn any_drill_item_uses_padstack(&self, padstack: PadstackId) -> bool;
+    fn any_drill_item_uses_padstack(&self, padstack: PadstackId) -> bool;
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoardLibrary {
-        pub padstacks: Padstacks,
-        pub packages: Packages,
-            pub logical_parts: LogicalParts,
-            via_padstacks: Option<Vec<PadstackId>>,
+    pub padstacks: Padstacks,
+    pub packages: Packages,
+    pub logical_parts: LogicalParts,
+    via_padstacks: Option<Vec<PadstackId>>,
 }
 
 impl BoardLibrary {
-        pub fn new(padstacks: Padstacks, packages: Packages) -> BoardLibrary {
+    pub fn new(padstacks: Padstacks, packages: Packages) -> BoardLibrary {
         BoardLibrary {
             padstacks,
             packages,
@@ -26,15 +26,15 @@ impl BoardLibrary {
         }
     }
 
-        pub fn via_padstack_count(&self) -> usize {
+    pub fn via_padstack_count(&self) -> usize {
         self.via_padstacks.as_ref().map_or(0, Vec::len)
     }
 
-                pub fn get_via_padstack(&self, no: usize) -> Option<PadstackId> {
+    pub fn get_via_padstack(&self, no: usize) -> Option<PadstackId> {
         self.via_padstacks.as_ref()?.get(no).copied()
     }
 
-            pub fn get_via_padstack_by_name(&self, name: &str) -> Option<PadstackId> {
+    pub fn get_via_padstack_by_name(&self, name: &str) -> Option<PadstackId> {
         let via_padstacks = self.via_padstacks.as_ref()?;
         via_padstacks
             .iter()
@@ -42,15 +42,15 @@ impl BoardLibrary {
             .find(|id| self.padstacks.get(*id).is_some_and(|p| p.name == name))
     }
 
-            pub fn get_via_padstacks(&self) -> Vec<PadstackId> {
+    pub fn get_via_padstacks(&self) -> Vec<PadstackId> {
         self.via_padstacks.clone().unwrap_or_default()
     }
 
-            pub fn set_via_padstacks(&mut self, padstacks: Vec<PadstackId>) {
+    pub fn set_via_padstacks(&mut self, padstacks: Vec<PadstackId>) {
         self.via_padstacks = Some(padstacks);
     }
 
-                                        pub fn add_via_padstack(&mut self, padstack: PadstackId) -> bool {
+    pub fn add_via_padstack(&mut self, padstack: PadstackId) -> bool {
         let resolved = self.padstacks.get(padstack);
         debug_assert!(
             resolved.is_some(),
@@ -67,7 +67,7 @@ impl BoardLibrary {
         true
     }
 
-                                                                            pub fn remove_via_padstack(&mut self, padstack: PadstackId) -> bool {
+    pub fn remove_via_padstack(&mut self, padstack: PadstackId) -> bool {
         let Some(list) = self.via_padstacks.as_mut() else {
             return false;
         };
@@ -80,7 +80,7 @@ impl BoardLibrary {
         }
     }
 
-                                                    pub fn get_mirrored_via_padstack(&self, via_padstack: PadstackId) -> Option<PadstackId> {
+    pub fn get_mirrored_via_padstack(&self, via_padstack: PadstackId) -> Option<PadstackId> {
         let layer_count = self.padstacks.board_layer_structure.layers.len() as i32;
         let via = self
             .padstacks
@@ -101,7 +101,7 @@ impl BoardLibrary {
         })
     }
 
-                pub fn is_used(
+    pub fn is_used(
         &self,
         padstack: PadstackId,
         board_items: &impl DrillItemPadstackLookup,
@@ -122,17 +122,17 @@ impl BoardLibrary {
         false
     }
 
-            pub fn get_padstack(&self, id: PadstackId) -> Option<&Padstack> {
+    pub fn get_padstack(&self, id: PadstackId) -> Option<&Padstack> {
         self.padstacks.get(id)
     }
 
-            pub fn get_package(&self, no: usize) -> &Package {
+    pub fn get_package(&self, no: usize) -> &Package {
         self.packages.get(no)
     }
 }
 
 impl Default for BoardLibrary {
-                        fn default() -> Self {
+    fn default() -> Self {
         BoardLibrary::new(Padstacks::default(), Packages::default())
     }
 }
@@ -214,7 +214,7 @@ mod tests {
         assert_eq!(library.get_via_padstack_by_name("VIA1"), None);
     }
 
-            #[test]
+    #[test]
     fn the_via_padstack_list_is_guarded_before_any_via_padstack_was_ever_added() {
         let (mut library, ids) = library_with_padstacks(2, 1);
         assert_eq!(

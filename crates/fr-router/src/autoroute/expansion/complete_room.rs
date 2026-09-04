@@ -13,16 +13,16 @@ use crate::autoroute::expansion::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CompleteFreeSpaceExpansionRoom {
-        pub base: FreeSpaceExpansionRoom,
-                    id: i32,
-                                    room_id: RoomId,
-                            tree_leaf: Option<LeafId>,
-        target_doors: Vec<TargetDoorId>,
-        room_is_net_dependent: bool,
+    pub base: FreeSpaceExpansionRoom,
+    id: i32,
+    room_id: RoomId,
+    tree_leaf: Option<LeafId>,
+    target_doors: Vec<TargetDoorId>,
+    room_is_net_dependent: bool,
 }
 
 impl CompleteFreeSpaceExpansionRoom {
-                    pub fn new(
+    pub fn new(
         shape: Option<TileShape>,
         layer: usize,
         id: i32,
@@ -38,67 +38,67 @@ impl CompleteFreeSpaceExpansionRoom {
         }
     }
 
-                                    pub fn set_search_tree_entries(&mut self, leaf: Option<LeafId>) {
+    pub fn set_search_tree_entries(&mut self, leaf: Option<LeafId>) {
         self.tree_leaf = leaf;
     }
 
-        pub fn tree_leaf(&self) -> Option<LeafId> {
+    pub fn tree_leaf(&self) -> Option<LeafId> {
         self.tree_leaf
     }
 
-        pub fn room_id(&self) -> RoomId {
+    pub fn room_id(&self) -> RoomId {
         self.room_id
     }
 
-                                                            pub fn compare_to(&self, other: &CompleteFreeSpaceExpansionRoom) -> Ordering {
+    pub fn compare_to(&self, other: &CompleteFreeSpaceExpansionRoom) -> Ordering {
         other.id.cmp(&self.id)
     }
 
-                                                                            pub fn remove_from_tree(&mut self, tree: &mut ShapeSearchTree) {
+    pub fn remove_from_tree(&mut self, tree: &mut ShapeSearchTree) {
         tree.remove_room(self.tree_leaf.take());
     }
 
-            pub fn tree_shape_count(&self) -> usize {
+    pub fn tree_shape_count(&self) -> usize {
         1
     }
 
-            pub fn get_tree_shape(&self, _index: usize) -> Option<&TileShape> {
+    pub fn get_tree_shape(&self, _index: usize) -> Option<&TileShape> {
         self.base.get_shape()
     }
 
-            pub fn shape_layer(&self, _index: usize) -> usize {
+    pub fn shape_layer(&self, _index: usize) -> usize {
         self.base.get_layer()
     }
 
-                pub fn is_obstacle(&self, _net_number: i32) -> bool {
+    pub fn is_obstacle(&self, _net_number: i32) -> bool {
         true
     }
 
-            pub fn is_trace_obstacle(&self, _net_number: i32) -> bool {
+    pub fn is_trace_obstacle(&self, _net_number: i32) -> bool {
         true
     }
 
-            pub fn set_net_dependent(&mut self) {
+    pub fn set_net_dependent(&mut self) {
         self.room_is_net_dependent = true;
     }
 
-                pub fn is_net_dependent(&self) -> bool {
+    pub fn is_net_dependent(&self) -> bool {
         self.room_is_net_dependent
     }
 
-        pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         self.id
     }
 
-        pub fn get_target_doors(&self) -> &[TargetDoorId] {
+    pub fn get_target_doors(&self) -> &[TargetDoorId] {
         &self.target_doors
     }
 
-        pub fn add_target_door(&mut self, door: TargetDoorId) {
+    pub fn add_target_door(&mut self, door: TargetDoorId) {
         self.target_doors.push(door);
     }
 
-                            pub fn remove_door(&mut self, door: ExpandableRef) -> bool {
+    pub fn remove_door(&mut self, door: ExpandableRef) -> bool {
         match door {
             ExpandableRef::TargetDoor(id) => {
                 match self.target_doors.iter().position(|d| *d == id) {
@@ -114,16 +114,16 @@ impl CompleteFreeSpaceExpansionRoom {
         }
     }
 
-            pub fn get_object(&self) -> TreeObject {
+    pub fn get_object(&self) -> TreeObject {
         TreeObject::Room(self.room_id)
     }
 
-            pub fn clear_doors(&mut self) {
+    pub fn clear_doors(&mut self) {
         self.base.clear_doors();
         self.target_doors = Vec::new();
     }
 
-            pub fn reset_doors(
+    pub fn reset_doors(
         &self,
         doors: &mut Arena<ExpansionDoor>,
         target_doors: &mut Arena<super::TargetItemExpansionDoor>,
@@ -136,33 +136,32 @@ impl CompleteFreeSpaceExpansionRoom {
         }
     }
 
-
-        pub fn get_shape(&self) -> Option<&TileShape> {
+    pub fn get_shape(&self) -> Option<&TileShape> {
         self.base.get_shape()
     }
 
-        pub fn set_shape(&mut self, shape: Option<TileShape>) {
+    pub fn set_shape(&mut self, shape: Option<TileShape>) {
         self.base.set_shape(shape);
     }
 
-        pub fn get_layer(&self) -> usize {
+    pub fn get_layer(&self) -> usize {
         self.base.get_layer()
     }
 
-        pub fn add_door(&mut self, door: DoorId) {
+    pub fn add_door(&mut self, door: DoorId) {
         self.base.add_door(door);
     }
 
-        pub fn get_doors(&self) -> &[DoorId] {
+    pub fn get_doors(&self) -> &[DoorId] {
         self.base.get_doors()
     }
 
-        pub fn door_exists(&self, doors: &Arena<ExpansionDoor>, other: RoomRef) -> bool {
+    pub fn door_exists(&self, doors: &Arena<ExpansionDoor>, other: RoomRef) -> bool {
         self.base.door_exists(doors, other)
     }
 
-                        /// `FRLogger.warn("ExpansionRoom overlap conflict")` is dropped; the `false` it accompanies is
-                                        pub fn validate(
+    /// `FRLogger.warn("ExpansionRoom overlap conflict")` is dropped; the `false` it accompanies is
+    pub fn validate(
         &self,
         engine: &crate::autoroute::maze::engine::AutorouteEngine,
         board: &Board,
@@ -275,7 +274,6 @@ pub fn calculate_target_doors(
         r.add_target_door(new_target_door);
     }
 }
-
 
 #[cfg(test)]
 mod tests {

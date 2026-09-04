@@ -13,16 +13,16 @@ pub use via::{ViaInfo, ViaInfos, ViaRule};
 use crate::ids::PadstackId;
 
 pub trait PadstackLookup {
-                fn padstack_from_layer(&self, padstack: PadstackId) -> i32;
+    fn padstack_from_layer(&self, padstack: PadstackId) -> i32;
 
-            fn padstack_to_layer(&self, padstack: PadstackId) -> i32;
+    fn padstack_to_layer(&self, padstack: PadstackId) -> i32;
 
-                    fn padstack_shape_max_width(&self, padstack: PadstackId, layer: i32) -> Option<f64>;
+    fn padstack_shape_max_width(&self, padstack: PadstackId, layer: i32) -> Option<f64>;
 }
 
 pub trait ClearanceClassIndexed {
-        fn clearance_class_index(&self) -> usize;
-        fn set_clearance_class_index(&mut self, index: usize);
+    fn clearance_class_index(&self) -> usize;
+    fn set_clearance_class_index(&mut self, index: usize);
 }
 
 pub fn equals_ignore_case(a: &str, b: &str) -> bool {
@@ -85,7 +85,7 @@ fn java_to_lower_unit(u: u16) -> u16 {
 fn map_unit(u: u16, f: fn(char) -> char) -> u16 {
     match char::from_u32(u32::from(u)) {
         Some(c) => u16::try_from(f(c) as u32).unwrap_or(u),
-        None => u, 
+        None => u,
     }
 }
 
@@ -125,13 +125,12 @@ mod tests {
     use super::*;
     use std::cmp::Ordering;
 
-
-        const I_DOT: &str = "\u{130}";
-        const DOTLESS_I: &str = "\u{131}";
-        const KELVIN: &str = "\u{212a}";
-        const OHM: &str = "\u{2126}";
-        const LIG_FF: &str = "\u{fb00}";
-        const YPO: &str = "\u{1f80}";
+    const I_DOT: &str = "\u{130}";
+    const DOTLESS_I: &str = "\u{131}";
+    const KELVIN: &str = "\u{212a}";
+    const OHM: &str = "\u{2126}";
+    const LIG_FF: &str = "\u{fb00}";
+    const YPO: &str = "\u{1f80}";
     const YPO_CAPITAL: &str = "\u{1f88}";
 
     #[test]

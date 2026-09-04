@@ -12,7 +12,6 @@ use fr_router::board_ext::{
     CheckDrillResult, DrillItemMover, ForcedPadRouter, ForcedViaInserter, TraceShover,
 };
 
-
 const TRANSCRIPT: &str = include_str!("data/p6t10-forced-via.txt");
 
 fn section(mode: &str) -> Vec<&'static str> {
@@ -109,7 +108,6 @@ fn nets(field_value: &str) -> Vec<i32> {
             .collect()
     }
 }
-
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -458,7 +456,6 @@ fn centre_of(shape: &TileShape) -> Point {
     Point::Int(shape.centre_of_gravity().round())
 }
 
-
 #[test]
 fn in_front_of_pad_agrees_with_the_jvm_on_every_probe_row() {
     let pad = front_pad();
@@ -578,7 +575,6 @@ fn in_front_of_pad_is_asymmetric_in_a_and_b_at_from_side_zero() {
         }
     }
 }
-
 
 #[test]
 fn check_forced_pad_agrees_with_the_jvm_on_every_probe_row() {
@@ -761,7 +757,6 @@ fn check_forced_pad_does_not_mutate_the_board() {
     assert_eq!(board.structural_hash(), before);
 }
 
-
 #[test]
 fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
     for angle in [AngleRestriction::None, AngleRestriction::NinetyDegree] {
@@ -851,7 +846,6 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
         );
     }
 }
-
 
 #[test]
 fn calc_from_side_agrees_with_the_jvm() {
@@ -1021,7 +1015,6 @@ fn calculate_from_side_agrees_with_the_jvm() {
     assert_eq!(checked, 36, "6 rooms x 3 distances x 2 regimes");
 }
 
-
 #[test]
 fn hole_check_shape_agrees_with_the_jvm() {
     let mut board = probe_board(AngleRestriction::None);
@@ -1055,7 +1048,6 @@ fn hole_check_shape_agrees_with_the_jvm() {
         }
     }
 }
-
 
 fn layer_spots() -> Vec<(&'static str, Point)> {
     vec![
@@ -1328,7 +1320,6 @@ fn check_layer_agrees_with_the_jvm_on_two_hundred_random_triples() {
     );
 }
 
-
 fn check_spots() -> Vec<(&'static str, Point)> {
     vec![
         ("onNet1", Point::new(0, 200)),
@@ -1470,7 +1461,6 @@ fn check_agrees_with_check_layer_where_the_via_fits_and_where_it_does_not() {
         CheckDrillResult::NotDrillable
     );
 }
-
 
 const TRANSCRIPT_10B: &str = include_str!("data/p6t10b-via-insert.txt");
 

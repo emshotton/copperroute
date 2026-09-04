@@ -8,13 +8,13 @@ use crate::unconnected::{UnconnectedItems, UnconnectedKind};
 
 #[derive(Debug)]
 pub struct DesignRulesChecker<'a> {
-                        pub(crate) board: &'a mut Board,
-                                            max_connections: i32,
-                                    net_incompletes: Option<Vec<NetIncompletes>>,
+    pub(crate) board: &'a mut Board,
+    max_connections: i32,
+    net_incompletes: Option<Vec<NetIncompletes>>,
 }
 
 impl<'a> DesignRulesChecker<'a> {
-                pub fn new(board: &'a mut Board) -> Self {
+    pub fn new(board: &'a mut Board) -> Self {
         DesignRulesChecker {
             board,
             max_connections: 0,
@@ -22,7 +22,7 @@ impl<'a> DesignRulesChecker<'a> {
         }
     }
 
-                                                    pub fn get_all_clearance_violations(&mut self) -> Vec<ClearanceViolation> {
+    pub fn get_all_clearance_violations(&mut self) -> Vec<ClearanceViolation> {
         let mut all_violations: Vec<ClearanceViolation> = Vec::new();
         let mut seen_violations: BTreeSet<(u32, u32, usize)> = BTreeSet::new();
 
@@ -45,7 +45,7 @@ impl<'a> DesignRulesChecker<'a> {
         all_violations
     }
 
-                                                                                pub fn get_all_unconnected_items(&mut self) -> Vec<UnconnectedItems> {
+    pub fn get_all_unconnected_items(&mut self) -> Vec<UnconnectedItems> {
         let mut unconnected_items: Vec<UnconnectedItems> = Vec::new();
 
         let mut items_by_net: BTreeMap<i32, Vec<ItemId>> = BTreeMap::new();
@@ -138,7 +138,7 @@ impl<'a> DesignRulesChecker<'a> {
         unconnected_items
     }
 
-                    fn find_representative_item(&self, connected_set: &[ItemId]) -> Option<ItemId> {
+    fn find_representative_item(&self, connected_set: &[ItemId]) -> Option<ItemId> {
         let of_kind = |kind: ItemKind| {
             connected_set
                 .iter()
@@ -150,8 +150,7 @@ impl<'a> DesignRulesChecker<'a> {
             .or_else(|| connected_set.first().copied())
     }
 
-
-                                                                                    pub fn calculate_all_incompletes(&mut self) {
+    pub fn calculate_all_incompletes(&mut self) {
         let board = &*self.board;
 
         let max_net_no = board.rules.nets.max_net_number();
@@ -205,7 +204,7 @@ impl<'a> DesignRulesChecker<'a> {
         );
     }
 
-                            pub fn recalculate_net_incompletes(&mut self, net_number: i32) {
+    pub fn recalculate_net_incompletes(&mut self, net_number: i32) {
         if self.net_incompletes.is_none() {
             self.calculate_all_incompletes();
             return;
@@ -218,7 +217,7 @@ impl<'a> DesignRulesChecker<'a> {
         }
     }
 
-                                pub fn recalculate_net_incompletes_with(&mut self, net_number: i32, item_list: &[ItemId]) {
+    pub fn recalculate_net_incompletes_with(&mut self, net_number: i32, item_list: &[ItemId]) {
         if self.net_incompletes.is_none() {
             self.calculate_all_incompletes();
         }
@@ -229,18 +228,18 @@ impl<'a> DesignRulesChecker<'a> {
         }
     }
 
-                            pub fn max_connections(&self) -> i32 {
+    pub fn max_connections(&self) -> i32 {
         self.max_connections
     }
 
-                                pub fn get_incomplete_count(&mut self) -> usize {
+    pub fn get_incomplete_count(&mut self) -> usize {
         self.net_incompletes_mut()
             .iter()
             .map(NetIncompletes::count)
             .sum()
     }
 
-                pub fn get_incomplete_count_for_net(&mut self, net_number: i32) -> usize {
+    pub fn get_incomplete_count_for_net(&mut self, net_number: i32) -> usize {
         let list = self.net_incompletes_mut();
         match slot(net_number, list.len()) {
             Some(index) => list[index].count(),
@@ -248,14 +247,14 @@ impl<'a> DesignRulesChecker<'a> {
         }
     }
 
-            pub fn get_length_violation_count(&mut self) -> usize {
+    pub fn get_length_violation_count(&mut self) -> usize {
         self.net_incompletes_mut()
             .iter()
             .filter(|net_incompletes| net_incompletes.get_length_violation() != 0.0)
             .count()
     }
 
-            pub fn get_length_violation(&mut self, net_number: i32) -> f64 {
+    pub fn get_length_violation(&mut self, net_number: i32) -> f64 {
         let list = self.net_incompletes_mut();
         match slot(net_number, list.len()) {
             Some(index) => list[index].get_length_violation(),
@@ -263,7 +262,7 @@ impl<'a> DesignRulesChecker<'a> {
         }
     }
 
-                            pub fn recalculate_length_violations(&mut self) -> bool {
+    pub fn recalculate_length_violations(&mut self) -> bool {
         if self.net_incompletes.is_none() {
             self.calculate_all_incompletes();
             return true;
@@ -278,20 +277,20 @@ impl<'a> DesignRulesChecker<'a> {
             })
     }
 
-                                                pub fn get_all_airlines(&mut self) -> Vec<AirLine> {
+    pub fn get_all_airlines(&mut self) -> Vec<AirLine> {
         self.net_incompletes_mut()
             .iter()
             .flat_map(|net_incompletes| net_incompletes.incompletes.iter().cloned())
             .collect()
     }
 
-            pub fn get_net_incompletes(&mut self, net_number: i32) -> Option<&NetIncompletes> {
+    pub fn get_net_incompletes(&mut self, net_number: i32) -> Option<&NetIncompletes> {
         let list = self.net_incompletes_mut();
         let index = slot(net_number, list.len())?;
         Some(&list[index])
     }
 
-                    fn net_incompletes_mut(&mut self) -> &mut Vec<NetIncompletes> {
+    fn net_incompletes_mut(&mut self) -> &mut Vec<NetIncompletes> {
         if self.net_incompletes.is_none() {
             self.calculate_all_incompletes();
         }

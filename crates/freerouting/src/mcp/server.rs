@@ -17,31 +17,31 @@ pub type ToolHandler = Box<
 
 #[derive(Clone)]
 pub struct ProgressWriter {
-        inner: Option<ProgressTarget>,
+    inner: Option<ProgressTarget>,
 }
 
 #[derive(Clone)]
 struct ProgressTarget {
-            token: Value,
+    token: Value,
     writer: SharedWriter,
 }
 
 impl ProgressWriter {
-            pub fn disabled() -> ProgressWriter {
+    pub fn disabled() -> ProgressWriter {
         ProgressWriter { inner: None }
     }
 
-        pub fn new(token: Option<Value>, writer: SharedWriter) -> ProgressWriter {
+    pub fn new(token: Option<Value>, writer: SharedWriter) -> ProgressWriter {
         ProgressWriter {
             inner: token.map(|token| ProgressTarget { token, writer }),
         }
     }
 
-            pub fn is_enabled(&self) -> bool {
+    pub fn is_enabled(&self) -> bool {
         self.inner.is_some()
     }
 
-                            pub fn progress(&self, progress: f64, total: Option<f64>, message: Option<&str>) {
+    pub fn progress(&self, progress: f64, total: Option<f64>, message: Option<&str>) {
         let Some(target) = self.inner.as_ref() else {
             return;
         };
@@ -83,8 +83,8 @@ pub struct ToolDef {
 
 pub struct State {
     tools: BTreeMap<String, (ToolDef, ToolHandler)>,
-                    pub initialized: AtomicBool,
-                                        pub settings_argv: Vec<String>,
+    pub initialized: AtomicBool,
+    pub settings_argv: Vec<String>,
 }
 
 impl Default for State {
@@ -102,14 +102,14 @@ impl State {
         }
     }
 
-        pub fn with_settings_argv(settings_argv: &[String]) -> Self {
+    pub fn with_settings_argv(settings_argv: &[String]) -> Self {
         Self {
             settings_argv: settings_argv.to_vec(),
             ..Self::new()
         }
     }
 
-                pub fn register_tool(&mut self, def: ToolDef, handler: ToolHandler) {
+    pub fn register_tool(&mut self, def: ToolDef, handler: ToolHandler) {
         self.tools.insert(def.name.clone(), (def, handler));
     }
 }
@@ -120,7 +120,7 @@ pub fn handle(
     progress: &ProgressWriter,
     cancel: &CancelToken,
 ) -> Option<Response> {
-    let id = req.id.clone()?; 
+    let id = req.id.clone()?;
     let params = req.params.unwrap_or(Value::Null);
     let resp = match req.method.as_str() {
         "initialize" => {
@@ -223,7 +223,7 @@ mod tests {
         }
     }
 
-            fn answer(state: &State, req: Request) -> Option<Response> {
+    fn answer(state: &State, req: Request) -> Option<Response> {
         handle(state, req, &ProgressWriter::disabled(), &CancelToken::new())
     }
 
@@ -320,7 +320,7 @@ mod tests {
         assert_eq!(resp.error.unwrap().code, -32602);
     }
 
-            #[test]
+    #[test]
     fn a_tool_failure_is_an_is_error_result_and_a_tool_panic_is_a_minus_32603() {
         let mut st = State::new();
         st.register_tool(
@@ -356,7 +356,7 @@ mod tests {
         assert!(e.message.contains("boom"), "{}", e.message);
     }
 
-            #[test]
+    #[test]
     fn a_progress_writer_with_no_token_drops_everything() {
         let sink: Arc<Mutex<Vec<u8>>> = Arc::new(Mutex::new(Vec::new()));
         let disabled = ProgressWriter::disabled();
@@ -383,7 +383,7 @@ mod tests {
         assert_eq!(second["params"]["message"], "half");
     }
 
-        fn shared(buffer: Arc<Mutex<Vec<u8>>>) -> SharedWriter {
+    fn shared(buffer: Arc<Mutex<Vec<u8>>>) -> SharedWriter {
         struct Tee(Arc<Mutex<Vec<u8>>>);
         impl Write for Tee {
             fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
@@ -397,9 +397,3 @@ mod tests {
         Arc::new(Mutex::new(Tee(buffer)))
     }
 }
-
-
-
-
-
-

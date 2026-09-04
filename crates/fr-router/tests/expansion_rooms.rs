@@ -9,7 +9,6 @@ use fr_router::autoroute::expansion::{
 use fr_router::autoroute::item_info;
 use fr_router::autoroute::maze::{MazeAdjustment, MazeSearchElement};
 
-
 const SPLITTER: &str = "Issue143-rpi_splitter.dsn";
 
 fn fixture_board(name: &str) -> Board {
@@ -27,7 +26,6 @@ fn fixture_board(name: &str) -> Board {
 fn boxed(llx: i32, lly: i32, urx: i32, ury: i32) -> TileShape {
     TileShape::Box(IntBox::from_coords(llx, lly, urx, ury))
 }
-
 
 #[test]
 fn room_ids_are_the_engine_counter_and_items_are_not() {
@@ -202,7 +200,6 @@ fn a_target_door_id_folds_in_the_item_and_the_room() {
     );
 }
 
-
 #[test]
 fn rooms_sort_before_items_and_descending_among_themselves() {
     let mut tree: ShapeTree<TreeObject> = ShapeTree::new(ShapeBoundingDirections::Orthogonal);
@@ -320,7 +317,6 @@ fn removing_a_room_twice_is_a_no_op_not_a_panic() {
     assert_eq!(tree.tree().leaf_count(), before);
     assert!(store.complete_room(room).is_none());
 }
-
 
 fn first_item_with_shapes(board: &mut Board) -> (ItemId, usize) {
     let tree = board.default_tree_id();
@@ -442,7 +438,6 @@ fn a_stale_index_drops_the_autoroute_info() {
         "the stale index dropped the whole autoroute scratch"
     );
 }
-
 
 #[test]
 fn a_door_knows_its_other_room_and_only_a_complete_one() {
@@ -656,7 +651,6 @@ fn a_door_built_from_the_room_shapes_takes_the_intersections_dimension() {
     assert_eq!(store.new_door_from_shapes(a, plane), None);
 }
 
-
 fn total_length(sections: &[FloatLine]) -> f64 {
     sections.iter().map(|s| s.b.distance(&s.a)).sum()
 }
@@ -816,7 +810,6 @@ fn an_empty_door_shape_yields_no_sections_at_all() {
     assert!(store.door_section_segments(door, 8.0).is_empty());
     assert_eq!(store.door(door).unwrap().maze_search_element_count(), None);
 }
-
 
 #[test]
 fn clear_takes_the_rooms_out_of_the_boards_tree_before_draining_the_arenas() {

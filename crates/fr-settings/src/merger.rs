@@ -1,39 +1,39 @@
 use crate::{HostEnvironment, RouterSettings};
 
 pub mod priority {
-        pub const DEFAULT: i32 = 0;
-        pub const JSON_FILE: i32 = 10;
-        pub const DSN_FILE: i32 = 20;
-        pub const SES_FILE: i32 = 30;
-        pub const RULES_FILE: i32 = 40;
-                                        pub const GUI: i32 = 65;
-        pub const ENVIRONMENT: i32 = 55;
-        pub const CLI: i32 = 60;
-        pub const API: i32 = 70;
+    pub const DEFAULT: i32 = 0;
+    pub const JSON_FILE: i32 = 10;
+    pub const DSN_FILE: i32 = 20;
+    pub const SES_FILE: i32 = 30;
+    pub const RULES_FILE: i32 = 40;
+    pub const GUI: i32 = 65;
+    pub const ENVIRONMENT: i32 = 55;
+    pub const CLI: i32 = 60;
+    pub const API: i32 = 70;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SourceKind {
-        Default,
-        JsonFile,
-        DsnFile,
-        SesFile,
-        RulesFile,
-        Gui,
-        Environment,
-        Cli,
-        Api,
-                                Custom(&'static str),
+    Default,
+    JsonFile,
+    DsnFile,
+    SesFile,
+    RulesFile,
+    Gui,
+    Environment,
+    Cli,
+    Api,
+    Custom(&'static str),
 }
 
 pub trait SettingsSource {
-                                fn get_settings(&self) -> Option<&RouterSettings>;
+    fn get_settings(&self) -> Option<&RouterSettings>;
 
-        fn get_source_name(&self) -> String;
+    fn get_source_name(&self) -> String;
 
-        fn get_priority(&self) -> i32;
+    fn get_priority(&self) -> i32;
 
-            fn kind(&self) -> SourceKind;
+    fn kind(&self) -> SourceKind;
 }
 
 pub struct SettingsMerger {
@@ -41,7 +41,7 @@ pub struct SettingsMerger {
 }
 
 impl SettingsMerger {
-                            #[must_use]
+    #[must_use]
     pub fn new(sources: Vec<Box<dyn SettingsSource>>) -> Self {
         let mut merger = Self {
             sources: Vec::new(),
@@ -50,7 +50,7 @@ impl SettingsMerger {
         merger
     }
 
-                                                pub fn add_or_replace_sources(&mut self, new_sources: Vec<Box<dyn SettingsSource>>) {
+    pub fn add_or_replace_sources(&mut self, new_sources: Vec<Box<dyn SettingsSource>>) {
         for new_source in new_sources {
             match self
                 .sources
@@ -63,12 +63,12 @@ impl SettingsMerger {
         }
     }
 
-                #[must_use]
+    #[must_use]
     pub fn sources(&self) -> &[Box<dyn SettingsSource>] {
         &self.sources
     }
 
-                                                                                                        #[must_use]
+    #[must_use]
     pub fn merge(&self, host: &HostEnvironment) -> RouterSettings {
         // :134-137 — `FRLogger.warn("No settings sources provided, using defaults")` is dropped
         if self.sources.is_empty() {
@@ -96,7 +96,6 @@ impl SettingsMerger {
         merged.validate(host);
         merged
     }
-
 }
 
 #[cfg(test)]

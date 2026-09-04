@@ -17,7 +17,6 @@ use fr_router::autoroute::maze::{AutorouteControl, MazeAdjustment, MazeListEleme
 use fr_router::autoroute::path::Connection;
 use fr_settings::RouterSettings;
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -4_000,
@@ -245,7 +244,6 @@ fn fixture() -> Fixture {
     }
 }
 
-
 #[test]
 fn the_fanout_via_cost_factor_answers_javas_table() {
     let mut board = probe_board();
@@ -278,7 +276,6 @@ fn the_fanout_via_cost_factor_answers_javas_table() {
     let factor = MazeRipupResolver::calc_fanout_via_ripup_cost_factor(&board, attached);
     assert!((factor - 50.0).abs() < 5e-10, "{factor} != 50");
 }
-
 
 fn seeded_element(maze: &MazeSearchEngine<'_>) -> MazeListElement {
     maze.queue.iter().next().expect("a seeded element").clone()
@@ -496,7 +493,6 @@ fn the_random_draw_matches_the_jvm() {
     }
 }
 
-
 #[test]
 fn the_detour_is_memoised_through_the_item_autoroute_info() {
     let mut f = fixture();
@@ -572,7 +568,6 @@ fn the_detour_is_memoised_through_the_item_autoroute_info() {
     );
     assert!((connection.trace_length(&f.board) - 2_000.0).abs() < 5e-10);
 }
-
 
 #[test]
 fn the_small_door_check_answers_javas_table_over_every_completed_door() {

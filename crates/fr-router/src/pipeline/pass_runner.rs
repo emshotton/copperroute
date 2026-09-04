@@ -14,7 +14,7 @@ use crate::score::BoardStatistics;
 pub struct AutoroutePassRunner;
 
 impl AutoroutePassRunner {
-                                                                                                                                                                                                                                                                                                                                                    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn run_single_thread(
         board: &mut Board,
         router: &mut BatchAutorouter<'_>,
@@ -39,7 +39,7 @@ impl AutoroutePassRunner {
         }
     }
 
-                    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn run_single_thread_body(
         board: &mut Board,
         router: &mut BatchAutorouter<'_>,
@@ -104,8 +104,6 @@ impl AutoroutePassRunner {
                 let mut ripped_item_list: BTreeSet<ItemId> = BTreeSet::new();
                 let mut ripped_item_costs: BTreeMap<ItemId, i32> = BTreeMap::new();
 
-
-
                 let mut engine = None;
                 let stop_check = &|| stop.is_stop_requested();
                 let autorouter_result = router.autoroute_item(
@@ -118,7 +116,6 @@ impl AutoroutePassRunner {
                     pass_no,
                     stop_check,
                 );
-
 
                 match autorouter_result.state {
                     AutorouteAttemptState::Routed => routed += 1,
@@ -175,11 +172,10 @@ impl AutoroutePassRunner {
             counters: counters.clone(),
         });
 
-
         Ok(routed > 0 || not_routed > 0)
     }
 
-                                                    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn update_progress(
         board: &mut Board,
         router: &mut BatchAutorouter<'_>,

@@ -3,25 +3,25 @@ use crate::structure::Unit;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Communication {
-        pub unit: Unit,
-            pub resolution: i32,
-            pub id_gen: ItemIdGenerator,
-            pub host_cad: Option<String>,
-        pub host_version: Option<String>,
-                    pub string_quote: String,
-                        pub constants: Vec<Vec<String>>,
-            pub write_resolution: Option<WriteResolution>,
-                    pub dsn_file_generated_by_host: bool,
+    pub unit: Unit,
+    pub resolution: i32,
+    pub id_gen: ItemIdGenerator,
+    pub host_cad: Option<String>,
+    pub host_version: Option<String>,
+    pub string_quote: String,
+    pub constants: Vec<Vec<String>>,
+    pub write_resolution: Option<WriteResolution>,
+    pub dsn_file_generated_by_host: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WriteResolution {
-        pub char_name: String,
-        pub positive_int: i32,
+    pub char_name: String,
+    pub positive_int: i32,
 }
 
 impl WriteResolution {
-        pub fn new(char_name: impl Into<String>, positive_int: i32) -> WriteResolution {
+    pub fn new(char_name: impl Into<String>, positive_int: i32) -> WriteResolution {
         WriteResolution {
             char_name: char_name.into(),
             positive_int,
@@ -30,7 +30,7 @@ impl WriteResolution {
 }
 
 impl Communication {
-                                            pub fn new(
+    pub fn new(
         unit: Unit,
         resolution: i32,
         id_gen: ItemIdGenerator,
@@ -47,13 +47,13 @@ impl Communication {
         }
     }
 
-        pub fn host_cad_is_eagle(&self) -> bool {
+    pub fn host_cad_is_eagle(&self) -> bool {
         self.host_cad
             .as_deref()
             .is_some_and(|cad| cad.eq_ignore_ascii_case("CadSoft"))
     }
 
-                            pub fn host_is_old_kicad(&self) -> bool {
+    pub fn host_is_old_kicad(&self) -> bool {
         let (Some(host_cad), Some(host_version)) =
             (self.host_cad.as_deref(), self.host_version.as_deref())
         else {
@@ -74,17 +74,17 @@ impl Communication {
             .is_ok_and(|version_number| version_number <= 5)
     }
 
-                        pub fn host_cad_exists(&self) -> bool {
+    pub fn host_cad_exists(&self) -> bool {
         self.host_cad.is_some()
     }
 
-        pub fn get_resolution(&self, unit: Unit) -> f64 {
+    pub fn get_resolution(&self, unit: Unit) -> f64 {
         Unit::scale(f64::from(self.resolution), unit, self.unit)
     }
 }
 
 impl Default for Communication {
-                    fn default() -> Communication {
+    fn default() -> Communication {
         Communication {
             unit: Unit::Mil,
             resolution: 1,

@@ -12,7 +12,6 @@ use fr_router::pipeline::{
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -10_000,
@@ -149,7 +148,6 @@ fn full_sequence(board: &Board) -> Vec<ItemId> {
     result
 }
 
-
 #[test]
 fn the_fresh_cursor_is_the_int_extremes() {
     let reader = ReadSortedRouteItems::new();
@@ -185,7 +183,6 @@ fn get_current_position_is_none_until_a_pass_starts() {
         f64::from(i32::MIN)
     );
 }
-
 
 #[test]
 fn a_via_wins_a_tie_with_a_trace_at_the_same_coordinate() {
@@ -348,7 +345,6 @@ fn a_removed_item_is_simply_not_seen_again() {
     assert_eq!(reader.next(&board), None);
 }
 
-
 #[test]
 fn contains_only_unfixed_traces_answers_javas_three_cases() {
     let mut board = empty_board();
@@ -392,7 +388,6 @@ fn contains_only_unfixed_traces_answers_javas_three_cases() {
         &BTreeSet::from([shove_fixed])
     ));
 }
-
 
 #[test]
 fn the_trace_ripup_cost_factor_is_rounded_java_style() {
@@ -460,7 +455,6 @@ fn the_trace_ripup_cost_factor_is_rounded_java_style() {
     assert_eq!(fr_geometry::java_round(0.7_f64 * 5.0) as i32, 4, "the trap");
 }
 
-
 #[test]
 fn the_optimizer_autorouter_always_removes_unconnected_vias() {
     let board = empty_board();
@@ -509,7 +503,6 @@ fn the_optimizer_autorouter_always_removes_unconnected_vias() {
     );
 }
 
-
 #[test]
 fn a_user_fixed_contact_never_reaches_the_ripped_connections() {
     let mut board = empty_board();
@@ -551,7 +544,6 @@ fn a_user_fixed_contact_never_reaches_the_ripped_connections() {
             .contains(&free_via)
     );
 }
-
 
 const RPI_SEQUENCE: [(u32, &str, f64, f64, usize); 5] = [
     (86, "Via", 531_001.0, 2_346_089.0, 0),
@@ -673,7 +665,6 @@ fn an_unimproved_item_restores_the_clone_byte_for_byte() {
         "…but the ids the failed attempt burned stay burned (BasicBoard.undo:1233-1240)"
     );
 }
-
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]

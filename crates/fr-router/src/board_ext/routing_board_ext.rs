@@ -16,7 +16,7 @@ use crate::board_ext::trace_shover::TraceShover;
 use crate::pipeline::RouterBudget;
 
 pub trait RoutingBoardExt {
-                                                    fn init_autoroute(
+    fn init_autoroute(
         &mut self,
         engine: Option<AutorouteEngine>,
         net_number: i32,
@@ -25,13 +25,13 @@ pub trait RoutingBoardExt {
         retain_autoroute_database: bool,
     ) -> AutorouteEngine;
 
-                        fn finish_autoroute(&mut self, engine: AutorouteEngine);
+    fn finish_autoroute(&mut self, engine: AutorouteEngine);
 
-                    fn additional_update_after_change(&mut self, engine: &mut AutorouteEngine, item: ItemId);
+    fn additional_update_after_change(&mut self, engine: &mut AutorouteEngine, item: ItemId);
 
-                                fn clear_all_item_temporary_autoroute_data(&mut self);
+    fn clear_all_item_temporary_autoroute_data(&mut self);
 
-                                                                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn check_forced_trace_polyline(
         &mut self,
         polyline: &Polyline,
@@ -44,7 +44,7 @@ pub trait RoutingBoardExt {
         max_spring_over_recursion_depth: i32,
     ) -> bool;
 
-                                                                                                                                                    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn insert_forced_trace_polyline(
         &mut self,
         engine: Option<&mut AutorouteEngine>,
@@ -63,7 +63,7 @@ pub trait RoutingBoardExt {
         stop: StopCheck<'_>,
     ) -> Result<Option<Point>, BoardError>;
 
-                                                                                                                                            #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn insert_forced_trace_segment(
         &mut self,
         engine: Option<&mut AutorouteEngine>,
@@ -83,7 +83,7 @@ pub trait RoutingBoardExt {
         stop: StopCheck<'_>,
     ) -> Result<Option<Point>, BoardError>;
 
-                                                                        #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn opt_changed_area(
         &mut self,
         engine: Option<&mut AutorouteEngine>,
@@ -95,7 +95,7 @@ pub trait RoutingBoardExt {
         time_limit_ms: i32,
     ) -> Result<(), BoardError>;
 
-                                    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn opt_changed_area_with_keep_point(
         &mut self,
         engine: Option<&mut AutorouteEngine>,
@@ -109,7 +109,7 @@ pub trait RoutingBoardExt {
         keep_point_layer: i32,
     ) -> Result<(), BoardError>;
 
-                                                                                                                                                                                    fn remove_items_and_pull_tight(
+    fn remove_items_and_pull_tight(
         &mut self,
         engine: Option<&mut AutorouteEngine>,
         item_list: &[ItemId],
@@ -117,7 +117,7 @@ pub trait RoutingBoardExt {
         pull_tight_accuracy: i32,
     ) -> Result<bool, BoardError>;
 
-                                                                                                                                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn fanout(
         &mut self,
         engine: &mut Option<AutorouteEngine>,
@@ -537,19 +537,18 @@ impl RoutingBoardExt for Board {
                 Err(BoardError::Stopped) => return Err(BoardError::Stopped),
                 Err(_) => {}
                 Ok(false) => {}
-                Ok(true) => {
-                    match pull_tight_algo.split_traces_at_keep_point(self) {
-                        Err(BoardError::Stopped) => return Err(BoardError::Stopped),
-                        Err(_) => {}
-                        Ok(_) => {
-                            let picked = self.pick_traces(&new_corner, Some(layer));
-                            new_trace =
-                                picked.iter().next_back().copied().filter(|id| {
-                                    matches!(self.items.get(id), Some(Item::Trace(_)))
-                                });
-                        }
+                Ok(true) => match pull_tight_algo.split_traces_at_keep_point(self) {
+                    Err(BoardError::Stopped) => return Err(BoardError::Stopped),
+                    Err(_) => {}
+                    Ok(_) => {
+                        let picked = self.pick_traces(&new_corner, Some(layer));
+                        new_trace = picked
+                            .iter()
+                            .next_back()
+                            .copied()
+                            .filter(|id| matches!(self.items.get(id), Some(Item::Trace(_))));
                     }
-                }
+                },
             }
         }
 
@@ -799,13 +798,13 @@ impl RoutingBoardExt for Board {
             _ => None,
         };
         ctrl_settings.fanout_start_pin_name = match pin_name {
-            Some(name) => Some(format!("{component_name}-{name}")), 
-            None => Some(format!("{pin_item}")),                    
+            Some(name) => Some(format!("{component_name}-{name}")),
+            None => Some(format!("{pin_item}")),
         };
-        ctrl_settings.fanout_start_pin_center = Some(pin_center_of(self, pin)); 
+        ctrl_settings.fanout_start_pin_center = Some(pin_center_of(self, pin));
         ctrl_settings.fanout_start_pin_layer =
-            i32::try_from(pin_layer).expect("a board layer index"); 
-        ctrl_settings.remove_unconnected_vias = false; 
+            i32::try_from(pin_layer).expect("a board layer index");
+        ctrl_settings.remove_unconnected_vias = false;
         if ripup_costs >= 0 {
             ctrl_settings.ripup_allowed = true;
             ctrl_settings.ripup_costs = ripup_costs;
@@ -823,7 +822,7 @@ impl RoutingBoardExt for Board {
             .as_mut()
             .expect("initAutoroute always answers an engine");
 
-        let mut result: Option<AutorouteAttemptResult> = None; 
+        let mut result: Option<AutorouteAttemptResult> = None;
         if sorted_unconnected_list.len() <= 4 {
             if let Some(closest_target) = sorted_unconnected_list.first().copied() {
                 let mut single_target = BTreeSet::new();
@@ -888,7 +887,7 @@ impl RoutingBoardExt for Board {
             )
             .expect("optChangedArea throws out of RoutingBoard.fanout in Java too");
         }
-        result 
+        result
     }
 }
 
@@ -928,7 +927,7 @@ pub fn combined_fallback_via_rule(
         for i in 0..default_via_rule.via_count() {
             let default_via = default_via_rule.get_via(i);
             if !combined_via_rule.contains(default_via) {
-                combined_via_rule.append_via(default_via.clone()); 
+                combined_via_rule.append_via(default_via.clone());
             }
         }
     }

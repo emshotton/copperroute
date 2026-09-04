@@ -13,7 +13,6 @@ use fr_settings::{
     HostEnvironment, RouterSettings, SettingsInputs, SettingsSource, resolve_headless,
 };
 
-
 struct PassResult {
     routed: usize,
     incomplete_connections: usize,
@@ -122,7 +121,6 @@ fn check(name: &str, result: &PassResult, max_incomplete_connections: usize) {
     );
 }
 
-
 #[test]
 fn dac2020_bm01_one_pass_two_items_leaves_at_most_194_incompletes() {
     if !parity::require_java_dir() {
@@ -132,7 +130,6 @@ fn dac2020_bm01_one_pass_two_items_leaves_at_most_194_incompletes() {
     assert_eq!(result.routed, 2, "maxItems(2) must pick exactly 2");
     check("Issue508-DAC2020_bm01.dsn", &result, 194);
 }
-
 
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
@@ -187,7 +184,6 @@ fn tutorial_board_has_no_connections_to_route() {
     assert_eq!(result.routed, 0, "the board has no candidate connections");
     check("tutorial_board.dsn", &result, 0);
 }
-
 
 struct JobResult {
     passes_run: i32,
@@ -304,7 +300,6 @@ fn check_job(name: &str, result: &JobResult, max_incomplete: usize, exact_violat
     );
 }
 
-
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn dac2020_bm01_pipeline_first_2_nets_leaves_at_most_194_incompletes() {
@@ -375,7 +370,6 @@ fn dac2020_bm01_pipeline_two_passes_leave_at_most_37_incompletes() {
     check_job("Issue508-DAC2020_bm01.dsn", &result, 37, 0);
 }
 
-
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn j2_reference_pipeline_leaves_at_most_three_incompletes_and_under_sixty_drills() {
@@ -395,7 +389,6 @@ fn j2_reference_pipeline_leaves_at_most_three_incompletes_and_under_sixty_drills
     );
     check_job("Issue026-J2_reference.dsn", &result, 3, 0);
 }
-
 
 #[cfg_attr(debug_assertions, ignore)]
 #[test]

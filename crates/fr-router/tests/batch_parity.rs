@@ -11,12 +11,12 @@ use fr_settings::{HostEnvironment, SettingsInputs, SettingsSource, resolve_headl
 use parity::BatchPassDoc;
 
 struct Stem {
-        name: &'static str,
-        dsn: &'static str,
-        max_passes: i32,
-        fanout: bool,
-        optimizer: bool,
-        ci: bool,
+    name: &'static str,
+    dsn: &'static str,
+    max_passes: i32,
+    fanout: bool,
+    optimizer: bool,
+    ci: bool,
 }
 
 const STEMS: &[Stem] = &[
@@ -87,9 +87,9 @@ const STEMS: &[Stem] = &[
 ];
 
 struct BatchRun {
-        passes: Vec<BatchPassDoc>,
-        items: BTreeSet<u32>,
-        ses: String,
+    passes: Vec<BatchPassDoc>,
+    items: BTreeSet<u32>,
+    ses: String,
 }
 
 fn route_stem(stem: &Stem) -> BatchRun {
@@ -298,7 +298,6 @@ fn climb_all(ci_only: bool) {
     }
 }
 
-
 #[test]
 fn the_ci_stems_climb_the_whole_ladder() {
     climb_all(true);
@@ -337,7 +336,6 @@ fn every_stem_reaches_rung_c() {
         );
     }
 }
-
 
 #[test]
 fn references_are_from_the_head_jar() {

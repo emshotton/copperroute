@@ -1,4 +1,3 @@
-
 pub mod changed_area;
 pub mod clearance;
 pub mod clearance_override;
@@ -52,30 +51,29 @@ pub(crate) use item_ctx;
 // not ported: `BasicBoard.areThereItemsOnInactiveLayer` (BasicBoard.java:1443-1462) — it takes an `AutorouteControl`, returns `void`, and its whole body is one `FRLogger.warn("There is an item on an inactive layer.")` plus a local `hasSomethingOnInactiveLayer` that is assigned and never read. **No caller anywhere in the Java tree** (`grep -rn areThereItemsOnInactiveLayer src/main src/test` finds only the declaration), so porting it would add a headless log line to nothing. Plan 6 Task 18 re-pointed this marker (it had been a Plan 6 deferral) after reading the body.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Board {
-            pub items: BTreeMap<ItemId, Item>,
-        pub components: Components,
-            pub rules: BoardRules,
-        pub library: BoardLibrary,
-        pub communication: Communication,
-        pub bounding_box: IntBox,
-        pub trees: SearchTreeManager,
-        pub changed_area: Option<ChangedArea>,
-        pub shove_failing_obstacle: Option<ItemId>,
-        pub shove_failing_layer: i32,
+    pub items: BTreeMap<ItemId, Item>,
+    pub components: Components,
+    pub rules: BoardRules,
+    pub library: BoardLibrary,
+    pub communication: Communication,
+    pub bounding_box: IntBox,
+    pub trees: SearchTreeManager,
+    pub changed_area: Option<ChangedArea>,
+    pub shove_failing_obstacle: Option<ItemId>,
+    pub shove_failing_layer: i32,
 
-                                                            pub normalize_suppressed_net_nos: std::collections::BTreeSet<i32>,
+    pub normalize_suppressed_net_nos: std::collections::BTreeSet<i32>,
 
-            revision: u64,
-        max_trace_half_width: i32,
-        min_trace_half_width: i32,
-                max_tree_shape_width: f64,
+    revision: u64,
+    max_trace_half_width: i32,
+    min_trace_half_width: i32,
+    max_tree_shape_width: f64,
 
-                            undo_journal: Option<crate::board::snapshot::UndoJournal>,
+    undo_journal: Option<crate::board::snapshot::UndoJournal>,
 }
 
 impl Board {
-
-                                                                                                            pub fn new(
+    pub fn new(
         outline_shapes: Vec<PolylineShapeRef>,
         outline_clearance_class: usize,
         bounding_box: IntBox,
@@ -111,33 +109,31 @@ impl Board {
         board
     }
 
-                        pub fn layer_structure(&self) -> &LayerStructure {
+    pub fn layer_structure(&self) -> &LayerStructure {
         self.rules.layer_structure()
     }
 
-        pub fn get_layer_count(&self) -> usize {
+    pub fn get_layer_count(&self) -> usize {
         self.layer_structure().count()
     }
 
-                        pub fn ctx(&self) -> ItemCtx<'_> {
+    pub fn ctx(&self) -> ItemCtx<'_> {
         item_ctx!(self)
     }
 
-                    pub fn default_tree_id(&self) -> TreeId {
+    pub fn default_tree_id(&self) -> TreeId {
         self.trees.get_default_tree().id()
     }
 
-
-        pub fn revision(&self) -> u64 {
+    pub fn revision(&self) -> u64 {
         self.revision
     }
 
-        pub fn increment_revision(&mut self) {
+    pub fn increment_revision(&mut self) {
         self.revision += 1;
     }
 
-
-                        // Plan 7 Task 8b: `#[track_caller]` carries the *caller's* `file:line` into the level-7 `ID`
+    // Plan 7 Task 8b: `#[track_caller]` carries the *caller's* `file:line` into the level-7 `ID`
     #[track_caller]
     pub fn new_item_id(&mut self) -> ItemId {
         let id = self.communication.id_gen.new_id();
@@ -155,7 +151,7 @@ impl Board {
         id
     }
 
-                                            pub fn insert_item(&mut self, mut item: Item) -> ItemId {
+    pub fn insert_item(&mut self, mut item: Item) -> ItemId {
         if item.clearance_class() >= self.rules.clearance_matrix.get_class_count() {
             item.set_clearance_class(0, &self.rules);
         }
@@ -177,7 +173,7 @@ impl Board {
         id
     }
 
-                                            pub fn remove_item(&mut self, id: ItemId) -> bool {
+    pub fn remove_item(&mut self, id: ItemId) -> bool {
         let Some(item) = self.items.get(&id) else {
             return false;
         };
@@ -195,7 +191,7 @@ impl Board {
         true
     }
 
-                pub fn remove_items(&mut self, ids: impl IntoIterator<Item = ItemId>) -> bool {
+    pub fn remove_items(&mut self, ids: impl IntoIterator<Item = ItemId>) -> bool {
         let mut result = true;
         for id in ids {
             let Some(item) = self.items.get(&id) else {
@@ -210,8 +206,7 @@ impl Board {
         result
     }
 
-
-        pub fn insert_outline(
+    pub fn insert_outline(
         &mut self,
         outline_shapes: Vec<PolylineShapeRef>,
         clearance_class: usize,
@@ -224,7 +219,7 @@ impl Board {
         self.insert_item(Item::BoardOutline(outline))
     }
 
-                    pub fn insert_trace_without_cleaning(
+    pub fn insert_trace_without_cleaning(
         &mut self,
         polyline: Polyline,
         layer: usize,
@@ -259,7 +254,7 @@ impl Board {
         Some(id)
     }
 
-                                                    pub fn insert_trace(
+    pub fn insert_trace(
         &mut self,
         polyline: Polyline,
         layer: usize,
@@ -281,7 +276,7 @@ impl Board {
         Some(id)
     }
 
-                    pub fn insert_trace_at_points(
+    pub fn insert_trace_at_points(
         &mut self,
         points: &[Point],
         layer: usize,
@@ -301,7 +296,7 @@ impl Board {
         )
     }
 
-                    pub fn insert_via(
+    pub fn insert_via(
         &mut self,
         padstack: crate::ids::PadstackId,
         center: Point,
@@ -321,7 +316,7 @@ impl Board {
         )
     }
 
-                                                #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn insert_via_checked(
         &mut self,
         padstack: crate::ids::PadstackId,
@@ -349,7 +344,7 @@ impl Board {
         Ok(id)
     }
 
-                        pub fn insert_escape_via(
+    pub fn insert_escape_via(
         &mut self,
         padstack: crate::ids::PadstackId,
         center: Point,
@@ -369,7 +364,7 @@ impl Board {
         )
     }
 
-                        #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn insert_escape_via_checked(
         &mut self,
         padstack: crate::ids::PadstackId,
@@ -399,7 +394,7 @@ impl Board {
         Ok(id)
     }
 
-                        fn padstack_layer_range(&self, padstack: crate::ids::PadstackId) -> (i32, i32) {
+    fn padstack_layer_range(&self, padstack: crate::ids::PadstackId) -> (i32, i32) {
         let padstack = self
             .library
             .padstacks
@@ -408,7 +403,7 @@ impl Board {
         (padstack.from_layer(), padstack.to_layer())
     }
 
-        pub fn insert_pin(
+    pub fn insert_pin(
         &mut self,
         component_id: i32,
         pin_index: i32,
@@ -424,7 +419,7 @@ impl Board {
         self.insert_item(Item::Pin(pin))
     }
 
-            pub fn insert_obstacle(
+    pub fn insert_obstacle(
         &mut self,
         area: Area,
         layer: usize,
@@ -444,7 +439,7 @@ impl Board {
         )
     }
 
-            #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     pub fn insert_obstacle_of_component(
         &mut self,
         area: Area,
@@ -472,7 +467,7 @@ impl Board {
         self.insert_item(Item::ObstacleArea(obstacle))
     }
 
-            pub fn insert_via_obstacle(
+    pub fn insert_via_obstacle(
         &mut self,
         area: Area,
         layer: usize,
@@ -492,7 +487,7 @@ impl Board {
         )
     }
 
-        #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     pub fn insert_via_obstacle_of_component(
         &mut self,
         area: Area,
@@ -520,7 +515,7 @@ impl Board {
         self.insert_item(Item::ViaObstacleArea(obstacle))
     }
 
-            pub fn insert_component_obstacle(
+    pub fn insert_component_obstacle(
         &mut self,
         area: Area,
         layer: usize,
@@ -540,7 +535,7 @@ impl Board {
         )
     }
 
-            #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     pub fn insert_component_obstacle_of_component(
         &mut self,
         area: Area,
@@ -568,7 +563,7 @@ impl Board {
         self.insert_item(Item::ComponentObstacleArea(obstacle))
     }
 
-                    #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     pub fn insert_component_outline(
         &mut self,
         area: Area,
@@ -598,7 +593,7 @@ impl Board {
         Some(self.insert_item(Item::ComponentOutline(outline)))
     }
 
-        #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     pub fn insert_conduction_area(
         &mut self,
         area: Area,
@@ -617,7 +612,7 @@ impl Board {
         self.insert_item(Item::ConductionArea(conduction))
     }
 
-                                pub fn make_conductive(&mut self, id: ItemId, net_number: i32) -> Option<ItemId> {
+    pub fn make_conductive(&mut self, id: ItemId, net_number: i32) -> Option<ItemId> {
         let Some(Item::ObstacleArea(area)) = self.items.get(&id) else {
             return None;
         };
@@ -648,24 +643,23 @@ impl Board {
         Some(self.insert_item(Item::ConductionArea(new_item)))
     }
 
-
-            pub fn get_item(&self, id: ItemId) -> Option<&Item> {
+    pub fn get_item(&self, id: ItemId) -> Option<&Item> {
         self.items.get(&id)
     }
 
-            pub fn get_item_mut(&mut self, id: ItemId) -> Option<&mut Item> {
+    pub fn get_item_mut(&mut self, id: ItemId) -> Option<&mut Item> {
         self.items.get_mut(&id)
     }
 
-                pub fn get_items(&self) -> impl DoubleEndedIterator<Item = &Item> {
+    pub fn get_items(&self) -> impl DoubleEndedIterator<Item = &Item> {
         self.items.values().rev()
     }
 
-                    pub fn items_in_board_order(&self) -> Vec<ItemId> {
+    pub fn items_in_board_order(&self) -> Vec<ItemId> {
         self.items.keys().rev().copied().collect()
     }
 
-                pub fn get_outline(&self) -> Option<ItemId> {
+    pub fn get_outline(&self) -> Option<ItemId> {
         self.items
             .iter()
             .rev()
@@ -673,30 +667,30 @@ impl Board {
             .map(|(id, _)| *id)
     }
 
-        pub fn get_conduction_areas(&self) -> Vec<ItemId> {
+    pub fn get_conduction_areas(&self) -> Vec<ItemId> {
         self.ids_where(|item| matches!(item, Item::ConductionArea(_)))
     }
 
-        pub fn get_pins(&self) -> Vec<ItemId> {
+    pub fn get_pins(&self) -> Vec<ItemId> {
         self.ids_where(|item| matches!(item, Item::Pin(_)))
     }
 
-            pub fn get_smd_pins(&self) -> Vec<ItemId> {
+    pub fn get_smd_pins(&self) -> Vec<ItemId> {
         let ctx = self.ctx();
         self.ids_where(|item| {
             matches!(item, Item::Pin(_)) && item.first_layer(&ctx) == item.last_layer(&ctx)
         })
     }
 
-        pub fn get_vias(&self) -> Vec<ItemId> {
+    pub fn get_vias(&self) -> Vec<ItemId> {
         self.ids_where(|item| matches!(item, Item::Via(_)))
     }
 
-        pub fn get_traces(&self) -> Vec<ItemId> {
+    pub fn get_traces(&self) -> Vec<ItemId> {
         self.ids_where(Item::is_trace)
     }
 
-                                                            pub fn cumulative_trace_length(&self) -> f64 {
+    pub fn cumulative_trace_length(&self) -> f64 {
         self.items
             .values()
             .rev()
@@ -707,7 +701,7 @@ impl Board {
             .fold(0.0, |result, length| result + length)
     }
 
-        pub fn get_non_45_degree_trace_count(&self) -> usize {
+    pub fn get_non_45_degree_trace_count(&self) -> usize {
         self.items
             .values()
             .rev()
@@ -718,7 +712,7 @@ impl Board {
             .count()
     }
 
-                            pub fn delete_all_tracks_and_vias(&mut self) {
+    pub fn delete_all_tracks_and_vias(&mut self) {
         for id in self.items_in_board_order() {
             let Some(item) = self.items.get(&id) else {
                 continue;
@@ -736,7 +730,7 @@ impl Board {
         }
     }
 
-        pub fn unfill_conduction_areas(&mut self) {
+    pub fn unfill_conduction_areas(&mut self) {
         self.rules.set_ignore_conduction(true);
         for item in self.items.values_mut().rev() {
             if let Item::ConductionArea(area) = item {
@@ -747,7 +741,7 @@ impl Board {
         self.reinsert_tree_items();
     }
 
-            pub fn change_conduction_is_obstacle(&mut self, value: bool) {
+    pub fn change_conduction_is_obstacle(&mut self, value: bool) {
         if self.rules.get_ignore_conduction() != value {
             return;
         }
@@ -767,7 +761,7 @@ impl Board {
         }
     }
 
-                            pub fn reinsert_tree_items(&mut self) {
+    pub fn reinsert_tree_items(&mut self) {
         let mut items = std::mem::take(&mut self.items);
         let ctx = item_ctx!(self);
         let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
@@ -776,7 +770,7 @@ impl Board {
         self.items = items;
     }
 
-                            pub fn set_clearance_compensation_used(&mut self, value: bool) {
+    pub fn set_clearance_compensation_used(&mut self, value: bool) {
         let mut items = std::mem::take(&mut self.items);
         let ctx = item_ctx!(self);
         let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
@@ -786,7 +780,7 @@ impl Board {
         self.items = items;
     }
 
-                                    pub fn generate_keepout_outside(&mut self, id: ItemId, value: bool) -> bool {
+    pub fn generate_keepout_outside(&mut self, id: ItemId, value: bool) -> bool {
         let Some(Item::BoardOutline(outline)) = self.items.get(&id) else {
             return false;
         };
@@ -807,7 +801,7 @@ impl Board {
         true
     }
 
-                        pub fn change_clearance_class_index(&mut self, id: ItemId, index: usize) -> bool {
+    pub fn change_clearance_class_index(&mut self, id: ItemId, index: usize) -> bool {
         if !self.items.contains_key(&id) {
             return false;
         }
@@ -833,7 +827,7 @@ impl Board {
         true
     }
 
-                                            pub fn move_item_by(&mut self, id: ItemId, vector: &Vector) -> Result<bool, crate::BoardError> {
+    pub fn move_item_by(&mut self, id: ItemId, vector: &Vector) -> Result<bool, crate::BoardError> {
         let Some(item) = self.items.get(&id) else {
             return Ok(false);
         };
@@ -901,7 +895,7 @@ impl Board {
         Ok(true)
     }
 
-                pub fn trace_has_default_entries(&self, first: ItemId, second: ItemId) -> bool {
+    pub fn trace_has_default_entries(&self, first: ItemId, second: ItemId) -> bool {
         let default_tree = self.default_tree_id();
         [first, second].into_iter().all(|id| {
             self.items
@@ -910,7 +904,7 @@ impl Board {
         })
     }
 
-                            pub fn replace_trace_geometry(&mut self, id: ItemId, new_polyline: Polyline) -> bool {
+    pub fn replace_trace_geometry(&mut self, id: ItemId, new_polyline: Polyline) -> bool {
         if !matches!(self.items.get(&id), Some(Item::Trace(_))) {
             return false;
         }
@@ -930,7 +924,7 @@ impl Board {
         true
     }
 
-            pub fn merge_trace_entries_in_front(
+    pub fn merge_trace_entries_in_front(
         &mut self,
         from_trace: ItemId,
         to_trace: ItemId,
@@ -950,7 +944,7 @@ impl Board {
         })
     }
 
-            pub fn merge_trace_entries_at_end(
+    pub fn merge_trace_entries_at_end(
         &mut self,
         from_trace: ItemId,
         to_trace: ItemId,
@@ -970,7 +964,7 @@ impl Board {
         })
     }
 
-            pub fn change_trace_entries(
+    pub fn change_trace_entries(
         &mut self,
         id: ItemId,
         new_polyline: &Polyline,
@@ -994,7 +988,7 @@ impl Board {
         true
     }
 
-            fn with_two_traces(
+    fn with_two_traces(
         &mut self,
         from_id: ItemId,
         to_id: ItemId,
@@ -1016,8 +1010,7 @@ impl Board {
         true
     }
 
-
-                            fn fill_tree_shapes(&mut self, id: ItemId, tree: TreeId) -> Option<usize> {
+    fn fill_tree_shapes(&mut self, id: ItemId, tree: TreeId) -> Option<usize> {
         let item = self.items.get(&id)?;
         if let Some(shapes) = item.header().get_precalculated_tree_shapes(tree) {
             return Some(shapes.len());
@@ -1033,16 +1026,16 @@ impl Board {
         Some(len)
     }
 
-            pub fn item_tree_shape_count(&mut self, id: ItemId, tree: TreeId) -> usize {
+    pub fn item_tree_shape_count(&mut self, id: ItemId, tree: TreeId) -> usize {
         self.fill_tree_shapes(id, tree).unwrap_or(0)
     }
 
-                                    pub fn item_shape_layer(&self, id: ItemId, index: usize) -> Option<usize> {
+    pub fn item_shape_layer(&self, id: ItemId, index: usize) -> Option<usize> {
         let ctx = item_ctx!(self);
         Some(self.items.get(&id)?.shape_layer(index, &ctx))
     }
 
-                pub fn item_tree_shape(&mut self, id: ItemId, tree: TreeId, index: usize) -> Option<TileShape> {
+    pub fn item_tree_shape(&mut self, id: ItemId, tree: TreeId, index: usize) -> Option<TileShape> {
         let len = self.fill_tree_shapes(id, tree)?;
         if index >= len {
             self.items.get_mut(&id)?.clear_derived_data();
@@ -1053,7 +1046,7 @@ impl Board {
         self.items.get(&id)?.get_tree_shape(tree, index).cloned()
     }
 
-                    pub fn item_tile_shape(&mut self, id: ItemId, index: usize) -> Option<TileShape> {
+    pub fn item_tile_shape(&mut self, id: ItemId, index: usize) -> Option<TileShape> {
         {
             let ctx = item_ctx!(self);
             let item = self.items.get(&id)?;
@@ -1069,7 +1062,7 @@ impl Board {
         self.item_tree_shape(id, default_tree, index)
     }
 
-                                pub fn item_tree_shape_ref(
+    pub fn item_tree_shape_ref(
         &self,
         id: ItemId,
         tree: TreeId,
@@ -1080,7 +1073,7 @@ impl Board {
         search_tree.get_tree_shape(item, index, &self.ctx())
     }
 
-                pub fn item_tile_shape_ref(&self, id: ItemId, index: usize) -> Option<Cow<'_, TileShape>> {
+    pub fn item_tile_shape_ref(&self, id: ItemId, index: usize) -> Option<Cow<'_, TileShape>> {
         let ctx = self.ctx();
         let item = self.items.get(&id)?;
         match item {
@@ -1093,7 +1086,7 @@ impl Board {
         self.item_tree_shape_ref(id, self.default_tree_id(), index)
     }
 
-            pub fn drill_item_tile_shape_on_layer_ref(
+    pub fn drill_item_tile_shape_on_layer_ref(
         &self,
         id: ItemId,
         layer: usize,
@@ -1110,7 +1103,7 @@ impl Board {
         self.item_tile_shape_ref(id, layer - from_layer)
     }
 
-                        pub fn drill_item_tile_shape_on_layer(
+    pub fn drill_item_tile_shape_on_layer(
         &mut self,
         id: ItemId,
         layer: usize,
@@ -1128,7 +1121,7 @@ impl Board {
         self.item_tile_shape(id, layer - from_layer)
     }
 
-                            pub fn validate_item(&mut self, id: ItemId) -> bool {
+    pub fn validate_item(&mut self, id: ItemId) -> bool {
         let ctx = self.ctx();
         let Some(item) = self.items.get(&id) else {
             return true;
@@ -1149,30 +1142,29 @@ impl Board {
         result
     }
 
-
-        pub fn get_max_trace_half_width(&self) -> i32 {
+    pub fn get_max_trace_half_width(&self) -> i32 {
         self.max_trace_half_width
     }
 
-        pub fn get_min_trace_half_width(&self) -> i32 {
+    pub fn get_min_trace_half_width(&self) -> i32 {
         self.min_trace_half_width
     }
 
-                    pub fn clearance_value(&self, class1: usize, class2: usize, layer: usize) -> i32 {
+    pub fn clearance_value(&self, class1: usize, class2: usize, layer: usize) -> i32 {
         self.rules
             .clearance_matrix
             .get_value(class1, class2, layer, true)
     }
 
-            pub fn get_trace_half_width(&self, net_number: i32, layer: usize) -> i32 {
+    pub fn get_trace_half_width(&self, net_number: i32, layer: usize) -> i32 {
         self.rules.get_trace_half_width(net_number, layer)
     }
 
-        pub fn get_bounding_box(&self) -> IntBox {
+    pub fn get_bounding_box(&self) -> IntBox {
         self.bounding_box
     }
 
-            pub fn get_bounding_box_of_items(&self, ids: impl IntoIterator<Item = ItemId>) -> IntBox {
+    pub fn get_bounding_box_of_items(&self, ids: impl IntoIterator<Item = ItemId>) -> IntBox {
         let ctx = self.ctx();
         let mut result = IntBox::EMPTY;
         for id in ids {
@@ -1183,11 +1175,11 @@ impl Board {
         result
     }
 
-        pub fn contains(&self, point: &Point) -> bool {
+    pub fn contains(&self, point: &Point) -> bool {
         point.is_contained_in(&self.bounding_box)
     }
 
-                    pub fn drill_center(&self, id: ItemId) -> Option<Point> {
+    pub fn drill_center(&self, id: ItemId) -> Option<Point> {
         let ctx = self.ctx();
         match self.items.get(&id)? {
             Item::Via(via) => Some(via.get_center()),
@@ -1196,7 +1188,7 @@ impl Board {
         }
     }
 
-                                    pub fn component_obstacle_area_is_front(&self, id: ItemId) -> bool {
+    pub fn component_obstacle_area_is_front(&self, id: ItemId) -> bool {
         let Some(Item::ComponentObstacleArea(area)) = self.items.get(&id) else {
             return true;
         };
@@ -1207,7 +1199,7 @@ impl Board {
         self.components.get(component_id).placed_on_front()
     }
 
-            pub fn item_component_name(&self, id: ItemId) -> Option<&str> {
+    pub fn item_component_name(&self, id: ItemId) -> Option<&str> {
         let item = self.items.get(&id)?;
         let component_id = item.component_id();
         if component_id <= 0 {
@@ -1216,22 +1208,21 @@ impl Board {
         Some(&self.components.get(component_id).name)
     }
 
-
-            pub fn net_terminal_items(&self, net_number: i32) -> Vec<ItemId> {
+    pub fn net_terminal_items(&self, net_number: i32) -> Vec<ItemId> {
         self.ids_where(|item| {
             item.as_connectable().is_some() && item.contains_net(net_number) && !item.is_routable()
         })
     }
 
-        pub fn net_pins(&self, net_number: i32) -> Vec<ItemId> {
+    pub fn net_pins(&self, net_number: i32) -> Vec<ItemId> {
         self.ids_where(|item| matches!(item, Item::Pin(_)) && item.contains_net(net_number))
     }
 
-        pub fn net_items(&self, net_number: i32) -> Vec<ItemId> {
+    pub fn net_items(&self, net_number: i32) -> Vec<ItemId> {
         self.ids_where(|item| item.contains_net(net_number))
     }
 
-                                pub fn net_trace_length(&self, net_number: i32) -> f64 {
+    pub fn net_trace_length(&self, net_number: i32) -> f64 {
         self.get_connectable_items(net_number)
             .into_iter()
             .filter_map(|id| match self.items.get(&id) {
@@ -1241,14 +1232,14 @@ impl Board {
             .fold(0.0, |result, length| result + length)
     }
 
-        pub fn net_via_count(&self, net_number: i32) -> usize {
+    pub fn net_via_count(&self, net_number: i32) -> usize {
         self.get_connectable_items(net_number)
             .into_iter()
             .filter(|id| matches!(self.items.get(id), Some(Item::Via(_))))
             .count()
     }
 
-                    pub fn has_ignored_nets(&self, id: ItemId) -> bool {
+    pub fn has_ignored_nets(&self, id: ItemId) -> bool {
         let Some(item) = self.items.get(&id) else {
             return false;
         };
@@ -1264,7 +1255,7 @@ impl Board {
         })
     }
 
-            pub fn all_nets(&self, id: ItemId) -> Vec<i32> {
+    pub fn all_nets(&self, id: ItemId) -> Vec<i32> {
         let Some(item) = self.items.get(&id) else {
             return Vec::new();
         };
@@ -1275,7 +1266,7 @@ impl Board {
             .collect()
     }
 
-                        pub fn all_net_names(&self, id: ItemId) -> String {
+    pub fn all_net_names(&self, id: ItemId) -> String {
         let names: Vec<String> = self
             .all_nets(id)
             .into_iter()
@@ -1288,26 +1279,25 @@ impl Board {
         names.join(",")
     }
 
-
-            pub fn start_marking_changed_area(&mut self) {
+    pub fn start_marking_changed_area(&mut self) {
         if self.changed_area.is_none() {
             self.changed_area = Some(ChangedArea::new(self.get_layer_count()));
         }
     }
 
-        pub fn join_changed_area(&mut self, point: &fr_geometry::FloatPoint, layer: usize) {
+    pub fn join_changed_area(&mut self, point: &fr_geometry::FloatPoint, layer: usize) {
         if let Some(changed_area) = &mut self.changed_area {
             changed_area.join(point, layer);
         }
     }
 
-            pub fn mark_changed_area(&mut self, shape: &TileShape, layer: usize) {
+    pub fn mark_changed_area(&mut self, shape: &TileShape, layer: usize) {
         if let Some(changed_area) = &mut self.changed_area {
             changed_area.join_shape(shape, layer);
         }
     }
 
-                pub fn mark_all_changed_area(&mut self) {
+    pub fn mark_all_changed_area(&mut self) {
         self.start_marking_changed_area();
         let box_ = self.bounding_box;
         let corners = [
@@ -1323,11 +1313,11 @@ impl Board {
         }
     }
 
-                            pub fn set_changed_area_layer_count(&mut self, layer_count: usize) {
+    pub fn set_changed_area_layer_count(&mut self, layer_count: usize) {
         self.changed_area = Some(ChangedArea::new(layer_count));
     }
 
-                                pub fn remove_items_marking_changed_area(
+    pub fn remove_items_marking_changed_area(
         &mut self,
         ids: impl IntoIterator<Item = ItemId>,
     ) -> (bool, std::collections::BTreeSet<i32>) {
@@ -1361,36 +1351,34 @@ impl Board {
         (result, changed_nets)
     }
 
-
-        pub fn get_shove_failing_obstacle(&self) -> Option<ItemId> {
+    pub fn get_shove_failing_obstacle(&self) -> Option<ItemId> {
         self.shove_failing_obstacle
     }
 
-        pub fn set_shove_failing_obstacle(&mut self, id: Option<ItemId>) {
+    pub fn set_shove_failing_obstacle(&mut self, id: Option<ItemId>) {
         self.shove_failing_obstacle = id;
     }
 
-        pub fn get_shove_failing_layer(&self) -> i32 {
+    pub fn get_shove_failing_layer(&self) -> i32 {
         self.shove_failing_layer
     }
 
-        pub fn set_shove_failing_layer(&mut self, layer: i32) {
+    pub fn set_shove_failing_layer(&mut self, layer: i32) {
         self.shove_failing_layer = layer;
     }
 
-            pub fn clear_shove_failing_obstacle(&mut self) {
+    pub fn clear_shove_failing_obstacle(&mut self) {
         self.shove_failing_obstacle = None;
         self.shove_failing_layer = -1;
     }
 
-            pub fn clear_all_item_temporary_autoroute_data(&mut self) {
+    pub fn clear_all_item_temporary_autoroute_data(&mut self) {
         for item in self.items.values_mut().rev() {
             item.clear_autoroute_info();
         }
     }
 
-
-        fn ids_where(&self, predicate: impl Fn(&Item) -> bool) -> Vec<ItemId> {
+    fn ids_where(&self, predicate: impl Fn(&Item) -> bool) -> Vec<ItemId> {
         self.items
             .iter()
             .rev()
@@ -1426,7 +1414,7 @@ fn p7t8b_ids_backtrace() -> bool {
 mod tests {
     use super::*;
 
-            #[test]
+    #[test]
     fn board_is_send_and_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<Board>();

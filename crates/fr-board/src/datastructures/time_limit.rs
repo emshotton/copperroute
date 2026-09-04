@@ -4,24 +4,24 @@ use fr_geometry::java_min;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TimeLimit {
-        start: Instant,
-                limit_ms: i32,
+    start: Instant,
+    limit_ms: i32,
 }
 
 impl TimeLimit {
-            pub fn new(milli_seconds: i32) -> Self {
+    pub fn new(milli_seconds: i32) -> Self {
         Self {
             start: Instant::now(),
             limit_ms: milli_seconds,
         }
     }
 
-                                    pub fn is_exceeded(&self) -> bool {
+    pub fn is_exceeded(&self) -> bool {
         let elapsed_ms = self.start.elapsed().as_millis() as i128;
         elapsed_ms > i128::from(self.limit_ms)
     }
 
-                                    pub fn multiply(&mut self, factor: f64) {
+    pub fn multiply(&mut self, factor: f64) {
         if factor <= 0.0 {
             return;
         }
@@ -30,13 +30,13 @@ impl TimeLimit {
         self.limit_ms = new_limit as i32;
     }
 
-                            pub fn deadline(&self) -> Option<Instant> {
+    pub fn deadline(&self) -> Option<Instant> {
         let millis = u64::try_from(self.limit_ms).ok()?;
         self.start
             .checked_add(std::time::Duration::from_millis(millis))
     }
 
-            pub fn limit_ms(&self) -> i32 {
+    pub fn limit_ms(&self) -> i32 {
         self.limit_ms
     }
 }
@@ -74,7 +74,7 @@ mod tests {
         limit.multiply(2.5);
         assert_eq!(limit.limit_ms(), 2500);
         limit.multiply(0.0004);
-        assert_eq!(limit.limit_ms(), 1); 
+        assert_eq!(limit.limit_ms(), 1);
     }
 
     #[test]

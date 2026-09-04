@@ -14,13 +14,13 @@ use crate::side::Side;
 
 #[derive(Debug, Clone)]
 pub struct RationalPoint {
-        pub x: BigInt,
-        pub y: BigInt,
-        pub z: BigInt,
+    pub x: BigInt,
+    pub y: BigInt,
+    pub z: BigInt,
 }
 
 impl RationalPoint {
-                            pub fn new(x: BigInt, y: BigInt, z: BigInt) -> RationalPoint {
+    pub fn new(x: BigInt, y: BigInt, z: BigInt) -> RationalPoint {
         assert!(
             z.sign() != Sign::Minus,
             "RationalPoint: z is expected to be >= 0"
@@ -28,7 +28,7 @@ impl RationalPoint {
         RationalPoint { x, y, z }
     }
 
-        pub fn from_int(point: &IntPoint) -> RationalPoint {
+    pub fn from_int(point: &IntPoint) -> RationalPoint {
         RationalPoint {
             x: BigInt::from(point.x),
             y: BigInt::from(point.y),
@@ -36,15 +36,15 @@ impl RationalPoint {
         }
     }
 
-        pub fn is_infinite(&self) -> bool {
+    pub fn is_infinite(&self) -> bool {
         self.z.is_zero()
     }
 
-                pub fn translate_by_int(&self, vector: &IntVector) -> RationalPoint {
+    pub fn translate_by_int(&self, vector: &IntVector) -> RationalPoint {
         self.translate_by_rational(&RationalVector::from_int(vector))
     }
 
-        pub fn translate_by_rational(&self, vector: &RationalVector) -> RationalPoint {
+    pub fn translate_by_rational(&self, vector: &RationalVector) -> RationalPoint {
         let [rx, ry, rz] = bigint_aux::add_rational_coordinates(
             &[self.x.clone(), self.y.clone(), self.z.clone()],
             &[vector.x.clone(), vector.y.clone(), vector.z.clone()],
@@ -52,11 +52,11 @@ impl RationalPoint {
         RationalPoint::new(rx, ry, rz)
     }
 
-        pub fn difference_by_int(&self, other: &IntPoint) -> RationalVector {
+    pub fn difference_by_int(&self, other: &IntPoint) -> RationalVector {
         self.difference_by_rational(&RationalPoint::from_int(other))
     }
 
-            pub fn difference_by_rational(&self, other: &RationalPoint) -> RationalVector {
+    pub fn difference_by_rational(&self, other: &RationalPoint) -> RationalVector {
         let [rx, ry, rz] = bigint_aux::add_rational_coordinates(
             &[self.x.clone(), self.y.clone(), self.z.clone()],
             &[-other.x.clone(), -other.y.clone(), other.z.clone()],
@@ -64,29 +64,29 @@ impl RationalPoint {
         RationalVector::new(rx, ry, rz)
     }
 
-            pub fn compare_x_int(&self, other: &IntPoint) -> Ordering {
+    pub fn compare_x_int(&self, other: &IntPoint) -> Ordering {
         let tmp1 = &self.z * BigInt::from(other.x);
         self.x.cmp(&tmp1)
     }
 
-        pub fn compare_x_rational(&self, other: &RationalPoint) -> Ordering {
+    pub fn compare_x_rational(&self, other: &RationalPoint) -> Ordering {
         let tmp1 = &self.x * &other.z;
         let tmp2 = &other.x * &self.z;
         tmp1.cmp(&tmp2)
     }
 
-        pub fn compare_y_int(&self, other: &IntPoint) -> Ordering {
+    pub fn compare_y_int(&self, other: &IntPoint) -> Ordering {
         let tmp1 = &self.z * BigInt::from(other.y);
         self.y.cmp(&tmp1)
     }
 
-        pub fn compare_y_rational(&self, other: &RationalPoint) -> Ordering {
+    pub fn compare_y_rational(&self, other: &RationalPoint) -> Ordering {
         let tmp1 = &self.y * &other.z;
         let tmp2 = &other.y * &self.z;
         tmp1.cmp(&tmp2)
     }
 
-                        pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         let mut result = java_big_integer_hash_code(&self.x);
         result = 31i32
             .wrapping_mul(result)
@@ -96,7 +96,7 @@ impl RationalPoint {
             .wrapping_add(java_big_integer_hash_code(&self.z))
     }
 
-                            pub fn to_float(&self) -> FloatPoint {
+    pub fn to_float(&self) -> FloatPoint {
         let zd = big_to_f64(&self.z);
         if zd == 0.0 {
             FloatPoint::new(f32::MAX as f64, f32::MAX as f64)
@@ -105,13 +105,13 @@ impl RationalPoint {
         }
     }
 
-                pub fn side_of_line(&self, line: &crate::line::Line) -> Side {
+    pub fn side_of_line(&self, line: &crate::line::Line) -> Side {
         let v1 = self.difference_by_int(&line.a);
         let v2 = line.b.difference_by(&line.a);
         v1.side_of_int(&v2)
     }
 
-                                                        pub fn perpendicular_projection(&self, line: &crate::line::Line) -> crate::point::Point {
+    pub fn perpendicular_projection(&self, line: &crate::line::Line) -> crate::point::Point {
         use num_traits::ToPrimitive;
 
         let v = line.b.difference_by(&line.a);
@@ -156,8 +156,7 @@ impl RationalPoint {
         crate::point::Point::Rational(RationalPoint::new(proj_x, proj_y, denominator))
     }
 
-
-            pub fn surrounding_box(&self) -> crate::int_box::IntBox {
+    pub fn surrounding_box(&self) -> crate::int_box::IntBox {
         let fp = self.to_float();
         crate::int_box::IntBox::from_coords(
             fp.x.floor() as i32,
@@ -167,7 +166,7 @@ impl RationalPoint {
         )
     }
 
-                pub fn is_contained_in(&self, box_: &crate::int_box::IntBox) -> bool {
+    pub fn is_contained_in(&self, box_: &crate::int_box::IntBox) -> bool {
         let tmp = BigInt::from(box_.ll.x) * &self.z;
         if self.x < tmp {
             return false;
@@ -184,7 +183,7 @@ impl RationalPoint {
         self.y <= tmp
     }
 
-                pub fn surrounding_octagon(&self) -> crate::int_octagon::IntOctagon {
+    pub fn surrounding_octagon(&self) -> crate::int_octagon::IntOctagon {
         let fp = self.to_float();
         let lx = fp.x.floor() as i32;
         let ly = fp.y.floor() as i32;
@@ -203,7 +202,7 @@ impl RationalPoint {
 }
 
 impl PartialEq for RationalPoint {
-                                        fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         let det = bigint_aux::determinant(&self.x, &other.x, &self.z, &other.z);
         if !det.is_zero() {
             return false;
@@ -216,7 +215,7 @@ impl PartialEq for RationalPoint {
 impl Eq for RationalPoint {}
 
 impl Hash for RationalPoint {
-                fn hash<H: Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         if self.z.is_zero() {
             0u8.hash(state);
             return;
@@ -253,7 +252,7 @@ mod get_id_tests {
     use super::*;
     use std::str::FromStr;
 
-                                                    #[test]
+    #[test]
     fn the_big_integer_hash_code_is_javas() {
         let cases: [(&str, i32); 10] = [
             ("0", 0),

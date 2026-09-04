@@ -11,25 +11,23 @@ use crate::tile_shape::TileShape;
 use crate::vector::Vector;
 
 pub trait PolylineShapeOps {
+    fn corner_is_bounded(&self, no: usize) -> bool;
 
-        fn corner_is_bounded(&self, no: usize) -> bool;
+    fn border_line_count(&self) -> usize;
 
-        fn border_line_count(&self) -> usize;
+    fn corner(&self, no: usize) -> Point;
 
-                        fn corner(&self, no: usize) -> Point;
+    fn border_line(&self, no: usize) -> Option<Line>;
 
-                    fn border_line(&self, no: usize) -> Option<Line>;
+    fn is_bounded(&self) -> bool;
 
-        fn is_bounded(&self) -> bool;
+    fn is_empty(&self) -> bool;
 
-        fn is_empty(&self) -> bool;
+    fn dimension(&self) -> i32;
 
-            fn dimension(&self) -> i32;
+    fn bounding_box(&self) -> IntBox;
 
-        fn bounding_box(&self) -> IntBox;
-
-
-            fn bounded_corners(&self) -> Vec<Point> {
+    fn bounded_corners(&self) -> Vec<Point> {
         let corner_count = self.border_line_count();
         let mut result = Vec::new();
         for i in 0..corner_count {
@@ -40,21 +38,21 @@ pub trait PolylineShapeOps {
         result
     }
 
-                    fn corner_approx(&self, no: usize) -> Option<FloatPoint> {
+    fn corner_approx(&self, no: usize) -> Option<FloatPoint> {
         Some(self.corner(no).to_float())
     }
 
-        fn corner_approx_arr(&self) -> Vec<FloatPoint> {
+    fn corner_approx_arr(&self) -> Vec<FloatPoint> {
         (0..self.border_line_count())
             .map(|i| self.corner_approx_at(i))
             .collect()
     }
 
-            fn equals_corner(&self, point: &Point) -> Option<usize> {
+    fn equals_corner(&self, point: &Point) -> Option<usize> {
         (0..self.border_line_count()).find(|&i| *point == self.corner(i))
     }
 
-            fn circumference(&self) -> f64 {
+    fn circumference(&self) -> f64 {
         if !self.is_bounded() {
             return i32::MAX as f64;
         }
@@ -72,7 +70,7 @@ pub trait PolylineShapeOps {
         result
     }
 
-        fn centre_of_gravity(&self) -> FloatPoint {
+    fn centre_of_gravity(&self) -> FloatPoint {
         let corner_count = self.border_line_count();
         let mut x = 0.0;
         let mut y = 0.0;
@@ -86,11 +84,11 @@ pub trait PolylineShapeOps {
         FloatPoint::new(x, y)
     }
 
-        fn is_contained_in(&self, b: &IntBox) -> bool {
+    fn is_contained_in(&self, b: &IntBox) -> bool {
         b.contains(&self.bounding_box())
     }
 
-            fn index_of_left_most_corner(&self, from_point: &FloatPoint) -> usize {
+    fn index_of_left_most_corner(&self, from_point: &FloatPoint) -> usize {
         let corner_count = self.border_line_count();
         if corner_count == 0 {
             return 0;
@@ -107,7 +105,7 @@ pub trait PolylineShapeOps {
         result
     }
 
-            fn index_of_right_most_corner(&self, from_point: &FloatPoint) -> usize {
+    fn index_of_right_most_corner(&self, from_point: &FloatPoint) -> usize {
         let corner_count = self.border_line_count();
         if corner_count == 0 {
             return 0;
@@ -124,7 +122,7 @@ pub trait PolylineShapeOps {
         result
     }
 
-                    fn polar_line_segment(&self, from_point: &FloatPoint) -> Option<FloatLine> {
+    fn polar_line_segment(&self, from_point: &FloatPoint) -> Option<FloatLine> {
         if self.is_empty() {
             // Java: FRLogger.warn("PolylineShape.polarLineSegment: shape is empty")
             return None;
@@ -144,7 +142,7 @@ pub trait PolylineShapeOps {
         Some(FloatLine::new(left_most_corner, right_most_corner))
     }
 
-                        fn prev_no(&self, no: usize) -> usize {
+    fn prev_no(&self, no: usize) -> usize {
         if no == 0 {
             self.border_line_count() - 1
         } else {
@@ -152,11 +150,11 @@ pub trait PolylineShapeOps {
         }
     }
 
-                    fn next_no(&self, no: usize) -> usize {
+    fn next_no(&self, no: usize) -> usize {
         (no + 1) % self.border_line_count()
     }
 
-        fn intersects_line(&self, line: &Line) -> bool {
+    fn intersects_line(&self, line: &Line) -> bool {
         let side_of_first_corner = line.side_of(&self.corner(0));
         if side_of_first_corner == Side::Collinear {
             return true;
@@ -169,7 +167,7 @@ pub trait PolylineShapeOps {
         false
     }
 
-            fn left_most_corner(&self, from_point: &Point) -> Point {
+    fn left_most_corner(&self, from_point: &Point) -> Point {
         if self.is_empty() {
             return from_point.clone();
         }
@@ -184,7 +182,7 @@ pub trait PolylineShapeOps {
         result
     }
 
-            fn right_most_corner(&self, from_point: &Point) -> Point {
+    fn right_most_corner(&self, from_point: &Point) -> Point {
         if self.is_empty() {
             return from_point.clone();
         }
@@ -199,7 +197,7 @@ pub trait PolylineShapeOps {
         result
     }
 
-            fn corner_approx_at(&self, no: usize) -> FloatPoint {
+    fn corner_approx_at(&self, no: usize) -> FloatPoint {
         self.corner_approx(no)
             .expect("corner index is below border_line_count()")
     }
@@ -246,8 +244,8 @@ impl PolylineShapeOps for TileShape {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PolylineShapeRef {
-        Tile(TileShape),
-        Polygon(PolygonShape),
+    Tile(TileShape),
+    Polygon(PolygonShape),
 }
 
 impl From<TileShape> for PolylineShapeRef {
@@ -275,49 +273,49 @@ impl From<PolygonShape> for PolylineShapeRef {
 }
 
 impl PolylineShapeRef {
-        pub fn contains_float(&self, point: &FloatPoint) -> bool {
+    pub fn contains_float(&self, point: &FloatPoint) -> bool {
         match self {
             PolylineShapeRef::Tile(t) => t.contains_float(point),
             PolylineShapeRef::Polygon(p) => p.contains_float(point),
         }
     }
 
-        pub fn contains(&self, point: &Point) -> bool {
+    pub fn contains(&self, point: &Point) -> bool {
         match self {
             PolylineShapeRef::Tile(t) => t.contains(point),
             PolylineShapeRef::Polygon(p) => p.contains(point),
         }
     }
 
-        pub fn contains_inside(&self, point: &Point) -> bool {
+    pub fn contains_inside(&self, point: &Point) -> bool {
         match self {
             PolylineShapeRef::Tile(t) => t.contains_inside(point),
             PolylineShapeRef::Polygon(p) => p.contains_inside(point),
         }
     }
 
-        pub fn bounding_octagon(&self) -> Option<IntOctagon> {
+    pub fn bounding_octagon(&self) -> Option<IntOctagon> {
         match self {
             PolylineShapeRef::Tile(t) => t.bounding_octagon(),
             PolylineShapeRef::Polygon(p) => Some(p.bounding_octagon()),
         }
     }
 
-            pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
+    pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
         match self {
             PolylineShapeRef::Tile(t) => Some(t.split_to_convex()),
             PolylineShapeRef::Polygon(p) => p.split_to_convex(),
         }
     }
 
-        pub fn translate_by(&self, vector: &Vector) -> PolylineShapeRef {
+    pub fn translate_by(&self, vector: &Vector) -> PolylineShapeRef {
         match self {
             PolylineShapeRef::Tile(t) => PolylineShapeRef::Tile(t.translate_by(vector)),
             PolylineShapeRef::Polygon(p) => PolylineShapeRef::Polygon(p.translate_by(vector)),
         }
     }
 
-        pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> PolylineShapeRef {
+    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> PolylineShapeRef {
         match self {
             PolylineShapeRef::Tile(t) => PolylineShapeRef::Tile(t.turn_90_degree(factor, pole)),
             PolylineShapeRef::Polygon(p) => {
@@ -326,35 +324,35 @@ impl PolylineShapeRef {
         }
     }
 
-        pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> PolylineShapeRef {
+    pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> PolylineShapeRef {
         match self {
             PolylineShapeRef::Tile(t) => PolylineShapeRef::Tile(t.rotate_approx(angle, pole)),
             PolylineShapeRef::Polygon(p) => PolylineShapeRef::Polygon(p.rotate_approx(angle, pole)),
         }
     }
 
-        pub fn mirror_vertical(&self, pole: &IntPoint) -> PolylineShapeRef {
+    pub fn mirror_vertical(&self, pole: &IntPoint) -> PolylineShapeRef {
         match self {
             PolylineShapeRef::Tile(t) => PolylineShapeRef::Tile(t.mirror_vertical(pole)),
             PolylineShapeRef::Polygon(p) => PolylineShapeRef::Polygon(p.mirror_vertical(pole)),
         }
     }
 
-        pub fn mirror_horizontal(&self, pole: &IntPoint) -> PolylineShapeRef {
+    pub fn mirror_horizontal(&self, pole: &IntPoint) -> PolylineShapeRef {
         match self {
             PolylineShapeRef::Tile(t) => PolylineShapeRef::Tile(t.mirror_horizontal(pole)),
             PolylineShapeRef::Polygon(p) => PolylineShapeRef::Polygon(p.mirror_horizontal(pole)),
         }
     }
 
-            pub fn to_shape(&self) -> crate::shape::Shape {
+    pub fn to_shape(&self) -> crate::shape::Shape {
         match self {
             PolylineShapeRef::Tile(t) => crate::shape::Shape::Tile(t.clone()),
             PolylineShapeRef::Polygon(p) => crate::shape::Shape::Polygon(p.clone()),
         }
     }
 
-        pub fn as_ops(&self) -> &dyn PolylineShapeOps {
+    pub fn as_ops(&self) -> &dyn PolylineShapeOps {
         match self {
             PolylineShapeRef::Tile(t) => t,
             PolylineShapeRef::Polygon(p) => p,
@@ -376,10 +374,7 @@ mod tests {
         let b = unit_box();
         assert_eq!(PolylineShapeOps::border_line_count(&b), 4);
         assert_eq!(b.bounded_corners().len(), 4);
-        assert_eq!(
-            b.equals_corner(&Point::Int(IntPoint::new(10, 10))),
-            Some(2) 
-        );
+        assert_eq!(b.equals_corner(&Point::Int(IntPoint::new(10, 10))), Some(2));
         assert_eq!(b.equals_corner(&Point::Int(IntPoint::new(3, 3))), None);
         assert_eq!(PolylineShapeOps::circumference(&b), 40.0);
         assert!(b.is_contained_in(&IntBox::from_coords(-1, -1, 11, 11)));

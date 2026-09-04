@@ -4,18 +4,18 @@ use fr_board::ClearanceViolation;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct BoardStatisticsClearanceViolations {
-                    #[serde(rename = "total_count", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "total_count", skip_serializing_if = "Option::is_none")]
     pub total_count: Option<i32>,
-        #[serde(rename = "min_violation_um", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "min_violation_um", skip_serializing_if = "Option::is_none")]
     pub min_violation_um: Option<f64>,
-        #[serde(rename = "max_violation_um", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "max_violation_um", skip_serializing_if = "Option::is_none")]
     pub max_violation_um: Option<f64>,
-        #[serde(rename = "avg_violation_um", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "avg_violation_um", skip_serializing_if = "Option::is_none")]
     pub avg_violation_um: Option<f64>,
 }
 
 impl BoardStatisticsClearanceViolations {
-                                                                            pub fn from_violations(
+    pub fn from_violations(
         violations: &[ClearanceViolation],
         board_unit_to_um_factor: f64,
     ) -> BoardStatisticsClearanceViolations {

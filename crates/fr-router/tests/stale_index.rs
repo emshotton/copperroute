@@ -8,14 +8,13 @@ use fr_router::pipeline::{
 use fr_settings::sources::{CliSettings, DsnFileSettings, EnvironmentVariablesSource};
 use fr_settings::{HostEnvironment, SettingsInputs, SettingsSource, resolve_headless};
 
-
 struct Stem {
     name: &'static str,
     dsn: &'static str,
     max_passes: i32,
     fanout: bool,
     optimizer: bool,
-        ci: bool,
+    ci: bool,
 }
 
 const STEMS: &[Stem] = &[
@@ -85,11 +84,10 @@ const STEMS: &[Stem] = &[
     },
 ];
 
-
 struct Expected {
     stem: &'static str,
-        fires: [u64; 5],
-                                visits: [u64; 5],
+    fires: [u64; 5],
+    visits: [u64; 5],
 }
 
 const MEASURED: &[Expected] = &[
@@ -142,11 +140,10 @@ fn expected_for(stem: &str) -> &'static Expected {
         .unwrap_or_else(|| panic!("no measured row for {stem} — add one and cite the report"))
 }
 
-
 struct Run {
     ses: String,
     snapshot: Snapshot,
-        board: fr_board::Board,
+    board: fr_board::Board,
 }
 
 fn route_stem(stem: &Stem, instrumented: bool) -> Run {
@@ -240,7 +237,6 @@ fn stems(ci_only: bool) -> impl Iterator<Item = &'static Stem> {
     STEMS.iter().filter(move |s| !ci_only || s.ci)
 }
 
-
 #[test]
 #[cfg_attr(
     debug_assertions,
@@ -332,7 +328,6 @@ fn instrumentation_changes_no_board_byte() {
         );
     }
 }
-
 
 #[test]
 #[cfg_attr(

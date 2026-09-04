@@ -11,12 +11,12 @@ use crate::structure::FixedState;
 
 #[derive(Debug, Clone)]
 pub struct BoardOutline {
-        pub hdr: ItemHeader,
-            shapes: Vec<PolylineShapeRef>,
-                                keepout_area: OnceLock<Area>,
-                                keepout_lines: Option<Vec<TileShape>>,
-                                        keepout_convex_pieces: OnceLock<Option<Vec<TileShape>>>,
-            keepout_outside_outline: bool,
+    pub hdr: ItemHeader,
+    shapes: Vec<PolylineShapeRef>,
+    keepout_area: OnceLock<Area>,
+    keepout_lines: Option<Vec<TileShape>>,
+    keepout_convex_pieces: OnceLock<Option<Vec<TileShape>>>,
+    keepout_outside_outline: bool,
 }
 
 impl PartialEq for BoardOutline {
@@ -30,7 +30,7 @@ impl PartialEq for BoardOutline {
 }
 
 impl BoardOutline {
-                        pub fn new(hdr: ItemHeader, shapes: Vec<PolylineShapeRef>) -> BoardOutline {
+    pub fn new(hdr: ItemHeader, shapes: Vec<PolylineShapeRef>) -> BoardOutline {
         BoardOutline {
             hdr,
             shapes,
@@ -41,7 +41,7 @@ impl BoardOutline {
         }
     }
 
-                        pub fn copy(&self, new_id: ItemId) -> BoardOutline {
+    pub fn copy(&self, new_id: ItemId) -> BoardOutline {
         BoardOutline::new(
             ItemHeader::new(
                 new_id,
@@ -54,18 +54,18 @@ impl BoardOutline {
         )
     }
 
-        pub fn get_half_width(&self) -> i32 {
+    pub fn get_half_width(&self) -> i32 {
         BOARD_OUTLINE_HALF_WIDTH
     }
 
-            pub fn last_layer(&self, ctx: &ItemCtx<'_>) -> usize {
+    pub fn last_layer(&self, ctx: &ItemCtx<'_>) -> usize {
         ctx.rules.layer_structure().count().checked_sub(1).expect(
             "BoardOutline.lastLayer: the board has no layers — Java answers -1 here \
                  (BoardOutline.java:104)",
         )
     }
 
-        pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
+    pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
         let layer_count = ctx.rules.layer_structure().count();
         if self.keepout_outside_outline {
             self.keepout_convex_pieces(ctx)
@@ -75,7 +75,7 @@ impl BoardOutline {
         }
     }
 
-                    pub fn shape_layer(&self, index: usize, ctx: &ItemCtx<'_>) -> usize {
+    pub fn shape_layer(&self, index: usize, ctx: &ItemCtx<'_>) -> usize {
         let layer_count = ctx.rules.layer_structure().count();
         let shape_count = self.tile_shape_count(ctx);
         if shape_count > 0 {
@@ -85,13 +85,13 @@ impl BoardOutline {
         }
     }
 
-            pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self) -> IntBox {
         self.shapes.iter().fold(IntBox::EMPTY, |acc, shape| {
             acc.union(&shape.as_ops().bounding_box())
         })
     }
 
-        pub fn translate_by(&mut self, vector: &Vector) {
+    pub fn translate_by(&mut self, vector: &Vector) {
         if let Some(keepout_area) = self.keepout_area.get_mut() {
             *keepout_area = keepout_area.translate_by(vector);
         }
@@ -99,7 +99,7 @@ impl BoardOutline {
         self.keepout_convex_pieces.take();
     }
 
-            pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
+    pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
         if let Some(keepout_area) = self.keepout_area.get_mut() {
             *keepout_area = keepout_area.turn_90_degree(factor, pole);
         }
@@ -107,7 +107,7 @@ impl BoardOutline {
         self.keepout_convex_pieces.take();
     }
 
-            pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint) {
+    pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint) {
         let angle = angle_in_degree.to_radians();
         if let Some(keepout_area) = self.keepout_area.get_mut() {
             *keepout_area = keepout_area.rotate_approx(angle, pole);
@@ -116,7 +116,7 @@ impl BoardOutline {
         self.keepout_convex_pieces.take();
     }
 
-            pub fn change_placement_side(&mut self, pole: &IntPoint) {
+    pub fn change_placement_side(&mut self, pole: &IntPoint) {
         if let Some(keepout_area) = self.keepout_area.get_mut() {
             *keepout_area = keepout_area.mirror_vertical(pole);
         }
@@ -124,15 +124,15 @@ impl BoardOutline {
         self.keepout_convex_pieces.take();
     }
 
-        pub fn shape_count(&self) -> usize {
+    pub fn shape_count(&self) -> usize {
         self.shapes.len()
     }
 
-            pub fn get_shape(&self, index: usize) -> Option<&PolylineShapeRef> {
+    pub fn get_shape(&self, index: usize) -> Option<&PolylineShapeRef> {
         self.shapes.get(index)
     }
 
-                                            pub fn keepout_convex_pieces(&self, ctx: &ItemCtx<'_>) -> Option<&[TileShape]> {
+    pub fn keepout_convex_pieces(&self, ctx: &ItemCtx<'_>) -> Option<&[TileShape]> {
         self.keepout_convex_pieces
             .get_or_init(|| self.get_keepout_area(ctx).split_to_convex())
             .as_deref()
@@ -147,22 +147,22 @@ impl BoardOutline {
         })
     }
 
-                                pub fn get_keepout_lines(&mut self) -> &[TileShape] {
+    pub fn get_keepout_lines(&mut self) -> &[TileShape] {
         self.keepout_lines.get_or_insert_with(Vec::new)
     }
 
-        pub fn keepout_outside_outline_generated(&self) -> bool {
+    pub fn keepout_outside_outline_generated(&self) -> bool {
         self.keepout_outside_outline
     }
 
-                pub fn generate_keepout_outside(&mut self, value: bool) {
+    pub fn generate_keepout_outside(&mut self, value: bool) {
         if value == self.keepout_outside_outline {
             return;
         }
         self.keepout_outside_outline = value;
     }
 
-            pub fn line_count(&self) -> usize {
+    pub fn line_count(&self) -> usize {
         self.shapes
             .iter()
             .map(|shape| shape.as_ops().border_line_count())

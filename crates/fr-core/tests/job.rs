@@ -190,7 +190,6 @@ const SIF_FILES: &[(&str, &str)] = &[
     ("h.missing", "!"),
 ];
 
-
 #[test]
 fn the_committed_transcript_still_says_what_this_table_says() {
     let file = include_str!("data/p8t1-job-model.txt");
@@ -244,7 +243,6 @@ fn every_table_is_as_long_as_its_header_says() {
         assert_eq!(got, want, "table {tag}");
     }
 }
-
 
 #[test]
 fn six_leading_crlf_bytes_hang_java_and_the_port_bounds_the_loop() {
@@ -811,7 +809,6 @@ fn the_current_pass_accessors_round_trip() {
     assert!(job.is_cancelled_by_user());
 }
 
-
 fn scratch(name: &str) -> PathBuf {
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("p8t1-{name}"));
     let _ = std::fs::remove_dir_all(&dir);
@@ -856,7 +853,7 @@ impl Ctx {
         s
     }
 
-            fn rebuild(&self, line: &str) -> Option<String> {
+    fn rebuild(&self, line: &str) -> Option<String> {
         let f: Vec<&str> = line.split('\t').collect();
         match f[0] {
             "SNIFF" => {

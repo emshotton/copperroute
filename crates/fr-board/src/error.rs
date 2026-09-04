@@ -5,16 +5,16 @@ use crate::ids::ItemId;
 
 #[derive(Debug, Error, Clone, Copy, PartialEq, Eq)]
 pub enum BoardError {
-            #[error("trace normalisation failed: {0}")]
+    #[error("trace normalisation failed: {0}")]
     Normalization(#[from] PolylineError),
 
-        #[error("invalid layer index {0}")]
+    #[error("invalid layer index {0}")]
     InvalidLayer(usize),
 
-        #[error("unknown item id {0}")]
+    #[error("unknown item id {0}")]
     UnknownItem(ItemId),
 
-                                            #[error("normalisation was stopped by the caller's stop check")]
+    #[error("normalisation was stopped by the caller's stop check")]
     Stopped,
 }
 

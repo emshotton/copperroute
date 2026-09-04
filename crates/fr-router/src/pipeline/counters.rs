@@ -1,18 +1,18 @@
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct RouterCounters {
-                            pub pass_count: Option<i32>,
-        pub queued_to_be_routed_count: Option<i32>,
-        pub routed_count: Option<i32>,
-        pub skipped_count: Option<i32>,
-        pub ripped_count: Option<i32>,
-        pub failed_to_be_routed_count: Option<i32>,
-        pub incomplete_count: Option<i32>,
-        pub phase: Option<String>,
-        pub fanout_extra_vias_count: Option<i32>,
+    pub pass_count: Option<i32>,
+    pub queued_to_be_routed_count: Option<i32>,
+    pub routed_count: Option<i32>,
+    pub skipped_count: Option<i32>,
+    pub ripped_count: Option<i32>,
+    pub failed_to_be_routed_count: Option<i32>,
+    pub incomplete_count: Option<i32>,
+    pub phase: Option<String>,
+    pub fanout_extra_vias_count: Option<i32>,
 }
 
 impl RouterCounters {
-                pub const JAVA_FIELD_NAMES: [&'static str; 9] = [
+    pub const JAVA_FIELD_NAMES: [&'static str; 9] = [
         "passCount",
         "queuedToBeRoutedCount",
         "routedCount",

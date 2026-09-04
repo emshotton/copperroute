@@ -157,11 +157,11 @@ fn a_malformed_integer_scope_does_not_desync_its_caller() {
     ]);
 
     for malformed in [
-        "(via_costs 5.0)",        
-        "(via_costs (5))",        
-        "(via_costs)",            
-        "(via_costs 5 junk)",     
-        "(via_costs 5 (junk 1))", 
+        "(via_costs 5.0)",
+        "(via_costs (5))",
+        "(via_costs)",
+        "(via_costs 5 junk)",
+        "(via_costs 5 (junk 1))",
     ] {
         let text = format!("{malformed} (vias off) (start_ripup_costs 13)) tail");
         let mut scanner = DsnScanner::new(&text);

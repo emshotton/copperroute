@@ -6,13 +6,13 @@ use crate::parser::geometry::{DsnCircle, DsnLayer, DsnPolygon, DsnRectangle, Dsn
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CoordinateTransform {
-        scale_factor: f64,
-        base_x: f64,
-        base_y: f64,
+    scale_factor: f64,
+    base_x: f64,
+    base_y: f64,
 }
 
 impl CoordinateTransform {
-                            pub fn new(
+    pub fn new(
         scale_factor: f64,
         base_x: f64,
         base_y: f64,
@@ -27,27 +27,27 @@ impl CoordinateTransform {
         })
     }
 
-                                #[must_use]
+    #[must_use]
     pub fn scale_factor(&self) -> f64 {
         self.scale_factor
     }
 
-        #[must_use]
+    #[must_use]
     pub fn base_x(&self) -> f64 {
         self.base_x
     }
 
-        #[must_use]
+    #[must_use]
     pub fn base_y(&self) -> f64 {
         self.base_y
     }
 
-            #[must_use]
+    #[must_use]
     pub fn board_to_dsn(&self, value: f64) -> f64 {
         value / self.scale_factor
     }
 
-        #[must_use]
+    #[must_use]
     pub fn board_to_dsn_point(&self, point: &FloatPoint) -> [f64; 2] {
         [
             self.board_to_dsn(point.x) + self.base_x,
@@ -55,7 +55,7 @@ impl CoordinateTransform {
         ]
     }
 
-        #[must_use]
+    #[must_use]
     pub fn board_to_dsn_points(&self, points: &[FloatPoint]) -> Vec<f64> {
         let mut result = Vec::with_capacity(2 * points.len());
         for point in points {
@@ -65,7 +65,7 @@ impl CoordinateTransform {
         result
     }
 
-            #[must_use]
+    #[must_use]
     pub fn board_to_dsn_lines(&self, lines: &[Line]) -> Vec<f64> {
         let mut result = Vec::with_capacity(4 * lines.len());
         for line in lines {
@@ -79,13 +79,13 @@ impl CoordinateTransform {
         result
     }
 
-            #[must_use]
+    #[must_use]
     pub fn board_to_dsn_vector(&self, vector: &Vector) -> [f64; 2] {
         let value = vector.to_float();
         [self.board_to_dsn(value.x), self.board_to_dsn(value.y)]
     }
 
-        #[must_use]
+    #[must_use]
     pub fn board_to_dsn_box(&self, b: &IntBox) -> [f64; 4] {
         [
             f64::from(b.ll.x) / self.scale_factor + self.base_x,
@@ -95,7 +95,7 @@ impl CoordinateTransform {
         ]
     }
 
-                                    #[must_use]
+    #[must_use]
     pub fn board_to_dsn_shape(&self, board_shape: &Shape, layer: DsnLayer) -> Option<DsnShape> {
         match board_shape {
             Shape::Tile(TileShape::Box(b)) => Some(DsnShape::Rect(DsnRectangle::new(
@@ -113,12 +113,12 @@ impl CoordinateTransform {
         }
     }
 
-            #[must_use]
+    #[must_use]
     pub fn board_to_dsn_rel_point(&self, point: &FloatPoint) -> [f64; 2] {
         [self.board_to_dsn(point.x), self.board_to_dsn(point.y)]
     }
 
-        #[must_use]
+    #[must_use]
     pub fn board_to_dsn_rel_points(&self, points: &[FloatPoint]) -> Vec<f64> {
         let mut result = Vec::with_capacity(2 * points.len());
         for point in points {
@@ -128,7 +128,7 @@ impl CoordinateTransform {
         result
     }
 
-        #[must_use]
+    #[must_use]
     pub fn board_to_dsn_rel_box(&self, b: &IntBox) -> [f64; 4] {
         [
             f64::from(b.ll.x) / self.scale_factor,
@@ -138,7 +138,7 @@ impl CoordinateTransform {
         ]
     }
 
-                        #[must_use]
+    #[must_use]
     pub fn board_to_dsn_rel_shape(&self, board_shape: &Shape, layer: DsnLayer) -> Option<DsnShape> {
         match board_shape {
             Shape::Tile(TileShape::Box(b)) => Some(DsnShape::Rect(DsnRectangle::new(
@@ -156,7 +156,7 @@ impl CoordinateTransform {
         }
     }
 
-            fn circle(&self, layer: DsnLayer, board_circle: &Circle, relative: bool) -> DsnCircle {
+    fn circle(&self, layer: DsnLayer, board_circle: &Circle, relative: bool) -> DsnCircle {
         let diameter = 2.0 * self.board_to_dsn(f64::from(board_circle.radius));
         let center = FloatPoint::from_int(&board_circle.center);
         let center_coordinates = if relative {
@@ -170,12 +170,12 @@ impl CoordinateTransform {
         )
     }
 
-        #[must_use]
+    #[must_use]
     pub fn dsn_to_board(&self, value: f64) -> f64 {
         value * self.scale_factor
     }
 
-        #[must_use]
+    #[must_use]
     pub fn dsn_to_board_point(&self, tuple: &[f64; 2]) -> FloatPoint {
         FloatPoint::new(
             self.dsn_to_board(tuple[0] - self.base_x),
@@ -183,7 +183,7 @@ impl CoordinateTransform {
         )
     }
 
-        #[must_use]
+    #[must_use]
     pub fn dsn_to_board_rel(&self, tuple: &[f64; 2]) -> FloatPoint {
         FloatPoint::new(self.dsn_to_board(tuple[0]), self.dsn_to_board(tuple[1]))
     }

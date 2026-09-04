@@ -10,18 +10,18 @@ use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IntOctagon {
-        pub left_x: i32,
-        pub bottom_y: i32,
-        pub right_x: i32,
-        pub top_y: i32,
-        pub upper_left_diagonal_x: i32,
-        pub lower_right_diagonal_x: i32,
-        pub lower_left_diagonal_x: i32,
-        pub upper_right_diagonal_x: i32,
+    pub left_x: i32,
+    pub bottom_y: i32,
+    pub right_x: i32,
+    pub top_y: i32,
+    pub upper_left_diagonal_x: i32,
+    pub lower_right_diagonal_x: i32,
+    pub lower_left_diagonal_x: i32,
+    pub upper_right_diagonal_x: i32,
 }
 
 impl IntOctagon {
-        pub const EMPTY: IntOctagon = IntOctagon {
+    pub const EMPTY: IntOctagon = IntOctagon {
         left_x: CRIT_INT,
         bottom_y: CRIT_INT,
         right_x: -CRIT_INT,
@@ -32,7 +32,7 @@ impl IntOctagon {
         upper_right_diagonal_x: -CRIT_INT,
     };
 
-                                                #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         left_x: i32,
         bottom_y: i32,
@@ -55,31 +55,31 @@ impl IntOctagon {
         }
     }
 
-                        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         *self == IntOctagon::EMPTY
     }
 
-        pub fn is_int_octagon(&self) -> bool {
+    pub fn is_int_octagon(&self) -> bool {
         true
     }
 
-        pub fn is_bounded(&self) -> bool {
+    pub fn is_bounded(&self) -> bool {
         true
     }
 
-        pub fn corner_is_bounded(&self, _no: usize) -> bool {
+    pub fn corner_is_bounded(&self, _no: usize) -> bool {
         true
     }
 
-        pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self) -> IntBox {
         IntBox::from_coords(self.left_x, self.bottom_y, self.right_x, self.top_y)
     }
 
-        pub fn bounding_octagon(&self) -> IntOctagon {
+    pub fn bounding_octagon(&self) -> IntOctagon {
         *self
     }
 
-        pub fn dimension(&self) -> i32 {
+    pub fn dimension(&self) -> i32 {
         if self.is_empty() {
             return -1;
         }
@@ -96,7 +96,7 @@ impl IntOctagon {
         }
     }
 
-                pub fn corner(&self, no: usize) -> IntPoint {
+    pub fn corner(&self, no: usize) -> IntPoint {
         match no {
             0 => IntPoint::new(self.lower_left_diagonal_x - self.bottom_y, self.bottom_y),
             1 => IntPoint::new(self.lower_right_diagonal_x + self.bottom_y, self.bottom_y),
@@ -110,7 +110,7 @@ impl IntOctagon {
         }
     }
 
-                pub fn get_id(&self) -> i32 {
+    pub fn get_id(&self) -> i32 {
         let mut result = self.left_x;
         result = 31i32.wrapping_mul(result).wrapping_add(self.right_x);
         result = 31i32.wrapping_mul(result).wrapping_add(self.bottom_y);
@@ -129,7 +129,7 @@ impl IntOctagon {
             .wrapping_add(self.lower_right_diagonal_x)
     }
 
-        pub fn corner_y(&self, no: usize) -> i32 {
+    pub fn corner_y(&self, no: usize) -> i32 {
         match no {
             0 | 1 => self.bottom_y,
             2 => self.right_x - self.lower_right_diagonal_x,
@@ -141,7 +141,7 @@ impl IntOctagon {
         }
     }
 
-        pub fn corner_x(&self, no: usize) -> i32 {
+    pub fn corner_x(&self, no: usize) -> i32 {
         match no {
             0 => self.lower_left_diagonal_x - self.bottom_y,
             1 => self.lower_right_diagonal_x + self.bottom_y,
@@ -153,7 +153,7 @@ impl IntOctagon {
         }
     }
 
-                                pub fn area(&self) -> f64 {
+    pub fn area(&self) -> f64 {
         let mut result = (self.lower_left_diagonal_x - self.bottom_y) as f64
             * (self.bottom_y - self.lower_left_diagonal_x + self.left_x) as f64;
         result += (self.lower_right_diagonal_x + self.bottom_y) as f64
@@ -174,11 +174,11 @@ impl IntOctagon {
         0.5 * result.abs()
     }
 
-        pub fn border_line_count(&self) -> usize {
+    pub fn border_line_count(&self) -> usize {
         8
     }
 
-                    pub fn border_line(&self, no: usize) -> Line {
+    pub fn border_line(&self, no: usize) -> Line {
         match no {
             0 => Line::from_coords(0, self.bottom_y, 1, self.bottom_y),
             1 => Line::from_coords(
@@ -212,7 +212,7 @@ impl IntOctagon {
         }
     }
 
-                            pub fn translate_by(&self, rel_coor: &Vector) -> IntOctagon {
+    pub fn translate_by(&self, rel_coor: &Vector) -> IntOctagon {
         if *rel_coor == Vector::ZERO {
             return *self;
         }
@@ -234,7 +234,7 @@ impl IntOctagon {
         )
     }
 
-            pub fn max_width(&self) -> f64 {
+    pub fn max_width(&self) -> f64 {
         let width1 = (self.right_x - self.left_x).max(self.top_y - self.bottom_y) as f64;
         let width2 = (self.upper_right_diagonal_x - self.lower_left_diagonal_x)
             .max(self.lower_right_diagonal_x - self.upper_left_diagonal_x)
@@ -242,7 +242,7 @@ impl IntOctagon {
         java_max(width1, width2 / SQRT2)
     }
 
-            pub fn min_width(&self) -> f64 {
+    pub fn min_width(&self) -> f64 {
         let width1 = (self.right_x - self.left_x).min(self.top_y - self.bottom_y) as f64;
         let width2 = (self.upper_right_diagonal_x - self.lower_left_diagonal_x)
             .min(self.lower_right_diagonal_x - self.upper_left_diagonal_x)
@@ -250,7 +250,7 @@ impl IntOctagon {
         java_min(width1, width2 / SQRT2)
     }
 
-            pub fn offset(&self, distance: f64) -> IntOctagon {
+    pub fn offset(&self, distance: f64) -> IntOctagon {
         let width = java_round(distance) as i32;
         if width == 0 {
             return *self;
@@ -269,11 +269,11 @@ impl IntOctagon {
         result.normalize()
     }
 
-        pub fn enlarge(&self, offset: f64) -> IntOctagon {
+    pub fn enlarge(&self, offset: f64) -> IntOctagon {
         self.offset(offset)
     }
 
-            pub fn contains_float(&self, point: &FloatPoint) -> bool {
+    pub fn contains_float(&self, point: &FloatPoint) -> bool {
         if self.left_x as f64 > point.x
             || self.bottom_y as f64 > point.y
             || (self.right_x as f64) < point.x
@@ -289,7 +289,7 @@ impl IntOctagon {
             && self.upper_right_diagonal_x as f64 >= tmp2
     }
 
-        pub fn union(&self, other: &IntOctagon) -> IntOctagon {
+    pub fn union(&self, other: &IntOctagon) -> IntOctagon {
         IntOctagon::new(
             self.left_x.min(other.left_x),
             self.bottom_y.min(other.bottom_y),
@@ -304,11 +304,11 @@ impl IntOctagon {
         )
     }
 
-        pub fn union_box(&self, other: &IntBox) -> IntOctagon {
+    pub fn union_box(&self, other: &IntBox) -> IntOctagon {
         self.union(&other.to_int_octagon())
     }
 
-        pub fn intersection(&self, other: &IntOctagon) -> IntOctagon {
+    pub fn intersection(&self, other: &IntOctagon) -> IntOctagon {
         let result = IntOctagon::new(
             self.left_x.max(other.left_x),
             self.bottom_y.max(other.bottom_y),
@@ -324,11 +324,11 @@ impl IntOctagon {
         result.normalize()
     }
 
-        pub fn intersection_box(&self, other: &IntBox) -> IntOctagon {
+    pub fn intersection_box(&self, other: &IntBox) -> IntOctagon {
         self.intersection(&other.to_int_octagon())
     }
 
-        pub fn normalize(&self) -> IntOctagon {
+    pub fn normalize(&self) -> IntOctagon {
         if self.left_x > self.right_x
             || self.bottom_y > self.top_y
             || self.lower_left_diagonal_x > self.upper_right_diagonal_x
@@ -424,24 +424,24 @@ impl IntOctagon {
         )
     }
 
-        pub fn is_normalized(&self) -> bool {
+    pub fn is_normalized(&self) -> bool {
         *self == self.normalize()
     }
 
-                                        pub fn side_of_border_line(&self, x: i32, y: i32, border_line_no: usize) -> Side {
+    pub fn side_of_border_line(&self, x: i32, y: i32, border_line_no: usize) -> Side {
         debug_assert!(
             border_line_no < 8,
             "IntOctagon.sideOfBorderLine: borderLineNo out of range"
         );
         let tmp = match border_line_no {
-            0 => self.bottom_y - y,                   
-            1 => x - y - self.lower_right_diagonal_x, 
-            2 => x - self.right_x,                    
-            3 => x + y - self.upper_right_diagonal_x, 
-            4 => y - self.top_y,                      
-            5 => self.upper_left_diagonal_x + y - x,  
-            6 => self.left_x - x,                     
-            7 => self.lower_left_diagonal_x - x - y,  
+            0 => self.bottom_y - y,
+            1 => x - y - self.lower_right_diagonal_x,
+            2 => x - self.right_x,
+            3 => x + y - self.upper_right_diagonal_x,
+            4 => y - self.top_y,
+            5 => self.upper_left_diagonal_x + y - x,
+            6 => self.left_x - x,
+            7 => self.lower_left_diagonal_x - x - y,
             _ => 0,
         };
         if tmp < 0 {
@@ -453,14 +453,14 @@ impl IntOctagon {
         }
     }
 
-        pub fn is_contained_in(&self, box_: &IntBox) -> bool {
+    pub fn is_contained_in(&self, box_: &IntBox) -> bool {
         self.left_x >= box_.ll.x
             && self.bottom_y >= box_.ll.y
             && self.right_x <= box_.ur.x
             && self.top_y <= box_.ur.y
     }
 
-        pub fn is_contained_in_octagon(&self, other: &IntOctagon) -> bool {
+    pub fn is_contained_in_octagon(&self, other: &IntOctagon) -> bool {
         self.left_x >= other.left_x
             && self.bottom_y >= other.bottom_y
             && self.right_x <= other.right_x
@@ -471,11 +471,11 @@ impl IntOctagon {
             && self.upper_right_diagonal_x <= other.upper_right_diagonal_x
     }
 
-        pub fn intersects_box(&self, other: &IntBox) -> bool {
+    pub fn intersects_box(&self, other: &IntBox) -> bool {
         self.intersects_octagon(&other.to_int_octagon())
     }
 
-        pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
+    pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
         let is_lx = other.left_x.max(self.left_x);
         let is_rx = other.right_x.min(self.right_x);
         if is_lx > is_rx {
@@ -503,7 +503,7 @@ impl IntOctagon {
         is_ulx <= is_lrx
     }
 
-            pub fn overlaps(&self, other: &IntOctagon) -> bool {
+    pub fn overlaps(&self, other: &IntOctagon) -> bool {
         let is_lx = other.left_x.max(self.left_x);
         let is_rx = other.right_x.min(self.right_x);
         if is_lx >= is_rx {
@@ -531,27 +531,27 @@ impl IntOctagon {
         is_ulx < is_lrx
     }
 
-        pub fn left_x_value(&self, y: i32) -> i32 {
+    pub fn left_x_value(&self, y: i32) -> i32 {
         let result = self.left_x.max(self.upper_left_diagonal_x + y);
         result.max(self.lower_left_diagonal_x - y)
     }
 
-        pub fn right_x_value(&self, y: i32) -> i32 {
+    pub fn right_x_value(&self, y: i32) -> i32 {
         let result = self.right_x.min(self.upper_right_diagonal_x - y);
         result.min(self.lower_right_diagonal_x + y)
     }
 
-        pub fn lower_y_value(&self, x: i32) -> i32 {
+    pub fn lower_y_value(&self, x: i32) -> i32 {
         let result = self.bottom_y.max(self.lower_left_diagonal_x - x);
         result.max(x - self.lower_right_diagonal_x)
     }
 
-        pub fn upper_y_value(&self, x: i32) -> i32 {
+    pub fn upper_y_value(&self, x: i32) -> i32 {
         let result = self.top_y.min(x - self.upper_left_diagonal_x);
         result.min(self.upper_right_diagonal_x - x)
     }
 
-                pub fn compare_octagon(&self, other: &IntOctagon, edge_index: usize) -> Side {
+    pub fn compare_octagon(&self, other: &IntOctagon, edge_index: usize) -> Side {
         match edge_index {
             0 => {
                 if self.bottom_y > other.bottom_y {
@@ -629,15 +629,15 @@ impl IntOctagon {
         }
     }
 
-            pub fn compare_box(&self, other: &IntBox, edge_index: usize) -> Side {
+    pub fn compare_box(&self, other: &IntBox, edge_index: usize) -> Side {
         self.compare_octagon(&other.to_int_octagon(), edge_index)
     }
 
-                            pub fn border_line_index(&self, _line: &Line) -> Option<usize> {
+    pub fn border_line_index(&self, _line: &Line) -> Option<usize> {
         None
     }
 
-                    pub fn border_line_side_of(
+    pub fn border_line_side_of(
         &self,
         point: &FloatPoint,
         line_index: usize,
@@ -728,7 +728,7 @@ impl IntOctagon {
         }
     }
 
-        pub fn is_int_box(&self) -> bool {
+    pub fn is_int_box(&self) -> bool {
         if self.lower_left_diagonal_x != self.left_x + self.bottom_y {
             return false;
         }
@@ -741,7 +741,7 @@ impl IntOctagon {
         self.upper_left_diagonal_x == self.left_x - self.top_y
     }
 
-            #[allow(clippy::too_many_lines)] 
+    #[allow(clippy::too_many_lines)]
     pub fn cutout_from_box(&self, d: &IntBox) -> Vec<IntOctagon> {
         let c = self.intersection_box(d);
 
@@ -825,7 +825,6 @@ impl IntOctagon {
             CRIT_INT,
         );
         octagons[3] = current_oct.normalize();
-
 
         let mut b = boxes[0];
         let mut o = octagons[0];
@@ -965,7 +964,7 @@ impl IntOctagon {
         result
     }
 
-            #[allow(clippy::too_many_lines)] 
+    #[allow(clippy::too_many_lines)]
     pub fn cutout_from_octagon(&self, d: &IntOctagon) -> Vec<IntOctagon> {
         let c = self.intersection(d);
 
@@ -1342,7 +1341,7 @@ impl IntOctagon {
         result.to_vec()
     }
 
-                pub fn to_simplex(&self) -> Simplex {
+    pub fn to_simplex(&self) -> Simplex {
         if self.is_empty() {
             return Simplex::EMPTY;
         }
@@ -1350,18 +1349,17 @@ impl IntOctagon {
         Simplex::new(lines).remove_redundant_lines()
     }
 
-            pub fn intersection_simplex(&self, other: &Simplex) -> Simplex {
+    pub fn intersection_simplex(&self, other: &Simplex) -> Simplex {
         other.intersection_octagon(self)
     }
 
-            pub fn intersects_simplex(&self, other: &Simplex) -> bool {
+    pub fn intersects_simplex(&self, other: &Simplex) -> bool {
         other.intersects_octagon(self)
     }
 
-        pub fn cutout_from_simplex(&self, simplex: &Simplex) -> Option<Vec<Simplex>> {
+    pub fn cutout_from_simplex(&self, simplex: &Simplex) -> Option<Vec<Simplex>> {
         self.to_simplex().cutout_from(simplex)
     }
-
 }
 
 impl fmt::Display for IntOctagon {
@@ -1389,7 +1387,7 @@ mod tests {
     use crate::int_box::IntBox;
     use crate::int_point::IntPoint;
 
-        fn from_box(b: IntBox) -> IntOctagon {
+    fn from_box(b: IntBox) -> IntOctagon {
         b.to_int_octagon()
     }
 
@@ -1407,10 +1405,10 @@ mod tests {
         let o = from_box(b);
         assert_eq!(o.left_x, 0);
         assert_eq!(o.right_x, 10);
-        assert_eq!(o.upper_left_diagonal_x, -10); 
-        assert_eq!(o.lower_right_diagonal_x, 10); 
-        assert_eq!(o.lower_left_diagonal_x, 0); 
-        assert_eq!(o.upper_right_diagonal_x, 20); 
+        assert_eq!(o.upper_left_diagonal_x, -10);
+        assert_eq!(o.lower_right_diagonal_x, 10);
+        assert_eq!(o.lower_left_diagonal_x, 0);
+        assert_eq!(o.upper_right_diagonal_x, 20);
         assert!(o.is_normalized());
         assert!(o.is_int_box());
         assert_eq!(o.bounding_box(), b);
@@ -1492,7 +1490,7 @@ mod tests {
     #[test]
     fn cutout_pieces_cover_difference() {
         let outer = from_box(IntBox::from_coords(0, 0, 20, 20));
-        let inner = IntOctagon::new(5, 5, 15, 15, -5, 5, 15, 25).normalize(); 
+        let inner = IntOctagon::new(5, 5, 15, 15, -5, 5, 15, 25).normalize();
         let pieces = inner.cutout_from_octagon(&outer);
         assert!(!pieces.is_empty());
         let total: f64 = pieces.iter().map(|p| p.area()).sum();
@@ -1502,7 +1500,6 @@ mod tests {
             assert!(p.is_contained_in_octagon(&outer));
         }
     }
-
 
     #[test]
     fn empty_and_dimension() {
@@ -1578,8 +1575,8 @@ mod tests {
     fn compare_and_boxes() {
         let a = from_box(IntBox::from_coords(0, 0, 10, 10));
         let b = from_box(IntBox::from_coords(1, 1, 10, 10));
-        assert_eq!(a.compare_octagon(&b, 0), Side::OnTheRight); 
-        assert_eq!(a.compare_octagon(&b, 6), Side::OnTheRight); 
+        assert_eq!(a.compare_octagon(&b, 0), Side::OnTheRight);
+        assert_eq!(a.compare_octagon(&b, 6), Side::OnTheRight);
         assert_eq!(a.compare_octagon(&a, 2), Side::Collinear);
         assert_eq!(
             a.compare_box(&IntBox::from_coords(1, 1, 10, 10), 0),

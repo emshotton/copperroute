@@ -4,7 +4,7 @@ use fr_settings::ScoringSettings;
 use super::statistics::BoardStatistics;
 
 impl BoardStatistics {
-                                                                pub fn calculate_score(&self, scoring: &ScoringSettings) -> f32 {
+    pub fn calculate_score(&self, scoring: &ScoringSettings) -> f32 {
         let maximum_score = self.maximum_score(scoring);
 
         let unrouted_net_penalty = scoring
@@ -56,7 +56,7 @@ impl BoardStatistics {
         maximum_score - penalties - costs
     }
 
-                            pub fn maximum_score(&self, scoring: &ScoringSettings) -> f32 {
+    pub fn maximum_score(&self, scoring: &ScoringSettings) -> f32 {
         let maximum_count = self
             .connections
             .maximum_count
@@ -67,7 +67,7 @@ impl BoardStatistics {
         maximum_count as f32 * unrouted_net_penalty
     }
 
-                                                                                    pub fn normalized_score(&self, scoring: &ScoringSettings) -> f32 {
+    pub fn normalized_score(&self, scoring: &ScoringSettings) -> f32 {
         let maximum_score = self.maximum_score(scoring);
         if maximum_score <= 0.0 {
             return 0.0;

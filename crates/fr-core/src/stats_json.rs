@@ -189,7 +189,7 @@ pub fn to_gson_json(stats: &BoardStatistics) -> serde_json::Value {
 mod tests {
     use super::*;
 
-        #[test]
+    #[test]
     fn the_value_form_loses_key_order_and_float_width() {
         let mut stats = BoardStatistics::default();
         stats.traces.total_length = Some(0.1);

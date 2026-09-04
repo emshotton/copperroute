@@ -7,7 +7,6 @@ use fr_geometry::{
 };
 use fr_router::board_ext::{PolylineTraceExt, TraceTightener};
 
-
 const TRANSCRIPT: &str = include_str!("data/p6t15a-tightener.txt");
 
 fn section(mode: &str) -> Vec<&'static str> {
@@ -26,7 +25,6 @@ fn section(mode: &str) -> Vec<&'static str> {
     assert!(!rows.is_empty(), "transcript section `{mode}` is empty");
     rows
 }
-
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -154,7 +152,6 @@ fn algo(board: &mut Board, min_translate_dist: i32) -> TraceTightener<'static> {
     )
 }
 
-
 fn dump_line(line: &Line) -> String {
     format!("({},{})->({},{})", line.a.x, line.a.y, line.b.x, line.b.y)
 }
@@ -239,7 +236,6 @@ fn dump_board(board: &Board) -> Vec<String> {
     }
     out
 }
-
 
 fn p(x: i32, y: i32) -> Point {
     Point::new(x, y)
@@ -481,7 +477,6 @@ fn java_angle_name(angle: AngleRestriction) -> &'static str {
     }
 }
 
-
 #[test]
 fn get_instance_dispatches_on_the_board_angle_restriction() {
     for (angle, expected) in [
@@ -606,7 +601,6 @@ fn inst_mode_matches_the_jvm() {
     }
     assert_rows("inst", &expected, &actual);
 }
-
 
 #[test]
 fn reposition_line_uses_geometric_line_equality() {
@@ -763,7 +757,6 @@ fn lineeq_mode_matches_the_jvm() {
     assert_rows("lineeq", &expected, &actual);
 }
 
-
 #[test]
 fn ninety_degree_regime_matches_the_jvm() {
     assert_rows(
@@ -790,7 +783,6 @@ fn any_angle_regime_matches_the_jvm() {
         &fixed_table_rows(AngleRestriction::None),
     );
 }
-
 
 #[test]
 fn polyline_trace_pull_tight_matches_the_jvm() {
@@ -982,7 +974,6 @@ fn pull_tight_honours_the_net_class_flag() {
     );
 }
 
-
 #[test]
 fn smoothen_end_corners_at_trace_matches_the_jvm() {
     let expected = section("smooth");
@@ -1045,7 +1036,6 @@ fn the_ninety_degree_regime_never_smoothens_an_end_corner() {
     }
 }
 
-
 #[test]
 fn pin_edge_branch_matches_the_jvm() {
     let expected = section("pinedge");
@@ -1073,7 +1063,6 @@ fn pin_edge_branch_matches_the_jvm() {
     }
     assert_rows("pinedge", &expected, &actual);
 }
-
 
 const RANDOM_COUNT: usize = 256;
 const RANDOM_SEED: i64 = 4242;
@@ -1147,7 +1136,6 @@ fn random_block_matches_the_jvm_in_the_any_angle_regime() {
     );
 }
 
-
 #[test]
 fn pull_tight_stops_when_the_stop_check_trips() {
     let mut board = probe_board(AngleRestriction::None);
@@ -1196,7 +1184,6 @@ fn smoothen_end_corners_stops_when_the_stop_check_trips() {
         "the trip must surface as BoardError::Stopped, never as a hang"
     );
 }
-
 
 fn insert_smoothen_fixture(board: &mut Board) {
     board.insert_trace_without_cleaning(

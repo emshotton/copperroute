@@ -10,7 +10,6 @@ use fr_router::score::BoardStatisticsFanout;
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
-
 const RPI: &str = "fixtures/Issue143-rpi_splitter.dsn";
 
 fn load_board(rel_path: &str) -> Board {
@@ -108,7 +107,6 @@ fn component(id: i32, smd_pin_count: i32) -> FanoutComponent {
     }
 }
 
-
 #[test]
 fn components_sort_by_pin_count_descending_then_id() {
     let mut set: BTreeSet<FanoutComponent> = BTreeSet::new();
@@ -134,7 +132,6 @@ fn two_components_collapse_only_if_they_share_a_pin_count_and_an_id() {
     assert!(set.insert(component(5, 3)), "same count, different id");
     assert_eq!(set.len(), 3);
 }
-
 
 #[test]
 fn pins_sort_by_the_selected_double_then_pin_index() {
@@ -222,7 +219,6 @@ fn two_pins_alone_on_their_nets_tie_and_fall_through_to_pin_index() {
         [20, 10]
     );
 }
-
 
 #[test]
 fn the_constructor_orders_a_real_boards_components_and_pins_like_the_jvm() {
@@ -332,7 +328,6 @@ fn the_five_sorting_orders_do_not_all_agree_on_a_real_board() {
     assert_ne!(seen[1], seen[3]);
     assert_eq!(seen[4], vec![2, 3, 4, 7, 21, 22, 23, 29, 10, 16]);
 }
-
 
 #[test]
 fn targets_are_sorted_by_squared_midpoint_distance_stably() {
@@ -446,7 +441,6 @@ fn the_gravity_centre_is_the_mean_of_the_components_smd_pads() {
     assert_eq!(ordered, [2, 0, 1], "outer_first: T, then L before R");
 }
 
-
 #[test]
 fn the_combined_via_rule_holds_both_sources() {
     let mut infos = ViaInfos::new();
@@ -518,7 +512,6 @@ fn the_combined_via_rule_dedups_a_via_the_two_rules_share() {
     assert_eq!(combined.via_count(), 1);
 }
 
-
 #[test]
 fn a_net_class_keeps_its_detached_via_rule_when_a_rules_file_replaces_it() {
     let (board, applied) = load_board_with_rules(RPI, Some("ruling-h-viarule.rules"));
@@ -546,7 +539,6 @@ fn a_net_class_keeps_its_detached_via_rule_when_a_rules_file_replaces_it() {
     let plain = load_board(RPI);
     assert_eq!(plain.rules.via_rules[0].via_count(), 1);
 }
-
 
 #[test]
 fn the_four_target_strategy_carries_the_ripped_set_into_the_second_attempt() {
@@ -635,7 +627,6 @@ fn fanout_escapes_every_smd_pin_of_the_corpus_board() {
     assert_eq!(board.get_vias().len(), 9);
     assert_eq!(board.get_traces().len(), 10);
 }
-
 
 #[test]
 fn escape_statistics_come_from_the_board_statistics_fanout_block() {

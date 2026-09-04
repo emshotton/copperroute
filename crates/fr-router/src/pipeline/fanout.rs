@@ -15,21 +15,20 @@ use crate::score::{BoardStatistics, BoardStatisticsFanout};
 
 use super::{ProgressSink, ProgressThrottler, RouterBudget, RouterStop, RoutingEvent};
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct EscapeStatistics {
-        pub total_smd_pins: i32,
-        pub escaped_count: i32,
-        pub escaped_percentage: f64,
+    pub total_smd_pins: i32,
+    pub escaped_count: i32,
+    pub escaped_percentage: f64,
 }
 
 impl EscapeStatistics {
-                #[must_use]
+    #[must_use]
     pub fn from_board_statistics(stats: &BoardStatistics) -> EscapeStatistics {
         EscapeStatistics::from_fanout_statistics(&stats.fanout)
     }
 
-                #[must_use]
+    #[must_use]
     pub fn from_fanout_statistics(fanout: &BoardStatisticsFanout) -> EscapeStatistics {
         let percentage = if fanout.total_smd_pins > 0 {
             f64::from(fanout.escaped_count) * 100.0 / f64::from(fanout.total_smd_pins)
@@ -46,42 +45,40 @@ impl EscapeStatistics {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FanoutPassStatus {
-        pub pass_no: i32,
-        pub ripup_costs: i32,
-        pub total_pins: i32,
-        pub pins_to_go: i32,
-        pub routed_count: i32,
-        pub not_routed_count: i32,
-        pub insert_error_count: i32,
-        pub extra_vias_this_pass: i32,
-        pub extra_vias_total: i32,
-        pub pass_duration_millis: i64,
-        pub board_statistics: Box<BoardStatistics>,
-        pub pass_completed: bool,
-        pub escape_statistics: EscapeStatistics,
+    pub pass_no: i32,
+    pub ripup_costs: i32,
+    pub total_pins: i32,
+    pub pins_to_go: i32,
+    pub routed_count: i32,
+    pub not_routed_count: i32,
+    pub insert_error_count: i32,
+    pub extra_vias_this_pass: i32,
+    pub extra_vias_total: i32,
+    pub pass_duration_millis: i64,
+    pub board_statistics: Box<BoardStatistics>,
+    pub pass_completed: bool,
+    pub escape_statistics: EscapeStatistics,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct FanoutRunSummary {
-        pub completed_pass_count: i32,
-            pub total_duration_millis: i64,
-        pub escape_statistics: EscapeStatistics,
-            pub is_timed_out: bool,
+    pub completed_pass_count: i32,
+    pub total_duration_millis: i64,
+    pub escape_statistics: EscapeStatistics,
+    pub is_timed_out: bool,
 }
-
-
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FanoutPin {
-        pub pin: ItemId,
-            pub pin_index: i32,
-            pub distance_to_component_center: f64,
-                        pub distance_to_closest_on_net: f64,
-                            pub surroundings_density: i32,
+    pub pin: ItemId,
+    pub pin_index: i32,
+    pub distance_to_component_center: f64,
+    pub distance_to_closest_on_net: f64,
+    pub surroundings_density: i32,
 }
 
 impl FanoutPin {
-                            #[must_use]
+    #[must_use]
     pub fn new(
         board: &Board,
         board_pin: ItemId,
@@ -96,7 +93,7 @@ impl FanoutPin {
         let pin_location = pin.get_center(&ctx).to_float();
         let distance_to_component_center = pin_location.distance(gravity_center);
 
-        let mut min_distance = f64::MAX; 
+        let mut min_distance = f64::MAX;
         let net_number = if pin_item.net_count() > 0 {
             pin_item.get_net_number(0)
         } else {
@@ -116,14 +113,14 @@ impl FanoutPin {
                 }
             }
         }
-        let distance_to_closest_on_net = min_distance; 
+        let distance_to_closest_on_net = min_distance;
 
-        let resolution = board.communication.get_resolution(Unit::Um); 
-        let max_dist = 20_000.0 * resolution; 
+        let resolution = board.communication.get_resolution(Unit::Um);
+        let max_dist = 20_000.0 * resolution;
         let mut density = 0_i32;
         for other in board_smd_pin_list {
             if *other == board_pin {
-                continue; 
+                continue;
             }
             let Some(Item::Pin(other_pin)) = board.get_item(*other) else {
                 continue;
@@ -143,9 +140,9 @@ impl FanoutPin {
         }
     }
 
-                                                                                                                                                #[must_use]
+    #[must_use]
     pub fn compare_to(&self, other: &FanoutPin, pin_sorting_order: Option<&str>) -> i32 {
-        let mut result = 0_i32; 
+        let mut result = 0_i32;
         let order = pin_sorting_order.unwrap_or("");
         if order == "inner_first" {
             let delta_dist = self.distance_to_component_center - other.distance_to_component_center;
@@ -179,30 +176,29 @@ impl FanoutPin {
         if result == 0 {
             result = self.pin_index - other.pin_index;
         }
-        result 
+        result
     }
 }
 
-
 #[derive(Debug, Clone)]
 pub struct FanoutComponent {
-            pub component: i32,
-                pub component_name: String,
-            pub smd_pins: JavaTreeSet<FanoutPin>,
-            pub gravity_center_of_smd_pins: FloatPoint,
-                pub smd_pin_count: i32,
-            pub pin_sorting_order: Option<String>,
+    pub component: i32,
+    pub component_name: String,
+    pub smd_pins: JavaTreeSet<FanoutPin>,
+    pub gravity_center_of_smd_pins: FloatPoint,
+    pub smd_pin_count: i32,
+    pub pin_sorting_order: Option<String>,
 }
 
 impl FanoutComponent {
-            #[must_use]
+    #[must_use]
     pub fn new(
         board: &Board,
         board_component: i32,
         board_smd_pin_list: &[ItemId],
         pin_sorting_order: Option<&str>,
     ) -> FanoutComponent {
-        let component_id = board.components.get(board_component).id; 
+        let component_id = board.components.get(board_component).id;
         let component_name = board.components.get(board_component).name.clone();
 
         let current_pin_list: Vec<ItemId> = board_smd_pin_list
@@ -252,17 +248,17 @@ impl FanoutComponent {
         }
     }
 
-                            #[must_use]
+    #[must_use]
     pub fn compare_to(&self, other: &FanoutComponent) -> std::cmp::Ordering {
         let compare_value = self.smd_pin_count - other.smd_pin_count;
         let result = if compare_value > 0 {
-            -1 
+            -1
         } else if compare_value < 0 {
-            1 
+            1
         } else {
-            self.component - other.component 
+            self.component - other.component
         };
-        result.cmp(&0) 
+        result.cmp(&0)
     }
 }
 
@@ -286,23 +282,22 @@ impl Ord for FanoutComponent {
     }
 }
 
-
 #[derive(Debug)]
 pub struct BatchFanout<'a> {
-            pub sorted_components: BTreeSet<FanoutComponent>,
-        pub settings: &'a RouterSettings,
-                pub total_smd_pin_count: i32,
-        pub already_connected_pin_count: i32,
-        pub progress_throttler: ProgressThrottler,
-        pub last_not_routed_count: i32,
-        pub extra_vias_total: i32,
-        pub total_items_fanouted: i32,
-                                                                                                                        pub deadline: Option<Instant>,
-        pub is_timed_out: bool,
+    pub sorted_components: BTreeSet<FanoutComponent>,
+    pub settings: &'a RouterSettings,
+    pub total_smd_pin_count: i32,
+    pub already_connected_pin_count: i32,
+    pub progress_throttler: ProgressThrottler,
+    pub last_not_routed_count: i32,
+    pub extra_vias_total: i32,
+    pub total_items_fanouted: i32,
+    pub deadline: Option<Instant>,
+    pub is_timed_out: bool,
 }
 
 impl<'a> BatchFanout<'a> {
-                        #[must_use]
+    #[must_use]
     pub fn new(board: &Board, settings: &'a RouterSettings) -> BatchFanout<'a> {
         let sorting_order: &str = settings
             .fanout
@@ -337,9 +332,9 @@ impl<'a> BatchFanout<'a> {
                 let Some(item) = board.get_item(pin.pin) else {
                     continue;
                 };
-                let net_number = item.get_net_number(0); 
+                let net_number = item.get_net_number(0);
                 if board.unconnected_set(pin.pin, net_number).is_empty() {
-                    already_connected += 1; 
+                    already_connected += 1;
                 }
             }
         }
@@ -347,38 +342,37 @@ impl<'a> BatchFanout<'a> {
         BatchFanout {
             sorted_components,
             settings,
-            total_smd_pin_count: pin_count,                   
-            already_connected_pin_count: already_connected,   
-            progress_throttler: ProgressThrottler::new(1000), 
-            last_not_routed_count: 0,                         
-            extra_vias_total: 0,                              
-            total_items_fanouted: 0,                          
-            deadline: None,                                   
-            is_timed_out: false,                              
+            total_smd_pin_count: pin_count,
+            already_connected_pin_count: already_connected,
+            progress_throttler: ProgressThrottler::new(1000),
+            last_not_routed_count: 0,
+            extra_vias_total: 0,
+            total_items_fanouted: 0,
+            deadline: None,
+            is_timed_out: false,
         }
     }
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FanoutStop {
-        NothingRouted,
-            Stagnated,
-        TimedOut,
-            UnchangedHash,
+    NothingRouted,
+    Stagnated,
+    TimedOut,
+    UnchangedHash,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FanoutLoopState {
-        pub previous_board_state: i64,
-        pub identical_passes: i32,
-                pub last_board_hash: u64,
+    pub previous_board_state: i64,
+    pub identical_passes: i32,
+    pub last_board_hash: u64,
 }
 
 impl FanoutLoopState {
-                                            pub const STAGNATION_PASS_LIMIT: i32 = 3;
+    pub const STAGNATION_PASS_LIMIT: i32 = 3;
 
-        #[must_use]
+    #[must_use]
     pub fn new(initial_board_hash: u64) -> FanoutLoopState {
         FanoutLoopState {
             previous_board_state: i64::MIN,
@@ -387,14 +381,14 @@ impl FanoutLoopState {
         }
     }
 
-                                                                                                #[must_use]
+    #[must_use]
     pub fn board_state(routed_count: i32, via_count: usize) -> i64 {
         let packed = i64::from(routed_count).wrapping_shl(32);
         let via_count = i64::from(via_count as i32);
         packed ^ via_count
     }
 
-                                    pub fn after_pass<F: FnOnce() -> u64>(
+    pub fn after_pass<F: FnOnce() -> u64>(
         &mut self,
         routed_count: i32,
         via_count: usize,
@@ -504,7 +498,7 @@ pub fn parse_timespan_seconds_java(timespan_string: &str) -> Option<i64> {
      (quirk #224)."
 )]
 pub struct TimespanError {
-        pub input: String,
+    pub input: String,
 }
 
 pub fn parse_timespan_seconds(timespan_string: &str) -> Result<Option<i64>, TimespanError> {
@@ -568,9 +562,9 @@ fn parse_unit_suffixes(text: &str) -> Option<i64> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Fraction {
-        Zero,
-        Positive,
-        Negative,
+    Zero,
+    Positive,
+    Negative,
 }
 
 fn duration_integer_component(text: &str) -> Option<i64> {
@@ -612,9 +606,8 @@ fn split_java(text: &str, separator: char) -> Vec<&str> {
     parts
 }
 
-
 impl<'a> BatchFanout<'a> {
-                                                                                                                                                    pub fn fanout_board(
+    pub fn fanout_board(
         board: &mut Board,
         settings: &'a RouterSettings,
         stop: &RouterStop,
@@ -648,7 +641,7 @@ impl<'a> BatchFanout<'a> {
         while i < max_passes {
             stop.poll_cancel();
             if fanout_instance.is_deadline_reached() {
-                fanout_instance.is_timed_out = true; 
+                fanout_instance.is_timed_out = true;
                 break;
             }
             if fanout_instance.max_items_reached() {
@@ -681,13 +674,13 @@ impl<'a> BatchFanout<'a> {
         })
     }
 
-            #[must_use]
+    #[must_use]
     pub fn is_deadline_reached(&self) -> bool {
         self.deadline
             .is_some_and(|deadline| Instant::now() >= deadline)
     }
 
-                    #[must_use]
+    #[must_use]
     pub fn max_items_reached(&self) -> bool {
         self.settings
             .fanout
@@ -696,7 +689,7 @@ impl<'a> BatchFanout<'a> {
             .is_some_and(|max_items| max_items > 0 && self.total_items_fanouted >= max_items)
     }
 
-                                                                                                                                            pub fn fanout_pass(
+    pub fn fanout_pass(
         &mut self,
         board: &mut Board,
         pass_no: i32,
@@ -754,7 +747,7 @@ impl<'a> BatchFanout<'a> {
             .iter()
             .map(|component| component.smd_pins.iter().map(|pin| pin.pin).collect())
             .collect();
-        let mut max_limit_reached = false; 
+        let mut max_limit_reached = false;
         for component_pins in &walk {
             for current_pin in component_pins {
                 if self.max_items_reached() {
@@ -766,8 +759,8 @@ impl<'a> BatchFanout<'a> {
                     .get_item(*current_pin)
                     .map_or(0, |item| item.get_net_number(0));
                 if !fanout_pin_can_use_vias(board, self.settings, net_number) {
-                    pins_to_go -= 1; 
-                    continue; 
+                    pins_to_go -= 1;
+                    continue;
                 }
 
                 board.start_marking_changed_area();
@@ -816,27 +809,8 @@ impl<'a> BatchFanout<'a> {
                     &progress_stats,
                 );
                 if self.is_deadline_reached() {
-                    self.is_timed_out = true; 
-                    let pass_stats = BoardStatistics::with_options(board, None, false); 
-                    let escape_stats = EscapeStatistics::from_board_statistics(&pass_stats); 
-                    self.publish_progress(
-                        progress,
-                        pass_no,
-                        ripup_costs,
-                        pins_to_go,
-                        routed_count,
-                        not_routed_count,
-                        insert_error_count,
-                        extra_vias_this_pass,
-                        escape_stats,
-                        true,
-                        pass_start,
-                        &pass_stats,
-                    );
-                    return Ok(routed_count); 
-                }
-                if stop.is_stop_auto_router_requested() {
-                    let pass_stats = BoardStatistics::with_options(board, None, false); 
+                    self.is_timed_out = true;
+                    let pass_stats = BoardStatistics::with_options(board, None, false);
                     let escape_stats = EscapeStatistics::from_board_statistics(&pass_stats);
                     self.publish_progress(
                         progress,
@@ -852,7 +826,26 @@ impl<'a> BatchFanout<'a> {
                         pass_start,
                         &pass_stats,
                     );
-                    return Ok(routed_count); 
+                    return Ok(routed_count);
+                }
+                if stop.is_stop_auto_router_requested() {
+                    let pass_stats = BoardStatistics::with_options(board, None, false);
+                    let escape_stats = EscapeStatistics::from_board_statistics(&pass_stats);
+                    self.publish_progress(
+                        progress,
+                        pass_no,
+                        ripup_costs,
+                        pins_to_go,
+                        routed_count,
+                        not_routed_count,
+                        insert_error_count,
+                        extra_vias_this_pass,
+                        escape_stats,
+                        true,
+                        pass_start,
+                        &pass_stats,
+                    );
+                    return Ok(routed_count);
                 }
             }
             if max_limit_reached {
@@ -882,7 +875,7 @@ impl<'a> BatchFanout<'a> {
         Ok(routed_count)
     }
 
-                                                                #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     fn maybe_publish_progress(
         &mut self,
         progress: &mut dyn ProgressSink,
@@ -926,7 +919,7 @@ impl<'a> BatchFanout<'a> {
         );
     }
 
-                                                    #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     fn publish_progress(
         &mut self,
         progress: &mut dyn ProgressSink,
@@ -944,7 +937,7 @@ impl<'a> BatchFanout<'a> {
     ) {
         let duration = i64::try_from(pass_start.elapsed().as_millis()).unwrap_or(i64::MAX);
         let status = FanoutPassStatus {
-            pass_no: pass_no + 1, 
+            pass_no: pass_no + 1,
             ripup_costs,
             total_pins: self.total_smd_pin_count,
             pins_to_go,

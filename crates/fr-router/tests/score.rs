@@ -9,7 +9,6 @@ use fr_settings::{HostEnvironment, RouterSettings, ScoringSettings, SettingsSour
 
 use std::collections::{BTreeMap, BTreeSet};
 
-
 fn load_board(rel_path: &str) -> Board {
     let path = parity::java_dir().join(rel_path);
     let file = std::fs::File::open(&path)
@@ -191,7 +190,6 @@ fn check(row: &Row) {
         "{what}: getNormalizedScore"
     );
 }
-
 
 #[test]
 fn normalized_score_matches_the_jvm_on_the_unrouted_stems() {
@@ -382,7 +380,6 @@ fn normalized_score_matches_the_jvm_on_the_routed_stems() {
         check(row);
     }
 }
-
 
 #[test]
 fn a_shove_fixed_trace_is_weighted_at_half() {

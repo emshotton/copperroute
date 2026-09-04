@@ -8,7 +8,7 @@ pub struct Polygon {
 }
 
 impl Polygon {
-            pub fn new(points: Vec<Point>) -> Polygon {
+    pub fn new(points: Vec<Point>) -> Polygon {
         let mut corners = points;
         if corners.is_empty() {
             return Polygon { corners };
@@ -52,17 +52,17 @@ impl Polygon {
         Polygon { corners }
     }
 
-        pub fn corner_array(&self) -> &[Point] {
+    pub fn corner_array(&self) -> &[Point] {
         &self.corners
     }
 
-        pub fn revert_corners(&self) -> Polygon {
+    pub fn revert_corners(&self) -> Polygon {
         let mut reverse_corner_arr = self.corners.clone();
         reverse_corner_arr.reverse();
         Polygon::new(reverse_corner_arr)
     }
 
-                        pub fn winding_number_after_closing(&self) -> i32 {
+    pub fn winding_number_after_closing(&self) -> i32 {
         let corners = &self.corners;
         if corners.len() < 2 {
             return 0;

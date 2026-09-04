@@ -1,8 +1,8 @@
 use num_bigint::BigInt;
 
-pub const CRIT_INT: i32 = 33_554_432; 
+pub const CRIT_INT: i32 = 33_554_432;
 
-pub const CRIT_DOUBLE: f64 = 9_007_199_254_740_992.0; 
+pub const CRIT_DOUBLE: f64 = 9_007_199_254_740_992.0;
 
 pub const SQRT2: f64 = std::f64::consts::SQRT_2;
 
@@ -73,7 +73,7 @@ mod tests {
         assert!(java_min(f64::NAN, 3.0).is_nan());
         assert!(java_max(3.0, f64::NAN).is_nan());
         assert!(java_max(f64::NAN, 3.0).is_nan());
-        assert_eq!(3.0_f64.min(f64::NAN), 3.0); 
+        assert_eq!(3.0_f64.min(f64::NAN), 3.0);
         assert!(java_min(0.0, -0.0).is_sign_negative());
         assert!(java_min(-0.0, 0.0).is_sign_negative());
         assert!(java_max(0.0, -0.0).is_sign_positive());
@@ -88,7 +88,7 @@ mod tests {
         assert!(java_min_f32(f32::NAN, 3.0).is_nan());
         assert!(java_max_f32(3.0, f32::NAN).is_nan());
         assert!(java_max_f32(f32::NAN, 3.0).is_nan());
-        assert_eq!(3.0_f32.min(f32::NAN), 3.0); 
+        assert_eq!(3.0_f32.min(f32::NAN), 3.0);
         assert!(java_min_f32(0.0, -0.0).is_sign_negative());
         assert!(java_min_f32(-0.0, 0.0).is_sign_negative());
         assert!(java_max_f32(0.0, -0.0).is_sign_positive());
@@ -114,7 +114,7 @@ mod tests {
     fn java_round_rounds_half_up_not_away_from_zero() {
         assert_eq!(java_round(1.5), 2);
         assert_eq!(java_round(2.5), 3);
-        assert_eq!(java_round(-1.5), -1); 
+        assert_eq!(java_round(-1.5), -1);
         assert_eq!(java_round(-2.5), -2);
         assert_eq!(java_round(-0.4), 0);
         assert_eq!(java_round(0.49999999999999994), 0);

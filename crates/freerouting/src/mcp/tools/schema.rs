@@ -219,5 +219,3 @@ fn layer_schema() -> Value {
         }
     })
 }
-
-

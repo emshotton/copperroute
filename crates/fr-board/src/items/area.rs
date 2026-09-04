@@ -8,14 +8,14 @@ use crate::items::{Connectable, ItemCtx, copied_header};
 
 #[derive(Debug, Clone)]
 pub struct ObstacleAreaData {
-            name: Option<String>,
-                                relative_area: Area,
-            layer: usize,
-        translation: Vector,
-        rotation_in_degree: f64,
-        side_changed: bool,
-        absolute_area: OnceLock<Area>,
-                                                        convex_pieces: OnceLock<Option<Vec<TileShape>>>,
+    name: Option<String>,
+    relative_area: Area,
+    layer: usize,
+    translation: Vector,
+    rotation_in_degree: f64,
+    side_changed: bool,
+    absolute_area: OnceLock<Area>,
+    convex_pieces: OnceLock<Option<Vec<TileShape>>>,
 }
 
 impl PartialEq for ObstacleAreaData {
@@ -30,7 +30,7 @@ impl PartialEq for ObstacleAreaData {
 }
 
 impl ObstacleAreaData {
-                pub fn new(
+    pub fn new(
         relative_area: Area,
         layer: usize,
         translation: Vector,
@@ -50,31 +50,31 @@ impl ObstacleAreaData {
         }
     }
 
-            pub fn name(&self) -> Option<&str> {
+    pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
 
-        pub fn get_relative_area(&self) -> &Area {
+    pub fn get_relative_area(&self) -> &Area {
         &self.relative_area
     }
 
-        pub fn get_layer(&self) -> usize {
+    pub fn get_layer(&self) -> usize {
         self.layer
     }
 
-        pub fn get_translation(&self) -> &Vector {
+    pub fn get_translation(&self) -> &Vector {
         &self.translation
     }
 
-        pub fn get_rotation_in_degree(&self) -> f64 {
+    pub fn get_rotation_in_degree(&self) -> f64 {
         self.rotation_in_degree
     }
 
-        pub fn get_side_changed(&self) -> bool {
+    pub fn get_side_changed(&self) -> bool {
         self.side_changed
     }
 
-            pub fn get_area(&self, ctx: &ItemCtx<'_>) -> &Area {
+    pub fn get_area(&self, ctx: &ItemCtx<'_>) -> &Area {
         self.absolute_area.get_or_init(|| {
             absolute_area_of(
                 &self.relative_area,
@@ -86,31 +86,31 @@ impl ObstacleAreaData {
         })
     }
 
-        pub fn bounding_box(&self, ctx: &ItemCtx<'_>) -> IntBox {
+    pub fn bounding_box(&self, ctx: &ItemCtx<'_>) -> IntBox {
         self.get_area(ctx).bounding_box()
     }
 
-                            pub fn split_to_convex(&self, ctx: &ItemCtx<'_>) -> Option<&[TileShape]> {
+    pub fn split_to_convex(&self, ctx: &ItemCtx<'_>) -> Option<&[TileShape]> {
         self.convex_pieces
             .get_or_init(|| self.get_area(ctx).split_to_convex())
             .as_deref()
     }
 
-            pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
+    pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
         self.split_to_convex(ctx).map_or(0, <[TileShape]>::len)
     }
 
-                pub fn get_tile_shape(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<TileShape> {
+    pub fn get_tile_shape(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<TileShape> {
         self.split_to_convex(ctx)?.get(index).cloned()
     }
 
-                fn translate_by(&mut self, vector: &Vector) {
+    fn translate_by(&mut self, vector: &Vector) {
         self.translation = self.translation.add(vector);
         self.absolute_area.take();
         self.convex_pieces.take();
     }
 
-        fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
+    fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
         self.rotation_in_degree =
             wrap_into_a_full_turn(self.rotation_in_degree + f64::from(factor) * 90.0);
         let rel_location = Point::ZERO.translate_by(&self.translation);
@@ -121,7 +121,7 @@ impl ObstacleAreaData {
         self.convex_pieces.take();
     }
 
-                            fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint, ctx: &ItemCtx<'_>) {
+    fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint, ctx: &ItemCtx<'_>) {
         let mut turn_angle = angle_in_degree;
         if self.side_changed && ctx.components.get_flip_style_rotate_first() {
             turn_angle = 360.0 - angle_in_degree;
@@ -136,7 +136,7 @@ impl ObstacleAreaData {
         self.convex_pieces.take();
     }
 
-                    fn change_placement_side(&mut self, pole: &IntPoint, ctx: &ItemCtx<'_>) {
+    fn change_placement_side(&mut self, pole: &IntPoint, ctx: &ItemCtx<'_>) {
         self.side_changed = !self.side_changed;
         let layer_count = ctx.rules.layer_structure().count();
         self.layer = layer_count.checked_sub(self.layer + 1).expect(
@@ -151,12 +151,12 @@ impl ObstacleAreaData {
         self.convex_pieces.take();
     }
 
-            fn clear_derived_data(&mut self) {
+    fn clear_derived_data(&mut self) {
         self.absolute_area.take();
         self.convex_pieces.take();
     }
 
-            fn copied(&self) -> ObstacleAreaData {
+    fn copied(&self) -> ObstacleAreaData {
         ObstacleAreaData::new(
             self.relative_area.clone(),
             self.layer,
@@ -207,61 +207,61 @@ fn wrap_into_a_full_turn(mut rotation_in_degree: f64) -> f64 {
 macro_rules! obstacle_area_impl {
     ($ty:ident) => {
         impl $ty {
-                        pub fn name(&self) -> Option<&str> {
+            pub fn name(&self) -> Option<&str> {
                 self.area.name()
             }
 
-                        pub fn get_area(&self, ctx: &ItemCtx<'_>) -> &Area {
+            pub fn get_area(&self, ctx: &ItemCtx<'_>) -> &Area {
                 self.area.get_area(ctx)
             }
 
-                        pub fn get_relative_area(&self) -> &Area {
+            pub fn get_relative_area(&self) -> &Area {
                 self.area.get_relative_area()
             }
 
-                        pub fn get_layer(&self) -> usize {
+            pub fn get_layer(&self) -> usize {
                 self.area.get_layer()
             }
 
-                        pub fn get_translation(&self) -> &Vector {
+            pub fn get_translation(&self) -> &Vector {
                 self.area.get_translation()
             }
 
-                        pub fn get_rotation_in_degree(&self) -> f64 {
+            pub fn get_rotation_in_degree(&self) -> f64 {
                 self.area.get_rotation_in_degree()
             }
 
-                        pub fn get_side_changed(&self) -> bool {
+            pub fn get_side_changed(&self) -> bool {
                 self.area.get_side_changed()
             }
 
-                        pub fn bounding_box(&self, ctx: &ItemCtx<'_>) -> IntBox {
+            pub fn bounding_box(&self, ctx: &ItemCtx<'_>) -> IntBox {
                 self.area.bounding_box(ctx)
             }
 
-                        pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
+            pub fn tile_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
                 self.area.tile_shape_count(ctx)
             }
 
-                        pub fn get_tile_shape(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<TileShape> {
+            pub fn get_tile_shape(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<TileShape> {
                 self.area.get_tile_shape(index, ctx)
             }
 
-                        pub fn split_to_convex(&self, ctx: &ItemCtx<'_>) -> Option<&[TileShape]> {
+            pub fn split_to_convex(&self, ctx: &ItemCtx<'_>) -> Option<&[TileShape]> {
                 self.area.split_to_convex(ctx)
             }
 
-                        pub fn translate_by(&mut self, vector: &Vector) {
+            pub fn translate_by(&mut self, vector: &Vector) {
                 self.area.translate_by(vector);
                 self.hdr.clear_derived_data();
             }
 
-                        pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
+            pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
                 self.area.turn_90_degree(factor, pole);
                 self.hdr.clear_derived_data();
             }
 
-                        pub fn rotate_approx(
+            pub fn rotate_approx(
                 &mut self,
                 angle_in_degree: f64,
                 pole: &FloatPoint,
@@ -271,12 +271,12 @@ macro_rules! obstacle_area_impl {
                 self.hdr.clear_derived_data();
             }
 
-                        pub fn change_placement_side(&mut self, pole: &IntPoint, ctx: &ItemCtx<'_>) {
+            pub fn change_placement_side(&mut self, pole: &IntPoint, ctx: &ItemCtx<'_>) {
                 self.area.change_placement_side(pole, ctx);
                 self.hdr.clear_derived_data();
             }
 
-                                    pub fn clear_derived_data(&mut self) {
+            pub fn clear_derived_data(&mut self) {
                 self.hdr.clear_derived_data();
                 self.area.clear_derived_data();
             }
@@ -284,19 +284,18 @@ macro_rules! obstacle_area_impl {
     };
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct ObstacleArea {
-        pub hdr: ItemHeader,
-        pub area: ObstacleAreaData,
+    pub hdr: ItemHeader,
+    pub area: ObstacleAreaData,
 }
 
 impl ObstacleArea {
-                            pub fn new(hdr: ItemHeader, area: ObstacleAreaData) -> ObstacleArea {
+    pub fn new(hdr: ItemHeader, area: ObstacleAreaData) -> ObstacleArea {
         ObstacleArea { hdr, area }
     }
 
-        pub fn copy(&self, new_id: ItemId) -> ObstacleArea {
+    pub fn copy(&self, new_id: ItemId) -> ObstacleArea {
         ObstacleArea {
             hdr: copied_header(&self.hdr, new_id),
             area: self.area.copied(),
@@ -305,17 +304,16 @@ impl ObstacleArea {
 }
 obstacle_area_impl!(ObstacleArea);
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConductionArea {
-        pub hdr: ItemHeader,
-        pub area: ObstacleAreaData,
-                                            is_obstacle: bool,
-        is_filled: bool,
+    pub hdr: ItemHeader,
+    pub area: ObstacleAreaData,
+    is_obstacle: bool,
+    is_filled: bool,
 }
 
 impl ConductionArea {
-                pub fn new(hdr: ItemHeader, area: ObstacleAreaData, is_obstacle: bool) -> ConductionArea {
+    pub fn new(hdr: ItemHeader, area: ObstacleAreaData, is_obstacle: bool) -> ConductionArea {
         ConductionArea {
             hdr,
             area,
@@ -324,24 +322,24 @@ impl ConductionArea {
         }
     }
 
-        pub fn get_is_obstacle(&self) -> bool {
+    pub fn get_is_obstacle(&self) -> bool {
         self.is_obstacle
     }
 
-        pub fn set_is_obstacle(&mut self, value: bool) {
+    pub fn set_is_obstacle(&mut self, value: bool) {
         self.is_obstacle = value;
     }
 
-        pub fn get_is_filled(&self) -> bool {
+    pub fn get_is_filled(&self) -> bool {
         self.is_filled
     }
 
-            pub fn set_is_filled(&mut self, value: bool) {
+    pub fn set_is_filled(&mut self, value: bool) {
         self.is_filled = value;
         self.clear_derived_data();
     }
 
-                pub fn copy(&self, new_id: ItemId) -> Option<ConductionArea> {
+    pub fn copy(&self, new_id: ItemId) -> Option<ConductionArea> {
         if self.hdr.net_count() != 1 {
             return None;
         }
@@ -353,7 +351,7 @@ impl ConductionArea {
         })
     }
 
-                        pub fn warm_detailed_fill_cache(&self) {}
+    pub fn warm_detailed_fill_cache(&self) {}
 }
 obstacle_area_impl!(ConductionArea);
 
@@ -362,7 +360,7 @@ impl Connectable for ConductionArea {
         &self.hdr
     }
 
-                        fn get_trace_connection_shape(
+    fn get_trace_connection_shape(
         &self,
         tree: TreeId,
         index: usize,
@@ -376,19 +374,18 @@ impl Connectable for ConductionArea {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct ViaObstacleArea {
-        pub hdr: ItemHeader,
-        pub area: ObstacleAreaData,
+    pub hdr: ItemHeader,
+    pub area: ObstacleAreaData,
 }
 
 impl ViaObstacleArea {
-            pub fn new(hdr: ItemHeader, area: ObstacleAreaData) -> ViaObstacleArea {
+    pub fn new(hdr: ItemHeader, area: ObstacleAreaData) -> ViaObstacleArea {
         ViaObstacleArea { hdr, area }
     }
 
-        pub fn copy(&self, new_id: ItemId) -> ViaObstacleArea {
+    pub fn copy(&self, new_id: ItemId) -> ViaObstacleArea {
         ViaObstacleArea {
             hdr: copied_header(&self.hdr, new_id),
             area: self.area.copied(),
@@ -397,19 +394,18 @@ impl ViaObstacleArea {
 }
 obstacle_area_impl!(ViaObstacleArea);
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentObstacleArea {
-        pub hdr: ItemHeader,
-        pub area: ObstacleAreaData,
+    pub hdr: ItemHeader,
+    pub area: ObstacleAreaData,
 }
 
 impl ComponentObstacleArea {
-                            pub fn new(hdr: ItemHeader, area: ObstacleAreaData) -> ComponentObstacleArea {
+    pub fn new(hdr: ItemHeader, area: ObstacleAreaData) -> ComponentObstacleArea {
         ComponentObstacleArea { hdr, area }
     }
 
-        pub fn copy(&self, new_id: ItemId) -> ComponentObstacleArea {
+    pub fn copy(&self, new_id: ItemId) -> ComponentObstacleArea {
         ComponentObstacleArea {
             hdr: ItemHeader::new(
                 new_id,
@@ -421,22 +417,20 @@ impl ComponentObstacleArea {
             area: self.area.copied(),
         }
     }
-
 }
 obstacle_area_impl!(ComponentObstacleArea);
 
-
 #[derive(Debug, Clone)]
 pub struct ComponentOutline {
-        pub hdr: ItemHeader,
-            relative_area: Area,
-        translation: Vector,
-        rotation_in_degree: f64,
-            is_front: bool,
-        is_courtyard: bool,
-        is_fabrication: bool,
-        is_closed: bool,
-        absolute_area: OnceLock<Area>,
+    pub hdr: ItemHeader,
+    relative_area: Area,
+    translation: Vector,
+    rotation_in_degree: f64,
+    is_front: bool,
+    is_courtyard: bool,
+    is_fabrication: bool,
+    is_closed: bool,
+    absolute_area: OnceLock<Area>,
 }
 
 impl PartialEq for ComponentOutline {
@@ -453,7 +447,7 @@ impl PartialEq for ComponentOutline {
 }
 
 impl ComponentOutline {
-                            #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         hdr: ItemHeader,
         relative_area: Area,
@@ -477,7 +471,7 @@ impl ComponentOutline {
         }
     }
 
-        pub fn copy(&self, new_id: ItemId) -> ComponentOutline {
+    pub fn copy(&self, new_id: ItemId) -> ComponentOutline {
         ComponentOutline::new(
             ItemHeader::new(
                 new_id,
@@ -496,31 +490,31 @@ impl ComponentOutline {
         )
     }
 
-        pub fn is_front(&self) -> bool {
+    pub fn is_front(&self) -> bool {
         self.is_front
     }
 
-        pub fn is_courtyard(&self) -> bool {
+    pub fn is_courtyard(&self) -> bool {
         self.is_courtyard
     }
 
-        pub fn is_fabrication(&self) -> bool {
+    pub fn is_fabrication(&self) -> bool {
         self.is_fabrication
     }
 
-        pub fn is_closed(&self) -> bool {
+    pub fn is_closed(&self) -> bool {
         self.is_closed
     }
 
-            pub fn get_translation(&self) -> &Vector {
+    pub fn get_translation(&self) -> &Vector {
         &self.translation
     }
 
-            pub fn get_rotation_in_degree(&self) -> f64 {
+    pub fn get_rotation_in_degree(&self) -> f64 {
         self.rotation_in_degree
     }
 
-            pub fn get_layer(&self, ctx: &ItemCtx<'_>) -> usize {
+    pub fn get_layer(&self, ctx: &ItemCtx<'_>) -> usize {
         if self.is_front {
             0
         } else {
@@ -531,7 +525,7 @@ impl ComponentOutline {
         }
     }
 
-            pub fn get_area(&self, ctx: &ItemCtx<'_>) -> &Area {
+    pub fn get_area(&self, ctx: &ItemCtx<'_>) -> &Area {
         self.absolute_area.get_or_init(|| {
             absolute_area_of(
                 &self.relative_area,
@@ -543,20 +537,20 @@ impl ComponentOutline {
         })
     }
 
-                    pub fn tile_shape_count(&self) -> usize {
+    pub fn tile_shape_count(&self) -> usize {
         0
     }
 
-        pub fn bounding_box(&self, ctx: &ItemCtx<'_>) -> IntBox {
+    pub fn bounding_box(&self, ctx: &ItemCtx<'_>) -> IntBox {
         self.get_area(ctx).bounding_box()
     }
 
-        pub fn translate_by(&mut self, vector: &Vector) {
+    pub fn translate_by(&mut self, vector: &Vector) {
         self.translation = self.translation.add(vector);
         self.clear_derived_data();
     }
 
-        pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
+    pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
         self.rotation_in_degree =
             wrap_into_a_full_turn(self.rotation_in_degree + f64::from(factor) * 90.0);
         let rel_location = Point::ZERO.translate_by(&self.translation);
@@ -566,7 +560,7 @@ impl ComponentOutline {
         self.clear_derived_data();
     }
 
-            pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint, ctx: &ItemCtx<'_>) {
+    pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint, ctx: &ItemCtx<'_>) {
         let mut turn_angle = angle_in_degree;
         if !self.is_front && ctx.components.get_flip_style_rotate_first() {
             turn_angle = 360.0 - angle_in_degree;
@@ -580,7 +574,7 @@ impl ComponentOutline {
         self.clear_derived_data();
     }
 
-        pub fn change_placement_side(&mut self, pole: &IntPoint) {
+    pub fn change_placement_side(&mut self, pole: &IntPoint) {
         self.is_front = !self.is_front;
         let rel_location = Point::ZERO.translate_by(&self.translation);
         self.translation = rel_location
@@ -589,17 +583,16 @@ impl ComponentOutline {
         self.clear_derived_data();
     }
 
-        pub fn clear_derived_data(&mut self) {
+    pub fn clear_derived_data(&mut self) {
         self.absolute_area.take();
     }
 }
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-            #[test]
+    #[test]
     fn area_types_are_send_and_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<ObstacleAreaData>();

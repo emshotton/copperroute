@@ -20,7 +20,6 @@ use fr_router::autoroute::path::{
 };
 use fr_settings::RouterSettings;
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -4_000,
@@ -130,8 +129,8 @@ fn simple_board() -> Board {
     board
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg);
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); 
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
     board
 }
 
@@ -152,7 +151,7 @@ fn blocked_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
 }
 
@@ -186,10 +185,10 @@ fn probe_board() -> Board {
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg2);
 
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed); 
-    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed); 
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed);
+    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed);
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[
             Point::new(0, -2000),
@@ -201,7 +200,7 @@ fn probe_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -211,7 +210,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the free via inserts"); 
+        .expect("the free via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, 2500), Point::new(2500, 3500)]),
         0,
@@ -219,7 +218,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -229,7 +228,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the two-contact via inserts"); 
+        .expect("the two-contact via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(2500, -3500)]),
         0,
@@ -237,7 +236,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(3500, -2500)]),
         0,
@@ -245,7 +244,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
 }
 
@@ -374,7 +373,6 @@ fn items(located: &Located) -> Vec<Item> {
         .collect()
 }
 
-
 #[test]
 fn ninety_and_fortyfive_share_one_implementation() {
     assert_eq!(
@@ -414,7 +412,6 @@ fn get_instance_answers_none_only_for_a_null_maze_result() {
         .is_none()
     );
 }
-
 
 #[test]
 fn the_additional_corner_of_every_regime_matches_the_jvm() {
@@ -649,7 +646,6 @@ fn parse_point(text: &str) -> FloatPoint {
     FloatPoint::new(x.parse().expect("a double"), y.parse().expect("a double"))
 }
 
-
 #[test]
 fn the_backtrack_walk_reproduces_the_jvms_door_chain() {
     let mut board = simple_board_fortyfive();
@@ -669,7 +665,6 @@ fn the_backtrack_walk_reproduces_the_jvms_door_chain() {
     assert_eq!(arr[2].section_no_of_door, 0);
     assert_eq!(arr[2].next_room, None, "the start door has no other room");
 }
-
 
 #[test]
 fn a_single_room_connection_yields_one_trace_with_the_java_corners() {
@@ -759,7 +754,6 @@ fn the_free_angle_simple_board_search_finds_nothing() {
          ran through it — if this ever answers again, #165 has been undone"
     );
 }
-
 
 #[test]
 fn a_layer_change_yields_two_traces_and_no_via_entry() {
@@ -868,7 +862,6 @@ fn the_layer_change_splits_the_same_way_in_all_three_regimes() {
     }
 }
 
-
 #[test]
 fn the_long_way_round_matches_the_jvm_in_all_three_regimes() {
     let expected: [Vec<(i32, i32)>; 3] = [
@@ -968,7 +961,6 @@ fn the_long_way_round_has_eight_expansion_doors_and_no_drill() {
     );
     assert_eq!(located.locator.connection_items.len(), 1);
 }
-
 
 #[test]
 fn the_reversed_search_reaches_the_left_turn_corner() {
@@ -1147,7 +1139,6 @@ fn the_reversed_search_with_vias_splits_into_three_traces() {
     }
 }
 
-
 #[test]
 fn a_ripped_obstacle_room_reaches_the_ripped_item_list_with_its_cost() {
     let mut board = blocked_board();
@@ -1226,7 +1217,6 @@ fn a_null_ripup_cost_map_still_fills_the_ripped_item_set() {
     assert_eq!(ripped, set_of(&[4]));
     assert_eq!(locator.connection_items.len(), 1);
 }
-
 
 #[test]
 fn an_unexpected_destination_door_yields_an_empty_connection_with_the_start_fields_set() {
@@ -1358,7 +1348,6 @@ fn a_start_door_that_is_not_a_target_door_yields_an_all_default_locator() {
     assert_eq!(located.connection_items, Vec::new());
     assert!(ripped.is_empty());
 }
-
 
 #[test]
 fn the_fanout_arm_is_reachable_and_ends_on_a_drill() {

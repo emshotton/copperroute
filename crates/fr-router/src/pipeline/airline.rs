@@ -4,7 +4,6 @@ use fr_board::items::Item;
 use fr_board::{Board, ItemId};
 use fr_geometry::{FloatLine, FloatPoint};
 
-
 pub fn calculate_airline(
     board: &Board,
     from_items: &BTreeSet<ItemId>,
@@ -37,12 +36,11 @@ pub fn calculate_airline(
     Some(FloatLine::new(from_corner?, to_corner?))
 }
 
-
 #[derive(Debug, Default)]
 pub(crate) struct ItemDistanceCache {
-        connectable: BTreeMap<i32, BTreeSet<ItemId>>,
-        keys: BTreeMap<ItemId, f64>,
-        reference: BTreeMap<ItemId, Option<FloatPoint>>,
+    connectable: BTreeMap<i32, BTreeSet<ItemId>>,
+    keys: BTreeMap<ItemId, f64>,
+    reference: BTreeMap<ItemId, Option<FloatPoint>>,
 }
 
 #[must_use]

@@ -18,7 +18,7 @@ impl JavaRandom {
     const ADDEND: i64 = 0xB;
     const MASK: i64 = (1 << 48) - 1;
 
-            fn new(seed: i64) -> JavaRandom {
+    fn new(seed: i64) -> JavaRandom {
         JavaRandom {
             seed: (seed ^ JavaRandom::MULTIPLIER) & JavaRandom::MASK,
         }
@@ -33,7 +33,7 @@ impl JavaRandom {
         (self.seed >> (48 - bits)) as i32
     }
 
-            fn next_int(&mut self, bound: i32) -> i32 {
+    fn next_int(&mut self, bound: i32) -> i32 {
         debug_assert!(
             bound > 0,
             "java.util.Random.nextInt requires a positive bound"
@@ -67,26 +67,26 @@ fn shuffle(list: &mut [CornerId], rng: &mut JavaRandom) {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelaunayCorner {
-        pub object: ItemId,
-        pub point: Point,
+    pub object: ItemId,
+    pub point: Point,
 }
 
 impl DelaunayCorner {
-        pub fn new(object: ItemId, point: Point) -> DelaunayCorner {
+    pub fn new(object: ItemId, point: Point) -> DelaunayCorner {
         DelaunayCorner { object, point }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelaunayEdge {
-        pub start_point: Point,
-        pub start_object: Option<ItemId>,
-        pub end_point: Point,
-        pub end_object: Option<ItemId>,
+    pub start_point: Point,
+    pub start_object: Option<ItemId>,
+    pub end_point: Point,
+    pub end_object: Option<ItemId>,
 }
 
 impl DelaunayEdge {
-                            pub fn length_square(&self) -> f64 {
+    pub fn length_square(&self) -> f64 {
         self.end_point
             .to_float()
             .distance_square(&self.start_point.to_float())
@@ -104,7 +104,7 @@ struct TriangleId(usize);
 
 #[derive(Debug, Clone)]
 struct Corner {
-        object: Option<ItemId>,
+    object: Option<ItemId>,
     coor: Point,
 }
 
@@ -112,16 +112,16 @@ struct Corner {
 struct Edge {
     start_corner: CornerId,
     end_corner: CornerId,
-        left_triangle: Option<TriangleId>,
-        right_triangle: Option<TriangleId>,
+    left_triangle: Option<TriangleId>,
+    right_triangle: Option<TriangleId>,
 }
 
 #[derive(Debug, Clone)]
 struct Triangle {
-            edge_lines: [EdgeId; 3],
-            first_parent: Option<TriangleId>,
-        children: Vec<TriangleId>,
-                    is_on_the_left_of_edge_line: Option<[bool; 3]>,
+    edge_lines: [EdgeId; 3],
+    first_parent: Option<TriangleId>,
+    children: Vec<TriangleId>,
+    is_on_the_left_of_edge_line: Option<[bool; 3]>,
 }
 
 #[derive(Debug, Clone)]
@@ -129,12 +129,12 @@ pub struct PlanarDelaunayTriangulation {
     corners: Vec<Corner>,
     edges: Vec<Edge>,
     triangles: Vec<Triangle>,
-        anchor: Option<TriangleId>,
-        degenerate_edges: Vec<EdgeId>,
+    anchor: Option<TriangleId>,
+    degenerate_edges: Vec<EdgeId>,
 }
 
 impl PlanarDelaunayTriangulation {
-                    pub fn new(corners: &[DelaunayCorner]) -> PlanarDelaunayTriangulation {
+    pub fn new(corners: &[DelaunayCorner]) -> PlanarDelaunayTriangulation {
         let mut this = PlanarDelaunayTriangulation {
             corners: Vec::with_capacity(corners.len() + 3),
             edges: Vec::new(),
@@ -187,7 +187,7 @@ impl PlanarDelaunayTriangulation {
         this
     }
 
-                    pub fn get_edge_lines(&self) -> Vec<DelaunayEdge> {
+    pub fn get_edge_lines(&self) -> Vec<DelaunayEdge> {
         let mut result = Vec::new();
         for &edge in &self.degenerate_edges {
             result.push(self.result_edge(edge));
@@ -202,7 +202,7 @@ impl PlanarDelaunayTriangulation {
         result
     }
 
-                                            pub fn validate(&self) -> bool {
+    pub fn validate(&self) -> bool {
         match self.anchor {
             Some(anchor) => self.validate_triangle(anchor),
             None => {
@@ -212,13 +212,12 @@ impl PlanarDelaunayTriangulation {
         }
     }
 
-
     fn new_corner(&mut self, object: Option<ItemId>, coor: Point) -> CornerId {
         self.corners.push(Corner { object, coor });
         CornerId(self.corners.len() - 1)
     }
 
-            fn new_edge(&mut self, start_corner: CornerId, end_corner: CornerId) -> EdgeId {
+    fn new_edge(&mut self, start_corner: CornerId, end_corner: CornerId) -> EdgeId {
         self.edges.push(Edge {
             start_corner,
             end_corner,
@@ -228,7 +227,7 @@ impl PlanarDelaunayTriangulation {
         EdgeId(self.edges.len() - 1)
     }
 
-        fn new_triangle(
+    fn new_triangle(
         &mut self,
         edge_lines: [EdgeId; 3],
         first_parent: Option<TriangleId>,
@@ -254,8 +253,7 @@ impl PlanarDelaunayTriangulation {
         }
     }
 
-
-                    fn split(&mut self, triangle: TriangleId, corner: CornerId) -> bool {
+    fn split(&mut self, triangle: TriangleId, corner: CornerId) -> bool {
         let mut containing_edge: Option<EdgeId> = None;
         for i in 0..3 {
             let current_edge = self.triangles[triangle.0].edge_lines[i];
@@ -334,7 +332,7 @@ impl PlanarDelaunayTriangulation {
         true
     }
 
-                            fn legalize_edge(&mut self, corner: CornerId, edge: EdgeId) -> bool {
+    fn legalize_edge(&mut self, corner: CornerId, edge: EdgeId) -> bool {
         if self.is_legal(edge) {
             return false;
         }
@@ -383,15 +381,13 @@ impl PlanarDelaunayTriangulation {
         true
     }
 
-
-                    fn side_of(&self, corner: CornerId, p1: CornerId, p2: CornerId) -> Side {
+    fn side_of(&self, corner: CornerId, p1: CornerId, p2: CornerId) -> Side {
         self.corners[corner.0]
             .coor
             .side_of(&self.corners[p1.0].coor, &self.corners[p2.0].coor)
     }
 
-
-        fn graph_insert(&mut self, triangle: TriangleId, parent: Option<TriangleId>) {
+    fn graph_insert(&mut self, triangle: TriangleId, parent: Option<TriangleId>) {
         self.initialize_is_on_the_left_of_edge_line_array(triangle);
         match parent {
             None => self.anchor = Some(triangle),
@@ -399,7 +395,7 @@ impl PlanarDelaunayTriangulation {
         }
     }
 
-            fn position_locate(&self, corner: CornerId) -> Option<TriangleId> {
+    fn position_locate(&self, corner: CornerId) -> Option<TriangleId> {
         let anchor = self.anchor?;
         if self.triangles[anchor.0].children.is_empty() {
             return Some(anchor);
@@ -414,7 +410,7 @@ impl PlanarDelaunayTriangulation {
         None
     }
 
-        fn position_locate_reku(&self, corner: CornerId, triangle: TriangleId) -> Option<TriangleId> {
+    fn position_locate_reku(&self, corner: CornerId, triangle: TriangleId) -> Option<TriangleId> {
         if !self.contains(triangle, corner) {
             return None;
         }
@@ -431,25 +427,24 @@ impl PlanarDelaunayTriangulation {
         None
     }
 
-
-        fn get_left_triangle(&self, edge: EdgeId) -> Option<TriangleId> {
+    fn get_left_triangle(&self, edge: EdgeId) -> Option<TriangleId> {
         self.edges[edge.0].left_triangle
     }
 
-        fn set_left_triangle(&mut self, edge: EdgeId, triangle: Option<TriangleId>) {
+    fn set_left_triangle(&mut self, edge: EdgeId, triangle: Option<TriangleId>) {
         self.edges[edge.0].left_triangle = triangle;
     }
 
-                    #[allow(dead_code)]
+    #[allow(dead_code)]
     fn get_right_triangle(&self, edge: EdgeId) -> Option<TriangleId> {
         self.edges[edge.0].right_triangle
     }
 
-        fn set_right_triangle(&mut self, edge: EdgeId, triangle: Option<TriangleId>) {
+    fn set_right_triangle(&mut self, edge: EdgeId, triangle: Option<TriangleId>) {
         self.edges[edge.0].right_triangle = triangle;
     }
 
-                            fn common_corner(&self, edge: EdgeId, other: EdgeId) -> Option<CornerId> {
+    fn common_corner(&self, edge: EdgeId, other: EdgeId) -> Option<CornerId> {
         let this = &self.edges[edge.0];
         let other = &self.edges[other.0];
         if other.start_corner == this.start_corner || other.end_corner == this.start_corner {
@@ -461,7 +456,7 @@ impl PlanarDelaunayTriangulation {
         }
     }
 
-                            fn other_neighbour(&self, edge: EdgeId, triangle: TriangleId) -> Option<TriangleId> {
+    fn other_neighbour(&self, edge: EdgeId, triangle: TriangleId) -> Option<TriangleId> {
         let e = &self.edges[edge.0];
         if e.left_triangle == Some(triangle) {
             e.right_triangle
@@ -473,7 +468,7 @@ impl PlanarDelaunayTriangulation {
         }
     }
 
-                                        fn is_legal(&self, edge: EdgeId) -> bool {
+    fn is_legal(&self, edge: EdgeId) -> bool {
         let (start_corner, end_corner, left, right) = {
             let e = &self.edges[edge.0];
             (
@@ -508,7 +503,7 @@ impl PlanarDelaunayTriangulation {
         !inside_circle
     }
 
-            fn flip(&mut self, edge: EdgeId) -> Option<EdgeId> {
+    fn flip(&mut self, edge: EdgeId) -> Option<EdgeId> {
         let (left_triangle, right_triangle) = {
             let e = &self.edges[edge.0];
             (e.left_triangle?, e.right_triangle?)
@@ -573,7 +568,7 @@ impl PlanarDelaunayTriangulation {
         Some(flipped_edge)
     }
 
-            fn validate_edge(&self, edge: EdgeId) -> bool {
+    fn validate_edge(&self, edge: EdgeId) -> bool {
         let mut result = true;
         let e = &self.edges[edge.0];
         for (neighbour, _side) in [(e.left_triangle, "left"), (e.right_triangle, "right")] {
@@ -597,12 +592,11 @@ impl PlanarDelaunayTriangulation {
         result
     }
 
-
-        fn is_leaf(&self, triangle: TriangleId) -> bool {
+    fn is_leaf(&self, triangle: TriangleId) -> bool {
         self.triangles[triangle.0].children.is_empty()
     }
 
-        fn get_corner(&self, triangle: TriangleId, no: usize) -> Option<CornerId> {
+    fn get_corner(&self, triangle: TriangleId, no: usize) -> Option<CornerId> {
         if no >= 3 {
             // FRLogger.warn("Triangle.get_corner: no out of range")
             return None;
@@ -618,7 +612,7 @@ impl PlanarDelaunayTriangulation {
         }
     }
 
-            fn opposite_corner(&self, triangle: TriangleId, edge_line: EdgeId) -> Option<CornerId> {
+    fn opposite_corner(&self, triangle: TriangleId, edge_line: EdgeId) -> Option<CornerId> {
         let edge_line_no = self.triangles[triangle.0]
             .edge_lines
             .iter()
@@ -632,7 +626,7 @@ impl PlanarDelaunayTriangulation {
         })
     }
 
-        fn contains(&self, triangle: TriangleId, corner: CornerId) -> bool {
+    fn contains(&self, triangle: TriangleId, corner: CornerId) -> bool {
         let Some(is_on_the_left) = self.triangles[triangle.0].is_on_the_left_of_edge_line else {
             // FRLogger.warn("Triangle.contains: array isOnTheLeftOfEdgeLine not initialized")
             return false;
@@ -654,7 +648,7 @@ impl PlanarDelaunayTriangulation {
         true
     }
 
-        fn get_leaf_edges(&self, triangle: TriangleId, result_edges: &mut BTreeSet<EdgeId>) {
+    fn get_leaf_edges(&self, triangle: TriangleId, result_edges: &mut BTreeSet<EdgeId>) {
         if self.is_leaf(triangle) {
             for i in 0..3 {
                 let current_edge = self.triangles[triangle.0].edge_lines[i];
@@ -675,7 +669,7 @@ impl PlanarDelaunayTriangulation {
         }
     }
 
-            fn split_at_inner_point(
+    fn split_at_inner_point(
         &mut self,
         triangle: TriangleId,
         corner: CornerId,
@@ -731,7 +725,7 @@ impl PlanarDelaunayTriangulation {
         Some(new_triangles)
     }
 
-                        fn split_at_border_point(
+    fn split_at_border_point(
         &mut self,
         triangle: TriangleId,
         corner: CornerId,
@@ -869,7 +863,7 @@ impl PlanarDelaunayTriangulation {
         ])
     }
 
-                            fn validate_triangle(&self, triangle: TriangleId) -> bool {
+    fn validate_triangle(&self, triangle: TriangleId) -> bool {
         let mut result = true;
         if self.is_leaf(triangle) {
             let mut prev_edge = self.triangles[triangle.0].edge_lines[2];
@@ -910,12 +904,12 @@ impl PlanarDelaunayTriangulation {
         result
     }
 
-                fn initialize_is_on_the_left_of_edge_line_array(&mut self, triangle: TriangleId) {
+    fn initialize_is_on_the_left_of_edge_line_array(&mut self, triangle: TriangleId) {
         if self.triangles[triangle.0]
             .is_on_the_left_of_edge_line
             .is_some()
         {
-            return; 
+            return;
         }
         let edge_lines = self.triangles[triangle.0].edge_lines;
         let flags = [
@@ -931,7 +925,7 @@ impl PlanarDelaunayTriangulation {
 mod tests {
     use super::*;
 
-            fn triangulate(points: &[(i32, i32)]) -> PlanarDelaunayTriangulation {
+    fn triangulate(points: &[(i32, i32)]) -> PlanarDelaunayTriangulation {
         let corners: Vec<DelaunayCorner> = points
             .iter()
             .enumerate()
@@ -942,9 +936,9 @@ mod tests {
         PlanarDelaunayTriangulation::new(&corners)
     }
 
-        type EdgeTuple = (u32, (i32, i32), u32, (i32, i32));
+    type EdgeTuple = (u32, (i32, i32), u32, (i32, i32));
 
-        fn edge_tuples(triangulation: &PlanarDelaunayTriangulation) -> Vec<EdgeTuple> {
+    fn edge_tuples(triangulation: &PlanarDelaunayTriangulation) -> Vec<EdgeTuple> {
         fn xy(point: &Point) -> (i32, i32) {
             match point {
                 Point::Int(p) => (p.x, p.y),
@@ -965,7 +959,7 @@ mod tests {
             .collect()
     }
 
-                fn deep_validate(triangulation: &PlanarDelaunayTriangulation) -> bool {
+    fn deep_validate(triangulation: &PlanarDelaunayTriangulation) -> bool {
         fn walk(t: &PlanarDelaunayTriangulation, triangle: TriangleId) -> bool {
             if t.is_leaf(triangle) {
                 return t.validate_triangle(triangle);
@@ -985,13 +979,13 @@ mod tests {
         }
     }
 
-            fn permutation(n: usize) -> Vec<usize> {
+    fn permutation(n: usize) -> Vec<usize> {
         let mut list: Vec<CornerId> = (0..n).map(CornerId).collect();
         shuffle(&mut list, &mut JavaRandom::new(SEED));
         list.iter().map(|c| c.0).collect()
     }
 
-            struct XorShift64(u64);
+    struct XorShift64(u64);
 
     impl XorShift64 {
         fn next(&mut self) -> u64 {
@@ -1018,7 +1012,7 @@ mod tests {
             .collect()
     }
 
-                    fn hull_boundary_point_count(points: &[(i32, i32)]) -> usize {
+    fn hull_boundary_point_count(points: &[(i32, i32)]) -> usize {
         let cross = |o: (i32, i32), a: (i32, i32), b: (i32, i32)| -> i128 {
             (i128::from(a.0) - i128::from(o.0)) * (i128::from(b.1) - i128::from(o.1))
                 - (i128::from(a.1) - i128::from(o.1)) * (i128::from(b.0) - i128::from(o.0))

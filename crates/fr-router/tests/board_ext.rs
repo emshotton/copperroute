@@ -10,7 +10,6 @@ use fr_router::PageId;
 use fr_router::autoroute::maze::engine::AutorouteEngine;
 use fr_router::board_ext::{DrillItemMover, RoutingBoardExt, TraceShover};
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -10_000,
@@ -185,7 +184,6 @@ fn probe_lines() -> Vec<(&'static str, Polyline)> {
     ]
 }
 
-
 #[test]
 fn init_autoroute_reuses_the_engine_only_on_a_matching_clearance_class() {
     let mut board = bare_board_with_a_net_two_trace();
@@ -238,7 +236,6 @@ fn finish_autoroute_clears_the_room_database_before_dropping_the_engine() {
         "the rooms should have been in the tree before finishAutoroute"
     );
 }
-
 
 #[test]
 fn additional_update_after_change_removes_the_overlapping_rooms() {
@@ -335,7 +332,6 @@ fn additional_update_after_change_invalidates_the_drill_pages_of_every_tree_shap
     );
 }
 
-
 #[test]
 fn check_forced_trace_polyline_uses_the_default_tree_and_the_bounding_box_in_ninety_degree_mode() {
     let expected: &[(&str, i32, bool)] = &[
@@ -368,7 +364,6 @@ fn check_forced_trace_polyline_uses_the_default_tree_and_the_bounding_box_in_nin
         assert_eq!(actual, expected, "angle regime {angle:?}");
     }
 }
-
 
 #[test]
 fn trace_shover_check_refuses_at_the_recursion_limit() {
@@ -464,7 +459,6 @@ fn trace_shover_check_does_not_mutate_the_board() {
     assert_eq!(board2.structural_hash(), before);
 }
 
-
 #[test]
 fn trace_shover_check_segment_agrees_with_the_jvm() {
     let max = f64::from(i32::MAX);
@@ -521,7 +515,6 @@ fn trace_shover_check_segment_agrees_with_the_jvm() {
     assert_eq!(actual, expected);
 }
 
-
 #[test]
 fn ignore_items_at_tie_pins_answers_the_contacts_of_the_own_net_pins() {
     let board = probe_board(AngleRestriction::None);
@@ -552,7 +545,6 @@ fn ignore_items_at_tie_pins_answers_the_contacts_of_the_own_net_pins() {
         ]
     );
 }
-
 
 #[test]
 fn drill_item_mover_check_agrees_with_the_jvm() {
@@ -660,7 +652,6 @@ fn try_shove_via_points_agrees_with_the_jvm() {
         .collect();
     assert_eq!(actual, expected);
 }
-
 
 fn insert_probe_vias(board: &mut Board) -> (ItemId, ItemId, ItemId) {
     let through = PadstackId(
@@ -803,7 +794,6 @@ fn pages_holding_drills(engine: &AutorouteEngine) -> usize {
         .count()
 }
 
-
 const T15B: &str = include_str!("data/p6t15b-insert-forced.txt");
 
 fn t15b_section(mode: &str) -> Vec<&'static str> {
@@ -846,7 +836,6 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
             .join("\n")
     );
 }
-
 
 fn t15b_line(line: &fr_geometry::Line) -> String {
     format!("({},{})->({},{})", line.a.x, line.a.y, line.b.x, line.b.y)
@@ -1220,7 +1209,6 @@ fn never_stop() -> bool {
     false
 }
 
-
 #[test]
 fn spring_over_obstacles_agrees_with_the_jvm_on_every_probe_row() {
     let mut rows = Vec::new();
@@ -1273,7 +1261,6 @@ fn spring_over_obstacles_agrees_with_the_jvm_on_every_probe_row() {
     }
     assert_rows_match("spring", &rows);
 }
-
 
 #[test]
 fn spring_over_obstacles_stops_at_the_recursion_limit() {
@@ -1342,7 +1329,6 @@ fn java_round_half_up(value: f64) -> i64 {
     (value + 0.5).floor() as i64
 }
 
-
 #[test]
 fn insert_forced_trace_polyline_agrees_with_the_jvm_on_every_probe_row() {
     let mut rows = Vec::new();
@@ -1397,7 +1383,6 @@ fn insert_forced_trace_polyline_agrees_with_the_jvm_on_every_probe_row() {
     }
     assert_rows_match("poly", &rows);
 }
-
 
 #[test]
 fn insert_forced_trace_polyline_pull_tightens_its_tail() {
@@ -1507,7 +1492,6 @@ fn insert_forced_trace_polyline_pull_tightens_its_tail() {
     );
 }
 
-
 #[test]
 fn insert_forced_trace_segment_agrees_with_the_jvm_on_every_probe_row() {
     let mut rows = Vec::new();
@@ -1561,7 +1545,6 @@ fn insert_forced_trace_segment_agrees_with_the_jvm_on_every_probe_row() {
     }
     assert_rows_match("seg", &rows);
 }
-
 
 #[test]
 fn insert_forced_trace_segment_necks_down_like_the_jvm() {
@@ -1627,7 +1610,6 @@ fn insert_forced_trace_segment_necks_down_like_the_jvm() {
         );
     }
 }
-
 
 fn t15b_string_hash(text: &str) -> i32 {
     let mut hash: i32 = 0;
@@ -1760,7 +1742,6 @@ fn the_two_random_blocks_agree_with_the_jvm() {
     assert_rows_match("rand", &rows);
 }
 
-
 #[test]
 fn the_shove_loop_entry_side_index_is_one_below_the_check_loops() {
     let mut rows = Vec::new();
@@ -1820,7 +1801,6 @@ fn the_shove_loop_entry_side_index_is_one_below_the_check_loops() {
         "the two indices answer the same entry side on every row of this fixture"
     );
 }
-
 
 #[test]
 fn insert_stops_when_the_stop_check_trips() {

@@ -1,5 +1,5 @@
 //! workspace can `#[path = "…/tests/matrix/mod.rs"] mod matrix;` and enumerate the identical
-#![allow(dead_code)] 
+#![allow(dead_code)]
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -9,17 +9,16 @@ use fr_board::prelude::*;
 use fr_geometry::{IntBox, PolylineShapeRef, TileShape};
 use fr_settings::prelude::*;
 
-
 pub struct DsnCase {
-        pub id: &'static str,
-                        pub fixture: Option<&'static str>,
-        pub layer_count: usize,
+    pub id: &'static str,
+    pub fixture: Option<&'static str>,
+    pub layer_count: usize,
 }
 
 pub struct RulesCase {
     pub id: &'static str,
-        pub cli_rules: Option<&'static str>,
-            pub scheduler_rules: Option<&'static str>,
+    pub cli_rules: Option<&'static str>,
+    pub scheduler_rules: Option<&'static str>,
 }
 
 pub struct EnvCase {
@@ -139,7 +138,6 @@ pub fn cases() -> Vec<Case> {
     }
     cases
 }
-
 
 /// the wrong directory for a `#[path]` include from outside `fr-settings` — and Task 9's driver
 pub fn data_path(name: &str) -> PathBuf {

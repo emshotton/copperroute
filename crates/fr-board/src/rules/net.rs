@@ -7,15 +7,15 @@ use super::{compare_to_ignore_case, equals_ignore_case};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Net {
-        pub name: String,
-            pub subnet_number: i32,
-        pub net_number: i32,
-            pub contains_plane: bool,
-                        pub net_class: NetClassId,
+    pub name: String,
+    pub subnet_number: i32,
+    pub net_number: i32,
+    pub contains_plane: bool,
+    pub net_class: NetClassId,
 }
 
 impl Net {
-            pub fn new(
+    pub fn new(
         name: impl Into<String>,
         subnet_number: i32,
         number: i32,
@@ -31,23 +31,23 @@ impl Net {
         }
     }
 
-        pub fn get_net_class(&self) -> NetClassId {
+    pub fn get_net_class(&self) -> NetClassId {
         self.net_class
     }
 
-        pub fn set_class(&mut self, net_class: NetClassId) {
+    pub fn set_class(&mut self, net_class: NetClassId) {
         self.net_class = net_class;
     }
 
-        pub fn contains_plane(&self) -> bool {
+    pub fn contains_plane(&self) -> bool {
         self.contains_plane
     }
 
-        pub fn set_contains_plane(&mut self, value: bool) {
+    pub fn set_contains_plane(&mut self, value: bool) {
         self.contains_plane = value;
     }
 
-                            pub fn compare_to(&self, other: &Net) -> Ordering {
+    pub fn compare_to(&self, other: &Net) -> Ordering {
         compare_to_ignore_case(&self.name, &other.name)
     }
 }
@@ -60,41 +60,41 @@ impl fmt::Display for Net {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Nets {
-        nets: Vec<Net>,
+    nets: Vec<Net>,
 }
 
 impl Nets {
-        pub const MAX_LEGAL_NET_NUMBER: i32 = 9_999_999;
+    pub const MAX_LEGAL_NET_NUMBER: i32 = 9_999_999;
 
-        pub const HIDDEN_NET_NUMBER: i32 = 10_000_001;
+    pub const HIDDEN_NET_NUMBER: i32 = 10_000_001;
 
-        pub fn new() -> Nets {
+    pub fn new() -> Nets {
         Nets::default()
     }
 
-            pub fn is_normal_net_number(net_number: i32) -> bool {
+    pub fn is_normal_net_number(net_number: i32) -> bool {
         net_number > 0 && net_number <= Nets::MAX_LEGAL_NET_NUMBER
     }
 
-            pub fn max_net_number(&self) -> i32 {
+    pub fn max_net_number(&self) -> i32 {
         self.nets.len() as i32
     }
 
-            pub fn get_by_name_and_subnet(&self, name: &str, subnet_number: i32) -> Option<&Net> {
+    pub fn get_by_name_and_subnet(&self, name: &str, subnet_number: i32) -> Option<&Net> {
         self.nets
             .iter()
             .find(|n| equals_ignore_case(&n.name, name) && n.subnet_number == subnet_number)
     }
 
-            pub fn get_by_name(&self, name: &str) -> Vec<&Net> {
+    pub fn get_by_name(&self, name: &str) -> Vec<&Net> {
         self.nets
             .iter()
             .filter(|n| equals_ignore_case(&n.name, name))
             .collect()
     }
 
-                /// Java's `FRLogger.warn("Nets.get: inconsistent netNumber")` guard becomes a `debug_assert!`
-        pub fn get(&self, net_number: i32) -> Option<&Net> {
+    /// Java's `FRLogger.warn("Nets.get: inconsistent netNumber")` guard becomes a `debug_assert!`
+    pub fn get(&self, net_number: i32) -> Option<&Net> {
         if net_number < 1 || net_number > self.nets.len() as i32 {
             return None;
         }
@@ -106,27 +106,27 @@ impl Nets {
         Some(result)
     }
 
-        pub fn get_mut(&mut self, net_number: i32) -> Option<&mut Net> {
+    pub fn get_mut(&mut self, net_number: i32) -> Option<&mut Net> {
         if net_number < 1 || net_number > self.nets.len() as i32 {
             return None;
         }
         Some(&mut self.nets[(net_number - 1) as usize])
     }
 
-                    pub fn iter(&self) -> std::slice::Iter<'_, Net> {
+    pub fn iter(&self) -> std::slice::Iter<'_, Net> {
         self.nets.iter()
     }
 
-            pub fn count(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.nets.len()
     }
 
-                                                pub fn new_net(&mut self, net_class: NetClassId) -> &mut Net {
+    pub fn new_net(&mut self, net_class: NetClassId) -> &mut Net {
         let net_name = format!("net#{}", self.nets.len() + 1);
         self.add(net_name, 1, false, net_class)
     }
 
-                            pub fn add(
+    pub fn add(
         &mut self,
         name: impl Into<String>,
         subnet_number: i32,

@@ -16,7 +16,6 @@ use fr_router::board_ext::RoutingBoardExt;
 use fr_router::{AutorouteAttemptResult, AutorouteAttemptState, route_connection};
 use fr_settings::RouterSettings;
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -4_000,
@@ -131,8 +130,8 @@ fn simple_board_with(front_is_signal: bool) -> Board {
     board
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg);
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); 
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
     board
 }
 
@@ -151,7 +150,7 @@ fn blocked_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
 }
 
@@ -166,7 +165,7 @@ fn sealed_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
 }
 
@@ -200,10 +199,10 @@ fn probe_board() -> Board {
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg2);
 
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); 
-    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed); 
-    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed); 
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed);
+    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed);
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[
             Point::new(0, -2000),
@@ -215,7 +214,7 @@ fn probe_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -225,7 +224,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the free via inserts"); 
+        .expect("the free via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, 2500), Point::new(2500, 3500)]),
         0,
@@ -233,7 +232,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -243,7 +242,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the two-contact via inserts"); 
+        .expect("the two-contact via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(2500, -3500)]),
         0,
@@ -251,7 +250,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(3500, -2500)]),
         0,
@@ -259,10 +258,9 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); 
+    );
     board
 }
-
 
 fn probe_settings(board: &Board) -> RouterSettings {
     let mut settings = RouterSettings::new();
@@ -286,7 +284,7 @@ fn probe_control(board: &Board, net_no: i32) -> AutorouteControl {
 struct Stop {
     calls: Cell<u32>,
     stopped: bool,
-            limit: u32,
+    limit: u32,
 }
 
 impl Stop {
@@ -442,7 +440,6 @@ fn board_dump(board: &Board) -> Vec<String> {
     }
     out
 }
-
 
 const T16: &str = include_str!("data/p6t16-autoroute-connection.txt");
 
@@ -746,7 +743,6 @@ fn all_regimes(mode: &str, build: fn() -> Board, no_vias: bool, ripup_allowed: b
     assert_rows_match(mode, &rows);
 }
 
-
 #[test]
 fn a_plain_connection_routes_and_inserts_javas_trace() {
     all_regimes("plain", simple_board, false, false);
@@ -761,7 +757,6 @@ fn a_layer_changing_connection_routes_through_javas_via() {
 fn a_ripping_connection_deletes_javas_items_and_reports_javas_ripped_set() {
     all_regimes("ripup", blocked_board, true, true);
 }
-
 
 #[test]
 fn a_maze_that_cannot_be_built_fails_with_javas_message() {
@@ -832,7 +827,6 @@ fn skipped_has_no_producer_because_connection_items_is_never_null() {
     );
     assert_eq!(AutorouteAttemptState::Skipped.name(), "SKIPPED");
 }
-
 
 #[test]
 fn cleanup_runs_before_every_early_return() {
@@ -961,7 +955,6 @@ fn dump_rooms(engine: &AutorouteEngine, _board: &Board, label: &str) -> Vec<Stri
     ]
 }
 
-
 #[test]
 fn an_already_stopped_run_fails_before_the_maze_is_built() {
     let mut rows = Vec::new();
@@ -1025,7 +1018,6 @@ fn a_panicking_locator_degrades_to_javas_message_less_failure() {
     }
     assert_eq!(actual, expected);
 }
-
 
 fn route_once(
     board: &mut Board,
@@ -1201,7 +1193,7 @@ fn the_plane_swap_reverses_start_and_dest() {
                     1,
                     false,
                     FixedState::Unfixed,
-                ); 
+                );
             }
             let stop = Stop::never();
             let mut engine = None;
@@ -1221,7 +1213,6 @@ fn the_plane_swap_reverses_start_and_dest() {
     }
     assert_rows_match("plane", &rows);
 }
-
 
 #[test]
 fn describe_connection_joins_javas_item_names_in_descending_id_order() {

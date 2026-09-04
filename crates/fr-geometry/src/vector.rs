@@ -14,14 +14,14 @@ use crate::signum::Signum;
 
 #[derive(Debug, Clone)]
 pub enum Vector {
-        Int(IntVector),
-        Rational(RationalVector),
+    Int(IntVector),
+    Rational(RationalVector),
 }
 
 impl Vector {
-        pub const ZERO: Vector = Vector::Int(IntVector::ZERO);
+    pub const ZERO: Vector = Vector::Int(IntVector::ZERO);
 
-                        pub fn new(x: i32, y: i32) -> Vector {
+    pub fn new(x: i32, y: i32) -> Vector {
         let result = IntVector::new(x, y);
         if x.wrapping_abs() > CRIT_INT || y.wrapping_abs() > CRIT_INT {
             Vector::Rational(RationalVector::from_int(&result))
@@ -30,7 +30,7 @@ impl Vector {
         }
     }
 
-                                    pub fn from_big(x: BigInt, y: BigInt, z: BigInt) -> Vector {
+    pub fn from_big(x: BigInt, y: BigInt, z: BigInt) -> Vector {
         let (mut x, mut y, mut z) = if z.is_negative() {
             (-x, -y, -z)
         } else {
@@ -53,21 +53,21 @@ impl Vector {
         Vector::Rational(RationalVector::new(x, y, z))
     }
 
-        pub fn is_zero(&self) -> bool {
+    pub fn is_zero(&self) -> bool {
         match self {
             Vector::Int(v) => v.is_zero(),
             Vector::Rational(v) => v.is_zero(),
         }
     }
 
-        pub fn negate(&self) -> Vector {
+    pub fn negate(&self) -> Vector {
         match self {
             Vector::Int(v) => Vector::Int(v.negate()),
             Vector::Rational(v) => Vector::Rational(v.negate()),
         }
     }
 
-        pub fn add(&self, other: &Vector) -> Vector {
+    pub fn add(&self, other: &Vector) -> Vector {
         match (self, other) {
             (Vector::Int(a), Vector::Int(b)) => Vector::Int(a.add(b)),
             (Vector::Int(a), Vector::Rational(b)) => b.add_int(a),
@@ -76,7 +76,7 @@ impl Vector {
         }
     }
 
-                            pub fn side_of(&self, other: &Vector) -> Side {
+    pub fn side_of(&self, other: &Vector) -> Side {
         match (self, other) {
             (Vector::Int(a), Vector::Int(b)) => a.side_of(b),
             (Vector::Int(a), Vector::Rational(b)) => b.side_of_int(a).negate(),
@@ -85,25 +85,25 @@ impl Vector {
         }
     }
 
-        pub fn is_orthogonal(&self) -> bool {
+    pub fn is_orthogonal(&self) -> bool {
         match self {
             Vector::Int(v) => v.is_orthogonal(),
             Vector::Rational(v) => v.is_orthogonal(),
         }
     }
 
-        pub fn is_diagonal(&self) -> bool {
+    pub fn is_diagonal(&self) -> bool {
         match self {
             Vector::Int(v) => v.is_diagonal(),
             Vector::Rational(v) => v.is_diagonal(),
         }
     }
 
-        pub fn is_multiple_of_45_degree(&self) -> bool {
+    pub fn is_multiple_of_45_degree(&self) -> bool {
         self.is_orthogonal() || self.is_diagonal()
     }
 
-                pub fn projection(&self, other: &Vector) -> Signum {
+    pub fn projection(&self, other: &Vector) -> Signum {
         match (self, other) {
             (Vector::Int(a), Vector::Int(b)) => a.projection(b),
             (Vector::Int(a), Vector::Rational(b)) => b.projection_int(a),
@@ -112,7 +112,7 @@ impl Vector {
         }
     }
 
-        pub fn scalar_product(&self, other: &Vector) -> f64 {
+    pub fn scalar_product(&self, other: &Vector) -> f64 {
         match (self, other) {
             (Vector::Int(a), Vector::Int(b)) => a.scalar_product(b),
             (Vector::Int(a), Vector::Rational(b)) => b.scalar_product_int(a),
@@ -121,45 +121,45 @@ impl Vector {
         }
     }
 
-        pub fn turn_90_degree(&self, factor: i32) -> Vector {
+    pub fn turn_90_degree(&self, factor: i32) -> Vector {
         match self {
             Vector::Int(v) => Vector::Int(v.turn_90_degree(factor)),
             Vector::Rational(v) => Vector::Rational(v.turn_90_degree(factor)),
         }
     }
 
-        pub fn mirror_at_x_axis(&self) -> Vector {
+    pub fn mirror_at_x_axis(&self) -> Vector {
         match self {
             Vector::Int(v) => Vector::Int(v.mirror_at_x_axis()),
             Vector::Rational(v) => Vector::Rational(v.mirror_at_x_axis()),
         }
     }
 
-        pub fn mirror_at_y_axis(&self) -> Vector {
+    pub fn mirror_at_y_axis(&self) -> Vector {
         match self {
             Vector::Int(v) => Vector::Int(v.mirror_at_y_axis()),
             Vector::Rational(v) => Vector::Rational(v.mirror_at_y_axis()),
         }
     }
 
-        pub fn to_float(&self) -> FloatPoint {
+    pub fn to_float(&self) -> FloatPoint {
         match self {
             Vector::Int(v) => v.to_float(),
             Vector::Rational(v) => v.to_float(),
         }
     }
 
-        pub fn length_approx(&self) -> f64 {
+    pub fn length_approx(&self) -> f64 {
         self.to_float().size()
     }
 
-        pub fn cos_angle(&self, other: &Vector) -> f64 {
+    pub fn cos_angle(&self, other: &Vector) -> f64 {
         let mut result = self.scalar_product(other);
         result /= self.to_float().size() * other.to_float().size();
         result
     }
 
-                pub fn angle_approx_to(&self, other: &Vector) -> f64 {
+    pub fn angle_approx_to(&self, other: &Vector) -> f64 {
         let mut result = self.cos_angle(other).acos();
         if self.side_of(other) == Side::OnTheLeft {
             result = -result;
@@ -167,18 +167,18 @@ impl Vector {
         result
     }
 
-        pub fn angle_approx(&self) -> f64 {
+    pub fn angle_approx(&self) -> f64 {
         Vector::Int(IntVector::new(1, 0)).angle_approx_to(self)
     }
 
-        pub fn to_normalized_direction(&self) -> Direction {
+    pub fn to_normalized_direction(&self) -> Direction {
         match self {
             Vector::Int(v) => Direction::Int(v.to_normalized_direction()),
             Vector::Rational(v) => v.to_normalized_direction(),
         }
     }
 
-        pub fn add_to(&self, point: &Point) -> Point {
+    pub fn add_to(&self, point: &Point) -> Point {
         match (self, point) {
             (Vector::Int(v), Point::Int(p)) => Point::Int(IntPoint::new(p.x + v.x, p.y + v.y)),
             (Vector::Int(v), Point::Rational(p)) => Point::Rational(p.translate_by_int(v)),
@@ -187,7 +187,7 @@ impl Vector {
         }
     }
 
-                                        pub fn change_length_approx(&self, length: f64) -> Vector {
+    pub fn change_length_approx(&self, length: f64) -> Vector {
         match self {
             Vector::Int(v) => {
                 let new_point = v.to_float().change_size(length).round();
@@ -211,7 +211,7 @@ impl From<RationalVector> for Vector {
 }
 
 impl PartialEq for Vector {
-                        fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Vector::Int(a), Vector::Int(b)) => a == b,
             (Vector::Rational(a), Vector::Rational(b)) => a == b,
@@ -286,7 +286,7 @@ mod tests {
         );
     }
 
-                #[test]
+    #[test]
     fn representations_agree_on_binary_operations() {
         let samples = [
             IntVector::new(1, 0),

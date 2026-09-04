@@ -10,7 +10,6 @@ use fr_router::pipeline::{
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
-
 const RPI: &str = "fixtures/Issue143-rpi_splitter.dsn";
 const EMPTY_BOARD: &str = "fixtures/empty_board.dsn";
 
@@ -75,7 +74,6 @@ impl Recorder {
     }
 }
 
-
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn two_runs_of_the_same_board_are_identical() {
@@ -137,7 +135,6 @@ fn two_runs_of_the_same_board_are_identical() {
     );
 }
 
-
 #[test]
 fn finish_autoroute_is_called_exactly_once() {
     let src = std::fs::read_to_string(
@@ -155,7 +152,6 @@ fn finish_autoroute_is_called_exactly_once() {
          before the optimizer stage — not once per arm, and not silently dropped"
     );
 }
-
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
@@ -191,7 +187,6 @@ fn the_fanout_only_mode_sets_max_passes_to_zero_and_leaves_the_callers_settings_
          max_passes = 0 belongs to an internal clone"
     );
 }
-
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
@@ -272,7 +267,6 @@ fn neither_routing_limit_skips_the_optimizer_stage() {
     }
 }
 
-
 #[test]
 fn an_empty_board_errors_with_no_routable_layer() {
     if !parity::require_java_dir() {
@@ -305,7 +299,6 @@ fn an_empty_board_errors_with_no_routable_layer() {
         "AutorouteBatchLoop.java:53-54 fires CANCELLED before the throw, and nothing else runs"
     );
 }
-
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
@@ -366,7 +359,6 @@ fn a_recording_sink_sees_the_stage_events_in_javas_order() {
         "the optimizer's own final state must be the last event; got {states:?}"
     );
 }
-
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]

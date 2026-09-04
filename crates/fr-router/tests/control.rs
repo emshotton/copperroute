@@ -9,7 +9,6 @@ use fr_router::ExpansionCostFactor;
 use fr_router::autoroute::maze::AutorouteControl;
 use fr_settings::RouterSettings;
 
-
 fn fixture_board(name: &str) -> Board {
     let path = parity::fixture(name);
     let bytes = std::fs::read(&path)
@@ -133,7 +132,6 @@ fn transcript() -> String {
     std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()))
 }
 
-
 #[test]
 fn every_field_of_the_jvm_transcript_is_reproduced() {
     let text = transcript();
@@ -250,7 +248,6 @@ fn first_pure_and_mixed(board: &Board) -> (i32, i32) {
     }
     (pure, mixed)
 }
-
 
 #[test]
 fn pure_smd_relaxes_attach_and_scales_the_via_cost() {
@@ -374,7 +371,6 @@ fn a_positive_unknown_net_gets_the_half_width_fallback() {
     );
 }
 
-
 fn plane_board() -> Board {
     let layers = || {
         LayerStructure::new(vec![
@@ -440,7 +436,6 @@ fn with_every_layer_disabled_no_layer_is_routable() {
     assert_eq!(ctrl.layer_active, vec![false, false, false]);
     assert!(!ctrl.layer_active.iter().any(|active| *active));
 }
-
 
 #[test]
 fn every_hard_coded_constant_matches_java() {

@@ -1,4 +1,3 @@
-
 use std::cmp::Ordering;
 
 use crate::error::DsnError;
@@ -8,23 +7,23 @@ use crate::parser::scope_parameter::{ReadScopeParameter, WriteScopeParameter, sk
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DsnLogicalPartMapping {
-        pub name: String,
-                pub components: Vec<String>,
+    pub name: String,
+    pub components: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DsnPartPin {
-        pub pin_name: String,
-        pub gate_name: String,
-        pub gate_swap_code: i32,
-        pub gate_pin_name: String,
-        pub gate_pin_swap_code: i32,
+    pub pin_name: String,
+    pub gate_name: String,
+    pub gate_swap_code: i32,
+    pub gate_pin_name: String,
+    pub gate_pin_swap_code: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DsnLogicalPart {
-        pub name: String,
-        pub part_pins: Vec<DsnPartPin>,
+    pub name: String,
+    pub part_pins: Vec<DsnPartPin>,
 }
 
 pub fn read_part_library_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
@@ -175,7 +174,6 @@ pub fn write_part_library_scope(p: &mut WriteScopeParameter<'_>) {
     p.file.start_scope_nl();
     p.file.write("part_library");
 
-
     for i in 1..=board.library.logical_parts.count() {
         let current_part_name = &board.library.logical_parts.get(i).name;
         p.file.start_scope_nl();
@@ -198,7 +196,6 @@ pub fn write_part_library_scope(p: &mut WriteScopeParameter<'_>) {
         p.file.write(")");
         p.file.end_scope();
     }
-
 
     for i in 1..=board.library.logical_parts.count() {
         let current_part = board.library.logical_parts.get(i);

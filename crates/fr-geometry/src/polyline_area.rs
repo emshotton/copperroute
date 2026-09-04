@@ -14,14 +14,14 @@ pub struct PolylineArea {
 }
 
 impl PolylineArea {
-        pub fn new(border_shape: PolylineShapeRef, hole_arr: Vec<PolylineShapeRef>) -> PolylineArea {
+    pub fn new(border_shape: PolylineShapeRef, hole_arr: Vec<PolylineShapeRef>) -> PolylineArea {
         PolylineArea {
             border_shape,
             hole_arr,
         }
     }
 
-                                fn cutout_hole_piece(
+    fn cutout_hole_piece(
         divide_piece: &TileShape,
         hole_piece: &TileShape,
         pieces: &mut Vec<TileShape>,
@@ -36,56 +36,56 @@ impl PolylineArea {
         }
     }
 
-        pub fn dimension(&self) -> i32 {
+    pub fn dimension(&self) -> i32 {
         self.border_shape.as_ops().dimension()
     }
 
-        pub fn is_bounded(&self) -> bool {
+    pub fn is_bounded(&self) -> bool {
         self.border_shape.as_ops().is_bounded()
     }
 
-        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.border_shape.as_ops().is_empty()
     }
 
-        pub fn is_contained_in(&self, b: &IntBox) -> bool {
+    pub fn is_contained_in(&self, b: &IntBox) -> bool {
         match &self.border_shape {
             PolylineShapeRef::Tile(t) => crate::shape::ShapeOps::is_contained_in(t, b),
             PolylineShapeRef::Polygon(p) => PolylineShapeOps::is_contained_in(p, b),
         }
     }
 
-        pub fn get_border(&self) -> &PolylineShapeRef {
+    pub fn get_border(&self) -> &PolylineShapeRef {
         &self.border_shape
     }
 
-        pub fn get_holes(&self) -> &[PolylineShapeRef] {
+    pub fn get_holes(&self) -> &[PolylineShapeRef] {
         &self.hole_arr
     }
 
-        pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self) -> IntBox {
         self.border_shape.as_ops().bounding_box()
     }
 
-        pub fn bounding_octagon(&self) -> Option<IntOctagon> {
+    pub fn bounding_octagon(&self) -> Option<IntOctagon> {
         self.border_shape.bounding_octagon()
     }
 
-            pub fn contains_float(&self, point: &FloatPoint) -> bool {
+    pub fn contains_float(&self, point: &FloatPoint) -> bool {
         if !self.border_shape.contains_float(point) {
             return false;
         }
         !self.hole_arr.iter().any(|hole| hole.contains_float(point))
     }
 
-                        pub fn contains(&self, point: &Point) -> bool {
+    pub fn contains(&self, point: &Point) -> bool {
         if !self.border_shape.contains(point) {
             return false;
         }
         !self.hole_arr.iter().any(|hole| hole.contains_inside(point))
     }
 
-                    pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
+    pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
         let mut min_dist = f64::MAX;
         let mut result = None;
         let convex_shapes = self
@@ -104,7 +104,7 @@ impl PolylineArea {
         result
     }
 
-        pub fn translate_by(&self, vector: &Vector) -> PolylineArea {
+    pub fn translate_by(&self, vector: &Vector) -> PolylineArea {
         if *vector == Vector::ZERO {
             return self.clone();
         }
@@ -118,7 +118,7 @@ impl PolylineArea {
         }
     }
 
-            pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
+    pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
         let mut result = self.border_shape.as_ops().corner_approx_arr();
         for hole in &self.hole_arr {
             result.extend(hole.as_ops().corner_approx_arr());
@@ -126,7 +126,7 @@ impl PolylineArea {
         result
     }
 
-                                            pub fn split_to_convex(&self, stop_check: Option<&dyn Fn() -> bool>) -> Option<Vec<TileShape>> {
+    pub fn split_to_convex(&self, stop_check: Option<&dyn Fn() -> bool>) -> Option<Vec<TileShape>> {
         let convex_border_pieces = self.border_shape.split_to_convex()?;
         let mut current_piece_list: Vec<TileShape> = convex_border_pieces;
         for hole in &self.hole_arr {
@@ -155,7 +155,7 @@ impl PolylineArea {
         Some(current_piece_list)
     }
 
-        pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> PolylineArea {
+    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> PolylineArea {
         PolylineArea {
             border_shape: self.border_shape.turn_90_degree(factor, pole),
             hole_arr: self
@@ -166,7 +166,7 @@ impl PolylineArea {
         }
     }
 
-        pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> PolylineArea {
+    pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> PolylineArea {
         PolylineArea {
             border_shape: self.border_shape.rotate_approx(angle, pole),
             hole_arr: self
@@ -177,7 +177,7 @@ impl PolylineArea {
         }
     }
 
-        pub fn mirror_vertical(&self, pole: &IntPoint) -> PolylineArea {
+    pub fn mirror_vertical(&self, pole: &IntPoint) -> PolylineArea {
         PolylineArea {
             border_shape: self.border_shape.mirror_vertical(pole),
             hole_arr: self
@@ -188,7 +188,7 @@ impl PolylineArea {
         }
     }
 
-        pub fn mirror_horizontal(&self, pole: &IntPoint) -> PolylineArea {
+    pub fn mirror_horizontal(&self, pole: &IntPoint) -> PolylineArea {
         PolylineArea {
             border_shape: self.border_shape.mirror_horizontal(pole),
             hole_arr: self

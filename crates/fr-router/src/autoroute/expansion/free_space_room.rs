@@ -6,13 +6,13 @@ use crate::autoroute::expansion::{ExpansionDoor, RoomRef};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FreeSpaceExpansionRoom {
-                            shape: Option<TileShape>,
-        layer: usize,
-            doors: Vec<DoorId>,
+    shape: Option<TileShape>,
+    layer: usize,
+    doors: Vec<DoorId>,
 }
 
 impl FreeSpaceExpansionRoom {
-        pub fn new(shape: Option<TileShape>, layer: usize) -> FreeSpaceExpansionRoom {
+    pub fn new(shape: Option<TileShape>, layer: usize) -> FreeSpaceExpansionRoom {
         FreeSpaceExpansionRoom {
             shape,
             layer,
@@ -20,19 +20,19 @@ impl FreeSpaceExpansionRoom {
         }
     }
 
-        pub fn add_door(&mut self, door: DoorId) {
+    pub fn add_door(&mut self, door: DoorId) {
         self.doors.push(door);
     }
 
-                pub fn get_doors(&self) -> &[DoorId] {
+    pub fn get_doors(&self) -> &[DoorId] {
         &self.doors
     }
 
-                pub fn clear_doors(&mut self) {
+    pub fn clear_doors(&mut self) {
         self.doors = Vec::new();
     }
 
-            pub fn remove_door(&mut self, door: DoorId) -> bool {
+    pub fn remove_door(&mut self, door: DoorId) -> bool {
         match self.doors.iter().position(|d| *d == door) {
             Some(index) => {
                 self.doors.remove(index);
@@ -42,7 +42,7 @@ impl FreeSpaceExpansionRoom {
         }
     }
 
-                            pub fn reset_doors(&self, doors: &mut Arena<ExpansionDoor>) {
+    pub fn reset_doors(&self, doors: &mut Arena<ExpansionDoor>) {
         for door in &self.doors {
             if let Some(door) = doors.get_mut(door.0) {
                 door.reset();
@@ -50,7 +50,7 @@ impl FreeSpaceExpansionRoom {
         }
     }
 
-                            pub fn door_exists(&self, doors: &Arena<ExpansionDoor>, other: RoomRef) -> bool {
+    pub fn door_exists(&self, doors: &Arena<ExpansionDoor>, other: RoomRef) -> bool {
         self.doors.iter().any(|door| {
             doors
                 .get(door.0)
@@ -58,15 +58,15 @@ impl FreeSpaceExpansionRoom {
         })
     }
 
-            pub fn get_shape(&self) -> Option<&TileShape> {
+    pub fn get_shape(&self) -> Option<&TileShape> {
         self.shape.as_ref()
     }
 
-                            pub fn set_shape(&mut self, shape: Option<TileShape>) {
+    pub fn set_shape(&mut self, shape: Option<TileShape>) {
         self.shape = shape;
     }
 
-        pub fn get_layer(&self) -> usize {
+    pub fn get_layer(&self) -> usize {
         self.layer
     }
 }

@@ -6,56 +6,56 @@ use fr_settings::{ExpansionCostFactor, RouterSettings};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ViaMask {
-        pub from_layer: i32,
-        pub to_layer: i32,
-            pub attach_smd_allowed: bool,
+    pub from_layer: i32,
+    pub to_layer: i32,
+    pub attach_smd_allowed: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AutorouteControl {
-                        pub trace_costs: Vec<ExpansionCostFactor>,
-        pub bend_costs: Vec<f64>,
-        pub with_neckdown: bool,
-            pub layer_active: Vec<bool>,
-        pub layer_count: usize,
-        pub trace_half_width: Vec<i32>,
-        pub compensated_trace_half_width: Vec<i32>,
-        pub via_radii: Vec<f64>,
-                            pub add_via_costs: Vec<Vec<i32>>,
-        pub trace_clearance_class_index: usize,
-        pub vias_allowed: bool,
-            pub attach_smd_allowed: bool,
-        pub min_normal_via_cost: f64,
-        pub ripup_allowed: bool,
-            pub ripup_costs: i32,
-        pub ripup_pass_no: i32,
-            pub is_fanout: bool,
-        pub fanout_start_pin_name: Option<String>,
-        pub fanout_start_pin_center: Option<Point>,
-        pub fanout_start_pin_layer: i32,
-            pub remove_unconnected_vias: bool,
-                                                    pub via_rule: Option<ViaRule>,
-        pub net_number: i32,
-        pub via_clearance_class: usize,
-        pub via_infos: Vec<ViaMask>,
-        pub via_lower_bound: usize,
-        pub via_upper_bound: usize,
-        pub max_via_radius: f64,
-        pub tidy_region_width: i32,
-        pub pull_tight_accuracy: i32,
-        pub max_shove_trace_recursion_depth: i32,
-        pub max_shove_via_recursion_depth: i32,
-        pub max_spring_over_recursion_depth: i32,
-        pub min_cheap_via_cost: f64,
+    pub trace_costs: Vec<ExpansionCostFactor>,
+    pub bend_costs: Vec<f64>,
+    pub with_neckdown: bool,
+    pub layer_active: Vec<bool>,
+    pub layer_count: usize,
+    pub trace_half_width: Vec<i32>,
+    pub compensated_trace_half_width: Vec<i32>,
+    pub via_radii: Vec<f64>,
+    pub add_via_costs: Vec<Vec<i32>>,
+    pub trace_clearance_class_index: usize,
+    pub vias_allowed: bool,
+    pub attach_smd_allowed: bool,
+    pub min_normal_via_cost: f64,
+    pub ripup_allowed: bool,
+    pub ripup_costs: i32,
+    pub ripup_pass_no: i32,
+    pub is_fanout: bool,
+    pub fanout_start_pin_name: Option<String>,
+    pub fanout_start_pin_center: Option<Point>,
+    pub fanout_start_pin_layer: i32,
+    pub remove_unconnected_vias: bool,
+    pub via_rule: Option<ViaRule>,
+    pub net_number: i32,
+    pub via_clearance_class: usize,
+    pub via_infos: Vec<ViaMask>,
+    pub via_lower_bound: usize,
+    pub via_upper_bound: usize,
+    pub max_via_radius: f64,
+    pub tidy_region_width: i32,
+    pub pull_tight_accuracy: i32,
+    pub max_shove_trace_recursion_depth: i32,
+    pub max_shove_via_recursion_depth: i32,
+    pub max_spring_over_recursion_depth: i32,
+    pub min_cheap_via_cost: f64,
 
-                                                pub fanout_max_escape_length: f64,
-            pub fanout_min_escape_length: f64,
+    pub fanout_max_escape_length: f64,
+    pub fanout_min_escape_length: f64,
 
-                                        pub start_ripup_costs: i32,
+    pub start_ripup_costs: i32,
 }
 
 impl AutorouteControl {
-                                                    pub fn new(
+    pub fn new(
         board: &Board,
         net_no: i32,
         settings: &RouterSettings,
@@ -67,7 +67,7 @@ impl AutorouteControl {
         control
     }
 
-                        pub fn from_settings(
+    pub fn from_settings(
         board: &Board,
         net_no: i32,
         settings: &RouterSettings,
@@ -82,20 +82,20 @@ impl AutorouteControl {
         )
     }
 
-            fn private(
+    fn private(
         board: &Board,
         settings: &RouterSettings,
         trace_costs: &[ExpansionCostFactor],
     ) -> AutorouteControl {
-        let layer_count = board.get_layer_count(); 
+        let layer_count = board.get_layer_count();
         let mut bend_costs = Vec::with_capacity(layer_count);
         for i in 0..layer_count {
-            bend_costs.push(settings.get_bend_cost(i)); 
+            bend_costs.push(settings.get_bend_cost(i));
         }
 
         let mut layer_active = Vec::with_capacity(layer_count);
         for i in 0..layer_count {
-            let active_setting = settings.get_layer_active(i); 
+            let active_setting = settings.get_layer_active(i);
             // :152-161. Java logs `FRLogger.warn("Layer '…' is a dedicated power plane and cannot
             let layer = &board.layer_structure().layers[i];
             layer_active.push(if !layer.is_signal && active_setting {
@@ -106,40 +106,40 @@ impl AutorouteControl {
         }
 
         AutorouteControl {
-            trace_costs: trace_costs.to_vec(),                      
-            bend_costs,                                             
-            with_neckdown: settings.get_automatic_neckdown(),       
-            layer_active,                                           
-            layer_count,                                            
-            trace_half_width: vec![0; layer_count],                 
-            compensated_trace_half_width: vec![0; layer_count],     
-            via_radii: vec![0.0; layer_count],                      
-            add_via_costs: vec![vec![0; layer_count]; layer_count], 
-            trace_clearance_class_index: 0,                         
-            vias_allowed: settings.get_vias_allowed(),              
-            attach_smd_allowed: false,                              
-            min_normal_via_cost: 0.0,                               
-            ripup_allowed: false,                                   
-            ripup_costs: 1000,                                      
-            ripup_pass_no: 1,                                       
-            is_fanout: false,                                       
-            fanout_start_pin_name: None,                            
-            fanout_start_pin_center: None,                          
-            fanout_start_pin_layer: -1,                             
-            remove_unconnected_vias: true,                          
-            via_rule: None,                                         
-            net_number: 0,                                          
-            via_clearance_class: 0,                                 
-            via_infos: Vec::new(),                                  
-            via_lower_bound: 0,                                     
-            via_upper_bound: layer_count,                           
-            max_via_radius: 0.0,                                    
-            tidy_region_width: i32::MAX,                            
-            pull_tight_accuracy: 500,                               
-            max_shove_trace_recursion_depth: 20,                    
-            max_shove_via_recursion_depth: 5,                       
-            max_spring_over_recursion_depth: 5,                     
-            min_cheap_via_cost: 0.0,                                
+            trace_costs: trace_costs.to_vec(),
+            bend_costs,
+            with_neckdown: settings.get_automatic_neckdown(),
+            layer_active,
+            layer_count,
+            trace_half_width: vec![0; layer_count],
+            compensated_trace_half_width: vec![0; layer_count],
+            via_radii: vec![0.0; layer_count],
+            add_via_costs: vec![vec![0; layer_count]; layer_count],
+            trace_clearance_class_index: 0,
+            vias_allowed: settings.get_vias_allowed(),
+            attach_smd_allowed: false,
+            min_normal_via_cost: 0.0,
+            ripup_allowed: false,
+            ripup_costs: 1000,
+            ripup_pass_no: 1,
+            is_fanout: false,
+            fanout_start_pin_name: None,
+            fanout_start_pin_center: None,
+            fanout_start_pin_layer: -1,
+            remove_unconnected_vias: true,
+            via_rule: None,
+            net_number: 0,
+            via_clearance_class: 0,
+            via_infos: Vec::new(),
+            via_lower_bound: 0,
+            via_upper_bound: layer_count,
+            max_via_radius: 0.0,
+            tidy_region_width: i32::MAX,
+            pull_tight_accuracy: 500,
+            max_shove_trace_recursion_depth: 20,
+            max_shove_via_recursion_depth: 5,
+            max_spring_over_recursion_depth: 5,
+            min_cheap_via_cost: 0.0,
             fanout_max_escape_length: settings
                 .fanout
                 .as_ref()
@@ -154,22 +154,22 @@ impl AutorouteControl {
         }
     }
 
-                                    pub fn is_pure_smd_net(board: &Board, net_number: i32) -> bool {
-        let net_items = board.get_connectable_items(net_number); 
+    pub fn is_pure_smd_net(board: &Board, net_number: i32) -> bool {
+        let net_items = board.get_connectable_items(net_number);
         if net_items.is_empty() {
-            return false; 
+            return false;
         }
         let ctx = board.ctx();
-        net_items.into_iter().all(|id: ItemId| {
-            match board.get_item(id) {
+        net_items
+            .into_iter()
+            .all(|id: ItemId| match board.get_item(id) {
                 Some(item @ Item::Pin(_)) => item.first_layer(&ctx) == item.last_layer(&ctx),
                 _ => false,
-            }
-        })
+            })
     }
 
-        fn init_net(&mut self, net_number: i32, board: &Board, via_costs: i32) {
-        self.net_number = net_number; 
+    fn init_net(&mut self, net_number: i32, board: &Board, via_costs: i32) {
+        self.net_number = net_number;
         let current_net_class = match board.rules.nets.get(net_number) {
             Some(net) => {
                 let class = net.get_net_class();
@@ -215,10 +215,10 @@ impl AutorouteControl {
                 self.layer_active[i] = false;
             }
         }
-        self.rebuild_via_info(board, via_costs, net_number); 
+        self.rebuild_via_info(board, via_costs, net_number);
     }
 
-                                                                                                                                                                                                                                                        pub fn rebuild_via_info(&mut self, board: &Board, via_costs: i32, net_number: i32) {
+    pub fn rebuild_via_info(&mut self, board: &Board, via_costs: i32, net_number: i32) {
         let via_rule = self
             .via_rule
             .clone()
@@ -230,16 +230,16 @@ impl AutorouteControl {
         } else {
             1
         };
-        self.via_infos = Vec::with_capacity(via_rule.via_count()); 
-        self.attach_smd_allowed = false; 
+        self.via_infos = Vec::with_capacity(via_rule.via_count());
+        self.attach_smd_allowed = false;
         for i in 0..via_rule.via_count() {
             let current_via = via_rule.get_via(i);
             if current_via.attach_smd_allowed() {
-                self.attach_smd_allowed = true; 
+                self.attach_smd_allowed = true;
             }
-            let padstack = current_via.get_padstack(); 
-            let from_layer = board.library.padstacks.padstack_from_layer(padstack); 
-            let to_layer = board.library.padstacks.padstack_to_layer(padstack); 
+            let padstack = current_via.get_padstack();
+            let from_layer = board.library.padstacks.padstack_from_layer(padstack);
+            let to_layer = board.library.padstacks.padstack_to_layer(padstack);
             for j in from_layer..=to_layer {
                 let current_radius = board
                     .library
@@ -256,7 +256,7 @@ impl AutorouteControl {
             });
         }
 
-        let pure_smd_net = AutorouteControl::is_pure_smd_net(board, net_number); 
+        let pure_smd_net = AutorouteControl::is_pure_smd_net(board, net_number);
         if !self.attach_smd_allowed && self.layer_count > 1 && pure_smd_net {
             self.attach_smd_allowed = true;
         }
@@ -265,12 +265,12 @@ impl AutorouteControl {
             self.via_radii[j] = java_max(self.via_radii[j], f64::from(self.trace_half_width[j]));
             self.max_via_radius = java_max(self.max_via_radius, self.via_radii[j]);
         }
-        let mut via_cost_factor = self.max_via_radius; 
-        via_cost_factor = java_max(via_cost_factor, 1.0); 
+        let mut via_cost_factor = self.max_via_radius;
+        via_cost_factor = java_max(via_cost_factor, 1.0);
         if pure_smd_net {
             via_cost_factor *= 0.1;
         }
-        self.min_normal_via_cost = f64::from(via_costs) * via_cost_factor; 
-        self.min_cheap_via_cost = 0.8 * self.min_normal_via_cost; 
+        self.min_normal_via_cost = f64::from(via_costs) * via_cost_factor;
+        self.min_cheap_via_cost = 0.8 * self.min_normal_via_cost;
     }
 }

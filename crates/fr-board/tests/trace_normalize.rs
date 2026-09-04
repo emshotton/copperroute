@@ -6,7 +6,6 @@ use fr_geometry::{
     TileShape, Vector,
 };
 
-
 fn trace_board(layer_count: usize) -> (Board, PadstackId) {
     let ls = LayerStructure::new(
         (0..layer_count)
@@ -123,7 +122,6 @@ fn entry_count(board: &Board, id: ItemId) -> Option<usize> {
         .and_then(|item| item.get_search_tree_entries(tree))
         .map(<[Option<LeafId>]>::len)
 }
-
 
 #[test]
 fn combine_at_start_joins_two_collinear_segments() {
@@ -381,7 +379,6 @@ fn combine_ignores_a_conduction_area_at_the_join() {
     assert_eq!(corners(&board, first), vec![(0, 0), (20000, 0)]);
     assert_eq!(item_ids(&board), vec![3, 2, 1]);
 }
-
 
 #[test]
 fn split_preserves_non_overlapping_segments() {
@@ -959,7 +956,6 @@ fn split_at_point_cuts_the_trace_in_two() {
     );
 }
 
-
 #[test]
 fn insert_trace_normalizes_the_new_trace() {
     for mark_changed_area in [false, true] {
@@ -1248,7 +1244,6 @@ fn moving_a_contacted_via_inserts_and_normalises_a_connecting_trace() {
     assert_eq!(item_ids(&board), vec![4, 2, 1]);
 }
 
-
 fn combine_stack_overflow_board(segment_count: u32) -> Board {
     let (mut board, _) = trace_board(1);
     let (mut x, mut y, mut dx) = (130_000i32, -107_000i32, 200i32);
@@ -1304,7 +1299,6 @@ fn combine_stack_overflow_fixture() {
     assert_eq!(trace.get_half_width(), 76);
 }
 
-
 #[test]
 fn overlapping_tree_entries_returns_a_fresh_collection() {
     let (mut board, _) = trace_board(1);
@@ -1359,7 +1353,6 @@ fn overlapping_tree_entries_returns_a_fresh_collection() {
     );
 }
 
-
 fn ladder(rungs: i32) -> (Board, ItemId) {
     let (mut board, _) = trace_board(1);
     tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 30000, 0]);
@@ -1405,7 +1398,7 @@ fn a_two_rail_four_rung_ladder_normalizes_and_terminates() {
 
 #[test]
 fn a_four_rung_ladder_stops_when_the_stop_check_trips() {
-            const MEASURED_STEPS: u64 = 80;
+    const MEASURED_STEPS: u64 = 80;
 
     let (mut board, last_rung) = ladder(4);
     let steps = std::cell::Cell::new(0u64);

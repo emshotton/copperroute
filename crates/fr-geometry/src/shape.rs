@@ -16,93 +16,90 @@ use crate::vector::Vector;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Shape {
-        Tile(TileShape),
-        Polygon(PolygonShape),
-        Circle(Circle),
+    Tile(TileShape),
+    Polygon(PolygonShape),
+    Circle(Circle),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Area {
-        Shape(Shape),
-        Polyline(PolylineArea),
+    Shape(Shape),
+    Polyline(PolylineArea),
 }
 
 pub trait ShapeOps {
+    fn is_empty(&self) -> bool;
 
-        fn is_empty(&self) -> bool;
+    fn is_bounded(&self) -> bool;
 
-        fn is_bounded(&self) -> bool;
+    fn dimension(&self) -> i32;
 
-        fn dimension(&self) -> i32;
+    fn is_contained_in(&self, b: &IntBox) -> bool;
 
-        fn is_contained_in(&self, b: &IntBox) -> bool;
+    fn get_border(&self) -> Shape;
 
-        fn get_border(&self) -> Shape;
+    fn get_holes(&self) -> Vec<Shape>;
 
-        fn get_holes(&self) -> Vec<Shape>;
+    fn bounding_box(&self) -> IntBox;
 
-        fn bounding_box(&self) -> IntBox;
+    fn bounding_octagon(&self) -> Option<IntOctagon>;
 
-            fn bounding_octagon(&self) -> Option<IntOctagon>;
+    fn contains_float(&self, point: &FloatPoint) -> bool;
 
-                fn contains_float(&self, point: &FloatPoint) -> bool;
+    fn contains(&self, point: &Point) -> bool;
 
-            fn contains(&self, point: &Point) -> bool;
+    fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint>;
 
-        fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint>;
+    fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Shape;
 
-        fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Shape;
+    fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Shape;
 
-        fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Shape;
+    fn translate_by(&self, vector: &Vector) -> Shape;
 
-        fn translate_by(&self, vector: &Vector) -> Shape;
+    fn mirror_horizontal(&self, pole: &IntPoint) -> Shape;
 
-        fn mirror_horizontal(&self, pole: &IntPoint) -> Shape;
+    fn mirror_vertical(&self, pole: &IntPoint) -> Shape;
 
-        fn mirror_vertical(&self, pole: &IntPoint) -> Shape;
+    fn corner_approx_arr(&self) -> Vec<FloatPoint>;
 
-        fn corner_approx_arr(&self) -> Vec<FloatPoint>;
+    fn split_to_convex(&self) -> Option<Vec<TileShape>>;
 
-            fn split_to_convex(&self) -> Option<Vec<TileShape>>;
+    fn circumference(&self) -> f64;
 
+    fn area(&self) -> f64;
 
-        fn circumference(&self) -> f64;
+    fn centre_of_gravity(&self) -> FloatPoint;
 
-        fn area(&self) -> f64;
+    fn is_outside(&self, point: &Point) -> bool;
 
-        fn centre_of_gravity(&self) -> FloatPoint;
+    fn contains_inside(&self, point: &Point) -> bool;
 
-            fn is_outside(&self, point: &Point) -> bool;
+    fn contains_on_border(&self, point: &Point) -> bool;
 
-            fn contains_inside(&self, point: &Point) -> bool;
+    fn distance(&self, point: &FloatPoint) -> f64;
 
-        fn contains_on_border(&self, point: &Point) -> bool;
+    fn bounding_tile(&self) -> TileShape;
 
-            fn distance(&self, point: &FloatPoint) -> f64;
+    fn bounding_shape(&self, dirs: ShapeBoundingDirections) -> Option<RegularTileShape>;
 
-        fn bounding_tile(&self) -> TileShape;
+    fn border_distance(&self, point: &FloatPoint) -> f64;
 
-            fn bounding_shape(&self, dirs: ShapeBoundingDirections) -> Option<RegularTileShape>;
+    fn smallest_radius(&self) -> f64;
 
-        fn border_distance(&self, point: &FloatPoint) -> f64;
+    fn enlarge(&self, offset: f64) -> Option<Shape>;
 
-        fn smallest_radius(&self) -> f64;
+    fn intersects(&self, other: &Shape) -> bool;
 
-            fn enlarge(&self, offset: f64) -> Option<Shape>;
+    fn intersects_box(&self, other: &IntBox) -> bool;
 
-        fn intersects(&self, other: &Shape) -> bool;
+    fn intersects_octagon(&self, other: &IntOctagon) -> bool;
 
-            fn intersects_box(&self, other: &IntBox) -> bool;
+    fn intersects_simplex(&self, other: &Simplex) -> bool;
 
-            fn intersects_octagon(&self, other: &IntOctagon) -> bool;
+    fn intersects_circle(&self, other: &Circle) -> bool;
 
-            fn intersects_simplex(&self, other: &Simplex) -> bool;
-
-            fn intersects_circle(&self, other: &Circle) -> bool;
-
-                    fn cutout(&self, polyline: &Polyline) -> Option<Result<Vec<Polyline>, PolylineError>>;
+    fn cutout(&self, polyline: &Polyline) -> Option<Result<Vec<Polyline>, PolylineError>>;
 }
-
 
 impl ShapeOps for TileShape {
     fn is_empty(&self) -> bool {
@@ -219,7 +216,6 @@ impl ShapeOps for TileShape {
     }
 }
 
-
 impl ShapeOps for PolygonShape {
     fn is_empty(&self) -> bool {
         PolygonShape::is_empty(self)
@@ -330,7 +326,6 @@ impl ShapeOps for PolygonShape {
         PolygonShape::cutout(self, polyline).map(Ok)
     }
 }
-
 
 impl ShapeOps for Circle {
     fn is_empty(&self) -> bool {
@@ -443,7 +438,6 @@ impl ShapeOps for Circle {
     }
 }
 
-
 impl From<TileShape> for Shape {
     fn from(value: TileShape) -> Self {
         Shape::Tile(value)
@@ -475,7 +469,7 @@ impl From<Circle> for Shape {
 }
 
 impl Shape {
-            pub fn intersects_tile(&self, tile: &TileShape) -> bool {
+    pub fn intersects_tile(&self, tile: &TileShape) -> bool {
         match tile {
             TileShape::Box(b) => self.intersects_box(b),
             TileShape::Octagon(o) => self.intersects_octagon(o),
@@ -483,7 +477,7 @@ impl Shape {
         }
     }
 
-                                pub fn intersects_polygon(&self, polygon: &PolygonShape) -> bool {
+    pub fn intersects_polygon(&self, polygon: &PolygonShape) -> bool {
         match self {
             Shape::Tile(t) => polygon.intersects_tile_shape(t),
             Shape::Circle(c) => polygon.intersects_circle(c),
@@ -750,7 +744,6 @@ impl ShapeOps for Shape {
     }
 }
 
-
 impl From<Shape> for Area {
     fn from(value: Shape) -> Self {
         Area::Shape(value)
@@ -764,126 +757,126 @@ impl From<PolylineArea> for Area {
 }
 
 impl Area {
-        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         match self {
             Area::Shape(s) => ShapeOps::is_empty(s),
             Area::Polyline(a) => a.is_empty(),
         }
     }
 
-        pub fn is_bounded(&self) -> bool {
+    pub fn is_bounded(&self) -> bool {
         match self {
             Area::Shape(s) => ShapeOps::is_bounded(s),
             Area::Polyline(a) => a.is_bounded(),
         }
     }
 
-        pub fn dimension(&self) -> i32 {
+    pub fn dimension(&self) -> i32 {
         match self {
             Area::Shape(s) => ShapeOps::dimension(s),
             Area::Polyline(a) => a.dimension(),
         }
     }
 
-        pub fn is_contained_in(&self, b: &IntBox) -> bool {
+    pub fn is_contained_in(&self, b: &IntBox) -> bool {
         match self {
             Area::Shape(s) => ShapeOps::is_contained_in(s, b),
             Area::Polyline(a) => a.is_contained_in(b),
         }
     }
 
-        pub fn get_border(&self) -> Shape {
+    pub fn get_border(&self) -> Shape {
         match self {
             Area::Shape(s) => ShapeOps::get_border(s),
             Area::Polyline(a) => a.get_border().to_shape(),
         }
     }
 
-        pub fn get_holes(&self) -> Vec<Shape> {
+    pub fn get_holes(&self) -> Vec<Shape> {
         match self {
             Area::Shape(s) => ShapeOps::get_holes(s),
             Area::Polyline(a) => a.get_holes().iter().map(|h| h.to_shape()).collect(),
         }
     }
 
-        pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self) -> IntBox {
         match self {
             Area::Shape(s) => ShapeOps::bounding_box(s),
             Area::Polyline(a) => a.bounding_box(),
         }
     }
 
-        pub fn bounding_octagon(&self) -> Option<IntOctagon> {
+    pub fn bounding_octagon(&self) -> Option<IntOctagon> {
         match self {
             Area::Shape(s) => ShapeOps::bounding_octagon(s),
             Area::Polyline(a) => a.bounding_octagon(),
         }
     }
 
-            pub fn contains_float(&self, point: &FloatPoint) -> bool {
+    pub fn contains_float(&self, point: &FloatPoint) -> bool {
         match self {
             Area::Shape(s) => ShapeOps::contains_float(s, point),
             Area::Polyline(a) => a.contains_float(point),
         }
     }
 
-            pub fn contains(&self, point: &Point) -> bool {
+    pub fn contains(&self, point: &Point) -> bool {
         match self {
             Area::Shape(s) => ShapeOps::contains(s, point),
             Area::Polyline(a) => a.contains(point),
         }
     }
 
-        pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
+    pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
         match self {
             Area::Shape(s) => ShapeOps::nearest_point_approx(s, from_point),
             Area::Polyline(a) => a.nearest_point_approx(from_point),
         }
     }
 
-        pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Area {
+    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Area {
         match self {
             Area::Shape(s) => Area::Shape(ShapeOps::turn_90_degree(s, factor, pole)),
             Area::Polyline(a) => Area::Polyline(a.turn_90_degree(factor, pole)),
         }
     }
 
-        pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Area {
+    pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Area {
         match self {
             Area::Shape(s) => Area::Shape(ShapeOps::rotate_approx(s, angle, pole)),
             Area::Polyline(a) => Area::Polyline(a.rotate_approx(angle, pole)),
         }
     }
 
-        pub fn translate_by(&self, vector: &Vector) -> Area {
+    pub fn translate_by(&self, vector: &Vector) -> Area {
         match self {
             Area::Shape(s) => Area::Shape(ShapeOps::translate_by(s, vector)),
             Area::Polyline(a) => Area::Polyline(a.translate_by(vector)),
         }
     }
 
-        pub fn mirror_horizontal(&self, pole: &IntPoint) -> Area {
+    pub fn mirror_horizontal(&self, pole: &IntPoint) -> Area {
         match self {
             Area::Shape(s) => Area::Shape(ShapeOps::mirror_horizontal(s, pole)),
             Area::Polyline(a) => Area::Polyline(a.mirror_horizontal(pole)),
         }
     }
 
-        pub fn mirror_vertical(&self, pole: &IntPoint) -> Area {
+    pub fn mirror_vertical(&self, pole: &IntPoint) -> Area {
         match self {
             Area::Shape(s) => Area::Shape(ShapeOps::mirror_vertical(s, pole)),
             Area::Polyline(a) => Area::Polyline(a.mirror_vertical(pole)),
         }
     }
 
-        pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
+    pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
         match self {
             Area::Shape(s) => ShapeOps::corner_approx_arr(s),
             Area::Polyline(a) => a.corner_approx_arr(),
         }
     }
 
-        pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
+    pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
         match self {
             Area::Shape(s) => ShapeOps::split_to_convex(s),
             Area::Polyline(a) => a.split_to_convex(None),

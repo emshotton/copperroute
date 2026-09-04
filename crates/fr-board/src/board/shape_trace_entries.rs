@@ -12,34 +12,34 @@ const C_OFFSET_ADD: f64 = 1.0;
 
 #[derive(Debug, Clone, PartialEq)]
 struct EntryPoint {
-        trace: ItemId,
-            net_nos: Vec<i32>,
-        trace_line_no: usize,
-        entry_approx: FloatPoint,
-            edge_index: i32,
-        stack_level: i32,
-        next: Option<usize>,
+    trace: ItemId,
+    net_nos: Vec<i32>,
+    trace_line_no: usize,
+    entry_approx: FloatPoint,
+    edge_index: i32,
+    stack_level: i32,
+    next: Option<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShapeTraceEntries {
-        pub shove_via_list: Vec<ItemId>,
-        shape: TileShape,
-        layer: usize,
-        own_net_nos: Vec<i32>,
-        clearance_class_index: usize,
-        from_side: Option<ShapeEntrySide>,
-        entries: Vec<EntryPoint>,
-        list_anchor: Option<usize>,
-        trace_piece_count: i32,
-        max_stack_level: i32,
-        shape_contains_trace_tails: bool,
-        found_obstacle: Option<ItemId>,
-                                                        traces: BTreeMap<ItemId, PolylineTrace>,
+    pub shove_via_list: Vec<ItemId>,
+    shape: TileShape,
+    layer: usize,
+    own_net_nos: Vec<i32>,
+    clearance_class_index: usize,
+    from_side: Option<ShapeEntrySide>,
+    entries: Vec<EntryPoint>,
+    list_anchor: Option<usize>,
+    trace_piece_count: i32,
+    max_stack_level: i32,
+    shape_contains_trace_tails: bool,
+    found_obstacle: Option<ItemId>,
+    traces: BTreeMap<ItemId, PolylineTrace>,
 }
 
 impl ShapeTraceEntries {
-            pub fn new(
+    pub fn new(
         shape: TileShape,
         layer: usize,
         own_net_nos: Vec<i32>,
@@ -63,23 +63,23 @@ impl ShapeTraceEntries {
         }
     }
 
-        pub fn stack_depth(&self) -> i32 {
+    pub fn stack_depth(&self) -> i32 {
         self.max_stack_level
     }
 
-        pub fn substitute_trace_count(&self) -> i32 {
+    pub fn substitute_trace_count(&self) -> i32 {
         self.trace_piece_count
     }
 
-        pub fn trace_tails_in_shape(&self) -> bool {
+    pub fn trace_tails_in_shape(&self) -> bool {
         self.shape_contains_trace_tails
     }
 
-        pub fn get_found_obstacle(&self) -> Option<ItemId> {
+    pub fn get_found_obstacle(&self) -> Option<ItemId> {
         self.found_obstacle
     }
 
-            pub fn store_items(
+    pub fn store_items(
         &mut self,
         board: &Board,
         item_ids: &[ItemId],
@@ -143,7 +143,7 @@ impl ShapeTraceEntries {
         self.calculate_stack_levels()
     }
 
-        fn store_trace(&mut self, board: &Board, trace_id: ItemId) -> bool {
+    fn store_trace(&mut self, board: &Board, trace_id: ItemId) -> bool {
         let search_tree = board.trees.get_default_tree();
         let Some(item @ Item::Trace(trace)) = board.get_item(trace_id) else {
             return true;
@@ -287,7 +287,7 @@ impl ShapeTraceEntries {
         true
     }
 
-            fn search_from_side(&mut self) {
+    fn search_from_side(&mut self) {
         if let Some(from_side) = self.from_side
             && from_side.no >= 0
         {
@@ -311,7 +311,7 @@ impl ShapeTraceEntries {
         ));
     }
 
-                fn resort(&mut self) {
+    fn resort(&mut self) {
         let edge_count = self.shape.border_line_count() as i32;
         let Some(mut from_side) = self.from_side else {
             return;
@@ -429,7 +429,7 @@ impl ShapeTraceEntries {
         }
     }
 
-                fn calculate_stack_levels(&mut self) -> bool {
+    fn calculate_stack_levels(&mut self) -> bool {
         let Some(anchor) = self.list_anchor else {
             return true;
         };
@@ -506,7 +506,7 @@ impl ShapeTraceEntries {
         current_level == 1
     }
 
-            fn pop_piece(&mut self) -> Option<(usize, usize)> {
+    fn pop_piece(&mut self) -> Option<(usize, usize)> {
         let anchor = self.list_anchor?;
         let mut first = Some(anchor);
         let mut prev_first = None;
@@ -551,7 +551,7 @@ impl ShapeTraceEntries {
         Some((first, last))
     }
 
-                            pub fn next_substitute_trace_piece(&mut self, board: &mut Board) -> Option<PolylineTrace> {
+    pub fn next_substitute_trace_piece(&mut self, board: &mut Board) -> Option<PolylineTrace> {
         let (first, last) = self.pop_piece()?;
         let current_trace_id = self.entries[first].trace;
         let current_trace = self.traces.get(&current_trace_id).cloned()?;
@@ -615,7 +615,7 @@ impl ShapeTraceEntries {
         ))
     }
 
-        pub fn cutout_traces(&self, board: &mut Board, item_ids: &[ItemId]) {
+    pub fn cutout_traces(&self, board: &mut Board, item_ids: &[ItemId]) {
         for id in item_ids {
             let is_foreign_trace = board
                 .get_item(*id)
@@ -626,7 +626,7 @@ impl ShapeTraceEntries {
         }
     }
 
-                        pub fn cutout_trace(
+    pub fn cutout_trace(
         board: &mut Board,
         trace_id: ItemId,
         shape: &TileShape,
@@ -690,7 +690,7 @@ impl ShapeTraceEntries {
         }
     }
 
-                                            fn fast_cutout_trace(
+    fn fast_cutout_trace(
         board: &mut Board,
         trace_id: ItemId,
         start_piece: Polyline,
@@ -755,7 +755,7 @@ impl ShapeTraceEntries {
         board.remove_item(trace_id);
     }
 
-                fn insert_entry_point(
+    fn insert_entry_point(
         &mut self,
         trace: ItemId,
         net_nos: Vec<i32>,
@@ -806,7 +806,7 @@ impl ShapeTraceEntries {
         }
     }
 
-            fn rotate_entry_list_around_anchor(&mut self, new_anchor: usize, edge_count: i32) {
+    fn rotate_entry_list_around_anchor(&mut self, new_anchor: usize, edge_count: i32) {
         let mut current = Some(new_anchor);
         let mut prev = new_anchor;
         while let Some(index) = current {
@@ -827,7 +827,7 @@ impl ShapeTraceEntries {
         self.list_anchor = Some(new_anchor);
     }
 
-        fn trace_net_nos(&self, entry_index: usize) -> Vec<i32> {
+    fn trace_net_nos(&self, entry_index: usize) -> Vec<i32> {
         self.entries[entry_index].net_nos.clone()
     }
 }

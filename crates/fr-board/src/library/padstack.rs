@@ -9,16 +9,16 @@ use crate::structure::LayerStructure;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Padstack {
-        pub name: String,
-            pub no: usize,
-            pub attach_allowed: bool,
-            pub placed_absolute: bool,
-            shapes: Vec<Option<Shape>>,
-            pub hole_only: bool,
+    pub name: String,
+    pub no: usize,
+    pub attach_allowed: bool,
+    pub placed_absolute: bool,
+    shapes: Vec<Option<Shape>>,
+    pub hole_only: bool,
 }
 
 impl Padstack {
-                pub(crate) fn new(
+    pub(crate) fn new(
         name: String,
         no: usize,
         shapes: Vec<Option<Shape>>,
@@ -35,18 +35,18 @@ impl Padstack {
         }
     }
 
-                pub fn compare_to(&self, other: &Padstack) -> Ordering {
+    pub fn compare_to(&self, other: &Padstack) -> Ordering {
         compare_to_ignore_case(&self.name, &other.name)
     }
 
-                pub fn get_shape(&self, layer: i32) -> Option<&Shape> {
+    pub fn get_shape(&self, layer: i32) -> Option<&Shape> {
         if layer < 0 || layer as usize >= self.shapes.len() {
             return None;
         }
         self.shapes[layer as usize].as_ref()
     }
 
-            pub fn from_layer(&self) -> i32 {
+    pub fn from_layer(&self) -> i32 {
         let mut result = 0usize;
         while result < self.shapes.len() && self.shapes[result].is_none() {
             result += 1;
@@ -54,7 +54,7 @@ impl Padstack {
         result as i32
     }
 
-            pub fn to_layer(&self) -> i32 {
+    pub fn to_layer(&self) -> i32 {
         let mut result = self.shapes.len() as i32 - 1;
         while result >= 0 && self.shapes[result as usize].is_none() {
             result -= 1;
@@ -62,11 +62,11 @@ impl Padstack {
         result
     }
 
-            pub fn board_layer_count(&self) -> usize {
+    pub fn board_layer_count(&self) -> usize {
         self.shapes.len()
     }
 
-                            pub fn drill_radius(&self) -> f64 {
+    pub fn drill_radius(&self) -> f64 {
         if let Some(colon_index) = self.name.find(':') {
             let underscore_index = self.name[colon_index..]
                 .find('_')
@@ -94,7 +94,7 @@ impl Padstack {
         self.smallest_radius() * 0.45
     }
 
-                fn smallest_radius(&self) -> f64 {
+    fn smallest_radius(&self) -> f64 {
         let mut min_radius = f64::MAX;
         for shape in self.shapes.iter().flatten() {
             let bounding_box = shape.bounding_box();
@@ -110,7 +110,7 @@ impl Padstack {
         }
     }
 
-                    pub fn get_trace_exit_directions(&self, layer: i32, factor: f64) -> Vec<Direction> {
+    pub fn get_trace_exit_directions(&self, layer: i32, factor: f64) -> Vec<Direction> {
         let mut result = Vec::new();
         if layer < 0 || layer as usize >= self.shapes.len() {
             return result;
@@ -167,23 +167,23 @@ fn shape_max_width(shape: &Shape) -> f64 {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Padstacks {
-            pub board_layer_structure: LayerStructure,
-        list: Vec<Padstack>,
+    pub board_layer_structure: LayerStructure,
+    list: Vec<Padstack>,
 }
 
 impl Padstacks {
-        pub fn new(board_layer_structure: LayerStructure) -> Padstacks {
+    pub fn new(board_layer_structure: LayerStructure) -> Padstacks {
         Padstacks {
             board_layer_structure,
             list: Vec::new(),
         }
     }
 
-            pub fn get_by_name(&self, name: &str) -> Option<&Padstack> {
+    pub fn get_by_name(&self, name: &str) -> Option<&Padstack> {
         self.list.iter().find(|p| equals_ignore_case(&p.name, name))
     }
 
-                        pub fn get(&self, id: PadstackId) -> Option<&Padstack> {
+    pub fn get(&self, id: PadstackId) -> Option<&Padstack> {
         if id.0 == 0 || id.0 > self.list.len() {
             return None;
         }
@@ -195,11 +195,11 @@ impl Padstacks {
         Some(result)
     }
 
-        pub fn count(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.list.len()
     }
 
-            pub fn add(
+    pub fn add(
         &mut self,
         name: impl Into<String>,
         shapes: Vec<Option<Shape>>,
@@ -217,12 +217,12 @@ impl Padstacks {
         PadstackId(no)
     }
 
-                pub fn add_unnamed(&mut self, shapes: Vec<Option<Shape>>) -> PadstackId {
+    pub fn add_unnamed(&mut self, shapes: Vec<Option<Shape>>) -> PadstackId {
         let new_name = format!("padstack#{}", self.list.len() + 1);
         self.add(new_name, shapes, false, false)
     }
 
-                pub fn add_layer_range(&mut self, shape: Shape, from_layer: i32, to_layer: i32) -> PadstackId {
+    pub fn add_layer_range(&mut self, shape: Shape, from_layer: i32, to_layer: i32) -> PadstackId {
         let layer_count = self.board_layer_structure.layers.len();
         let mut shapes = vec![None; layer_count];
         let first_layer = from_layer.max(0);
@@ -237,7 +237,7 @@ impl Padstacks {
 }
 
 impl Default for Padstacks {
-                    fn default() -> Self {
+    fn default() -> Self {
         Padstacks::new(LayerStructure::new(Vec::new()))
     }
 }
@@ -300,7 +300,7 @@ mod tests {
         let mut padstacks = Padstacks::new(layer_structure(4));
         let id = padstacks.add_unnamed(vec![None, None, None, None]);
         let p = padstacks.get(id).unwrap();
-        assert_eq!(p.from_layer(), 4); 
+        assert_eq!(p.from_layer(), 4);
         assert_eq!(p.to_layer(), -1);
     }
 
@@ -445,7 +445,7 @@ mod tests {
         assert!(p.get_trace_exit_directions(1, 1.0).is_empty());
     }
 
-            #[test]
+    #[test]
     fn padstacks_implements_padstack_lookup() {
         let mut padstacks = Padstacks::new(layer_structure(4));
         let id = padstacks.add_layer_range(box_shape(0, 0, 20, 10), 0, 1);

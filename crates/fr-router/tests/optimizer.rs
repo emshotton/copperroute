@@ -9,7 +9,6 @@ use fr_router::pipeline::{
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -10_000,
@@ -129,7 +128,6 @@ impl ProgressSink for RecordingSink {
     }
 }
 
-
 #[test]
 fn the_near_perfect_exit_is_computed_in_f32() {
     let score = 999.999_94_f32;
@@ -153,7 +151,6 @@ fn the_near_perfect_exit_is_false_at_the_default_threshold() {
     assert!(optimizer_near_perfect_exit(799.982_67, 0.26));
     assert!(!optimizer_near_perfect_exit(0.0, 1.0e6));
 }
-
 
 #[test]
 fn the_improvement_recomputation_disagrees_with_the_scorecard_field() {
@@ -183,7 +180,6 @@ fn the_recomputation_guard_answers_zero_and_so_reads_as_no_improvement() {
     assert_eq!(optimizer_route_improved(&result, 0, 1000.0), 0.0);
     assert_eq!(optimizer_route_improved(&result, 10, 0.0), 0.0);
 }
-
 
 #[test]
 fn the_increased_ripup_costs_are_dropped_after_one_non_improving_pass() {
@@ -259,7 +255,6 @@ fn the_pass_improvement_is_zero_when_the_score_before_is_not_positive() {
         "a division by zero would have been +inf; Java's ternary answers 0"
     );
 }
-
 
 #[test]
 fn passes_alternate_preferred_directions() {
@@ -376,7 +371,6 @@ fn an_auto_router_only_stop_does_not_disable_this_stage() {
     );
 }
 
-
 #[test]
 fn the_stage_deadline_times_out_without_touching_the_stop_flag() {
     let mut board = empty_board();
@@ -464,7 +458,6 @@ fn no_timeout_string_means_no_deadline() {
     assert!(!optimizer.is_timed_out());
 }
 
-
 #[test]
 fn normalize_algorithm_always_answers_the_optimizers_id() {
     assert_eq!(
@@ -506,7 +499,6 @@ fn the_five_named_algorithm_members_are_javas_literals() {
     assert_eq!(BatchOptimizer::TYPE, NamedAlgorithmType::Optimizer);
 }
 
-
 #[test]
 fn the_multithreaded_optimizer_is_rostered_not_ported() {
     let roster = include_str!("../src/lib.rs");
@@ -542,7 +534,6 @@ fn the_multithreaded_optimizer_is_rostered_not_ported() {
          read at `:58` inside the factory the port does not have"
     );
 }
-
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
@@ -776,7 +767,6 @@ fn the_optimizer_stage_is_pinned_on_the_routed_rpi() {
     assert!(!pass.force_another_pass);
     assert_eq!(pass.route_improved, 0.412_747_17);
 }
-
 
 /// `sum of incompleteCount * passesRun` per item -- at [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`], and
 #[test]

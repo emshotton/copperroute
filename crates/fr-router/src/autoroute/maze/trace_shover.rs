@@ -10,13 +10,13 @@ use crate::board_ext::TraceShover;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DoorSection {
-        pub door: DoorId,
-        pub section_index: i32,
-        pub section_line: FloatLine,
+    pub door: DoorId,
+    pub section_index: i32,
+    pub section_line: FloatLine,
 }
 
 impl DoorSection {
-        pub fn new(door: DoorId, section_index: i32, section_line: FloatLine) -> DoorSection {
+    pub fn new(door: DoorId, section_index: i32, section_line: FloatLine) -> DoorSection {
         DoorSection {
             door,
             section_index,
@@ -28,7 +28,7 @@ impl DoorSection {
 pub struct MazeTraceShover;
 
 impl MazeTraceShover {
-                                        #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn check_shove_trace_line(
         list_element: &MazeListElement,
         obstacle_room: ObstacleRoomId,

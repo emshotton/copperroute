@@ -9,7 +9,6 @@ use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
 const TRANSCRIPT: &str = include_str!("data/p8t3-clearance-overrides.txt");
 
-
 struct Stage {
     name: String,
     block: String,
@@ -100,7 +99,6 @@ fn parse_transcript() -> Vec<BoardBlock> {
     }
     boards
 }
-
 
 fn default_settings() -> RouterSettings {
     DefaultSettings::new(&HostEnvironment::detect())
@@ -327,7 +325,6 @@ fn format_optional(value: Option<f64>) -> String {
         Some(v) => format!("{v}"),
     }
 }
-
 
 fn settings_for(copper: Option<f64>, hole: f64) -> RouterSettings {
     let mut settings = default_settings();

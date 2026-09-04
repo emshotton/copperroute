@@ -136,8 +136,6 @@ fn ignore_net_classes_follows_the_same_rule() {
     assert_eq!(target.ignore_net_classes, Some(vec!["VCC".to_string()]));
 }
 
-
-
 #[test]
 fn primitive_false_does_not_copy() {
     let source = DesignRulesCheckerSettings {
@@ -380,7 +378,6 @@ fn fill_absent_from_only_fills_absent_fields() {
     target.apply_new_values_from(&source);
     assert_eq!(target.max_passes, Some(99));
 }
-
 
 fn populated_layer() -> LayerSettings {
     LayerSettings {

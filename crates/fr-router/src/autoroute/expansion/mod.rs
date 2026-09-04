@@ -32,14 +32,14 @@ use crate::autoroute::drill::ExpansionDrill;
 
 #[derive(Debug, Clone, Default)]
 pub struct ExpansionRoomStore {
-                                            pub complete_rooms: Arena<CompleteFreeSpaceExpansionRoom>,
-        pub incomplete_rooms: Arena<IncompleteFreeSpaceExpansionRoom>,
-                pub obstacle_rooms: Arena<ObstacleExpansionRoom>,
-            pub doors: Arena<ExpansionDoor>,
-            pub target_doors: Arena<TargetItemExpansionDoor>,
-                                                                    pub drills: Arena<ExpansionDrill>,
-        room_instance_count: i32,
-                                    incomplete_list_created: bool,
+    pub complete_rooms: Arena<CompleteFreeSpaceExpansionRoom>,
+    pub incomplete_rooms: Arena<IncompleteFreeSpaceExpansionRoom>,
+    pub obstacle_rooms: Arena<ObstacleExpansionRoom>,
+    pub doors: Arena<ExpansionDoor>,
+    pub target_doors: Arena<TargetItemExpansionDoor>,
+    pub drills: Arena<ExpansionDrill>,
+    room_instance_count: i32,
+    incomplete_list_created: bool,
 }
 
 impl fr_board::RoomLookup for ExpansionRoomStore {
@@ -53,22 +53,22 @@ impl fr_board::RoomLookup for ExpansionRoomStore {
 }
 
 impl ExpansionRoomStore {
-            pub fn new() -> ExpansionRoomStore {
+    pub fn new() -> ExpansionRoomStore {
         ExpansionRoomStore::default()
     }
 
-                                                                                            pub fn next_room_id_no(&mut self) -> i32 {
+    pub fn next_room_id_no(&mut self) -> i32 {
         self.room_instance_count = self.room_instance_count.wrapping_add(1);
         self.room_instance_count
     }
 
-                                                                                                        pub fn release_room_id_no(&mut self, id_no: i32) {
+    pub fn release_room_id_no(&mut self, id_no: i32) {
         if self.room_instance_count == id_no {
             self.room_instance_count = self.room_instance_count.wrapping_sub(1);
         }
     }
 
-                                                                                                                pub fn clear(&mut self, tree: &mut ShapeSearchTree) {
+    pub fn clear(&mut self, tree: &mut ShapeSearchTree) {
         for (_, room) in self.complete_rooms.iter_mut() {
             room.remove_from_tree(tree);
         }
@@ -81,8 +81,7 @@ impl ExpansionRoomStore {
         self.incomplete_list_created = false;
     }
 
-
-                                    pub fn new_complete_room(&mut self, shape: Option<TileShape>, layer: usize, id: i32) -> RoomId {
+    pub fn new_complete_room(&mut self, shape: Option<TileShape>, layer: usize, id: i32) -> RoomId {
         let room_id = RoomId(
             u32::try_from(self.complete_rooms.slot_count())
                 .expect("expansion-room arena index overflowed u32"),
@@ -96,7 +95,7 @@ impl ExpansionRoomStore {
         room_id
     }
 
-                                                    pub fn new_incomplete_room(
+    pub fn new_incomplete_room(
         &mut self,
         shape: Option<TileShape>,
         layer: usize,
@@ -106,7 +105,7 @@ impl ExpansionRoomStore {
         self.new_unlisted_incomplete_room(shape, layer, contained_shape)
     }
 
-                                                                            pub fn new_unlisted_incomplete_room(
+    pub fn new_unlisted_incomplete_room(
         &mut self,
         shape: Option<TileShape>,
         layer: usize,
@@ -117,11 +116,11 @@ impl ExpansionRoomStore {
         IncompleteRoomId(self.incomplete_rooms.insert(room))
     }
 
-        pub fn incomplete_list_created(&self) -> bool {
+    pub fn incomplete_list_created(&self) -> bool {
         self.incomplete_list_created
     }
 
-                pub fn new_obstacle_room(
+    pub fn new_obstacle_room(
         &mut self,
         board: &mut Board,
         item: ItemId,
@@ -133,7 +132,7 @@ impl ExpansionRoomStore {
         ObstacleRoomId(self.obstacle_rooms.insert(room))
     }
 
-                        pub fn new_door(
+    pub fn new_door(
         &mut self,
         first_room: RoomRef,
         second_room: RoomRef,
@@ -145,7 +144,7 @@ impl ExpansionRoomStore {
         )
     }
 
-                            pub fn new_door_from_shapes(
+    pub fn new_door_from_shapes(
         &mut self,
         first_room: RoomRef,
         second_room: RoomRef,
@@ -161,7 +160,7 @@ impl ExpansionRoomStore {
         Some(DoorId(self.doors.insert(door)))
     }
 
-            pub fn new_target_door(
+    pub fn new_target_door(
         &mut self,
         board: &mut Board,
         item: ItemId,
@@ -181,8 +180,7 @@ impl ExpansionRoomStore {
         TargetDoorId(self.target_doors.insert(door))
     }
 
-
-                                        pub fn insert_complete_room(&mut self, tree: &mut ShapeSearchTree, room: RoomId) {
+    pub fn insert_complete_room(&mut self, tree: &mut ShapeSearchTree, room: RoomId) {
         let Some(shape) = self
             .complete_rooms
             .get(room.0)
@@ -197,7 +195,7 @@ impl ExpansionRoomStore {
         }
     }
 
-                                                            pub fn remove_complete_room(&mut self, tree: &mut ShapeSearchTree, room: RoomId) -> bool {
+    pub fn remove_complete_room(&mut self, tree: &mut ShapeSearchTree, room: RoomId) -> bool {
         match self.complete_rooms.remove(room.0) {
             Some(mut r) => {
                 r.remove_from_tree(tree);
@@ -207,61 +205,59 @@ impl ExpansionRoomStore {
         }
     }
 
-
-        pub fn complete_room(&self, room: RoomId) -> Option<&CompleteFreeSpaceExpansionRoom> {
+    pub fn complete_room(&self, room: RoomId) -> Option<&CompleteFreeSpaceExpansionRoom> {
         self.complete_rooms.get(room.0)
     }
 
-        pub fn complete_room_mut(
+    pub fn complete_room_mut(
         &mut self,
         room: RoomId,
     ) -> Option<&mut CompleteFreeSpaceExpansionRoom> {
         self.complete_rooms.get_mut(room.0)
     }
 
-        pub fn incomplete_room(
+    pub fn incomplete_room(
         &self,
         room: IncompleteRoomId,
     ) -> Option<&IncompleteFreeSpaceExpansionRoom> {
         self.incomplete_rooms.get(room.0)
     }
 
-        pub fn incomplete_room_mut(
+    pub fn incomplete_room_mut(
         &mut self,
         room: IncompleteRoomId,
     ) -> Option<&mut IncompleteFreeSpaceExpansionRoom> {
         self.incomplete_rooms.get_mut(room.0)
     }
 
-        pub fn obstacle_room(&self, room: ObstacleRoomId) -> Option<&ObstacleExpansionRoom> {
+    pub fn obstacle_room(&self, room: ObstacleRoomId) -> Option<&ObstacleExpansionRoom> {
         self.obstacle_rooms.get(room.0)
     }
 
-        pub fn obstacle_room_mut(
+    pub fn obstacle_room_mut(
         &mut self,
         room: ObstacleRoomId,
     ) -> Option<&mut ObstacleExpansionRoom> {
         self.obstacle_rooms.get_mut(room.0)
     }
 
-        pub fn door(&self, door: DoorId) -> Option<&ExpansionDoor> {
+    pub fn door(&self, door: DoorId) -> Option<&ExpansionDoor> {
         self.doors.get(door.0)
     }
 
-        pub fn door_mut(&mut self, door: DoorId) -> Option<&mut ExpansionDoor> {
+    pub fn door_mut(&mut self, door: DoorId) -> Option<&mut ExpansionDoor> {
         self.doors.get_mut(door.0)
     }
 
-        pub fn target_door(&self, door: TargetDoorId) -> Option<&TargetItemExpansionDoor> {
+    pub fn target_door(&self, door: TargetDoorId) -> Option<&TargetItemExpansionDoor> {
         self.target_doors.get(door.0)
     }
 
-        pub fn target_door_mut(&mut self, door: TargetDoorId) -> Option<&mut TargetItemExpansionDoor> {
+    pub fn target_door_mut(&mut self, door: TargetDoorId) -> Option<&mut TargetItemExpansionDoor> {
         self.target_doors.get_mut(door.0)
     }
 
-
-            pub fn room_shape(&self, room: RoomRef) -> Option<&TileShape> {
+    pub fn room_shape(&self, room: RoomRef) -> Option<&TileShape> {
         match room {
             RoomRef::Complete(id) => self.complete_rooms.get(id.0)?.get_shape(),
             RoomRef::Obstacle(id) => self.obstacle_rooms.get(id.0)?.get_shape(),
@@ -269,7 +265,7 @@ impl ExpansionRoomStore {
         }
     }
 
-                pub fn room_layer(&self, board: &Board, room: RoomRef) -> Option<usize> {
+    pub fn room_layer(&self, board: &Board, room: RoomRef) -> Option<usize> {
         match room {
             RoomRef::Complete(id) => Some(self.complete_rooms.get(id.0)?.get_layer()),
             RoomRef::Obstacle(id) => self.obstacle_rooms.get(id.0)?.get_layer(board),
@@ -277,7 +273,7 @@ impl ExpansionRoomStore {
         }
     }
 
-                                pub fn room_id_no(&self, room: RoomRef) -> Option<i32> {
+    pub fn room_id_no(&self, room: RoomRef) -> Option<i32> {
         match room {
             RoomRef::Complete(id) => Some(self.complete_rooms.get(id.0)?.get_id()),
             RoomRef::Obstacle(id) => Some(self.obstacle_rooms.get(id.0)?.get_id()),
@@ -285,7 +281,7 @@ impl ExpansionRoomStore {
         }
     }
 
-                        pub fn get_object(&self, room: RoomRef) -> Option<TreeObject> {
+    pub fn get_object(&self, room: RoomRef) -> Option<TreeObject> {
         match room {
             RoomRef::Complete(id) => Some(self.complete_rooms.get(id.0)?.get_object()),
             RoomRef::Obstacle(id) => Some(self.obstacle_rooms.get(id.0)?.get_object()),
@@ -293,7 +289,7 @@ impl ExpansionRoomStore {
         }
     }
 
-        pub fn add_door(&mut self, room: RoomRef, door: DoorId) {
+    pub fn add_door(&mut self, room: RoomRef, door: DoorId) {
         match room {
             RoomRef::Complete(id) => {
                 if let Some(r) = self.complete_rooms.get_mut(id.0) {
@@ -313,7 +309,7 @@ impl ExpansionRoomStore {
         }
     }
 
-            pub fn room_doors(&self, room: RoomRef) -> &[DoorId] {
+    pub fn room_doors(&self, room: RoomRef) -> &[DoorId] {
         match room {
             RoomRef::Complete(id) => self
                 .complete_rooms
@@ -330,7 +326,7 @@ impl ExpansionRoomStore {
         }
     }
 
-            pub fn room_target_doors(&self, room: RoomRef) -> &[TargetDoorId] {
+    pub fn room_target_doors(&self, room: RoomRef) -> &[TargetDoorId] {
         match room {
             RoomRef::Complete(id) => self
                 .complete_rooms
@@ -340,7 +336,7 @@ impl ExpansionRoomStore {
         }
     }
 
-            pub fn clear_doors(&mut self, room: RoomRef) {
+    pub fn clear_doors(&mut self, room: RoomRef) {
         match room {
             RoomRef::Complete(id) => {
                 if let Some(r) = self.complete_rooms.get_mut(id.0) {
@@ -360,7 +356,7 @@ impl ExpansionRoomStore {
         }
     }
 
-                        pub fn reset_doors(&mut self, room: RoomRef) {
+    pub fn reset_doors(&mut self, room: RoomRef) {
         let doors: Vec<DoorId> = self.room_doors(room).to_vec();
         for door in doors {
             if let Some(d) = self.doors.get_mut(door.0) {
@@ -380,7 +376,7 @@ impl ExpansionRoomStore {
         }
     }
 
-            pub fn door_exists(&self, room: RoomRef, other: RoomRef) -> bool {
+    pub fn door_exists(&self, room: RoomRef, other: RoomRef) -> bool {
         match room {
             RoomRef::Complete(id) => self
                 .complete_rooms
@@ -397,7 +393,7 @@ impl ExpansionRoomStore {
         }
     }
 
-            pub fn remove_door(&mut self, room: RoomRef, door: ExpandableRef) -> bool {
+    pub fn remove_door(&mut self, room: RoomRef, door: ExpandableRef) -> bool {
         match room {
             RoomRef::Complete(id) => self
                 .complete_rooms
@@ -417,15 +413,14 @@ impl ExpansionRoomStore {
         }
     }
 
-
-                pub fn door_shape(&self, door: DoorId) -> Option<TileShape> {
+    pub fn door_shape(&self, door: DoorId) -> Option<TileShape> {
         let d = self.doors.get(door.0)?;
         let first = self.room_shape(d.first_room)?;
         let second = self.room_shape(d.second_room)?;
         Some(d.get_shape(first, second))
     }
 
-                            pub fn door_section_segments(&mut self, door: DoorId, offset: f64) -> Vec<FloatLine> {
+    pub fn door_section_segments(&mut self, door: DoorId, offset: f64) -> Vec<FloatLine> {
         let Some(d) = self.doors.get(door.0) else {
             return Vec::new();
         };
@@ -441,7 +436,7 @@ impl ExpansionRoomStore {
         }
     }
 
-            pub fn door_id_no(&self, door: DoorId) -> Option<i32> {
+    pub fn door_id_no(&self, door: DoorId) -> Option<i32> {
         let d = self.doors.get(door.0)?;
         Some(ExpansionDoor::id(
             self.room_id_no(d.first_room)?,
@@ -449,7 +444,7 @@ impl ExpansionRoomStore {
         ))
     }
 
-                                                pub fn remove_all_doors(&mut self, room: RoomRef) {
+    pub fn remove_all_doors(&mut self, room: RoomRef) {
         let doors: Vec<DoorId> = self.room_doors(room).to_vec();
         for door in doors {
             let Some(other) = self.doors.get(door.0).and_then(|d| d.other_room(room)) else {
@@ -463,7 +458,7 @@ impl ExpansionRoomStore {
         self.clear_doors(room);
     }
 
-                                                                            pub fn detach_all_doors(&mut self, room: RoomRef) {
+    pub fn detach_all_doors(&mut self, room: RoomRef) {
         let doors: Vec<DoorId> = self.room_doors(room).to_vec();
         for door in doors {
             let Some(other) = self.doors.get(door.0).and_then(|d| d.other_room(room)) else {
@@ -474,12 +469,12 @@ impl ExpansionRoomStore {
         self.clear_doors(room);
     }
 
-                                                                                                                                                        pub fn remove_incomplete_expansion_room(&mut self, room: IncompleteRoomId) {
+    pub fn remove_incomplete_expansion_room(&mut self, room: IncompleteRoomId) {
         self.remove_all_doors(RoomRef::Incomplete(room));
         self.incomplete_rooms.remove(room.0);
     }
 
-            pub fn target_door_id_no(&self, door: TargetDoorId) -> Option<i32> {
+    pub fn target_door_id_no(&self, door: TargetDoorId) -> Option<i32> {
         let d = self.target_doors.get(door.0)?;
         let room_id = match d.room {
             Some(room) => self.room_id_no(room)?,
@@ -514,7 +509,7 @@ mod tests {
         assert_eq!(store.next_room_id_no(), 3);
     }
 
-        fn bare_tree() -> ShapeSearchTree {
+    fn bare_tree() -> ShapeSearchTree {
         ShapeSearchTree::new(
             fr_board::TreeId(0),
             fr_board::structure::AngleRestriction::NinetyDegree,

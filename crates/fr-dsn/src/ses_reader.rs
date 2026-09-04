@@ -14,9 +14,9 @@ use crate::parser::scope_parameter::skip_scope;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SesImportSummary {
-        pub wires_imported: usize,
-        pub vias_imported: usize,
-        pub errors_encountered: usize,
+    pub wires_imported: usize,
+    pub vias_imported: usize,
+    pub errors_encountered: usize,
 }
 
 pub fn read(
@@ -59,7 +59,7 @@ struct SesReader<'a> {
 }
 
 impl SesReader<'_> {
-            fn process_session_scope(&mut self) -> Result<(), DsnError> {
+    fn process_session_scope(&mut self) -> Result<(), DsnError> {
         let mut next_token: Option<Token> = None;
         for i in 0..3 {
             next_token = self.scanner.next_token()?;
@@ -99,16 +99,16 @@ impl SesReader<'_> {
         Ok(())
     }
 
-                // not ported: the `FRLogger.warn("… unexpected end of file at '…'")` at :166-170.
+    // not ported: the `FRLogger.warn("… unexpected end of file at '…'")` at :166-170.
     fn process_routes_scope(&mut self) -> Result<(), DsnError> {
         self.process_container_scope(Keyword::NetworkOut, Self::process_network_scope)
     }
 
-        fn process_network_scope(&mut self) -> Result<(), DsnError> {
+    fn process_network_scope(&mut self) -> Result<(), DsnError> {
         self.process_container_scope(Keyword::Net, Self::process_net_scope)
     }
 
-                fn process_container_scope(
+    fn process_container_scope(
         &mut self,
         wanted: Keyword,
         mut on_match: impl FnMut(&mut Self) -> Result<(), DsnError>,
@@ -134,7 +134,7 @@ impl SesReader<'_> {
         Ok(())
     }
 
-                            fn process_net_scope(&mut self) -> Result<(), DsnError> {
+    fn process_net_scope(&mut self) -> Result<(), DsnError> {
         let mut next_token = self.scanner.next_token()?;
         let Some(Token::Str(net_name)) = next_token.clone() else {
             self.errors_encountered += 1;
@@ -175,7 +175,7 @@ impl SesReader<'_> {
         Ok(())
     }
 
-                            fn process_wire_scope(&mut self, net_numbers: &[i32]) -> Result<bool, DsnError> {
+    fn process_wire_scope(&mut self, net_numbers: &[i32]) -> Result<bool, DsnError> {
         let mut wire_path: Option<DsnPolygonPath> = None;
         let mut next_token: Option<Token> = None;
         loop {
@@ -232,7 +232,7 @@ impl SesReader<'_> {
         Ok(true)
     }
 
-                fn process_via_scope(&mut self, net_numbers: &[i32]) -> Result<bool, DsnError> {
+    fn process_via_scope(&mut self, net_numbers: &[i32]) -> Result<bool, DsnError> {
         let mut next_token = self.scanner.next_token()?;
         let Some(Token::Str(padstack_name)) = next_token.clone() else {
             return Ok(false);
@@ -296,7 +296,7 @@ impl SesReader<'_> {
         Ok(true)
     }
 
-                fn default_clearance_class(&mut self, item_class: ItemClass) -> usize {
+    fn default_clearance_class(&mut self, item_class: ItemClass) -> usize {
         let default_net_class = self.board.rules.get_default_net_class();
         self.board
             .rules

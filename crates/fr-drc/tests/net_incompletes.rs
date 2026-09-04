@@ -5,7 +5,6 @@ use fr_drc::{AirLine, DesignRulesChecker, NetIncompletes, UnconnectedKind};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{FloatPoint, IntBox, IntPoint, IntVector, Point, Polyline, Shape, TileShape};
 
-
 fn fixture_board(name: &str) -> Board {
     let path = parity::fixture(name);
     let bytes = std::fs::read(&path)
@@ -48,7 +47,6 @@ fn all_net_incompletes(board: &Board) -> Vec<NetIncompletes> {
         .map(|(i, items)| NetIncompletes::new(i as i32 + 1, items, board))
         .collect()
 }
-
 
 fn transcript(board: &Board) -> String {
     let lists = net_item_lists(board);
@@ -204,7 +202,7 @@ struct Line {
 }
 
 impl Line {
-            fn same_ends(&self, other: &Line) -> bool {
+    fn same_ends(&self, other: &Line) -> bool {
         self.ends == other.ends || self.ends == (other.ends.1, other.ends.0)
     }
 }
@@ -252,7 +250,6 @@ fn every_port_airline_is_one_some_jvm_run_picks() {
     }
 }
 
-
 #[test]
 fn an_isolated_pin_still_reaches_the_ratsnest() {
     let mut board = isolated_pin_board();
@@ -298,7 +295,6 @@ fn dangling_items_are_filtered_before_triangulation() {
         .collect();
     assert_eq!(dangling, vec![ItemId(4)]);
 }
-
 
 #[test]
 fn length_violation_is_zero_without_a_net_class_restriction() {
@@ -381,7 +377,6 @@ fn a_net_number_with_no_net_has_no_length_restriction() {
     assert_eq!(net_incompletes.get_length_violation(), 0.0);
 }
 
-
 #[test]
 fn airline_compare_by_net_name_is_not_a_total_order() {
     let board = complete_net_board();
@@ -406,7 +401,6 @@ fn airline_compare_by_net_name_is_not_a_total_order() {
         std::cmp::Ordering::Less,
     );
 }
-
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {

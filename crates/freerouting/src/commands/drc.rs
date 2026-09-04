@@ -1,4 +1,3 @@
-
 use std::path::Path;
 
 use fr_core::{BoardFileDetails, BoardStatistics, FileFormat, RoutingJob, SessionId};
@@ -13,7 +12,6 @@ use crate::cli::{DrcArgs, DrcSchema};
 use crate::legacy::ExitCode;
 
 pub fn run(args: &DrcArgs, settings_argv: &[String]) -> ExitCode {
-
     let mut job = RoutingJob::new(SessionId::NIL);
     job.drc = args.output.as_deref().map(report_file_details);
 
@@ -273,9 +271,9 @@ mod tests {
     use super::*;
     use std::time::{Duration, UNIX_EPOCH};
 
-                            #[test]
+    #[test]
     fn the_date_is_iso_offset_date_time_not_iso_instant() {
-        let base = 1_756_800_000u64; 
+        let base = 1_756_800_000u64;
         for (nanos, expected) in [
             (0u32, "2025-09-02T08:00Z"),
             (100_000_000, "2025-09-02T08:00:00.1Z"),
@@ -296,13 +294,13 @@ mod tests {
         );
     }
 
-        #[test]
+    #[test]
     fn the_source_is_the_inputs_base_name() {
         assert_eq!(base_name(Path::new("/a/b/board.dsn")), "board.dsn");
         assert_eq!(base_name(Path::new("board.dsn")), "board.dsn");
     }
 
-            #[test]
+    #[test]
     fn the_report_path_is_the_argument_rejoined() {
         assert_eq!(
             report_file_details(Path::new("/a/b/r.json")).get_absolute_path(),

@@ -90,7 +90,6 @@ fn issue143_rpi_splitter_roundtrip_matches_java() {
     );
 }
 
-
 #[test]
 fn issue413_test_roundtrip_matches_java() {
     assert_roundtrip_parity("Issue413-test", "fixtures/Issue413-test.dsn");
@@ -105,7 +104,6 @@ fn issue110_relay_module_roundtrip_matches_java() {
 fn issue753_cpu_85_r104_roundtrip_matches_java() {
     assert_roundtrip_parity("Issue753-CPU-85_r104", "fixtures/Issue753-CPU-85_r104.dsn");
 }
-
 
 #[test]
 fn every_reference_is_byte_for_byte_identical_to_java() {
@@ -163,7 +161,6 @@ fn every_reference_is_byte_for_byte_identical_to_java() {
         );
     }
 }
-
 
 #[test]
 fn valid_header() {
@@ -271,7 +268,6 @@ fn compat_mode_writes_paths_where_the_default_writes_polyline_paths() {
     assert!(compat.contains("(string_quote "));
     assert!(compat.contains("(space_in_quoted_tokens on)"));
 }
-
 
 #[test]
 fn the_refwriter_binary_reproduces_a_committed_reference() {

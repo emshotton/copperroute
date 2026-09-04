@@ -29,7 +29,7 @@ fn int_point_of(point: &Point) -> IntPoint {
 }
 
 impl PolygonShape {
-                                        pub fn from_polygon(polygon: &Polygon) -> PolygonShape {
+    pub fn from_polygon(polygon: &Polygon) -> PolygonShape {
         let current_polygon = if polygon.winding_number_after_closing() < 0 {
             polygon.revert_corners()
         } else {
@@ -89,15 +89,15 @@ impl PolygonShape {
         PolygonShape { corners: result }
     }
 
-        pub fn from_points(corners: &[Point]) -> PolygonShape {
+    pub fn from_points(corners: &[Point]) -> PolygonShape {
         PolygonShape::from_polygon(&Polygon::new(corners.to_vec()))
     }
 
-        pub fn corners(&self) -> &[Point] {
+    pub fn corners(&self) -> &[Point] {
         &self.corners
     }
 
-                        pub fn corner(&self, no: usize) -> Point {
+    pub fn corner(&self, no: usize) -> Point {
         assert!(
             no < self.corners.len(),
             "PolygonShape.corner: no out of range"
@@ -105,43 +105,43 @@ impl PolygonShape {
         self.corners[no].clone()
     }
 
-        pub fn border_line_count(&self) -> usize {
+    pub fn border_line_count(&self) -> usize {
         self.corners.len()
     }
 
-        pub fn corner_is_bounded(&self, _no: usize) -> bool {
+    pub fn corner_is_bounded(&self, _no: usize) -> bool {
         true
     }
 
-            pub fn intersects(&self, shape: &crate::shape::Shape) -> bool {
+    pub fn intersects(&self, shape: &crate::shape::Shape) -> bool {
         shape.intersects_polygon(self)
     }
 
-            pub fn intersects_circle(&self, circle: &crate::circle::Circle) -> bool {
+    pub fn intersects_circle(&self, circle: &crate::circle::Circle) -> bool {
         self.convex_pieces()
             .iter()
             .any(|piece| circle.intersects_tile(piece))
     }
 
-            pub fn intersects_simplex(&self, simplex: &crate::simplex::Simplex) -> bool {
+    pub fn intersects_simplex(&self, simplex: &crate::simplex::Simplex) -> bool {
         self.convex_pieces()
             .iter()
             .any(|piece| piece.intersects_simplex(simplex))
     }
 
-        pub fn intersects_octagon(&self, oct: &IntOctagon) -> bool {
+    pub fn intersects_octagon(&self, oct: &IntOctagon) -> bool {
         self.convex_pieces()
             .iter()
             .any(|piece| piece.intersects_octagon(oct))
     }
 
-        pub fn intersects_box(&self, b: &IntBox) -> bool {
+    pub fn intersects_box(&self, b: &IntBox) -> bool {
         self.convex_pieces()
             .iter()
             .any(|piece| piece.intersects_box(b))
     }
 
-            pub fn intersects_tile_shape(&self, tile: &TileShape) -> bool {
+    pub fn intersects_tile_shape(&self, tile: &TileShape) -> bool {
         match tile {
             TileShape::Box(b) => self.intersects_box(b),
             TileShape::Octagon(o) => self.intersects_octagon(o),
@@ -149,59 +149,59 @@ impl PolygonShape {
         }
     }
 
-            pub fn cutout(&self, _polyline: &Polyline) -> Option<Vec<Polyline>> {
+    pub fn cutout(&self, _polyline: &Polyline) -> Option<Vec<Polyline>> {
         None
     }
 
-            pub fn enlarge(&self, offset: f64) -> Option<PolygonShape> {
+    pub fn enlarge(&self, offset: f64) -> Option<PolygonShape> {
         if offset == 0.0 {
             return Some(self.clone());
         }
         None
     }
 
-            pub fn border_distance(&self, _point: &FloatPoint) -> f64 {
+    pub fn border_distance(&self, _point: &FloatPoint) -> f64 {
         0.0
     }
 
-            pub fn smallest_radius(&self) -> f64 {
+    pub fn smallest_radius(&self) -> f64 {
         self.border_distance(&PolylineShapeOps::centre_of_gravity(self))
     }
 
-            pub fn contains_float(&self, point: &FloatPoint) -> bool {
+    pub fn contains_float(&self, point: &FloatPoint) -> bool {
         self.convex_pieces()
             .iter()
             .any(|piece| piece.contains_float(point))
     }
 
-            pub fn contains(&self, point: &Point) -> bool {
+    pub fn contains(&self, point: &Point) -> bool {
         !self.is_outside(point)
     }
 
-                        pub fn contains_inside(&self, point: &Point) -> bool {
+    pub fn contains_inside(&self, point: &Point) -> bool {
         if self.contains_on_border(point) {
             return false;
         }
         !self.is_outside(point)
     }
 
-            pub fn is_outside(&self, point: &Point) -> bool {
+    pub fn is_outside(&self, point: &Point) -> bool {
         !self
             .convex_pieces()
             .iter()
             .any(|piece| !piece.is_outside(point))
     }
 
-            pub fn contains_on_border(&self, _point: &Point) -> bool {
+    pub fn contains_on_border(&self, _point: &Point) -> bool {
         // FRLogger.warn("PolygonShape.contains_on_edge not yet implemented");
         false
     }
 
-            pub fn distance(&self, _point: &FloatPoint) -> f64 {
+    pub fn distance(&self, _point: &FloatPoint) -> f64 {
         0.0
     }
 
-        pub fn translate_by(&self, vector: &Vector) -> PolygonShape {
+    pub fn translate_by(&self, vector: &Vector) -> PolygonShape {
         if *vector == Vector::ZERO {
             return self.clone();
         }
@@ -213,14 +213,14 @@ impl PolygonShape {
         PolygonShape::from_points(&new_corners)
     }
 
-            pub fn bounding_shape(
+    pub fn bounding_shape(
         &self,
         dirs: crate::bounding_directions::ShapeBoundingDirections,
     ) -> crate::regular_tile_shape::RegularTileShape {
         dirs.bounds_polygon(self)
     }
 
-        pub fn bounding_box(&self) -> IntBox {
+    pub fn bounding_box(&self) -> IntBox {
         let mut llx = i32::MAX as f64;
         let mut lly = i32::MAX as f64;
         let mut urx = i32::MIN as f64;
@@ -237,7 +237,7 @@ impl PolygonShape {
         IntBox::new(lower_left, upper_right)
     }
 
-        pub fn bounding_octagon(&self) -> IntOctagon {
+    pub fn bounding_octagon(&self) -> IntOctagon {
         let mut lx = i32::MAX as f64;
         let mut ly = i32::MAX as f64;
         let mut rx = i32::MIN as f64;
@@ -273,7 +273,7 @@ impl PolygonShape {
         )
     }
 
-            pub fn is_convex(&self) -> bool {
+    pub fn is_convex(&self) -> bool {
         let corners = &self.corners;
         let len = corners.len();
         if len <= 2 {
@@ -317,7 +317,7 @@ impl PolygonShape {
         true
     }
 
-        pub fn convex_hull(&self) -> PolygonShape {
+    pub fn convex_hull(&self) -> PolygonShape {
         let corners = &self.corners;
         let len = corners.len();
         if len <= 2 {
@@ -343,7 +343,7 @@ impl PolygonShape {
         self.clone()
     }
 
-        pub fn bounding_tile(&self) -> TileShape {
+    pub fn bounding_tile(&self) -> TileShape {
         let hull = self.convex_hull();
         let len = hull.corners.len();
         let mut bounding_lines: Vec<Line> = Vec::with_capacity(len);
@@ -360,7 +360,7 @@ impl PolygonShape {
         TileShape::get_instance_from_lines(bounding_lines)
     }
 
-            pub fn area(&self) -> f64 {
+    pub fn area(&self) -> f64 {
         if self.dimension() <= 2 {
             return 0.0;
         }
@@ -377,7 +377,7 @@ impl PolygonShape {
         0.5 * result.abs()
     }
 
-            pub fn dimension(&self) -> i32 {
+    pub fn dimension(&self) -> i32 {
         match self.corners.len() {
             0 => -1,
             1 => 0,
@@ -386,15 +386,15 @@ impl PolygonShape {
         }
     }
 
-        pub fn is_bounded(&self) -> bool {
+    pub fn is_bounded(&self) -> bool {
         true
     }
 
-        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.corners.is_empty()
     }
 
-            pub fn border_line(&self, no: usize) -> Option<Line> {
+    pub fn border_line(&self, no: usize) -> Option<Line> {
         if no >= self.corners.len() {
             // Java: FRLogger.warn("PolygonShape.borderLine: no out of range")
             return None;
@@ -410,7 +410,7 @@ impl PolygonShape {
         ))
     }
 
-                                pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
+    pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
         let mut min_dist = f64::MAX;
         let mut result = None;
         for piece in self.convex_pieces() {
@@ -426,7 +426,7 @@ impl PolygonShape {
         result
     }
 
-        pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> PolygonShape {
+    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> PolygonShape {
         let pole = Point::Int(*pole);
         let new_corners: Vec<Point> = self
             .corners
@@ -436,7 +436,7 @@ impl PolygonShape {
         PolygonShape::from_points(&new_corners)
     }
 
-        pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> PolygonShape {
+    pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> PolygonShape {
         if angle == 0.0 {
             return self.clone();
         }
@@ -448,7 +448,7 @@ impl PolygonShape {
         PolygonShape::from_points(&new_corners)
     }
 
-        pub fn mirror_vertical(&self, pole: &IntPoint) -> PolygonShape {
+    pub fn mirror_vertical(&self, pole: &IntPoint) -> PolygonShape {
         let pole = Point::Int(*pole);
         let new_corners: Vec<Point> = self
             .corners
@@ -458,7 +458,7 @@ impl PolygonShape {
         PolygonShape::from_points(&new_corners)
     }
 
-        pub fn mirror_horizontal(&self, pole: &IntPoint) -> PolygonShape {
+    pub fn mirror_horizontal(&self, pole: &IntPoint) -> PolygonShape {
         let pole = Point::Int(*pole);
         let new_corners: Vec<Point> = self
             .corners
@@ -468,7 +468,7 @@ impl PolygonShape {
         PolygonShape::from_points(&new_corners)
     }
 
-                                    pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
+    pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
         let mut random_generator = JavaRandom::new(SEED);
         let convex_pieces = self.split_to_convex_recu(&mut random_generator)?;
         Some(
@@ -483,12 +483,12 @@ impl PolygonShape {
         )
     }
 
-                            fn convex_pieces(&self) -> Vec<TileShape> {
+    fn convex_pieces(&self) -> Vec<TileShape> {
         self.split_to_convex()
             .expect("PolygonShape.splitToConvex failed: the polygon may have selfintersections")
     }
 
-            fn split_to_convex_recu(&self, random_generator: &mut JavaRandom) -> Option<Vec<PolygonShape>> {
+    fn split_to_convex_recu(&self, random_generator: &mut JavaRandom) -> Option<Vec<PolygonShape>> {
         let corners = &self.corners;
         let len = corners.len();
         let mut start_corner_no = random_generator.next_int(len as i32) as usize;

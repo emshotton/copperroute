@@ -7,15 +7,15 @@ use crate::autoroute::maze::MazeSearchElement;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TargetItemExpansionDoor {
-        pub item: ItemId,
-        pub tree_entry_no: usize,
-        pub room: Option<RoomRef>,
-            shape: TileShape,
-            maze_search_info: MazeSearchElement,
+    pub item: ItemId,
+    pub tree_entry_no: usize,
+    pub room: Option<RoomRef>,
+    shape: TileShape,
+    maze_search_info: MazeSearchElement,
 }
 
 impl TargetItemExpansionDoor {
-                                            pub fn new(
+    pub fn new(
         board: &mut Board,
         item: ItemId,
         tree_entry_no: usize,
@@ -39,45 +39,45 @@ impl TargetItemExpansionDoor {
         }
     }
 
-            pub fn get_shape(&self) -> &TileShape {
+    pub fn get_shape(&self) -> &TileShape {
         &self.shape
     }
 
-        pub fn get_dimension(&self) -> i32 {
+    pub fn get_dimension(&self) -> i32 {
         2
     }
 
-                            pub fn is_destination_door(&self, board: &mut Board) -> bool {
+    pub fn is_destination_door(&self, board: &mut Board) -> bool {
         !item_info::is_start_info(board, self.item)
     }
 
-                            pub fn other_room(&self, _room: RoomRef) -> Option<RoomRef> {
+    pub fn other_room(&self, _room: RoomRef) -> Option<RoomRef> {
         None
     }
 
-            pub fn get_maze_search_element(&self, _index: usize) -> &MazeSearchElement {
+    pub fn get_maze_search_element(&self, _index: usize) -> &MazeSearchElement {
         &self.maze_search_info
     }
 
-        pub fn get_maze_search_element_mut(&mut self, _index: usize) -> &mut MazeSearchElement {
+    pub fn get_maze_search_element_mut(&mut self, _index: usize) -> &mut MazeSearchElement {
         &mut self.maze_search_info
     }
 
-        pub fn maze_search_element_count(&self) -> usize {
+    pub fn maze_search_element_count(&self) -> usize {
         1
     }
 
-        pub fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.maze_search_info.reset();
     }
 
-                            pub fn get_id(&self, room_id: i32) -> i32 {
+    pub fn get_id(&self, room_id: i32) -> i32 {
         target_door_id(self.item, room_id)
     }
 }
 
 impl TargetItemExpansionDoor {
-                    #[cfg(test)]
+    #[cfg(test)]
     pub(crate) fn with_shape(
         item: ItemId,
         tree_entry_no: usize,

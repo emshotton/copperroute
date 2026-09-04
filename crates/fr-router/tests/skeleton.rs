@@ -60,7 +60,6 @@ fn arena_default_is_empty() {
     assert!(arena.is_empty());
 }
 
-
 #[test]
 fn attempt_state_is_javas_declaration_order() {
     let all = AutorouteAttemptState::ALL;
@@ -137,7 +136,6 @@ fn attempt_result_to_string_is_javas_to_string() {
         "FAILED: 1 unrouted"
     );
 }
-
 
 #[test]
 fn expansion_cost_factor_is_the_one_from_fr_settings() {

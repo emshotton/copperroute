@@ -154,10 +154,10 @@ fn next_double_is_javas_lenient_number_format() {
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn a_twenty_mebibyte_input_lexes_like_a_fifteen_mebibyte_one() {
-        const UNIT: &str = "(wire (path F.Cu 250 1 2 3 4))";
+    const UNIT: &str = "(wire (path F.Cu 250 1 2 3 4))";
     let unit_len = UNIT.len() + 1;
 
-        fn scan(text: &str, tail_len: usize) -> (usize, Vec<Token>) {
+    fn scan(text: &str, tail_len: usize) -> (usize, Vec<Token>) {
         let mut scanner = DsnScanner::new(text);
         let mut n = 0;
         let mut tail: Vec<Token> = Vec::new();

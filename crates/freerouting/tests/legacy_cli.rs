@@ -25,7 +25,6 @@ fn native(args: &[&str]) -> String {
 
 const ROUTE_MISSING_INPUT_EXIT: i32 = 1;
 
-
 #[test]
 fn global_settings_command_line_test_matrix() {
     let rows: &[(&str, &[&str], &[&str])] = &[
@@ -265,7 +264,6 @@ fn the_session_and_rules_slots_survive_without_a_dsn() {
     );
 }
 
-
 #[test]
 fn p8t5_table_the_slots_and_the_two_matching_rules() {
     let (_, rewritten, _) = run(&["-de", "a.dsn", "b.rules", "-do", "o.ses"]);
@@ -432,7 +430,6 @@ fn p8t5_table_no_arguments_at_all() {
         "stderr:\n{stderr}"
     );
 }
-
 
 #[test]
 fn help_exits_zero_on_both_forms() {

@@ -4,7 +4,6 @@ use board_builder::{BOUNDING_BOX, layers};
 use fr_board::prelude::*;
 use fr_geometry::{IntBox, IntVector, Point, Polyline, Shape, TileShape};
 
-
 fn asymmetric_matrix() -> ClearanceMatrix {
     let ls = layers();
     let mut matrix = ClearanceMatrix::get_default_instance(&ls, 200);
@@ -99,7 +98,6 @@ fn rows(violations: &[ClearanceViolation]) -> Vec<(u32, usize, f64, f64)> {
         })
         .collect()
 }
-
 
 #[test]
 fn two_overlapping_pins_of_different_nets_violate() {
@@ -259,7 +257,6 @@ fn tie_pin_exemption_also_fires_at_the_last_corner() {
     );
 }
 
-
 fn bx(llx: i32, lly: i32, urx: i32, ury: i32) -> TileShape {
     TileShape::Box(IntBox::from_coords(llx, lly, urx, ury))
 }
@@ -339,7 +336,6 @@ fn the_bisection_matches_the_jvm() {
     );
 }
 
-
 fn two_partner_board() -> Board {
     let (library, components) = smd_library(&[("a", 50, IntVector::new(0, 0))]);
     let mut board = board_with(asymmetric_matrix(), library, components, 3);
@@ -406,7 +402,6 @@ fn smallest_clearance_over_the_board_is_max_value_until_something_is_computed() 
     assert_eq!(board.smallest_clearance(), 0.0);
 }
 
-
 #[test]
 fn aggregate_is_sorted_by_shortfall_descending_and_double_counts() {
     let mut board = two_overlapping_pins();
@@ -434,7 +429,6 @@ fn aggregate_over_a_clean_board_is_empty() {
     assert!(board.aggregate_violations_sorted_by_severity().is_empty());
     assert_eq!(board.smallest_clearance(), f64::MAX);
 }
-
 
 fn escape_via_board(smd_layer: usize) -> (Board, ItemId) {
     let mut padstacks = Padstacks::new(layers());

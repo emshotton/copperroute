@@ -4,16 +4,16 @@ use crate::rules::equals_ignore_case;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PartPin {
-            pub pin_index: i32,
-            pub pin_name: String,
-        pub gate_name: String,
-            pub gate_swap_code: i32,
-        pub gate_pin_name: String,
-            pub gate_pin_swap_code: i32,
+    pub pin_index: i32,
+    pub pin_name: String,
+    pub gate_name: String,
+    pub gate_swap_code: i32,
+    pub gate_pin_name: String,
+    pub gate_pin_swap_code: i32,
 }
 
 impl PartPin {
-            pub fn new(
+    pub fn new(
         pin_index: i32,
         pin_name: impl Into<String>,
         gate_name: impl Into<String>,
@@ -31,20 +31,20 @@ impl PartPin {
         }
     }
 
-                                    pub fn compare_to(&self, other: &PartPin) -> Ordering {
+    pub fn compare_to(&self, other: &PartPin) -> Ordering {
         self.pin_index.cmp(&other.pin_index)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LogicalPart {
-        pub name: String,
-            pub no: usize,
-            part_pins: Vec<PartPin>,
+    pub name: String,
+    pub no: usize,
+    part_pins: Vec<PartPin>,
 }
 
 impl LogicalPart {
-                    pub(crate) fn new(name: impl Into<String>, no: usize, part_pins: Vec<PartPin>) -> LogicalPart {
+    pub(crate) fn new(name: impl Into<String>, no: usize, part_pins: Vec<PartPin>) -> LogicalPart {
         LogicalPart {
             name: name.into(),
             no,
@@ -52,11 +52,11 @@ impl LogicalPart {
         }
     }
 
-        pub fn pin_count(&self) -> usize {
+    pub fn pin_count(&self) -> usize {
         self.part_pins.len()
     }
 
-            pub fn get_pin(&self, pin_index: i32) -> Option<&PartPin> {
+    pub fn get_pin(&self, pin_index: i32) -> Option<&PartPin> {
         if pin_index < 0 || pin_index as usize >= self.part_pins.len() {
             return None;
         }
@@ -66,26 +66,26 @@ impl LogicalPart {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LogicalParts {
-        list: Vec<LogicalPart>,
+    list: Vec<LogicalPart>,
 }
 
 impl LogicalParts {
-        pub fn new() -> LogicalParts {
+    pub fn new() -> LogicalParts {
         LogicalParts::default()
     }
 
-                            pub fn add(&mut self, name: impl Into<String>, mut part_pins: Vec<PartPin>) -> usize {
+    pub fn add(&mut self, name: impl Into<String>, mut part_pins: Vec<PartPin>) -> usize {
         part_pins.sort_by(|a, b| a.compare_to(b));
         let no = self.list.len() + 1;
         self.list.push(LogicalPart::new(name, no, part_pins));
         no
     }
 
-            pub fn get_by_name(&self, name: &str) -> Option<&LogicalPart> {
+    pub fn get_by_name(&self, name: &str) -> Option<&LogicalPart> {
         self.list.iter().find(|p| equals_ignore_case(&p.name, name))
     }
 
-                                    pub fn get(&self, no: usize) -> &LogicalPart {
+    pub fn get(&self, no: usize) -> &LogicalPart {
         let result = &self.list[no - 1];
         debug_assert_eq!(
             result.no, no,
@@ -94,7 +94,7 @@ impl LogicalParts {
         result
     }
 
-        pub fn count(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.list.len()
     }
 }

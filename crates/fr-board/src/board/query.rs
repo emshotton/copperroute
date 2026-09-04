@@ -12,8 +12,7 @@ use super::connectivity::StopConnectionOption;
 use super::{Board, item_ctx};
 
 impl Board {
-
-                pub fn overlapping_objects(
+    pub fn overlapping_objects(
         &self,
         shape: &TileShape,
         layer: Option<usize>,
@@ -24,7 +23,7 @@ impl Board {
             .overlapping_objects(shape, layer, &[], &self.items, &ctx)
     }
 
-            pub fn overlapping_items(&self, area: &Area, layer: Option<usize>) -> BTreeSet<ItemId> {
+    pub fn overlapping_items(&self, area: &Area, layer: Option<usize>) -> BTreeSet<ItemId> {
         let mut result = BTreeSet::new();
         let tiles = area.split_to_convex().expect(
             "BasicBoard.overlappingItems: area.splitToConvex() is null — Java throws a \
@@ -40,7 +39,7 @@ impl Board {
         result
     }
 
-                        pub fn overlapping_items_with_clearance(
+    pub fn overlapping_items_with_clearance(
         &mut self,
         shape: &TileShape,
         layer: Option<usize>,
@@ -67,7 +66,7 @@ impl Board {
         result
     }
 
-                pub fn pick_items(&self, location: &Point, layer: Option<usize>) -> BTreeSet<ItemId> {
+    pub fn pick_items(&self, location: &Point, layer: Option<usize>) -> BTreeSet<ItemId> {
         let point_shape = TileShape::Box(TileShape::get_instance_from_point(location));
         self.overlapping_objects(&point_shape, layer)
             .into_iter()
@@ -78,15 +77,14 @@ impl Board {
             .collect()
     }
 
-                            pub fn pick_traces(&self, location: &Point, layer: Option<usize>) -> BTreeSet<ItemId> {
+    pub fn pick_traces(&self, location: &Point, layer: Option<usize>) -> BTreeSet<ItemId> {
         self.pick_items(location, layer)
             .into_iter()
             .filter(|id| self.items.get(id).is_some_and(Item::is_trace))
             .collect()
     }
 
-
-            pub fn check_shape(
+    pub fn check_shape(
         &mut self,
         shape: &Area,
         layer: Option<usize>,
@@ -122,7 +120,7 @@ impl Board {
         true
     }
 
-                            pub fn check_trace_shape(
+    pub fn check_trace_shape(
         &mut self,
         shape: &TileShape,
         layer: usize,
@@ -208,7 +206,7 @@ impl Board {
         true
     }
 
-        pub fn check_polyline_trace(
+    pub fn check_polyline_trace(
         &mut self,
         polyline: &Polyline,
         layer: usize,
@@ -240,7 +238,7 @@ impl Board {
         true
     }
 
-            pub fn touching_pins_at_end_corners(&mut self, id: ItemId) -> BTreeSet<ItemId> {
+    pub fn touching_pins_at_end_corners(&mut self, id: ItemId) -> BTreeSet<ItemId> {
         let Some(Item::Trace(trace)) = self.items.get(&id) else {
             return BTreeSet::new();
         };
@@ -258,7 +256,7 @@ impl Board {
         )
     }
 
-                fn touching_pins_at_end_corners_of(
+    fn touching_pins_at_end_corners_of(
         &mut self,
         polyline: &Polyline,
         layer: usize,
@@ -290,7 +288,7 @@ impl Board {
         result
     }
 
-                fn overlapping_objects_with_clearance(
+    fn overlapping_objects_with_clearance(
         &mut self,
         shape: &TileShape,
         layer: Option<usize>,
@@ -315,7 +313,7 @@ impl Board {
         result
     }
 
-            fn overlapping_tree_entries_with_clearance(
+    fn overlapping_tree_entries_with_clearance(
         &mut self,
         shape: &TileShape,
         layer: Option<usize>,
@@ -340,8 +338,7 @@ impl Board {
         result
     }
 
-
-                                            #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     pub fn check_trace_segment(
         &mut self,
         from_point: &Point,
@@ -369,7 +366,7 @@ impl Board {
         )
     }
 
-            #[allow(clippy::too_many_arguments)] 
+    #[allow(clippy::too_many_arguments)]
     pub fn check_trace_segment_of_line_segment(
         &mut self,
         line_segment: &LineSegment,
@@ -463,7 +460,7 @@ impl Board {
         ok_length
     }
 
-                            pub fn check_move_item(
+    pub fn check_move_item(
         &mut self,
         id: ItemId,
         vector: &Vector,
@@ -535,7 +532,7 @@ impl Board {
         true
     }
 
-            pub fn check_change_net(&mut self, id: ItemId, new_net_no: i32) -> bool {
+    pub fn check_change_net(&mut self, id: ItemId, new_net_no: i32) -> bool {
         let ctx = self.ctx();
         let Some(item) = self.items.get(&id) else {
             return false;
@@ -571,7 +568,7 @@ impl Board {
         true
     }
 
-                pub fn pick_nearest_routing_item(
+    pub fn pick_nearest_routing_item(
         &self,
         location: &Point,
         layer: Option<usize>,
@@ -651,8 +648,7 @@ impl Board {
         nearest_item
     }
 
-
-            pub fn get_trace_tail(
+    pub fn get_trace_tail(
         &self,
         location: &Point,
         layer: Option<usize>,
@@ -683,12 +679,12 @@ impl Board {
         None
     }
 
-            pub fn remove_if_cycle(&mut self, id: ItemId) -> bool {
+    pub fn remove_if_cycle(&mut self, id: ItemId) -> bool {
         self.remove_if_cycle_checked(id, &|| false)
             .expect("a `|| false` stop check never trips")
     }
 
-                pub fn remove_if_cycle_checked(
+    pub fn remove_if_cycle_checked(
         &mut self,
         id: ItemId,
         stop: StopCheck<'_>,
@@ -728,7 +724,7 @@ impl Board {
         Ok(true)
     }
 
-        pub fn contains_trace_tails(
+    pub fn contains_trace_tails(
         &self,
         ids: impl IntoIterator<Item = ItemId>,
         except_net_nos: &[i32],
@@ -747,7 +743,7 @@ impl Board {
         false
     }
 
-            pub fn remove_trace_tails(
+    pub fn remove_trace_tails(
         &mut self,
         net_number: i32,
         stop_connection_option: StopConnectionOption,
@@ -794,7 +790,7 @@ impl Board {
         Ok(true)
     }
 
-                                    pub fn connect_to_trace(
+    pub fn connect_to_trace(
         &mut self,
         from_point: &Point,
         to_trace: ItemId,
@@ -817,7 +813,7 @@ impl Board {
         )
     }
 
-                                            #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     pub fn connect_to_trace_of(
         &mut self,
         from_point: &Point,
@@ -879,7 +875,7 @@ impl Board {
         true
     }
 
-                                                                                                                                                                            pub fn reduce_nets_of_route_items(&mut self) -> bool {
+    pub fn reduce_nets_of_route_items(&mut self) -> bool {
         let result = false;
         let mut something_changed = true;
         while something_changed {

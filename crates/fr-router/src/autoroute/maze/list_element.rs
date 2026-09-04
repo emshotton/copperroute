@@ -7,22 +7,22 @@ use crate::autoroute::maze::MazeAdjustment;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MazeListElement {
-            pub door: ExpandableRef,
-            pub section_no_of_door: i32,
-            pub backtrack_door: Option<ExpandableRef>,
-        pub section_no_of_backtrack_door: i32,
-            pub expansion_value: f64,
-            pub sorting_value: f64,
-                pub next_room: Option<RoomRef>,
-                            pub shape_entry: FloatLine,
-        pub room_ripped: bool,
-        pub adjustment: MazeAdjustment,
-        pub already_checked: bool,
-                            pub ripup_cost: i32,
+    pub door: ExpandableRef,
+    pub section_no_of_door: i32,
+    pub backtrack_door: Option<ExpandableRef>,
+    pub section_no_of_backtrack_door: i32,
+    pub expansion_value: f64,
+    pub sorting_value: f64,
+    pub next_room: Option<RoomRef>,
+    pub shape_entry: FloatLine,
+    pub room_ripped: bool,
+    pub adjustment: MazeAdjustment,
+    pub already_checked: bool,
+    pub ripup_cost: i32,
 }
 
 impl MazeListElement {
-                                                                                                                                                                        pub fn compare_to<F>(&self, other: &MazeListElement, door_id: F) -> Ordering
+    pub fn compare_to<F>(&self, other: &MazeListElement, door_id: F) -> Ordering
     where
         F: Fn(ExpandableRef) -> i32,
     {
@@ -93,5 +93,3 @@ impl Ord for OrderedF64 {
         self.0.total_cmp(&other.0)
     }
 }
-
-

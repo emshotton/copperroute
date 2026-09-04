@@ -1,7 +1,6 @@
 use fr_settings::prelude::*;
 use fr_settings::{BoardUpdateStrategy, HostEnvironment};
 
-
 #[test]
 fn default_has_every_field_none() {
     let rs = RouterSettings::default();
@@ -57,7 +56,6 @@ fn new_allocates_the_three_nested_objects_like_javas_no_arg_constructor() {
 fn new_and_default_disagree() {
     assert_ne!(RouterSettings::new(), RouterSettings::default());
 }
-
 
 #[test]
 fn renamed_keys_appear_in_serialized_output() {
@@ -142,7 +140,6 @@ fn fanout_ripup_allowed_accepts_both_the_current_key_and_its_alternate() {
     assert_eq!(b.ripup_allowed, Some(true));
 }
 
-
 #[test]
 fn transient_fields_never_appear_in_serialized_output() {
     let mut rs = RouterSettings::new();
@@ -200,7 +197,6 @@ fn optimizer_transient_fields_never_appear_in_serialized_output() {
         .unwrap();
     assert!(!optimizer.contains_key("board_update_strategy"));
 }
-
 
 #[test]
 fn field_names_pin_javas_declaration_order() {
@@ -303,14 +299,12 @@ fn field_names_pin_javas_declaration_order() {
     );
 }
 
-
 #[test]
 fn host_environment_default_max_threads_matches_java_formula() {
     assert_eq!(HostEnvironment::with_processors(1).default_max_threads(), 1);
     assert_eq!(HostEnvironment::with_processors(8).default_max_threads(), 7);
     assert_eq!(HostEnvironment::with_processors(0).default_max_threads(), 1);
 }
-
 
 #[test]
 fn design_rules_checker_settings_default_matches_javas_field_initializers() {

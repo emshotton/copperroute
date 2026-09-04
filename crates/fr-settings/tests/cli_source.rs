@@ -55,7 +55,6 @@ fn json_source_disabling_the_router() -> JsonTestSource {
     JsonTestSource { settings }
 }
 
-
 #[test]
 fn priority_and_source_name() {
     let empty = cli(&[]);
@@ -205,7 +204,6 @@ fn routable_layers_do_not_disable_the_router() {
     assert!(merged.get_run_router());
     assert_eq!(merged.get_layer_count(), 2);
 }
-
 
 #[test]
 fn legacy_bridge_is_dead() {
@@ -409,7 +407,6 @@ fn inc_splits_without_trimming() {
     );
 }
 
-
 fn slots(input: Option<&str>, session: Option<&str>, rules: Option<&str>) -> DeSlots {
     DeSlots {
         initial_input_file: input.map(str::to_string),
@@ -593,7 +590,6 @@ fn de_is_prefix_matched_and_never_double_dashed() {
     );
     assert_eq!(de(&[]), slots(None, None, None));
 }
-
 
 fn cli_native(args: &[&str]) -> CliSettings {
     CliSettings::new_with_set_alias(&argv(args))

@@ -6,15 +6,15 @@ pub const CLEARANCE_SAFETY_MARGIN: i32 = 16;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClearanceMatrix {
-            layer_count: usize,
-                class_names: Vec<String>,
-        values: Vec<i32>,
-        row_max_value: Vec<i32>,
-        max_value_on_layer: Vec<i32>,
+    layer_count: usize,
+    class_names: Vec<String>,
+    values: Vec<i32>,
+    row_max_value: Vec<i32>,
+    max_value_on_layer: Vec<i32>,
 }
 
 impl ClearanceMatrix {
-                            pub fn new<S: AsRef<str>>(
+    pub fn new<S: AsRef<str>>(
         class_count: usize,
         layer_structure: &LayerStructure,
         names: &[S],
@@ -32,7 +32,7 @@ impl ClearanceMatrix {
         }
     }
 
-                        pub fn get_default_instance(
+    pub fn get_default_instance(
         layer_structure: &LayerStructure,
         default_value: i32,
     ) -> ClearanceMatrix {
@@ -41,15 +41,15 @@ impl ClearanceMatrix {
         result
     }
 
-        pub fn get_class_count(&self) -> usize {
+    pub fn get_class_count(&self) -> usize {
         self.class_names.len()
     }
 
-        pub fn get_layer_count(&self) -> usize {
+    pub fn get_layer_count(&self) -> usize {
         self.layer_count
     }
 
-                                    fn index(&self, class_i: usize, class_j: usize, layer: usize) -> usize {
+    fn index(&self, class_i: usize, class_j: usize, layer: usize) -> usize {
         let class_count = self.get_class_count();
         assert!(
             class_i < class_count,
@@ -70,25 +70,25 @@ impl ClearanceMatrix {
         (class_j * class_count + class_i) * self.layer_count + layer
     }
 
-            pub fn get_no(&self, name: &str) -> Option<usize> {
+    pub fn get_no(&self, name: &str) -> Option<usize> {
         self.class_names
             .iter()
             .position(|n| equals_ignore_case(n, name))
     }
 
-            pub fn get_name(&self, clearance_class_index: usize) -> Option<&str> {
+    pub fn get_name(&self, clearance_class_index: usize) -> Option<&str> {
         self.class_names
             .get(clearance_class_index)
             .map(String::as_str)
     }
 
-            pub fn set_default_value(&mut self, value: i32) {
+    pub fn set_default_value(&mut self, value: i32) {
         for layer in 0..self.layer_count {
             self.set_default_value_on_layer(layer, value);
         }
     }
 
-                    pub fn set_default_value_on_layer(&mut self, layer: usize, value: i32) {
+    pub fn set_default_value_on_layer(&mut self, layer: usize, value: i32) {
         for i in 1..self.get_class_count() {
             for j in 1..self.get_class_count() {
                 self.set_value(i, j, layer, value);
@@ -96,13 +96,13 @@ impl ClearanceMatrix {
         }
     }
 
-            pub fn set_value_on_all_layers(&mut self, class_i: usize, class_j: usize, value: i32) {
+    pub fn set_value_on_all_layers(&mut self, class_i: usize, class_j: usize, value: i32) {
         for layer in 0..self.layer_count {
             self.set_value(class_i, class_j, layer, value);
         }
     }
 
-                                                    pub fn set_value(&mut self, class_i: usize, class_j: usize, layer: usize, value: i32) {
+    pub fn set_value(&mut self, class_i: usize, class_j: usize, layer: usize, value: i32) {
         let mut value = value.max(0);
         if value % 2 != 0 {
             if value == i32::MAX {
@@ -119,13 +119,13 @@ impl ClearanceMatrix {
         self.max_value_on_layer[layer] = self.max_value_on_layer[layer].max(value);
     }
 
-                pub fn set_inner_value(&mut self, class_i: usize, class_j: usize, value: i32) {
+    pub fn set_inner_value(&mut self, class_i: usize, class_j: usize, value: i32) {
         for layer in 1..self.layer_count.saturating_sub(1) {
             self.set_value(class_i, class_j, layer, value);
         }
     }
 
-                            pub fn get_value(
+    pub fn get_value(
         &self,
         class_i: usize,
         class_j: usize,
@@ -144,22 +144,22 @@ impl ClearanceMatrix {
         }
     }
 
-                                pub fn max_value(&self, class_i: usize, layer: usize) -> i32 {
+    pub fn max_value(&self, class_i: usize, layer: usize) -> i32 {
         let i = class_i.min(self.get_class_count() - 1);
         let layer_index = layer.min(self.layer_count - 1);
         self.row_max_value[i * self.layer_count + layer_index]
     }
 
-            pub fn max_value_on_layer(&self, layer: usize) -> i32 {
+    pub fn max_value_on_layer(&self, layer: usize) -> i32 {
         self.max_value_on_layer[layer.min(self.layer_count - 1)]
     }
 
-                            pub fn is_layer_dependent(&self, class_i: usize, class_j: usize) -> bool {
+    pub fn is_layer_dependent(&self, class_i: usize, class_j: usize) -> bool {
         let compare_value = self.values[self.index(class_i, class_j, 0)];
         (1..self.layer_count).any(|l| self.values[self.index(class_i, class_j, l)] != compare_value)
     }
 
-                                pub fn is_inner_layer_dependent(&self, class_i: usize, class_j: usize) -> bool {
+    pub fn is_inner_layer_dependent(&self, class_i: usize, class_j: usize) -> bool {
         if self.layer_count <= 2 {
             return false;
         }
@@ -168,11 +168,11 @@ impl ClearanceMatrix {
             .any(|l| self.values[self.index(class_i, class_j, l)] != compare_value)
     }
 
-                pub fn clearance_compensation_value(&self, clearance_class_index: usize, layer: usize) -> i32 {
+    pub fn clearance_compensation_value(&self, clearance_class_index: usize, layer: usize) -> i32 {
         (self.get_value(clearance_class_index, clearance_class_index, layer, false) + 1) / 2
     }
 
-                            pub fn append_class(&mut self, class_name: &str) -> bool {
+    pub fn append_class(&mut self, class_name: &str) -> bool {
         if self.get_no(class_name).is_some() {
             return false;
         }
@@ -207,7 +207,7 @@ impl ClearanceMatrix {
         true
     }
 
-                            pub fn remove_class(&mut self, index: usize) {
+    pub fn remove_class(&mut self, index: usize) {
         let old_class_count = self.get_class_count();
         let new_class_count = old_class_count - 1;
 
@@ -235,7 +235,7 @@ impl ClearanceMatrix {
         self.row_max_value = vec![0; new_class_count * self.layer_count];
     }
 
-                                pub fn is_equal(&self, first: usize, second: usize) -> bool {
+    pub fn is_equal(&self, first: usize, second: usize) -> bool {
         if first == second {
             return true;
         }
@@ -261,7 +261,7 @@ mod tests {
     use super::*;
     use crate::structure::Layer;
 
-                fn ls2() -> LayerStructure {
+    fn ls2() -> LayerStructure {
         LayerStructure::new(vec![Layer::new("Top", true), Layer::new("Bottom", true)])
     }
 
@@ -273,7 +273,7 @@ mod tests {
         ])
     }
 
-        fn dump(m: &ClearanceMatrix) -> Vec<Vec<Vec<i32>>> {
+    fn dump(m: &ClearanceMatrix) -> Vec<Vec<Vec<i32>>> {
         (0..m.get_class_count())
             .map(|j| {
                 (0..m.get_class_count())

@@ -44,9 +44,9 @@ fn fanout_control(
     pin_layer: i32,
 ) -> AutorouteControl {
     let mut ctrl = fresh_control(settings);
-    ctrl.is_fanout = true; 
-    ctrl.fanout_start_pin_center = Some(pin_center); 
-    ctrl.fanout_start_pin_layer = pin_layer; 
+    ctrl.is_fanout = true;
+    ctrl.fanout_start_pin_center = Some(pin_center);
+    ctrl.fanout_start_pin_layer = pin_layer;
     ctrl
 }
 
@@ -113,7 +113,6 @@ fn element(
         ripup_cost: 0,
     }
 }
-
 
 #[test]
 fn without_fanout_the_window_is_not_consulted_at_all() {
@@ -304,7 +303,6 @@ fn both_windows_apply_to_a_drill_on_the_start_layer() {
     ));
     assert!(queue.is_empty());
 }
-
 
 #[test]
 fn the_queue_sorts_and_pops_through_the_engines_door_ids() {

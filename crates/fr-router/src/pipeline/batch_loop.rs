@@ -14,8 +14,6 @@ use crate::pipeline::unrouted_report::build_unrouted_report;
 use crate::pipeline::{NamedAlgorithmType, ProgressSink, RoutingEvent, TaskState};
 use crate::score::BoardStatistics;
 
-
-
 pub const STOP_AT_PASS_MINIMUM: i32 = BatchAutorouter::STOP_AT_PASS_MINIMUM;
 
 pub const STOP_AT_PASS_MODULO: i32 = BatchAutorouter::STOP_AT_PASS_MODULO;
@@ -31,18 +29,17 @@ pub const FANOUT_RECOVERY_STAGNATION_PASSES: i32 =
 
 pub const STAGNATION_SCORE_THRESHOLD: f32 = BatchAutorouter::STAGNATION_SCORE_THRESHOLD;
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BatchLoopExit {
-                Completed,
-        MaxPasses,
-            NoImprovement,
-        Stagnation,
-                Cancelled,
+    Completed,
+    MaxPasses,
+    NoImprovement,
+    Stagnation,
+    Cancelled,
 }
 
 impl BatchLoopExit {
-                                            pub fn task_state(self, timed_out: bool) -> TaskState {
+    pub fn task_state(self, timed_out: bool) -> TaskState {
         match self {
             BatchLoopExit::Cancelled if timed_out => TaskState::TimedOut,
             BatchLoopExit::Cancelled => TaskState::Cancelled,
@@ -54,28 +51,26 @@ impl BatchLoopExit {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct BatchLoopResult {
-            pub state: TaskState,
-            pub exit: BatchLoopExit,
-        pub continue_routing: bool,
-                                            pub passes_run: i32,
-                                pub fanout: Option<FanoutRunSummary>,
-                                    pub per_pass: Vec<PassRecord>,
+    pub state: TaskState,
+    pub exit: BatchLoopExit,
+    pub continue_routing: bool,
+    pub passes_run: i32,
+    pub fanout: Option<FanoutRunSummary>,
+    pub per_pass: Vec<PassRecord>,
 }
 
 impl BatchLoopResult {
-            pub fn exit(&self) -> BatchLoopExit {
+    pub fn exit(&self) -> BatchLoopExit {
         self.exit
     }
 }
 
-
 pub struct AutorouteBatchLoop;
 
 impl AutorouteBatchLoop {
-                                                                                                                                    pub fn run(
+    pub fn run(
         board: &mut Board,
         settings: &RouterSettings,
         stop: &RouterStop,
@@ -115,7 +110,6 @@ impl AutorouteBatchLoop {
 
         let mut bh = BoardHistory::new(scoring);
 
-
         let mut fanout_summary: Option<FanoutRunSummary> = None;
         if settings.is_fanout_enabled() {
             if !board.get_smd_pins().is_empty() {
@@ -138,7 +132,6 @@ impl AutorouteBatchLoop {
         let mut pass_of_best_score: i32 = 0;
         let mut _incomplete_count_at_best_score: usize = 0;
 
-
         let mut failure_log = RoutingFailureLog::new();
         let mut per_pass: Vec<PassRecord> = Vec::new();
 
@@ -150,7 +143,6 @@ impl AutorouteBatchLoop {
             if stop.poll_deadline() {
                 stop.request_stop_auto_router();
             }
-
 
             if settings
                 .max_passes
@@ -206,7 +198,6 @@ impl AutorouteBatchLoop {
                 via_count: stat(board_statistics_after.items.via_count),
                 trace_count: stat(board_statistics_after.items.trace_count),
             });
-
 
             if settings.save_intermediate_stages == Some(true) {
                 progress.on_event(&RoutingEvent::BoardSnapshot { pass: current_pass });
@@ -268,7 +259,6 @@ impl AutorouteBatchLoop {
                     exit = Some(BatchLoopExit::Stagnation);
                     break;
                 }
-
             }
 
             if continue_autorouting && !stop.is_stop_auto_router_requested() {
@@ -277,7 +267,6 @@ impl AutorouteBatchLoop {
         }
 
         final_best_board_swap(board, &mut bh, scoring);
-
 
         let was_router_run =
             settings.get_run_router() && settings.max_passes.is_none_or(|max| max >= 0);
@@ -292,7 +281,6 @@ impl AutorouteBatchLoop {
         }
 
         bh.clear();
-
 
         let exit = exit.unwrap_or({
             if continue_autorouting {
@@ -318,7 +306,6 @@ impl AutorouteBatchLoop {
     }
 }
 
-
 pub fn restore_gate(
     history_size: usize,
     current_pass: i32,
@@ -342,9 +329,9 @@ pub fn stagnation_guard(current_pass: i32, continue_autorouting: bool) -> bool {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StagnationStep {
-        ScoreImproved,
-                    BoardRouted,
-        Accumulate,
+    ScoreImproved,
+    BoardRouted,
+    Accumulate,
 }
 
 pub fn stagnation_step(
@@ -395,7 +382,3 @@ pub(crate) fn stat(value: Option<i32>) -> usize {
     )
     .unwrap_or(0)
 }
-
-
-
-

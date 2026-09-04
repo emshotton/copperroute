@@ -64,7 +64,6 @@ fn the_two_corner_branch_answers_an_empty_simplex() {
     );
 }
 
-
 #[test]
 fn remove_overlaps_on_a_degenerate_array_normalises_to_a_literal() {
     let h = Line::new(IntPoint::new(0, 0), IntPoint::new(1000, 0));

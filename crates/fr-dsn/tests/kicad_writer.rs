@@ -48,12 +48,11 @@ fn board_of(json: &str) -> Option<Box<Board>> {
     }
 }
 
-
 struct WriterCase {
     stem: String,
     design_name: String,
     json: String,
-        expected: Vec<String>,
+    expected: Vec<String>,
 }
 
 fn writer_cases() -> Vec<WriterCase> {
@@ -228,7 +227,6 @@ fn emit_the_port_writer_transcript() {
         }
     }
 }
-
 
 struct SessionCase {
     stem: String,
@@ -451,7 +449,6 @@ fn the_import_session_item_graph_matches_the_jvm() {
         "every XDIFF entry was reached exactly once"
     );
 }
-
 
 #[test]
 fn write_then_read_is_a_fixed_point() {

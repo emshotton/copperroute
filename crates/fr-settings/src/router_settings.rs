@@ -6,74 +6,74 @@ use crate::{FanoutSettings, HostEnvironment, LayerSettings, OptimizerSettings, S
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct RouterSettings {
-        #[serde(rename = "enabled", default, skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "enabled", default, skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
 
-        #[serde(rename = "algorithm", default, skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "algorithm", default, skip_serializing_if = "Option::is_none")]
     pub algorithm: Option<String>,
 
-        #[serde(
+    #[serde(
         rename = "fanout",
         default = "crate::json::constructed_fanout",
         skip_serializing_if = "Option::is_none"
     )]
     pub fanout: Option<FanoutSettings>,
 
-        #[serde(
+    #[serde(
         rename = "copper_to_edge_clearance_um",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub copper_to_edge_clearance_um: Option<f64>,
 
-        #[serde(
+    #[serde(
         rename = "hole_clearance_um",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub hole_clearance_um: Option<f64>,
 
-                #[serde(
+    #[serde(
         rename = "neck_width_um",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub neck_width_um: Option<f64>,
 
-                #[serde(
+    #[serde(
         rename = "strict_drc",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub strict_drc: Option<bool>,
 
-        #[serde(
+    #[serde(
         rename = "job_timeout",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub job_timeout_string: Option<String>,
 
-        #[serde(
+    #[serde(
         rename = "max_passes",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub max_passes: Option<i32>,
 
-            #[serde(skip)]
+    #[serde(skip)]
     pub max_items: Option<i32>,
 
-            #[serde(rename = "layers", default, skip_serializing)]
+    #[serde(rename = "layers", default, skip_serializing)]
     pub layers: Option<Vec<LayerSettings>>,
 
-            #[serde(skip)]
+    #[serde(skip)]
     pub save_intermediate_stages: Option<bool>,
 
-            #[serde(skip)]
+    #[serde(skip)]
     pub ignore_net_classes: Option<Vec<String>>,
 
-        #[serde(
+    #[serde(
         rename = "trace_pull_tight_accuracy",
         alias = "tracePullTightAccuracy",
         default,
@@ -81,14 +81,14 @@ pub struct RouterSettings {
     )]
     pub trace_pull_tight_accuracy: Option<i32>,
 
-                        #[serde(
+    #[serde(
         rename = "allowed_via_types",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub vias_allowed: Option<bool>,
 
-            #[serde(
+    #[serde(
         rename = "automatic_neckdown",
         alias = "automaticNeckdown",
         default,
@@ -96,38 +96,38 @@ pub struct RouterSettings {
     )]
     pub automatic_neckdown: Option<bool>,
 
-        #[serde(
+    #[serde(
         rename = "optimizer",
         default = "crate::json::constructed_optimizer",
         skip_serializing_if = "Option::is_none"
     )]
     pub optimizer: Option<OptimizerSettings>,
 
-        #[serde(
+    #[serde(
         rename = "scoring",
         default = "crate::json::constructed_scoring",
         skip_serializing_if = "Option::is_none"
     )]
     pub scoring: Option<ScoringSettings>,
 
-        #[serde(
+    #[serde(
         rename = "max_threads",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub max_threads: Option<i32>,
 
-            #[serde(
+    #[serde(
         rename = "result_json",
         default,
         skip_serializing_if = "Option::is_none"
     )]
     pub result_json_path: Option<String>,
 
-                            #[serde(skip)]
+    #[serde(skip)]
     pub(crate) board_specific_trace_costs_applied: Option<bool>,
 
-                                                            #[serde(
+    #[serde(
         rename = "opt_changed_area_ms",
         default,
         skip_serializing_if = "Option::is_none"
@@ -136,7 +136,7 @@ pub struct RouterSettings {
 }
 
 impl RouterSettings {
-                                        pub const FIELD_NAMES: &'static [&'static str] = &[
+    pub const FIELD_NAMES: &'static [&'static str] = &[
         "enabled",
         "algorithm",
         "fanout",
@@ -161,7 +161,7 @@ impl RouterSettings {
         "opt_changed_area_ms",
     ];
 
-                            pub fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             fanout: Some(FanoutSettings::default()),
             optimizer: Some(OptimizerSettings::default()),
@@ -170,11 +170,11 @@ impl RouterSettings {
         }
     }
 
-                            pub fn get_layer_count(&self) -> usize {
+    pub fn get_layer_count(&self) -> usize {
         self.layers.as_ref().map_or(0, Vec::len)
     }
 
-                                                                                                    pub fn set_layer_count(&mut self, layer_count: usize) {
+    pub fn set_layer_count(&mut self, layer_count: usize) {
         if !matches!(&self.layers, Some(layers) if layers.len() == layer_count) {
             self.board_specific_trace_costs_applied = Some(false);
             self.layers = Some(vec![LayerSettings::default(); layer_count]);
@@ -189,138 +189,136 @@ impl RouterSettings {
         }
     }
 
+    pub const MIN_BEND_COST: f64 = 0.0;
 
-        pub const MIN_BEND_COST: f64 = 0.0;
+    pub const MAX_BEND_COST: f64 = 9.9;
 
-        pub const MAX_BEND_COST: f64 = 9.9;
+    pub const ALGORITHM_CURRENT: &'static str = "freerouting-router";
 
-        pub const ALGORITHM_CURRENT: &'static str = "freerouting-router";
+    pub const ALGORITHM_V19: &'static str = "freerouting-router-v19";
 
-        pub const ALGORITHM_V19: &'static str = "freerouting-router-v19";
-
-            pub fn get_neck_width_um(&self) -> f64 {
+    pub fn get_neck_width_um(&self) -> f64 {
         self.neck_width_um.filter(|v| *v > 0.0).unwrap_or(0.0)
     }
 
-        pub fn is_strict_drc(&self) -> bool {
+    pub fn is_strict_drc(&self) -> bool {
         self.strict_drc.unwrap_or(false)
     }
 
-        pub fn get_automatic_neckdown(&self) -> bool {
+    pub fn get_automatic_neckdown(&self) -> bool {
         self.automatic_neckdown.unwrap_or(false)
     }
 
-        pub fn set_automatic_neckdown(&mut self, value: bool) {
+    pub fn set_automatic_neckdown(&mut self, value: bool) {
         self.automatic_neckdown = Some(value);
     }
 
-            pub fn get_start_ripup_costs(&self) -> i32 {
+    pub fn get_start_ripup_costs(&self) -> i32 {
         self.scoring
             .as_ref()
             .and_then(|s| s.start_ripup_costs)
             .unwrap_or(1)
     }
 
-            pub fn set_start_ripup_costs(&mut self, value: i32) {
+    pub fn set_start_ripup_costs(&mut self, value: i32) {
         self.scoring
             .get_or_insert_with(ScoringSettings::default)
             .start_ripup_costs = Some(value.max(1));
     }
 
-        pub fn get_run_router(&self) -> bool {
+    pub fn get_run_router(&self) -> bool {
         self.enabled.unwrap_or(true)
     }
 
-        pub fn set_run_router(&mut self, value: bool) {
+    pub fn set_run_router(&mut self, value: bool) {
         self.enabled = Some(value);
     }
 
-                                                                            pub fn is_fanout_enabled(&self) -> bool {
+    pub fn is_fanout_enabled(&self) -> bool {
         self.fanout
             .as_ref()
             .and_then(|fanout| fanout.enabled)
             .unwrap_or(false)
     }
 
-                pub fn get_run_optimizer(&self) -> bool {
+    pub fn get_run_optimizer(&self) -> bool {
         self.optimizer
             .as_ref()
             .and_then(|o| o.enabled)
             .unwrap_or(false)
     }
 
-        pub fn set_run_optimizer(&mut self, value: bool) {
+    pub fn set_run_optimizer(&mut self, value: bool) {
         self.optimizer
             .get_or_insert_with(OptimizerSettings::default)
             .enabled = Some(value);
     }
 
-        pub fn get_vias_allowed(&self) -> bool {
+    pub fn get_vias_allowed(&self) -> bool {
         self.vias_allowed.unwrap_or(true)
     }
 
-                    pub fn set_vias_allowed(&mut self, value: Option<bool>) {
+    pub fn set_vias_allowed(&mut self, value: Option<bool>) {
         self.vias_allowed = value;
     }
 
-        pub fn get_via_costs(&self) -> i32 {
+    pub fn get_via_costs(&self) -> i32 {
         self.scoring.as_ref().and_then(|s| s.via_costs).unwrap_or(1)
     }
 
-        pub fn set_via_costs(&mut self, value: i32) {
+    pub fn set_via_costs(&mut self, value: i32) {
         self.scoring
             .get_or_insert_with(ScoringSettings::default)
             .via_costs = Some(value.max(1));
     }
 
-        pub fn get_plane_via_costs(&self) -> i32 {
+    pub fn get_plane_via_costs(&self) -> i32 {
         self.scoring
             .as_ref()
             .and_then(|s| s.plane_via_costs)
             .unwrap_or(1)
     }
 
-        pub fn set_plane_via_costs(&mut self, value: i32) {
+    pub fn set_plane_via_costs(&mut self, value: i32) {
         self.scoring
             .get_or_insert_with(ScoringSettings::default)
             .plane_via_costs = Some(value.max(1));
     }
 
-        pub fn set_max_passes(&mut self, value: Option<i32>) {
+    pub fn set_max_passes(&mut self, value: Option<i32>) {
         self.max_passes = value;
     }
 
-        pub fn set_job_timeout_string(&mut self, value: Option<String>) {
+    pub fn set_job_timeout_string(&mut self, value: Option<String>) {
         self.job_timeout_string = value;
     }
 
-        pub fn set_enabled(&mut self, value: Option<bool>) {
+    pub fn set_enabled(&mut self, value: Option<bool>) {
         self.enabled = value;
     }
 
-
-        pub fn set_layer_active(&mut self, layer: usize, value: bool) {
+    pub fn set_layer_active(&mut self, layer: usize, value: bool) {
         let Some(entry) = self.layers.as_mut().and_then(|l| l.get_mut(layer)) else {
             return;
         };
         entry.routable = Some(value);
     }
 
-            pub fn get_layer_active(&self, layer: usize) -> bool {
+    pub fn get_layer_active(&self, layer: usize) -> bool {
         let Some(entry) = self.layers.as_ref().and_then(|l| l.get(layer)) else {
             return false;
         };
         entry.routable.unwrap_or(true)
     }
 
-            pub fn set_bend_cost(&mut self, layer: usize, value: f64) {
+    pub fn set_bend_cost(&mut self, layer: usize, value: f64) {
         let Some(entry) = self.layers.as_mut().and_then(|l| l.get_mut(layer)) else {
             return;
         };
         entry.bend_cost = Some(clamp_bend_cost(value));
     }
 
-                                        pub fn get_bend_cost(&self, layer: usize) -> f64 {
+    pub fn get_bend_cost(&self, layer: usize) -> f64 {
         let Some(entry) = self.layers.as_ref().and_then(|l| l.get(layer)) else {
             return 0.0;
         };
@@ -334,14 +332,14 @@ impl RouterSettings {
         }
     }
 
-        pub fn set_preferred_direction_is_horizontal(&mut self, layer: usize, value: bool) {
+    pub fn set_preferred_direction_is_horizontal(&mut self, layer: usize, value: bool) {
         let Some(entry) = self.layers.as_mut().and_then(|l| l.get_mut(layer)) else {
             return;
         };
         entry.preferred_direction_horizontal = Some(value);
     }
 
-            pub fn get_preferred_direction_is_horizontal(&self, layer: usize) -> bool {
+    pub fn get_preferred_direction_is_horizontal(&self, layer: usize) -> bool {
         let Some(entry) = self.layers.as_ref().and_then(|l| l.get(layer)) else {
             return false;
         };
@@ -350,7 +348,7 @@ impl RouterSettings {
             .unwrap_or(layer % 2 == 1)
     }
 
-                            pub fn set_preferred_direction_trace_costs(&mut self, layer: usize, value: f64) {
+    pub fn set_preferred_direction_trace_costs(&mut self, layer: usize, value: f64) {
         let layer_count = self.get_layer_count();
         if layer >= layer_count {
             return;
@@ -366,7 +364,7 @@ impl RouterSettings {
         self.board_specific_trace_costs_applied = Some(true);
     }
 
-            pub fn get_preferred_direction_trace_costs(&self, layer: usize) -> f64 {
+    pub fn get_preferred_direction_trace_costs(&self, layer: usize) -> f64 {
         if layer >= self.get_layer_count() {
             return 0.0;
         }
@@ -377,7 +375,7 @@ impl RouterSettings {
             .unwrap_or(1.0)
     }
 
-                pub fn set_against_preferred_direction_trace_costs(&mut self, layer: usize, value: f64) {
+    pub fn set_against_preferred_direction_trace_costs(&mut self, layer: usize, value: f64) {
         let layer_count = self.get_layer_count();
         if layer >= layer_count {
             return;
@@ -393,7 +391,7 @@ impl RouterSettings {
         self.board_specific_trace_costs_applied = Some(true);
     }
 
-        pub fn get_against_preferred_direction_trace_costs(&self, layer: usize) -> f64 {
+    pub fn get_against_preferred_direction_trace_costs(&self, layer: usize) -> f64 {
         if layer >= self.get_layer_count() {
             return 0.0;
         }
@@ -404,7 +402,7 @@ impl RouterSettings {
             .unwrap_or(1.0)
     }
 
-                                                            pub fn get_horizontal_trace_costs(&self, layer: usize) -> f64 {
+    pub fn get_horizontal_trace_costs(&self, layer: usize) -> f64 {
         if layer >= self.get_layer_count() {
             return 0.0;
         }
@@ -418,7 +416,7 @@ impl RouterSettings {
         array.and_then(|a| a.get(layer).copied()).unwrap_or(1.0)
     }
 
-                                    pub fn get_vertical_trace_costs(&self, layer: usize) -> f64 {
+    pub fn get_vertical_trace_costs(&self, layer: usize) -> f64 {
         if layer >= self.get_layer_count() {
             return 0.0;
         }
@@ -432,7 +430,7 @@ impl RouterSettings {
         array.and_then(|a| a.get(layer).copied()).unwrap_or(1.0)
     }
 
-                                        pub fn get_trace_costs(&self) -> Vec<ExpansionCostFactor> {
+    pub fn get_trace_costs(&self) -> Vec<ExpansionCostFactor> {
         let Some(length) = self
             .scoring
             .as_ref()
@@ -449,8 +447,7 @@ impl RouterSettings {
             .collect()
     }
 
-
-                                                                                                    pub fn java_clone(&self) -> Self {
+    pub fn java_clone(&self) -> Self {
         let mut result = Self::new();
         let layer_count = self.get_layer_count();
         if layer_count > 0 {
@@ -481,7 +478,7 @@ impl RouterSettings {
         result
     }
 
-                            pub fn set_max_threads(&mut self, value: Option<i32>, host: &HostEnvironment) {
+    pub fn set_max_threads(&mut self, value: Option<i32>, host: &HostEnvironment) {
         let normalized = normalize_max_threads(value, host);
         self.max_threads = Some(normalized);
         if let Some(optimizer) = self.optimizer.as_mut() {
@@ -489,7 +486,7 @@ impl RouterSettings {
         }
     }
 
-                                                                                                                            pub fn validate(&mut self, host: &HostEnvironment) {
+    pub fn validate(&mut self, host: &HostEnvironment) {
         let max_passes = self
             .max_passes
             .expect("RouterSettings.java:934: maxPasses is dereferenced unboxed");
@@ -541,15 +538,15 @@ fn java_math_max(a: f64, b: f64) -> f64 {
 
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct ExpansionCostFactor {
-        pub horizontal: f64,
-        pub vertical: f64,
+    pub horizontal: f64,
+    pub vertical: f64,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-                                                                    #[test]
+    #[test]
     fn set_layer_count_rewipes_costs_but_keeps_the_applied_flag() {
         let mut settings = RouterSettings::new();
         settings.set_layer_count(2);
@@ -566,7 +563,7 @@ mod tests {
         );
     }
 
-                #[test]
+    #[test]
     fn set_layer_count_resets_applied_flag() {
         let mut settings = RouterSettings::new();
         settings.set_layer_count(2);
@@ -579,7 +576,7 @@ mod tests {
         assert_eq!(settings.get_layer_count(), 4);
     }
 
-            #[test]
+    #[test]
     fn out_of_range_trace_cost_setter_does_not_set_the_applied_flag() {
         let mut settings = RouterSettings::new();
         settings.set_preferred_direction_trace_costs(0, 9.0);
@@ -594,7 +591,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn java_clone_carries_the_applied_flag() {
         let mut settings = RouterSettings::new();
         settings.set_layer_count(2);
@@ -612,7 +609,7 @@ mod tests {
         );
     }
 
-        #[test]
+    #[test]
     fn java_math_max_propagates_nan() {
         assert!(java_math_max(f64::NAN, 0.1).is_nan());
         assert!(java_math_max(0.1, f64::NAN).is_nan());

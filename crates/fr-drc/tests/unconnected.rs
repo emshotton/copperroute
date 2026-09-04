@@ -3,7 +3,6 @@ use fr_drc::{DesignRulesChecker, UnconnectedItems, UnconnectedKind};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{IntBox, IntPoint, IntVector, Point, Polyline, Shape, TileShape};
 
-
 fn fixture_board(name: &str) -> Board {
     let path = parity::fixture(name);
     let bytes = std::fs::read(&path)
@@ -34,7 +33,6 @@ fn fixture_entries(fixture: &str) -> (Board, Vec<UnconnectedItems>) {
     let entries = DesignRulesChecker::new(&mut board).get_all_unconnected_items();
     (board, entries)
 }
-
 
 #[test]
 fn dev_board_phase_counts() {
@@ -102,7 +100,6 @@ fn spot_checked_dangling_track_ids() {
         );
     }
 }
-
 
 #[test]
 fn the_three_fixtures_match_the_jvm() {
@@ -187,7 +184,6 @@ fn render(board: &Board, entries: &[UnconnectedItems]) -> String {
     out
 }
 
-
 #[test]
 fn entries_are_ordered_by_ascending_net_number() {
     if !parity::require_java_dir() {
@@ -224,7 +220,6 @@ fn the_representative_is_the_lowest_id_pin_then_trace_then_item() {
     assert_eq!(entry.second_item, Some(ItemId(2)));
 }
 
-
 #[test]
 fn the_dangling_dedup_only_checks_first_item() {
     let mut board = dedup_board();
@@ -260,7 +255,6 @@ fn a_first_item_trace_is_the_one_case_the_dedup_catches() {
         vec![ItemId(2)],
     );
 }
-
 
 #[test]
 fn the_via_phase_has_no_dedup_at_all() {
@@ -338,7 +332,6 @@ fn every_dangling_trace_precedes_every_dangling_via() {
     assert_eq!(last_via, entries.len() - 1);
 }
 
-
 #[test]
 fn a_net_with_one_item_is_never_unconnected() {
     let mut board = single_item_net_board();
@@ -358,7 +351,6 @@ fn empty_board_has_nothing_unconnected() {
     let (_, entries) = fixture_entries("empty_board.dsn");
     assert_eq!(phase_counts(&entries), (0, 0, 0));
 }
-
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {

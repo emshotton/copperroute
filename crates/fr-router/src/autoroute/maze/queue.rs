@@ -11,13 +11,13 @@ pub struct MazeQueue {
 }
 
 impl MazeQueue {
-        pub fn new() -> MazeQueue {
+    pub fn new() -> MazeQueue {
         MazeQueue {
             set: JavaTreeSet::new(),
         }
     }
 
-                                                                                    pub fn push(
+    pub fn push(
         &mut self,
         element: MazeListElement,
         ctrl: &AutorouteControl,
@@ -30,7 +30,7 @@ impl MazeQueue {
         if ctrl.is_fanout
             && let Some(pin_center) = ctrl.fanout_start_pin_center.as_ref()
         {
-            let pin_center_float = pin_center.to_float(); 
+            let pin_center_float = pin_center.to_float();
 
             let on_start_layer = element.next_room.is_some_and(|room| {
                 engine.rooms.room_layer(board, room).is_some_and(|layer| {
@@ -39,16 +39,16 @@ impl MazeQueue {
             });
             if on_start_layer {
                 let max_len = ctrl.fanout_max_escape_length;
-                let resolution = board.communication.get_resolution(Unit::Um); 
+                let resolution = board.communication.get_resolution(Unit::Um);
                 let entry_point = element.shape_entry.a.middle_point(&element.shape_entry.b);
                 let dist = entry_point.distance(&pin_center_float);
                 if dist > max_len * resolution {
-                    return false; 
+                    return false;
                 }
             }
             if let ExpandableRef::Drill(drill) = element.door {
-                let min_len = ctrl.fanout_min_escape_length; 
-                let resolution = board.communication.get_resolution(Unit::Um); 
+                let min_len = ctrl.fanout_min_escape_length;
+                let resolution = board.communication.get_resolution(Unit::Um);
                 let drill_dist = engine
                     .rooms
                     .drills
@@ -56,9 +56,9 @@ impl MazeQueue {
                     .expect("MazeSearchEngine.add: the element's drill (Java holds a reference)")
                     .location
                     .to_float()
-                    .distance(&pin_center_float); 
+                    .distance(&pin_center_float);
                 if drill_dist < min_len * resolution {
-                    return false; 
+                    return false;
                 }
             }
         }
@@ -82,19 +82,19 @@ impl MazeQueue {
         self.set.add_by(element, |a, b| a.compare_to(b, door_id))
     }
 
-            pub fn pop_first(&mut self) -> Option<MazeListElement> {
+    pub fn pop_first(&mut self) -> Option<MazeListElement> {
         self.set.poll_first()
     }
 
-        pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.set.is_empty()
     }
 
-        pub fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.set.len()
     }
 
-            pub fn iter(&self) -> impl Iterator<Item = &MazeListElement> {
+    pub fn iter(&self) -> impl Iterator<Item = &MazeListElement> {
         self.set.iter()
     }
 }

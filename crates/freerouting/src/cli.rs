@@ -9,11 +9,11 @@ use std::path::PathBuf;
     about = "Headless PCB autorouter (Rust port of freerouting)"
 )]
 pub struct Cli {
-            #[arg(short, long, action = clap::ArgAction::Count, global = true)]
+    #[arg(short, long, action = clap::ArgAction::Count, global = true)]
     pub verbose: u8,
-                #[arg(long, global = true)]
+    #[arg(long, global = true)]
     pub log_level: Option<String>,
-                                                                                                #[arg(long, global = true, value_name = "FILE")]
+    #[arg(long, global = true, value_name = "FILE")]
     pub settings: Option<PathBuf>,
     #[command(subcommand)]
     pub command: Command,
@@ -21,28 +21,28 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
-        Route(RouteArgs),
-        Drc(DrcArgs),
-        Info(InfoArgs),
-        Mcp,
+    Route(RouteArgs),
+    Drc(DrcArgs),
+    Info(InfoArgs),
+    Mcp,
 }
 
 #[derive(Args, Debug)]
 pub struct RouteArgs {
-        pub input: PathBuf,
-        #[arg(short, long)]
+    pub input: PathBuf,
+    #[arg(short, long)]
     pub output: PathBuf,
     #[arg(long)]
     pub rules: Option<PathBuf>,
-        #[arg(long)]
+    #[arg(long)]
     pub ses: Option<PathBuf>,
-                #[arg(long)]
+    #[arg(long)]
     pub kicad_json: Option<PathBuf>,
     #[arg(long)]
     pub max_passes: Option<u32>,
-        #[arg(long)]
+    #[arg(long)]
     pub timeout: Option<u64>,
-                                                            #[arg(long)]
+    #[arg(long)]
     pub threads: Option<u32>,
     #[arg(long)]
     pub result_json: Option<PathBuf>,
@@ -56,7 +56,7 @@ pub struct RouteArgs {
     pub hybrid_ratio: Option<String>,
     #[arg(long)]
     pub item_selection: Option<String>,
-                                                                                                                                                                                            #[arg(long = "set")]
+    #[arg(long = "set")]
     pub set: Vec<String>,
 }
 
@@ -67,19 +67,19 @@ pub struct DrcArgs {
     pub ses: Option<PathBuf>,
     #[arg(long)]
     pub rules: Option<PathBuf>,
-        #[arg(long)]
+    #[arg(long)]
     pub kicad_json: Option<PathBuf>,
-        #[arg(short, long)]
+    #[arg(short, long)]
     pub output: Option<PathBuf>,
-            #[arg(long, value_enum, default_value_t = DrcSchema::Kicad)]
+    #[arg(long, value_enum, default_value_t = DrcSchema::Kicad)]
     pub schema: DrcSchema,
 }
 
 #[derive(clap::ValueEnum, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DrcSchema {
-                #[default]
+    #[default]
     Kicad,
-                Freerouting,
+    Freerouting,
 }
 
 #[derive(Args, Debug)]

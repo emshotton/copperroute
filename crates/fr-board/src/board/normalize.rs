@@ -12,7 +12,7 @@ use super::Board;
 pub const MAX_NORMALIZE_ITERATIONS: u32 = 2000;
 
 impl Board {
-                pub fn combine_traces(&mut self, net_number: i32) -> Result<bool, BoardError> {
+    pub fn combine_traces(&mut self, net_number: i32) -> Result<bool, BoardError> {
         let mut result = false;
         let mut something_changed = true;
         while something_changed {
@@ -37,11 +37,11 @@ impl Board {
         Ok(result)
     }
 
-                                            pub fn normalize_traces(&mut self, net_number: i32) -> Result<bool, BoardError> {
+    pub fn normalize_traces(&mut self, net_number: i32) -> Result<bool, BoardError> {
         self.normalize_traces_checked(net_number, &|| false)
     }
 
-                pub fn normalize_traces_checked(
+    pub fn normalize_traces_checked(
         &mut self,
         net_number: i32,
         stop: StopCheck<'_>,
@@ -90,11 +90,11 @@ impl Board {
         Ok(result)
     }
 
-                                                pub fn normalize_all_traces(&mut self) -> Result<bool, BoardError> {
+    pub fn normalize_all_traces(&mut self) -> Result<bool, BoardError> {
         self.normalize_all_traces_checked(&|| false)
     }
 
-                        pub fn normalize_all_traces_checked(
+    pub fn normalize_all_traces_checked(
         &mut self,
         stop: StopCheck<'_>,
     ) -> Result<bool, BoardError> {
@@ -158,7 +158,7 @@ impl Board {
         Ok(result)
     }
 
-                pub fn split_traces(
+    pub fn split_traces(
         &mut self,
         location: &Point,
         layer: usize,
@@ -167,7 +167,7 @@ impl Board {
         self.split_traces_checked(location, layer, net_number, &|| false)
     }
 
-                                pub fn split_traces_checked(
+    pub fn split_traces_checked(
         &mut self,
         location: &Point,
         layer: usize,

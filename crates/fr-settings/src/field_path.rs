@@ -4,30 +4,29 @@ use crate::{
     MergeError, OptimizerSettings, RouterSettings, ScoringSettings,
 };
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FieldKind {
-        Bool,
-        I32,
-        I64,
-        F32,
-        F64,
-        Str,
-            Enum(&'static [&'static str]),
-        StringVec,
-        F64Vec,
-            I32Vec,
-        Nested,
-            ObjectArray,
+    Bool,
+    I32,
+    I64,
+    F32,
+    F64,
+    Str,
+    Enum(&'static [&'static str]),
+    StringVec,
+    F64Vec,
+    I32Vec,
+    Nested,
+    ObjectArray,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct FieldSpec {
-            pub serialized: &'static str,
-        pub alternates: &'static [&'static str],
-        pub java_name: &'static str,
-            pub rust_name: &'static str,
-        pub kind: FieldKind,
+    pub serialized: &'static str,
+    pub alternates: &'static [&'static str],
+    pub java_name: &'static str,
+    pub rust_name: &'static str,
+    pub kind: FieldKind,
 }
 
 const BOARD_UPDATE_STRATEGY_NAMES: &[&str] = &["GREEDY", "GLOBAL_OPTIMAL", "HYBRID"];
@@ -65,7 +64,7 @@ const fn spec_alt(
 }
 
 impl RouterSettings {
-            pub const FIELDS: &'static [FieldSpec] = &[
+    pub const FIELDS: &'static [FieldSpec] = &[
         spec("enabled", "enabled", "enabled", FieldKind::Bool),
         spec("algorithm", "algorithm", "algorithm", FieldKind::Str),
         spec("fanout", "fanout", "fanout", FieldKind::Nested),
@@ -154,7 +153,7 @@ impl RouterSettings {
 }
 
 impl LayerSettings {
-        pub const FIELDS: &'static [FieldSpec] = &[
+    pub const FIELDS: &'static [FieldSpec] = &[
         spec("routable", "routable", "routable", FieldKind::Bool),
         spec(
             "preferred_direction_horizontal",
@@ -167,7 +166,7 @@ impl LayerSettings {
 }
 
 impl ScoringSettings {
-        pub const FIELDS: &'static [FieldSpec] = &[
+    pub const FIELDS: &'static [FieldSpec] = &[
         spec(
             "preferred_direction_trace_cost",
             "preferredDirectionTraceCost",
@@ -240,7 +239,7 @@ impl ScoringSettings {
 }
 
 impl OptimizerSettings {
-        pub const FIELDS: &'static [FieldSpec] = &[
+    pub const FIELDS: &'static [FieldSpec] = &[
         spec("enabled", "enabled", "enabled", FieldKind::Bool),
         spec("algorithm", "algorithm", "algorithm", FieldKind::Str),
         spec("max_passes", "maxPasses", "max_passes", FieldKind::I32),
@@ -299,7 +298,7 @@ impl OptimizerSettings {
 }
 
 impl FanoutSettings {
-        pub const FIELDS: &'static [FieldSpec] = &[
+    pub const FIELDS: &'static [FieldSpec] = &[
         spec("enabled", "enabled", "enabled", FieldKind::Bool),
         spec("max_passes", "maxPasses", "max_passes", FieldKind::I32),
         spec("max_items", "maxItems", "max_items", FieldKind::I32),
@@ -356,7 +355,6 @@ impl FanoutSettings {
     ];
 }
 
-
 pub(crate) fn java_trim(value: &str) -> &str {
     value.trim_matches(|c: char| c <= '\u{20}')
 }
@@ -396,7 +394,6 @@ fn equals_ignore_case(a: &str, b: &str) -> bool {
     a.eq_ignore_ascii_case(b)
 }
 
-
 fn candidate_matches(candidate: &str, name: &str, camel_name: &str) -> bool {
     if equals_ignore_case(candidate, name) || equals_ignore_case(candidate, camel_name) {
         return true;
@@ -430,7 +427,6 @@ fn resolve_field(fields: &'static [FieldSpec], name: &str) -> Option<&'static Fi
     None
 }
 
-
 fn number_format(path: &str, value: &str) -> MergeError {
     MergeError::NumberFormat {
         path: path.to_string(),
@@ -460,9 +456,9 @@ pub fn java_parse_i64(value: &str, path: &str) -> Result<i64, MergeError> {
 }
 
 enum FloatLexeme<'a> {
-        Nan,
-        Infinity(bool),
-            Decimal(&'a str),
+    Nan,
+    Infinity(bool),
+    Decimal(&'a str),
 }
 
 fn java_float_lexeme(value: &str) -> Option<FloatLexeme<'_>> {
@@ -510,7 +506,7 @@ fn java_float_lexeme(value: &str) -> Option<FloatLexeme<'_>> {
             k += 1;
         }
         if k == exponent_start {
-            return None; 
+            return None;
         }
         j = k;
     }
@@ -619,7 +615,6 @@ pub fn java_parse_i32_vec(value: &str, path: &str) -> Result<Vec<i32>, MergeErro
         .map(|token| java_parse_i32(java_trim(token), path))
         .collect()
 }
-
 
 pub fn set_field_value(
     target: &mut RouterSettings,
@@ -872,7 +867,7 @@ fn set_fanout_property(
 mod tests {
     use super::*;
 
-            #[test]
+    #[test]
     fn snake_to_lower_camel_matches_java() {
         assert_eq!(snake_to_lower_camel("maxPasses"), "maxPasses");
         assert_eq!(snake_to_lower_camel("MAXPASSES"), "MAXPASSES");
@@ -888,7 +883,7 @@ mod tests {
         assert_eq!(snake_to_lower_camel("_"), "");
     }
 
-            #[test]
+    #[test]
     fn java_split_matches_java() {
         let comma = |c: char| c == ',';
         assert_eq!(java_split("a,b", comma), ["a", "b"]);
@@ -902,14 +897,14 @@ mod tests {
         assert!(java_split(",,", comma).is_empty());
     }
 
-            #[test]
+    #[test]
     fn java_trim_is_not_rust_trim() {
         assert_eq!(java_trim("\t 7 \n"), "7");
         assert_eq!(java_trim("\u{a0}7"), "\u{a0}7");
         assert!(java_parse_f64("\u{a0}7", "x").is_err());
     }
 
-                        #[test]
+    #[test]
     fn private_fields_are_settable() {
         let mut settings = RouterSettings::new();
         assert_eq!(settings.board_specific_trace_costs_applied, None);
@@ -922,7 +917,7 @@ mod tests {
         assert_eq!(settings.board_specific_trace_costs_applied, Some(false));
     }
 
-            #[test]
+    #[test]
     fn the_no_annotation_sentinel_never_matches() {
         assert!(resolve_field(RouterSettings::FIELDS, "").is_none());
         let mut settings = RouterSettings::new();
