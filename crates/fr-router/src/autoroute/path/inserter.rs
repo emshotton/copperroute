@@ -187,33 +187,36 @@ impl FoundConnectionInserter {
         // `:78`'s `else` (`:84-90`) is the `FRLogger.warn` for a null `firstCorner`, which
         // happens only when `connectionItems` is empty — so the two tests collapse into one.
         //
-        // Java bug: FoundConnectionInserter.getInstance:82 sizes the stub onto the **target**
-        // item from `ctrl.traceHalfWidth[connection.startLayer]`, while
+        // fixed: T11 (#187). Java bug: FoundConnectionInserter.getInstance:82 sized the stub onto
+        // the **target** item from `ctrl.traceHalfWidth[connection.startLayer]`, while
         // `RoutingBoard.connectToTrace:1135` inserts it on `toTrace.getLayer()` — the target
-        // trace's layer. The two indices are crossed; see docs/java-quirks.md #187.
+        // trace's layer. The width is now chosen inside `connectToTrace`, from the layer it has
+        // just computed, which is the register's own preferred remedy; see docs/java-quirks.md
+        // #187 and `Board::connect_to_trace_sized_by_layer`.
         if let Some(target_item) = connection.target_item
             && let Some(first_corner) = new_instance.first_corner
         {
-            board.connect_to_trace(
+            board.connect_to_trace_sized_by_layer(
                 &Point::Int(first_corner),
                 target_item,
-                ctrl.trace_half_width[connection.start_layer],
+                &ctrl.trace_half_width,
                 ctrl.trace_clearance_class_index,
             );
         }
         // :92-106.
         // `:93`'s `else` (`:99-105`) is the matching `FRLogger.warn`.
         //
-        // Java bug: FoundConnectionInserter.getInstance:97 is the mirror of `:82` — the stub onto
-        // the **start** item is sized from `ctrl.traceHalfWidth[connection.targetLayer]` and
-        // inserted on the start trace's own layer. docs/java-quirks.md #187.
+        // fixed: T11 (#187). Java bug: FoundConnectionInserter.getInstance:97 is the mirror of
+        // `:82` — the stub onto the **start** item was sized from
+        // `ctrl.traceHalfWidth[connection.targetLayer]` and inserted on the start trace's own
+        // layer. docs/java-quirks.md #187.
         if let Some(start_item) = connection.start_item
             && let Some(last_corner) = new_instance.last_corner
         {
-            board.connect_to_trace(
+            board.connect_to_trace_sized_by_layer(
                 &Point::Int(last_corner),
                 start_item,
-                ctrl.trace_half_width[connection.target_layer],
+                &ctrl.trace_half_width,
                 ctrl.trace_clearance_class_index,
             );
         }

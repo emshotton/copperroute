@@ -1003,3 +1003,178 @@ fn a_null_last_corner_panics_where_java_dereferences_it() {
         &|| counter.check(),
     );
 }
+
+// =================================================================================================
+// #187 — the stub takes the width of the layer it lands on (Plan 9 Task 11)
+// =================================================================================================
+
+/// The DSN fixture built for this row, and reused by Task 21's #128. Two-layer 300 mm x 200 mm
+/// board; `P1`/`P3` are F.Cu-only pads and `P2`/`P4` B.Cu-only, so every connection *must* change
+/// layer; and the net class carries
+///
+/// ```text
+/// (layer_rule F.Cu (rule (width 4000)))     -> 4000 um
+/// (layer_rule B.Cu (rule (width  500)))     ->  500 um
+/// ```
+///
+/// an **8 : 1** ratio, so a stub sized from the wrong layer is a factor-of-eight error rather
+/// than a rounding argument. Nothing in `tests/reference/` distinguishes the two layers, which is
+/// why #187 was latent and why this fixture had to exist.
+const PER_LAYER_WIDTH_STEM: &str = "p9t11-per-layer-width";
+
+/// The fixture really does carry two different per-layer widths, and they really do reach the
+/// board rules. Without this, the width test below could pass against a board on which both
+/// layers happened to agree — which is the exact condition that hid #187 for the whole port.
+///
+/// Task 21's #128 reuses this fixture, so this test is also its acceptance: it states the property
+/// #128 will need, rather than merely that the file parses.
+#[test]
+fn the_per_layer_width_fixture_really_has_two_different_widths() {
+    let board = read_per_layer_width_board();
+    let net_no = 1;
+    let front = board.rules.get_trace_half_width(net_no, 0);
+    let back = board.rules.get_trace_half_width(net_no, 1);
+    assert!(
+        front > 0 && back > 0,
+        "both layers carry a width: F.Cu {front}, B.Cu {back}"
+    );
+    assert_eq!(
+        front,
+        back * 8,
+        "the 8:1 ratio is the whole point of the fixture: F.Cu {front}, B.Cu {back}"
+    );
+}
+
+/// **fixed: T11 (#187).** `FoundConnectionInserter.getInstance:82` sized the stub onto the target
+/// item from `ctrl.traceHalfWidth[connection.startLayer]`, and `:97` sized the stub onto the start
+/// item from `[connection.targetLayer]` — while `RoutingBoard.connectToTrace:1135` inserts each on
+/// `toTrace.getLayer()`, the layer of the trace it is connecting *to*. The two indices are
+/// crossed, and there is no reading under which the width belongs to a layer the copper does not
+/// land on.
+///
+/// The width is now chosen inside `connectToTrace`, from the layer it has just computed
+/// (`Board::connect_to_trace_sized_by_layer`) — the register's own preferred remedy — so a call
+/// site cannot re-cross the indices.
+///
+/// The assertion runs an 8:1 pair of per-layer widths through both directions: a stub landing on
+/// the layer-1 trace takes layer 1's half width, and a stub landing on the layer-0 trace takes
+/// layer 0's. Before the fix each took the *other* one, so both directions moved by a factor of
+/// eight — which is why the fixture's ratio is 8:1 and not something a rounding argument could
+/// explain away.
+#[test]
+fn the_stub_takes_the_width_of_the_layer_it_lands_on() {
+    const PER_LAYER: [i32; 2] = [200, 25];
+
+    for target_layer in [0usize, 1] {
+        // `probe_board`'s +/-4000 bounding box, not `simple_board`'s +/-1000: at half width 200
+        // the wide stub needs room to clear the board boundary, and a stub that fails
+        // `checkPolylineTrace` would make this test pass by inserting nothing.
+        let mut board = probe_board();
+        // A net-1 trace on `target_layer`, clear of every pin, for the stub to land on.
+        board.insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-1000, 3000), Point::new(1000, 3000)]),
+            target_layer,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        );
+        let target = *board
+            .items
+            .iter()
+            .filter(|(_, item)| matches!(item, Item::Trace(_)))
+            .map(|(id, _)| id)
+            .max()
+            .expect("the trace was inserted");
+        let before: BTreeSet<ItemId> = board.items.keys().copied().collect();
+
+        assert!(
+            board.connect_to_trace_sized_by_layer(&Point::new(0, 3400), target, &PER_LAYER, 1),
+            "the stub is inserted"
+        );
+
+        let stub_half_widths: Vec<i32> = board
+            .items
+            .iter()
+            .filter(|(id, _)| !before.contains(id))
+            .filter_map(|(_, item)| match item {
+                Item::Trace(trace) => Some(trace.get_half_width()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            stub_half_widths,
+            vec![PER_LAYER[target_layer]],
+            "a stub landing on layer {target_layer} takes layer {target_layer}'s half width \
+             ({}), not the other layer's ({})",
+            PER_LAYER[target_layer],
+            PER_LAYER[1 - target_layer]
+        );
+
+        // The control, and the fail-before this test would otherwise not have: the scalar
+        // `connect_to_trace` — which is what the crossed call sites used — really does put the
+        // width it is handed on the copper, so the assertion above is discriminating and not a
+        // tautology about two numbers that happen to agree. Java's answer for this stub was
+        // `PER_LAYER[1 - target_layer]`, and this is that answer, reproduced on demand.
+        let mut wrong = probe_board();
+        wrong.insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-1000, 3000), Point::new(1000, 3000)]),
+            target_layer,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        );
+        let wrong_target = *wrong
+            .items
+            .iter()
+            .filter(|(_, item)| matches!(item, Item::Trace(_)))
+            .map(|(id, _)| id)
+            .max()
+            .expect("the trace was inserted");
+        let wrong_before: BTreeSet<ItemId> = wrong.items.keys().copied().collect();
+        assert!(wrong.connect_to_trace(
+            &Point::new(0, 3400),
+            wrong_target,
+            PER_LAYER[1 - target_layer],
+            1,
+        ));
+        let wrong_widths: Vec<i32> = wrong
+            .items
+            .iter()
+            .filter(|(id, _)| !wrong_before.contains(id))
+            .filter_map(|(_, item)| match item {
+                Item::Trace(trace) => Some(trace.get_half_width()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            wrong_widths,
+            vec![PER_LAYER[1 - target_layer]],
+            "the control: the width handed in is the width that lands, so the two answers really \
+             are different and the fix is doing work"
+        );
+    }
+}
+
+/// Reads [`PER_LAYER_WIDTH_STEM`] into a `Board`, the way `tree_ext.rs` reads its own 90-degree
+/// fixture.
+fn read_per_layer_width_board() -> Board {
+    use fr_dsn::{BoardReadResult, DsnReadOptions};
+
+    let root = parity::workspace_root();
+    let dsn = root.join(format!(
+        "crates/fr-router/tests/data/{PER_LAYER_WIDTH_STEM}.dsn"
+    ));
+    let bytes =
+        std::fs::read(&dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
+    match fr_dsn::read_board(
+        std::io::Cursor::new(&bytes[..]),
+        None,
+        Some(&format!("{PER_LAYER_WIDTH_STEM}.dsn")),
+        &DsnReadOptions::default(),
+    ) {
+        BoardReadResult::Success { board, .. } => *board.expect("the fixture produces a board"),
+        other => panic!("{PER_LAYER_WIDTH_STEM} did not read: {other:?}"),
+    }
+}
