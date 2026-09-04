@@ -327,14 +327,16 @@ impl ShapeAndEntrySide {
             if let Some(end_cutline) = end_cutline {
                 let cut_plane = TileShape::get_instance_from_line(end_cutline);
                 let tmp_shape = current_shape.intersection(&cut_plane);
-                // fixed: T11 (#68). Java bug: ShapeAndEntrySide.java:41 reads
-                // `tmpShape != currentShape && !tmpShape.isEmpty()`, but `!=` on two `TileShape`
-                // *references* is identity, and `Simplex.intersection(Simplex)` always allocates
-                // (Simplex.java:620-630), so the first half is always true. The effective
-                // condition was just "non-empty" — so a cut that removed nothing still set
-                // `cutOffAtEnd`, and the `fromSide` search below then hunted for a border line the
-                // shape does not have. That is the same defect as #7's `-1`, from the other side:
-                // #7 made the hunt unrecoverable, #68 started hunts that never needed to happen.
+                // Java bug: ShapeAndEntrySide.java:41 reads `tmpShape != currentShape &&
+                // !tmpShape.isEmpty()`, but `!=` on two `TileShape` *references* is identity, and
+                // `Simplex.intersection(Simplex)` always allocates (Simplex.java:620-630), so the
+                // first half is always true. The effective condition is just "non-empty" — so a
+                // cut that removed nothing still set `cutOffAtEnd`, and the `fromSide` search
+                // below then hunted for a border line the shape does not have. That is the same
+                // defect as #7's `-1` from the other side: #7 makes the hunt unrecoverable, #68
+                // starts hunts that never needed to happen.
+                //
+                // fixed: T11 (#68).
                 //
                 // The comparison is now by **value**, via Java's own
                 // `TileShape.contains(TileShape)`. `tmp_shape` is an intersection and so is
@@ -354,8 +356,8 @@ impl ShapeAndEntrySide {
             if let Some(start_cutline) = start_cutline {
                 let cut_plane = TileShape::get_instance_from_line(start_cutline);
                 let tmp_shape = current_shape.intersection(&cut_plane);
-                // fixed: T11 (#68). Java bug: ShapeAndEntrySide.java:50, the same always-true
-                // identity comparison as above, fixed the same way.
+                // Java bug: ShapeAndEntrySide.java:50, the same always-true identity comparison as
+                // above. fixed: T11 (#68), the same way.
                 if !tmp_shape.is_empty() && !tmp_shape.contains_tile(&current_shape) {
                     current_shape = TileShape::Simplex(tmp_shape.to_simplex());
                     cut_off_at_start = true;

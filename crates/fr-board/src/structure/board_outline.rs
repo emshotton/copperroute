@@ -182,11 +182,11 @@ impl BoardOutline {
 
     /// Port of `BoardOutline.translateBy` (BoardOutline.java:112-121).
     //
-    // fixed: T11 (#55). Java bug: the loop body is
-    // `currentShape = currentShape.translateBy(vector);`, which assigns to the **loop variable**
-    // of an enhanced `for` — Java binds a *copy of the reference* there, so `this.shapes` is
-    // never written and the outline polygons do not move, turn, rotate or mirror. The same defect
-    // is in all four transforms (BoardOutline.java:114-116, 125-127, 137-139, 148-150).
+    // Java bug: the loop body is `currentShape = currentShape.translateBy(vector);`, which assigns
+    // to the **loop variable** of an enhanced `for` — Java binds a *copy of the reference* there,
+    // so `this.shapes` is never written and the outline polygons do not move, turn, rotate or
+    // mirror. The same defect is in all four transforms (BoardOutline.java:114-116, 125-127,
+    // 137-139, 148-150).
     //
     // Only the lazily built `keepoutArea` followed the transform, because that one *is* a field
     // assignment. So after any of the four, the outline's curves and its outside-keepout
@@ -195,9 +195,9 @@ impl BoardOutline {
     // `lineCount()`, `getShape()` and the search-tree line bands all kept answering from the
     // untransformed shapes.
     //
-    // The fix is Java's own suggested one: write back into the array. A board whose outline
-    // finally moves has a different routable region, so the corpus re-baselines — that is a
-    // correctness win being paid for in churn, not a regression.
+    // fixed: T11 (#55) — Java's own suggested remedy: write back into the array, in all four.
+    // Measured: no golden moved, because the four transforms are reachable only from
+    // `BasicBoard.moveItems`/`changePlacementSide`, which the headless pipeline never calls.
     pub fn translate_by(&mut self, vector: &Vector) {
         for shape in &mut self.shapes {
             *shape = shape.translate_by(vector);

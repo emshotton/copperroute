@@ -1,0 +1,158 @@
+# PORT LANE (ruling BT / CC). The port's own rows for `p6t15a-tightener.txt` section
+# `smooth`, re-cut at Plan 9 Task 11 for register row #183. `p6t15a-tightener.txt` stays
+# byte-for-byte the jar's stdout and is still the record of what the jar does; this file is what
+# the port answers over the same input.
+#
+# 8 of the 143 rows move. `TraceTightenerAnyAngle.smoothenEndCornerAtTrace` read
+# `prevLineDirection` from the same line as `lineDirection`, so the `bend` arm — which needs the
+# two to differ — was unreachable for every input. Reading `lines[endLineNo - 1]` makes it
+# reachable: measured 0 executions before the fix and 3 after, over this very fixture. Row 100 is
+# the arm firing (trace 13 answers a polyline where the jar answered `null`); rows 120-121 are
+# the resulting `smoothenEndCorners` flags; rows 130-134 are the different board it leaves.
+#
+# `the_port_lane_modes_still_differ_from_the_jar` requires the divergence to persist, so a fix
+# silently reverted fails too. Re-cut with:
+#   T11_DUMP_SMOOTH=<path> cargo test -p fr-router --test tightener smoothen_end_corners
+regime=NINETY_DEGREE
+  trace id=14 start=null
+  trace id=14 end=  null
+  trace id=13 start=null
+  trace id=13 end=  null
+  trace id=12 start=null
+  trace id=12 end=  null
+  trace id=11 start=null
+  trace id=11 end=  null
+  trace id=10 start=null
+  trace id=10 end=  null
+  trace id=9 start=null
+  trace id=9 end=  null
+  trace id=8 start=null
+  trace id=8 end=  null
+  trace id=7 start=null
+  trace id=7 end=  null
+  trace id=6 start=null
+  trace id=6 end=  null
+  trace id=5 start=null
+  trace id=5 end=  null
+  trace id=4 start=null
+  trace id=4 end=  null
+  trace id=14 smoothenEndCorners=false
+  trace id=13 smoothenEndCorners=false
+  trace id=12 smoothenEndCorners=false
+  trace id=11 smoothenEndCorners=false
+  trace id=10 smoothenEndCorners=false
+  trace id=9 smoothenEndCorners=false
+  trace id=8 smoothenEndCorners=false
+  trace id=7 smoothenEndCorners=false
+  trace id=6 smoothenEndCorners=false
+  trace id=5 smoothenEndCorners=false
+  trace id=4 smoothenEndCorners=false
+    maxId=14
+    item id=14 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=4 lines=[(6000,6000)->(6000,6001),(6000,6000)->(9500,6000),(9500,6000)->(9500,7000),(9500,7000)->(9501,7000)] corners=[(6000,6000),(9500,6000),(9500,7000)]
+    item id=13 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=4 lines=[(9500,5000)->(9500,4999),(9500,5000)->(6000,5000),(6000,5000)->(6000,6000),(6000,6000)->(6001,6000)] corners=[(9500,5000),(6000,5000),(6000,6000)]
+    item id=12 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(6000,2000)->(6001,2000),(6000,2000)->(6000,1000),(6000,1000)->(5999,1000)] corners=[(6000,2000),(6000,1000)]
+    item id=11 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(5000,1000)->(4999,1001),(5000,1000)->(6000,2000),(6000,2000)->(6001,1999)] corners=[(5000,1000),(6000,2000)]
+    item id=10 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(3000,1000)->(2999,1000),(3000,1000)->(3000,2000),(3000,2000)->(3001,2000)] corners=[(3000,1000),(3000,2000)]
+    item id=9 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=4 lines=[(3000,1000)->(3000,1001),(3000,1000)->(4000,1000),(4000,1000)->(4000,2000),(4000,2000)->(4001,2000)] corners=[(3000,1000),(4000,1000),(4000,2000)]
+    item id=8 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(1000,1000)->(999,1000),(1000,1000)->(1000,2000),(1000,2000)->(1001,2000)] corners=[(1000,1000),(1000,2000)]
+    item id=7 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(1000,1000)->(999,1001),(1000,1000)->(2000,2000),(2000,2000)->(2001,1999)] corners=[(1000,1000),(2000,2000)]
+    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-500,0)->(-501,-1),(-500,0)->(-1200,700),(-1200,700)->(-1199,701)] corners=[(-500,0),(-1200,700)]
+    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 n=4 lines=[(-800,300)->(-801,300),(-800,300)->(-800,900),(-800,900)->(300,900),(300,900)->(300,899)] corners=[(-800,300),(-800,900),(300,900)]
+    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=5 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,400),(0,400)->(500,400),(500,400)->(500,399)] corners=[(-500,0),(0,0),(0,400),(500,400)]
+    item id=3 type=Pin nets=[1] cl=1 center=(500,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-500,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+regime=FORTYFIVE_DEGREE
+  trace id=14 start=null
+  trace id=14 end=  null
+  trace id=13 start=null
+  trace id=13 end=  n=3 lines=[(9500,5000)->(6000,5000),(9500,6000)->(9500,6001),(6000,6000)->(9500,6000)] corners=[(9500,5000),(9500,6000)]
+  trace id=12 start=null
+  trace id=12 end=  null
+  trace id=11 start=null
+  trace id=11 end=  n=4 lines=[(5000,1000)->(4999,1001),(5000,1000)->(6000,2000),(6000,1989)->(6001,1989),(6000,2000)->(6000,1000)] corners=[(5000,1000),(5989,1989),(6000,1989)]
+  trace id=10 start=null
+  trace id=10 end=  null
+  trace id=9 start=n=3 lines=[(3000,1000)->(3000,2000),(4000,2000)->(4001,2000),(4000,1000)->(4000,2000)] corners=[(3000,2000),(4000,2000)]
+  trace id=9 end=  null
+  trace id=8 start=null
+  trace id=8 end=  null
+  trace id=7 start=n=4 lines=[(1000,1000)->(1000,2000),(1000,1011)->(1001,1011),(1000,1000)->(2000,2000),(2000,2000)->(2001,1999)] corners=[(1000,1011),(1011,1011),(2000,2000)]
+  trace id=7 end=  null
+  trace id=6 start=null
+  trace id=6 end=  null
+  trace id=5 start=null
+  trace id=5 end=  null
+  trace id=4 start=null
+  trace id=4 end=  null
+  trace id=14 smoothenEndCorners=false
+  trace id=13 smoothenEndCorners=true
+  trace id=12 smoothenEndCorners=false
+  trace id=11 smoothenEndCorners=false
+  trace id=10 smoothenEndCorners=false
+  trace id=9 smoothenEndCorners=false
+  trace id=8 smoothenEndCorners=false
+  trace id=7 smoothenEndCorners=false
+  trace id=6 smoothenEndCorners=false
+  trace id=5 smoothenEndCorners=false
+  trace id=4 smoothenEndCorners=false
+    maxId=17
+    item id=17 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(6000,6000)->(9500,6000),(9500,6000)->(9500,7000),(9500,7000)->(9501,7000)] corners=[(9500,6000),(9500,7000)]
+    item id=16 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(6000,6000)->(6000,6001),(6000,6000)->(9500,6000),(9500,6000)->(9500,6001)] corners=[(6000,6000),(9500,6000)]
+    item id=15 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(9500,5000)->(6000,5000),(9500,6000)->(9500,6001),(6000,6000)->(9500,6000)] corners=[(9500,5000),(9500,6000)]
+    item id=12 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=4 lines=[(5000,1000)->(4999,1001),(5000,1000)->(6000,2000),(6000,2000)->(6000,1000),(6000,1000)->(5999,1000)] corners=[(5000,1000),(6000,2000),(6000,1000)]
+    item id=10 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=5 lines=[(4001,2000)->(4000,2000),(4000,2000)->(4000,1000),(4000,1000)->(3000,1000),(3000,1000)->(3000,2000),(3000,2000)->(3001,2000)] corners=[(4000,2000),(4000,1000),(3000,1000),(3000,2000)]
+    item id=8 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=4 lines=[(2001,1999)->(2000,2000),(2000,2000)->(1000,1000),(1000,1000)->(1000,2000),(1000,2000)->(1001,2000)] corners=[(2000,2000),(1000,1000),(1000,2000)]
+    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-500,0)->(-501,-1),(-500,0)->(-1200,700),(-1200,700)->(-1199,701)] corners=[(-500,0),(-1200,700)]
+    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 n=4 lines=[(-800,300)->(-801,300),(-800,300)->(-800,900),(-800,900)->(300,900),(300,900)->(300,899)] corners=[(-800,300),(-800,900),(300,900)]
+    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=5 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,400),(0,400)->(500,400),(500,400)->(500,399)] corners=[(-500,0),(0,0),(0,400),(500,400)]
+    item id=3 type=Pin nets=[1] cl=1 center=(500,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-500,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+regime=NONE
+  trace id=14 start=null
+  trace id=14 end=  null
+  trace id=13 start=null
+  trace id=13 end=  n=4 lines=[(9500,5000)->(9500,4999),(9500,5000)->(6000,5000),(8625,5000)->(8625,5001),(6000,6000)->(9500,6000)] corners=[(9500,5000),(8625,5000),(8625,6000)]
+  trace id=12 start=n=4 lines=[(6000,2000)->(5000,1000),(5984,2000)->(5985,1999),(6000,2000)->(6000,1000),(6000,1000)->(5999,1000)] corners=[(5992,1992),(6000,1984),(6000,1000)]
+  trace id=12 end=  null
+  trace id=11 start=null
+  trace id=11 end=  null
+  trace id=10 start=null
+  trace id=10 end=  null
+  trace id=9 start=null
+  trace id=9 end=  null
+  trace id=8 start=n=4 lines=[(1000,1000)->(2000,2000),(1016,1000)->(1015,1001),(1000,1000)->(1000,2000),(1000,2000)->(1001,2000)] corners=[(1008,1008),(1000,1016),(1000,2000)]
+  trace id=8 end=  null
+  trace id=7 start=n=4 lines=[(1000,1000)->(1000,2000),(1000,1011)->(1001,1011),(1000,1000)->(2000,2000),(2000,2000)->(2001,1999)] corners=[(1000,1011),(1011,1011),(2000,2000)]
+  trace id=7 end=  null
+  trace id=6 start=null
+  trace id=6 end=  null
+  trace id=5 start=null
+  trace id=5 end=  null
+  trace id=4 start=null
+  trace id=4 end=  null
+  trace id=14 smoothenEndCorners=false
+  trace id=13 smoothenEndCorners=true
+  trace id=12 smoothenEndCorners=false
+  trace id=11 smoothenEndCorners=false
+  trace id=10 smoothenEndCorners=false
+  trace id=9 smoothenEndCorners=false
+  trace id=8 smoothenEndCorners=false
+  trace id=7 smoothenEndCorners=false
+  trace id=6 smoothenEndCorners=false
+  trace id=5 smoothenEndCorners=false
+  trace id=4 smoothenEndCorners=false
+    maxId=17
+    item id=17 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=4 lines=[(8625,5000)->(8625,5001),(6000,6000)->(9500,6000),(9500,6000)->(9500,7000),(9500,7000)->(9501,7000)] corners=[(8625,6000),(9500,6000),(9500,7000)]
+    item id=16 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=3 lines=[(6000,6000)->(6000,6001),(6000,6000)->(9500,6000),(8625,5000)->(8625,5001)] corners=[(6000,6000),(8625,6000)]
+    item id=15 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=4 lines=[(9500,5000)->(9500,4999),(9500,5000)->(6000,5000),(8625,5000)->(8625,5001),(6000,6000)->(9500,6000)] corners=[(9500,5000),(8625,5000),(8625,6000)]
+    item id=12 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=4 lines=[(5000,1000)->(4999,1001),(5000,1000)->(6000,2000),(6000,2000)->(6000,1000),(6000,1000)->(5999,1000)] corners=[(5000,1000),(6000,2000),(6000,1000)]
+    item id=10 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=5 lines=[(4001,2000)->(4000,2000),(4000,2000)->(4000,1000),(4000,1000)->(3000,1000),(3000,1000)->(3000,2000),(3000,2000)->(3001,2000)] corners=[(4000,2000),(4000,1000),(3000,1000),(3000,2000)]
+    item id=8 type=PolylineTrace nets=[3] cl=1 layer=0 hw=30 n=4 lines=[(2001,1999)->(2000,2000),(2000,2000)->(1000,1000),(1000,1000)->(1000,2000),(1000,2000)->(1001,2000)] corners=[(2000,2000),(1000,1000),(1000,2000)]
+    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-500,0)->(-501,-1),(-500,0)->(-1200,700),(-1200,700)->(-1199,701)] corners=[(-500,0),(-1200,700)]
+    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 n=4 lines=[(-800,300)->(-801,300),(-800,300)->(-800,900),(-800,900)->(300,900),(300,900)->(300,899)] corners=[(-800,300),(-800,900),(300,900)]
+    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=5 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,400),(0,400)->(500,400),(500,400)->(500,399)] corners=[(-500,0),(0,0),(0,400),(500,400)]
+    item id=3 type=Pin nets=[1] cl=1 center=(500,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-500,0)
+    item id=1 type=BoardOutline nets=[] cl=0

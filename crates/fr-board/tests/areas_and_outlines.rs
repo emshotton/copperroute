@@ -699,15 +699,14 @@ fn board_outline_shape_accessors_match_java() {
     assert_eq!(outline.get_half_width(), 100);
 }
 
-/// **fixed: T11 (#55).** Java bug: `BoardOutline.translateBy` (BoardOutline.java:112-121) and its
-/// three siblings assign the transformed shape back to the **loop variable** of an enhanced `for`
-/// — `for (PolylineShape currentShape : this.shapes) currentShape = currentShape.translateBy(v);`
-/// — which binds a copy of the reference, so `this.shapes` was never written and the outline did
-/// not move, turn, rotate or mirror.
-///
+// Java bug: `BoardOutline.translateBy` (BoardOutline.java:112-121) — and its three siblings —
+// assign the transformed shape back to the **loop variable** of an enhanced `for`
+// (`for (PolylineShape currentShape : this.shapes) currentShape = currentShape.translateBy(v);`),
+// which binds a copy of the reference, so `this.shapes` is never written and the outline does not
+// move, turn, rotate or mirror. fixed: T11 (#55).
 /// This test was `board_outline_transforms_leave_the_outline_shapes_where_they_were` and pinned
-/// that: the outline's bounding box stayed at `(100,100 .. 900,900)` through a translate of
-/// 10 000, a quarter turn, a 30-degree rotation and a mirror.
+/// the bug above: the outline's bounding box stayed at `(100,100 .. 900,900)` through a translate
+/// of 10 000, a quarter turn, a 30-degree rotation and a mirror.
 ///
 /// Only the lazily built `keepoutArea` followed the transform, because that one *is* a field
 /// assignment — and that is what made the fourth assertion below the interesting one. The keepout

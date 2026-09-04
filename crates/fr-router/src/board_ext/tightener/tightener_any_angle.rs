@@ -998,9 +998,13 @@ impl<'a> TraceTightenerAnyAngle<'a> {
 
     /// Port of `smoothenEndCornerAtTrace(PolylineTrace)` (TraceTightenerAnyAngle.java:880-1003).
     ///
-    /// `:907-908` computes `prevLineDirection` from **`lines[endLineNo]`**, the same line
-    /// `lineDirection` comes from, where its 45-degree sibling reads `lines[length - 3]`
-    /// (TraceTightener45.java:585-586). Reproduced; see docs/java-quirks.md #183.
+    /// **fixed: T11 (#183).** `:907-908` computed `prevLineDirection` from **`lines[endLineNo]`**,
+    /// the same line `lineDirection` comes from, where its 45-degree sibling reads
+    /// `lines[length - 3]` (TraceTightener45.java:585-586) and this class's own start-corner
+    /// method reads `lines[startLineNo + 1]` (:785-786). The `bend` arm needs two *different*
+    /// directions and two reads of one line cannot supply them, so the whole `bend` branch of the
+    /// any-angle end-corner smoothener was unreachable. It now reads `lines[endLineNo - 1]`.
+    /// See docs/java-quirks.md #183.
     pub(crate) fn smoothen_end_corner_at_trace(
         &mut self,
         board: &mut Board,
@@ -1030,9 +1034,29 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             end_line_no -= 1;
         }
         // :906-908.
-        // Java bug: `TraceTightenerAnyAngle.smoothenEndCornerAtTrace` reads `prevLineDirection` from `lines[endLineNo]`, the same line as `lineDirection` (:907-908); the 45-degree sibling reads `lines[length - 3]` (TraceTightener45.java:586). See docs/java-quirks.md #183.
+        // Java bug: `TraceTightenerAnyAngle.smoothenEndCornerAtTrace` reads `prevLineDirection`
+        // from `lines[endLineNo]`, the same line as `lineDirection` (:907-908); the 45-degree
+        // sibling reads `lines[length - 3]` (TraceTightener45.java:586) and this class's own
+        // *start*-corner method reads `lines[startLineNo + 1]` (:785-786). See
+        // docs/java-quirks.md #183.
+        //
+        // fixed: T11 (#183). The consequence was total rather than marginal:
+        // `scan_contacts` sets `bend` only when `lineDirection.projection(otherDir)` is ZERO
+        // **and** `prevLineDirection.projection(otherDir)` is POSITIVE, and `Direction.projection`
+        // is a pure function of its two arguments — so two equal directions cannot satisfy both,
+        // and the whole `bend` branch below was unreachable for every input.
+        //
+        // `endLineNo - 1` is the register's remedy, and it cannot underflow: without
+        // `skipShortSegment`, `end_line_no` is `line_count - 2` and `line_count >= 3`; with it,
+        // the `corner_count < 3` guard above forces `line_count >= 4` before the decrement. The
+        // guard below states that rather than leaving it to be re-derived.
+        if end_line_no == 0 {
+            return None;
+        }
         let line_direction = trace_polyline.lines()[end_line_no].direction().opposite();
-        let prev_line_direction = trace_polyline.lines()[end_line_no].direction().opposite();
+        let prev_line_direction = trace_polyline.lines()[end_line_no - 1]
+            .direction()
+            .opposite();
 
         // :910-951.
         let contacts = board.trace_end_contacts(trace);
@@ -1079,13 +1103,13 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             new_lines[new_line_count - 1] = other_trace_line;
             return Some(new_polyline(new_lines));
         } else if found.bend {
-            // :988-1001 — **dead**, and quirk #183 is why: `scan_contacts` sets `bend` only when
+            // :988-1001 — **reachable since fixed: T11 (#183)**. This arm used to be dead for
+            // every input: `scan_contacts` sets `bend` only when
             // `lineDirection.projection(otherDir)` is `ZERO` *and*
-            // `prevLineDirection.projection(otherDir)` is `POSITIVE`, and `:907-908` above make
-            // the two directions equal, so `Direction.projection` — a pure function of its two
-            // arguments — answers the same `Signum` for both tests. Transcribed anyway: the
-            // moment the index is corrected the arm comes alive, and
-            // `crates/fr-router/tests/tightener.rs`'s `smooth` fixture sees it.
+            // `prevLineDirection.projection(otherDir)` is `POSITIVE`, and `:907-908` made the two
+            // directions equal, so `Direction.projection` — a pure function of its two arguments
+            // — answered the same `Signum` for both tests. It was transcribed anyway against the
+            // day the index was corrected; that day is T11.
             let other_trace_line = found.other_trace_line.expect("bend implies a match");
             let other_prev_trace_line = found.other_prev_trace_line.expect("bend implies a match");
             let mut check_line_arr: Vec<Line> = vec![other_trace_line; new_line_count];
