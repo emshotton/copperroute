@@ -27,5 +27,5 @@ STAGNATION pass=2 counter=0 lastBest=999.97314 globalBest=-Infinity passOfBest=0
 FINAL-SWAP currentFinalScore=999.97314 bestHistoryScore=999.97314 swapped=false
 TAILS wasRouterRun=true removeUnconnectedVias=false continueAutorouting=false stopAutoRouterRequested=false fires=true
 RESULT state=FINISHED passesRun=2 continueRouting=true stopRequested=false stopAutoRouterRequested=false
-TRANSCRIPT returned=true items=58 traces=16 vias=9 incompletes=0 traceLength="1.1234967365546612E7"
+TRANSCRIPT returned=true items=58 traces=16 vias=9 incompletes=0 traceLength="1.1235205124131413E7"
 [board] (elided — the board is batch.ses)

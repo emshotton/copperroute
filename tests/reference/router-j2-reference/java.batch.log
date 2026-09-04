@@ -7,25 +7,8 @@ BOARD-PREPARED classes=4 outlineClass=3 holeClearance=0
 EVENT algorithm=ROUTER state=STARTED
 EVENT algorithm=ROUTER state=RUNNING
 EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=CANCELLED
+EVENT algorithm=ROUTER state=FINISHED
 EVENT algorithm=OPTIMIZER state=STARTED
-EVENT algorithm=OPTIMIZER state=RUNNING
 EVENT algorithm=OPTIMIZER state=FINISHED
-RESULT passesRun=18 optimizerPresent=true fanoutTimedOut=false optimizerTimedOut=false items=172 traces=75 vias=16 incompletes=2 traceLength="3705053.7566574444"
+RESULT passesRun=2 optimizerPresent=true fanoutTimedOut=false optimizerTimedOut=false items=183 traces=84 vias=18 incompletes=0 traceLength="3798425.235545717"
 [board] (elided — the board is batch.ses)

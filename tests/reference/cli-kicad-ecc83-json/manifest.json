@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-03T21:03:21.769992Z",
+  "generated_at": "2026-09-04T02:05:05.330010Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -61,7 +61,7 @@
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 0.278,
+      "duration_seconds": 0.292,
       "passes_completed": 1
     },
     "optimizer": {}
@@ -119,8 +119,8 @@
       "total_weighted_length": 3.9776632E9,
       "average_length": 125700.39,
       "total_vertical_length": 353940.0,
-      "total_horizontal_length": 203921.0,
-      "total_angled_length": 297720.28
+      "total_horizontal_length": 204771.0,
+      "total_angled_length": 242072.39
     },
     "bends": {
       "total_count": 10,
