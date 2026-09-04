@@ -1,4 +1,4 @@
-# gate-version: g1
+# gate-version: g2
 # task: T9
 # The rolling PORT cpu_s baseline (rulings BO / BP4) -- the PREVIOUS TASK's number,
 # never the jar's. scripts/quality-ab.sh reads it as the reference for its cpu_s

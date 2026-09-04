@@ -1,4 +1,4 @@
-# gate-version: g1
+# gate-version: g2
 # task: T1
 # source: tests/reference-frozen/java-head-2026-09/ (read ONCE, here, before the chmod -R a-w)
 # jar: build/libs/freerouting-current-executable.jar, 2.3.1-SNAPSHOT, revision 278fe14123c49376667239659c98d41a597acce9
