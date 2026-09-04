@@ -500,39 +500,14 @@ fn the_five_named_algorithm_members_are_javas_literals() {
 }
 
 #[test]
-fn the_multithreaded_optimizer_is_rostered_not_ported() {
-    let roster = include_str!("../src/lib.rs");
-    assert!(
-        roster.contains("not ported: `BatchOptimizerMultiThreaded.getNumTasks`"),
-        "lib.rs must roster `BatchOptimizerMultiThreaded` — the map row points the class here"
-    );
-    assert!(
-        roster.contains("not ported: `OptimizeRouteTask.run`"),
-        "…and `OptimizeRouteTask`, which only it constructs"
-    );
-    assert!(
-        roster.contains("`BatchOptimizer.java:59`"),
-        "the single construction site is the whole of the evidence for the first class"
-    );
-    assert!(
-        roster.contains("`BatchOptimizerMultiThreaded.java:259`"),
-        "…and `:259` is the single construction site of the second"
-    );
-
-    let optimizer = include_str!("../src/pipeline/optimizer.rs");
-    assert!(
-        optimizer.contains("not ported: `BatchOptimizer.createForGui` (`:56-66`)"),
-        "the door itself is rostered beside the code, where the class's second map row points"
-    );
-    assert!(
-        optimizer.contains("GuiRoutingJobWorker.java:212"),
-        "with the GUI caller that is the only reason it exists"
-    );
-    assert!(
-        optimizer.contains("settings/FeatureFlagsSettings.java:11"),
-        "and with `featureFlags.multiThreading`, the one static mutable global in Plan 7's scope — \
-         read at `:58` inside the factory the port does not have"
-    );
+fn the_multithreaded_optimizer_remains_a_recorded_product_decision() {
+    let register = include_str!("../../../docs/java-quirks.md");
+    let row = register
+        .lines()
+        .find(|line| line.starts_with("| 143 |"))
+        .expect("quirk 143 must remain registered");
+    assert!(row.contains("BatchOptimizerMultiThreaded"));
+    assert!(row.ends_with("| pinned |"));
 }
 
 #[test]

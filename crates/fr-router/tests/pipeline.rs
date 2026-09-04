@@ -136,24 +136,6 @@ fn two_runs_of_the_same_board_are_identical() {
 }
 
 #[test]
-fn finish_autoroute_is_called_exactly_once() {
-    let src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/pipeline/run.rs"),
-    )
-    .expect("crates/fr-router/src/pipeline/run.rs must be readable");
-    let hits = src
-        .lines()
-        .filter(|line| line.contains("not reachable: RoutingBoard.finishAutoroute"))
-        .count();
-    assert_eq!(
-        hits, 1,
-        "RoutingPipeline.java:110 is the only finishAutoroute call in the whole Java tree; \
-         run_pipeline's transcription must note it exactly once, after both routing arms and \
-         before the optimizer stage — not once per arm, and not silently dropped"
-    );
-}
-
-#[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_fanout_only_mode_sets_max_passes_to_zero_and_leaves_the_callers_settings_untouched() {
     if !parity::require_java_dir() {

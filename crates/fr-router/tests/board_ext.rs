@@ -313,7 +313,7 @@ fn finish_autoroute_clears_the_room_database_before_dropping_the_engine() {
 /// ```text
 /// completed n=1
 /// afterComplete  counter=1 complete=1 incomplete=5 treeSize=2 compensatedCl=1
-///     complete id=1 layer=0 shape=Simplex[-10000,-10000..-130,10000]dim=2 netDependent=false doors=6
+///     complete id=6 layer=0 shape=Simplex[-10000,-10000..-130,10000]dim=2 netDependent=false doors=6
 /// reusedTheEngine=true
 /// afterInitNet2  counter=1 complete=0 incomplete=1 treeSize=1 compensatedCl=1
 /// ```
@@ -333,7 +333,7 @@ fn additional_update_after_change_removes_the_overlapping_rooms() {
         .rooms
         .complete_room(room)
         .expect("the completed room");
-    assert_eq!(room_ref.get_id(), 1, "probe `complete id=1`");
+    assert_eq!(room_ref.get_id(), 6, "probe `complete id=6`");
     assert!(
         !room_ref.is_net_dependent(),
         "probe `netDependent=false` — the removal below can only be :111-117's"

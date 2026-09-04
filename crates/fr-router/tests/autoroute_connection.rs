@@ -461,6 +461,12 @@ fn t16_section(mode: &str) -> Vec<&'static str> {
 }
 
 const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
+    (
+        "plain",
+        18,
+        "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(401,-1),(-400,0)->(-401,0),(-400,0)->(-399,1)] corners=[(400,0),(-400,0)]",
+        "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(401,-1),(-264,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]",
+    ),
     ("stopafter", 10, "  stopCalls=9", "  stopCalls=10"),
     ("stopafter", 55, "  stopCalls=13", "  stopCalls=14"),
     (

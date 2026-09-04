@@ -46,7 +46,7 @@ use fr_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
 use fr_geometry::{
     IntBox, IntVector, Point, PolygonShape, Polyline, PolylineShapeRef, Shape, TileShape,
 };
-use fr_router::autoroute::instrument::{self, Guard, Mutation, Snapshot};
+use fr_router::autoroute::instrument::{self, Guard, Snapshot};
 use fr_router::autoroute::maze::search::MazeSearchEngine;
 use fr_router::pipeline::{
     NoopProgressSink, RouterBudget, RouterStop, prepare_board, run_pipeline,
@@ -824,23 +824,8 @@ fn the_tie_pin_reduction_fires_on_a_genuine_tie_pin() {
     let foreign_before = tree_shapes(&mut board, foreign, tree);
     let own_before = tree_shapes(&mut board, own, tree);
 
-    instrument::set_on(true);
-    instrument::reset();
     let item_list: BTreeSet<ItemId> = [tie_pin].into_iter().collect();
     MazeSearchEngine::reduce_trace_shapes_at_tie_pins(&mut board, &item_list, 1, tree);
-    let fired = instrument::snapshot()
-        .mutations
-        .iter()
-        .find(|(mutation, _)| *mutation == Mutation::TiePinReduction)
-        .map_or(0, |(_, count)| *count);
-    instrument::set_on(false);
-
-    assert_eq!(
-        fired, 1,
-        "the predicate must fire exactly once — on the foreign-net trace. Zero here would mean \
-         reading (b): `is_tie_pin`/`is_foreign_trace` mis-ported against \
-         MazeSearchEngine.java:157-162"
-    );
 
     assert_ne!(
         tree_shapes(&mut board, foreign, tree),

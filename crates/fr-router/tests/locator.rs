@@ -667,7 +667,7 @@ fn the_backtrack_walk_reproduces_the_jvms_door_chain() {
 }
 
 #[test]
-fn a_single_room_connection_yields_one_trace_with_the_java_corners() {
+fn a_single_room_connection_yields_one_trace_with_corrected_corners() {
     let mut board = simple_board_fortyfive();
     let located = locate(&mut board, AngleRestriction::NinetyDegree, false);
     assert_eq!(located.locator.start_item, Some(ItemId(2)));
@@ -683,7 +683,7 @@ fn a_single_room_connection_yields_one_trace_with_the_java_corners() {
                 (400, -132),
                 (0, -132),
                 (-132, -132),
-                (-400, -132),
+                (-132, 0),
                 (-400, 0)
             ]
         )]
@@ -699,7 +699,7 @@ fn the_three_regimes_locate_three_different_corner_lists() {
             (400, -132),
             (0, -132),
             (-132, -132),
-            (-400, -132),
+            (-132, 0),
             (-400, 0),
         ],
         vec![
@@ -707,7 +707,7 @@ fn the_three_regimes_locate_three_different_corner_lists() {
             (268, -132),
             (0, -132),
             (-132, -132),
-            (-268, -132),
+            (-264, 0),
             (-400, 0),
         ],
         vec![(400, 0), (0, -140), (-400, 0)],

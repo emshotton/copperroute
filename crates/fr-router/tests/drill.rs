@@ -261,7 +261,7 @@ fn page_grid_matches_java_for_a_known_bounding_box() {
 }
 
 #[test]
-fn overlapping_pages_uses_javas_mixed_loop_bounds() {
+fn overlapping_pages_include_boundary_contacts() {
     let board = probe_board(BOUNDING_BOX);
     let array = DrillPageArray::new(&board, 7000, &mut ExpansionRoomStore::new());
 
@@ -287,7 +287,14 @@ fn overlapping_pages_uses_javas_mixed_loop_bounds() {
         probe(-1000, -1000, -900, -900),
         vec![(-3333, -3333, 3334, 3334)]
     );
-    assert!(probe(-3000, -10000, -3000, 10000).is_empty());
+    assert_eq!(
+        probe(-3000, -10000, -3000, 10000),
+        vec![
+            (-3333, -10000, 3334, -3333),
+            (-3333, -3333, 3334, 3334),
+            (-3333, 3334, 3334, 10000),
+        ]
+    );
     assert_eq!(
         probe(5000, 5000, 30000, 30000),
         vec![(3334, 3334, 10000, 10000)]

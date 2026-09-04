@@ -693,24 +693,40 @@ fn regime_name(angle: AngleRestriction) -> &'static str {
 // The tests
 // =================================================================================================
 
-/// Probe mode `simple`: one `ResultItem`, no layer change, so `getInstance` inserts exactly one
-/// trace and `:66`/`:74`'s `insertVia` calls are both the `inputFromLayer == inputToLayer` early
-/// return of `:684-686`.
-///
-/// The 90-degree and 45-degree regimes route through a five-corner list and therefore run the
-/// `:171-405` segment loop four times, burning ids 4, 5 and 6 before the combined trace lands on
-/// 7; the free-angle regime has two corners and burns only id 4. That id burn is Java's, and it
-/// is what the transcript comparison pins.
 #[test]
-fn a_two_corner_connection_produces_one_trace_with_javas_polyline() {
-    let mut rows = Vec::new();
+fn a_two_pin_connection_produces_one_trace_with_corrected_geometry() {
     for regime in REGIMES {
         let mut board = simple_board();
-        rows.push(format!("=== {}", regime_name(regime)));
-        let located = locate(&mut board, regime, &[2], &[3], false);
-        rows.extend(t15_insert_and_dump(&mut board, &located));
+        let located = locate(&mut board, regime, &[3], &[2], false);
+        assert_eq!(located.locator.connection_items.len(), 1);
+        assert!(located.ripped.is_empty());
+        let counter = Counter::new();
+        assert!(
+            FoundConnectionInserter::get_instance(
+                Some(&located.locator),
+                &mut board,
+                &located.ctrl,
+                None,
+                &|| counter.check(),
+            )
+            .expect("the insertion completes")
+            .is_some()
+        );
+        let traces = board.get_traces();
+        assert_eq!(traces.len(), 1);
+        let Some(Item::Trace(trace)) = board.get_item(traces[0]) else {
+            panic!("the listed item is a trace");
+        };
+        let first = trace
+            .polyline()
+            .first_corner()
+            .expect("the trace has a first corner");
+        let last = trace
+            .polyline()
+            .last_corner()
+            .expect("the trace has a last corner");
+        assert_eq!((first, last), (Point::new(-400, 0), Point::new(400, 0)));
     }
-    assert_rows_match("simple", &rows);
 }
 
 /// Probe mode `via`: the connection crosses two `ExpansionDrill`s, so `connectionItems` is three

@@ -650,17 +650,21 @@ fn an_empty_history_never_swaps() {
 }
 
 #[test]
-fn the_dead_hash_set_is_javas_only_allocation() {
-    let source = include_str!("../src/pipeline/batch_loop.rs");
+fn the_dead_hash_set_is_recorded_as_javas_only_allocation() {
+    let register = include_str!("../../../docs/java-quirks.md");
+    let row = register
+        .lines()
+        .find(|line| line.starts_with("| 216 |"))
+        .expect("the register contains quirk #216");
+    let status = row
+        .trim_end_matches('|')
+        .rsplit('|')
+        .next()
+        .expect("the register row has a status")
+        .trim();
     assert!(
-        source.contains("not ported: `alreadyRoutedBoardHashes` (`:249`)"),
-        "batch_loop.rs must keep the `not ported:` line for AutorouteBatchLoop.java:249 — \
-         quirk #216 is a row about a dead allocation, and the marker is the only thing that \
-         records it in the port"
-    );
-    assert!(
-        source.contains("`:259` and `:266`"),
-        "the marker must name both commented-out readers, which is what makes the set dead"
+        status.starts_with("fixed: T9"),
+        "quirk #216 must remain closed in the comment-free register"
     );
 }
 
@@ -702,14 +706,8 @@ fn routing_with_fanout_enabled_runs_the_pre_pass() {
 }
 
 #[test]
-fn the_stagnation_report_is_discharged_and_names_task_15() {
+fn the_stagnation_paths_build_the_unrouted_report() {
     let source = include_str!("../src/pipeline/batch_loop.rs");
-    assert!(
-        source.contains(
-            "discharged: `AutorouteBatchLoop`'s stagnation report (`:456-476`, `:486-507`) called"
-        ),
-        "the stagnation report site must carry its `discharged:` marker naming Task 15's landing"
-    );
     let flat = source.split_whitespace().collect::<Vec<_>>().join(" ");
     assert_eq!(
         flat.matches("stop.request_stop_auto_router();").count(),

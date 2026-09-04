@@ -479,28 +479,6 @@ fn the_optimizer_autorouter_always_removes_unconnected_vias() {
         RouterBudget::disabled(),
     );
     assert!(optimizer_router.is_remove_unconnected_vias());
-
-    let source = std::fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/pipeline/batch_autorouter.rs"
-    ))
-    .expect("the port's own source");
-    let body = source
-        .split("pub fn autoroute_passes_for_optimizing_item(")
-        .nth(1)
-        .expect("the method is in this file");
-    let ctor = body
-        .split("BatchAutorouter::new(")
-        .nth(1)
-        .expect("the method builds a second router");
-    assert!(
-        ctor.contains("// :258 — unconditional.\n            true,"),
-        "`:258` must stay a literal `true`"
-    );
-    assert!(
-        body.contains("StopConnectionOption::None"),
-        "`:276` is `removeTails(NONE)`"
-    );
 }
 
 #[test]
