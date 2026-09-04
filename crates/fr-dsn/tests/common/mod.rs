@@ -1,42 +1,19 @@
-//! The Rust half of `crates/fr-dsn/tests/data/NProbe.java` — the JVM probe that prints a board
-//! read by the pinned 2.3.0 jar, line by line, so a Rust read can be diffed against it.
-//!
-//! `dump` reproduces `NProbe.main`'s output exactly: same lines, same order, same spelling.
-//! Regenerate a golden with
-//!
-//! ```text
-//! export PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH
-//! javac -cp tools/freerouting-2.3.0.jar -d /tmp/nprobe crates/fr-dsn/tests/data/NProbe.java
-//! java -Djava.awt.headless=true -cp tools/freerouting-2.3.0.jar:/tmp/nprobe \
-//!     NProbe ../freerouting/fixtures/<name>.dsn
-//! ```
-//!
-//! `tests/network_scope.rs` keeps its own copy of this function (Plan 3 Task 9); the two are
-//! byte-identical apart from the `PolylineTrace`/`Via` arms Task 10 added, which no Task 9
-//! fixture reaches (all of theirs have an empty `(wiring)` scope).
-
 #![allow(dead_code)]
 
 use fr_board::{Board, Item};
 
-/// A fixture from the Java repo's corpus.
-///
-/// Resolves through `parity::java_dir()`, so `FREEROUTING_JAVA_DIR` is honoured here too —
-/// unset, it falls back to the same `../freerouting` sibling checkout this used to hard-code.
 pub fn fixture(name: &str) -> String {
     let path = parity::java_dir().join("fixtures").join(name);
     std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("fixture {name} ({}): {e}", path.display()))
 }
 
-/// A file under `crates/fr-dsn/tests/data/`.
 pub fn test_data(name: &str) -> String {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/");
     std::fs::read_to_string(format!("{path}{name}"))
         .unwrap_or_else(|e| panic!("test data {name}: {e}"))
 }
 
-/// A golden file's payload: every line that is not part of the `#` header.
 pub fn golden(name: &str) -> Vec<String> {
     test_data(name)
         .lines()
@@ -45,7 +22,6 @@ pub fn golden(name: &str) -> Vec<String> {
         .collect()
 }
 
-/// `NProbe.main`, in Rust.
 #[allow(clippy::too_many_lines)]
 pub fn dump(board: &Board, warnings: &[String]) -> Vec<String> {
     let mut out = Vec::new();
@@ -87,14 +63,11 @@ pub fn dump(board: &Board, warnings: &[String]) -> Vec<String> {
                 )
             }
             Item::Pin(p) => format!(" pin={}", p.name(&ctx).unwrap_or("null")),
-            // Java's `ConductionArea extends ObstacleArea`, so `NProbe`'s `instanceof
-            // ObstacleArea` arm catches it and prints the name too.
             Item::ConductionArea(a) => format!(
                 " layer={} name={}",
                 a.area.get_layer(),
                 a.area.name().unwrap_or("null")
             ),
-            // Added by Plan 3 Task 10: the two kinds the `wiring` scope inserts.
             Item::Trace(t) => format!(
                 " layer={} hw={} corners={} first={} last={} fixed={}",
                 t.get_layer(),
@@ -246,8 +219,6 @@ pub fn dump(board: &Board, warnings: &[String]) -> Vec<String> {
     out
 }
 
-/// `IntPoint.toString` (IntPoint.java:401-403): `"(" + x + "," + y + ")"`. A `null` point prints
-/// as Java's `String.valueOf(null)`.
 fn point(p: Option<fr_geometry::Point>) -> String {
     match p {
         Some(fr_geometry::Point::Int(p)) => format!("({},{})", p.x, p.y),
@@ -256,8 +227,6 @@ fn point(p: Option<fr_geometry::Point>) -> String {
     }
 }
 
-/// `FixedState`'s enum constant name, as Java's implicit `Enum.toString` prints it
-/// (FixedState.java:5-8).
 fn fixed_state(item: &Item) -> &'static str {
     match item.header().get_fixed_state() {
         fr_board::FixedState::Unfixed => "UNFIXED",
@@ -267,7 +236,6 @@ fn fixed_state(item: &Item) -> &'static str {
     }
 }
 
-/// Diffs a whole dump against a golden, line by line.
 pub fn assert_matches_golden(board: &Board, warnings: &[String], golden_name: &str) {
     let actual = dump(board, warnings);
     let expected = golden(golden_name);
@@ -281,24 +249,13 @@ pub fn assert_matches_golden(board: &Board, warnings: &[String], golden_name: &s
     );
 }
 
-// ---------------------------------------------------------------------------------------------
-// `SesRoundTripTest.java`'s two SES-text helpers, shared by `tests/parity_ses.rs` (Task 12) and
-// `tests/ses_round_trip.rs` (Task 13) — Java has one copy of each and so does this port.
-// ---------------------------------------------------------------------------------------------
 
-/// `SesRoundTripTest.assertBalancedScopes` (SesRoundTripTest.java:280-284).
-///
-/// **Java wins over the brief**, which describes this helper as counting brackets "outside quoted
-/// strings": Java's counts every `(` and `)` character in the file, quoted ones included. Ported
-/// as Java has it — a stricter helper would be a different test.
 pub fn assert_balanced_scopes(content: &str) {
     let opens = content.chars().filter(|&c| c == '(').count();
     let closes = content.chars().filter(|&c| c == ')').count();
     assert_eq!(opens, closes, "SES scopes must be balanced");
 }
 
-/// `SesRoundTripTest.assertUniqueLibraryPadstacks` (SesRoundTripTest.java:286-302), with the
-/// `\(padstack\s+([^\s()]+)` regex hand-rolled (`fr-dsn` has no `regex` dependency).
 pub fn assert_unique_library_padstacks(content: &str) {
     let library_start = content
         .find("(library_out")
@@ -315,7 +272,6 @@ pub fn assert_unique_library_padstacks(content: &str) {
     while let Some(at) = rest.find("(padstack") {
         let after = &rest[at + "(padstack".len()..];
         let name_start = after.len() - after.trim_start().len();
-        // `\s+` — at least one whitespace character, else the regex would not match here.
         if name_start == 0 {
             rest = after;
             continue;
@@ -338,21 +294,7 @@ pub fn assert_unique_library_padstacks(content: &str) {
     );
 }
 
-// ---------------------------------------------------------------------------------------------
-// Plan 8 Task 13: the four directed fixtures for Plan 3's zero-coverage paths.
-//
-// Each fixture is `tests/data/p8t13-<path>.dsn` and its JVM ground truth is
-// `tests/data/p8t13-directed-<path>.txt` — the byte-exact stdout of
-// `scripts/differential/java/probes/P8T13Probe.java` against the pinned HEAD jar under JDK 25
-// (that probe's header comment carries the exact `javac`/`java` invocation, and its `[jar-cli]`
-// rows carry the task brief's `java -jar <HEAD jar> -de <fixture> -do <out.ses>` acceptance run).
-// The helpers below replay those transcripts; the four tests that use them live in the suites
-// that own each path, and `tests/plan_3_zero_coverage.rs` is the list assertion over all four.
-// ---------------------------------------------------------------------------------------------
 
-/// Reads one directed fixture exactly as `P8T13Probe.read` does:
-/// `DsnReader.readBoard(in, null, new ItemIdGenerator(), "<file>.dsn")` — the design name carries
-/// the `.dsn` suffix, as `File.getName()` hands it over.
 pub fn read_directed(path_name: &str) -> (Board, fr_dsn::CoordinateTransform) {
     let name = format!("p8t13-{path_name}.dsn");
     let text = test_data(&name);
@@ -378,8 +320,6 @@ pub fn read_directed(path_name: &str) -> (Board, fr_dsn::CoordinateTransform) {
     }
 }
 
-/// `SesWriter.write(board, out, "<file>")` — the probe's `emitSes`, whose design name is
-/// `File.getName().replace(".dsn", "")`.
 pub fn write_directed_ses(
     board: &Board,
     ct: &fr_dsn::CoordinateTransform,
@@ -391,7 +331,6 @@ pub fn write_directed_ses(
     String::from_utf8(out).expect("SES output must be valid UTF-8")
 }
 
-/// Every row of `p8t13-directed-<path>.txt` that starts with `prefix`, verbatim.
 pub fn directed_rows(path_name: &str, prefix: &str) -> Vec<String> {
     let transcript = test_data(&format!("p8t13-directed-{path_name}.txt"));
     let rows: Vec<String> = transcript
@@ -407,8 +346,6 @@ pub fn directed_rows(path_name: &str, prefix: &str) -> Vec<String> {
     rows
 }
 
-/// The SES text a `[ses <label>]|` block of `p8t13-directed-<path>.txt` carries, plus the
-/// `[ses <label>] bytes=` length the probe recorded beside it.
 pub fn directed_ses(path_name: &str, label: &str) -> (String, usize) {
     let head = format!("[ses {label}] bytes=");
     let bytes: usize = directed_rows(path_name, &head)
@@ -426,7 +363,6 @@ pub fn directed_ses(path_name: &str, label: &str) -> (String, usize) {
     (text, bytes)
 }
 
-/// `P8T13Probe.items`, in Rust: one `[item] …` row per item, id ascending, then `[itemcount] …`.
 pub fn directed_items(board: &Board) -> Vec<String> {
     let mut ids: Vec<_> = board.items.keys().copied().collect();
     ids.sort_unstable();
@@ -461,7 +397,6 @@ pub fn directed_items(board: &Board) -> Vec<String> {
     out
 }
 
-/// `P8T13Probe.viaNetNumbers`' `[net] …` rows, in Rust.
 pub fn directed_nets(board: &Board) -> Vec<String> {
     (1..=board.rules.nets.max_net_number())
         .map(|i| {
@@ -477,7 +412,6 @@ pub fn directed_nets(board: &Board) -> Vec<String> {
         .collect()
 }
 
-/// Diffs two row lists line by line, naming the transcript.
 pub fn assert_rows_match(actual: &[String], expected: &[String], what: &str) {
     for (i, (a, e)) in actual.iter().zip(expected.iter()).enumerate() {
         assert_eq!(a, e, "{what}: row {} differs", i + 1);

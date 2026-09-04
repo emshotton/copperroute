@@ -1,61 +1,9 @@
-//! Plan 8 Task 1's job-model table: `RoutingJob`, `BoardFileDetails`, `FileFormat` and the
-//! `Session` host check, pinned to the HEAD jar.
-//!
-//! # Where the expectations come from
-//!
-//! `scripts/differential/java/probes/P8T1Probe.java` drives the **real** `RoutingJob` and
-//! `BoardFileDetails` — it declares `package app.freerouting.core` so it can read their
-//! `protected` fields, and reaches the private `changeFileExtension` by reflection — over 154
-//! rows in eight tables, against
-//! `../freerouting/build/libs/freerouting-current-executable.jar` (JDK 25,
-//! `-Djava.awt.headless=true -Duser.language=en -Duser.country=US
-//! -XX:+UnlockExperimentalVMOptions -XX:hashCode=2`). Its output is committed verbatim as
-//! `tests/data/p8t1-job-model.txt`, and `scripts/differential/run.sh p8t1probe` diffs it live
-//! against `scripts/differential/rust/src/bin/p8t1probe.rs` — **MATCH on all 162 lines**.
-//!
-//! # Why the transcript is BOTH a literal and a file
-//!
-//! [`TRANSCRIPT`] is the committed file transcribed into Rust, line for line, exactly as Plan 8
-//! Task 0's timespan table is: a test that reads its expectations out of a file can agree with
-//! itself while disagreeing with the jar. [`the_committed_transcript_still_says_what_this_table_says`]
-//! then re-reads the file and requires the two to agree, so a regenerated transcript cannot drift
-//! away from the table silently either. [`the_port_reproduces_every_transcript_row`] re-derives
-//! every row from the port and compares it against the literal.
-//!
-//! # The two `XDIFF` rows
-//!
-//! Java hangs on three `SNIFF` rows and throws on two `CFE` rows and one `SETFN` row. Those rows
-//! print `XDIFF java=<what Java does> rust=<what the port answers>` on **both** sides, so the
-//! driver's diff still has to be empty while the transcript records the divergence:
-//!
-//! | row | Java | the port |
-//! |---|---|---|
-//! | `SNIFF 35`, `36`, `37` — the first six bytes are all CR/LF | spins for ever (`RoutingJob.java:181-187`, quirk #241); measured with a 5 s watchdog | the loop is bounded at five iterations and the answer is `UNKNOWN` |
-//! | `CFE 0`-`4` — a bare filename, the empty path, the root | `NullPointerException` (`:356`, quirk #242) | the null parent and the null file name are both totalised to `""` |
-//! | `SETFN 8` — `setFilename("/")` | `NullPointerException` (`BoardFileDetails.java:160`, quirk #246) | every derived value is empty |
-//!
-//! # Ruling 12's grep
-//!
-//! ```text
-//! $ grep -rln "RoutingJob\|BoardFileDetails" ../freerouting/src/test/java   ->  48 files
-//! $ grep -rn "getFileFormat\|setFilename\|changeFileExtension\|tryToSetOutputFile" \
-//!       ../freerouting/src/test/java                                        ->  (nothing)
-//! ```
-//!
-//! All 48 build a `RoutingJob` to drive a routing fixture; **none asserts anything about this
-//! task's surface**. The only two touches are `gui/Issue029LoadPhaseTimingTest.java:35`
-//! (`job.setDummyInputFile("Issue029-hw48na.dsn")`) and
-//! `fixtures/RoutingFixtureTest.java:69` (reading `job.input.format`), both of which this file
-//! already covers. Nothing was portable, and the transcript is what stands in its place.
-
 use fr_core::{
     BoardFileDetails, Error, FileFormat, RoutingJob, RoutingJobState, SessionId,
     validate_session_host,
 };
 use std::path::{Path, PathBuf};
 
-/// The committed transcript, line for line. Regenerate with
-/// `scripts/differential/run.sh p8t1probe`.
 const TRANSCRIPT: &[&str] = &[
     "SNIFF-ROWS\t47",
     "EXT-ROWS\t24",
@@ -221,8 +169,6 @@ const TRANSCRIPT: &[&str] = &[
     "SIF\t7\th.missing\tthrows=FileNotFoundException\tinput=<null>",
 ];
 
-/// The `CRC` table's seven byte-literal specs, in its order. They are not recoverable from the
-/// transcript itself, whose hex column truncates past 64 bytes.
 const CRC_LITERAL_SPECS: &[&str] = &[
     "h:",
     "s:a",
@@ -233,8 +179,6 @@ const CRC_LITERAL_SPECS: &[&str] = &[
     "z:8193",
 ];
 
-/// The `SIF` table's file contents, keyed by the name the transcript row carries. `"!"` means the
-/// file is deliberately absent, which is the only way `set_input` returns an error.
 const SIF_FILES: &[(&str, &str)] = &[
     ("a.dsn", "s:(pcb A)\n"),
     ("b.frb", "h:aced000500 05"),
@@ -246,9 +190,6 @@ const SIF_FILES: &[(&str, &str)] = &[
     ("h.missing", "!"),
 ];
 
-// =================================================================================================
-// The two whole-transcript tests
-// =================================================================================================
 
 #[test]
 fn the_committed_transcript_still_says_what_this_table_says() {
@@ -304,14 +245,9 @@ fn every_table_is_as_long_as_its_header_says() {
     }
 }
 
-// =================================================================================================
-// The rows that teach something, asserted by name
-// =================================================================================================
 
 #[test]
 fn six_leading_crlf_bytes_hang_java_and_the_port_bounds_the_loop() {
-    // `RoutingJob.java:181-187` never refills `buffer[5]`, so once the whole six-byte window is
-    // CR/LF the guard is satisfied for ever. Measured on the jar with a 5 s watchdog: rows 35-37.
     for content in [
         b"\n\n\n\n\n\n(pcb".to_vec(),
         b"\r\n\r\n\r\n".to_vec(),
@@ -321,18 +257,13 @@ fn six_leading_crlf_bytes_hang_java_and_the_port_bounds_the_loop() {
             FileFormat::java_shift_loop_hangs(&content),
             "java should hang on {content:?}"
         );
-        // totalized: the bound is five iterations, and the converged buffer sniffs as UNKNOWN.
         assert_eq!(FileFormat::sniff_bytes(&content), FileFormat::Unknown);
     }
 }
 
 #[test]
 fn a_null_content_is_unknown_before_anything_else_runs() {
-    // `RoutingJob.java:152-154` is the sniffer's FIRST branch, and the jar's other null guard
-    // (`tryToSetInput:336-338`) returns before `getFileFormat` is reached — so `TSI 0` does not
-    // cover this line and transcript row `SNIFF 46` does.
     assert_eq!(FileFormat::sniff_bytes_opt(None), FileFormat::Unknown);
-    // The wrapper is transparent for every non-null input.
     assert_eq!(
         FileFormat::sniff_bytes_opt(Some(b"(pcb x")),
         FileFormat::Dsn
@@ -342,8 +273,6 @@ fn a_null_content_is_unknown_before_anything_else_runs() {
 
 #[test]
 fn the_json_precheck_saves_six_newlines_followed_by_a_brace() {
-    // The same six leading newlines do NOT hang when the first non-whitespace byte is `{`: the
-    // pre-check at `:156-164` returns before the sniff ever runs.
     let content = b"\n\n\n\n\n\n   {";
     assert!(!FileFormat::java_shift_loop_hangs(content));
     assert_eq!(
@@ -354,8 +283,6 @@ fn the_json_precheck_saves_six_newlines_followed_by_a_brace() {
 
 #[test]
 fn a_leading_newline_run_floods_the_buffer_and_loses_the_content() {
-    // Three or more leading newlines and the DSN is gone, because `buffer[5]` is copied into every
-    // slot the shift passes: `"\n\n\n(pcb "` becomes `(pcc c` in effect.
     assert_eq!(FileFormat::sniff_bytes(b"\n\n(pcb  "), FileFormat::Dsn);
     assert_eq!(FileFormat::sniff_bytes(b"\n\n\n(pcb "), FileFormat::Unknown);
     assert_eq!(
@@ -370,7 +297,6 @@ fn a_leading_newline_run_floods_the_buffer_and_loses_the_content() {
 
 #[test]
 fn a_leading_space_or_tab_is_not_stripped_by_the_shift_loop() {
-    // The loop tests 0x0A and 0x0D only. A space or a tab survives it and defeats every magic.
     assert_eq!(FileFormat::sniff_bytes(b" (pcb "), FileFormat::Unknown);
     assert_eq!(FileFormat::sniff_bytes(b"\t(pcb "), FileFormat::Unknown);
     assert_eq!(FileFormat::sniff_bytes(b"\n(pcb "), FileFormat::Dsn);
@@ -390,8 +316,6 @@ fn a_utf8_bom_defeats_both_the_json_precheck_and_the_sniff() {
 
 #[test]
 fn five_bytes_are_never_enough_but_one_brace_is() {
-    // `bytesRead == 6` guards every magic check (`:171`), so a five-byte "(pcb " is UNKNOWN — but
-    // the JSON pre-check runs before the guard and needs one byte.
     assert_eq!(FileFormat::sniff_bytes(b"(pcb "), FileFormat::Unknown);
     assert_eq!(FileFormat::sniff_bytes(b"(pcb x"), FileFormat::Dsn);
     assert_eq!(FileFormat::sniff_bytes(b"{"), FileFormat::KicadDesignJson);
@@ -399,8 +323,6 @@ fn five_bytes_are_never_enough_but_one_brace_is() {
 
 #[test]
 fn the_rules_branch_is_case_folded_per_character_and_only_four_bytes_long() {
-    // `:214-219` folds each of the three letters independently, unlike the DSN and SES branches,
-    // and never looks past `buffer[3]`.
     for input in [
         &b"(rules"[..],
         &b"(RULES"[..],
@@ -414,7 +336,6 @@ fn the_rules_branch_is_case_folded_per_character_and_only_four_bytes_long() {
             "{input:?}"
         );
     }
-    // Whereas the DSN and SES branches are whole-case only.
     assert_eq!(FileFormat::sniff_bytes(b"(Pcb x"), FileFormat::Unknown);
     assert_eq!(FileFormat::sniff_bytes(b"(Ses x"), FileFormat::Unknown);
 }
@@ -433,8 +354,6 @@ fn the_frb_magic_is_tested_before_the_shift_loop_and_before_the_brace() {
 
 #[test]
 fn board_dot_is_unknown_but_board_ses_dot_is_ses() {
-    // `String.split("\\.")` drops trailing empty parts, so `"board."` has ONE part and
-    // `"board.ses."` has two.
     assert_eq!(
         FileFormat::from_path(Path::new("board.")),
         FileFormat::Unknown
@@ -462,8 +381,6 @@ fn a_dot_in_a_directory_takes_part_in_the_extension_switch() {
 
 #[test]
 fn change_file_extension_npes_on_a_bare_filename_and_the_port_answers_the_bare_name() {
-    // totalized: RoutingJob.changeFileExtension — quirk #242. `:356` dereferences a null parent
-    // BEFORE any branch, so even the already-matching case throws.
     assert_eq!(
         RoutingJob::change_file_extension("out.ses", "ses"),
         "out.ses"
@@ -479,7 +396,6 @@ fn change_file_extension_npes_on_a_bare_filename_and_the_port_answers_the_bare_n
 
 #[test]
 fn change_file_extension_returns_its_relative_argument_when_the_extension_already_matches() {
-    // Quirk #242's asymmetry: this return is the caller's own string, the other two are absolute.
     assert_eq!(
         RoutingJob::change_file_extension("dir/out.ses", "ses"),
         "dir/out.ses"
@@ -495,22 +411,18 @@ fn change_file_extension_cuts_the_original_extensions_length_and_never_folds_the
         RoutingJob::change_file_extension("/tmp/out.DSN", "ses"),
         "/tmp/out.ses"
     );
-    // The comparison lower-cases, so `.SES` already matches `ses` and the input comes back whole.
     assert_eq!(
         RoutingJob::change_file_extension("/tmp/out.SES", "ses"),
         "/tmp/out.SES"
     );
-    // The new extension is not folded.
     assert_eq!(
         RoutingJob::change_file_extension("/tmp/out.ses", "SES"),
         "/tmp/out.SES"
     );
-    // `"out."` splits to ONE part, so it takes the append arm.
     assert_eq!(
         RoutingJob::change_file_extension("/tmp/out.", "ses"),
         "/tmp/out..ses"
     );
-    // `".hidden"` splits to TWO, so `"hidden"` is the extension and the stem is empty.
     assert_eq!(
         RoutingJob::change_file_extension("/tmp/.hidden", "ses"),
         "/tmp/.ses"
@@ -523,19 +435,16 @@ fn change_file_extension_cuts_the_original_extensions_length_and_never_folds_the
 
 #[test]
 fn set_filename_strips_a_backslash_and_whatever_follows_it() {
-    // Quirk #246: `replaceAll("\\\\.$", "")` is `\\.$` — a literal backslash and ANY character.
     let mut d = BoardFileDetails::default();
     d.set_filename(Some("/tmp/dir\\x/board.dsn"));
     assert_eq!(d.get_directory_path(), "/tmp/dir");
     assert_eq!(d.get_filename(), "board.dsn");
     assert_eq!(d.get_absolute_path(), "/tmp/dir/board.dsn");
 
-    // Both Windows rewrites fire: `\.\` -> `\` first, then the two-character strip.
     let mut d = BoardFileDetails::default();
     d.set_filename(Some("/tmp/a\\.\\b/board.dsn"));
     assert_eq!(d.get_directory_path(), "/tmp/a");
 
-    // A trailing backslash is eaten by the `[/\\]+$` rule first, so the buggy one cannot fire.
     let mut d = BoardFileDetails::default();
     d.set_filename(Some("/tmp/dir\\/board.dsn"));
     assert_eq!(d.get_directory_path(), "/tmp/dir");
@@ -543,14 +452,12 @@ fn set_filename_strips_a_backslash_and_whatever_follows_it() {
 
 #[test]
 fn set_filename_at_the_root_loses_the_directory_entirely() {
-    // `replaceAll("[/\\\\]+$", "")` turns the parent `"/"` into `""`.
     let mut d = BoardFileDetails::default();
     d.set_filename(Some("/board.dsn"));
     assert_eq!(d.get_directory_path(), "");
     assert_eq!(d.get_absolute_path(), "board.dsn");
     assert_eq!(d.format, FileFormat::Dsn);
 
-    // And a trailing separator turns the last directory into the file name.
     let mut d = BoardFileDetails::default();
     d.set_filename(Some("/tmp/"));
     assert_eq!(d.get_directory_path(), "");
@@ -559,7 +466,6 @@ fn set_filename_at_the_root_loses_the_directory_entirely() {
 
 #[test]
 fn set_filename_drops_the_directory_of_a_name_without_a_separator() {
-    // The branch tests the CALLER's string, not the absolutised path.
     let mut d = BoardFileDetails::default();
     d.set_filename(Some("board.dsn"));
     assert_eq!(d.get_directory_path(), "");
@@ -575,7 +481,6 @@ fn set_filename_appends_the_default_extension_only_for_the_five_named_formats() 
         (FileFormat::Frb, "board.frb"),
         (FileFormat::Rules, "board.rules"),
         (FileFormat::Scr, "board.scr"),
-        // The switch `default -> ""` arm: nothing is appended.
         (FileFormat::DrcJson, "board"),
         (FileFormat::KicadDesignJson, "board"),
         (FileFormat::KicadSessionJson, "board"),
@@ -584,7 +489,6 @@ fn set_filename_appends_the_default_extension_only_for_the_five_named_formats() 
         d.format = format;
         d.set_filename(Some("/tmp/board"));
         assert_eq!(d.get_filename(), want, "{format:?}");
-        // The preset format is never re-sniffed away: `:174` only fires when it is UNKNOWN.
         assert_eq!(d.format, format);
     }
 }
@@ -606,18 +510,8 @@ fn calculate_crc32_matches_the_standard_check_vector() {
     assert_eq!(BoardFileDetails::calculate_crc32(b"a"), 0xE8B7_BE43);
 }
 
-/// fixed: T3 (#289) — the inverse of Plan 8's
-/// `set_data_re_sniffs_the_bytes_and_overwrites_the_format`, which this test replaces.
-///
-/// `BoardFileDetails.setData:113` re-derived the format from the bytes it was handed, so
-/// `setJobOutput:266`'s `KICAD_SESSION_JSON` became `KICAD_DESIGN_JSON` the instant the JSON was
-/// written (a document starting `{`), and every later `setJobOutput` call then matched neither
-/// `:275` nor `:282` and did nothing. That is the whole mechanism of `-do out.json` holding the
-/// board as it was before routing. The format is a parameter now, and it survives — including for
-/// the exact byte sequence that used to overwrite it.
 #[test]
 fn set_data_keeps_the_format_it_was_given() {
-    // The bytes that used to defeat it: a JSON document, declared as a KiCad *session*.
     let mut d = BoardFileDetails::default();
     d.set_data(b"{\"a\":1}".to_vec(), FileFormat::KicadSessionJson);
     assert_eq!(
@@ -626,20 +520,14 @@ fn set_data_keeps_the_format_it_was_given() {
         "the re-sniff at BoardFileDetails.java:113 is gone; `{{` no longer means KICAD_DESIGN_JSON \
          when the caller said otherwise"
     );
-    // Everything else `setData` derives is still derived from the bytes.
     assert_eq!(d.size, 7);
     assert_eq!(d.crc32, BoardFileDetails::calculate_crc32(b"{\"a\":1}"));
     assert_eq!(d.get_data(), b"{\"a\":1}");
 
-    // The SES path, which escaped the re-sniff only by coincidence (`(ses` re-detects as SES),
-    // now escapes it by construction.
     let mut d = BoardFileDetails::default();
     d.set_data(b"(ses X)".to_vec(), FileFormat::Ses);
     assert_eq!(d.format, FileFormat::Ses);
 
-    // And a caller that *wants* the sniff still gets it — it is one visible line at the site
-    // rather than a hidden overwrite. `RoutingJob::set_rules_bytes` is the one that relies on it:
-    // Java sets `RULES` at `:290` and loses it again unless the bytes start with `(rul`.
     let mut job = RoutingJob::default();
     assert!(job.set_rules_bytes(b"(rules (clearance 200))"));
     assert_eq!(job.rules.as_ref().expect("rules").format, FileFormat::Rules);
@@ -654,8 +542,6 @@ fn set_data_keeps_the_format_it_was_given() {
 
 #[test]
 fn try_to_set_input_leaves_a_non_null_but_empty_input_when_it_fails() {
-    // This is why `Freerouting.java:108`'s `job.input == null` guard cannot fire on unrecognised
-    // bytes — only on an unreadable file.
     let mut job = RoutingJob::default();
     assert!(!job.set_input_bytes(Some(b"hello!")));
     let input = job
@@ -672,10 +558,8 @@ fn try_to_set_input_leaves_a_non_null_but_empty_input_when_it_fails() {
 #[test]
 fn try_to_set_output_file_rejects_rules_and_rewrites_kicad_design_json() {
     let mut job = RoutingJob::default();
-    // RULES is recognised by `getFileFormat(Path)` and is NOT in `:384-388`'s accepted set.
     assert!(!job.try_to_set_output_file(Some(Path::new("/tmp/out.rules"))));
     assert!(job.output.is_none());
-    // Quirk label L's `-do out.txt`: false, and the caller at `Freerouting.java:123` ignores it.
     assert!(!job.try_to_set_output_file(Some(Path::new("/tmp/out.txt"))));
     assert!(!job.try_to_set_output_file(None));
 
@@ -684,7 +568,6 @@ fn try_to_set_output_file_rejects_rules_and_rewrites_kicad_design_json() {
         ("/tmp/out.dsn", FileFormat::Dsn),
         ("/tmp/out.frb", FileFormat::Frb),
         ("/tmp/out.scr", FileFormat::Scr),
-        // `:391` — the one site in the tree that produces KICAD_SESSION_JSON.
         ("/tmp/out.json", FileFormat::KicadSessionJson),
     ] {
         let mut job = RoutingJob::default();
@@ -695,8 +578,6 @@ fn try_to_set_output_file_rejects_rules_and_rewrites_kicad_design_json() {
 
 #[test]
 fn is_cli_terminal_totalises_javas_invalid_omission() {
-    // `Freerouting.java:189-194` omits INVALID and `:151-158` therefore spins for ever on it.
-    // Plan ruling 7 (quirk #244) makes it terminal.
     for state in [
         RoutingJobState::Completed,
         RoutingJobState::Terminated,
@@ -721,8 +602,6 @@ fn is_cli_terminal_totalises_javas_invalid_omission() {
 
 #[test]
 fn the_session_host_check_normalises_null_and_blank_and_then_demands_two_parts() {
-    // `Session.java:31-42`, validating before assigning (quirk #245 — unobservable, and said so
-    // at the site).
     assert_eq!(validate_session_host(None).unwrap(), "Unknown/0.0");
     assert_eq!(validate_session_host(Some("   ")).unwrap(), "Unknown/0.0");
     assert_eq!(validate_session_host(Some("")).unwrap(), "Unknown/0.0");
@@ -730,7 +609,6 @@ fn the_session_host_check_normalises_null_and_blank_and_then_demands_two_parts()
         validate_session_host(Some("Freerouting/2.3.1-SNAPSHOT")).unwrap(),
         "Freerouting/2.3.1-SNAPSHOT"
     );
-    // `String.split` keeps a LEADING empty part and drops trailing ones.
     assert_eq!(validate_session_host(Some("/a")).unwrap(), "/a");
     for bad in ["a", "a/", "a/b/c", "a//b"] {
         let err = validate_session_host(Some(bad)).unwrap_err();
@@ -757,8 +635,6 @@ fn set_input_from_a_file_derives_the_output_name_from_the_content_not_the_extens
 
 #[test]
 fn an_frb_or_kicad_input_derives_its_own_path_as_its_output() {
-    // `changeFileExtension` returns its argument unchanged when the extension already matches, so
-    // these two default outputs ARE the input file.
     let dir = scratch("selfoutput");
     std::fs::write(dir.join("b.frb"), [0xAC, 0xED, 0x00, 0x05, 0x00, 0x05]).unwrap();
     std::fs::write(dir.join("c.json"), b"{\"a\":1}\n").unwrap();
@@ -780,8 +656,6 @@ fn an_frb_or_kicad_input_derives_its_own_path_as_its_output() {
 
 #[test]
 fn an_unrecognised_dsn_falls_back_to_its_extension_with_size_and_crc_still_zero() {
-    // `:433-436` re-derives the format from the extension, but `setData` already did not run —
-    // so the job routes a board whose `input.size` and `input.crc32` are both 0.
     let dir = scratch("fallback");
     std::fs::write(dir.join("e.dsn"), b"hello!\n").unwrap();
     let mut job = RoutingJob::default();
@@ -816,14 +690,11 @@ fn a_missing_input_file_is_the_only_way_job_input_stays_none() {
 
 #[test]
 fn a_missing_rules_file_is_silently_ignored() {
-    // `:302`'s `rulesFile.exists()` guard — no error, no rules, no warning.
     let dir = scratch("rules");
     let mut job = RoutingJob::default();
     job.set_rules(&dir.join("nope.rules")).unwrap();
     assert!(job.rules.is_none());
 
-    // And a `.rules` file whose CONTENT is not `(rul` loses the RULES format to `setData`'s
-    // re-sniff, while keeping the `.rules` name.
     std::fs::write(dir.join("x.rules"), b"nonsense\n").unwrap();
     job.set_rules(&dir.join("x.rules")).unwrap();
     let rules = job.rules.as_ref().unwrap();
@@ -835,19 +706,6 @@ fn a_missing_rules_file_is_silently_ignored() {
     assert_eq!(job.rules.as_ref().unwrap().format, FileFormat::Rules);
 }
 
-/// `RoutingJob.java:105` is `public RouterSettings routerSettings = new RouterSettings();` — the
-/// **no-arg constructor**, which allocates `optimizer`, `scoring` and `fanout`
-/// (`RouterSettings.java:119-124`), not an all-null object.
-///
-/// The distinction is not academic: `fr_settings::RouterSettings::{new, default}` are documented
-/// as having to disagree on exactly those three fields, and Task 1 wrote `default()` here. Two
-/// things went wrong downstream and neither was visible from this file — the result manifest's
-/// `settings_snapshot` serialised as `{}` instead of `{"fanout": {}, "optimizer": {}, "scoring":
-/// {}}`, and `RoutingResultManifest.fromJob:118`'s `routerSettings.scoring != null` guard could
-/// never pass, so `normalized_score` would never have been written at all. Plan 8 Task 4 found it
-/// and fixed it; this is the pin at the file the next reader of the job model will open (task
-/// review N2). `drcSettings` (`:107-109`) is `new DesignRulesCheckerSettings()`, whose Java
-/// constructor allocates nothing, so `default()` is right for that one.
 #[test]
 fn a_defaulted_job_carries_javas_new_router_settings_not_an_empty_one() {
     let job = RoutingJob::default();
@@ -869,12 +727,10 @@ fn a_defaulted_job_carries_javas_new_router_settings_not_an_empty_one() {
         fr_settings::RouterSettings::default(),
         "`new RouterSettings()` and an all-null one must not be the same object"
     );
-    // `RoutingJob(UUID)` delegates to the no-arg constructor (`:141-142`), so the same holds.
     assert_eq!(
         RoutingJob::new(SessionId::NIL).router_settings,
         fr_settings::RouterSettings::new()
     );
-    // `:111-113` — `resourceUsage = new RouterJobResourceUsage()`, all five floats zero.
     assert_eq!(
         job.resource_usage,
         fr_core::RouterJobResourceUsage::default()
@@ -883,7 +739,6 @@ fn a_defaulted_job_carries_javas_new_router_settings_not_an_empty_one() {
 
 #[test]
 fn set_dummy_input_file_matches_a_bare_dsn_suffix_not_a_dot_dsn_one() {
-    // `endsWith(DSN_FILE_EXTENSION)` is `endsWith("dsn")`, transcribed as written.
     let mut job = RoutingJob::default();
     job.set_dummy_input_file(Some("boarddsn"));
     assert_eq!(job.input.as_ref().unwrap().format, FileFormat::Dsn);
@@ -891,7 +746,6 @@ fn set_dummy_input_file_matches_a_bare_dsn_suffix_not_a_dot_dsn_one() {
     let mut job = RoutingJob::default();
     job.set_dummy_input_file(Some("board.dsn.bak"));
     assert_eq!(job.input.as_ref().unwrap().format, FileFormat::Unknown);
-    // `output` is replaced unconditionally, even when the name is rejected.
     assert!(job.output.is_some());
 }
 
@@ -925,7 +779,6 @@ fn the_job_constructors_build_the_java_names() {
     let id =
         fr_core::JobId::from_bytes([0xde, 0xad, 0xbe, 0xef, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     let job = RoutingJob::with_id(session, id);
-    // `:144-147` — a literal backslash between the two six-character prefixes.
     assert_eq!(job.short_name, "0AB1C2\\DEADBE");
     assert_eq!(job.name, "J-DEADBE");
     assert_eq!(job.log_prefix(), "[0AB1C2\\DEADBE] ");
@@ -958,9 +811,6 @@ fn the_current_pass_accessors_round_trip() {
     assert!(job.is_cancelled_by_user());
 }
 
-// =================================================================================================
-// The replay machinery
-// =================================================================================================
 
 fn scratch(name: &str) -> PathBuf {
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("p8t1-{name}"));
@@ -1006,14 +856,10 @@ impl Ctx {
         s
     }
 
-    /// Rebuilds one transcript row from the port. `None` for a header line, which carries no
-    /// behaviour.
-    fn rebuild(&self, line: &str) -> Option<String> {
+            fn rebuild(&self, line: &str) -> Option<String> {
         let f: Vec<&str> = line.split('\t').collect();
         match f[0] {
             "SNIFF" => {
-                // `<null>` is Java's `content == null` (`:152-154`); the port models it as
-                // `Option::None` at `FileFormat::sniff_bytes_opt`.
                 let content = if f[2] == "<null>" {
                     None
                 } else {
@@ -1187,7 +1033,6 @@ impl Ctx {
     }
 }
 
-/// `Path.of(filename).getParent() == null` — the NPE condition at `RoutingJob.java:356`.
 fn java_parent_is_null(filename: &str) -> bool {
     let absolute = filename.starts_with('/');
     let segments: Vec<&str> = filename.split('/').filter(|x| !x.is_empty()).collect();

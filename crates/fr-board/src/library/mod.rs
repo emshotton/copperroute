@@ -1,8 +1,3 @@
-//! The board library: padstacks, packages, logical parts, and the aggregate `BoardLibrary`.
-//!
-//! Java: `core/library/{Padstack,Padstacks,Package,Packages,LogicalPart,LogicalParts,
-//! BoardLibrary}.java`.
-
 pub mod board_library;
 pub mod logical_part;
 pub mod package;

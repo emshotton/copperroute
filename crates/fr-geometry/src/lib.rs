@@ -1,8 +1,5 @@
 #![forbid(unsafe_code)]
 
-//! Planar geometry for the freerouting port. Faithful port of
-//! `app.freerouting.geometry.planar` — exact integer/rational arithmetic.
-
 pub mod bigint_aux;
 pub mod bigint_direction;
 pub mod bounding_directions;
@@ -70,7 +67,6 @@ pub use simplex::Simplex;
 pub use tile_shape::TileShape;
 pub use vector::Vector;
 
-/// Re-exports every public type of the crate, for `use fr_geometry::prelude::*;`.
 pub mod prelude {
     pub use crate::{
         Area, BigIntDirection, CRIT_INT, Circle, Direction, Ellipse, FloatLine, FloatPoint,

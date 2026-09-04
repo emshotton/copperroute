@@ -1,38 +1,3 @@
-// Plan 5 Task 5 JVM probe: `drc.NetIncompletes`, per net.
-//
-// Plan-5 ruling 4 splits this class's output in two:
-//
-//   * `count()`, `getConnectedGroupCount()` and `getLengthViolation()` are **hash-independent**
-//     — they are graph invariants of the net plus its net class's length limits — and are the
-//     parity surface. They go into `<stem>.netincompletes.txt`, which
-//     `the_three_fixtures_match_the_jvm` (`crates/fr-drc/tests/net_incompletes.rs`) compares byte
-//     for byte.
-//   * the airlines themselves are **not**. `NetIncompletes.calculateNetItems` seeds its outer
-//     loop from a `HashSet<Item>` (NetIncompletes.java:295, :299) over a class with no
-//     `hashCode` override, so the Delaunay corner insertion order — and therefore which of
-//     several equal-length edges the spanning tree accepts — is identity-hash ordered. Ruling 4
-//     measured five different airline lists under `-XX:hashCode=0..4` on the dev board with an
-//     identical `incompleteCount`. They go into `<stem>.airlines.txt`, which is committed for
-//     **one** run and read by no assertion; the port's own list is diffed against it by hand and
-//     the differences classified (see `tests/data/README.md`).
-//
-// Transcript format (`.netincompletes.txt`):
-//
-//   nets <maxNetNumber>
-//   net=<n> items=<filtered-input-size> count=<airlines> groups=<connectedGroupCount> \
-//       lengthViolation=<Double.toString> markerRadius=<Double.toString>
-//   airlines <getAllAirlines().length>
-//   incompleteCount <getIncompleteCount()>
-//
-// with one `net=` line per net number 1..maxNetNumber, in ascending order. `items=` is the size
-// of the collection `calculateAllIncompletes` passes the constructor (`:550-563`,
-// `:617-621`) — reproduced here rather than read out of the object, which does not keep it — so
-// that a port whose *input* differs is distinguishable from one whose ratsnest differs.
-//
-// The transcript is written to files, not stdout: `FRLogger` prints a warning line to stdout on
-// one of the fixtures and the port has no logger to reproduce it with.
-//
-// Usage: java -Djava.awt.headless=true -cp <jar>:. NetIncompletesProbe <board.dsn> <out-stem>
 import app.freerouting.board.facade.BasicBoard;
 import app.freerouting.board.model.items.Connectable;
 import app.freerouting.board.model.items.Item;
@@ -61,8 +26,6 @@ public class NetIncompletesProbe {
 
     int maxNetNo = board.rules.nets.maxNetNumber();
 
-    // The per-net input sizes, exactly as `calculateAllIncompletes` builds them
-    // (DesignRulesChecker.java:544-563): every `Connectable` item, once per net it carries.
     int[] inputSizes = new int[maxNetNo];
     for (Item item : board.getItems()) {
       if (item instanceof Connectable) {
@@ -100,7 +63,6 @@ public class NetIncompletesProbe {
     sb.append("incompleteCount ").append(drc.getIncompleteCount()).append('\n');
     Files.writeString(Path.of(args[1] + ".netincompletes.txt"), sb.toString(), StandardCharsets.UTF_8);
 
-    // Informational only — hash-dependent, asserted by nothing.
     StringBuilder lines = new StringBuilder();
     for (AirLine airline : airlines) {
       lines

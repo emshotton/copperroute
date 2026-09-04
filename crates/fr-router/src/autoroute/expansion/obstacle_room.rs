@@ -1,10 +1,3 @@
-//! Port of `autoroute.expansion.ObstacleExpansionRoom` (ObstacleExpansionRoom.java:14-158) —
-//! "expansion room used for pushing and ripping obstacles in the autoroute algorithm".
-//!
-//! Unlike the free-space rooms this one does **not** extend `FreeSpaceExpansionRoom`: it
-//! implements `CompleteExpansionRoom` directly (`:14`) and keeps its own door list, so there is
-//! no shared base to compose here.
-
 use fr_board::{Board, ItemId, TreeId, TreeObject};
 use fr_geometry::TileShape;
 
@@ -12,39 +5,18 @@ use crate::Arena;
 use crate::arena::{DoorId, TargetDoorId};
 use crate::autoroute::expansion::{ExpandableRef, ExpansionDoor, RoomRef};
 
-/// Port of `ObstacleExpansionRoom` (ObstacleExpansionRoom.java:14-158).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ObstacleExpansionRoom {
-    /// `private final Item item` (:16). Java holds the object; the port holds its id.
-    item: ItemId,
-    /// `private final int indexInItem` (:17) — the index of this room's shape within the item.
-    index_in_item: usize,
-    /// The engine's own id for this room — fixed: T8 (#156), see [`Self::get_id`]. No Java field:
-    /// Java computes its id from `item` and `indexInItem` on every call, which is the defect.
-    id_no: i32,
-    /// `private final TileShape shape` (:18), computed **once** at construction from
-    /// `item.getTreeShape(shapeTree, indexInItem)` (`:29`). `None` is Java's null tree shape —
-    /// a drill layer with no pad and no synthesised hole obstacle
-    /// (`ShapeSearchTree.calculateTreeShapes(DrillItem)`).
-    shape: Option<TileShape>,
-    /// `private List<ExpansionDoor> doors` (:21), an `ArrayList` (`:30`).
-    doors: Vec<DoorId>,
-    /// `private boolean doorsCalculated` (:23).
-    doors_calculated: bool,
+        item: ItemId,
+        index_in_item: usize,
+            id_no: i32,
+                    shape: Option<TileShape>,
+        doors: Vec<DoorId>,
+        doors_calculated: bool,
 }
 
 impl ObstacleExpansionRoom {
-    /// Port of the constructor (ObstacleExpansionRoom.java:26-31).
-    ///
-    /// Java's `item.getTreeShape(shapeTree, indexInItem)` is [`Board::item_tree_shape`], the
-    /// `&mut` variant — **never** `item_tree_shape_ref` (plan-6 ruling 10): the `&self` twin
-    /// cannot perform `clearDerivedData()`'s cold-cache recompute, and that drop is
-    /// router-observable.
-    ///
-    /// fixed: T8 (#156): `id_no` is the engine's own counter, drawn by
-    /// [`ExpansionRoomStore::new_obstacle_room`], because Java's `(itemId << 10) | indexInItem`
-    /// is a hash and not an identity — see [`get_id`](Self::get_id).
-    pub fn new(
+                                            pub fn new(
         board: &mut Board,
         item: ItemId,
         index_in_item: usize,
@@ -61,65 +33,31 @@ impl ObstacleExpansionRoom {
         }
     }
 
-    /// Port of `getIndexInItem` (ObstacleExpansionRoom.java:33-36).
-    pub fn get_index_in_item(&self) -> usize {
+        pub fn get_index_in_item(&self) -> usize {
         self.index_in_item
     }
 
-    /// Port of `getItem` (ObstacleExpansionRoom.java:126-129), as the item's id.
-    pub fn get_item(&self) -> ItemId {
+        pub fn get_item(&self) -> ItemId {
         self.item
     }
 
-    /// Port of `getLayer` (ObstacleExpansionRoom.java:38-41):
-    /// `this.item.shapeLayer(this.indexInItem)`.
-    ///
-    /// Java recomputes this on every call rather than caching it beside the shape, so the port
-    /// takes the board rather than storing a layer. `None` is an item that has left the board.
-    pub fn get_layer(&self, board: &Board) -> Option<usize> {
+                        pub fn get_layer(&self, board: &Board) -> Option<usize> {
         board.item_shape_layer(self.item, self.index_in_item)
     }
 
-    /// Port of `getShape` (ObstacleExpansionRoom.java:43-46).
-    pub fn get_shape(&self) -> Option<&TileShape> {
+        pub fn get_shape(&self) -> Option<&TileShape> {
         self.shape.as_ref()
     }
 
-    /// Port of `getId` (ObstacleExpansionRoom.java:48-51):
-    /// `(this.item.getId() << 10) | this.indexInItem`.
-    ///
-    /// fixed: T8 (#156). Java's formula is a hash, not an identity, and it **aliases** two ways:
-    ///
-    /// * `|` never carries, so any `indexInItem >= 1024` spills into the item's bits — an item
-    ///   with 1024 or more tree shapes gives two of its own rooms the same id, and can collide
-    ///   with another item's rooms outright: `id(1, 1024) == id(0, 1024) == 1024`, and
-    ///   `id(5, 1024) == id(6, 0) == 6144`.
-    /// * `<< 10` overflows a Java `int` at `itemId >= 2^21`, so ids go negative and then wrap:
-    ///   `id(item, index) == id(item + 2^22, index)` for **every** item and index, because a
-    ///   32-bit left shift by 10 is arithmetic mod 2^32 and `2^22 * 2^10 = 2^32`.
-    ///
-    /// The id reaches [`super::ExpansionDoor::get_id`], which is a sort key of
-    /// `MazeListElement`, so an aliased id is a routing decision taken on a collision. It is a
-    /// **per-engine counter** now, as `CompleteFreeSpaceExpansionRoom`'s already was: stable
-    /// (nothing about the room can move it) and injective (the counter is shared by every
-    /// expandable object the engine owns).
-    pub fn get_id(&self) -> i32 {
+                                                                            pub fn get_id(&self) -> i32 {
         self.id_no
     }
 
-    /// **Java's** `getId` arithmetic, as a free function over the two inputs, kept so that the
-    /// aliasing #156 fixed can be pinned without building a board. Nothing in the port reads it.
-    pub fn java_id(item: ItemId, index_in_item: usize) -> i32 {
-        // Java's `int` cast of both operands, then `<<` and `|`.
+            pub fn java_id(item: ItemId, index_in_item: usize) -> i32 {
         (item.0 as i32).wrapping_shl(10) | (index_in_item as i32)
     }
 
-    /// Port of `doorExists` (ObstacleExpansionRoom.java:53-64): "checks if this room already has
-    /// a 1-dimensional door to other" — the javadoc says 1-dimensional, the body tests every
-    /// door.
-    ///
-    /// Java's `doors != null` guard (`:56`) cannot happen here.
-    pub fn door_exists(&self, doors: &Arena<ExpansionDoor>, other: RoomRef) -> bool {
+                        pub fn door_exists(&self, doors: &Arena<ExpansionDoor>, other: RoomRef) -> bool {
         self.doors.iter().any(|door| {
             doors
                 .get(door.0)
@@ -127,23 +65,19 @@ impl ObstacleExpansionRoom {
         })
     }
 
-    /// Port of `addDoor` (ObstacleExpansionRoom.java:66-70).
-    pub fn add_door(&mut self, door: DoorId) {
+        pub fn add_door(&mut self, door: DoorId) {
         self.doors.push(door);
     }
 
-    /// Port of `getDoors` (ObstacleExpansionRoom.java:102-106).
-    pub fn get_doors(&self) -> &[DoorId] {
+        pub fn get_doors(&self) -> &[DoorId] {
         &self.doors
     }
 
-    /// Port of `clearDoors` (ObstacleExpansionRoom.java:108-112).
-    pub fn clear_doors(&mut self) {
+        pub fn clear_doors(&mut self) {
         self.doors = Vec::new();
     }
 
-    /// Port of `resetDoors` (ObstacleExpansionRoom.java:114-119).
-    pub fn reset_doors(&self, doors: &mut Arena<ExpansionDoor>) {
+        pub fn reset_doors(&self, doors: &mut Arena<ExpansionDoor>) {
         for door in &self.doors {
             if let Some(door) = doors.get_mut(door.0) {
                 door.reset();
@@ -151,11 +85,7 @@ impl ObstacleExpansionRoom {
         }
     }
 
-    /// Port of `removeDoor` (ObstacleExpansionRoom.java:136-139): `List.remove(Object)`.
-    ///
-    /// An obstacle room has no target-door list, so a `TargetItemExpansionDoor` — or a drill or
-    /// a page — simply matches nothing, which is what Java's `List.remove` answers.
-    pub fn remove_door(&mut self, door: ExpandableRef) -> bool {
+                    pub fn remove_door(&mut self, door: ExpandableRef) -> bool {
         let ExpandableRef::Door(id) = door else {
             return false;
         };
@@ -168,40 +98,23 @@ impl ObstacleExpansionRoom {
         }
     }
 
-    /// Port of `getTargetDoors` (ObstacleExpansionRoom.java:121-124): always empty. Java
-    /// allocates a fresh `ArrayList` each call.
-    pub fn get_target_doors(&self) -> &[TargetDoorId] {
+            pub fn get_target_doors(&self) -> &[TargetDoorId] {
         &[]
     }
 
-    /// Port of `getObject` (ObstacleExpansionRoom.java:131-134): `this.item` — the obstacle
-    /// room's `SearchTreeObject` is the **item**, not the room, so an obstacle room is never in
-    /// the tree under its own key.
-    pub fn get_object(&self) -> TreeObject {
+                pub fn get_object(&self) -> TreeObject {
         TreeObject::Item(self.item)
     }
 
-    /// Port of `allDoorsCalculated` (ObstacleExpansionRoom.java:141-144).
-    pub fn all_doors_calculated(&self) -> bool {
+        pub fn all_doors_calculated(&self) -> bool {
         self.doors_calculated
     }
 
-    /// Port of `setDoorsCalculated` (ObstacleExpansionRoom.java:146-148).
-    pub fn set_doors_calculated(&mut self, value: bool) {
+        pub fn set_doors_calculated(&mut self, value: bool) {
         self.doors_calculated = value;
     }
 }
 
-// renamed: `ObstacleExpansionRoom.createOverlapDoor` (ObstacleExpansionRoom.java:72-100) is
-// `crate::autoroute::expansion::sorted_neighbours::create_overlap_door`, a free function rather
-// than a method: three of its five guards read the **board** (`Item.isRoutable`,
-// `Item.sharesNet`, `instanceof PolylineTrace`) and the door it builds has to go into the
-// store's arena, neither of which a `&mut self` on this struct can reach. Its only caller is
-// `SortedRoomNeighbours.calculateNeighbours` (`SortedRoomNeighbours.java:240` — the 2-dimensional
-// overlap branch; the marker this replaces named `calculateNewIncompleteRooms`, which is wrong).
-//
-// not ported: `ObstacleExpansionRoom.emitDiagnostic` (ObstacleExpansionRoom.java:150-158) — an
-// `AutorouteDiagnostic.Sink`, i.e. a GUI overlay (`global-constraints.md`).
 
 #[cfg(test)]
 mod tests {
@@ -209,18 +122,14 @@ mod tests {
 
     #[test]
     fn the_id_is_an_or_not_a_sum_so_a_wide_index_aliases() {
-        // quirk #156. `1 << 10 | 1024` is 1024, which is `1 << 10 | 0`.
         assert_eq!(
             ObstacleExpansionRoom::java_id(ItemId(1), 1024),
             ObstacleExpansionRoom::java_id(ItemId(1), 0)
         );
-        // `1 << 10 | 2048` is 3072, which is `3 << 10`.
         assert_eq!(
             ObstacleExpansionRoom::java_id(ItemId(1), 2048),
             ObstacleExpansionRoom::java_id(ItemId(3), 0)
         );
-        // Within the 10 bits the encoding is injective, which is why the bug is invisible on
-        // every real board.
         assert_ne!(
             ObstacleExpansionRoom::java_id(ItemId(1), 1023),
             ObstacleExpansionRoom::java_id(ItemId(1), 1022)

@@ -1,9 +1,3 @@
-//! Port of `app.freerouting.geometry.planar.Circle`: "Describes functionality of a circle shape
-//! in the plane" (Circle.java:8).
-//!
-//! Java's `Circle implements ConvexShape`, so it carries `offset`, `shrink`, `maxWidth` and
-//! `minWidth` next to the `Shape` members.
-
 use crate::float_point::FloatPoint;
 use crate::int_box::IntBox;
 use crate::int_octagon::IntOctagon;
@@ -20,103 +14,80 @@ use crate::tile_shape::TileShape;
 use crate::vector::Vector;
 use std::fmt;
 
-/// A circle with an integer centre and an integer radius.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Circle {
-    /// The centre of the circle.
-    pub center: IntPoint,
-    /// The radius of the circle; never negative.
-    pub radius: i32,
+        pub center: IntPoint,
+        pub radius: i32,
 }
 
 impl Circle {
-    /// Creates a new instance of `Circle` (Circle.java:14-23). A negative radius is negated;
-    /// Java additionally warns "Circle: unexpected negative radius".
-    pub fn new(center: IntPoint, radius: i32) -> Circle {
+            pub fn new(center: IntPoint, radius: i32) -> Circle {
         Circle {
             center,
             radius: if radius < 0 { -radius } else { radius },
         }
     }
 
-    /// A circle is never empty (Circle.java:25-28).
-    pub fn is_empty(&self) -> bool {
+        pub fn is_empty(&self) -> bool {
         false
     }
 
-    /// A circle is always bounded (Circle.java:30-33).
-    pub fn is_bounded(&self) -> bool {
+        pub fn is_bounded(&self) -> bool {
         true
     }
 
-    /// 0 if the circle is reduced to a point, 2 otherwise (Circle.java:35-42).
-    pub fn dimension(&self) -> i32 {
+        pub fn dimension(&self) -> i32 {
         if self.radius == 0 {
-            // circle is reduced to a point
             return 0;
         }
         2
     }
 
-    /// The length of the border of this circle (Circle.java:44-47).
-    pub fn circumference(&self) -> f64 {
+        pub fn circumference(&self) -> f64 {
         2.0 * std::f64::consts::PI * self.radius as f64
     }
 
-    /// The content of the area of this circle (Circle.java:49-52). Java evaluates
-    /// `(Math.PI * radius) * radius`, which is left-associative — kept, because the two
-    /// groupings differ in the last bit.
-    pub fn area(&self) -> f64 {
+                pub fn area(&self) -> f64 {
         (std::f64::consts::PI * self.radius as f64) * self.radius as f64
     }
 
-    /// The gravity point of this circle (Circle.java:54-57).
-    pub fn centre_of_gravity(&self) -> FloatPoint {
+        pub fn centre_of_gravity(&self) -> FloatPoint {
         self.center.to_float()
     }
 
-    /// Returns true if `point` is neither inside nor on the boundary (Circle.java:59-63).
-    pub fn is_outside(&self, point: &Point) -> bool {
+        pub fn is_outside(&self, point: &Point) -> bool {
         let fp = point.to_float();
         fp.distance_square(&self.center.to_float()) > self.radius as f64 * self.radius as f64
     }
 
-    /// Returns true if `point` is inside or on the border (Circle.java:65-68).
-    pub fn contains(&self, point: &Point) -> bool {
+        pub fn contains(&self, point: &Point) -> bool {
         !self.is_outside(point)
     }
 
-    /// Returns true if `point` is inside or on the border (Circle.java:70-73).
-    pub fn contains_float(&self, point: &FloatPoint) -> bool {
+        pub fn contains_float(&self, point: &FloatPoint) -> bool {
         point.distance_square(&self.center.to_float()) <= self.radius as f64 * self.radius as f64
     }
 
-    /// Returns true if `point` is inside, but not on the border (Circle.java:75-79).
-    pub fn contains_inside(&self, point: &Point) -> bool {
+        pub fn contains_inside(&self, point: &Point) -> bool {
         let fp = point.to_float();
         fp.distance_square(&self.center.to_float()) < self.radius as f64 * self.radius as f64
     }
 
-    /// Returns true if `point` lies exactly on the boundary (Circle.java:81-85).
-    pub fn contains_on_border(&self, point: &Point) -> bool {
+        pub fn contains_on_border(&self, point: &Point) -> bool {
         let fp = point.to_float();
         fp.distance_square(&self.center.to_float()) == self.radius as f64 * self.radius as f64
     }
 
-    /// The distance between `point` and its nearest point on this circle; 0 inside
-    /// (Circle.java:87-91).
-    pub fn distance(&self, point: &FloatPoint) -> f64 {
+            pub fn distance(&self, point: &FloatPoint) -> f64 {
         let d = point.distance(&self.center.to_float()) - self.radius as f64;
         java_max(d, 0.0)
     }
 
-    /// The smallest distance from the centre of gravity to the border (Circle.java:93-96).
-    pub fn smallest_radius(&self) -> f64 {
+        pub fn smallest_radius(&self) -> f64 {
         self.radius as f64
     }
 
-    /// The smallest surrounding box of this circle (Circle.java:98-105).
-    pub fn bounding_box(&self) -> IntBox {
+        pub fn bounding_box(&self) -> IntBox {
         let lower_left_x = self.center.x - self.radius;
         let upper_right_x = self.center.x + self.radius;
         let lower_left_y = self.center.y - self.radius;
@@ -124,13 +95,7 @@ impl Circle {
         IntBox::from_coords(lower_left_x, lower_left_y, upper_right_x, upper_right_y)
     }
 
-    /// The smallest surrounding octagon of this circle (Circle.java:107-131).
-    ///
-    /// The four diagonal bounds read oddly because Java folds the centre in through `leftX` /
-    /// `rightX` and then corrects with `center.y`: `upperLeftDiagonalX` works out to
-    /// `cx - cy - (r + floor((sqrt(2) - 1) r))`, i.e. `x - y` at the upper-left tangent, and the
-    /// other three are its mirrors. Transcribed exactly, floor/ceil included.
-    pub fn bounding_octagon(&self) -> IntOctagon {
+                            pub fn bounding_octagon(&self) -> IntOctagon {
         let left_x = self.center.x - self.radius;
         let right_x = self.center.x + self.radius;
         let bottom_y = self.center.y - self.radius;
@@ -156,29 +121,18 @@ impl Circle {
         )
     }
 
-    /// A bounding `TileShape` of this circle (Circle.java:133-142). Java returns the bounding
-    /// octagon; the commented-out alternative "caused problems with the spring_over algorithm in
-    /// routing".
-    pub fn bounding_tile(&self) -> TileShape {
+                pub fn bounding_tile(&self) -> TileShape {
         TileShape::Octagon(self.bounding_octagon())
     }
 
-    /// Creates a bounding tile shape around this circle, so that the length of the line segments
-    /// of the tile is at most `max_segment_length` (Circle.java:144-175).
-    ///
-    /// # Panics
-    /// For `max_segment_length == 0`, where Java throws `ArithmeticException: / by zero`.
-    pub fn bounding_tile_max_seg(&self, max_segment_length: i32) -> TileShape {
+                        pub fn bounding_tile_max_seg(&self, max_segment_length: i32) -> TileShape {
         let quadrant_division_count = self.radius / max_segment_length + 1;
         if quadrant_division_count <= 2 {
             return TileShape::Octagon(self.bounding_octagon());
         }
         let count = quadrant_division_count as usize;
-        // Java fills a `Line[quadrantDivisionCount * 4]` out of order; `Option` stands in for the
-        // `null` slots until every index has been written.
         let mut tangent_line_arr: Vec<Option<Line>> = vec![None; count * 4];
         for i in 0..count {
-            // calculate the tangential points in the first quadrant
             let border_delta = if i == 0 {
                 IntVector::new(self.radius, 0)
             } else {
@@ -206,8 +160,7 @@ impl Circle {
         TileShape::get_instance_from_lines(lines)
     }
 
-    /// Checks if this circle is completely contained in `b` (Circle.java:177-189).
-    pub fn is_contained_in(&self, b: &IntBox) -> bool {
+        pub fn is_contained_in(&self, b: &IntBox) -> bool {
         if b.ll.x > self.center.x - self.radius {
             return false;
         }
@@ -220,66 +173,51 @@ impl Circle {
         b.ur.y >= self.center.y + self.radius
     }
 
-    /// Turns this circle by `factor` times 90 degree around `pole` (Circle.java:191-195).
-    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Circle {
+        pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Circle {
         Circle::new(self.center.turn_90_degree(factor, pole), self.radius)
     }
 
-    /// Rotates this circle around `pole` by `angle` (Circle.java:197-201).
-    pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Circle {
+        pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Circle {
         Circle::new(
             self.center.to_float().rotate(angle, pole).round(),
             self.radius,
         )
     }
 
-    /// Mirrors this circle at the vertical line through `pole` (Circle.java:203-207).
-    pub fn mirror_vertical(&self, pole: &IntPoint) -> Circle {
+        pub fn mirror_vertical(&self, pole: &IntPoint) -> Circle {
         Circle::new(self.center.mirror_vertical(pole), self.radius)
     }
 
-    /// Mirrors this circle at the horizontal line through `pole` (Circle.java:209-213).
-    pub fn mirror_horizontal(&self, pole: &IntPoint) -> Circle {
+        pub fn mirror_horizontal(&self, pole: &IntPoint) -> Circle {
         Circle::new(self.center.mirror_horizontal(pole), self.radius)
     }
 
-    /// The maximum diameter of this circle (Circle.java:215-218).
-    pub fn max_width(&self) -> f64 {
+        pub fn max_width(&self) -> f64 {
         2.0 * self.radius as f64
     }
 
-    /// The minimum diameter of this circle (Circle.java:220-223).
-    pub fn min_width(&self) -> f64 {
+        pub fn min_width(&self) -> f64 {
         2.0 * self.radius as f64
     }
 
-    /// The bounding `RegularTileShape` with the fixed directions `dirs` (Circle.java:225-228).
-    pub fn bounding_shape(
+        pub fn bounding_shape(
         &self,
         dirs: crate::bounding_directions::ShapeBoundingDirections,
     ) -> RegularTileShape {
         dirs.bounds_circle(self)
     }
 
-    /// The offset shape by `offset` (Circle.java:230-235).
-    pub fn offset(&self, offset: f64) -> Circle {
+        pub fn offset(&self, offset: f64) -> Circle {
         let new_radius = self.radius as f64 + offset;
         Circle::new(self.center, java_round(new_radius) as i32)
     }
 
-    /// Shrinks this circle by `offset`; the result shape will not be empty
-    /// (Circle.java:237-242).
-    pub fn shrink(&self, offset: f64) -> Circle {
+            pub fn shrink(&self, offset: f64) -> Circle {
         let new_radius = self.radius as f64 - offset;
         Circle::new(self.center, (java_round(new_radius) as i32).max(1))
     }
 
-    /// The affine translation of this circle by `vector` (Circle.java:244-255).
-    ///
-    /// Java warns "Circle.translate_by only implemented for IntVectors till now" and returns
-    /// `this` unchanged for a rational vector; ported as-is, because the Java caller sees a
-    /// value, not a crash.
-    pub fn translate_by(&self, vector: &Vector) -> Circle {
+                        pub fn translate_by(&self, vector: &Vector) -> Circle {
         if *vector == Vector::ZERO {
             return *self;
         }
@@ -290,57 +228,45 @@ impl Circle {
         Circle::new(self.center.translate_by(int_vector), self.radius)
     }
 
-    /// Java stub: warns "Circle.nearest_point_approx not yet implemented" and returns `null`
-    /// (Circle.java:257-261).
-    pub fn nearest_point_approx(&self, _point: &FloatPoint) -> Option<FloatPoint> {
+            pub fn nearest_point_approx(&self, _point: &FloatPoint) -> Option<FloatPoint> {
         None
     }
 
-    /// The distance between `point` and its nearest point on the border (Circle.java:263-267).
-    pub fn border_distance(&self, point: &FloatPoint) -> f64 {
+        pub fn border_distance(&self, point: &FloatPoint) -> f64 {
         let d = point.distance(&self.center.to_float()) - self.radius as f64;
         d.abs()
     }
 
-    /// The offset shape of this circle by `offset` (Circle.java:269-276).
-    pub fn enlarge(&self, offset: f64) -> Circle {
+        pub fn enlarge(&self, offset: f64) -> Circle {
         if offset == 0.0 {
             return *self;
         }
         Circle::new(self.center, self.radius + java_round(offset) as i32)
     }
 
-    /// Checks if this circle and `other` have a nonempty intersection (Circle.java:278-281;
-    /// Java double-dispatches through `other.intersects(this)`).
-    pub fn intersects(&self, other: &crate::shape::Shape) -> bool {
+            pub fn intersects(&self, other: &crate::shape::Shape) -> bool {
         other.intersects_circle(self)
     }
 
-    /// Checks if this circle and `other` have a nonempty intersection (Circle.java:283-288).
-    pub fn intersects_circle(&self, other: &Circle) -> bool {
+        pub fn intersects_circle(&self, other: &Circle) -> bool {
         let mut radius_sum_square = (self.radius + other.radius) as f64;
         radius_sum_square *= radius_sum_square;
         self.center.distance_square(&other.center) <= radius_sum_square
     }
 
-    /// Checks if this circle and `b` have a nonempty intersection (Circle.java:290-293).
-    pub fn intersects_box(&self, b: &IntBox) -> bool {
+        pub fn intersects_box(&self, b: &IntBox) -> bool {
         b.distance(&self.center.to_float()) <= self.radius as f64
     }
 
-    /// Checks if this circle and `oct` have a nonempty intersection (Circle.java:295-298).
-    pub fn intersects_octagon(&self, oct: &IntOctagon) -> bool {
+        pub fn intersects_octagon(&self, oct: &IntOctagon) -> bool {
         TileShape::Octagon(*oct).distance(&self.center.to_float()) <= self.radius as f64
     }
 
-    /// Checks if this circle and `simplex` have a nonempty intersection (Circle.java:300-303).
-    pub fn intersects_simplex(&self, simplex: &Simplex) -> bool {
+        pub fn intersects_simplex(&self, simplex: &Simplex) -> bool {
         TileShape::Simplex(simplex.clone()).distance(&self.center.to_float()) <= self.radius as f64
     }
 
-    /// `intersects(IntBox|IntOctagon|Simplex)` dispatched over the `TileShape` enum, for
-    /// `PolygonShape.intersects(Circle)`.
-    pub fn intersects_tile(&self, tile: &TileShape) -> bool {
+            pub fn intersects_tile(&self, tile: &TileShape) -> bool {
         match tile {
             TileShape::Box(b) => self.intersects_box(b),
             TileShape::Octagon(o) => self.intersects_octagon(o),
@@ -348,38 +274,29 @@ impl Circle {
         }
     }
 
-    /// Java stub: warns "Circle.cutout not yet implemented" and returns `null`
-    /// (Circle.java:305-309).
-    pub fn cutout(&self, _polyline: &Polyline) -> Option<Vec<Polyline>> {
+            pub fn cutout(&self, _polyline: &Polyline) -> Option<Vec<Polyline>> {
         None
     }
 
-    /// A division of this circle into convex pieces: the single bounding tile
-    /// (Circle.java:311-316).
-    pub fn split_to_convex(&self) -> Vec<TileShape> {
+            pub fn split_to_convex(&self) -> Vec<TileShape> {
         vec![self.bounding_tile()]
     }
 
-    /// The border shape of this area: the circle itself (Circle.java:318-321).
-    pub fn get_border(&self) -> Circle {
+        pub fn get_border(&self) -> Circle {
         *self
     }
 
-    /// A circle has no holes (Circle.java:323-326).
-    pub fn get_holes(&self) -> Vec<crate::shape::Shape> {
+        pub fn get_holes(&self) -> Vec<crate::shape::Shape> {
         Vec::new()
     }
 
-    /// A circle has no corners (Circle.java:328-331).
-    pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
+        pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
         Vec::new()
     }
 }
 
 impl fmt::Display for Circle {
-    /// `Circle.toString(Locale.ENGLISH)` (Circle.java:333-349). The centre is omitted when it is
-    /// the origin, and Java concatenates the two parts without a separator.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Circle: ")?;
         if self.center != IntPoint::new(0, 0) {
             write!(f, "center {}", self.center)?;
@@ -388,8 +305,6 @@ impl fmt::Display for Circle {
     }
 }
 
-/// `NumberFormat.getInstance(Locale.ENGLISH).format(int)`: decimal digits grouped in threes by
-/// commas. The radius is never negative after the constructor.
 fn grouped(value: i32) -> String {
     let digits = value.to_string();
     let mut result = String::with_capacity(digits.len() + digits.len() / 3);
@@ -422,9 +337,6 @@ mod tests {
         assert_eq!(c.smallest_radius(), 10.0);
         assert!(c.bounding_tile().contains(&Point::Int(IntPoint::new(7, 7))));
         assert!(c.bounding_octagon().is_normalized());
-        // Pinned against Java: `IntBox.distance((0,0))` for the box (9,9)-(20,20) is
-        // sqrt(2) * 9 = 12.7 > 10, so the two do *not* intersect even though the box's corner
-        // lies inside the bounding octagon.
         assert!(!c.intersects_box(&IntBox::from_coords(9, 9, 20, 20)));
         assert!(!c.intersects_box(&IntBox::from_coords(11, 11, 20, 20)));
         assert!(c.intersects_circle(&Circle::new(IntPoint::new(15, 0), 6)));
@@ -453,10 +365,9 @@ mod tests {
         let c = Circle::new(IntPoint::new(0, 0), 10);
         assert_eq!(c.offset(2.4).radius, 12);
         assert_eq!(c.shrink(2.4).radius, 8);
-        // "The result shape will not be empty": the radius is clamped to 1.
         assert_eq!(c.shrink(100.0).radius, 1);
         assert_eq!(c.enlarge(0.0), c);
-        assert_eq!(c.enlarge(2.5).radius, 13); // Math.round is half-up
+        assert_eq!(c.enlarge(2.5).radius, 13); 
         assert_eq!(c.max_width(), 20.0);
         assert_eq!(c.min_width(), 20.0);
     }
@@ -464,7 +375,6 @@ mod tests {
     #[test]
     fn bounding_tile_with_a_maximum_segment_length() {
         let c = Circle::new(IntPoint::new(0, 0), 1000);
-        // radius / maxSegmentLength + 1 <= 2 falls back to the bounding octagon.
         assert_eq!(
             c.bounding_tile_max_seg(1000),
             TileShape::Octagon(c.bounding_octagon())
@@ -473,7 +383,6 @@ mod tests {
         assert!(tile.contains(&Point::Int(IntPoint::new(0, 0))));
         assert!(tile.contains(&Point::Int(IntPoint::new(999, 0))));
         assert!(!tile.contains(&Point::Int(IntPoint::new(1100, 0))));
-        // The tile bounds the circle, so it is at least as large as it.
         assert!(tile.area() >= c.area());
     }
 

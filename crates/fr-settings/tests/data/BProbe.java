@@ -14,16 +14,6 @@ import app.freerouting.settings.RouterSettings;
 import java.io.FileInputStream;
 import java.io.InputStream;
 
-/**
- * Plan 4 Task 5 golden driver: `RouterSettings.applyBoardSpecificOptimizations` over real DSN
- * fixtures and over the two synthetic boards the Java unit tests build.
- *
- * <p>Usage: {@code java -cp <jar>:. BProbe <fixture.dsn> [<fixture.dsn> ...]}. Every fixture is
- * read with {@code DsnReader.readBoard}, then tuned twice: once on a bare {@code new
- * RouterSettings()} and once after {@code setLayerCount(board.getLayerCount())}, which is the
- * shape {@code RoutingJobScheduler} reaches (`DsnFileSettings.java:46-48` then
- * `RoutingJobScheduler.java:186`).
- */
 public final class BProbe {
 
   public static void main(String[] args) throws Exception {
@@ -47,13 +37,6 @@ public final class BProbe {
     mergeDropsTheFlag();
   }
 
-  /**
-   * Quirk Q9 (docs/java-quirks.md #127): `ReflectionUtil.copyFields` skips non-public fields
-   * (ReflectionUtil.java:226-228),
-   * and `boardSpecificTraceCostsApplied` is `private transient`, so a merged `RouterSettings`
-   * carries the source's tuned cost arrays with the flag reset to `null` — and the next
-   * `applyBoardSpecificOptimizations` overwrites them.
-   */
   private static void mergeDropsTheFlag() {
     Layer[] layers = {new Layer("L0", true), new Layer("L1", true)};
     LayerStructure layerStructure = new LayerStructure(layers);
@@ -158,7 +141,6 @@ public final class BProbe {
     sized.applyBoardSpecificOptimizations(board);
     dump(name, "sized", sized, layerCount);
 
-    // Idempotence: the guarded second call must change nothing.
     sized.applyBoardSpecificOptimizations(board);
     dump(name, "sized2", sized, layerCount);
   }

@@ -1,13 +1,6 @@
-//! `DsnScanner` — the Specctra DSN lexer (`io/specctra/parser/SpecctraDsnStreamReader.java`).
-//!
-//! Every expectation here was taken from the Java source (the DFA tables and the action switch)
-//! or from a JVM run recorded in the Task 3 report; the `p3t3` differential driver checks the
-//! same scanner against the real Java one over the whole fixture corpus.
-
 use fr_dsn::keyword::Keyword;
 use fr_dsn::lexer::{DsnScanner, LexicalState, Token};
 
-/// Collects the whole token stream of `input`.
 fn tokens(input: &str) -> Vec<Token> {
     let mut scanner = DsnScanner::new(input);
     let mut out = Vec::new();
@@ -19,12 +12,7 @@ fn tokens(input: &str) -> Vec<Token> {
 
 #[test]
 fn leading_zero_is_a_float_not_an_integer() {
-    // `DecIntegerLiteral = [+-]?(0|[1-9][0-9]*)` does not match `007` — but `DecFloatLiteral =
-    // [+-]?[0-9]+(\.[0-9]+)?([Ee][+-]?int)?` does, so the token is a `Double`, not a string.
-    // JVM-verified against the 2.3.0 jar: `007` scans as `DBL 7.0`. (The Task 3 brief predicted
-    // `Str("007")`; Java wins.)
     assert_eq!(tokens("007"), vec![Token::Float(7.0)]);
-    // In `NAME` it *is* a string, which is what the brief's example was about.
     assert_eq!(
         tokens("(net 007)"),
         vec![
@@ -38,8 +26,6 @@ fn leading_zero_is_a_float_not_an_integer() {
 
 #[test]
 fn layer_name_state_also_stringifies_numbers() {
-    // `path` -> `LAYER_NAME` (action 31, `SpecctraDsnStreamReader.java:961`), where the same
-    // rule applies. JVM-verified: `(path 007)` scans as `OPEN KW POLYGON_PATH STR 007 CLOSE`.
     let mut scanner = DsnScanner::new("(path 007)");
     assert_eq!(scanner.next_token().unwrap(), Some(Token::Open));
     assert_eq!(
@@ -65,8 +51,6 @@ fn exponent_float_through_the_dfa() {
 
 #[test]
 fn next_double_has_no_exponents() {
-    // The hand-rolled `nextDouble` uses `NumberFormat.getInstance(Locale.US)`, whose lenient
-    // parse stops at the lowercase `e` — a different number grammar from the DFA's.
     let mut scanner = DsnScanner::new("1e5");
     assert_eq!(scanner.next_double(), Some(1.0));
 }
@@ -116,8 +100,6 @@ fn block_comment_is_skipped() {
 
 #[test]
 fn backslash_in_a_quoted_string_is_literal() {
-    // Action 12 (`SpecctraDsnStreamReader.java:1477`) appends a backslash verbatim; there is no
-    // escape processing at all.
     assert_eq!(tokens("\"a\\b\""), vec![Token::Str("a\\b".to_string())]);
 }
 
@@ -142,7 +124,6 @@ fn next_string_reads_a_quoted_string() {
 
 #[test]
 fn next_string_list_drops_a_leading_empty_string() {
-    // The KiCad 8 workaround at `SpecctraDsnStreamReader.java:1801-1804`.
     let mut scanner = DsnScanner::new("\"\" A B )");
     assert_eq!(scanner.next_string_list(), vec!["A", "B"]);
     assert_eq!(scanner.next_token().unwrap(), Some(Token::Close));
@@ -150,17 +131,12 @@ fn next_string_list_drops_a_leading_empty_string() {
 
 #[test]
 fn next_string_skips_backspace_but_not_tab() {
-    // `stringSkipTrailing = {8, 32}` and `stringStopAt = {8, 10, 13, 32, 40, 41}`: backspace is
-    // skippable and a tab is not, despite the Java comment saying "spaces, tabs".
     let mut scanner = DsnScanner::new("\u{8}fo\to)");
     assert_eq!(scanner.next_string(), "fo\to");
 }
 
 #[test]
 fn next_double_is_javas_lenient_number_format() {
-    // JVM-verified against `NumberFormat.getInstance(Locale.US)` (see the Task 3 report): the
-    // exponent separator is an uppercase `E` only, `+` is not a sign, `,` groups, and a leading
-    // numeric prefix is enough.
     for (text, expected) in [
         ("1e5)", Some(1.0)),
         ("1E5)", Some(100_000.0)),
@@ -175,31 +151,13 @@ fn next_double_is_javas_lenient_number_format() {
     }
 }
 
-/// fixed: T4 (#86) — replaces `input_larger_than_the_java_buffer_is_rejected`, whose assertion
-/// was `DsnScanner::new(&"x".repeat(16 * 1024 * 1024 + 1)).is_err()`.
-///
-/// Java's `zzBuffer` is a fixed `char[16 * 1024 * 1024]` (`SpecctraDsnStreamReader.java:40`) that
-/// the hand-rolled `nextString` indexes with no refill, so a design over 16 MiB cannot be scanned
-/// at all. The port's lexer was always correct — it converts the whole input once, exactly sized
-/// — and reproduced the ceiling **on purpose**, as `DsnError::InputTooLarge`. That deliberate
-/// limit is deleted, and `DsnScanner::new` is infallible.
-///
-/// The claim is not merely "20 MiB is accepted" but "20 MiB lexes like 15 MiB": both inputs are
-/// the same DSN body repeated, so the token stream of the larger must be the smaller's stream
-/// with more repetitions of the same unit and nothing mis-lexed at the 16 MiB mark — which is
-/// exactly where Java's buffer ends and its `nextString` would have started reading rubbish.
-///
-/// Slow lane: the two inputs are 35 MiB of text together, so this runs in release
-/// (`cargo test -p fr-dsn --release --test lexer`) or with `-- --ignored`.
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn a_twenty_mebibyte_input_lexes_like_a_fifteen_mebibyte_one() {
-    /// One repetition unit of a DSN body, plus the newline that separates two of them.
-    const UNIT: &str = "(wire (path F.Cu 250 1 2 3 4))";
+        const UNIT: &str = "(wire (path F.Cu 250 1 2 3 4))";
     let unit_len = UNIT.len() + 1;
 
-    /// Scans a whole input, returning the token count and the last `tail` tokens.
-    fn scan(text: &str, tail_len: usize) -> (usize, Vec<Token>) {
+        fn scan(text: &str, tail_len: usize) -> (usize, Vec<Token>) {
         let mut scanner = DsnScanner::new(text);
         let mut n = 0;
         let mut tail: Vec<Token> = Vec::new();
@@ -213,9 +171,6 @@ fn a_twenty_mebibyte_input_lexes_like_a_fifteen_mebibyte_one() {
         (n, tail)
     }
 
-    // The tokens one unit lexes to, derived rather than asserted as a literal: what is binding
-    // here is that the 20 MiB stream is the 15 MiB stream with proportionally more of the *same*
-    // tokens, not any particular grammar decision.
     let (per_unit, _) = scan(UNIT, 0);
     assert!(per_unit >= 10, "the unit lexes to a real token run");
 

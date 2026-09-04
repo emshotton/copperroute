@@ -1,22 +1,3 @@
-//! Port of the `app.freerouting.geometry.planar.Shape` and `Area` interfaces, together with the
-//! two enums that stand in for Java's subtype polymorphism.
-//!
-//! * `Shape` — "Interface describing functionality for connected 2-dimensional shapes in the
-//!   plane. A Shape object is expected to be simply connected, that means, it may not contain
-//!   holes" (Shape.java:3-6). Java's implementors are `TileShape` (`IntBox`, `IntOctagon`,
-//!   `Simplex`), `PolygonShape` and `Circle`, which become the three [`Shape`] variants.
-//! * `Area` — "An Area is a not necessarily simply connected Shape, which means, that it may
-//!   contain holes" (Area.java:3-6). Every `Shape` is an `Area`; the only other implementor is
-//!   [`PolylineArea`], giving the two [`Area`] variants.
-//! * `ConvexShape` (ConvexShape.java) adds `offset`, `shrink`, `maxWidth` and `minWidth`. It is
-//!   implemented by `TileShape` and `Circle` but *not* by `PolygonShape`, so those four members
-//!   stay on the concrete types rather than joining [`ShapeOps`].
-//!
-//! Java's `intersects` family is double dispatch: `a.intersects(b)` calls `b.intersects(a)` with
-//! `a` narrowed to its concrete type. The [`ShapeOps::intersects`] implementations reproduce that
-//! shape by shape, including the one pairing where it does not terminate (see
-//! [`Shape::intersects`]).
-
 use crate::bounding_directions::ShapeBoundingDirections;
 use crate::circle::Circle;
 use crate::float_point::FloatPoint;
@@ -33,165 +14,95 @@ use crate::simplex::Simplex;
 use crate::tile_shape::TileShape;
 use crate::vector::Vector;
 
-/// A connected, simply connected 2-dimensional shape: Java's `Shape` interface.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Shape {
-    /// A convex tile: `IntBox`, `IntOctagon` or `Simplex`.
-    Tile(TileShape),
-    /// A closed polygon of corner points.
-    Polygon(PolygonShape),
-    /// A circle.
-    Circle(Circle),
+        Tile(TileShape),
+        Polygon(PolygonShape),
+        Circle(Circle),
 }
 
-/// A not necessarily simply connected shape: Java's `Area` interface.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Area {
-    /// A hole-free shape; every `Shape` is an `Area`.
-    Shape(Shape),
-    /// A shape with holes, all of whose borders consist of straight lines.
-    Polyline(PolylineArea),
+        Shape(Shape),
+        Polyline(PolylineArea),
 }
 
-/// The union of the `Shape` (Shape.java) and `Area` (Area.java) interfaces.
-///
-/// Java's covariant return types (`TileShape.enlarge` returns a `TileShape`, `Circle.turn90Degree`
-/// a `Circle`) are kept as inherent methods on the concrete types; the trait uniformly answers
-/// with the [`Shape`] enum. `Option` appears wherever a Java implementation returns `null`.
 pub trait ShapeOps {
-    // ---- Area.java ----
 
-    /// Returns true if the area is empty (Area.java:9-10).
-    fn is_empty(&self) -> bool;
+        fn is_empty(&self) -> bool;
 
-    /// Returns true if the area is contained in a sufficiently large box (Area.java:12-13).
-    fn is_bounded(&self) -> bool;
+        fn is_bounded(&self) -> bool;
 
-    /// 2 for two-dimensional shapes, 1 for curves, 0 for a point, -1 if empty (Area.java:15-19).
-    fn dimension(&self) -> i32;
+        fn dimension(&self) -> i32;
 
-    /// Checks if this area is completely contained in `b` (Area.java:21-22).
-    fn is_contained_in(&self, b: &IntBox) -> bool;
+        fn is_contained_in(&self, b: &IntBox) -> bool;
 
-    /// Returns the border shape of this area (Area.java:24-25).
-    fn get_border(&self) -> Shape;
+        fn get_border(&self) -> Shape;
 
-    /// Returns the holes of this area (Area.java:27-28).
-    fn get_holes(&self) -> Vec<Shape>;
+        fn get_holes(&self) -> Vec<Shape>;
 
-    /// The smallest surrounding box of the area (Area.java:30-34).
-    fn bounding_box(&self) -> IntBox;
+        fn bounding_box(&self) -> IntBox;
 
-    /// The smallest surrounding octagon of the area (Area.java:36-40); `None` where Java returns
-    /// `null`, i.e. for an unbounded simplex.
-    fn bounding_octagon(&self) -> Option<IntOctagon>;
+            fn bounding_octagon(&self) -> Option<IntOctagon>;
 
-    /// Returns true if `point` is contained in this area, but not inside a hole. Being on the
-    /// border is not defined for `FloatPoint`s because of numerical inaccuracy
-    /// (Area.java:42-46, Java's `contains(FloatPoint)`).
-    fn contains_float(&self, point: &FloatPoint) -> bool;
+                fn contains_float(&self, point: &FloatPoint) -> bool;
 
-    /// Returns true if `point` is inside or on the border of this area, but not inside a hole
-    /// (Area.java:48-49).
-    fn contains(&self, point: &Point) -> bool;
+            fn contains(&self, point: &Point) -> bool;
 
-    /// An approximation of the nearest point of the shape to `from_point` (Area.java:51-52).
-    fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint>;
+        fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint>;
 
-    /// Turns this area by `factor` times 90 degree around `pole` (Area.java:54-55).
-    fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Shape;
+        fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Shape;
 
-    /// Rotates the area around `pole` by `angle` (Area.java:57-58).
-    fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Shape;
+        fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Shape;
 
-    /// The affine translation of the area by `vector` (Area.java:60-61).
-    fn translate_by(&self, vector: &Vector) -> Shape;
+        fn translate_by(&self, vector: &Vector) -> Shape;
 
-    /// Mirrors this area at the horizontal line through `pole` (Area.java:63-64).
-    fn mirror_horizontal(&self, pole: &IntPoint) -> Shape;
+        fn mirror_horizontal(&self, pole: &IntPoint) -> Shape;
 
-    /// Mirrors this area at the vertical line through `pole` (Area.java:66-67).
-    fn mirror_vertical(&self, pole: &IntPoint) -> Shape;
+        fn mirror_vertical(&self, pole: &IntPoint) -> Shape;
 
-    /// An approximation of the corners of this area (Area.java:69-70).
-    fn corner_approx_arr(&self) -> Vec<FloatPoint>;
+        fn corner_approx_arr(&self) -> Vec<FloatPoint>;
 
-    /// A division of this area into convex pieces (Area.java:72-73); `None` where Java returns
-    /// `null`.
-    fn split_to_convex(&self) -> Option<Vec<TileShape>>;
+            fn split_to_convex(&self) -> Option<Vec<TileShape>>;
 
-    // ---- Shape.java ----
 
-    /// The length of the border of this shape; `i32::MAX` if it is unbounded (Shape.java:9-13).
-    fn circumference(&self) -> f64;
+        fn circumference(&self) -> f64;
 
-    /// The content of the area of the shape (Shape.java:15-19).
-    fn area(&self) -> f64;
+        fn area(&self) -> f64;
 
-    /// The gravity point of this shape (Shape.java:21-22).
-    fn centre_of_gravity(&self) -> FloatPoint;
+        fn centre_of_gravity(&self) -> FloatPoint;
 
-    /// Returns true if `point` is not contained in the inside or the boundary of the shape
-    /// (Shape.java:24-25).
-    fn is_outside(&self, point: &Point) -> bool;
+            fn is_outside(&self, point: &Point) -> bool;
 
-    /// Returns true if `point` is contained in this shape, but not on the border
-    /// (Shape.java:27-28).
-    fn contains_inside(&self, point: &Point) -> bool;
+            fn contains_inside(&self, point: &Point) -> bool;
 
-    /// Returns true if `point` lies exactly on the boundary of the shape (Shape.java:30-31).
-    fn contains_on_border(&self, point: &Point) -> bool;
+        fn contains_on_border(&self, point: &Point) -> bool;
 
-    /// The distance between `point` and its nearest point on the shape; 0 inside
-    /// (Shape.java:33-37).
-    fn distance(&self, point: &FloatPoint) -> f64;
+            fn distance(&self, point: &FloatPoint) -> f64;
 
-    /// A bounding `TileShape` of this shape (Shape.java:39-40).
-    fn bounding_tile(&self) -> TileShape;
+        fn bounding_tile(&self) -> TileShape;
 
-    /// The bounding `RegularTileShape` with the fixed directions `dirs` (Shape.java:42-43);
-    /// `None` for an unbounded simplex, where Java returns `null`.
-    fn bounding_shape(&self, dirs: ShapeBoundingDirections) -> Option<RegularTileShape>;
+            fn bounding_shape(&self, dirs: ShapeBoundingDirections) -> Option<RegularTileShape>;
 
-    /// The distance between `point` and its nearest point on the border (Shape.java:45-46).
-    fn border_distance(&self, point: &FloatPoint) -> f64;
+        fn border_distance(&self, point: &FloatPoint) -> f64;
 
-    /// The smallest distance from the centre of gravity to the border (Shape.java:48-49).
-    fn smallest_radius(&self) -> f64;
+        fn smallest_radius(&self) -> f64;
 
-    /// The offset shape of this shape by `offset` to the outside (Shape.java:51-56); `None`
-    /// where `PolygonShape.enlarge` returns `null`.
-    fn enlarge(&self, offset: f64) -> Option<Shape>;
+            fn enlarge(&self, offset: f64) -> Option<Shape>;
 
-    /// Checks if this shape and `other` have a nonempty intersection (Shape.java:58-59).
-    fn intersects(&self, other: &Shape) -> bool;
+        fn intersects(&self, other: &Shape) -> bool;
 
-    /// Auxiliary function to implement the same function with parameter type `Shape`
-    /// (Shape.java:61-62).
-    fn intersects_box(&self, other: &IntBox) -> bool;
+            fn intersects_box(&self, other: &IntBox) -> bool;
 
-    /// Auxiliary function to implement the same function with parameter type `Shape`
-    /// (Shape.java:64-65).
-    fn intersects_octagon(&self, other: &IntOctagon) -> bool;
+            fn intersects_octagon(&self, other: &IntOctagon) -> bool;
 
-    /// Auxiliary function to implement the same function with parameter type `Shape`
-    /// (Shape.java:67-68).
-    fn intersects_simplex(&self, other: &Simplex) -> bool;
+            fn intersects_simplex(&self, other: &Simplex) -> bool;
 
-    /// Auxiliary function to implement the same function with parameter type `Shape`
-    /// (Shape.java:70-71).
-    fn intersects_circle(&self, other: &Circle) -> bool;
+            fn intersects_circle(&self, other: &Circle) -> bool;
 
-    /// Cuts out the parts of `polyline` in the interior of this shape and returns the remaining
-    /// pieces (Shape.java:73-78). The outer `Option` is Java's `null` from the two unimplemented
-    /// stubs (`PolygonShape.cutout`, `Circle.cutout`); the inner `Result` is the normalisation
-    /// error that `TileShape.cutout(Polyline)` can hit.
-    fn cutout(&self, polyline: &Polyline) -> Option<Result<Vec<Polyline>, PolylineError>>;
+                    fn cutout(&self, polyline: &Polyline) -> Option<Result<Vec<Polyline>, PolylineError>>;
 }
 
-// -------------------------------------------------------------------------------------------
-// impl ShapeOps for TileShape — Java's `TileShape extends PolylineShape implements ConvexShape`.
-// -------------------------------------------------------------------------------------------
 
 impl ShapeOps for TileShape {
     fn is_empty(&self) -> bool {
@@ -204,8 +115,6 @@ impl ShapeOps for TileShape {
         TileShape::dimension(self)
     }
     fn is_contained_in(&self, b: &IntBox) -> bool {
-        // `IntBox` and `IntOctagon` override `PolylineShape.isContainedIn` (IntBox.java:589-595,
-        // IntOctagon.java:611-614); `Simplex` inherits it.
         match self {
             TileShape::Box(this) => this.is_contained_in(b),
             TileShape::Octagon(this) => RegularTileShape::Octagon(*this).is_contained_in_box(b),
@@ -213,11 +122,9 @@ impl ShapeOps for TileShape {
         }
     }
     fn get_border(&self) -> Shape {
-        // PolylineShape.getBorder(): `return this` (PolylineShape.java:221-224).
         Shape::Tile(self.clone())
     }
     fn get_holes(&self) -> Vec<Shape> {
-        // PolylineShape.getHoles(): `return new Shape[0]` (PolylineShape.java:226-229).
         Vec::new()
     }
     fn bounding_box(&self) -> IntBox {
@@ -293,8 +200,6 @@ impl ShapeOps for TileShape {
         Some(Shape::Tile(TileShape::enlarge(self, offset)))
     }
     fn intersects(&self, other: &Shape) -> bool {
-        // IntBox.java:328-331, IntOctagon.java:627-630, Simplex.java:638-641:
-        // `return other.intersects(this)`, with `this` narrowed to the concrete tile.
         other.intersects_tile(self)
     }
     fn intersects_box(&self, other: &IntBox) -> bool {
@@ -307,8 +212,6 @@ impl ShapeOps for TileShape {
         TileShape::intersects_simplex(self, other)
     }
     fn intersects_circle(&self, other: &Circle) -> bool {
-        // IntBox.java:357-360, IntOctagon.java:676-679, Simplex.java:659-662:
-        // `return other.intersects(this)`.
         other.intersects_tile(self)
     }
     fn cutout(&self, polyline: &Polyline) -> Option<Result<Vec<Polyline>, PolylineError>> {
@@ -316,9 +219,6 @@ impl ShapeOps for TileShape {
     }
 }
 
-// -------------------------------------------------------------------------------------------
-// impl ShapeOps for PolygonShape
-// -------------------------------------------------------------------------------------------
 
 impl ShapeOps for PolygonShape {
     fn is_empty(&self) -> bool {
@@ -431,9 +331,6 @@ impl ShapeOps for PolygonShape {
     }
 }
 
-// -------------------------------------------------------------------------------------------
-// impl ShapeOps for Circle
-// -------------------------------------------------------------------------------------------
 
 impl ShapeOps for Circle {
     fn is_empty(&self) -> bool {
@@ -546,9 +443,6 @@ impl ShapeOps for Circle {
     }
 }
 
-// -------------------------------------------------------------------------------------------
-// The Shape enum itself — Java's dynamic dispatch, collapsed into one `match` per method.
-// -------------------------------------------------------------------------------------------
 
 impl From<TileShape> for Shape {
     fn from(value: TileShape) -> Self {
@@ -581,9 +475,7 @@ impl From<Circle> for Shape {
 }
 
 impl Shape {
-    /// `this.intersects(TileShape)`, resolved to the `intersects(IntBox|IntOctagon|Simplex)`
-    /// overload that Java's static types pick.
-    pub fn intersects_tile(&self, tile: &TileShape) -> bool {
+            pub fn intersects_tile(&self, tile: &TileShape) -> bool {
         match tile {
             TileShape::Box(b) => self.intersects_box(b),
             TileShape::Octagon(o) => self.intersects_octagon(o),
@@ -591,20 +483,10 @@ impl Shape {
         }
     }
 
-    /// `this.intersects(PolygonShape)`.
-    ///
-    /// Java declares no `intersects(PolygonShape)` overload (Shape.java:58-71), so
-    /// `PolygonShape.intersects(Shape shape)` (PolygonShape.java:118-121) binds its own argument
-    /// to `intersects(Shape)`. For a `TileShape` or a `Circle` on the other side that bounces
-    /// back into `PolygonShape.intersects(IntBox|…|Circle)` and terminates; for a second
-    /// `PolygonShape` the two `intersects(Shape)` bodies call each other forever.
-    pub fn intersects_polygon(&self, polygon: &PolygonShape) -> bool {
+                                pub fn intersects_polygon(&self, polygon: &PolygonShape) -> bool {
         match self {
             Shape::Tile(t) => polygon.intersects_tile_shape(t),
             Shape::Circle(c) => polygon.intersects_circle(c),
-            // Java bug: `PolygonShape.intersects(PolygonShape)` recurses until the stack
-            // overflows (verified: `p1.intersects((Shape) p2)` raises StackOverflowError).
-            // Surfaced as a panic rather than reproducing the unbounded recursion.
             Shape::Polygon(_) => panic!(
                 "PolygonShape.intersects(PolygonShape) recurses forever \
                  (PolygonShape.java:118-121 has no PolygonShape overload to bind to)"
@@ -868,9 +750,6 @@ impl ShapeOps for Shape {
     }
 }
 
-// -------------------------------------------------------------------------------------------
-// The Area enum — Area.java, dispatched over `Shape` and `PolylineArea`.
-// -------------------------------------------------------------------------------------------
 
 impl From<Shape> for Area {
     fn from(value: Shape) -> Self {
@@ -885,146 +764,126 @@ impl From<PolylineArea> for Area {
 }
 
 impl Area {
-    /// Returns true if the area is empty (Area.java:9-10).
-    pub fn is_empty(&self) -> bool {
+        pub fn is_empty(&self) -> bool {
         match self {
             Area::Shape(s) => ShapeOps::is_empty(s),
             Area::Polyline(a) => a.is_empty(),
         }
     }
 
-    /// Returns true if the area is contained in a sufficiently large box (Area.java:12-13).
-    pub fn is_bounded(&self) -> bool {
+        pub fn is_bounded(&self) -> bool {
         match self {
             Area::Shape(s) => ShapeOps::is_bounded(s),
             Area::Polyline(a) => a.is_bounded(),
         }
     }
 
-    /// 2 for two-dimensional areas, 1 for curves, 0 for a point, -1 if empty (Area.java:15-19).
-    pub fn dimension(&self) -> i32 {
+        pub fn dimension(&self) -> i32 {
         match self {
             Area::Shape(s) => ShapeOps::dimension(s),
             Area::Polyline(a) => a.dimension(),
         }
     }
 
-    /// Checks if this area is completely contained in `b` (Area.java:21-22).
-    pub fn is_contained_in(&self, b: &IntBox) -> bool {
+        pub fn is_contained_in(&self, b: &IntBox) -> bool {
         match self {
             Area::Shape(s) => ShapeOps::is_contained_in(s, b),
             Area::Polyline(a) => a.is_contained_in(b),
         }
     }
 
-    /// The border shape of this area (Area.java:24-25).
-    pub fn get_border(&self) -> Shape {
+        pub fn get_border(&self) -> Shape {
         match self {
             Area::Shape(s) => ShapeOps::get_border(s),
             Area::Polyline(a) => a.get_border().to_shape(),
         }
     }
 
-    /// The holes of this area (Area.java:27-28).
-    pub fn get_holes(&self) -> Vec<Shape> {
+        pub fn get_holes(&self) -> Vec<Shape> {
         match self {
             Area::Shape(s) => ShapeOps::get_holes(s),
             Area::Polyline(a) => a.get_holes().iter().map(|h| h.to_shape()).collect(),
         }
     }
 
-    /// The smallest surrounding box of the area (Area.java:30-34).
-    pub fn bounding_box(&self) -> IntBox {
+        pub fn bounding_box(&self) -> IntBox {
         match self {
             Area::Shape(s) => ShapeOps::bounding_box(s),
             Area::Polyline(a) => a.bounding_box(),
         }
     }
 
-    /// The smallest surrounding octagon of the area (Area.java:36-40).
-    pub fn bounding_octagon(&self) -> Option<IntOctagon> {
+        pub fn bounding_octagon(&self) -> Option<IntOctagon> {
         match self {
             Area::Shape(s) => ShapeOps::bounding_octagon(s),
             Area::Polyline(a) => a.bounding_octagon(),
         }
     }
 
-    /// Returns true if `point` is contained in this area, but not inside a hole
-    /// (Area.java:42-46).
-    pub fn contains_float(&self, point: &FloatPoint) -> bool {
+            pub fn contains_float(&self, point: &FloatPoint) -> bool {
         match self {
             Area::Shape(s) => ShapeOps::contains_float(s, point),
             Area::Polyline(a) => a.contains_float(point),
         }
     }
 
-    /// Returns true if `point` is inside or on the border of this area, but not inside a hole
-    /// (Area.java:48-49).
-    pub fn contains(&self, point: &Point) -> bool {
+            pub fn contains(&self, point: &Point) -> bool {
         match self {
             Area::Shape(s) => ShapeOps::contains(s, point),
             Area::Polyline(a) => a.contains(point),
         }
     }
 
-    /// An approximation of the nearest point of the area to `from_point` (Area.java:51-52).
-    pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
+        pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
         match self {
             Area::Shape(s) => ShapeOps::nearest_point_approx(s, from_point),
             Area::Polyline(a) => a.nearest_point_approx(from_point),
         }
     }
 
-    /// Turns this area by `factor` times 90 degree around `pole` (Area.java:54-55).
-    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Area {
+        pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Area {
         match self {
             Area::Shape(s) => Area::Shape(ShapeOps::turn_90_degree(s, factor, pole)),
             Area::Polyline(a) => Area::Polyline(a.turn_90_degree(factor, pole)),
         }
     }
 
-    /// Rotates the area around `pole` by `angle` (Area.java:57-58).
-    pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Area {
+        pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Area {
         match self {
             Area::Shape(s) => Area::Shape(ShapeOps::rotate_approx(s, angle, pole)),
             Area::Polyline(a) => Area::Polyline(a.rotate_approx(angle, pole)),
         }
     }
 
-    /// The affine translation of the area by `vector` (Area.java:60-61).
-    pub fn translate_by(&self, vector: &Vector) -> Area {
+        pub fn translate_by(&self, vector: &Vector) -> Area {
         match self {
             Area::Shape(s) => Area::Shape(ShapeOps::translate_by(s, vector)),
             Area::Polyline(a) => Area::Polyline(a.translate_by(vector)),
         }
     }
 
-    /// Mirrors this area at the horizontal line through `pole` (Area.java:63-64).
-    pub fn mirror_horizontal(&self, pole: &IntPoint) -> Area {
+        pub fn mirror_horizontal(&self, pole: &IntPoint) -> Area {
         match self {
             Area::Shape(s) => Area::Shape(ShapeOps::mirror_horizontal(s, pole)),
             Area::Polyline(a) => Area::Polyline(a.mirror_horizontal(pole)),
         }
     }
 
-    /// Mirrors this area at the vertical line through `pole` (Area.java:66-67).
-    pub fn mirror_vertical(&self, pole: &IntPoint) -> Area {
+        pub fn mirror_vertical(&self, pole: &IntPoint) -> Area {
         match self {
             Area::Shape(s) => Area::Shape(ShapeOps::mirror_vertical(s, pole)),
             Area::Polyline(a) => Area::Polyline(a.mirror_vertical(pole)),
         }
     }
 
-    /// An approximation of the corners of this area (Area.java:69-70).
-    pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
+        pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
         match self {
             Area::Shape(s) => ShapeOps::corner_approx_arr(s),
             Area::Polyline(a) => a.corner_approx_arr(),
         }
     }
 
-    /// A division of this area into convex pieces (Area.java:72-73).
-    pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
+        pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
         match self {
             Area::Shape(s) => ShapeOps::split_to_convex(s),
             Area::Polyline(a) => a.split_to_convex(None),
@@ -1077,7 +936,6 @@ mod tests {
             IntBox::from_coords(5, 5, 20, 20).to_simplex(),
         ));
         let c = Shape::Circle(Circle::new(IntPoint::new(0, 0), 10));
-        // Pinned against Java: all four pairings answer true in both directions.
         assert!(p.intersects(&b));
         assert!(b.intersects(&p));
         assert!(p.intersects(&oct));
@@ -1099,7 +957,6 @@ mod tests {
         ])));
         let c = Shape::Circle(Circle::new(IntPoint::new(0, 0), 10));
         let c2 = Shape::Circle(Circle::new(IntPoint::new(100, 0), 10));
-        // 8 of the 9 pairings terminate; polygon x polygon is Java's StackOverflowError and is
         // covered by its own `#[should_panic]` test.
         assert!(t.intersects(&t2));
         assert!(!t.intersects(&far));

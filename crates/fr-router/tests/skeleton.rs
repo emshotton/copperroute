@@ -1,12 +1,8 @@
-//! The crate skeleton: the arena (plan-6 ruling 16), `AutorouteAttempt{State,Result}` and the
-//! re-exported `ExpansionCostFactor` (plan-6 ruling 8, the plan-4 obligation).
-
 use std::any::TypeId;
 
 use fr_router::{Arena, AutorouteAttemptResult, AutorouteAttemptState, ExpansionCostFactor};
 
 // ---------------------------------------------------------------------------------------------
-// Arena
 // ---------------------------------------------------------------------------------------------
 
 #[test]
@@ -29,8 +25,6 @@ fn arena_hands_out_dense_indices_and_reads_them_back() {
 
 #[test]
 fn arena_remove_leaves_a_hole_and_the_index_is_never_reused() {
-    // Ruling 16: no generation counter and no free list — Java never reuses an object identity
-    // either, and a stale index must keep reading a `None` hole rather than someone else's room.
     let mut arena: Arena<u32> = Arena::new();
     let a = arena.insert(10);
     let b = arena.insert(20);
@@ -66,13 +60,9 @@ fn arena_default_is_empty() {
     assert!(arena.is_empty());
 }
 
-// ---------------------------------------------------------------------------------------------
-// AutorouteAttemptState / AutorouteAttemptResult
-// ---------------------------------------------------------------------------------------------
 
 #[test]
 fn attempt_state_is_javas_declaration_order() {
-    // AutorouteAttemptState.java:4-14, verbatim and in order.
     let all = AutorouteAttemptState::ALL;
     assert_eq!(
         all,
@@ -107,8 +97,6 @@ fn attempt_state_is_javas_declaration_order() {
 
 #[test]
 fn attempt_result_mirrors_javas_two_constructors() {
-    // AutorouteAttemptResult.java:10-19: the one-arg constructor leaves `details` empty, the
-    // two-arg one stores the message.
     let bare = AutorouteAttemptResult::new(AutorouteAttemptState::Routed);
     assert_eq!(bare.state, AutorouteAttemptState::Routed);
     assert_eq!(bare.details, None);
@@ -136,7 +124,6 @@ fn attempt_result_equality_is_state_plus_details() {
 
 #[test]
 fn attempt_result_to_string_is_javas_to_string() {
-    // AutorouteAttemptResult.java:22-23: `state.toString().toUpperCase() + ": " + details`.
     assert_eq!(
         AutorouteAttemptResult::new(AutorouteAttemptState::Routed).to_string(),
         "ROUTED: "
@@ -151,13 +138,9 @@ fn attempt_result_to_string_is_javas_to_string() {
     );
 }
 
-// ---------------------------------------------------------------------------------------------
-// The re-exported ExpansionCostFactor
-// ---------------------------------------------------------------------------------------------
 
 #[test]
 fn expansion_cost_factor_is_the_one_from_fr_settings() {
-    // Plan-6 ruling 8 / the plan-4 obligation: `fr-router` re-exports it, never redeclares it.
     assert_eq!(
         TypeId::of::<ExpansionCostFactor>(),
         TypeId::of::<fr_settings::ExpansionCostFactor>()

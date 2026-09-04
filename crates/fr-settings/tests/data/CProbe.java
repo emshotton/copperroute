@@ -11,10 +11,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
-/**
- * Plan 4 Task 7 probe: EnvironmentVariablesSource, CliSettings and
- * GlobalSettings.applyCommandLineArguments' legacy flag table + -de classification.
- */
 public class CProbe {
 
   static void p(String k, Object v) {
@@ -317,7 +313,6 @@ public class CProbe {
               + g.initialOutputFile);
     }
 
-    // A real file whose name contains '+' must survive verbatim.
     File tmp = File.createTempFile("cprobe+plus", ".dsn");
     tmp.deleteOnExit();
     GlobalSettings gplus = gs("-de", tmp.getAbsolutePath());
@@ -328,7 +323,6 @@ public class CProbe {
             + " (equalsPath="
             + tmp.getAbsolutePath().equals(gplus.initialInputFile)
             + ")");
-    // The same path when it does NOT exist: split on '+'.
     String ghost = tmp.getAbsolutePath() + ".ghost";
     GlobalSettings gghost = gs("-de", ghost);
     System.out.println(

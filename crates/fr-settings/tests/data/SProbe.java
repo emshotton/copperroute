@@ -13,14 +13,6 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Plan 4 Task 6 probe: `SettingsMerger`, `SettingsSource` and the five in-scope
- * `settings/sources/**` classes, as the clone-HEAD jar really runs them.
- *
- * <p>Run with `-XX:ActiveProcessorCount=4` so every `availableProcessors()`-derived default
- * matches `HostEnvironment::with_processors(4)`. See `crates/fr-settings/tests/data/README.md`
- * for the recorded command.
- */
 public class SProbe {
 
   static String s(Object o) {
@@ -40,7 +32,6 @@ public class SProbe {
     System.out.println(key + " = " + s(value));
   }
 
-  /** Every field of a RouterSettings, in RouterSettings.java declaration order. */
   static void dump(String tag, RouterSettings r) {
     if (r == null) {
       p(tag, null);
@@ -134,7 +125,6 @@ public class SProbe {
     }
   }
 
-  /** The accessor view RulesFileSettingsTest asserts on. */
   static void accessors(String tag, RouterSettings r) {
     p(tag + ".getRunRouter", r.getRunRouter());
     p(tag + ".getRunOptimizer", r.getRunOptimizer());
@@ -188,7 +178,6 @@ public class SProbe {
   public static void main(String[] args) throws Exception {
     System.out.println("# availableProcessors = " + Runtime.getRuntime().availableProcessors());
 
-    // ---- A: DefaultSettings, field by field ----------------------------------------------
     System.out.println("## A DefaultSettings.getSettings()");
     DefaultSettings defaults = new DefaultSettings();
     dump("A", defaults.getSettings());
@@ -196,7 +185,6 @@ public class SProbe {
     p("A.getPriority", defaults.getPriority());
     p("A.sameInstance", defaults.getSettings() == defaults.getSettings());
 
-    // ---- B: SettingsMergerTest's non-CLI/env cases ----------------------------------------
     System.out.println("## B SettingsMerger");
     RouterSettings b1 = new SettingsMerger(new DefaultSettings()).merge();
     p("B.defaultSettingsOnly.maxPasses", b1.maxPasses);
@@ -222,8 +210,6 @@ public class SProbe {
       p("B.onlyNullSource", t.getClass().getName());
     }
 
-    // A source whose priority ties with DefaultSettings, registered after it: stable sort keeps
-    // DefaultSettings first, so this one is applied on top rather than becoming the base.
     RouterSettings tie = new RouterSettings();
     tie.maxPasses = 42;
     SettingsSource tieSource =
@@ -247,7 +233,6 @@ public class SProbe {
         "B.stableSortTie.maxPasses",
         new SettingsMerger(new DefaultSettings(), tieSource).merge().maxPasses);
 
-    // ---- C: addOrReplaceSources ------------------------------------------------------------
     System.out.println("## C addOrReplaceSources");
     SettingsMerger m = new SettingsMerger(new DefaultSettings());
     p("C.afterCtor", sourceCount(m));
@@ -258,7 +243,6 @@ public class SProbe {
     m.addOrReplaceSources(new SesFileSettings("b.ses"));
     p("C.afterSameClassAgain", sourceCount(m));
 
-    // ---- D: the priority ladder + source names ---------------------------------------------
     System.out.println("## D source names and priorities");
     SesFileSettings ses = new SesFileSettings("board.ses");
     p("D.ses.getPriority", ses.getPriority());
@@ -281,7 +265,6 @@ public class SProbe {
     p("D.rulesMissing.maxPasses", missing.getSettings().maxPasses);
     p("D.rulesMissing.layerCount", missing.getSettings().getLayerCount());
 
-    // ---- E: RulesFileSettings over the two goldens -----------------------------------------
     System.out.println("## E RulesFileSettings goldens");
     String fixtures = args.length > 0 ? args[0] : "fixtures";
     File processor = new File(fixtures, "Issue191-processor.Z80/processor.rules");
@@ -298,7 +281,6 @@ public class SProbe {
     accessors("E.hw48na", hw.getSettings());
     dump("E.hw48naRaw", hw.getSettings());
 
-    // ---- F: DsnFileSettings, the Q18 seeding (docs/java-quirks.md #128) --------------------
     System.out.println("## F DsnFileSettings");
     for (String name :
         new String[] {
@@ -312,12 +294,6 @@ public class SProbe {
       }
     }
 
-    // ---- H: absence vs. the coalesced default — Task 6 fix round 1, controller ruling L ----
-    // `Issue029-hw48na_reduced.rules` is `Issue029-hw48na_valid.rules` with eight lines deleted:
-    // `(vias on)`, `(via_costs 50)`, `(plane_via_costs 5)`, `(start_ripup_costs 100)` and the
-    // four per-layer trace-cost lines. Java's readScope calls no setter for any of them, so the
-    // fields stay null and `boardSpecificTraceCostsApplied` stays at the `false` setLayerCount
-    // left. Both `(preferred_direction …)` lines are kept, so the per-layer directions still land.
     System.out.println("## H absence vs. default (reduced rules file)");
     String probeData = args.length > 1 ? args[1] : ".";
     File reduced = new File(probeData, "Issue029-hw48na_reduced.rules");
@@ -359,18 +335,13 @@ public class SProbe {
         "H.reduced.merged.areBoardSpecificTraceCostsApplied",
         hMerged.areBoardSpecificTraceCostsApplied());
 
-    // The positive half: the unmodified file names both trace costs, so the setter *does* run
-    // and the flag comes out true.
     RouterSettings hFull =
         new RulesFileSettings(new File(fixtures, "Issue029-hw48na_valid.rules")).getSettings();
     p("H.full.raw.areBoardSpecificTraceCostsApplied", hFull.areBoardSpecificTraceCostsApplied());
     p("H.full.raw.scoring.viaCosts", hFull.scoring.viaCosts);
 
-    // And what a `.rules` file with no `(autoroute_settings …)` scope at all gives: readScope
-    // never runs, so RulesFileSettings falls back to a blank `new RouterSettings()`.
     p("H.blank.layerCount", new RulesFileSettings("nope.rules").getSettings().getLayerCount());
 
-    // ---- G: a DSN source merged under DefaultSettings — quirk Q18's (#128) consequence -----
     System.out.println("## G Q18: the DSN source's seeded arrays block later sources");
     try (InputStream in = new FileInputStream(new File(fixtures, "Issue066-Project_GP8B.dsn"))) {
       SettingsMerger g =

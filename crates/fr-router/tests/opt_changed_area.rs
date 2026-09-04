@@ -1,27 +1,5 @@
-//! Plan 7 Task 5: `RoutingBoard.optChangedArea` (RoutingBoard.java:151-161 -> :171-190 ->
-//! `RoutingBoardOperations.java:52-79`) and the `TraceTightener.optChangedArea(ExpansionCostFactor[])`
-//! sweep it drives (TraceTightener.java:121-169) — the batch pull-tight every routed connection,
-//! every tail removal and every fanout pin runs.
-//!
-//! # Where the numbers come from
-//!
-//! The end-to-end evidence is `scripts/differential/java/P7T3.java`, whose stdout on
-//! `Issue143-rpi_splitter.dsn` is committed as `tests/data/p7t3-opt-changed-area.txt` (its
-//! `HEADER` line, which names the jar by absolute path, is stripped) and diffed live by
-//! `scripts/differential/run.sh p7t3`. [`the_whole_sweep_matches_the_jvm_on_a_real_board`] replays
-//! modes 0-3 of it here.
-//!
-//! **Mode 4 is replayed too, as of Plan 7 Task 7.** It offers `traceCosts` to the sweep, which
-//! opens `TraceTightener.java:160-165`'s `ViaOptimizer.optViaLocation` arm. Task 6 landed that arm
-//! but left `repositionVia` overload A an `unimplemented!` (controller ruling B1: a `None` there
-//! would push `optPlaneOrFanoutVia` into a branch that *inserts*, and move a via somewhere Java
-//! never puts it), so mode 4 panicked and `mode_four_is_task_sevens_obligation` was the
 //! `#[should_panic]` that said so. Task 7 ported all three overloads; the mode is now inside
 //! [`the_whole_sweep_matches_the_jvm_on_a_real_board`]'s loop and the `#[should_panic]` is gone.
-//!
-//! The rest of the file is hand-built: each test isolates one branch of the two methods, because
-//! a real board exercises them all at once and could not say which one moved.
-
 use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_dsn::java_double_to_string;
@@ -35,9 +13,6 @@ use fr_settings::{ExpansionCostFactor, HostEnvironment, RouterSettings, Settings
 use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 
-// =================================================================================================
-// A hand-built board with two loose traces in free space
-// =================================================================================================
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -65,8 +40,6 @@ fn p(x: i32, y: i32) -> Point {
     Point::new(x, y)
 }
 
-/// Two detours on layer 0 and one on layer 1, all in free space, all shortenable — so every
-/// `pullTight` in the sweep answers `true` and `somethingChanged` keeps the outer `while` going.
 fn detour_board(default_clearance: i32) -> Board {
     let mut board = Board::new(
         Vec::new(),
@@ -103,7 +76,6 @@ fn detour_board(default_clearance: i32) -> Board {
     board
 }
 
-/// Every trace id on the board, ascending.
 fn trace_ids(board: &Board) -> Vec<ItemId> {
     let mut ids: Vec<ItemId> = board
         .get_items()
@@ -121,8 +93,6 @@ fn polyline_of(board: &Board, id: ItemId) -> Polyline {
     trace.polyline().clone()
 }
 
-/// `startMarkingChangedArea` followed by `markChangedArea` over every trace's own tile shapes —
-/// what `TraceShover.insert:571-575` and `PolylineTrace.change` do for real, condensed.
 fn mark_every_trace(board: &mut Board) {
     board.start_marking_changed_area();
     for id in trace_ids(board) {
@@ -143,12 +113,7 @@ fn never() -> bool {
     false
 }
 
-// =================================================================================================
-// `RoutingBoardOperations.optChangedArea:61-63` and `:78`
-// =================================================================================================
 
-/// `:61-63`: a `null` `changedArea` returns before anything else, so no tightener is built and
-/// no trace moves.
 #[test]
 fn a_null_changed_area_returns_immediately() {
     let mut board = detour_board(200);
@@ -170,8 +135,6 @@ fn a_null_changed_area_returns_immediately() {
     assert!(board.changed_area.is_none());
 }
 
-/// `:78`, `board.changedArea = null`. Load-bearing: the next `startMarkingChangedArea` re-creates
-/// the store, and leaving this one in place would make the following sweep see a stale region.
 #[test]
 fn the_changed_area_is_cleared_after_the_sweep() {
     let mut board = detour_board(200);
@@ -183,7 +146,6 @@ fn the_changed_area_is_cleared_after_the_sweep() {
         .expect("cannot fail");
     assert!(board.changed_area.is_none());
 
-    // And the next marking starts from empty rather than from this sweep's leftovers.
     board.start_marking_changed_area();
     let changed_area = board.changed_area.as_ref().expect("just started");
     for layer in 0..board.get_layer_count() {
@@ -191,9 +153,6 @@ fn the_changed_area_is_cleared_after_the_sweep() {
     }
 }
 
-/// Ruling 9, `RoutingBoardOperations.java:64`. Java's guard is the **reference** comparison
-/// `clipShape != IntOctagon.EMPTY`, so a `null` clip shape — "no restriction" — *runs* the sweep,
-/// and `Option::None` therefore does too. Only the `EMPTY` singleton skips it.
 #[test]
 fn a_none_clip_shape_runs_the_branch() {
     let mut board = detour_board(200);
@@ -214,9 +173,6 @@ fn a_none_clip_shape_runs_the_branch() {
     assert_ne!(before, after, "a None clip shape must run the sweep");
 }
 
-/// The other half of ruling 9: the `EMPTY` octagon — which `Route.java:225` and
-/// `RoutingBoardOperations:86` do pass — skips the tightener entirely, while still clearing
-/// `changedArea` at `:78`.
 #[test]
 fn an_empty_clip_shape_skips_the_tightener_but_still_clears_the_area() {
     let mut board = detour_board(200);
@@ -238,17 +194,7 @@ fn an_empty_clip_shape_skips_the_tightener_but_still_clears_the_area() {
     assert!(board.changed_area.is_none(), ":78 runs either way");
 }
 
-// =================================================================================================
-// `TraceTightener.optChangedArea:132-145` — the per-layer region
-// =================================================================================================
 
-/// `:136`, `board.changedArea.setEmpty(i)`, which runs **before** the work rather than after it.
-/// The tightener that follows re-marks whatever it moves (through `PolylineTrace.change`), so the
-/// outer `while (somethingChanged)` sees the *new* region and not the old one. A port that emptied
-/// the layer afterwards would wipe those marks and stop a pass early.
-///
-/// Driven through `TraceTightener::opt_changed_area` directly, because the wrapper nulls the whole
-/// store at `:78` and the per-layer state would not be observable through it.
 #[test]
 fn the_layer_region_is_emptied_before_the_work() {
     let mut board = detour_board(200);
@@ -261,8 +207,6 @@ fn the_layer_region_is_emptied_before_the_work() {
     algo.opt_changed_area(&mut board, None, None)
         .expect("cannot fail");
 
-    // The sweep ran to completion, so `somethingChanged` was false on the last iteration and
-    // every layer it emptied at `:136` stayed empty.
     let changed_area = board
         .changed_area
         .as_ref()
@@ -275,9 +219,6 @@ fn the_layer_region_is_emptied_before_the_work() {
     }
 }
 
-/// `:138-142`, `1.5 * (clearanceMatrix.maxValue(i) + 2 * rules.getMaxTraceHalfWidth())`, over
-/// three clearance matrices. The offset is what decides which items the sweep can see at all, so
-/// it is asserted against the formula rather than against a behaviour that happens to agree.
 #[test]
 fn the_enlarge_offset_is_javas_formula() {
     for default_clearance in [0, 200, 1_000] {
@@ -287,16 +228,10 @@ fn the_enlarge_offset_is_javas_formula() {
             let expected =
                 1.5 * f64::from(max_clearance + 2 * board.rules.get_max_trace_half_width());
 
-            // The formula's two inputs, pinned: `maxValue(int)` is the per-layer maximum over the
-            // **whole** matrix (`ClearanceMatrix.java:216-220`), not `maxValue(classI, layer)`;
-            // and `getMaxTraceHalfWidth` is `BoardRules.maxTraceHalfWidth`, which `BoardRules`'
-            // constructor seeds to 100 (BoardRules.java:59) and only `setTraceHalfWidth` raises —
-            // `insertTrace` does not, so the three 30-half-width traces leave it at the seed.
             assert_eq!(max_clearance, default_clearance);
             assert_eq!(board.rules.get_max_trace_half_width(), 100);
             assert_eq!(expected, 1.5 * f64::from(default_clearance + 200));
 
-            // And the enlarged region is the marked one grown by exactly that.
             let mut marked = detour_board(default_clearance);
             mark_every_trace(&mut marked);
             let region = marked
@@ -320,18 +255,7 @@ fn the_enlarge_offset_is_javas_formula() {
     }
 }
 
-// =================================================================================================
-// `TraceTightener.optChangedArea:146-166` — the item loop
-// =================================================================================================
 
-/// `:150-159`. **Both trace arms `break`, but not on the same condition**: the `pullTight` arm
-/// breaks only when `splitTracesAtKeepPoint()` answers `true` (`:153-155`), while the
-/// `smoothenEndCornersAtTrace` arm breaks unconditionally (`:156-158`, "because items may be
-/// removed"). The plan's prose folded the two into one unconditional `break`; Java wins.
-///
-/// With no keep point — which is every router caller — `splitTracesAtKeepPoint` is a no-op
-/// answering `false`, so a layer whose objects all tighten is walked to the end in one pass. The
-/// test asserts that: all three traces of the board move in the first outer iteration.
 #[test]
 fn the_item_loop_does_not_break_after_a_plain_pull_tight() {
     let mut board = detour_board(200);
@@ -344,23 +268,6 @@ fn the_item_loop_does_not_break_after_a_plain_pull_tight() {
     );
     let before: Vec<Polyline> = ids.iter().map(|id| polyline_of(&board, *id)).collect();
 
-    // The instrument is **which traces have moved when the sweep is cut**, not how many times the
-    // stop check was read: `is_stop_requested` is also read inside the tighteners' own loops
-    // (Plan 6), so the read count is not a clean per-object counter and a first draft of this test
-    // that asserted `calls > 3` was satisfied by both behaviours.
-    //
-    // Cutting on the sixth read separates them. Measured, by building the same board twice — once
-    // against this port and once against a copy whose `:153-155` break was made unconditional:
-    //
-    // | behaviour | layer-0 trace 0 | layer-0 trace 1 | layer-1 trace |
-    // |---|---|---|---|
-    // | Java's, conditional on `splitTracesAtKeepPoint()` (this port) | moved | moved | untouched |
-    // | the brief's reading, unconditional `break` | **untouched** | moved | **moved** |
-    //
-    // With no keep point — which is every router caller, `RouteState` being the only one that
-    // passes one — `splitTracesAtKeepPoint` is a no-op answering `false`, so layer 0 is walked to
-    // the end and the cut lands on layer 1's first object. An unconditional break leaves layer 0
-    // after one object and reaches layer 1 a whole outer iteration earlier.
     let calls = Cell::new(0u32);
     let stop = || {
         calls.set(calls.get() + 1);
@@ -368,7 +275,6 @@ fn the_item_loop_does_not_break_after_a_plain_pull_tight() {
     };
     let mut algo =
         TraceTightener::get_instance(&mut board, Vec::new(), None, 500, Some(&stop), 0, None, -1);
-    // The tightener has no keep point, so this is the arm's condition and it is `false`.
     assert!(
         !algo
             .split_traces_at_keep_point(&mut board)
@@ -393,10 +299,6 @@ fn the_item_loop_does_not_break_after_a_plain_pull_tight() {
     );
 }
 
-/// `:147-149`, the sweep's only cut. A stop check that trips part-way returns with the rest of the
-/// board **untightened** and with `board.changedArea` already emptied for every layer walked so
-/// far — so those regions are lost. That is a fact about the port, not a bug to be fixed: it is
-/// Java's own control flow, and it is why every parity run uses [`RouterBudget::disabled`].
 #[test]
 fn a_tripped_stop_check_returns_mid_sweep_leaving_the_rest_untightened() {
     let mut board = detour_board(200);
@@ -404,7 +306,6 @@ fn a_tripped_stop_check_returns_mid_sweep_leaving_the_rest_untightened() {
     let ids = trace_ids(&board);
     let before: Vec<Polyline> = ids.iter().map(|id| polyline_of(&board, *id)).collect();
 
-    // Trip on the very first read, so nothing is tightened at all.
     let stop = || true;
     let mut algo =
         TraceTightener::get_instance(&mut board, Vec::new(), None, 500, Some(&stop), 0, None, -1);
@@ -414,15 +315,12 @@ fn a_tripped_stop_check_returns_mid_sweep_leaving_the_rest_untightened() {
     let after: Vec<Polyline> = ids.iter().map(|id| polyline_of(&board, *id)).collect();
     assert_eq!(before, after, "the cut is before the first pullTight");
 
-    // And layer 0 — the one the sweep reached — was emptied at `:136` before the cut, so its
-    // marks are gone even though nothing was optimised there.
     let changed_area = board
         .changed_area
         .as_ref()
         .expect("not nulled by the tightener");
     assert!(changed_area.get_area(0).is_empty());
 
-    // The parity configuration: no stop check and no budget, so the sweep runs to the end.
     let mut board = detour_board(200);
     mark_every_trace(&mut board);
     let budget = RouterBudget::disabled();
@@ -444,20 +342,9 @@ fn a_tripped_stop_check_returns_mid_sweep_leaving_the_rest_untightened() {
     }
 }
 
-/// The Rust-only half of controller ruling AI's knob: a **budget** — not a stop check — trips the
-/// same `:147` read, through the `TimeLimit` `TraceTightener`'s constructor builds when
-/// `timeLimit > 0` (TraceTightener.java:73-77). A 1 ms budget on an already-expired clock cuts the
-/// sweep.
-///
-/// The budget asserted here is `java_literals()`'s 1000, not `default()`'s: since Plan 9 Task 1
-/// the port's default is `0` (#234), because a wall clock that abandons the pull-tight makes the
-/// routed board depend on how fast the machine is. The mechanism this test exercises is
-/// unchanged — it is still reachable, still Java's, and now a user asks for it by name with
-/// `--router.opt_changed_area_ms=1000`.
 #[test]
 fn the_budget_trips_the_sweep() {
     assert_eq!(RouterBudget::java_literals().opt_changed_area_ms, 1000);
-    // fixed: T1 (#234) — and the port's own default no longer carries it.
     assert_eq!(RouterBudget::default().opt_changed_area_ms, 0);
 
     let mut board = detour_board(200);
@@ -465,7 +352,6 @@ fn the_budget_trips_the_sweep() {
     let ids = trace_ids(&board);
     let before: Vec<Polyline> = ids.iter().map(|id| polyline_of(&board, *id)).collect();
 
-    // `TimeLimit::new(1)` starts the clock now; the sleep puts it behind before the first read.
     let mut algo =
         TraceTightener::get_instance(&mut board, Vec::new(), None, 500, None, 1, None, -1);
     std::thread::sleep(std::time::Duration::from_millis(5));
@@ -478,7 +364,6 @@ fn the_budget_trips_the_sweep() {
         "an expired budget cuts before the first pullTight"
     );
 
-    // A zero budget is Java's "no limit" and builds no `TimeLimit` at all.
     let mut board = detour_board(200);
     mark_every_trace(&mut board);
     let mut algo =
@@ -490,24 +375,11 @@ fn the_budget_trips_the_sweep() {
     for (i, (b, a)) in before.iter().zip(after.iter()).enumerate() {
         assert_ne!(b, a, "trace {i} was not tightened at timeLimit = 0");
     }
-    // The three-state stop is a separate mechanism and is not read here: `TraceTightener` takes a
-    // `Stoppable`, which the port models as a `StopCheck`, and `RouterStop` reaches it only
-    // through a closure a caller writes.
     let router_stop = RouterStop::new();
     assert!(!router_stop.is_stop_requested());
 }
 
-// =================================================================================================
-// The `ViaOptimizer` arm — Task 6 landed it, Task 7 closes it
-// =================================================================================================
 
-/// `:160-165`. Offering `traceCosts` must not change the **trace** side of the sweep: the arm is
-/// reached only for a `Via`, so on a board with no via at all it cannot fire.
-///
-/// This is a guard against the via arm leaking into the trace arms. It is **not** a statement
-/// about `optViaLocation`, which Task 6 landed and this board never reaches; the statement about
-/// the arm's behaviour on a board that does have vias in its changed area is
-/// [`the_whole_sweep_matches_the_jvm_on_a_real_board`]'s mode 4.
 #[test]
 fn offering_trace_costs_does_not_change_the_trace_arms() {
     let mut board = detour_board(200);
@@ -544,9 +416,6 @@ fn offering_trace_costs_does_not_change_the_trace_arms() {
     );
 }
 
-// =================================================================================================
-// The `p7t3` transcript — the whole sweep over a real routed board
-// =================================================================================================
 
 const TRANSCRIPT: &str = include_str!("data/p7t3-opt-changed-area.txt");
 
@@ -567,7 +436,6 @@ fn transcript_mode(mode: i32) -> Vec<&'static str> {
     rows
 }
 
-/// `P7T3`'s run on `Issue143-rpi_splitter.dsn` with `accuracy = 500` and `routeK = 12`, replayed.
 fn p7t3_rows(mode: i32) -> Vec<String> {
     let mut out = Vec::new();
     let path = parity::fixture("Issue143-rpi_splitter.dsn");
@@ -665,33 +533,10 @@ fn p7t3_rows(mode: i32) -> Vec<String> {
     out
 }
 
-/// Where this port **deliberately** disagrees with the jar on this transcript, and by how much —
-/// the plan's `KNOWN_DIVERGENCES` convention, in the form this particular divergence deserves.
-///
-/// **Task 8's door-set and id fixes (#163, #171, #165b), `accepted at plan9-t7t8 (ruling CC)`.**
-/// The port burns **two more board item ids** than the jar over this board's route. That is the
-/// whole of it: every differing row differs only in an `item id=` or a `maxId=`, and every one of
-/// those differs by exactly `+2`.
-///
-/// Pinning forty-two multi-hundred-character item lines twice over would bury that sentence in
-/// the noise it is a summary of, so the divergence is declared as the **rule** instead: shift the
-/// jar's ids by [`KNOWN_ID_OFFSET`] and the two transcripts must be byte-identical. This is the
-/// stronger pin, not the looser one, and it fails in more directions than a paste would:
-///
-/// * any byte outside an id token moving — a state, a net, a clearance, a coordinate, a corner
-///   list, either `changedArea` line, the `sweep` line, one of the nine `route k=` lines — fails
-///   at once, because the comparison after the shift is exact;
-/// * the offset changing from 2 to anything else fails, in either direction;
-/// * a row HEALING fails, because [`KNOWN_DIVERGENT_ROWS`] counts them and the count is asserted;
-/// * a row appearing where the jar and the port had agreed fails the same way.
 const KNOWN_ID_OFFSET: i32 = 2;
 
-/// How many rows of each mode carry [`KNOWN_ID_OFFSET`], measured at the accept wave. A healed
-/// divergence must be deleted from this table rather than left to rot, exactly as a pasted entry
-/// would have to be.
 const KNOWN_DIVERGENT_ROWS: [(i32, usize); 5] = [(0, 4), (1, 9), (2, 10), (3, 7), (4, 12)];
 
-/// `line` with every `item id=N` and `maxId=N` shifted by `KNOWN_ID_OFFSET`.
 fn shift_ids(line: &str) -> String {
     let mut out = String::with_capacity(line.len() + 8);
     let mut rest = line;
@@ -737,8 +582,6 @@ fn assert_mode_matches(mode: i32) {
         }
         diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
     }
-    // The diff assert runs FIRST, and the order is load-bearing — see the same note in
-    // `autoroute_connection.rs`, where the Task 6 reviewer mutation-verified it.
     assert!(
         diffs.is_empty(),
         "p7t3 mode {mode}: {} of {} rows differ by more than the declared id offset\n{}",
@@ -764,8 +607,6 @@ fn assert_mode_matches(mode: i32) {
     );
 }
 
-/// `shift_ids` is load-bearing enough to be tested rather than trusted: a bug in it would let a
-/// real difference through as "the declared offset".
 #[test]
 fn the_id_shift_moves_ids_and_nothing_else() {
     assert_eq!(shift_ids("maxId=213"), "maxId=215");
@@ -773,12 +614,10 @@ fn the_id_shift_moves_ids_and_nothing_else() {
         shift_ids("item id=187 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1038683)"),
         "item id=189 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1038683)"
     );
-    // Coordinates, net numbers, clearances, half widths and corner lists are NOT ids.
     let untouched = "  sweep regime=NINETY_DEGREE pinEdgeToTurnDist=20320.0 traceCosts=null";
     assert_eq!(shift_ids(untouched), untouched);
     let route = "route k=1 item=23 net=3 state=ROUTED ripped=0";
     assert_eq!(shift_ids(route), route, "`item=` is not `item id=`");
-    // Every occurrence, not only the first.
     assert_eq!(
         shift_ids("item id=1 x item id=2 maxId=3"),
         "item id=3 x item id=4 maxId=5"
@@ -787,15 +626,12 @@ fn the_id_shift_moves_ids_and_nothing_else() {
 
 #[test]
 fn the_whole_sweep_matches_the_jvm_on_a_real_board() {
-    // Mode 4 (vias present, the `ViaOptimizer` arm live) joined the loop when Plan 7 Task 7 landed
-    // the three `repositionVia` overloads; before that it was `mode_four_is_task_sevens_obligation`,
     // a `#[should_panic]`.
     for mode in [0, 1, 2, 3, 4] {
         assert_mode_matches(mode);
     }
 }
 
-// -- `P6T1.java`'s choices, as `reference_parity.rs` transcribes them ------------------------------
 
 fn build_settings(board: &Board) -> RouterSettings {
     let mut settings = DefaultSettings::new(&HostEnvironment::detect())
@@ -829,7 +665,6 @@ fn pick_connections(board: &Board, max_items: usize) -> Vec<(ItemId, i32)> {
     result
 }
 
-// -- `P7T3.java`'s dumps ---------------------------------------------------------------------------
 
 fn regime_name(angle: AngleRestriction) -> &'static str {
     match angle {

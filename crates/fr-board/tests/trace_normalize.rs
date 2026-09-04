@@ -1,35 +1,3 @@
-//! Plan 2 Task 9: trace normalisation — `PolylineTrace.combine`, `split`, `change` and
-//! `normalize`, plus `BasicBoard`'s four normalisation loops.
-//!
-//! Java: `board/trace/PolylineTrace.java` (`combine` :174, `combineAtStart` :201, `combineAtEnd`
-//! :341, `split(IntOctagon)` :464, `split(Point)` :698, the private `split(int, Line)` :719,
-//! `splitInsideDrillPadProhibited` :768, `normalize` :801, `change` :936),
-//! `board/trace/PolylineTraceNormalization.java` and `board/facade/BasicBoard.java`
-//! (`combineTraces` :683, `normalizeTraces` :709, `normalizeAllTraces` :798, `splitTraces` :891).
-//!
-//! Every expectation below is a line of `scripts/differential/java/P2T11.java`'s output, printed
-//! by the **real** `app.freerouting.board.facade.RoutingBoard` on the JVM; each test's first
-//! comment names the mode and the scenario letter. `p2t11` mode 7 is `combine`, mode 8 is
-//! `split`/`change`/`normalize`, mode 9 is the four board loops, and mode 10 is the
-//! `CombineStackOverflowTest` fixture. The handful with no driver line cite the Java source
-//! instead — they are the paths the driver cannot reach.
-//!
-//! # The two Java tests ported here
-//!
-//! * `src/test/java/app/freerouting/board/PolylineTraceSplitTest.java`'s four board-dependent
-//!   cases (`testSplitDoesNotRemoveValidSegments` :61, `testSplitPreservesNonOverlappingSegments`
-//!   :220, `testCycleDetectionDuringOverlap` :300 and
-//!   `testCombineAtEndRecoversMissingDefaultTreeEntries` :353); the fifth,
-//!   `testTraceGeometryCharacterization` (:384), is pure geometry and was ported in Task 8
-//!   (`tests/polyline_trace.rs`).
-//! * `src/test/java/app/freerouting/fixtures/CombineStackOverflowTest.java`. That test is
-//!   **DSN-only** — it drives `DsnReader.readBoard` over
-//!   `fixtures/Issue723-CombineStackOverflow.dsn`, and the DSN reader is Plan 3 — so its wiring
-//!   is rebuilt by hand here from the fixture's `(wiring …)` section: 4000 collinear 200-unit
-//!   segments in a 15-row boustrophedon starting at (130000, -107000), inserted one by one with
-//!   `insertTraceWithoutCleaning` and then `normalizeAllTraces`, which is exactly the pair of
-//!   board calls `Wiring.java:530-535,347` makes. See `combine_stack_overflow_fixture`.
-
 use fr_board::board::{MAX_NORMALIZATION_DEPTH, MAX_NORMALIZE_ITERATIONS};
 use fr_board::error::BoardError;
 use fr_board::prelude::*;
@@ -38,10 +6,6 @@ use fr_geometry::{
     TileShape, Vector,
 };
 
-// ---------------------------------------------------------------------------------------------
-// Fixture — the twin of `P2T11.traceBoard`, itself the shape
-// `PolylineTraceSplitTest.createTestBoard` (:31-49) builds.
-// ---------------------------------------------------------------------------------------------
 
 fn trace_board(layer_count: usize) -> (Board, PadstackId) {
     let ls = LayerStructure::new(
@@ -106,7 +70,6 @@ fn tr(board: &mut Board, half_width: i32, net: i32, fixed: FixedState, xy: &[i32
         .expect("insertTraceWithoutCleaning")
 }
 
-/// `[(x,y) …]` for one trace, the format `P2T11.corners` prints.
 fn corners(board: &Board, id: ItemId) -> Vec<(i32, i32)> {
     let Some(Item::Trace(trace)) = board.get_item(id) else {
         panic!("not a trace on the board: {id:?}")
@@ -120,7 +83,6 @@ fn corners(board: &Board, id: ItemId) -> Vec<(i32, i32)> {
         .collect()
 }
 
-/// The traces still in the item list, in board (descending id) order.
 fn trace_ids(board: &Board) -> Vec<u32> {
     board
         .items_in_board_order()
@@ -138,7 +100,6 @@ fn item_ids(board: &Board) -> Vec<u32> {
         .collect()
 }
 
-/// The trace's polyline, for the tests that need its `Line` objects themselves (quirk #74).
 fn board_polyline(board: &Board, id: ItemId) -> &Polyline {
     let Some(Item::Trace(trace)) = board.get_item(id) else {
         panic!("not a trace on the board: {id:?}")
@@ -146,7 +107,6 @@ fn board_polyline(board: &Board, id: ItemId) -> &Polyline {
     trace.polyline()
 }
 
-/// The trace's default-tree leaves, in order.
 fn tree_entries(board: &Board, id: ItemId) -> Vec<Option<LeafId>> {
     let tree = board.default_tree_id();
     board
@@ -164,15 +124,9 @@ fn entry_count(board: &Board, id: ItemId) -> Option<usize> {
         .map(<[Option<LeafId>]>::len)
 }
 
-// ---------------------------------------------------------------------------------------------
-// combine (mode 7)
-// ---------------------------------------------------------------------------------------------
 
 #[test]
 fn combine_at_start_joins_two_collinear_segments() {
-    // Mode 7 scenario A: `A combine(#2)=true`, `#2 … corners=[(0,0) (20000,0)]`, `A items=[2 1]
-    // revision=4`. `skipLine` is true here (PolylineTrace.java:289), so the joined polyline still
-    // has three lines.
     let (mut board, _) = trace_board(1);
     let second = tr(
         &mut board,
@@ -196,7 +150,6 @@ fn combine_at_start_joins_two_collinear_segments() {
 
 #[test]
 fn combine_at_start_reverses_the_other_trace_when_it_starts_at_the_same_corner() {
-    // Mode 7 scenario B (PolylineTrace.java:249-252 sets `reverseOrder`).
     let (mut board, _) = trace_board(1);
     let second = tr(
         &mut board,
@@ -216,9 +169,6 @@ fn combine_at_start_reverses_the_other_trace_when_it_starts_at_the_same_corner()
 
 #[test]
 fn combine_at_end_joins_and_marks_the_changed_area() {
-    // Mode 7 scenario C: `C changedArea=0:Oct[10000,0,10000,0,10000,10000,10000,10000]` — the
-    // join point, from `routingBoard.joinChangedArea(endCorner.toFloat(), getLayer())`
-    // (PolylineTrace.java:474).
     let (mut board, _) = trace_board(1);
     board.start_marking_changed_area();
     let first = tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
@@ -244,7 +194,6 @@ fn combine_at_end_joins_and_marks_the_changed_area() {
 
 #[test]
 fn combine_at_end_reverses_the_other_trace_when_it_ends_at_the_same_corner() {
-    // Mode 7 scenario D (PolylineTrace.java:391-394).
     let (mut board, _) = trace_board(1);
     let first = tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
     tr(
@@ -264,8 +213,6 @@ fn combine_at_end_reverses_the_other_trace_when_it_ends_at_the_same_corner() {
 
 #[test]
 fn combine_at_a_corner_keeps_the_join_line() {
-    // Mode 7 scenario E: `skipLine` is false, so the joined polyline has four lines and two tile
-    // shapes (PolylineTrace.java:431-436).
     let (mut board, _) = trace_board(1);
     let first = tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
     tr(
@@ -289,11 +236,7 @@ fn combine_at_a_corner_keeps_the_join_line() {
 
 #[test]
 fn combine_refuses_a_fork_a_wider_trace_a_fixed_trace_and_a_foreign_net() {
-    // Mode 7 scenarios F (three traces at one point → `contacts.size() != 1`,
-    // PolylineTrace.java:232), G (half width), H (fixed state) and I (`netsEqual`) — all
-    // `combine(#2)=false` with the item list untouched.
     for build in [
-        // F: a third trace forks the join point.
         (|board: &mut Board| {
             tr(board, 1000, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
             tr(
@@ -304,11 +247,9 @@ fn combine_refuses_a_fork_a_wider_trace_a_fixed_trace_and_a_foreign_net() {
                 &[10000, 0, 10000, 10000],
             );
         }) as fn(&mut Board),
-        // G: a different half width.
         |board: &mut Board| {
             tr(board, 500, 1, FixedState::Unfixed, &[10000, 0, 20000, 0]);
         },
-        // H: a different fixed state.
         |board: &mut Board| {
             tr(
                 board,
@@ -318,7 +259,6 @@ fn combine_refuses_a_fork_a_wider_trace_a_fixed_trace_and_a_foreign_net() {
                 &[10000, 0, 20000, 0],
             );
         },
-        // I: a different net.
         |board: &mut Board| {
             tr(board, 1000, 2, FixedState::Unfixed, &[10000, 0, 20000, 0]);
         },
@@ -339,9 +279,6 @@ fn combine_refuses_a_fork_a_wider_trace_a_fixed_trace_and_a_foreign_net() {
 
 #[test]
 fn combine_absorbs_a_whole_chain_from_the_middle_without_recursing() {
-    // Mode 7 scenario J: `J combine(#4)=true`, leaving one trace `[(0,0) (50000,0)]`. This is the
-    // iterative loop of PolylineTrace.java:181 — `combineAtStart` first, then `combineAtEnd`,
-    // until neither end grows. `CombineStackOverflowTest` is what made it a loop.
     let (mut board, _) = trace_board(1);
     for i in 0..5 {
         tr(
@@ -364,14 +301,6 @@ fn combine_absorbs_a_whole_chain_from_the_middle_without_recursing() {
 
 #[test]
 fn combine_falls_back_when_a_trace_has_no_default_tree_entries() {
-    // `PolylineTraceSplitTest.testCombineAtEndRecoversMissingDefaultTreeEntries` (:353-379), and
-    // mode 7 scenario K: `K entriesBefore=null`, `K combine(#2)=true`, `K firstOnBoard=true
-    // secondOnBoard=false`, `K entriesAfter=1`.
-    //
-    // This is the "path 2 requires tree entries in the default tree" guard
-    // (PolylineTrace.java:450-457): in Java a missing entry array is `null` and the optimised
-    // `mergeEntriesAtEnd` would dereference it; here it is `None` on the
-    // `Vec<Option<LeafId>>`, and the branch it selects — `replaceGeometry` — is the same.
     let (mut board, _) = trace_board(1);
     let first = tr(
         &mut board,
@@ -387,8 +316,6 @@ fn combine_falls_back_when_a_trace_has_no_default_tree_entries() {
         FixedState::Unfixed,
         &[20000, 10000, 30000, 10000],
     );
-    // Java: `board.searchTreeManager.remove(first); first.setOnTheBoard(true);` — a live trace
-    // whose board entry was dropped before the geometry mutation.
     let mut item = board.items.remove(&first).expect("the first trace");
     board.trees.remove(&mut item);
     item.set_on_the_board(true);
@@ -408,7 +335,6 @@ fn combine_falls_back_when_a_trace_has_no_default_tree_entries() {
 
 #[test]
 fn combine_prepends_a_straight_trace_to_an_l_shaped_one() {
-    // Mode 7 scenario L: five lines, three tile shapes, four corners.
     let (mut board, _) = trace_board(1);
     let l = tr(
         &mut board,
@@ -428,9 +354,6 @@ fn combine_prepends_a_straight_trace_to_an_l_shaped_one() {
 
 #[test]
 fn combine_ignores_a_conduction_area_at_the_join() {
-    // Mode 7 scenario M: `M combine(#3)=true`, `M items=[3 2 1]` — the area survives, because
-    // `combine` passes `ignoreAreas = true` and `contacts.removeIf(ConductionArea…)` drops it
-    // before the size test (PolylineTrace.java:206-209).
     let (mut board, _) = trace_board(1);
     board.insert_conduction_area(
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
@@ -459,16 +382,9 @@ fn combine_ignores_a_conduction_area_at_the_join() {
     assert_eq!(item_ids(&board), vec![3, 2, 1]);
 }
 
-// ---------------------------------------------------------------------------------------------
-// split and normalize (mode 8)
-// ---------------------------------------------------------------------------------------------
 
 #[test]
 fn split_preserves_non_overlapping_segments() {
-    // `PolylineTraceSplitTest.testSplitPreservesNonOverlappingSegments` (:220-293), and mode 8
-    // scenario S1: `S1 split=[#4 #6 #7]`, leaving `[(0,0) (10000,0)]`, `[(10000,0) (20000,0)]`
-    // and `[(20000,0) (30000,0)]`. Java's assertion is that a piece touching p1 and a piece
-    // touching p4 both survive; the driver pins the whole result.
     let (mut board, _) = trace_board(1);
     let long = tr(
         &mut board,
@@ -499,10 +415,6 @@ fn split_preserves_non_overlapping_segments() {
 
 #[test]
 fn split_does_not_remove_valid_segments() {
-    // `PolylineTraceSplitTest.testSplitDoesNotRemoveValidSegments` (:61-216), and mode 8 scenario
-    // S2. Its own assertion is "after the split a piece is still connected to p1"; the driver
-    // pins the exact outcome: the combined trace splits at (1243227,-964893) into `#5`
-    // (which keeps p1) and `#6`, and nothing is removed as a cycle.
     let (mut board, _) = trace_board(1);
     tr(
         &mut board,
@@ -525,8 +437,6 @@ fn split_does_not_remove_valid_segments() {
             .combine_trace(short)
             .expect("no normalisation failure")
     );
-    // `S2 pick=#3 first=(1291423,-987076) last=(1241414,-964893)`: the Java test picks the first
-    // on-board net-98 trace in `getItems()` order, which is the combined one.
     let combined = board
         .items_in_board_order()
         .into_iter()
@@ -554,7 +464,6 @@ fn split_does_not_remove_valid_segments() {
         .expect("no normalisation failure");
     assert_eq!(pieces.iter().map(|id| id.0).collect::<Vec<_>>(), vec![5, 6]);
     assert_eq!(trace_ids(&board), vec![6, 5, 4]);
-    // The segment from p1 is still there, exactly as the Java test demands.
     assert_eq!(
         corners(&board, ItemId(5)),
         vec![
@@ -568,8 +477,6 @@ fn split_does_not_remove_valid_segments() {
 
 #[test]
 fn an_overlapping_trace_is_not_a_cycle() {
-    // `PolylineTraceSplitTest.testCycleDetectionDuringOverlap` (:300-349): a trace A-B-C and an
-    // overlapping trace B-C must not make A-B-C a cycle.
     let (mut board, _) = trace_board(1);
     let abc = tr(
         &mut board,
@@ -590,9 +497,6 @@ fn an_overlapping_trace_is_not_a_cycle() {
 
 #[test]
 fn split_honours_the_clip_shape() {
-    // Mode 8 scenario S3: `S3 split(clip away)=[#2]` leaves the board untouched, and the same
-    // trace with a clip that covers the overlap splits into `[#4 #6 #7]`
-    // (PolylineTrace.java:475-479).
     let (mut board, _) = trace_board(1);
     let long = tr(
         &mut board,
@@ -627,9 +531,6 @@ fn split_honours_the_clip_shape() {
 
 #[test]
 fn a_drill_item_splits_the_trace_but_not_the_returned_collection() {
-    // Mode 8 scenario S4: `S4 split=[#3(off)]` — the `DrillItem` branch
-    // (PolylineTrace.java:652-659) throws away `split(i + 1, splitLine)`'s result, so
-    // `ownTraceSplit` stays false and `result.add(this)` adds the trace that was just removed.
     let (mut board, pad) = trace_board(1);
     board
         .insert_via(
@@ -654,7 +555,6 @@ fn a_drill_item_splits_the_trace_but_not_the_returned_collection() {
 
 #[test]
 fn two_crossing_traces_are_both_split_at_the_crossing() {
-    // Mode 8 scenario S10: `S10 split=[#6 #7]`, and the found trace became `#4`/`#5`.
     let (mut board, _) = trace_board(1);
     let horizontal = tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 20000, 0]);
     tr(
@@ -678,8 +578,6 @@ fn two_crossing_traces_are_both_split_at_the_crossing() {
 
 #[test]
 fn a_conduction_area_cycle_removes_the_trace_and_empties_the_result() {
-    // Mode 8 scenario S8: `S8 split=[]`, `S8 onBoard=false items=[2 1]`
-    // (PolylineTrace.java:660-681).
     let (mut board, _) = trace_board(1);
     board.insert_conduction_area(
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
@@ -702,8 +600,6 @@ fn a_conduction_area_cycle_removes_the_trace_and_empties_the_result() {
 
 #[test]
 fn a_trace_of_a_non_normal_net_is_never_split() {
-    // Mode 8 scenario S9: `S9 split=[#2]` and the board is untouched
-    // (PolylineTrace.java:466-470).
     let (mut board, _) = trace_board(1);
     let trace = tr(
         &mut board,
@@ -730,9 +626,6 @@ fn a_trace_of_a_non_normal_net_is_never_split() {
 
 #[test]
 fn a_user_fixed_trace_refuses_to_split_and_normalizes_to_false() {
-    // Mode 8 scenario S11: `S11 split=[#2]`, `S11 normalize=false`, board untouched. The refusal
-    // is the private `split(int, Line)`'s `isDeletionForbidden` guard
-    // (PolylineTrace.java:723-729), added so the outer `normalizeTraces` loop converges.
     let (mut board, _) = trace_board(1);
     let fixed = tr(
         &mut board,
@@ -760,8 +653,6 @@ fn a_user_fixed_trace_refuses_to_split_and_normalizes_to_false() {
 
 #[test]
 fn normalize_splits_then_recombines_into_one_trace() {
-    // Mode 8 scenario S5: `S5 normalize=true` and the board is left with one trace
-    // `[(0,0) (30000,0)]` — the split of S1 followed by `combine` on every piece.
     let (mut board, _) = trace_board(1);
     let long = tr(
         &mut board,
@@ -784,7 +675,6 @@ fn normalize_splits_then_recombines_into_one_trace() {
 
 #[test]
 fn normalize_reports_false_when_nothing_overlaps() {
-    // Mode 8 scenario S6.
     let (mut board, _) = trace_board(1);
     let alone = tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
     assert!(!board.normalize_trace(alone, None).expect("no failure"));
@@ -793,7 +683,6 @@ fn normalize_reports_false_when_nothing_overlaps() {
 
 #[test]
 fn normalize_reports_true_when_the_only_change_is_a_combine() {
-    // Mode 8 scenario S7 (PolylineTraceNormalization.java:122-125).
     let (mut board, _) = trace_board(1);
     let first = tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
     tr(
@@ -810,10 +699,6 @@ fn normalize_reports_true_when_the_only_change_is_a_combine() {
 
 #[test]
 fn normalize_depth_cap_returns_false_not_error() {
-    // `PolylineTraceNormalization.java:26-41`: over `MAX_NORMALIZATION_DEPTH` the method
-    // **returns false** — Java's own comment explains it is safe to do so, because the outer
-    // `normalizeTraces` loop reads `false` as "nothing changed". Entered here at the first depth
-    // past the cap, on a board where depth 0 would have answered `true` (scenario S5).
     assert_eq!(MAX_NORMALIZATION_DEPTH, 16);
     let (mut board, _) = trace_board(1);
     let long = tr(
@@ -831,7 +716,6 @@ fn normalize_depth_cap_returns_false_not_error() {
         &[10000, 0, 20000, 0],
     );
     let before = item_ids(&board);
-    // 16 is still under the cap and does the work; 17 is over it and does nothing at all.
     let mut over = board.clone();
     assert_eq!(
         over.normalize_trace_at_depth(long, None, MAX_NORMALIZATION_DEPTH + 1),
@@ -846,20 +730,6 @@ fn normalize_depth_cap_returns_false_not_error() {
     assert_eq!(trace_ids(&board), vec![4]);
 }
 
-/// Quirk #22, inverted — the register's "row with blast radius", because it changes what a
-/// degenerate line array **normalises to** and not only whether it crashes.
-///
-/// Mode 8 scenario S14 on the jar reads `S14 combine=threw ArrayIndexOutOfBoundsException` with
-/// the board unchanged, and that row is kept verbatim: it is still what the jar does. The joined
-/// line array `combineAtStart` builds here is `[D, C, B, C, D, X, Y]`, on which
-/// `Polyline.removeOverlaps` cancels its way down to `newLength == 0` and then read `tmpArr[-1]`
-/// (Polyline.java:148) — an exception the pass-level `catch (Exception)` turned into an aborted
-/// routing pass.
-///
-/// Task 6 gave that loop the `newLength >= 1` guard the trailing access at `:160` already had, so
-/// the array normalises to the empty polyline and the combine completes. The test name is left
-/// alone deliberately: what it is *about* — that this input reaches `combine_trace` at all, and
-/// what the board looks like afterwards — has not changed, only the answer.
 #[test]
 fn from_lines_err_propagates_as_board_error_normalization() {
     let (mut board, _) = trace_board(1);
@@ -892,21 +762,12 @@ fn from_lines_err_propagates_as_board_error_normalization() {
         .expect("insertTraceWithoutCleaning");
     let before = item_ids(&board);
 
-    // fixed: T6 (#22). The jar's S14 row still reads
-    // `S14 combine=threw ArrayIndexOutOfBoundsException` with the board unchanged — that is still
-    // what the jar does, and it is not re-cut. What the port answers has moved, because the
-    // `tmpArr[-1]` read is guarded: `removeOverlaps` cancels `[D, C, B, C, D, X, Y]` down to
-    // nothing, the constructor takes its own "fewer than three lines" exit, and `combineAtEnd`'s
-    // `joinedPolyline.lines.length != newLineCount` test (PolylineTrace.java:303) sees the
-    // difference and completes the combine instead of aborting the pass.
     assert_eq!(
         board.combine_trace(six),
         Ok(true),
         "the combine completes where Java threw out to the pass-level catch"
     );
 
-    // And it is a real combine, not a no-op that merely stopped throwing: the three-line trace is
-    // absorbed and `six` keeps only the tail the join could normalise.
     assert_eq!(before, vec![3, 2, 1]);
     assert_eq!(item_ids(&board), vec![2, 1], "the joined trace is gone");
     assert_eq!(
@@ -916,14 +777,9 @@ fn from_lines_err_propagates_as_board_error_normalization() {
          [(0,0), (0,0), (2000,2000), (4000,2000), (4000,5000)]"
     );
 
-    // `combineTraces`, which is `combine` in a loop (BasicBoard.java:683-706, no catch), used to
-    // thread the same error out. It now runs to completion and finds nothing left to do.
     assert_eq!(board.combine_traces(1), Ok(false));
     assert_eq!(item_ids(&board), vec![2, 1]);
 
-    // Mode 8 scenario S15: `normalize` does **not** propagate it on this board, because its
-    // `split` runs first and removes both traces before any `combine` can build the fatal line
-    // array — `S15 normalize=true`, `S15 after: (none)`, `S15 normalizeTraces(1)=false`.
     let (mut board, _) = trace_board(1);
     let six = board
         .insert_trace_without_cleaning(
@@ -953,9 +809,6 @@ fn from_lines_err_propagates_as_board_error_normalization() {
 
 #[test]
 fn insert_trace_swallows_a_normalisation_failure_as_java_does() {
-    // `BasicBoard.insertTrace`'s own `catch (Exception e)` (BasicBoard.java:230-241) — "the
-    // segment is skipped and the connection may remain unrouted". It is the only caller of
-    // `normalize` that stops a `BoardError`; the new trace stays on the board un-normalised.
     let (mut board, _) = trace_board(1);
     let line_a = Line::from_coords(0, 0, 1000, 0);
     let line_b = Line::from_coords(0, 0, 0, 1000);
@@ -982,10 +835,6 @@ fn insert_trace_swallows_a_normalisation_failure_as_java_does() {
         1,
         FixedState::Unfixed,
     );
-    // Mode 8 scenario S16: `S16 after: (none)`, `S16 items=[1]` — the insert succeeds and
-    // returns the new id, and the normalisation that follows removes both traces. What matters
-    // for this test is that `insert_trace` answers `Some` rather than propagating: it is the one
-    // caller of `normalize` with a `catch` of its own.
     assert_eq!(inserted, Some(ItemId(3)));
     assert!(trace_ids(&board).is_empty());
     assert_eq!(item_ids(&board), vec![1]);
@@ -993,9 +842,6 @@ fn insert_trace_swallows_a_normalisation_failure_as_java_does() {
 
 #[test]
 fn change_replaces_the_geometry_and_reuses_what_it_can() {
-    // Mode 8 scenario S12: a three-corner trace changed to a different three-corner one; the new
-    // polyline's first line differs, so `changeEntries(0, 0)` rebuilds both entries
-    // (PolylineTrace.java:955-985).
     let (mut board, _) = trace_board(1);
     let trace = tr(
         &mut board,
@@ -1015,16 +861,9 @@ fn change_replaces_the_geometry_and_reuses_what_it_can() {
     assert_eq!(entry_count(&board, trace), Some(2));
 }
 
-/// Quirk #74, and the root cause of the `router-dac2020-bm01` `ripupPassNo >= 2` divergence
-/// (Plan 6 Task 17b): `PolylineTrace.change` compares the two line arrays with `!=` — **object
-/// identity** (PolylineTrace.java:960, :972) — so a *freshly built* polyline differs at index 0
-/// however equal its values are, and Java always falls through to `changeEntries` and the
-/// `normalize(clipShape)` tail (`:1001`). Probed on the JVM over `p2t11` mode 8's S5 geometry:
-/// Java is left with the single trace `[(0,0) (30000,0)]`.
 #[test]
 fn change_to_a_value_equal_but_freshly_built_polyline_still_normalizes() {
     let (mut board, _) = trace_board(1);
-    // `P2T11` S1/S5: a four-corner trace and a second trace lying on its middle segment.
     let s5 = tr(
         &mut board,
         1000,
@@ -1039,13 +878,9 @@ fn change_to_a_value_equal_but_freshly_built_polyline_still_normalizes() {
         FixedState::Unfixed,
         &[10000, 0, 20000, 0],
     );
-    // A new `Polyline` over the same points: value-equal, but not one of the same `Line`
-    // objects.
     let rebuilt = Polyline::from_points(&pts(&[0, 0, 10000, 0, 20000, 0, 30000, 0]));
     assert_eq!(rebuilt, *board_polyline(&board, s5), "value-equal");
     board.change_trace(s5, rebuilt);
-    // `S5 after: [(0,0) (30000,0)]` — the split-and-recombine of the `normalize` tail. A value
-    // comparison would have taken the ":963" early return and left both traces standing.
     let remaining = trace_ids(&board);
     assert_eq!(remaining.len(), 1, "traces left: {remaining:?}");
     assert_eq!(
@@ -1054,13 +889,6 @@ fn change_to_a_value_equal_but_freshly_built_polyline_still_normalizes() {
     );
 }
 
-/// The other half of quirk #74, and the half a value comparison gets wrong: `keepAtStartCount`.
-///
-/// The new polyline reuses the old `Line` **objects** everywhere except index 2, which is rebuilt
-/// with an unchanged *value*, and index 4, which really changes. Java's identity comparison stops
-/// at index 2, so `keepAtStartCount` is 0 and every leaf is removed and re-inserted; a value
-/// comparison would stop at index 4, keep two leaves, and leave the search tree a different
-/// shape — which is exactly how the `router-dac2020-bm01` divergence started.
 #[test]
 fn change_keeps_the_entries_whose_lines_are_the_same_objects() {
     let (mut board, _) = trace_board(1);
@@ -1076,13 +904,9 @@ fn change_keeps_the_entries_whose_lines_are_the_same_objects() {
     let old: Vec<Line> = board_polyline(&board, trace).lines().to_vec();
     assert_eq!(old.len(), 5);
     let mut lines = old.clone();
-    // Index 2: a fresh `Line` carrying the old one's value — "unchanged" to a value comparison,
-    // a different object to Java's `!=`.
     lines[2] = Line::new(old[2].a, old[2].b);
     assert_eq!(lines[2], old[2]);
     assert!(!lines[2].is_same_object(&old[2]));
-    // Index 4: a real change, so neither model can take `change`'s early return and the two
-    // models are compared on the keep counts alone.
     lines[4] = Line::new(
         fr_geometry::IntPoint::new(25000, 0),
         fr_geometry::IntPoint::new(25000, 20000),
@@ -1095,8 +919,6 @@ fn change_keeps_the_entries_whose_lines_are_the_same_objects() {
 
     let entries_after = tree_entries(&board, trace);
     assert_eq!(entries_after.len(), 3);
-    // `keepAtStartCount == 0`: not one leaf survived. Under a value comparison the first two
-    // would have.
     for (i, (after, before)) in entries_after.iter().zip(&entries_before).enumerate() {
         assert_ne!(
             after, before,
@@ -1107,8 +929,6 @@ fn change_keeps_the_entries_whose_lines_are_the_same_objects() {
 
 #[test]
 fn change_on_a_trace_that_is_off_the_board_only_swaps_the_polyline() {
-    // Mode 8 scenario S13: `S13 onBoard=false corners=[(0,0) (30000,0)] entries=null`
-    // (PolylineTrace.java:937-941).
     let (mut board, _) = trace_board(1);
     let trace = tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
     let mut item = board.items.remove(&trace).expect("the trace");
@@ -1122,9 +942,6 @@ fn change_on_a_trace_that_is_off_the_board_only_swaps_the_polyline() {
 
 #[test]
 fn split_at_point_cuts_the_trace_in_two() {
-    // `PolylineTrace.split(Point)` (:698-712) has no `P2T11` line — Java's `Trace.split(Point)`
-    // is only reached from the GUI — so this pins the port's own loop against the Java body: the
-    // first segment containing the point wins, and the perpendicular through it is the cut.
     let (mut board, _) = trace_board(1);
     let trace = tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 20000, 0]);
     let pieces = board
@@ -1134,7 +951,6 @@ fn split_at_point_cuts_the_trace_in_two() {
     assert_eq!(pieces, [Some(ItemId(3)), Some(ItemId(4))]);
     assert_eq!(corners(&board, ItemId(3)), vec![(0, 0), (10000, 0)]);
     assert_eq!(corners(&board, ItemId(4)), vec![(10000, 0), (20000, 0)]);
-    // A point off the trace splits nothing (PolylineTrace.java:711).
     assert_eq!(
         board
             .split_trace_at_point(ItemId(3), &Point::new(5000, 5000))
@@ -1143,14 +959,9 @@ fn split_at_point_cuts_the_trace_in_two() {
     );
 }
 
-// ---------------------------------------------------------------------------------------------
-// The board loops (mode 9)
-// ---------------------------------------------------------------------------------------------
 
 #[test]
 fn insert_trace_normalizes_the_new_trace() {
-    // Mode 9 scenarios N1 and N2 — the second with the changed area marked, so the `clipShape`
-    // branch (BasicBoard.java:222-229) is taken. Both leave one trace `[(0,0) (20000,0)]`.
     for mark_changed_area in [false, true] {
         let (mut board, _) = trace_board(1);
         if mark_changed_area {
@@ -1173,9 +984,6 @@ fn insert_trace_normalizes_the_new_trace() {
 
 #[test]
 fn combine_traces_walks_one_net_then_every_net() {
-    // Mode 9 scenario N3: `combineTraces(1)=true` leaves the five net-1 segments as `#6`
-    // `[(0,0) (50000,0)]` and the two net-2 segments alone; `combineTraces(-1)=true` then joins
-    // those into `#8`, and a third call answers `false`.
     let (mut board, _) = trace_board(1);
     for i in 0..5 {
         tr(
@@ -1214,7 +1022,6 @@ fn combine_traces_walks_one_net_then_every_net() {
 
 #[test]
 fn normalize_traces_converges_and_then_reports_false() {
-    // Mode 9 scenario N4: `normalizeTraces(1)=true` then `false`, leaving one trace.
     let (mut board, _) = trace_board(1);
     tr(
         &mut board,
@@ -1238,7 +1045,6 @@ fn normalize_traces_converges_and_then_reports_false() {
 
 #[test]
 fn normalize_all_traces_does_every_net_at_once() {
-    // Mode 9 scenario N5.
     let (mut board, _) = trace_board(1);
     tr(
         &mut board,
@@ -1277,11 +1083,6 @@ fn normalize_all_traces_does_every_net_at_once() {
 
 #[test]
 fn normalize_traces_skips_a_suppressed_net() {
-    // `BasicBoard.normalizeTraces`' first branch (BasicBoard.java:713-727): a net that already
-    // hit `MAX_NORMALIZE_ITERATIONS` on this board is never normalised again — the port's
-    // `normalize_suppressed_net_nos` is Java's `normalizeSuppressedNetNos` (:96). The cap itself
-    // is unreachable on any board this suite can build, so the set is seeded directly, exactly
-    // as :747 would.
     assert_eq!(MAX_NORMALIZE_ITERATIONS, 2000);
     let (mut board, _) = trace_board(1);
     tr(
@@ -1301,17 +1102,12 @@ fn normalize_traces_skips_a_suppressed_net() {
     board.normalize_suppressed_net_nos.insert(1);
     assert!(!board.normalize_traces(1).expect("no failure"));
     assert_eq!(trace_ids(&board), vec![3, 2]);
-    // `normalizeAllTraces` neither reads nor writes the set (BasicBoard.java:798-885).
     assert!(board.normalize_all_traces().expect("no failure"));
     assert_eq!(trace_ids(&board), vec![3]);
 }
 
 #[test]
 fn normalize_traces_terminates_within_2000() {
-    // The safety valve of BasicBoard.java:64,728-749. A 400-segment chain crossed by a second
-    // net's trace converges in a handful of passes, so the cap is never touched — which is what
-    // the assertion below checks: the net does **not** end up in the suppressed set, and the
-    // board reaches a fixed point (a second call answers `false`).
     let (mut board, _) = trace_board(1);
     for i in 0..400 {
         tr(
@@ -1331,8 +1127,6 @@ fn normalize_traces_terminates_within_2000() {
 
 #[test]
 fn split_traces_cuts_at_a_location() {
-    // Mode 9 scenario N6: `splitTraces(hit)=true` splits both crossing traces at (10000,0), and
-    // a location no trace covers answers `false` (BasicBoard.java:891-907).
     let (mut board, _) = trace_board(1);
     tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 20000, 0]);
     tr(
@@ -1357,9 +1151,6 @@ fn split_traces_cuts_at_a_location() {
 
 #[test]
 fn insert_via_splits_the_traces_under_it() {
-    // Mode 9 scenario N7 — on a **two-layer** board, because `insertVia`'s loop is
-    // `fromLayer..toLayer` (BasicBoard.java:289) and a one-layer padstack has `toLayer == 0`,
-    // which makes the loop empty.
     let (mut board, pad) = trace_board(2);
     tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 20000, 0]);
     let via = board
@@ -1381,10 +1172,6 @@ fn insert_via_splits_the_traces_under_it() {
 
 #[test]
 fn connect_to_trace_inserts_a_stub_and_normalises() {
-    // Mode 9 scenario N8: `connectToTrace=true`, and the board is left with `#4`
-    // `[(10000,5000) (10000,0)]` — the original trace was split by the new stub's normalisation
-    // and both halves were then removed as tails by `connectToTrace`'s own tail loop
-    // (RoutingBoard.java:1157-1168).
     let (mut board, _) = trace_board(1);
     let trace = tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 20000, 0]);
     assert!(board.connect_to_trace(&Point::new(10000, 5000), trace, 1000, 1));
@@ -1395,9 +1182,6 @@ fn connect_to_trace_inserts_a_stub_and_normalises() {
 
 #[test]
 fn remove_trace_tails_combines_what_the_stub_leaves_behind() {
-    // Mode 9 scenario N9: the stub `[(10000,0) (20000,0)]` goes, and `combineTraces(netNumber)`
-    // (RoutingBoard.java:1236) then joins the triangle's remaining traces into one closed
-    // `#4` `[(0,0) (10000,0) (10000,10000) (0,0)]`.
     let (mut board, _) = trace_board(1);
     tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 10000, 0]);
     tr(
@@ -1435,10 +1219,6 @@ fn remove_trace_tails_combines_what_the_stub_leaves_behind() {
 
 #[test]
 fn moving_a_contacted_via_inserts_and_normalises_a_connecting_trace() {
-    // Mode 9 scenario N10: `DrillItem.moveBy`'s `board.insertTrace` tail
-    // (DrillItem.java:137-143). The connecting trace from the old centre to the new one is
-    // normalised straight into the trace that was contacting the via, leaving `#4`
-    // `[(20000,0) (10000,0) (10000,10000)]`.
     let (mut board, pad) = trace_board(1);
     let via = board
         .insert_via(
@@ -1468,13 +1248,7 @@ fn moving_a_contacted_via_inserts_and_normalises_a_connecting_trace() {
     assert_eq!(item_ids(&board), vec![4, 2, 1]);
 }
 
-// ---------------------------------------------------------------------------------------------
-// The ported `CombineStackOverflowTest` (mode 10)
-// ---------------------------------------------------------------------------------------------
 
-/// The wiring of `fixtures/Issue723-CombineStackOverflow.dsn`, rebuilt by hand: a single GND net
-/// drawn as a boustrophedon of 200-unit collinear segments, 280 horizontal per row plus one
-/// vertical connector, starting at (130000, -107000). `emitted` is the fixture's own count.
 fn combine_stack_overflow_board(segment_count: u32) -> Board {
     let (mut board, _) = trace_board(1);
     let (mut x, mut y, mut dx) = (130_000i32, -107_000i32, 200i32);
@@ -1488,7 +1262,6 @@ fn combine_stack_overflow_board(segment_count: u32) -> Board {
             dx = -dx;
             (x, y + 200)
         };
-        // `Wiring.java:530-535`.
         board.insert_trace_without_cleaning(
             Polyline::from_two_points(&Point::new(x, y), &Point::new(next_x, next_y)),
             0,
@@ -1506,17 +1279,8 @@ fn combine_stack_overflow_board(segment_count: u32) -> Board {
 
 #[test]
 fn combine_stack_overflow_fixture() {
-    // `CombineStackOverflowTest.combineDoesNotOverflowOnLongCollinearTrace` (:42-78), and mode 10
-    // at its full 4000 segments: `inserted=4000`, `normalizeAllTraces=true`, `traces=1`, and a
-    // single 31-line trace whose corners are the boustrophedon's turns.
-    //
-    // Java runs the DSN read on a 256 KiB stack so the pre-fix, once-per-merge recursion in
-    // `combine()` overflows deterministically; the port's `combine_trace` is the same `while`
-    // loop the fix introduced, so it uses O(1) stack by construction and the whole chain folds
-    // into one trace.
     let mut board = combine_stack_overflow_board(4000);
     assert_eq!(board.get_traces().len(), 4000);
-    // `Wiring.java:347`.
     assert!(
         board
             .normalize_all_traces()
@@ -1540,28 +1304,10 @@ fn combine_stack_overflow_fixture() {
     assert_eq!(trace.get_half_width(), 76);
 }
 
-// ---------------------------------------------------------------------------------------------
-// Plan 9 Task 5: quirk #71 — the re-read no longer aliases the walk's own list
-// ---------------------------------------------------------------------------------------------
 
-/// **fixed: T5 (#71).** `ShapeSearchTree.overlappingTreeEntries` appends into the collection it is
-/// handed (ShapeSearchTree.java:429-430) and never clears it, which is what lets
-/// `PolylineTrace.split`'s re-read (:584-588) put stale entries in front of fresh ones and walk
-/// them all again.
-///
-/// The port's half of that fix is structural: `overlapping_tree_entries` **returns** its answer
-/// rather than taking a collection to append to, so no caller can alias one. This test is the lock
-/// on that signature's behaviour — two calls with identical arguments over an unchanged tree
-/// answer identical, *independent* vectors, and a vector the caller already holds is never
-/// lengthened by a call.
-///
-/// The other half — `split`'s own `entries.extend(fresh)` becoming `entries = fresh` — is measured
-/// by `a_two_rail_four_rung_ladder_normalizes_and_terminates`.
 #[test]
 fn overlapping_tree_entries_returns_a_fresh_collection() {
     let (mut board, _) = trace_board(1);
-    // Three traces that all cross the probe box below, so the answer is non-empty and a stale
-    // append would be visible as a doubled length.
     tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 30000, 0]);
     tr(
         &mut board,
@@ -1594,11 +1340,6 @@ fn overlapping_tree_entries_returns_a_fresh_collection() {
          appended to the first call's"
     );
 
-    // The **observable** half, and the one that is not vacuous: mutate the vector the call handed
-    // back, then call again. Java's `overlappingTreeEntries(shape, layer, mine)` writes into a
-    // collection the caller owns and keeps handing back, which is exactly how `split`'s walk ends
-    // up re-reading its own retired entries; if this answer aliased anything the tree owns, or if
-    // the tree remembered it, the damage below would show up in the next call.
     let mut mutated = tree.overlapping_tree_entries(&probe, Some(0), &[], &board.items, &ctx);
     let stolen = mutated[0];
     mutated.clear();
@@ -1610,10 +1351,6 @@ fn overlapping_tree_entries_returns_a_fresh_collection() {
          or any later call"
     );
 
-    // And the consumer's half, end to end: `split_trace` re-reads this query after every found
-    // trace it splits, and with Java's appending collection each re-read left the retired entries
-    // in front of the fresh ones. The ladder tests below are what measure that; here it is enough
-    // that a walk over two successive answers sees each entry once per answer and not twice.
     let walked: usize = [&first, &second].iter().map(|e| e.len()).sum();
     assert_eq!(
         walked,
@@ -1622,16 +1359,7 @@ fn overlapping_tree_entries_returns_a_fresh_collection() {
     );
 }
 
-// ---------------------------------------------------------------------------------------------
-// The ladder (quirks #76 and #106)
-// ---------------------------------------------------------------------------------------------
 
-/// The ladder fixture, shared by the three tests below: two rails on one net at `y = 0` and
-/// `y = 10000`, both spanning `x = 0 .. 30000`, joined by `rungs` verticals at
-/// `x = 0, 10000, 20000, 30000`. The last rung is the highest id — 1 outline + 2 rails + `rungs`.
-///
-/// Only `rungs <= 4` is a ladder: the fifth vertical would stand at `x = 40000`, off the end of
-/// both rails, touching nothing.
 fn ladder(rungs: i32) -> (Board, ItemId) {
     let (mut board, _) = trace_board(1);
     tr(&mut board, 1000, 1, FixedState::Unfixed, &[0, 0, 30000, 0]);
@@ -1654,46 +1382,7 @@ fn ladder(rungs: i32) -> (Board, ItemId) {
     (board, ItemId(3 + rungs as u32))
 }
 
-/// **fixed: T5 (#76, #106).** The headline of Plan 9 Task 5: the two-rail four-rung ladder that
-/// hung `normalize` in Java and in the port now **returns**, and this test asserts the literal
-/// answer.
-///
-/// # What used to happen
-///
 /// This was `a_four_rung_ladder_never_finishes_normalizing`, `#[ignore]`d with "reproduces quirk
-/// #76: this call does not terminate, in Java or in the port". Four or more rungs on one net made
-/// a single `PolylineTrace.normalize(null)` on the last rung loop forever, and neither cap
-/// reached it: `MAX_NORMALIZATION_DEPTH` counts `normalize` recursions and
-/// `MAX_NORMALIZE_ITERATIONS` counts `normalizeTraces` passes, and the call never left the first
-/// of either.
-///
-/// Two defects made it, and Task 5 fixed both:
-///
-/// * **#71** — `PolylineTrace.split`'s re-read (:584-588) appended the fresh entries to the list
-///   the walk was already in, so retired entries were walked again. Fixed first, and **measured
-///   to change nothing here on its own**: the walk never reached its second re-read.
-/// * **#106** — `Item.getConnectionItems`' walk along the contacts (Item.java:721-777) had no
-///   visited set, so `BasicBoard.removeIfCycle` (BasicBoard.java:1354) circled the very cycle it
-///   had just confirmed, for ever. That is where every one of the five million measured steps of
-///   the pre-fix walk was spent, and fixing it is what makes this call return.
-///
-/// # The literal answer, and how to check it by hand
-///
-/// `normalize` answers **`true`** and leaves **no trace at all** on the board — item 1, the
-/// board outline, is the only survivor.
-///
-/// The ladder is 2-connected: after `split` cuts each rail at the two interior rungs, every edge
-/// of the resulting graph lies on one of its three square faces. `removeIfCycle(t)` removes not
-/// `t` but `getConnectionItems(t)` — the whole chain through `t` up to the next fork — whenever
-/// `Trace.isCycle` says `t` is on a cycle, and on this graph that is every piece. So the cascade
-/// consumes the ladder rather than thinning it to a spanning tree, and nothing is left.
-///
-/// # The terminating control is untouched
-///
-/// The three-rung ladder terminated before this task and still answers exactly what it answered
-/// then — `true`, with traces `[6, 5]` — which is the check that #106's guard fires only where
-/// the walk had stopped making progress. Measured against the pre-fix tree: rungs 1, 2 and 3
-/// answer `[4]`, `[5]` and `[6, 5]` with the fix and without it.
 #[test]
 fn a_two_rail_four_rung_ladder_normalizes_and_terminates() {
     let (mut board, last_rung) = ladder(4);
@@ -1709,33 +1398,15 @@ fn a_two_rail_four_rung_ladder_normalizes_and_terminates() {
     );
     assert_eq!(item_ids(&board), vec![1], "only the board outline survives");
 
-    // The terminating control, unchanged by the fix.
     let (mut board, last_rung) = ladder(3);
     assert_eq!(board.normalize_trace(last_rung, None), Ok(true));
     assert_eq!(trace_ids(&board), vec![6, 5]);
 }
 
-/// The [`StopCheck`] seam Plan 3 ruling 4 threaded into `split`'s entry walk and into
-/// `Item.getConnectionItems` is still live, and still answers [`BoardError::Stopped`] — it is
-/// simply no longer the *only* way the ladder ends.
-///
-/// The stop check is a **counter**, not a clock, so the test is deterministic and cheap. Both
-/// halves are asserted against the measured step count of the fixed walk, **80**:
-///
-/// * a budget of 10 trips, and the answer is `Stopped`;
-/// * a budget of 500 is never exhausted, and the answer is the normalisation itself.
-///
-/// Before Task 5 the four-rung branch consumed every budget it was given — 501 steps at 500,
-/// 50 001 at 50 000 and 5 000 001 at 5 000 000, the last taking 48 s — and answered `Stopped`
-/// each time. Those numbers are the register evidence for #106, and this test is what replaces
-/// them.
 #[test]
 fn a_four_rung_ladder_stops_when_the_stop_check_trips() {
-    /// The steps the fixed four-rung walk actually takes. Asserted exactly, so that a change to
-    /// the walk shows up here rather than as a silent slowdown.
-    const MEASURED_STEPS: u64 = 80;
+            const MEASURED_STEPS: u64 = 80;
 
-    // A budget below the measured cost: the seam still bites.
     let (mut board, last_rung) = ladder(4);
     let steps = std::cell::Cell::new(0u64);
     let stop = || {
@@ -1749,8 +1420,6 @@ fn a_four_rung_ladder_stops_when_the_stop_check_trips() {
     );
     assert_eq!(steps.get(), 11);
 
-    // A budget above it: the walk finishes on its own, and the checked and unchecked entry points
-    // agree.
     let (mut board, last_rung) = ladder(4);
     let steps = std::cell::Cell::new(0u64);
     let stop = || {
@@ -1769,7 +1438,6 @@ fn a_four_rung_ladder_stops_when_the_stop_check_trips() {
     );
     assert!(trace_ids(&board).is_empty());
 
-    // Three rungs, the terminating control: unchanged.
     let (mut board, last_rung) = ladder(3);
     let steps = std::cell::Cell::new(0u64);
     let stop = || {
@@ -1792,12 +1460,6 @@ fn a_four_rung_ladder_stops_when_the_stop_check_trips() {
     assert_eq!(trace_ids(&board), vec![6, 5]);
 }
 
-/// The same trip through the entry point `fr-dsn` actually calls (Plan 3 ruling 4):
-/// `Board::normalize_all_traces_checked`, the port of `Wiring.java:347`'s
-/// `board.normalizeAllTraces()`.
-///
-/// **fixed: T5 (#76, #106)** here too: the unbounded call now returns. The bounded one still
-/// answers [`BoardError::Stopped`] when its budget is smaller than the walk.
 #[test]
 fn normalize_all_traces_checked_stops_on_the_ladder() {
     let (mut board, _) = ladder(4);
@@ -1812,8 +1474,6 @@ fn normalize_all_traces_checked_stops_on_the_ladder() {
         "a budget of 10 still stops it"
     );
 
-    // Unbounded, it terminates — which is the whole point of the task — and the unchecked entry
-    // point `fr-dsn` reaches through `DsnReadOptions::normalize_time_limit` agrees with it.
     let (mut board, _) = ladder(4);
     assert_eq!(board.normalize_all_traces_checked(&|| false), Ok(true));
     assert!(trace_ids(&board).is_empty());
@@ -1823,9 +1483,6 @@ fn normalize_all_traces_checked_stops_on_the_ladder() {
     assert!(trace_ids(&board).is_empty());
 }
 
-/// `normalize_all_traces_checked(&|| false)` is what the no-argument
-/// [`Board::normalize_all_traces`] delegates to, so every Plan 2 expectation must survive the
-/// change: a board with nothing to normalise answers `false` either way.
 #[test]
 fn the_checked_and_unchecked_normalisation_entry_points_agree() {
     let (mut a, _) = trace_board(1);

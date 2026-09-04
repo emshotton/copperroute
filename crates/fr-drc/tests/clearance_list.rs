@@ -1,28 +1,9 @@
-//! Plan 5 Task 3: `DesignRulesChecker::get_all_clearance_violations`
-//! (`drc/DesignRulesChecker.java:52-81`).
-//!
-//! # Provenance
-//!
-//! The three fixture counts are Java's own: `RatsnestClearanceHeadlessTest.java:33` (the
-//! dev board's 2) and `KiCadDrcViolationRoutingTest.java:54-64` (76 and 0), which the plan's
-//! ruling-11 table re-measured on the clone's HEAD jar. The pair ids in
-//! [`the_surviving_first_item_is_the_higher_id`] and the two `tests/data/*.list.txt` transcripts
-//! [`the_ordered_list_matches_the_jvm`] compares against are the output of
-//! `crates/fr-drc/tests/data/DrcListProbe.java` — the real `getAllClearanceViolations()` on the
-//! clone's HEAD jar under JDK 25; `tests/data/README.md` records the command.
-
 use fr_board::prelude::*;
 use fr_drc::{ClearanceViolation, DesignRulesChecker};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{IntBox, IntPoint, IntVector, Point, Shape, TileShape};
 
-// ---------------------------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------------------------
 
-/// A real board, read the way `RatsnestClearanceHeadlessTest.loadBoard` reads one
-/// (`RatsnestClearanceHeadlessTest.java:36-46`): `DsnReader.readBoard(in, null, null, "test")`,
-/// accepting `Success` and `OutlineMissing` alike.
 fn fixture_board(name: &str) -> Board {
     let path = parity::fixture(name);
     let bytes = std::fs::read(&path)
@@ -46,14 +27,9 @@ fn violation_count(fixture: &str) -> usize {
         .len()
 }
 
-// ---------------------------------------------------------------------------------------------
-// The fixture counts (DesignRulesChecker.java:53-81)
-// ---------------------------------------------------------------------------------------------
 
 #[test]
 fn dev_board_has_two_deduplicated_violations() {
-    // RatsnestClearanceHeadlessTest.java:33, :78-88: `EXPECTED_UNIQUE_VIOLATIONS = 2`. The
-    // per-item pass finds four (each pair reported by both of its items); the dedup halves it.
     if !parity::require_java_dir() {
         return;
     }
@@ -62,8 +38,6 @@ fn dev_board_has_two_deduplicated_violations() {
 
 #[test]
 fn bbd_mars_64_has_seventy_six() {
-    // KiCadDrcViolationRoutingTest.java:52-56 asserts 76 for this fixture; the per-item pass
-    // finds 110 (Task 2's `DrcProbe` transcript), so the dedup is doing real work here.
     if !parity::require_java_dir() {
         return;
     }
@@ -72,8 +46,6 @@ fn bbd_mars_64_has_seventy_six() {
 
 #[test]
 fn natural_tone_preamp_has_none() {
-    // KiCadDrcViolationRoutingTest.java:63: 0 clearance violations (its 145 incompletes are a
-    // different quantity — plan ruling 11).
     if !parity::require_java_dir() {
         return;
     }
@@ -82,25 +54,15 @@ fn natural_tone_preamp_has_none() {
 
 #[test]
 fn empty_board_has_none() {
-    // RatsnestClearanceHeadlessTest.java:117-127 (`emptyBoardHasNoIncompletesAndNoViolations`).
     if !parity::require_java_dir() {
         return;
     }
     assert_eq!(violation_count("empty_board.dsn"), 0);
 }
 
-// ---------------------------------------------------------------------------------------------
-// The two consequences of the descending walk and the layer-bearing key
-// ---------------------------------------------------------------------------------------------
 
 #[test]
 fn the_surviving_first_item_is_the_higher_id() {
-    // `board.getItems()` is descending id (BasicBoard.java:603, quirks #44/#63), so of the two
-    // reports of a pair the *higher*-id item's arrives first and is the one that survives the
-    // dedup. On the dev board the four raw violations are
-    //   278->277, 277->278, 276->275, 275->276
-    // (Task 2's `DrcProbe` block A), and the deduplicated list keeps the first of each pair, in
-    // walk order.
     if !parity::require_java_dir() {
         return;
     }
@@ -111,7 +73,6 @@ fn the_surviving_first_item_is_the_higher_id() {
         .map(|v| (v.first_item.0, v.second_item.0))
         .collect();
     assert_eq!(pairs, vec![(278, 277), (276, 275)]);
-    // …and the rest of each row, so a reordering cannot hide behind matching ids.
     for v in &violations {
         assert_eq!(v.layer, 0);
         assert_eq!(v.expected_clearance, 500.0);
@@ -121,9 +82,6 @@ fn the_surviving_first_item_is_the_higher_id() {
 
 #[test]
 fn the_ordered_list_matches_the_jvm() {
-    // The whole list, field for field and in order, against `DrcListProbe.java`'s transcript —
-    // so a wrong dedup key, a reversed walk or a drifting bisection cannot hide behind a
-    // matching count.
     if !parity::require_java_dir() {
         return;
     }
@@ -139,8 +97,6 @@ fn the_ordered_list_matches_the_jvm() {
     }
 }
 
-/// `DrcListProbe.java`'s output format, exactly: a `count` line, then one line per violation
-/// with the doubles rendered as `Double.toString` renders them.
 fn render(violations: &[ClearanceViolation]) -> String {
     let mut out = format!("count {}\n", violations.len());
     for v in violations {
@@ -158,9 +114,6 @@ fn render(violations: &[ClearanceViolation]) -> String {
 
 #[test]
 fn a_pair_on_two_layers_yields_two_entries() {
-    // The key is `(min, max, layer)` (DesignRulesChecker.java:69-72), so one pair that overlaps
-    // on two layers is two distinct entries — while several tile-shape overlaps on one layer
-    // collapse to one.
     let mut board = two_layer_pad_board();
     let violations = DesignRulesChecker::new(&mut board).get_all_clearance_violations();
     let rows: Vec<(u32, u32, usize)> = violations
@@ -170,9 +123,6 @@ fn a_pair_on_two_layers_yields_two_entries() {
     assert_eq!(rows, vec![(3, 2, 0), (3, 2, 1)]);
 }
 
-// ---------------------------------------------------------------------------------------------
-// The synthetic two-layer board
-// ---------------------------------------------------------------------------------------------
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -189,9 +139,6 @@ fn layers() -> LayerStructure {
     LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)])
 }
 
-/// Two overlapping pads of **different nets**, each spanning **both** layers: item 2 (net 1) and
-/// item 3 (net 2). Each item reports one violation per layer, so the raw per-item pass finds
-/// four and the deduplicated list keeps two — one per layer.
 fn two_layer_pad_board() -> Board {
     let mut padstacks = Padstacks::new(layers());
     let mut pins = Vec::new();

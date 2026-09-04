@@ -1,65 +1,9 @@
-//! `settings/sources/JsonFileSettings.java` (79): the `freerouting.json` tier at priority 10.
-//!
-//! # Why this source exists at all (Plan 8 scan ruling R7)
-//!
-//! Plan 4 left this tier **reserved and empty**: spec §2 gives the port no persistent
-//! configuration file, `merger.rs` kept the number and the identity, and
-//! `scripts/differential/java/P4T1.java` proved on the JVM that the tier contributes nothing when
-//! the file is absent. That was correct for Plan 4, whose CLI had no `--settings` option and no
-//! working-directory lookup — but it left a **hole in the settings ladder**, because Java's
-//! priority-10 source is not a GUI class and is not telemetry: it is the one tier between
-//! `DefaultSettings` (0) and the DSN file (20), and `SettingsMergerTest
-//! .legacyBatchModeEnablesRouterWhenJsonDisablesIt` is written against it.
-//!
-//! Plan 7's hand-off flagged the gap twice and named Plan 8's Task 5 as its owner; the Plan 8
-//! pre-flight scan raised it as ruling **R7** and the controller ruled it **in**. So the class is
-//! ported here, in full, and wired to two things by `crates/freerouting`:
-//!
-//! * `--settings <file>` on the native subcommand form — the port's spelling of Java's
-//!   `JsonFileSettings(Path)` constructor (`:36-39`). **This is the whole surface**: it is how
-//!   `commands::route` builds a priority-10 source, and there is no default file;
-//! * ~~`freerouting.json` **in the working directory** — the port's stand-in for Java's
-//!   `GlobalSettings.getUserDataPath().resolve("freerouting.json")` (`:27-29`)~~ — **removed from
-//!   the CLI by controller ruling BG.** Task 5 chose the working directory because the user-data
-//!   path is `static` mutable state spec §2 does not port; measured at the pinned jar, a
-//!   `freerouting.json` in the working directory changes **nothing** (the jar reads the user-data
-//!   path and only that), so the stand-in stood in for no jar behaviour and was a port-only
-//!   default a stray file could have used to change a routing result silently. See
-//!   [`JsonFileSettings::from_working_directory`], which survives without a CLI caller.
-//!
-//! # The leniency this reproduces, and the one it does not
-//!
-//! Quirk #141's strictness split governs the reader: `GsonProvider.GSON` is built with
-//! `Strictness.LENIENT`, and [`RouterSettings::from_json_str`] — which `JsonFileSettings.java:51`
-//! is the only headless caller of — is `serde_json`, which is strict. Where Gson reads an
-//! unquoted name or coerces `"42"` into an `Integer`, this port reports an error. That divergence
-//! is acceptance-only (an error where Java produced a value, never a *different* value) and is
-//! recorded on [`crate::json`]'s module docs.
-//!
-//! One level of leniency **is** reproduced, because it is not Gson's, it is this class's: `:55-62`
-//! swallows *every* exception — an I/O error, a document that is not a JSON object, a `router`
-//! element that will not deserialise — into an empty [`RouterSettings`]. A `freerouting.json` full
-//! of nonsense therefore changes nothing rather than aborting the run, and the port answers the
-//! same empty object. The errors are kept on [`JsonFileSettings::errors`] because this crate has
-//! no `FRLogger`, but no caller has to read them.
-
 use std::path::{Path, PathBuf};
 
 use crate::{RouterSettings, SettingsError, SettingsSource, SourceKind, merger::priority};
 
-/// `GlobalSettings.getConfigurationFilePath` resolves this name under the user-data directory
-/// (`GlobalSettings.java:178-180`), which spec §2 does not port. The only thing that resolves it
-/// against the working directory is [`JsonFileSettings::from_working_directory`], which ruling BG
-/// left without a CLI caller — the constant is the **name**, not a policy about where to look.
 pub const CONFIGURATION_FILE_NAME: &str = "freerouting.json";
 
-/// `settings/sources/JsonFileSettings.java`: the router settings a `freerouting.json` names,
-/// priority 10.
-///
-/// Only the keys the file's `router` object actually holds are non-`None` — that nullability is
-/// the merge protocol (`SettingsMerger.java:22-31`). Everything else, including a missing file,
-/// a malformed file and a file with no `router` key, is an empty `RouterSettings` that the merge
-/// steps straight over.
 #[derive(Debug, Clone)]
 pub struct JsonFileSettings {
     json_file_path: PathBuf,
@@ -68,15 +12,9 @@ pub struct JsonFileSettings {
 }
 
 impl JsonFileSettings {
-    /// `JsonFileSettings.PRIORITY` (`:22`).
-    const PRIORITY: i32 = priority::JSON_FILE;
+        const PRIORITY: i32 = priority::JSON_FILE;
 
-    /// `JsonFileSettings(Path)` (`:36-39`) — the constructor `--settings <file>` uses.
-    ///
-    /// renamed: JsonFileSettings -> JsonFileSettings::new (Rust has no constructors). Java runs
-    /// `loadSettings()` from the constructor (`:38`), so the file is read **once**, here, and
-    /// [`SettingsSource::get_settings`] is a pure accessor afterwards.
-    #[must_use]
+                        #[must_use]
     pub fn new(json_file_path: &Path) -> Self {
         let mut errors = Vec::new();
         let settings = load_settings(json_file_path, &mut errors);
@@ -87,78 +25,32 @@ impl JsonFileSettings {
         }
     }
 
-    /// `JsonFileSettings()` (`:27-29`) — the no-argument constructor, with the working directory
-    /// where Java has the OS user-data path.
-    ///
-    /// # It has no caller, and controller ruling BG is why
-    ///
-    /// Java's body is
-    /// `this(GlobalSettings.getUserDataPath().resolve("freerouting.json"))` — on macOS
-    /// `~/Library/Application Support/freerouting/freerouting.json`
-    /// (`AppPaths.resolveConfigDirectory:39-42`). That path is `static` mutable state
-    /// (`GlobalSettings.java:29-30`, `:164-167`) and spec §2 does not port it, so Task 5 made the
-    /// working directory stand in and `commands::route` used this constructor as its default.
-    ///
-    /// **Measured at the pinned jar, the working directory is not a stand-in for anything:**
-    ///
-    /// | run | `scoring.via_costs` in the manifest |
-    /// |---|---|
-    /// | jar, started **in** a directory holding `{"router":{"scoring":{"via_costs":77}}}` | **50** — ignored |
-    /// | jar, `-Duser.home` at a home whose *user-data* file sets the same | **77** — applied |
-    /// | jar, `-Duser.home` at a home with no such file (control) | 50 |
-    ///
-    /// So the cwd file was a second, **port-only** default that a stray `freerouting.json` in a
-    /// build directory could have used to change a routing result silently. Ruling BG removed it
-    /// from the CLI: `commands::route` now builds a priority-10 source only for an explicit
-    /// `--settings <file>`, and the tier has no default at all.
-    ///
-    /// This constructor is kept — not deleted — because it is the port of a real Java
-    /// constructor and `audit-port.sh` matches the overload set; a host that genuinely wants a
-    /// working-directory-relative source can still ask for one, with its eyes open. It is **not**
-    /// what the CLI does.
-    ///
-    // renamed: JsonFileSettings() -> JsonFileSettings::from_working_directory — Rust has no
-    // constructor overloads, and the name says which of Java's two the caller wants.
-    // not ported: GlobalSettings.getUserDataPath (settings/GlobalSettings.java:155-157) and
-    //   AppPaths.getDefaultUserDataPath (settings/AppPaths.java:39-42) — `static` mutable state
-    //   (spec §2). Their absence is what leaves this constructor without a faithful path, which
-    //   is why ruling BG gave the CLI no default rather than a different one.
-    #[must_use]
+                                                                                                                            #[must_use]
     pub fn from_working_directory() -> Self {
         Self::new(Path::new(CONFIGURATION_FILE_NAME))
     }
 
-    /// The path this source was built from — `JsonFileSettings.jsonFilePath` (`:23`), which Java
-    /// keeps only to name it in its four log lines.
-    #[must_use]
+            #[must_use]
     pub fn json_file_path(&self) -> &Path {
         &self.json_file_path
     }
 
-    /// Everything `:55-62` swallowed, in the order encountered — this port's stand-in for the two
-    /// `FRLogger.warn` arms. Empty for a missing file, which is `:42-45`'s silent `debug` arm.
-    ///
-    // added in Plan 4: (no Java counterpart — the failures only reach FRLogger)
-    #[must_use]
+                #[must_use]
     pub fn errors(&self) -> &[String] {
         &self.errors
     }
 }
 
 impl SettingsSource for JsonFileSettings {
-    /// `JsonFileSettings.getSettings` (`:65-68`).
-    fn get_settings(&self) -> Option<&RouterSettings> {
+        fn get_settings(&self) -> Option<&RouterSettings> {
         Some(&self.settings)
     }
 
-    /// `JsonFileSettings.getSourceName` (`:70-73`) — the literal `"freerouting.json"`, whatever
-    /// path the source was actually built from.
-    fn get_source_name(&self) -> String {
+            fn get_source_name(&self) -> String {
         CONFIGURATION_FILE_NAME.to_string()
     }
 
-    /// `JsonFileSettings.getPriority` (`:75-78`).
-    fn get_priority(&self) -> i32 {
+        fn get_priority(&self) -> i32 {
         Self::PRIORITY
     }
 
@@ -167,29 +59,14 @@ impl SettingsSource for JsonFileSettings {
     }
 }
 
-/// `JsonFileSettings.loadSettings` (`:41-63`), in Java's own order.
-///
-/// 1. `:42-45` — the file does not exist: `FRLogger.debug` and an empty `RouterSettings`. **Not**
-///    an error, and not recorded as one.
-/// 2. `:47-48` — read the whole document and take it as a JSON *object*. `getAsJsonObject()`
-///    throws `IllegalStateException` for an array or a scalar, which `:58` catches.
-/// 3. `:49-50` — `root.get("router")`, applied only when it is present **and** an object. A
-///    document with no `router` key falls through to `:62` without a log line.
-/// 4. `:51-53` — the object goes through `GsonProvider.GSON`; here,
-///    [`RouterSettings::from_json_str`].
-/// 5. `:55-62` — every failure is a warning and an empty `RouterSettings`.
 fn load_settings(json_file_path: &Path, errors: &mut Vec<String>) -> RouterSettings {
-    // :42-45 — `Files.exists` is a *check*, not the read, so a file that disappears between the
-    // two lands in the `catch` below exactly as it does in Java.
     if !json_file_path.exists() {
         return RouterSettings::new();
     }
 
     match read_router_object(json_file_path) {
         Ok(Some(settings)) => settings,
-        // :49-50's `routerElement == null || !isJsonObject()` — silent, and :62's empty object.
         Ok(None) => RouterSettings::new(),
-        // :55-60 — `catch (IOException)` and `catch (Exception)` differ only in their message.
         Err(error) => {
             errors.push(format!(
                 "Failed to load settings from JSON file: {}: {error}",
@@ -200,16 +77,10 @@ fn load_settings(json_file_path: &Path, errors: &mut Vec<String>) -> RouterSetti
     }
 }
 
-/// Steps 2-4 above, with the failures Java catches expressed as a `Result`.
 fn read_router_object(json_file_path: &Path) -> Result<Option<RouterSettings>, SettingsError> {
-    // `Files.newBufferedReader` is UTF-8; so is `std::fs::read_to_string`.
     let text = std::fs::read_to_string(json_file_path)?;
-    // `JsonParser.parseReader(reader).getAsJsonObject()` (:48) as one step: `getAsJsonObject`
-    // throws `IllegalStateException` for an array or a scalar, and deserialising straight into a
-    // JSON *map* fails on exactly the same documents. Both land in the `catch` at :58.
     let root: serde_json::Map<String, serde_json::Value> = serde_json::from_str(&text)?;
 
-    // :49-50
     match root.get("router") {
         Some(router) if router.is_object() => {
             Ok(Some(RouterSettings::from_json_str(&router.to_string())?))
@@ -228,8 +99,7 @@ mod tests {
         path
     }
 
-    /// A scratch directory that removes itself, so the tests never touch the working directory.
-    struct Scratch(PathBuf);
+        struct Scratch(PathBuf);
 
     impl Scratch {
         fn new(tag: &str) -> Self {
@@ -298,7 +168,6 @@ mod tests {
                 .max_passes
                 .is_none()
         );
-        // :49-50 falls through to :62 without a log line.
         assert!(source.errors().is_empty());
     }
 
@@ -349,13 +218,6 @@ mod tests {
 
     #[test]
     fn a_router_object_the_reader_rejects_is_swallowed() {
-        // **This is the divergence, not an agreement.** Quirk #141's JVM-verified block D records
-        // `{"max_passes": "42"} -> 42`: `GsonProvider.GSON` coerces the quoted scalar and does
-        // **not** throw, so Java's answer here is `max_passes = 42` and the port's is an empty
-        // object. `:55-62`'s `catch` is what bounds the divergence rather than removing it — the
-        // port contributes *nothing* at priority 10 where Java contributes 42, never a *different*
-        // value. The register row (#141) and `crate::json`'s module docs carry the shape; this
-        // test pins the port's half of it.
         let scratch = Scratch::new("coercion");
         let path = write(
             &scratch.0,

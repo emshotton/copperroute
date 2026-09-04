@@ -1,277 +1,112 @@
-//! `Keyword` — the identity the Specctra parser dispatches on.
-//!
-//! Java's `io/specctra/parser/Keyword.java` is not an `enum` but a class holding
-//! `public static final Keyword` singletons, each constructed with its Specctra name; the
-//! parser compares them with `==`, so what matters is the **identity**, not the name. The port
-//! makes that identity a Rust `enum`, one variant per `return Keyword.X` in the scanner's
-//! action switch (`SpecctraDsnStreamReader.nextToken`, lines 940-1728).
-//!
-//! `Keyword.OPEN_BRACKET`/`CLOSED_BRACKET` are deliberately absent: they are
-//! [`crate::lexer::Token::Open`]/[`Close`](crate::lexer::Token::Close) instead, so that every
-//! Java `nextToken() == Keyword.OPEN_BRACKET` test becomes a `matches!` on the token.
-//! `// renamed: OPEN_BRACKET`, `// renamed: CLOSED_BRACKET`.
-//!
-//! Java's `Keyword` subclasses (`ScopeKeyword` and the ~25 scope classes deriving from it) carry
-//! the scope-reading behaviour; that hierarchy is not modelled here — dispatch is a `match` on
-//! this enum in [`crate::parser::scope_parameter`]. `Keyword::name()` (below) returns the 2.3.0
-//! name strings (plan ruling 1), reflected off `tools/freerouting-2.3.0.jar`'s
-//! `Keyword.get_name()` while writing this file — not HEAD's camelCased regression.
-//!
-//! **`Keyword::JUMPER`**: HEAD's DFA (`SpecctraDsnStreamReader.nextToken`'s action switch) never
-//! returns a `Keyword::Jumper` token — "jumper" is not one of the DFA's recognised keyword
-//! lexemes, so it lexes as a plain `Str("jumper")`. This is **not a Java bug**: the only site
-//! that cares, `Structure.java:349`
-//! (`!Objects.equals(nextToken.toString(), Keyword.JUMPER.getName())`), deliberately compares the
-//! token's *string form* against `Keyword.JUMPER.getName()` rather than testing identity against
-//! a keyword singleton the way `SIGNAL`/`POWER` are tested a few lines above — so a plain string
-//! token is exactly what that call site expects. The variant exists so `Keyword::name()` has
-//! something to hand back at that call site (ruling 2); it is simply never produced by
-//! [`crate::lexer::DsnScanner::next_token`].
-//!
-//! **`Keyword::PN`** is likewise never returned by the DFA (`"PN"` is not a DFA keyword lexeme
-//! either), and unlike `JUMPER` it is *not* added as a variant here: `Component.java:281` tests
-//! `nextToken == Keyword.PN || (nextToken instanceof String && "PN".equalsIgnoreCase(...))` — an
-//! identity comparison against a keyword instance the DFA can never produce, OR'd with a
-//! case-insensitive string fallback that *is* reachable. Whichever task ports `Component`'s
-//! place scope (pin/gate-swap "PN" property) should read this as: the identity half of that `||`
-//! is dead code reachable only if some future DFA state change starts returning it, and the
-//! string-fallback half is what actually fires — no `Keyword::Pn` variant is needed to reproduce
-//! that behaviour, only a case-insensitive `"PN"` string match.
-
-/// A Specctra DSN keyword, as recognised by the lexer's DFA.
-///
-/// Variant names are the CamelCase spelling of the Java constant names; the *name strings*
-/// (which plan ruling 1 pins to the 2.3.0 snake_case Specctra tokens, not the clone HEAD's
-/// camelCased regression) are returned by [`Keyword::name`], below.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Keyword {
-    /// Java `Keyword.ABSOLUTE`.
-    Absolute,
-    /// Java `Keyword.ACTIVE`.
-    Active,
-    /// Java `Keyword.AGAINST_PREFERRED_DIRECTION_TRACE_COSTS`.
-    AgainstPreferredDirectionTraceCosts,
-    /// Java `Keyword.ATTACH`.
-    Attach,
-    /// Java `Keyword.AUTOROUTE`.
-    Autoroute,
-    /// Java `Keyword.AUTOROUTE_SETTINGS`.
-    AutorouteSettings,
-    /// Java `Keyword.BACK`.
-    Back,
-    /// Java `Keyword.BOUNDARY`.
-    Boundary,
-    /// Java `Keyword.CIRCLE`.
-    Circle,
-    /// Java `Keyword.CIRCUIT`.
-    Circuit,
-    /// Java `Keyword.CLASS`.
-    Class,
-    /// Java `Keyword.CLASSES`.
-    Classes,
-    /// Java `Keyword.CLASS_CLASS`.
-    ClassClass,
-    /// Java `Keyword.CLEARANCE`.
-    Clearance,
-    /// Java `Keyword.CLEARANCE_CLASS`.
-    ClearanceClass,
-    /// Java `Keyword.COMPONENT_SCOPE`.
-    ComponentScope,
-    /// Java `Keyword.CONSTANT`.
-    Constant,
-    /// Java `Keyword.CONTROL`.
-    Control,
-    /// Java `Keyword.FANOUT`.
-    Fanout,
-    /// Java `Keyword.FIX`.
-    Fix,
-    /// Java `Keyword.FLIP_STYLE`.
-    FlipStyle,
-    /// Java `Keyword.FORTYFIVE_DEGREE`.
-    FortyfiveDegree,
-    /// Java `Keyword.FROMTO`.
-    Fromto,
-    /// Java `Keyword.FRONT`.
-    Front,
-    /// Java `Keyword.GENERATED_BY_FREEROUTING`.
-    GeneratedByFreerouting,
-    /// Java `Keyword.HORIZONTAL`.
-    Horizontal,
-    /// Java `Keyword.HOST_CAD`.
-    HostCad,
-    /// Java `Keyword.HOST_VERSION`.
-    HostVersion,
-    /// Java `Keyword.IMAGE`.
-    Image,
-    /// Java `Keyword.JUMPER`. Never produced by the lexer's DFA — see the module docs above for
-    /// why that is not a bug and `Keyword::name()` is still needed for it.
-    Jumper,
-    /// Java `Keyword.KEEPOUT`.
-    Keepout,
-    /// Java `Keyword.LAYER`.
-    Layer,
-    /// Java `Keyword.LAYER_RULE`.
-    LayerRule,
-    /// Java `Keyword.LENGTH`.
-    Length,
-    /// Java `Keyword.LIBRARY_SCOPE`.
-    LibraryScope,
-    /// Java `Keyword.LOCK_TYPE`.
-    LockType,
-    /// Java `Keyword.LOGICAL_PART`.
-    LogicalPart,
-    /// Java `Keyword.LOGICAL_PART_MAPPING`.
-    LogicalPartMapping,
-    /// Java `Keyword.NET`.
-    Net,
-    /// Java `Keyword.NETWORK_OUT`.
-    NetworkOut,
-    /// Java `Keyword.NETWORK_SCOPE`.
-    NetworkScope,
-    /// Java `Keyword.NINETY_DEGREE`.
-    NinetyDegree,
-    /// Java `Keyword.NONE`.
-    None,
-    /// Java `Keyword.NORMAL`.
-    Normal,
-    /// Java `Keyword.OFF`.
-    Off,
-    /// Java `Keyword.ON`.
-    On,
-    /// Java `Keyword.ORDER`.
-    Order,
-    /// Java `Keyword.OUTLINE`.
-    Outline,
-    /// Java `Keyword.PADSTACK`.
-    Padstack,
-    /// Java `Keyword.PARSER_SCOPE`.
-    ParserScope,
-    /// Java `Keyword.PART_LIBRARY_SCOPE`.
-    PartLibraryScope,
-    /// Java `Keyword.PCB_SCOPE`.
-    PcbScope,
-    /// Java `Keyword.PIN`.
-    Pin,
-    /// Java `Keyword.PINS`.
-    Pins,
-    /// Java `Keyword.PLACE`.
-    Place,
-    /// Java `Keyword.PLACEMENT_SCOPE`.
-    PlacementScope,
-    /// Java `Keyword.PLACE_CONTROL`.
-    PlaceControl,
-    /// Java `Keyword.PLACE_KEEPOUT`.
-    PlaceKeepout,
-    /// Java `Keyword.PLANE_SCOPE`.
-    PlaneScope,
-    /// Java `Keyword.PLANE_VIA_COSTS`.
-    PlaneViaCosts,
-    /// Java `Keyword.POLYGON`.
-    Polygon,
-    /// Java `Keyword.POLYGON_PATH`.
-    PolygonPath,
-    /// Java `Keyword.POLYLINE_PATH`.
-    PolylinePath,
-    /// Java `Keyword.POSITION`.
-    Position,
-    /// Java `Keyword.POSTROUTE`.
-    Postroute,
-    /// Java `Keyword.POWER`.
-    Power,
-    /// Java `Keyword.PREFERRED_DIRECTION`.
-    PreferredDirection,
-    /// Java `Keyword.PREFERRED_DIRECTION_TRACE_COSTS`.
-    PreferredDirectionTraceCosts,
-    /// Java `Keyword.PULL_TIGHT`.
-    PullTight,
-    /// Java `Keyword.RECTANGLE`.
-    Rectangle,
-    /// Java `Keyword.RESOLUTION_SCOPE`.
-    ResolutionScope,
-    /// Java `Keyword.ROTATE`.
-    Rotate,
-    /// Java `Keyword.ROTATE_FIRST`.
-    RotateFirst,
-    /// Java `Keyword.ROUTES`.
-    Routes,
-    /// Java `Keyword.RULE`.
-    Rule,
-    /// Java `Keyword.RULES`.
-    Rules,
-    /// Java `Keyword.SESSION`.
-    Session,
-    /// Java `Keyword.SHAPE`.
-    Shape,
-    /// Java `Keyword.SHOVE_FIXED`.
-    ShoveFixed,
-    /// Java `Keyword.SIDE`.
-    Side,
-    /// Java `Keyword.SIGNAL`.
-    Signal,
-    /// Java `Keyword.SNAP_ANGLE`.
-    SnapAngle,
-    /// Java `Keyword.SPARE`.
-    Spare,
-    /// Java `Keyword.START_PASS_NO`.
-    StartPassNo,
-    /// Java `Keyword.START_RIPUP_COSTS`.
-    StartRipupCosts,
-    /// Java `Keyword.STRING_QUOTE`.
-    StringQuote,
-    /// Java `Keyword.STRUCTURE_SCOPE`.
-    StructureScope,
-    /// Java `Keyword.TYPE`.
-    Type,
-    /// Java `Keyword.USE_LAYER`.
-    UseLayer,
-    /// Java `Keyword.USE_NET`.
-    UseNet,
-    /// Java `Keyword.USE_VIA`.
-    UseVia,
-    /// Java `Keyword.VERTICAL`.
-    Vertical,
-    /// Java `Keyword.VIA`.
-    Via,
-    /// Java `Keyword.VIAS`.
-    Vias,
-    /// Java `Keyword.VIA_AT_SMD`.
-    ViaAtSmd,
-    /// Java `Keyword.VIA_COSTS`.
-    ViaCosts,
-    /// Java `Keyword.VIA_KEEPOUT`.
-    ViaKeepout,
-    /// Java `Keyword.VIA_RULE`.
-    ViaRule,
-    /// Java `Keyword.WIDTH`.
-    Width,
-    /// Java `Keyword.WINDOW`.
-    Window,
-    /// Java `Keyword.WIRE`.
-    Wire,
-    /// Java `Keyword.WIRING_SCOPE`.
-    WiringScope,
-    /// Java `Keyword.WRITE_RESOLUTION`.
-    WriteResolution,
+        Absolute,
+        Active,
+        AgainstPreferredDirectionTraceCosts,
+        Attach,
+        Autoroute,
+        AutorouteSettings,
+        Back,
+        Boundary,
+        Circle,
+        Circuit,
+        Class,
+        Classes,
+        ClassClass,
+        Clearance,
+        ClearanceClass,
+        ComponentScope,
+        Constant,
+        Control,
+        Fanout,
+        Fix,
+        FlipStyle,
+        FortyfiveDegree,
+        Fromto,
+        Front,
+        GeneratedByFreerouting,
+        Horizontal,
+        HostCad,
+        HostVersion,
+        Image,
+            Jumper,
+        Keepout,
+        Layer,
+        LayerRule,
+        Length,
+        LibraryScope,
+        LockType,
+        LogicalPart,
+        LogicalPartMapping,
+        Net,
+        NetworkOut,
+        NetworkScope,
+        NinetyDegree,
+        None,
+        Normal,
+        Off,
+        On,
+        Order,
+        Outline,
+        Padstack,
+        ParserScope,
+        PartLibraryScope,
+        PcbScope,
+        Pin,
+        Pins,
+        Place,
+        PlacementScope,
+        PlaceControl,
+        PlaceKeepout,
+        PlaneScope,
+        PlaneViaCosts,
+        Polygon,
+        PolygonPath,
+        PolylinePath,
+        Position,
+        Postroute,
+        Power,
+        PreferredDirection,
+        PreferredDirectionTraceCosts,
+        PullTight,
+        Rectangle,
+        ResolutionScope,
+        Rotate,
+        RotateFirst,
+        Routes,
+        Rule,
+        Rules,
+        Session,
+        Shape,
+        ShoveFixed,
+        Side,
+        Signal,
+        SnapAngle,
+        Spare,
+        StartPassNo,
+        StartRipupCosts,
+        StringQuote,
+        StructureScope,
+        Type,
+        UseLayer,
+        UseNet,
+        UseVia,
+        Vertical,
+        Via,
+        Vias,
+        ViaAtSmd,
+        ViaCosts,
+        ViaKeepout,
+        ViaRule,
+        Width,
+        Window,
+        Wire,
+        WiringScope,
+        WriteResolution,
 }
 
 impl Keyword {
-    // renamed: getName (also `get_name` in the 2.3.0 jar) -> `name`, dropping the Java `get`
-    // prefix per Rust accessor convention.
-    // Java bug: Keyword.getName (Keyword.java:18,30,40,41,50,78,86,96,101,102,105,107,112,114,119)
-    // camelCases fifteen token strings at HEAD (e.g. `AUTOROUTE_SETTINGS = new
-    // Keyword("autorouteSettings")`) that 2.3.0 spells snake_case; the same rename leaks into
-    // writer literals too (e.g. `Parser.java:102` writes `"(stringQuote "`), so HEAD cannot read
-    // back its own DSN output. See plan ruling 1 and the `docs/java-quirks.md` row it cites.
-    /// `getName()` (Keyword.java:126-128 at HEAD; `get_name()` in the 2.3.0 jar). Returns the
-    /// **2.3.0** Specctra token string (plan ruling 1), reflected off
-    /// `tools/freerouting-2.3.0.jar` — not HEAD's camelCased regression (`Keyword.AUTOROUTE_SETTINGS
-    /// = new Keyword("autorouteSettings")` at HEAD vs. 2.3.0's `"autoroute_settings"`, etc. for
-    /// the fifteen keywords ruling 1 lists).
-    ///
-    /// Used only where Java calls `getName()`/`get_name()`: `Structure.java:349`,
-    /// `Shape.java:81,83,262`, `Network.java:65,87,104,371` (ruling 2) — every other scope's
-    /// *write* literal is transcribed separately, one `writeScope` at a time, in Tasks 11-14.
-    #[must_use]
+                                        #[must_use]
     pub fn name(self) -> &'static str {
         match self {
             Keyword::Absolute => "absolute",
@@ -383,55 +218,24 @@ impl Keyword {
     }
 }
 
-/// A Specctra DSN **scope** keyword — the twelve `Keyword` constants Java constructs as
-/// `ScopeKeyword` (or a subclass of it) rather than a plain `Keyword`
-/// (`Keyword.java:26,49,58,65,66,70,72,73,88,90,109`). Java tests membership with
-/// `nextToken instanceof ScopeKeyword` (`ScopeKeyword.java:59`); the port makes that a
-/// dedicated enum plus [`ScopeKeyword::from_keyword`] instead.
-///
-/// Two variants use the plain inherited `ScopeKeyword.readScope` (the generic loop) rather than
-/// an override: `Pcb` — `Keyword.PCB_SCOPE = new ScopeKeyword("pcb")` (`Keyword.java:66`)
-/// constructs a bare `ScopeKeyword`, not a subclass, so there is no `Pcb.java` to override
-/// anything — and `Placement`, whose `Placement.java` class exists but contains only a
-/// constructor and `writeScope` (fix round 1 — verified by reading the file: no `readScope`
-/// override at all). The inherited generic loop already recurses correctly into a nested
-/// `(component ...)` scope regardless, because `Component.readScope(ReadScopeParameter)`
-/// (`Component.java:367-379`) *is* a real override — it is the per-scope-keyword dispatch inside
-/// the generic loop that finds it, not anything `Placement` itself does. Every other variant has
-/// a same-named Java scope class that overrides `readScope` directly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ScopeKeyword {
-    /// Java `Keyword.COMPONENT_SCOPE` / `Component.java`.
-    Component,
-    /// Java `Keyword.LIBRARY_SCOPE` / `Library.java`.
-    Library,
-    /// Java `Keyword.NETWORK_SCOPE` / `Network.java`.
-    Network,
-    /// Java `Keyword.PARSER_SCOPE` / `Parser.java`.
-    Parser,
-    /// Java `Keyword.PART_LIBRARY_SCOPE` / `PartLibrary.java`.
-    PartLibrary,
-    /// Java `Keyword.PCB_SCOPE` — no Java subclass; see the enum docs above.
-    Pcb,
-    /// Java `Keyword.PLACE_CONTROL` / `PlaceControl.java`.
-    PlaceControl,
-    /// Java `Keyword.PLACEMENT_SCOPE` / `Placement.java`.
-    Placement,
-    /// Java `Keyword.PLANE_SCOPE` / `Plane.java`.
-    Plane,
-    /// Java `Keyword.RESOLUTION_SCOPE` / `Resolution.java`.
-    Resolution,
-    /// Java `Keyword.STRUCTURE_SCOPE` / `Structure.java`.
-    Structure,
-    /// Java `Keyword.WIRING_SCOPE` / `Wiring.java`.
-    Wiring,
+        Component,
+        Library,
+        Network,
+        Parser,
+        PartLibrary,
+        Pcb,
+        PlaceControl,
+        Placement,
+        Plane,
+        Resolution,
+        Structure,
+        Wiring,
 }
 
 impl ScopeKeyword {
-    /// The `Keyword` variant this scope keyword is (`Keyword::ComponentScope`, etc.) — the
-    /// inverse of [`ScopeKeyword::from_keyword`], and (fix round 1) what [`ScopeKeyword::name`]
-    /// now delegates to rather than duplicating the twelve name strings a second time.
-    #[must_use]
+                #[must_use]
     pub fn to_keyword(self) -> Keyword {
         match self {
             ScopeKeyword::Component => Keyword::ComponentScope,
@@ -449,19 +253,12 @@ impl ScopeKeyword {
         }
     }
 
-    /// `getName()`/`get_name()` for the twelve scope keywords, reflected off
-    /// `tools/freerouting-2.3.0.jar` (identical to HEAD for every one of these twelve — the
-    /// ruling-1 rename only ever touched plain `Keyword` constants, never a `ScopeKeyword`).
-    /// Delegates to [`Keyword::name`] via [`ScopeKeyword::to_keyword`] rather than repeating the
-    /// twelve strings.
-    #[must_use]
+                        #[must_use]
     pub fn name(self) -> &'static str {
         self.to_keyword().name()
     }
 
-    /// `nextToken instanceof ScopeKeyword` (`ScopeKeyword.java:59`), as a lookup instead of a
-    /// runtime type test: `None` for every plain (non-scope) `Keyword`.
-    #[must_use]
+            #[must_use]
     pub fn from_keyword(keyword: Keyword) -> Option<ScopeKeyword> {
         match keyword {
             Keyword::ComponentScope => Some(ScopeKeyword::Component),

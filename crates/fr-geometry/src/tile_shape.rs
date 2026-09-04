@@ -1,22 +1,3 @@
-//! Port of `app.freerouting.geometry.planar.TileShape`: convex shapes whose border consists of
-//! straight lines.
-//!
-//! Java has three concrete tile shapes — `IntBox`, `IntOctagon` (both `RegularTileShape`) and
-//! `Simplex` — and puts roughly 900 lines of *concrete* algorithms on the shared abstract base,
-//! written entirely in terms of the three abstract primitives `corner(i)`, `borderLine(i)` and
-//! `borderLineCount()`. This module mirrors that split: the primitives are a `match` on the enum,
-//! and everything above them is ported once, as inherent methods of [`TileShape`].
-//!
-//! Side convention: an interior point `p` of a tile shape satisfies
-//! `border_line(i).side_of(p) == Side::OnTheRight` for every `i`. `Line::side_of` reports where
-//! the *line* is as seen from the point, so those points lie geometrically to the left of each
-//! directed border line — see the `simplex` module doc. `TileShape.isOutside` therefore tests for
-//! `ON_THE_LEFT`, and that test is ported verbatim.
-//!
-//! Where Java returns `null` this port returns `Option`; where a Java array may carry trailing
-//! `null`s (`nearestBorderPointsApprox`, `nearestRelativeOutsideLocations`) the `Vec` returned
-//! here holds only the filled prefix, which is what Java produces.
-
 use crate::direction::Direction;
 use crate::float_line::FloatLine;
 use crate::float_point::FloatPoint;
@@ -34,15 +15,11 @@ use crate::side::Side;
 use crate::simplex::Simplex;
 use crate::vector::Vector;
 
-/// A convex shape whose border consists of straight lines (TileShape.java:14-15).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TileShape {
-    /// Java `IntBox`.
-    Box(IntBox),
-    /// Java `IntOctagon`.
-    Octagon(IntOctagon),
-    /// Java `Simplex`.
-    Simplex(Simplex),
+        Box(IntBox),
+        Octagon(IntOctagon),
+        Simplex(Simplex),
 }
 
 impl From<IntBox> for TileShape {
@@ -63,33 +40,21 @@ impl From<Simplex> for TileShape {
     }
 }
 
-// ---------------------------------------------------------------------------------------------
-// Static factories (TileShape.java:17-63)
-// ---------------------------------------------------------------------------------------------
 
 impl TileShape {
-    /// Creates a Simplex as intersection of the half-planes defined by directed lines, then
-    /// simplifies it to the cheapest physical representation (TileShape.java:17-21).
-    pub fn get_instance_from_lines(lines: Vec<Line>) -> TileShape {
+            pub fn get_instance_from_lines(lines: Vec<Line>) -> TileShape {
         Simplex::from_lines(lines).simplify()
     }
 
-    /// Creates a TileShape from the corners of a convex polygon (TileShape.java:23-34). Java's
-    /// parameter type is `Point[]`, but the construction goes through `new Line(Point, Point)`,
-    /// which this port fixes at `IntPoint` — matching Java's own "May work only for IntPoints".
-    pub fn get_instance_from_points(convex_polygon: &[IntPoint]) -> TileShape {
+                pub fn get_instance_from_points(convex_polygon: &[IntPoint]) -> TileShape {
         Simplex::from_points(convex_polygon).simplify()
     }
 
-    /// Creates a half-plane from a directed line (TileShape.java:36-41). Java deliberately skips
-    /// the `simplify()` here.
-    pub fn get_instance_from_line(line: Line) -> TileShape {
+            pub fn get_instance_from_line(line: Line) -> TileShape {
         TileShape::Simplex(Simplex::from_lines(vec![line]))
     }
 
-    /// Creates a normalized `IntOctagon` from the eight bounds (TileShape.java:43-51). For the
-    /// meaning of the parameters see [`IntOctagon`].
-    #[allow(clippy::too_many_arguments)] // literal transcription of the Java factory
+            #[allow(clippy::too_many_arguments)] 
     pub fn get_instance_octagon(
         lx: i32,
         ly: i32,
@@ -103,8 +68,7 @@ impl TileShape {
         IntOctagon::new(lx, ly, rx, uy, ulx, lrx, llx, urx).normalize()
     }
 
-    /// Creates a box-like convex shape (TileShape.java:53-58).
-    pub fn get_instance_from_box(
+        pub fn get_instance_from_box(
         lower_left_x: i32,
         lower_left_y: i32,
         upper_right_x: i32,
@@ -114,20 +78,14 @@ impl TileShape {
             .to_int_octagon()
     }
 
-    /// Creates the smallest box containing `point` (TileShape.java:60-63; Java's doc comment says
-    /// "IntOctagon", the code returns `point.surroundingBox()`).
-    pub fn get_instance_from_point(point: &Point) -> IntBox {
+            pub fn get_instance_from_point(point: &Point) -> IntBox {
         point.surrounding_box()
     }
 }
 
-// ---------------------------------------------------------------------------------------------
-// The abstract primitives, dispatched over the three physical representations.
-// ---------------------------------------------------------------------------------------------
 
 impl TileShape {
-    /// Returns the number of border lines of the shape (`PolylineShape.borderLineCount`).
-    pub fn border_line_count(&self) -> usize {
+        pub fn border_line_count(&self) -> usize {
         match self {
             TileShape::Box(b) => b.border_line_count(),
             TileShape::Octagon(o) => o.border_line_count(),
@@ -135,13 +93,7 @@ impl TileShape {
         }
     }
 
-    /// Returns the `no`-th edge line of this shape, for `no` between 0 and
-    /// `border_line_count() - 1`. The edge lines are sorted in counterclock sense around the
-    /// shape, starting with the edge with the smallest direction (TileShape.java:97-103).
-    ///
-    /// `None` only for the empty simplex, where Java returns `null`; `IntBox` and `IntOctagon`
-    /// throw on an out-of-range index and so panic here.
-    pub fn border_line(&self, no: usize) -> Option<Line> {
+                            pub fn border_line(&self, no: usize) -> Option<Line> {
         match self {
             TileShape::Box(b) => Some(b.border_line(no)),
             TileShape::Octagon(o) => Some(o.border_line(no)),
@@ -149,10 +101,7 @@ impl TileShape {
         }
     }
 
-    /// Returns the `no`-th corner of this shape. The corners are sorted starting with the
-    /// smallest y-coordinate in counterclock sense around the shape
-    /// (`PolylineShape.corner`, PolylineShape.java:18-24).
-    pub fn corner(&self, no: usize) -> Point {
+                pub fn corner(&self, no: usize) -> Point {
         match self {
             TileShape::Box(b) => Point::Int(b.corner(no)),
             TileShape::Octagon(o) => Point::Int(o.corner(no)),
@@ -160,9 +109,7 @@ impl TileShape {
         }
     }
 
-    /// Returns an approximation of the `no`-th corner (`PolylineShape.cornerApprox`,
-    /// overridden in `Simplex`). `None` only for the empty simplex.
-    pub fn corner_approx(&self, no: usize) -> Option<FloatPoint> {
+            pub fn corner_approx(&self, no: usize) -> Option<FloatPoint> {
         match self {
             TileShape::Box(b) => Some(b.corner(no).to_float()),
             TileShape::Octagon(o) => Some(o.corner(no).to_float()),
@@ -170,8 +117,7 @@ impl TileShape {
         }
     }
 
-    /// Approximations of all corners of this shape (`PolylineShape.cornerApproxArr`).
-    pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
+        pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
         match self {
             TileShape::Simplex(s) => s.corner_approx_arr(),
             _ => (0..self.border_line_count())
@@ -180,9 +126,7 @@ impl TileShape {
         }
     }
 
-    /// Returns true if the shape has no infinite part at this corner
-    /// (`PolylineShape.cornerIsBounded`).
-    pub fn corner_is_bounded(&self, no: usize) -> bool {
+            pub fn corner_is_bounded(&self, no: usize) -> bool {
         match self {
             TileShape::Box(b) => b.corner_is_bounded(no),
             TileShape::Octagon(o) => o.corner_is_bounded(no),
@@ -190,8 +134,7 @@ impl TileShape {
         }
     }
 
-    /// Returns true if the shape is contained in a sufficiently large box.
-    pub fn is_bounded(&self) -> bool {
+        pub fn is_bounded(&self) -> bool {
         match self {
             TileShape::Box(b) => b.is_bounded(),
             TileShape::Octagon(o) => o.is_bounded(),
@@ -199,8 +142,7 @@ impl TileShape {
         }
     }
 
-    /// Returns true if this shape is empty.
-    pub fn is_empty(&self) -> bool {
+        pub fn is_empty(&self) -> bool {
         match self {
             TileShape::Box(b) => b.is_empty(),
             TileShape::Octagon(o) => o.is_empty(),
@@ -208,8 +150,7 @@ impl TileShape {
         }
     }
 
-    /// Returns the dimension of this shape: 2, 1, 0, or -1 if it is empty.
-    pub fn dimension(&self) -> i32 {
+        pub fn dimension(&self) -> i32 {
         match self {
             TileShape::Box(b) => b.dimension(),
             TileShape::Octagon(o) => o.dimension(),
@@ -217,10 +158,7 @@ impl TileShape {
         }
     }
 
-    /// Converts the physical instance of this shape to a simpler physical instance, if possible
-    /// (TileShape.java:74-75; IntBox.java:118-121, IntOctagon.java:1050-1057,
-    /// Simplex.java:59-70).
-    pub fn simplify(&self) -> TileShape {
+                pub fn simplify(&self) -> TileShape {
         match self {
             TileShape::Box(b) => b.simplify(),
             TileShape::Octagon(o) => o.simplify(),
@@ -228,8 +166,7 @@ impl TileShape {
         }
     }
 
-    /// A deterministic tie-breaking id for this shape (TileShape.java:77-78).
-    pub fn get_id(&self) -> i32 {
+        pub fn get_id(&self) -> i32 {
         match self {
             TileShape::Box(b) => b.get_id(),
             TileShape::Octagon(o) => o.get_id(),
@@ -237,8 +174,7 @@ impl TileShape {
         }
     }
 
-    /// Checks if this TileShape is an `IntBox` or can be converted into one (TileShape.java:80-81).
-    pub fn is_int_box(&self) -> bool {
+        pub fn is_int_box(&self) -> bool {
         match self {
             TileShape::Box(b) => b.is_int_box(),
             TileShape::Octagon(o) => o.is_int_box(),
@@ -246,9 +182,7 @@ impl TileShape {
         }
     }
 
-    /// Checks if this TileShape is an `IntOctagon` or can be converted into one
-    /// (TileShape.java:83-84).
-    pub fn is_int_octagon(&self) -> bool {
+            pub fn is_int_octagon(&self) -> bool {
         match self {
             TileShape::Box(b) => b.is_int_octagon(),
             TileShape::Octagon(o) => o.is_int_octagon(),
@@ -256,9 +190,7 @@ impl TileShape {
         }
     }
 
-    /// Converts the internal representation of this TileShape to a `Simplex`
-    /// (TileShape.java:108-109).
-    pub fn to_simplex(&self) -> Simplex {
+            pub fn to_simplex(&self) -> Simplex {
         match self {
             TileShape::Box(b) => b.to_simplex(),
             TileShape::Octagon(o) => o.to_simplex(),
@@ -266,12 +198,7 @@ impl TileShape {
         }
     }
 
-    /// Returns the edge number if `line` is a border line of this shape (TileShape.java:105-106).
-    ///
-    /// Only `Simplex` implements this for real (Simplex.java:664-673); `IntBox.borderLineIndex`
-    /// and `IntOctagon.borderLineIndex` are Java stubs that warn "not yet implemented" and return
-    /// `-1`, which is `None` here.
-    pub fn border_line_index(&self, line: &Line) -> Option<usize> {
+                        pub fn border_line_index(&self, line: &Line) -> Option<usize> {
         match self {
             TileShape::Box(b) => b.border_line_index(line),
             TileShape::Octagon(o) => o.border_line_index(line),
@@ -279,8 +206,7 @@ impl TileShape {
         }
     }
 
-    /// Returns the smallest axis-parallel box containing this shape.
-    pub fn bounding_box(&self) -> IntBox {
+        pub fn bounding_box(&self) -> IntBox {
         match self {
             TileShape::Box(b) => b.bounding_box(),
             TileShape::Octagon(o) => o.bounding_box(),
@@ -288,9 +214,7 @@ impl TileShape {
         }
     }
 
-    /// Returns the smallest 45-degree octagon containing this shape; `None` for an unbounded
-    /// simplex, where Java returns `null`.
-    pub fn bounding_octagon(&self) -> Option<IntOctagon> {
+            pub fn bounding_octagon(&self) -> Option<IntOctagon> {
         match self {
             TileShape::Box(b) => Some(b.bounding_octagon()),
             TileShape::Octagon(o) => Some(o.bounding_octagon()),
@@ -298,14 +222,11 @@ impl TileShape {
         }
     }
 
-    /// Java `boundingTile()`: every tile shape returns itself
-    /// (IntBox.java:261-264, IntOctagon.java:121-124, Simplex.java:541-544).
-    pub fn bounding_tile(&self) -> TileShape {
+            pub fn bounding_tile(&self) -> TileShape {
         self.clone()
     }
 
-    /// Returns the affine translation of this shape by `vector`.
-    pub fn translate_by(&self, vector: &Vector) -> TileShape {
+        pub fn translate_by(&self, vector: &Vector) -> TileShape {
         match self {
             TileShape::Box(b) => TileShape::Box(b.translate_by(vector)),
             TileShape::Octagon(o) => TileShape::Octagon(o.translate_by(vector)),
@@ -313,10 +234,7 @@ impl TileShape {
         }
     }
 
-    /// Returns this shape offsetted by `dist`. If `dist > 0` the offset is to the outside, else
-    /// to the inside. The physical representation is preserved
-    /// (IntBox.java:443-455, IntOctagon.java:298-316, Simplex.java:555-574).
-    pub fn offset(&self, dist: f64) -> TileShape {
+                pub fn offset(&self, dist: f64) -> TileShape {
         match self {
             TileShape::Box(b) => TileShape::Box(b.offset(dist)),
             TileShape::Octagon(o) => TileShape::Octagon(o.offset(dist)),
@@ -324,9 +242,7 @@ impl TileShape {
         }
     }
 
-    /// Enlarges this shape by `offset`. Contrary to [`TileShape::offset`], an enlarged `IntBox`
-    /// becomes an `IntOctagon` (IntBox.java:387-393).
-    pub fn enlarge(&self, offset: f64) -> TileShape {
+            pub fn enlarge(&self, offset: f64) -> TileShape {
         match self {
             TileShape::Box(b) => TileShape::Octagon(b.enlarge(offset)),
             TileShape::Octagon(o) => TileShape::Octagon(o.enlarge(offset)),
@@ -334,8 +250,7 @@ impl TileShape {
         }
     }
 
-    /// The maximum of the edge widths of this shape.
-    pub fn max_width(&self) -> f64 {
+        pub fn max_width(&self) -> f64 {
         match self {
             TileShape::Box(b) => b.max_width(),
             TileShape::Octagon(o) => o.max_width(),
@@ -343,8 +258,7 @@ impl TileShape {
         }
     }
 
-    /// The minimum of the edge widths of this shape.
-    pub fn min_width(&self) -> f64 {
+        pub fn min_width(&self) -> f64 {
         match self {
             TileShape::Box(b) => b.min_width(),
             TileShape::Octagon(o) => o.min_width(),
@@ -352,9 +266,7 @@ impl TileShape {
         }
     }
 
-    /// The cumulative border line length of this shape; `i32::MAX` if it is unbounded
-    /// (`PolylineShape.circumference`, PolylineShape.java:99-117, overridden by `IntBox`).
-    pub fn circumference(&self) -> f64 {
+            pub fn circumference(&self) -> f64 {
         match self {
             TileShape::Box(b) => b.circumference(),
             _ => {
@@ -363,10 +275,6 @@ impl TileShape {
                 }
                 let corner_count = self.border_line_count();
                 if corner_count == 0 {
-                    // Java assigns `prevCorner = cornerApprox(cornerCount - 1)` = `cornerApprox(-1)`,
-                    // which `Simplex.cornerApprox` answers with `null` for a line-less simplex
-                    // (Simplex.java:172-175 — the `null` check precedes the index clamp). The loop
-                    // then runs zero times and the sum stays 0.
                     return 0.0;
                 }
                 let mut result = 0.0;
@@ -381,9 +289,7 @@ impl TileShape {
         }
     }
 
-    /// The arithmetic middle of the corners of this shape (`PolylineShape.centreOfGravity`,
-    /// PolylineShape.java:119-133).
-    pub fn centre_of_gravity(&self) -> FloatPoint {
+            pub fn centre_of_gravity(&self) -> FloatPoint {
         let corner_count = self.border_line_count();
         let mut x = 0.0;
         let mut y = 0.0;
@@ -397,37 +303,24 @@ impl TileShape {
         FloatPoint::new(x, y)
     }
 
-    /// The `no`-th border line, for an index that is known to be in range. Panics on the empty
-    /// simplex, where every loop below has zero iterations anyway.
-    fn border_line_at(&self, no: usize) -> Line {
+            fn border_line_at(&self, no: usize) -> Line {
         self.border_line(no)
             .expect("border line index is below border_line_count()")
     }
 
-    /// The `no`-th corner approximation, for an index that is known to be in range.
-    fn corner_approx_at(&self, no: usize) -> FloatPoint {
+        fn corner_approx_at(&self, no: usize) -> FloatPoint {
         self.corner_approx(no)
             .expect("corner index is below border_line_count()")
     }
 }
 
-// ---------------------------------------------------------------------------------------------
-// Intersection, containment and metrics (the concrete part of TileShape.java).
-// ---------------------------------------------------------------------------------------------
 
 impl TileShape {
-    /// Tries to simplify the result shape to a simpler shape. Simplifying always in the
-    /// intersection function may cause performance problems (TileShape.java:65-72).
-    pub fn intersection_with_simplify(&self, other: &TileShape) -> TileShape {
+            pub fn intersection_with_simplify(&self, other: &TileShape) -> TileShape {
         self.intersection(other).simplify()
     }
 
-    /// Returns the intersection of this shape with `other` (TileShape.java:86-95).
-    ///
-    /// The physical representation of the result follows Java's overload resolution: box ∩ box is
-    /// a box, any pairing with an octagon (and no simplex) is an octagon, and any pairing with a
-    /// simplex is a simplex.
-    pub fn intersection(&self, other: &TileShape) -> TileShape {
+                        pub fn intersection(&self, other: &TileShape) -> TileShape {
         match (self, other) {
             (TileShape::Box(a), TileShape::Box(b)) => TileShape::Box(b.intersection(a)),
             (TileShape::Box(a), TileShape::Octagon(b)) => TileShape::Octagon(b.intersection_box(a)),
@@ -447,11 +340,7 @@ impl TileShape {
         }
     }
 
-    /// Checks whether this shape and `other` have a nonempty intersection (`Shape.intersects`,
-    /// implemented per pair in IntBox.java:329-357, IntOctagon.java:627-676,
-    /// Simplex.java:638-658).
-    pub fn intersects(&self, other: &TileShape) -> bool {
-        // Java: `other.intersects(this)`, so the receiver is the *argument* shape.
+                pub fn intersects(&self, other: &TileShape) -> bool {
         match self {
             TileShape::Box(b) => other.intersects_box(b),
             TileShape::Octagon(o) => other.intersects_octagon(o),
@@ -459,8 +348,7 @@ impl TileShape {
         }
     }
 
-    /// Java `intersects(IntBox other)`.
-    pub fn intersects_box(&self, other: &IntBox) -> bool {
+        pub fn intersects_box(&self, other: &IntBox) -> bool {
         match self {
             TileShape::Box(b) => b.intersects(other),
             TileShape::Octagon(o) => o.intersects_box(other),
@@ -468,8 +356,7 @@ impl TileShape {
         }
     }
 
-    /// Java `intersects(IntOctagon other)`.
-    pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
+        pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
         match self {
             TileShape::Box(b) => b.intersects_octagon(other),
             TileShape::Octagon(o) => o.intersects_octagon(other),
@@ -477,8 +364,7 @@ impl TileShape {
         }
     }
 
-    /// Java `intersects(Simplex other)`.
-    pub fn intersects_simplex(&self, other: &Simplex) -> bool {
+        pub fn intersects_simplex(&self, other: &Simplex) -> bool {
         match self {
             TileShape::Box(b) => b.intersects_simplex(other),
             TileShape::Octagon(o) => o.intersects_simplex(other),
@@ -486,10 +372,7 @@ impl TileShape {
         }
     }
 
-    /// Returns the content of the area of the shape; `f64::MAX` if the shape is unbounded
-    /// (TileShape.java:111-139). `IntBox` and `IntOctagon` override the shoelace sum with a
-    /// closed form, so only a `Simplex` runs the loop.
-    pub fn area(&self) -> f64 {
+                pub fn area(&self) -> f64 {
         match self {
             TileShape::Box(b) => b.area(),
             TileShape::Octagon(o) => o.area(),
@@ -500,12 +383,7 @@ impl TileShape {
                 if self.dimension() < 2 {
                     return 0.0;
                 }
-                // calculate half of the absolute value of
-                // x0 (y1 - yn-1) + x1 (y2 - y0) + x2 (y3 - y1) + ...+ xn-1( y0 - yn-2)
-                // where xi, yi are the coordinates of the i-th corner of this TileShape.
                 let corner_count = self.border_line_count();
-                // A bounded 2-dimensional simplex always has at least 3 border lines, so the two
-                // indices below never underflow.
                 debug_assert!(corner_count >= 3);
                 let mut result = 0.0;
                 let mut prev_corner = self.corner_approx_at(corner_count - 2);
@@ -521,9 +399,7 @@ impl TileShape {
         }
     }
 
-    /// Returns true, if `point` is not contained in the inside or the edge of the shape
-    /// (TileShape.java:141-154).
-    pub fn is_outside(&self, point: &Point) -> bool {
+            pub fn is_outside(&self, point: &Point) -> bool {
         let line_count = self.border_line_count();
         if line_count == 0 {
             return true;
@@ -536,28 +412,18 @@ impl TileShape {
         false
     }
 
-    /// Returns true, if `point` is contained in this shape, its border included
-    /// (TileShape.java:156-159).
-    pub fn contains(&self, point: &Point) -> bool {
+            pub fn contains(&self, point: &Point) -> bool {
         !self.is_outside(point)
     }
 
-    /// Returns true, if `point` is contained in this shape (TileShape.java:161-165).
-    /// `IntOctagon` overrides this with an inclusive coordinate test that also accepts border
-    /// points (IntOctagon.java:327-343); the generic version below requires the point to be
-    /// strictly inside.
-    pub fn contains_float(&self, point: &FloatPoint) -> bool {
+                    pub fn contains_float(&self, point: &FloatPoint) -> bool {
         match self {
             TileShape::Octagon(o) => o.contains_float(point),
             _ => self.contains_float_tol(point, 0.0),
         }
     }
 
-    /// Returns true, if `point` is contained in this shape with tolerance `tolerance`.
-    /// `tolerance` is used when determining if a point is on the left side of a border line. It is
-    /// used there in calculating a determinant and is not the distance of point to the border
-    /// (TileShape.java:167-183).
-    pub fn contains_float_tol(&self, point: &FloatPoint, tolerance: f64) -> bool {
+                    pub fn contains_float_tol(&self, point: &FloatPoint, tolerance: f64) -> bool {
         let line_count = self.border_line_count();
         if line_count == 0 {
             return false;
@@ -570,8 +436,7 @@ impl TileShape {
         true
     }
 
-    /// Returns true, if this shape contains `other` completely (TileShape.java:185-193).
-    pub fn contains_tile(&self, other: &TileShape) -> bool {
+        pub fn contains_tile(&self, other: &TileShape) -> bool {
         for i in 0..other.border_line_count() {
             if !self.contains(&other.corner(i)) {
                 return false;
@@ -580,9 +445,7 @@ impl TileShape {
         true
     }
 
-    /// Returns true, if `point` is contained in this shape, but not on an edge line
-    /// (TileShape.java:195-208).
-    pub fn contains_inside(&self, point: &Point) -> bool {
+            pub fn contains_inside(&self, point: &Point) -> bool {
         let line_count = self.border_line_count();
         if line_count == 0 {
             return false;
@@ -595,19 +458,16 @@ impl TileShape {
         true
     }
 
-    /// Returns `Side::Collinear` if `point` is on the border of this shape within `tolerance`,
-    /// `Side::OnTheLeft` if it is outside, and `Side::OnTheRight` if it is inside
-    /// (TileShape.java:210-232).
-    pub fn side_of_border(&self, point: &FloatPoint, tolerance: f64) -> Side {
+                pub fn side_of_border(&self, point: &FloatPoint, tolerance: f64) -> Side {
         let line_count = self.border_line_count();
         if line_count == 0 {
             return Side::Collinear;
         }
-        let mut result = Side::OnTheRight; // point is inside
+        let mut result = Side::OnTheRight; 
         for i in 0..line_count {
             let current_side = self.border_line_at(i).side_of_float(point, tolerance);
             if current_side == Side::OnTheLeft {
-                return Side::OnTheLeft; // point is outside
+                return Side::OnTheLeft; 
             } else if current_side == Side::Collinear {
                 result = current_side;
             }
@@ -615,9 +475,7 @@ impl TileShape {
         result
     }
 
-    /// If `point` lies on the border of this shape, the number of the edge line segment containing
-    /// it is returned (TileShape.java:234-255; Java's `-1` is `None`).
-    pub fn contains_on_border_line_no(&self, point: &Point) -> Option<usize> {
+            pub fn contains_on_border_line_no(&self, point: &Point) -> Option<usize> {
         let line_count = self.border_line_count();
         if line_count == 0 {
             return None;
@@ -626,7 +484,6 @@ impl TileShape {
         for i in 0..line_count {
             let side_of = self.border_line_at(i).side_of(point);
             if side_of == Side::OnTheLeft {
-                // point outside the convex shape
                 return None;
             }
             if side_of == Side::Collinear {
@@ -636,15 +493,11 @@ impl TileShape {
         containing_line_no
     }
 
-    /// Returns true, if `point` lies exactly on the boundary of the shape
-    /// (TileShape.java:257-261).
-    pub fn contains_on_border(&self, point: &Point) -> bool {
+            pub fn contains_on_border(&self, point: &Point) -> bool {
         self.contains_on_border_line_no(point).is_some()
     }
 
-    /// Returns true, if this shape contains `other` completely. There may be some numerical
-    /// inaccuracy (TileShape.java:263-274).
-    pub fn contains_approx(&self, other: &TileShape) -> bool {
+            pub fn contains_approx(&self, other: &TileShape) -> bool {
         for current_corner in other.corner_approx_arr() {
             if !self.contains_float(&current_corner) {
                 return false;
@@ -653,17 +506,7 @@ impl TileShape {
         true
     }
 
-    /// Returns the distance between `point` and its nearest point on the shape; 0 if `point` is
-    /// contained in this shape (TileShape.java:276-284). `IntBox` overrides it with a closed form
-    /// (IntBox.java:213-216).
-    ///
-    /// # Panics
-    /// On a shape without border lines, where Java dereferences the `null` that
-    /// `nearestPointApprox` returns (a NullPointerException). Not totalized to a value: Task 17's
-    /// differential sweep reaches this from `Circle.intersects(Simplex)` by way of
-    /// `PolygonShape.intersects(Circle)` on a self-intersecting polygon, and there a plausible
-    /// distance and a thrown exception are different observable outcomes.
-    pub fn distance(&self, point: &FloatPoint) -> f64 {
+                                            pub fn distance(&self, point: &FloatPoint) -> f64 {
         match self {
             TileShape::Box(b) => b.distance(point),
             _ => self
@@ -673,12 +516,7 @@ impl TileShape {
         }
     }
 
-    /// Returns the distance between `point` and its nearest point on the edge of the shape
-    /// (TileShape.java:286-291).
-    ///
-    /// # Panics
-    /// On a shape without border lines; see [`TileShape::distance`].
-    pub fn border_distance(&self, point: &FloatPoint) -> f64 {
+                        pub fn border_distance(&self, point: &FloatPoint) -> f64 {
         self.nearest_border_point_approx(point)
             .expect(
                 "TileShape.borderDistance: no nearest border point on a shape without border lines",
@@ -686,33 +524,25 @@ impl TileShape {
             .distance(point)
     }
 
-    /// The smallest distance from the centre of gravity to the border of the shape
-    /// (TileShape.java:293-296).
-    pub fn smallest_radius(&self) -> f64 {
+            pub fn smallest_radius(&self) -> f64 {
         self.border_distance(&self.centre_of_gravity())
     }
 
-    /// Returns the point in this shape which has the smallest distance to `from_point`, or
-    /// `from_point` itself if that is contained in this shape (TileShape.java:298-307). `None`
-    /// only where Java returns `null`, i.e. for a shape without border lines.
-    pub fn nearest_point(&self, from_point: &Point) -> Option<Point> {
+                pub fn nearest_point(&self, from_point: &Point) -> Option<Point> {
         if !self.is_outside(from_point) {
             return Some(from_point.clone());
         }
         self.nearest_border_point(from_point)
     }
 
-    /// Java `nearestPointApprox(FloatPoint)` (TileShape.java:309-315).
-    pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
+        pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
         if self.contains_float(from_point) {
             return Some(*from_point);
         }
         self.nearest_border_point_approx(from_point)
     }
 
-    /// Returns the nearest point to `from_point` on the edge of the shape
-    /// (TileShape.java:317-362).
-    pub fn nearest_border_point(&self, from_point: &Point) -> Option<Point> {
+            pub fn nearest_border_point(&self, from_point: &Point) -> Option<Point> {
         let line_count = self.border_line_count();
         if line_count == 0 {
             return None;
@@ -724,7 +554,6 @@ impl TileShape {
         let mut min_dist = f64::MAX;
         let mut min_dist_ind = 0;
 
-        // calculate the distance to the nearest corner first
         for i in 0..line_count {
             let current_corner_f = self.corner_approx_at(i);
             let current_distance = current_corner_f.distance_square(&from_point_f);
@@ -761,25 +590,13 @@ impl TileShape {
         Some(nearest_point)
     }
 
-    /// Returns an approximation of the nearest point to `from_point` on the border of this shape
-    /// (TileShape.java:364-371).
-    pub fn nearest_border_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
+            pub fn nearest_border_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
         self.nearest_border_points_approx(from_point, 1)
             .first()
             .copied()
     }
 
-    /// Returns an approximation of the `count` nearest points to `from_point` on the border of
-    /// this shape. The result points must be located on different border lines and are sorted in
-    /// ascending order, the nearest point first (TileShape.java:373-446).
-    ///
-    /// Java allocates `min(count, borderLineCount())` slots and leaves the unfilled tail `null`;
-    /// the filled slots always form a prefix, and only that prefix is returned here.
-    ///
-    /// Java's insertion shift runs *upward* (`minDists[k] = minDists[k - 1]` for increasing `k`),
-    /// which copies the displaced entry into every later slot instead of moving each entry down
-    /// by one. That is kept verbatim — it is observable in the result for `count > 1`.
-    pub fn nearest_border_points_approx(
+                                            pub fn nearest_border_points_approx(
         &self,
         from_point: &FloatPoint,
         count: usize,
@@ -801,7 +618,6 @@ impl TileShape {
         let mut nearest_points: Vec<Option<FloatPoint>> = vec![None; result_count];
         let mut min_dists = vec![f64::MAX; result_count];
 
-        // calculate the distances to the nearest corners first
         for i in 0..line_count {
             if self.corner_is_bounded(i) {
                 let current_corner = self.corner_approx_at(i);
@@ -845,14 +661,7 @@ impl TileShape {
         nearest_points.into_iter().flatten().collect()
     }
 
-    /// Returns the number of the nearest corner of the shape to `from_point`
-    /// (TileShape.java:448-462).
-    ///
-    /// Java initializes the running minimum with `Double.MIN_VALUE`, the smallest *positive*
-    /// double, instead of `Double.MAX_VALUE`, so `currentDistance < minDist` can only fire for a
-    /// distance of exactly 0. The method therefore returns 0 unless `from_point` coincides with a
-    /// corner, in which case it returns that corner's index. That bug is ported verbatim.
-    pub fn index_of_nearest_corner(&self, from_point: &Point) -> usize {
+                                pub fn index_of_nearest_corner(&self, from_point: &Point) -> usize {
         let from_point_f = from_point.to_float();
         let mut result = 0;
         let corner_count = self.border_line_count();
@@ -867,10 +676,7 @@ impl TileShape {
         result
     }
 
-    /// Returns a line segment consisting of approximations of the corners with index 0 and
-    /// `border_line_count() / 2` (TileShape.java:464-475). `None` for an empty shape, where Java
-    /// returns `null`.
-    pub fn diagonal_corner_segment(&self) -> Option<FloatLine> {
+                pub fn diagonal_corner_segment(&self) -> Option<FloatLine> {
         if self.is_empty() {
             return None;
         }
@@ -879,10 +685,7 @@ impl TileShape {
         Some(FloatLine::new(first_corner, last_corner))
     }
 
-    /// Returns an approximation of the `count` nearest relative outside locations of `shape` in
-    /// the direction of different border lines of this shape, sorted in ascending order — the
-    /// shortest first (TileShape.java:477-527).
-    pub fn nearest_relative_outside_locations(
+                pub fn nearest_relative_outside_locations(
         &self,
         shape: &TileShape,
         count: usize,
@@ -932,9 +735,7 @@ impl TileShape {
         translate_coors.into_iter().flatten().collect()
     }
 
-    /// Shrinks this shape by `offset`; if the offset shape is empty, the intersection with the
-    /// bounding box of the centre of gravity is returned instead (TileShape.java:529-537).
-    pub fn shrink(&self, offset: f64) -> TileShape {
+            pub fn shrink(&self, offset: f64) -> TileShape {
         let result = self.offset(-offset);
         if result.is_empty() {
             let centre_box = self.centre_of_gravity().bounding_box();
@@ -943,9 +744,7 @@ impl TileShape {
         result
     }
 
-    /// Returns the maximum of the edge widths of the shape. Only defined when the shape is
-    /// bounded (TileShape.java:539-567).
-    pub fn length(&self) -> f64 {
+            pub fn length(&self) -> f64 {
         if !self.is_bounded() {
             return i32::MAX as f64;
         }
@@ -956,7 +755,6 @@ impl TileShape {
         if dimension == 1 {
             return self.circumference() / 2.0;
         }
-        // now the shape is 2-dimensional
         let mut max_distance = -1.0;
         let mut max_distance2 = -1.0;
         let gravity_point = self.centre_of_gravity();
@@ -972,13 +770,7 @@ impl TileShape {
         max_distance + max_distance2
     }
 
-    /// Calculates whether this shape and `other` have a common border piece, and returns the
-    /// indices in this shape and in `other` of the touching edge lines if so
-    /// (TileShape.java:569-615). Java returns an `int[0]` when there is none; that is `None` here.
-    ///
-    /// Used when the intersection shape is 1-dimensional.
-    pub fn touching_sides(&self, other: &TileShape) -> Option<[usize; 2]> {
-        // search the first edge line of other with reverse direction >= right
+                        pub fn touching_sides(&self, other: &TileShape) -> Option<[usize; 2]> {
 
         let mut side_no2 = 0;
         let mut dir2: Option<IntDirection> = None;
@@ -990,7 +782,6 @@ impl TileShape {
                 break;
             }
         }
-        // Java logs "touching_side : dir2 not found" here (dropped: no logger in fr-geometry).
         let mut dir2 = dir2?;
         let mut side_no1 = 0;
         let mut dir1 = self.border_line_at(0).direction();
@@ -1006,11 +797,9 @@ impl TileShape {
                 return Some([side_no1, side_no2]);
             }
             if compare != std::cmp::Ordering::Less {
-                // dir2 is bigger than dir1
                 side_no1 = (side_no1 + 1) % self.border_line_count();
                 dir1 = self.border_line_at(side_no1).direction();
             } else {
-                // dir1 is bigger than dir2
                 side_no2 = (side_no2 + 1) % other.border_line_count();
                 dir2 = other.border_line_at(side_no2).direction().opposite();
             }
@@ -1018,10 +807,7 @@ impl TileShape {
         None
     }
 
-    /// Calculates the minimal distance of `line` to this shape, assuming that `line` is on the
-    /// left of this shape. Returns -1 if `line` is on the right of this shape or intersects with
-    /// its interior (TileShape.java:617-638).
-    pub fn distance_to_the_left(&self, line: &Line) -> f64 {
+                pub fn distance_to_the_left(&self, line: &Line) -> f64 {
         let mut result = i32::MAX as f64;
         for i in 0..self.border_line_count() {
             let current_corner = self.corner_approx_at(i);
@@ -1030,7 +816,6 @@ impl TileShape {
                 line_side = line.side_of(&self.corner(i));
             }
             if line_side == Side::OnTheRight {
-                // currentPoint would be outside the result shape
                 result = -1.0;
                 break;
             }
@@ -1039,10 +824,7 @@ impl TileShape {
         result
     }
 
-    /// Returns `Side::Collinear` if `line` intersects with the interior of this shape,
-    /// `Side::OnTheLeft` if this shape is completely on the left of `line`, or
-    /// `Side::OnTheRight` if it is completely on the right (TileShape.java:640-666).
-    pub fn side_of_line(&self, line: &Line) -> Side {
+                pub fn side_of_line(&self, line: &Line) -> Side {
         let mut on_the_left = false;
         let mut on_the_right = false;
         for i in 0..self.border_line_count() {
@@ -1063,9 +845,7 @@ impl TileShape {
         }
     }
 
-    /// Turns this shape by `factor` times 90 degree around `pole` (TileShape.java:668-675).
-    /// `IntBox` overrides it to stay an `IntBox` (IntBox.java:409-420).
-    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> TileShape {
+            pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> TileShape {
         if let TileShape::Box(b) = self {
             return TileShape::Box(b.turn_90_degree(factor, pole));
         }
@@ -1075,28 +855,7 @@ impl TileShape {
         TileShape::get_instance_from_lines(new_lines)
     }
 
-    /// Returns an approximation of this shape rotated by `angle` around `pole`
-    /// (TileShape.java:676-702).
-    ///
-    /// The two-corner branch (TileShape.java:692-695) is dead in Java: it builds
-    /// `new LineSegment(currentPolyline, 0)`, whose index is out of the constructor's `1 ..=
-    /// lineCount - 2` range, so the segment gets three `null` lines and `toSimplex()` throws a
-    /// `NullPointerException`. A random sweep over degenerate 2..4-line shapes hits it for about
-    /// 2% of the inputs. This port answers `Simplex::EMPTY` there, matching the zero-corner
-    /// branch just below it.
-    // Java bug: TileShape.java:694 passes 0 to LineSegment(Polyline, int), which requires >= 1.
-    // totalized: that NullPointerException becomes Simplex::EMPTY.
-    //
-    // fixed: T6 (#24) — like #25, the guard was **already here** before Plan 9: the two-corner
-    // arm has always answered `Simplex::EMPTY` rather than building the three-`null` segment.
-    // Task 6 changes no code at this site; it adds this marker, the directed test
-    // `the_two_corner_branch_answers_an_empty_simplex` in `crates/fr-geometry/tests/polyline.rs`,
-    // and the register status. The register's suggested Java fix — "pass 1 instead of 0" — is
-    // *not* what the port does and deliberately so: `LineSegment(polyline, 1)` on a two-corner
-    // polyline would build a real segment out of a shape that has no area, where the zero-corner
-    // arm immediately below already answers `EMPTY`. Matching the neighbour is the more defensible
-    // reading, and it is the one the port has shipped since Plan 2.
-    pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> TileShape {
+                                        pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> TileShape {
         if angle == 0.0 {
             return self.clone();
         }
@@ -1124,30 +883,21 @@ impl TileShape {
         }
     }
 
-    /// Mirrors this shape at the vertical line through `pole` (TileShape.java:704-711).
-    pub fn mirror_vertical(&self, pole: &IntPoint) -> TileShape {
+        pub fn mirror_vertical(&self, pole: &IntPoint) -> TileShape {
         let new_lines: Vec<Line> = (0..self.border_line_count())
             .map(|i| self.border_line_at(i).mirror_vertical(pole))
             .collect();
         TileShape::get_instance_from_lines(new_lines)
     }
 
-    /// Mirrors this shape at the horizontal line through `pole` (TileShape.java:713-720).
-    pub fn mirror_horizontal(&self, pole: &IntPoint) -> TileShape {
+        pub fn mirror_horizontal(&self, pole: &IntPoint) -> TileShape {
         let new_lines: Vec<Line> = (0..self.border_line_count())
             .map(|i| self.border_line_at(i).mirror_horizontal(pole))
             .collect();
         TileShape::get_instance_from_lines(new_lines)
     }
 
-    /// Calculates the border line of this shape intersecting the ray from `point` into `direction`
-    /// (TileShape.java:722-753). `point` is assumed to be inside this shape, otherwise `None` is
-    /// returned.
-    ///
-    /// Java builds the ray with `new Line(point, direction)`, which this port's `Line` can only
-    /// represent for an `IntPoint` and an `IntDirection`; the other cases (where Java only warns
-    /// and then misbehaves) also yield `None`.
-    pub fn intersecting_border_line_no(
+                                pub fn intersecting_border_line_no(
         &self,
         point: &Point,
         direction: &Direction,
@@ -1162,13 +912,12 @@ impl TileShape {
         let intersection_line = Line::from_direction_any(*int_point, direction)?;
         let second_line_point = intersection_line.b.to_float();
         let mut result = None;
-        // Java initializes this with `Float.MAX_VALUE`, not `Double.MAX_VALUE`.
         let mut min_distance = f32::MAX as f64;
         for i in 0..self.border_line_count() {
             let current_border_line = self.border_line_at(i);
             let current_intersection = current_border_line.intersection_approx(&intersection_line);
             if current_intersection.x >= i32::MAX as f64 {
-                continue; // lines are parallel
+                continue; 
             }
             let current_distance = current_intersection.distance_square(&from_point);
             if current_distance < min_distance {
@@ -1184,18 +933,11 @@ impl TileShape {
         result
     }
 
-    /// Splits this shape into convex pieces; a tile shape is already convex
-    /// (TileShape.java:889-894).
-    pub fn split_to_convex(&self) -> Vec<TileShape> {
+            pub fn split_to_convex(&self) -> Vec<TileShape> {
         vec![self.clone()]
     }
 
-    /// Divides this shape into sections with width and height at most `max_section_width`, of
-    /// about equal size (TileShape.java:896-920).
-    ///
-    /// `IntBox` overrides this with a covariant `IntBox[]` return (IntBox.java:645-683) that grids
-    /// the box directly, without the `dimension() == 2` filter below, so a box dispatches there.
-    pub fn divide_into_sections(&self, max_section_width: f64) -> Vec<TileShape> {
+                        pub fn divide_into_sections(&self, max_section_width: f64) -> Vec<TileShape> {
         if let TileShape::Box(b) = self {
             return b
                 .divide_into_sections(max_section_width)
@@ -1217,9 +959,7 @@ impl TileShape {
         section_list
     }
 
-    /// Checks if `line_segment` has a common point with the interior of this shape
-    /// (TileShape.java:922-926).
-    pub fn is_intersected_interior_by(&self, line_segment: &LineSegment) -> bool {
+            pub fn is_intersected_interior_by(&self, line_segment: &LineSegment) -> bool {
         self.is_intersected_interior_by_points(
             &line_segment.start_point(),
             &line_segment.end_point(),
@@ -1227,9 +967,7 @@ impl TileShape {
         )
     }
 
-    /// Checks if the line segment defined by `start_point`, `end_point` and `line` has a common
-    /// point with the interior of this shape (TileShape.java:928-1012).
-    pub fn is_intersected_interior_by_points(
+            pub fn is_intersected_interior_by_points(
         &self,
         start_point: &Point,
         end_point: &Point,
@@ -1256,7 +994,6 @@ impl TileShape {
             if border_line_side_of_start_point != Side::OnTheRight
                 && border_line_side_of_end_point != Side::OnTheRight
             {
-                // both endpoints are outside the borderLine, no intersection possible
                 return false;
             }
             border_line_side_of_start_point_arr.push(border_line_side_of_start_point);
@@ -1275,7 +1012,6 @@ impl TileShape {
             return true;
         }
         let segment_line = line;
-        // Check, if this line segments intersect a border line of shape.
         for i in 0..line_count {
             let border_line_side_of_start_point = border_line_side_of_start_point_arr[i];
             let border_line_side_of_end_point = border_line_side_of_end_point_arr[i];
@@ -1285,7 +1021,6 @@ impl TileShape {
                     || border_line_side_of_end_point == Side::Collinear
                         && border_line_side_of_start_point == Side::OnTheLeft
                 {
-                    // the interior of shape is not intersected.
                     continue;
                 }
                 let mut prev_corner_side =
@@ -1302,7 +1037,6 @@ impl TileShape {
                 if prev_corner_side == Side::OnTheLeft && next_corner_side == Side::OnTheRight
                     || prev_corner_side == Side::OnTheRight && next_corner_side == Side::OnTheLeft
                 {
-                    // this line segment crosses a border line of shape
                     return true;
                 }
             }
@@ -1310,13 +1044,7 @@ impl TileShape {
         false
     }
 
-    /// Cuts `shape` out of this shape and divides the result into convex pieces
-    /// (TileShape.java:755-756; IntBox.java:687-696, IntOctagon.java:1058-1062,
-    /// Simplex.java:694-698).
-    ///
-    /// `IntBox.cutout` additionally simplifies every piece; the other two do not. Returns `None`
-    /// where Java returns `null`, i.e. when `shape` is a simplex of dimension < 2.
-    pub fn cutout(&self, shape: &TileShape) -> Option<Vec<TileShape>> {
+                            pub fn cutout(&self, shape: &TileShape) -> Option<Vec<TileShape>> {
         let pieces = shape.cutout_from(self)?;
         if matches!(self, TileShape::Box(_)) {
             return Some(pieces.iter().map(|p| p.simplify()).collect());
@@ -1324,10 +1052,7 @@ impl TileShape {
         Some(pieces)
     }
 
-    /// Cuts this shape out of `outer` (Java's auxiliary `cutoutFrom(IntBox|IntOctagon|Simplex)`,
-    /// TileShape.java:1014-1021). `None` where Java returns `null`:
-    /// `Simplex.cutoutFrom` refuses a `this` of dimension < 2 (Simplex.java:706-710).
-    pub fn cutout_from(&self, outer: &TileShape) -> Option<Vec<TileShape>> {
+                pub fn cutout_from(&self, outer: &TileShape) -> Option<Vec<TileShape>> {
         match (self, outer) {
             (TileShape::Box(a), TileShape::Box(d)) => {
                 Some(a.cutout_from(d).into_iter().map(TileShape::Box).collect())
@@ -1383,34 +1108,17 @@ impl TileShape {
         }
     }
 
-    /// Cuts out the parts of `polyline` in the interior of this shape and returns a list of the
-    /// remaining pieces of `polyline`. Pieces completely contained in the border of this shape are
-    /// not returned (TileShape.java:753-859).
-    ///
-    /// Java calls `containsInside(polyline.firstCorner())` before checking anything else, so an
-    /// empty polyline (no corners, hence a `null` first corner) throws — unless this shape has no
-    /// border lines, where `containsInside` returns `false` before dereferencing the point
-    /// (TileShape.java:197-201) and Java answers `[polyline]`. This port answers `[polyline]` for
-    /// both: an empty polyline never intersects anything, so "nothing was cut out" is the same
-    /// answer the border-line-free case reaches through Java's own code path.
-    // totalized: an empty polyline on a shape with border lines answers `[polyline]`, where Java
-    // throws a NullPointerException.
-    pub fn cutout_polyline(&self, polyline: &Polyline) -> Result<Vec<Polyline>, PolylineError> {
+                                            pub fn cutout_polyline(&self, polyline: &Polyline) -> Result<Vec<Polyline>, PolylineError> {
         let intersection_no = self.entrance_points(polyline);
         let first_corner = polyline.first_corner();
         let first_corner_is_inside = match &first_corner {
             Some(corner) => self.contains_inside(corner),
-            // `containsInside` answers false for a border-line-free shape without ever touching
-            // the point (TileShape.java:197-201); an empty polyline takes the same answer here.
             None => false,
         };
         if intersection_no.is_empty() {
-            // no intersections
             if first_corner_is_inside {
-                // polyline is contained completely in this shape
                 return Ok(Vec::new());
             }
-            // polyline is completely outside
             return Ok(vec![polyline.clone()]);
         }
         let mut pieces: Vec<Polyline> = Vec::new();
@@ -1419,13 +1127,10 @@ impl TileShape {
         let first_intersection = polyline.lines()[current_intersection_tuple[0]]
             .intersection(&self.border_line_at(current_intersection_tuple[1]));
         if !first_corner_is_inside {
-            // calculate outside piece at start
             if first_corner.as_ref() != Some(&first_intersection) {
-                // otherwise skip 1 point outside polyline at the start
                 let current_polyline_intersection_no = current_intersection_tuple[0];
                 let mut current_lines: Vec<Line> =
                     polyline.lines()[..current_polyline_intersection_no + 1].to_vec();
-                // close the polyline piece with the intersected edge line.
                 current_lines.push(self.border_line_at(current_intersection_tuple[1]));
                 let current_piece = Polyline::from_lines(current_lines)?;
                 if !current_piece.is_empty() {
@@ -1435,17 +1140,10 @@ impl TileShape {
             current_intersection_no += 1;
         }
         while current_intersection_no + 1 < intersection_no.len() {
-            // calculate the next outside polyline piece
             current_intersection_tuple = intersection_no[current_intersection_no];
             let next_intersection_tuple = intersection_no[current_intersection_no + 1];
             let current_intersection_no_of_polyline = current_intersection_tuple[0];
             let next_intersection_no_of_polyline = next_intersection_tuple[0];
-            // check that at least 1 corner of polyline with number
-            // between currentIntersectionNoOfPolyline and
-            // nextIntersectionNoOfPolyline
-            // is not contained in this shape. Otherwise, the part of polyline
-            // between this intersections is completely contained in the border
-            // and can be ignored
             let mut insert_piece = false;
             for i in current_intersection_no_of_polyline + 1..next_intersection_no_of_polyline {
                 if polyline
@@ -1475,7 +1173,6 @@ impl TileShape {
             current_intersection_no += 2;
         }
         if current_intersection_no < intersection_no.len() {
-            // calculate outside piece at end
             current_intersection_tuple = intersection_no[current_intersection_no];
             let current_polyline_intersection_no = current_intersection_tuple[0];
             let mut current_lines: Vec<Line> =
@@ -1490,11 +1187,7 @@ impl TileShape {
         Ok(pieces)
     }
 
-    /// Returns a list of pairs. Its length is the number of points where `polyline` enters or
-    /// leaves the interior of this shape. The first coordinate of the pair is the number of the
-    /// line segment of `polyline` which enters the simplex, and the second coordinate is the
-    /// number of the edge line of the simplex which is crossed there (TileShape.java:861-887).
-    pub fn entrance_points(&self, polyline: &Polyline) -> Vec<[usize; 2]> {
+                    pub fn entrance_points(&self, polyline: &Polyline) -> Vec<[usize; 2]> {
         let mut result: Vec<[usize; 2]> = Vec::new();
         let mut prev_intersection_line_no: Option<usize> = None;
         let mut prev_intersection_edge_no: Option<usize> = None;
@@ -1514,28 +1207,12 @@ impl TileShape {
         }
         result
     }
-    /// Checks if this shape and `other` have a nonempty intersection (IntBox.java:357-360,
-    /// IntOctagon.java:676-679, Simplex.java:659-662 — all three delegate to
-    /// `other.intersects(this)`).
-    pub fn intersects_circle(&self, other: &crate::circle::Circle) -> bool {
+                pub fn intersects_circle(&self, other: &crate::circle::Circle) -> bool {
         other.intersects_tile(self)
     }
 
-    // The `Shape`-typed `intersects(Shape)`, `boundingShape(ShapeBoundingDirections)` and the
-    // `PolylineShape` members that no `TileShape.java` algorithm needs — boundedCorners(),
-    // equalsCorner(Point), isContainedIn(IntBox), indexOfLeftMostCorner(FloatPoint),
-    // indexOfRightMostCorner(FloatPoint), polarLineSegment(FloatPoint), prevNo(int), nextNo(int),
-    // getBorder(), getHoles(), intersects(Line), leftMostCorner(Point), rightMostCorner(Point) —
-    // live in the `PolylineShapeOps` (polyline_shape.rs) and `ShapeOps` (shape.rs) impls for
-    // `TileShape`.
 }
 
-/// The insertion step shared by `nearestBorderPointsApprox` and
-/// `nearestRelativeOutsideLocations` (TileShape.java:406-416, 430-440 and 513-523).
-///
-/// Java's inner shift loop runs upward — `values[k] = values[k - 1]` for `k` from `j + 1` — so it
-/// copies the entry displaced at `j` into *every* later slot instead of moving each entry one slot
-/// down. Kept verbatim: it changes which points come back for `count > 1`.
 fn insert_sorted(
     min_dists: &mut [f64],
     values: &mut [Option<FloatPoint>],
@@ -1556,42 +1233,32 @@ fn insert_sorted(
     }
 }
 
-// ---------------------------------------------------------------------------------------------
-// The `TileShape`-typed methods left over on the three concrete shapes.
-// ---------------------------------------------------------------------------------------------
 
 impl IntBox {
-    /// Java `IntBox.simplify()`: `return this;` (IntBox.java:118-121).
-    pub fn simplify(&self) -> TileShape {
+        pub fn simplify(&self) -> TileShape {
         TileShape::Box(*self)
     }
 
-    /// Java `IntBox.boundingTile()`: `return this;` (IntBox.java:261-264).
-    pub fn bounding_tile(&self) -> IntBox {
+        pub fn bounding_tile(&self) -> IntBox {
         *self
     }
 }
 
 impl IntOctagon {
-    /// Java `IntOctagon.simplify()`: an octagon that is really a box becomes its bounding box
-    /// (IntOctagon.java:1050-1057).
-    pub fn simplify(&self) -> TileShape {
+            pub fn simplify(&self) -> TileShape {
         if self.is_int_box() {
             return TileShape::Box(self.bounding_box());
         }
         TileShape::Octagon(*self)
     }
 
-    /// Java `IntOctagon.boundingTile()`: `return this;` (IntOctagon.java:121-124).
-    pub fn bounding_tile(&self) -> IntOctagon {
+        pub fn bounding_tile(&self) -> IntOctagon {
         *self
     }
 }
 
 impl Simplex {
-    /// Java `Simplex.simplify()`: converts the physical instance of this shape to a simpler one,
-    /// if possible — for example a `Simplex` to an `IntOctagon` (Simplex.java:55-70).
-    pub fn simplify(&self) -> TileShape {
+            pub fn simplify(&self) -> TileShape {
         if self.is_empty() {
             TileShape::Simplex(Simplex::EMPTY)
         } else if self.is_int_box() {
@@ -1599,8 +1266,6 @@ impl Simplex {
         } else if self.is_int_octagon() {
             match self.to_int_octagon() {
                 Some(oct) => TileShape::Octagon(oct),
-                // `isIntOctagon()` is exactly `toIntOctagon()`'s precondition, so this is
-                // unreachable; Java would NPE on the `null`.
                 None => TileShape::Simplex(self.clone()),
             }
         } else {
@@ -1610,9 +1275,7 @@ impl Simplex {
 }
 
 impl Line {
-    /// Looks if all interior points of `tile` are on the left side of this line
-    /// (Line.java:165-174).
-    pub fn is_on_the_left(&self, tile: &TileShape) -> bool {
+            pub fn is_on_the_left(&self, tile: &TileShape) -> bool {
         for i in 0..tile.border_line_count() {
             if self.side_of(&tile.corner(i)) == Side::OnTheRight {
                 return false;
@@ -1621,9 +1284,7 @@ impl Line {
         true
     }
 
-    /// Looks if all interior points of `tile` are on the right side of this line
-    /// (Line.java:176-184; Java's doc comment says "left", the code tests the other side).
-    pub fn is_on_the_right(&self, tile: &TileShape) -> bool {
+            pub fn is_on_the_right(&self, tile: &TileShape) -> bool {
         for i in 0..tile.border_line_count() {
             if self.side_of(&tile.corner(i)) == Side::OnTheLeft {
                 return false;
@@ -1658,7 +1319,7 @@ mod tests {
     fn containment_family() {
         let b = bx();
         assert!(b.contains(&Point::Int(IntPoint::new(5, 5))));
-        assert!(b.contains(&Point::Int(IntPoint::new(0, 5)))); // border counts as contained
+        assert!(b.contains(&Point::Int(IntPoint::new(0, 5)))); 
         assert!(!b.contains_inside(&Point::Int(IntPoint::new(0, 5))));
         assert!(b.contains_on_border(&Point::Int(IntPoint::new(0, 5))));
         assert_eq!(
@@ -1682,7 +1343,6 @@ mod tests {
         assert_eq!(j.area(), 25.0);
         assert!(bx().intersects(&oct));
         assert!(!tri().intersects(&TileShape::Box(IntBox::from_coords(8, 8, 9, 9))));
-        // simplify folds a box-shaped simplex back into IntBox
         let s = TileShape::Simplex(IntBox::from_coords(0, 0, 10, 10).to_simplex());
         assert!(matches!(s.simplify(), TileShape::Box(_)));
         assert!(matches!(
@@ -1738,10 +1398,7 @@ mod tests {
         assert!((parts.iter().map(|p| p.area()).sum::<f64>() - 100.0).abs() < 1e-9);
     }
 
-    /// The generic `TileShape.divideIntoSections` grids the bounding box and keeps only the
-    /// 2-dimensional intersections; the fourth section of the triangle degenerates to the single
-    /// point (5, 5) and is dropped.
-    #[test]
+                #[test]
     fn divide_into_sections_drops_degenerate_pieces() {
         let parts = tri().divide_into_sections(6.0);
         assert_eq!(parts.len(), 3);
@@ -1765,7 +1422,7 @@ mod tests {
             IntPoint::new(10, 10),
             IntPoint::new(0, 10),
         ]);
-        assert_eq!(square, bx()); // simplify() folds the simplex back into an IntBox
+        assert_eq!(square, bx()); 
         assert_eq!(
             TileShape::get_instance_from_box(0, 0, 10, 10),
             IntBox::from_coords(0, 0, 10, 10).to_int_octagon()
@@ -1778,7 +1435,6 @@ mod tests {
             TileShape::get_instance_from_point(&Point::Int(IntPoint::new(3, 5))),
             IntPoint::new(3, 5).surrounding_box()
         );
-        // a half-plane keeps its single line and is unbounded (Java skips simplify() here)
         let half_plane = TileShape::get_instance_from_line(Line::from_coords(0, 0, 0, 1));
         assert_eq!(half_plane.border_line_count(), 1);
         assert!(!half_plane.is_bounded());
@@ -1793,9 +1449,8 @@ mod tests {
         assert_eq!(tri().border_line_count(), 3);
         assert!(bx().is_int_box() && bx().is_int_octagon());
         assert!(oct.is_int_box());
-        assert!(!tri().is_int_box()); // the hypotenuse is not orthogonal
-        assert!(tri().is_int_octagon()); // but every edge is a multiple of 45 degree
-        // an octagon that really is a box simplifies to one
+        assert!(!tri().is_int_box()); 
+        assert!(tri().is_int_octagon()); 
         assert_eq!(oct.simplify(), bx());
         assert_eq!(
             bx().to_simplex(),
@@ -1812,7 +1467,6 @@ mod tests {
         assert!(bx().corner_is_bounded(0) && tri().corner_is_bounded(0));
         assert_eq!(bx().corner(2), Point::Int(IntPoint::new(10, 10)));
         assert_eq!(bx().corner_approx_arr().len(), 4);
-        // borderLineIndex is a Java stub for IntBox/IntOctagon and real only for Simplex
         let tri_line = tri().border_line(0).unwrap();
         assert_eq!(tri().border_line_index(&tri_line), Some(0));
         assert_eq!(bx().border_line_index(&bx().border_line(0).unwrap()), None);
@@ -1830,11 +1484,9 @@ mod tests {
             bx().offset(2.0),
             TileShape::Box(IntBox::from_coords(-2, -2, 12, 12))
         );
-        // enlarging an IntBox widens it to an IntOctagon (Java IntBox.enlarge)
         assert!(matches!(bx().enlarge(2.0), TileShape::Octagon(_)));
         assert_eq!(bx().min_width(), 10.0);
         assert_eq!(bx().circumference(), 40.0);
-        // the generic PolylineShape.circumference for a simplex: 10 + 10 + sqrt(200)
         assert!((tri().circumference() - (20.0 + 200.0_f64.sqrt())).abs() < 1e-9);
         assert_eq!(bx().centre_of_gravity(), FloatPoint::new(5.0, 5.0));
         assert_eq!(bx().length(), 10.0);
@@ -1850,11 +1502,7 @@ mod tests {
         assert_eq!(m.bounding_box(), IntBox::from_coords(0, -10, 10, 0));
     }
 
-    /// Java initializes the running minimum of `indexOfNearestCorner` with `Double.MIN_VALUE`
-    /// (the smallest *positive* double) instead of `Double.MAX_VALUE`, so the comparison only
-    /// fires at distance 0: for any point that is not itself a corner the answer is 0, however
-    /// near corner 2 is (TileShape.java:448-462).
-    #[test]
+                    #[test]
     fn index_of_nearest_corner_only_moves_off_zero_at_distance_zero() {
         assert_eq!(
             bx().index_of_nearest_corner(&Point::Int(IntPoint::new(9, 9))),
@@ -1881,13 +1529,10 @@ mod tests {
             b.side_of_border(&FloatPoint::new(20.0, 5.0), 0.0),
             crate::Side::OnTheLeft
         );
-        // contains(FloatPoint) is the *strict* test for a box and a simplex ...
         assert!(b.contains_approx(&TileShape::Box(IntBox::from_coords(2, 2, 3, 3))));
         assert!(!b.contains_approx(&b));
         assert!(!b.contains_float(&FloatPoint::new(0.0, 5.0)));
         assert!(!b.contains_float_tol(&FloatPoint::new(0.0, 5.0), 0.0));
-        // ... but IntOctagon overrides it with an inclusive coordinate test that accepts the
-        // border (IntOctagon.java:327-343).
         let oct = TileShape::Octagon(IntBox::from_coords(0, 0, 10, 10).to_int_octagon());
         assert!(oct.contains_float(&FloatPoint::new(0.0, 5.0)));
         assert!(!oct.contains_float_tol(&FloatPoint::new(0.0, 5.0), 0.0));
@@ -1896,17 +1541,14 @@ mod tests {
     #[test]
     fn distance_to_the_left_and_ray_intersection() {
         let b = bx();
-        // the upward line x = -5 has the whole box on its right, at distance 5
         assert_eq!(
             b.distance_to_the_left(&Line::from_coords(-5, 0, -5, 1)),
             5.0
         );
-        // the upward line x = 15 has the box on its left, so the result is the -1 sentinel
         assert_eq!(
             b.distance_to_the_left(&Line::from_coords(15, 0, 15, 1)),
             -1.0
         );
-        // the ray from the centre to the right leaves through border line 1 (x = 10)
         assert_eq!(
             b.intersecting_border_line_no(
                 &Point::Int(IntPoint::new(5, 5)),
@@ -1914,7 +1556,6 @@ mod tests {
             ),
             Some(1)
         );
-        // a point outside gives None (Java: -1)
         assert_eq!(
             b.intersecting_border_line_no(
                 &Point::Int(IntPoint::new(50, 5)),
@@ -1924,16 +1565,7 @@ mod tests {
         );
     }
 
-    /// The one production-reachable NaN site in this module. A degenerate `Line` (`a == b`) makes
-    /// `Line::signed_distance` compute `det / length` = `0.0 / 0.0` = NaN, and Java's
-    /// `Math.min(result, line.signedDistance(currentCorner))` (TileShape.java:635) *propagates*
-    /// that NaN into the result. Rust's `f64::min` would absorb it instead and leave the
-    /// `Integer.MAX_VALUE` seed, so `distance_to_the_left` goes through `limits::java_min`.
-    ///
-    /// The degenerate line reaches the `java_min` call because every corner tests `Collinear`:
-    /// `side_of_float` sees `det == 0`, and the exact `side_of` fallback sees `0` as well, so the
-    /// `OnTheRight` early-out with its `-1.0` sentinel never fires.
-    #[test]
+                                        #[test]
     fn distance_to_the_left_propagates_nan_for_degenerate_line() {
         let degenerate = Line::from_coords(5, 5, 5, 5);
         assert!(
@@ -1952,12 +1584,10 @@ mod tests {
         let end = Point::Int(IntPoint::new(15, 5));
         let line = Line::from_coords(-5, 5, 15, 5);
         assert!(b.is_intersected_interior_by_points(&start, &end, &line));
-        // a segment well above the box touches nothing
         let start = Point::Int(IntPoint::new(-5, 20));
         let end = Point::Int(IntPoint::new(15, 20));
         let line = Line::from_coords(-5, 20, 15, 20);
         assert!(!b.is_intersected_interior_by_points(&start, &end, &line));
-        // a segment running along the lower border only touches the border, not the interior
         let start = Point::Int(IntPoint::new(-5, 0));
         let end = Point::Int(IntPoint::new(15, 0));
         let line = Line::from_coords(-5, 0, 15, 0);
@@ -1975,7 +1605,6 @@ mod tests {
             b.nearest_border_points_approx(&FloatPoint::new(5.0, 5.0), 0)
                 .is_empty()
         );
-        // a half-plane has a single border line, so the projection is the only answer
         let half_plane = TileShape::get_instance_from_line(Line::from_coords(0, 0, 0, 1));
         assert_eq!(
             half_plane.nearest_border_point_approx(&FloatPoint::new(4.0, 7.0)),
@@ -1985,7 +1614,6 @@ mod tests {
             half_plane.nearest_border_point(&Point::Int(IntPoint::new(4, 7))),
             Some(Point::Int(IntPoint::new(0, 7)))
         );
-        // the shortest way out of the overlap with box (8,8)-(12,12) is 2 units to the right
         assert_eq!(
             b.nearest_relative_outside_locations(
                 &TileShape::Box(IntBox::from_coords(8, 8, 12, 12)),
@@ -1993,7 +1621,6 @@ mod tests {
             ),
             vec![FloatPoint::new(2.0, 0.0)]
         );
-        // no overlap, no locations
         assert!(
             b.nearest_relative_outside_locations(
                 &TileShape::Box(IntBox::from_coords(80, 80, 120, 120)),
@@ -2009,13 +1636,11 @@ mod tests {
         let pieces = outer.cutout(&tri()).expect("the triangle is 2-dimensional");
         let total: f64 = pieces.iter().map(|p| p.area()).sum();
         assert!((total - 350.0).abs() < 1e-6);
-        // cutting a box out of a box stays in IntBox land
         let inner = TileShape::Box(IntBox::from_coords(5, 5, 15, 15));
         let pieces = outer.cutout(&inner).expect("boxes always cut out");
         assert!(pieces.iter().all(|p| matches!(p, TileShape::Box(_))));
         let total: f64 = pieces.iter().map(|p| p.area()).sum();
         assert!((total - 300.0).abs() < 1e-9);
-        // Java returns null when the shape to cut out is a simplex of dimension < 2
         let degenerate = TileShape::Simplex(Simplex::from_points(&[
             IntPoint::new(0, 0),
             IntPoint::new(10, 0),
@@ -2050,14 +1675,10 @@ mod tests {
                 .is_empty()
         );
         assert_eq!(e.diagonal_corner_segment(), None);
-        assert_eq!(e.area(), 0.0); // bounded, but dimension() == -1 < 2
+        assert_eq!(e.area(), 0.0); 
         assert_eq!(e.length(), 0.0);
-        // Java's PolylineShape.circumference assigns `prevCorner = cornerApprox(-1)`, which
-        // `Simplex.cornerApprox` answers with null for 0 lines (Simplex.java:172-175); the loop
-        // then runs zero times and 0 is returned. It does not throw.
         assert_eq!(e.circumference(), 0.0);
         assert_eq!(e.divide_into_sections(4.0), vec![e.clone()]);
-        // `distance`, `border_distance` and `smallest_radius` throw here in Java; see the three
         // `#[should_panic]` tests below.
     }
 
@@ -2081,10 +1702,8 @@ mod tests {
 
     #[test]
     fn rotate_approx_across_representations() {
-        // TileShape.java:676-702, values taken from the Java original.
         let b = IntBox::from_coords(0, 0, 10, 10);
         let shape = TileShape::Box(b);
-        // angle 0 returns the receiver
         assert_eq!(shape.rotate_approx(0.0, &FloatPoint::ZERO), shape);
         assert_eq!(
             shape.rotate_approx(std::f64::consts::FRAC_PI_2, &FloatPoint::ZERO),
@@ -2112,7 +1731,6 @@ mod tests {
 
     #[test]
     fn entrance_points_and_cutout_of_a_polyline() {
-        // TileShape.java:753-887, values taken from the Java original.
         let shape = TileShape::Box(IntBox::from_coords(0, 0, 10, 10));
         let cross = Polyline::from_two_points(
             &Point::Int(IntPoint::new(-5, 5)),
@@ -2135,21 +1753,16 @@ mod tests {
                 Point::Int(IntPoint::new(15, 5))
             ]
         );
-        // completely inside: nothing is left over
         let inside = Polyline::from_two_points(
             &Point::Int(IntPoint::new(2, 2)),
             &Point::Int(IntPoint::new(8, 8)),
         );
         assert_eq!(shape.cutout_polyline(&inside).unwrap().len(), 0);
-        // completely outside: the polyline comes back unchanged
         let outside = Polyline::from_two_points(
             &Point::Int(IntPoint::new(20, 20)),
             &Point::Int(IntPoint::new(30, 30)),
         );
         assert_eq!(shape.cutout_polyline(&outside), Ok(vec![outside]));
-        // An empty polyline never intersects anything, so it comes back whole — the same answer
-        // Java reaches through `containsInside`'s border-line-free early return
-        // (TileShape.java:197-201). Java throws for the bounded receiver; see docs/java-quirks.md.
         let empty = Polyline::from_points(&[Point::Int(IntPoint::new(4, 4))]);
         assert!(empty.is_empty());
         assert_eq!(shape.cutout_polyline(&empty), Ok(vec![empty.clone()]));

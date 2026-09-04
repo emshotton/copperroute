@@ -1,50 +1,5 @@
-//! The four tool input schemas, and the `RouterSettings` schema `list_settings` answers — all of
-//! them **hand-written** `serde_json::json!` literals.
-//!
-//! # Why not `schemars`
-//!
-//! Spec §13 says *"tool input schemas generated with `schemars` from the settings struct so CLI
-//! and MCP cannot drift"*. Controller ruling AO/General **refuses the dependency**, and the
-//! reason is not the crate: deriving `JsonSchema` on [`RouterSettings`] means deriving it on
-//! `FanoutSettings`, `OptimizerSettings`, `ScoringSettings`, `LayerSettings` and the two
-//! strategy enums — a workspace-wide derive sweep in the last plan of the port, on the one type
-//! Plan 4 ruling 3 deliberately kept free of extra derives. The Global Constraint forbids adding
-//! a dependency, and this is not the task to spend a waiver on.
-//!
-//! **The anti-drift device the spec asked for is bought back by two tests instead**, and they are
-//! what discharges ruling AO's "revisit only if that proves error-prone":
-//!
-//! 1. `the_schemas_match_the_committed_golden` (`tests/mcp_stdio.rs`) — every schema is compared
-//!    against `tests/data/mcp-schemas.json` byte for byte, so a schema cannot change without a
-//!    reviewer seeing the diff;
-//! 2. `every_settings_field_is_in_the_schema_and_vice_versa` — the schema's property names are
-//!    compared **both ways** against `RouterSettings::FIELD_NAMES` and the four nested structs'
-//!    own `FIELD_NAMES`, so a settings field added later cannot silently vanish from the schema
-//!    and a schema property cannot outlive the field it describes.
-//!
-//! The second is strictly stronger than `schemars` for the failure everyone actually fears (a
-//! new field nobody exposes) and strictly weaker for one nobody has hit (a field whose *type*
-//! changes without its name changing) — recorded here so the trade is visible rather than
-//! implied.
-//!
-//! # Defaults live in `DefaultSettings`, not here
-//!
-//! The schema carries a `description` per property and **no `default`**. `list_settings` answers
-//! `{"schema": …, "defaults": …}`, where `defaults` is `DefaultSettings`' own table resolved at
-//! call time (`settings/sources/DefaultSettings.java:83`) — including the two fields that depend
-//! on the host's processor count (plan ruling 6). Copying those numbers into a literal here would
-//! be a second source of truth that a `DefaultSettings` edit could not update, and it would make
-//! the golden above machine-dependent.
-
 use serde_json::{Value, json};
 
-/// The `dsn_path` / `dsn_text` pair every board-reading tool takes, with the "exactly one"
-/// constraint expressed as JSON Schema's `oneOf` over `required`.
-///
-/// Ruling AO: **flat arguments**. The jar's 24 generated tools wrap everything in
-/// `{path, query, body}` (`api/mcp/OpenApiMcpToolRegistry.java`, measured in
-/// `docs/plan-8-prep/evidence/job3-summary.md` §4); its own four hand-written tools are flat, and
-/// so are these. Delta row 10.
 fn board_input_properties() -> Value {
     json!({
         "dsn_path": {
@@ -58,7 +13,6 @@ fn board_input_properties() -> Value {
     })
 }
 
-/// `oneOf` over the two `required` shapes — the schema spelling of "exactly one of".
 fn one_of_dsn_path_or_text() -> Value {
     json!([
         { "required": ["dsn_path"], "not": { "required": ["dsn_text"] } },
@@ -66,8 +20,6 @@ fn one_of_dsn_path_or_text() -> Value {
     ])
 }
 
-/// `route_board`'s input — spec §13's
-/// `{ dsn_path | dsn_text, ses_path?, rules_path?, output_path?, settings? }`.
 #[must_use]
 pub fn route_board_schema() -> Value {
     let mut properties = board_input_properties();
@@ -97,12 +49,6 @@ pub fn route_board_schema() -> Value {
     })
 }
 
-/// `check_drc`'s input — spec §13's `{ dsn_path | dsn_text, ses_path?, rules_path? }`.
-///
-/// **No coordinate-unit option**, and that is a recorded decision rather than an omission: `-drc`
-/// hard-codes `"mm"` (`Freerouting.java:335-336`, quirk #151) and exposing the other four arms of
-/// `DesignRulesChecker.convertCoordinate` (`:512-525`) would make this tool strictly more capable
-/// than the surface it reproduces. `commands::drc`'s step 10 carries the same note.
 #[must_use]
 pub fn check_drc_schema() -> Value {
     let mut properties = board_input_properties();
@@ -123,7 +69,6 @@ pub fn check_drc_schema() -> Value {
     })
 }
 
-/// `board_info`'s input — spec §13's `{ dsn_path | dsn_text }`.
 #[must_use]
 pub fn board_info_schema() -> Value {
     json!({
@@ -134,7 +79,6 @@ pub fn board_info_schema() -> Value {
     })
 }
 
-/// `list_settings`' input — spec §13's `{}`. It takes nothing at all.
 #[must_use]
 pub fn list_settings_schema() -> Value {
     json!({
@@ -144,11 +88,6 @@ pub fn list_settings_schema() -> Value {
     })
 }
 
-/// The [`fr_settings::RouterSettings`] schema `list_settings` answers, and the thing
-/// `route_board`'s `settings` argument must satisfy.
-///
-/// Every property name here is checked against the struct's own `FIELD_NAMES` in both directions
-/// — see this module's docs.
 #[must_use]
 pub fn router_settings_schema() -> Value {
     json!({
@@ -183,20 +122,7 @@ pub fn router_settings_schema() -> Value {
     })
 }
 
-/// The `RouterSettings` fields this schema deliberately does **not** carry, because the reader
-/// cannot see them: each is `transient` in Java, and Gson's default exclusion strategy drops a
-/// `transient` field from **both** directions (`util/gson/GsonProvider.java` registers no
 /// `excludeFieldsWithModifiers` override). The port's `#[serde(skip)]` reproduces that exactly,
-/// so a caller who sent one of these would have it silently ignored — and a schema that
-/// advertised it would be promising something the reader cannot deliver.
-///
-/// `layers` is the one `transient` field that *is* here: `RouterSettingsTypeAdapterFactory.read`
-/// re-reads it from the raw tree (`:59-64`), which is why the port's attribute is
-/// `skip_serializing` rather than `skip` — readable, not writable.
-///
-/// The list is a **constant, not a comment**, because
-/// `every_settings_field_is_in_the_schema_and_vice_versa` counts against it: adding a field to
-/// `RouterSettings` without adding it to the schema *or* to this list fails that test.
 pub const TRANSIENT_ROUTER_SETTINGS_FIELDS: &[&str] = &[
     "max_items",
     "save_intermediate_stages",
@@ -204,30 +130,21 @@ pub const TRANSIENT_ROUTER_SETTINGS_FIELDS: &[&str] = &[
     "board_specific_trace_costs_applied",
 ];
 
-/// [`TRANSIENT_ROUTER_SETTINGS_FIELDS`]'s counterpart for `OptimizerSettings` — three `transient`
-/// fields with no `TypeAdapterFactory` to re-read them, so Gson drops all three both ways.
 pub const TRANSIENT_OPTIMIZER_FIELDS: &[&str] = &[
     "board_update_strategy",
     "hybrid_ratio",
     "item_selection_strategy",
 ];
 
-/// …and for `ScoringSettings`: the two per-layer cost arrays are `transient`, so a caller cannot
-/// set them here. They are derived from the board's aspect ratio and the two `default_*` costs,
-/// which **are** settable.
 pub const TRANSIENT_SCORING_FIELDS: &[&str] = &[
     "preferred_direction_trace_cost",
     "undesired_direction_trace_cost",
 ];
 
-/// `FanoutSettings` and `LayerSettings` have no `transient` field at all — the empty lists are
-/// here so the test below can treat all five structs uniformly.
 pub const TRANSIENT_FANOUT_FIELDS: &[&str] = &[];
 
-/// See [`TRANSIENT_FANOUT_FIELDS`].
 pub const TRANSIENT_LAYER_FIELDS: &[&str] = &[];
 
-/// `settings/FanoutSettings.java` — the SMD-pin fanout pre-pass.
 fn fanout_schema() -> Value {
     json!({
         "type": "object",
@@ -250,7 +167,6 @@ fn fanout_schema() -> Value {
     })
 }
 
-/// `settings/OptimizerSettings.java` — the post-routing optimizer stage.
 fn optimizer_schema() -> Value {
     json!({
         "type": "object",
@@ -272,7 +188,6 @@ fn optimizer_schema() -> Value {
     })
 }
 
-/// `settings/ScoringSettings.java` — the maze-expansion cost table and the score's penalties.
 fn scoring_schema() -> Value {
     json!({
         "type": "object",
@@ -292,7 +207,6 @@ fn scoring_schema() -> Value {
     })
 }
 
-/// `settings/LayerSettings.java` — one entry of `layers`.
 fn layer_schema() -> Value {
     json!({
         "type": "object",
@@ -306,23 +220,4 @@ fn layer_schema() -> Value {
     })
 }
 
-// =================================================================================================
-// The `api/mcp/**` roster, part 3: the OpenAPI tool registry — ruling AO, Plan 8 Task 14
-// =================================================================================================
-//
-// `OpenApiMcpToolRegistry` (659 lines) is the jar's answer to the question this file answers, and
-// the two answers are structurally different, which is delta rows 9 and 10 in
-// `crates/freerouting/README.md`. Java walks its own JAX-RS `Application` at servlet-context
-// start, reads the Swagger annotations off every resource method, and *derives* 24 tools whose
-// arguments are the wrapped `{path, query, body}` shape an HTTP call has. The port hand-writes
-// four schemas for four tools whose arguments are flat, because there is no HTTP call underneath
-// to wrap. Measured on the pinned jar: **28 tools, 24 wrapped + 4 flat**
-// (`docs/plan-8-prep/evidence/job3-summary.md` §4).
-//
-// The anti-drift device the derivation bought is bought back by the two tests named in this
-// file's module docs, which is what ruling AO asked for in place of `schemars`.
 
-// not ported: OpenApiMcpToolRegistry.fromApplication (api/mcp/OpenApiMcpToolRegistry.java:54-310) — the derivation itself: reflects over the `Application`'s resource classes, reads `@Operation`/`@Parameter`/`@RequestBody`, and builds a `ToolOperation` per endpoint. Nothing to reflect over here; the port has no resource classes and no annotations.
-// not ported: OpenApiMcpToolRegistry.get (api/mcp/OpenApiMcpToolRegistry.java:312-319) — looks a derived tool up by name. The port's table is [`super::registry`]'s four entries, built in code.
-// not ported: OpenApiMcpToolRegistry.toMcpToolsArray (api/mcp/OpenApiMcpToolRegistry.java:321-400) — renders the derived set as `tools/list`'s array. The port renders its four from the literals in this file.
-// not ported: OpenApiMcpToolRegistry.ToolOperation (api/mcp/OpenApiMcpToolRegistry.java:31-52) — the record one derived tool becomes (name, description, HTTP method, path template, parameter list, request-body schema). Six of its fields describe an HTTP call; the port's equivalent is a name, a description and a schema.

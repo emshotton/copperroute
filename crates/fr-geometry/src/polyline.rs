@@ -1,28 +1,3 @@
-//! Port of `app.freerouting.geometry.planar.Polyline`.
-//!
-//! "A Polyline is a sequence of lines, where no 2 consecutive lines may be parallel. A Polyline of
-//! n lines defines a Polygon of n-1 intersection points of consecutive lines. The lines of the
-//! objects of class Polyline are normally defined by points with integer coordinates, whereas the
-//! intersections of Lines can be represented in general only by infinite precision rational
-//! points. We use polylines with integer coordinates instead of polygons with infinite precision
-//! rational coordinates because of its better performance in geometric calculations."
-//! (Polyline.java:9-16)
-//!
-//! **Caching.** Java memoises the corners, the float corners and the bounding box in three
-//! transient fields (Polyline.java:24-26). This port drops all three, as
-//! [`crate::line_segment::LineSegment`] and [`crate::simplex::Simplex`] already do: every corner
-//! is a pure function of two consecutive lines. The one place where the memo could have been
-//! observable is the `Polyline(Line[])` constructor, which fills
-//! `precalculatedFloatCorners[i]` *before* possibly replacing `lines[i]` by its opposite
-//! (Polyline.java:85-100) — but `Line::intersection_approx` negates both the numerator and the
-//! denominator when a line is flipped, which is exact in IEEE 754, so the recomputed value is
-//! bit-identical.
-//!
-//! **Equality.** Java does not override `equals`, so Java `Polyline`s compare by identity. This
-//! port derives structural equality over the line list, matching [`crate::line::Line`].
-//!
-// not ported: the private `debugPoint(Point)` helper (Polyline.java:859-864) and the two
-// `FRLogger.trace` calls in `split` (Polyline.java:767-799) — diagnostics only.
 
 use crate::direction::Direction;
 use crate::float_point::FloatPoint;
@@ -39,24 +14,11 @@ use crate::side::Side;
 use crate::tile_shape::TileShape;
 use crate::vector::Vector;
 
-/// Java `Polyline.USE_BOUNDING_OCTAGON_FOR_OFFSET_SHAPES` (Polyline.java:19).
 const USE_BOUNDING_OCTAGON_FOR_OFFSET_SHAPES: bool = true;
 
-/// The one failure the `Polyline(Line[])` normalisation can produce.
-///
-/// Java signals it by *crashing* — `removeOverlaps` reads `tmpArr[-1]` and throws
-/// `ArrayIndexOutOfBoundsException` (Polyline.java:147-155). That crash is observable by a real
-/// caller: `PolylineTrace.combine_at_end` (PolylineTrace.java:303-311) builds
-/// `joinedPolyline = new Polyline(newLines)` and then compares `joinedPolyline.lines.length`
-/// against `newLineCount`, so swallowing the crash into an *empty* polyline would silently
-/// replace a trace's geometry with nothing, where Java aborts the whole autorouting pass through
-/// its pass-level `catch (Exception)`. Surfacing it as an error keeps that choice with the
-/// caller.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PolylineError {
-    /// `Polyline(Line[])`'s overlap removal consumed its whole output buffer and Java would read
-    /// index -1 (Polyline.java:148).
-    NormalizationIndexUnderflow,
+            NormalizationIndexUnderflow,
 }
 
 impl std::fmt::Display for PolylineError {
@@ -72,28 +34,14 @@ impl std::fmt::Display for PolylineError {
 
 impl std::error::Error for PolylineError {}
 
-/// A sequence of lines, where no 2 consecutive lines may be parallel.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Polyline {
     lines: Vec<Line>,
 }
 
-// -------------------------------------------------------------------------------------------
-// Constructors (Polyline.java:28-176)
-// -------------------------------------------------------------------------------------------
 
 impl Polyline {
-    /// Creates a polyline of length `polygon.corner_count + 1` from `polygon`, so that the i-th
-    /// corner of `polygon` is the intersection of the i-th and the i+1-th lines of the new
-    /// polyline. `polygon` must have at least 2 corners (Polyline.java:28-52).
-    ///
-    /// # Panics
-    /// If any corner is a [`Point::Rational`]. Java only logs "Line(a, b) only implemented for
-    /// IntPoints till now" and builds a `Line` that every later operation rejects with a
-    /// `ClassCastException`; this port's [`Line`] cannot hold rational end points at all, so the
-    /// break is moved forward to the constructor — as in [`crate::int_box::IntBox::translate_by`].
-    // totalized: rational polygon corners panic here instead of failing later in Java.
-    pub fn from_polygon(polygon: &Polygon) -> Polyline {
+                                        pub fn from_polygon(polygon: &Polygon) -> Polyline {
         let points = polygon.corner_array();
         if points.len() < 2 {
             // Java: FRLogger.warn("Polyline: must contain at least 2 different points")
@@ -101,13 +49,10 @@ impl Polyline {
         }
         let pts: Vec<IntPoint> = points.iter().map(int_point_of).collect();
         let mut lines: Vec<Line> = Vec::with_capacity(pts.len() + 1);
-        // Placeholder for lines[0], overwritten below; Java allocates the array with a null slot.
         lines.push(Line::new(pts[0], pts[0]));
         for i in 1..pts.len() {
             lines.push(Line::new(pts[i - 1], pts[i]));
         }
-        // construct perpendicular lines at the start and at the end to represent
-        // the first and the last point of points as intersection of lines.
 
         let dir = Direction::between(&points[0], &points[1])
             .expect("Polygon has no two equal consecutive corners");
@@ -120,18 +65,11 @@ impl Polyline {
         Polyline { lines }
     }
 
-    /// Creates a polyline from an array of points (Polyline.java:54-57).
-    pub fn from_points(points: &[Point]) -> Polyline {
+        pub fn from_points(points: &[Point]) -> Polyline {
         Polyline::from_polygon(&Polygon::new(points.to_vec()))
     }
 
-    /// Creates a polyline consisting of three lines (Polyline.java:59-71).
-    ///
-    /// Note that Java recomputes the closing direction as `from_corner -> to_corner` (line 69),
-    /// not `to_corner -> from_corner` as [`Polyline::from_polygon`] does, so the two constructors
-    /// produce opposite (but geometrically identical) closing lines for the same two points.
-    // Java bug: Polyline.java:69 repeats line 66 verbatim; see docs/java-quirks.md.
-    pub fn from_two_points(from_corner: &Point, to_corner: &Point) -> Polyline {
+                        pub fn from_two_points(from_corner: &Point, to_corner: &Point) -> Polyline {
         if from_corner == to_corner {
             return Polyline { lines: Vec::new() };
         }
@@ -147,50 +85,11 @@ impl Polyline {
         }
     }
 
-    /// Creates a polyline from an array of lines. Lines which are parallel to the previous line
-    /// are skipped. The directed lines are normalized, so that they intersect the previous line
-    /// before the next line (Polyline.java:73-102).
-    ///
-    /// This is the normalising constructor that every trace transformation funnels through.
-    ///
-    /// Always `Ok` since Plan 9 Task 6 (quirk #22): the input class Java threw on — the
-    /// `tmpArr[-1]` read in [`remove_overlaps`] — is guarded, and normalises to the empty
-    /// polyline like Java's own two "fewer than 3 lines" exits. The `Result` is kept because it
-    /// is this module's normalisation signature, threaded through
-    /// [`Polyline::from_lines_in_place`], [`Polyline::shorten`] and `BoardError::Normalization`
-    /// into three crates; see [`remove_overlaps`] for why collapsing it would be an interface
-    /// change with no behavioural content.
-    pub fn from_lines(input_lines: Vec<Line>) -> Result<Polyline, PolylineError> {
+                                                        pub fn from_lines(input_lines: Vec<Line>) -> Result<Polyline, PolylineError> {
         Ok(Polyline::build(input_lines)?.0)
     }
 
-    /// [`Polyline::from_lines`] for the callers that **re-read their own array afterwards**.
-    ///
-    /// Java's `new Polyline(Line[])` normalises the caller's array **in place**, and six Plan 6
-    /// call sites depend on it (quirk #185's neighbour — see `docs/java-quirks.md`):
-    ///
-    /// * `removeConsecutiveParallelLines` (Polyline.java:104-131) `return lines` — *the caller's
-    ///   own array object* — for `length < 3` and when nothing is skipped;
-    /// * `removeOverlaps` (Polyline.java:133-176) does the same for `length < 4` and when nothing
-    ///   is skipped;
-    /// * the constructor then writes `filteredLines[i] = filteredLines[i].opposite()`
-    ///   (Polyline.java:97) into whatever array it was handed.
-    ///
-    /// So when — and only when — **neither** normaliser skipped a line, the caller sees the
-    /// flipped directions, and (in this port) the **new identity tokens** those flipped lines
-    /// carry. `TraceTightener.java:297` → `:311`, `TraceTightener45.java:421` → `:435` and
-    /// `TraceTightenerAnyAngle.java:158` → `:186`, `:368` → `:386`, `:451` → `:465`,
-    /// `:614` → `:625` all construct a `Polyline` from a local array and then read an element of
-    /// that array back out; the value they read is Java's post-normalisation one. The
-    /// `TraceTightenerAnyAngle.java:368` site is the strongest of the six: `:386`'s
-    /// `lines = currentLines` makes the whole normalised array the loop's working state and the
-    /// source of the polyline the method returns.
-    ///
-    /// `from_lines` consumes its `Vec` and can express none of that, which is why this method
-    /// exists. Java's two early `return`s before the flip loop (either normaliser answering an
-    /// empty array, or fewer than 3 lines surviving) leave the caller's array untouched, and so
-    /// does this.
-    pub fn from_lines_in_place(input_lines: &mut Vec<Line>) -> Result<Polyline, PolylineError> {
+                                                                                                            pub fn from_lines_in_place(input_lines: &mut Vec<Line>) -> Result<Polyline, PolylineError> {
         let (polyline, writes_through) = Polyline::build(input_lines.clone())?;
         if writes_through {
             input_lines.clone_from(&polyline.lines);
@@ -198,25 +97,15 @@ impl Polyline {
         Ok(polyline)
     }
 
-    /// The body of `new Polyline(Line[])` (Polyline.java:73-102).
-    ///
-    /// The second half of the answer is Java's array aliasing: `true` when the array the flip
-    /// loop wrote into **is** the one that was passed in, so a caller holding that array sees the
-    /// result. See [`Polyline::from_lines_in_place`].
-    fn build(input_lines: Vec<Line>) -> Result<(Polyline, bool), PolylineError> {
+                        fn build(input_lines: Vec<Line>) -> Result<(Polyline, bool), PolylineError> {
         let input_len = input_lines.len();
         let filtered_lines = remove_consecutive_parallel_lines(input_lines);
         let mut filtered_lines = remove_overlaps(filtered_lines)?;
         if filtered_lines.len() < 3 {
-            // Java returns here, *before* the loop below, so nothing is written back.
             return Ok((Polyline { lines: Vec::new() }, false));
         }
-        // Neither normaliser copied iff the array still has every line it started with: both
-        // answer their input unchanged, or a strictly shorter array, or an empty one.
         let writes_through = filtered_lines.len() == input_len;
 
-        // turn evtl the direction of the lines that they point always
-        // from the previous corner to the next corner
         for i in 1..filtered_lines.len() - 1 {
             let corner = filtered_lines[i].intersection_approx(&filtered_lines[i + 1]);
             let side_of_line = filtered_lines[i - 1].side_of_float_exact(&corner);
@@ -238,8 +127,6 @@ impl Polyline {
     }
 }
 
-/// Java `new Line(Point, Point)` accepts the abstract `Point` and only warns for the rational
-/// case; this port's `Line` is fixed at `IntPoint`.
 fn int_point_of(point: &Point) -> IntPoint {
     match point {
         Point::Int(p) => *p,
@@ -249,84 +136,46 @@ fn int_point_of(point: &Point) -> IntPoint {
     }
 }
 
-/// Java `Line.getInstance(Point, Direction)`; a `Direction::Big` cannot be represented as an
-/// offset between two `IntPoint`s (see [`Line::from_direction_any`]).
 fn line_from_direction(a: IntPoint, dir: &Direction) -> Line {
     Line::from_direction_any(a, dir)
         .expect("a Direction derived from IntPoints is always an IntDirection")
 }
 
-/// Polyline.java:104-131.
 fn remove_consecutive_parallel_lines(lines: Vec<Line>) -> Vec<Line> {
     if lines.len() < 3 {
-        // polyline must have at least 3 lines
         return lines;
     }
     let mut tmp_arr: Vec<Line> = Vec::with_capacity(lines.len());
     tmp_arr.push(lines[0]);
     for line in lines.iter().skip(1) {
-        // skip multiple lines
         if !tmp_arr[tmp_arr.len() - 1].is_parallel(line) {
             tmp_arr.push(*line);
         }
     }
     let new_length = tmp_arr.len();
     if new_length == lines.len() {
-        // nothing skipped
         return lines;
     }
-    // at least 1 line is skipped, adjust the array
     if new_length < 3 {
         return Vec::new();
     }
     tmp_arr
 }
 
-/// Checks if previous and next lines are equal or opposite and removes the resulting overlap
-/// (Polyline.java:133-176).
-///
-/// Java throws `ArrayIndexOutOfBoundsException` here: when the loop has already decremented
-/// `newLength` to 0, `tmpArr[newLength - 1]` reads index -1. Reachable — e.g. the six lines
-/// `h, v, h, v, h, v` over the same two axes, and ~11% of random line arrays drawn from a small
-/// pool of equal/opposite lines.
-///
-/// fixed: T6 (#22) — see the guard in the loop below. The `Result` return **stays** even though
-/// no path constructs [`PolylineError::NormalizationIndexUnderflow`] any more: it is this
-/// module's public normalisation signature, threaded through `Polyline::from_lines`,
-/// `from_lines_in_place`, `shorten` and `BoardError::Normalization` into three crates, and
-/// collapsing it would be an interface change with no behavioural content. That the variant is
-/// now unconstructible **is** the fix — Java's pass-level `catch (Exception)` has nothing left to
-/// catch here, which is exactly the abort this row is about.
-// Java bug: Polyline.java:148 reads tmpArr[-1].
 fn remove_overlaps(lines: Vec<Line>) -> Result<Vec<Line>, PolylineError> {
     if lines.len() < 4 {
         return Ok(lines);
     }
     let mut new_length: usize = 0;
-    // Java's `new Line[lines.length]` is null-filled; the filler here is a real `Line`, so an
-    // unwritten in-bounds slot silently carries a value *and an identity token* (quirk #74) where
-    // Java would NPE. `newLength` bounds the truncation below, so no unwritten slot survives.
     let mut tmp_arr: Vec<Line> = vec![Line::new(IntPoint::ZERO, IntPoint::ZERO); lines.len()];
     tmp_arr[0] = lines[0];
     if !lines[0].is_equal_or_opposite(&lines[2]) {
         new_length += 1;
     }
-    // else skip the first line
     tmp_arr[new_length] = lines[1];
     new_length += 1;
     for i in 2..lines.len() - 2 {
-        // fixed: T6 (#22) — the `newLength >= 1` guard the trailing access at Polyline.java:160
-        // already has, in the same `guard && test` shape. Java read `tmpArr[-1]` here and threw
-        // an `ArrayIndexOutOfBoundsException` that aborted the whole routing pass.
-        //
-        // With nothing kept there is no "last kept line" for the overlap test to ask about, so the
-        // answer is "no overlap" and `lines[i]` is kept — the `else` arm, reached because the
-        // guard makes the condition false. Note this is the opposite *effect* from the trailing
-        // access, whose failed guard skips its append; the shape is shared, the meaning is not.
-        // Keeping is right: the alternative, decrementing, is what the taken branch does to undo
-        // an overlap that was found, and none was.
         if new_length >= 1 && tmp_arr[new_length - 1].is_equal_or_opposite(&lines[i + 1]) {
-            // skip 2 lines
             new_length -= 1;
         } else {
             tmp_arr[new_length] = lines[i];
@@ -335,18 +184,13 @@ fn remove_overlaps(lines: Vec<Line>) -> Result<Vec<Line>, PolylineError> {
     }
     tmp_arr[new_length] = lines[lines.len() - 2];
     new_length += 1;
-    // Guard: newLength must be >= 2 before accessing tmpArr[newLength - 2].
-    // If the loop decremented newLength all the way to 0 the index would be -1.
     if new_length >= 2 && !lines[lines.len() - 1].is_equal_or_opposite(&tmp_arr[new_length - 2]) {
         tmp_arr[new_length] = lines[lines.len() - 1];
         new_length += 1;
     }
-    // else skip the last line
     if new_length == lines.len() {
-        // nothing skipped
         return Ok(lines);
     }
-    // at least 1 line is skipped, adjust the array
     if new_length < 3 {
         return Ok(Vec::new());
     }
@@ -354,41 +198,21 @@ fn remove_overlaps(lines: Vec<Line>) -> Result<Vec<Line>, PolylineError> {
     Ok(tmp_arr)
 }
 
-// -------------------------------------------------------------------------------------------
-// Accessors (Polyline.java:178-318)
-// -------------------------------------------------------------------------------------------
 
 impl Polyline {
-    /// The lines of this polyline (Java's public `lines` field, Polyline.java:22).
-    pub fn lines(&self) -> &[Line] {
+        pub fn lines(&self) -> &[Line] {
         &self.lines
     }
 
-    /// Returns the number of lines minus 1 (Polyline.java:178-181).
-    ///
-    /// Java returns -1 for an empty polyline; `usize` saturates at 0 instead.
-    // totalized: cornerCount() of an empty polyline is 0 here, -1 in Java.
-    //
-    // fixed: T6 (#25) — the guard is the `saturating_sub` above, and it was **already here**
-    // before Plan 9: the port has never been able to return Java's -1, because the return type is
-    // `usize`. Task 6 changes no code at this site; it adds this marker, the directed test
-    // `an_empty_polyline_has_no_corners_and_no_negative_array` in
-    // `crates/fr-geometry/tests/polyline.rs`, and the register status — the survey listed the row
-    // as an unguarded site, and it is not one. What Java's -1 flowed into is what the row is
-    // really about: `new IntPoint[cornerCount()]` in `rotateApprox` (`NegativeArraySizeException`)
-    // and `boundingBox(0, -2)`; neither is expressible here.
-    pub fn corner_count(&self) -> usize {
+                pub fn corner_count(&self) -> usize {
         self.lines.len().saturating_sub(1)
     }
 
-    /// Polyline.java:183-185.
-    pub fn is_empty(&self) -> bool {
+        pub fn is_empty(&self) -> bool {
         self.lines.len() < 3
     }
 
-    /// Checks if this polyline is empty or if all corner points are equal
-    /// (Polyline.java:187-199).
-    pub fn is_point(&self) -> bool {
+            pub fn is_point(&self) -> bool {
         if self.lines.len() < 3 {
             return true;
         }
@@ -401,32 +225,26 @@ impl Polyline {
         true
     }
 
-    /// Checks if all lines of this polyline are orthogonal (Polyline.java:201-209).
-    pub fn is_orthogonal(&self) -> bool {
+        pub fn is_orthogonal(&self) -> bool {
         self.lines.iter().all(Line::is_orthogonal)
     }
 
-    /// Checks if all lines of this polyline are multiples of 45 degrees (Polyline.java:211-219).
-    pub fn is_multiple_of_45_degree(&self) -> bool {
+        pub fn is_multiple_of_45_degree(&self) -> bool {
         self.lines.iter().all(Line::is_multiple_of_45_degree)
     }
 
-    /// Returns the intersection of the first line with the second line (Polyline.java:221-224).
-    pub fn first_corner(&self) -> Option<Point> {
+        pub fn first_corner(&self) -> Option<Point> {
         self.corner(0)
     }
 
-    /// Returns the intersection of the last line with the line before the last line
-    /// (Polyline.java:226-229).
-    pub fn last_corner(&self) -> Option<Point> {
+            pub fn last_corner(&self) -> Option<Point> {
         if self.lines.len() < 2 {
             return None;
         }
         self.corner(self.lines.len() - 2)
     }
 
-    /// Returns the intersections of every two consecutive lines (Polyline.java:231-248).
-    pub fn corners(&self) -> Vec<Point> {
+        pub fn corners(&self) -> Vec<Point> {
         if self.lines.len() < 2 {
             return Vec::new();
         }
@@ -435,9 +253,7 @@ impl Polyline {
             .collect()
     }
 
-    /// Returns the intersections of consecutive lines, approximated by `FloatPoint` values
-    /// (Polyline.java:250-265).
-    pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
+            pub fn corner_approx_arr(&self) -> Vec<FloatPoint> {
         if self.lines.len() < 2 {
             return Vec::new();
         }
@@ -446,46 +262,31 @@ impl Polyline {
             .collect()
     }
 
-    /// Returns an approximation of the intersection of the `no`-th with the `no + 1`-th line
-    /// (Polyline.java:267-291).
-    ///
-    /// Java clamps an out-of-range index (with a warning) and would then index a negative-length
-    /// array for an empty polyline; `None` stands for that crash.
-    // totalized: an empty polyline answers None instead of NegativeArraySizeException.
-    pub fn corner_approx(&self, no: usize) -> Option<FloatPoint> {
+                        pub fn corner_approx(&self, no: usize) -> Option<FloatPoint> {
         if self.lines.len() < 2 {
             return None;
         }
         Some(self.corner_approx_at(no))
     }
 
-    /// Returns the intersection of the `no`-th with the `no + 1`-th edge line
-    /// (Polyline.java:293-318). `None` where Java returns `null`, i.e. for `lines.length < 2`.
-    pub fn corner(&self, no: usize) -> Option<Point> {
+            pub fn corner(&self, no: usize) -> Option<Point> {
         if self.lines.len() < 2 {
-            // Java: FRLogger.trace("Polyline.corner: lines.length is < 2"); return null;
             return None;
         }
         Some(self.corner_at(no))
     }
 
-    /// [`Polyline::corner`] for a polyline that is known to have at least 2 lines; clamps the
-    /// index exactly as Java's warning branches do.
-    fn corner_at(&self, no: usize) -> Point {
+            fn corner_at(&self, no: usize) -> Point {
         let no = self.clamp_corner_index(no as i64);
         self.lines[no].intersection(&self.lines[no + 1])
     }
 
-    /// [`Polyline::corner_approx`] for a polyline that is known to have at least 2 lines.
-    fn corner_approx_at(&self, no: usize) -> FloatPoint {
+        fn corner_approx_at(&self, no: usize) -> FloatPoint {
         let no = self.clamp_corner_index(no as i64);
         self.lines[no].intersection_approx(&self.lines[no + 1])
     }
 
-    /// Java's shared index clamping (Polyline.java:272-281 and 299-308): a negative index becomes
-    /// 0 and an index past the last corner becomes `lines.length - 2`. Both branches log a
-    /// warning, which is dropped here.
-    fn clamp_corner_index(&self, corner_index: i64) -> usize {
+                fn clamp_corner_index(&self, corner_index: i64) -> usize {
         debug_assert!(self.lines.len() >= 2);
         if corner_index < 0 {
             0
@@ -497,22 +298,14 @@ impl Polyline {
     }
 }
 
-// -------------------------------------------------------------------------------------------
-// Derived polylines and measurements (Polyline.java:320-343)
-// -------------------------------------------------------------------------------------------
 
 impl Polyline {
-    /// Returns the polyline with the reversed order of lines (Polyline.java:320-327).
-    ///
-    /// Routes through [`Polyline::from_lines`], so it inherits its error.
-    pub fn reverse(&self) -> Result<Polyline, PolylineError> {
+                pub fn reverse(&self) -> Result<Polyline, PolylineError> {
         let reversed: Vec<Line> = self.lines.iter().rev().map(Line::opposite).collect();
         Polyline::from_lines(reversed)
     }
 
-    /// Calculates the length of this polyline from `from_corner` to `to_corner`
-    /// (Polyline.java:329-338).
-    pub fn length_approx_between(&self, from_corner: usize, to_corner: usize) -> f64 {
+            pub fn length_approx_between(&self, from_corner: usize, to_corner: usize) -> f64 {
         if self.lines.len() < 2 {
             return 0.0;
         }
@@ -528,8 +321,7 @@ impl Polyline {
         result
     }
 
-    /// Calculates the cumulative distance between consecutive corners (Polyline.java:340-343).
-    pub fn length_approx(&self) -> f64 {
+        pub fn length_approx(&self) -> f64 {
         if self.lines.len() < 2 {
             return 0.0;
         }
@@ -537,25 +329,16 @@ impl Polyline {
     }
 }
 
-// -------------------------------------------------------------------------------------------
-// Offset shapes (Polyline.java:345-534) — the trace-to-shape conversion used by the search tree.
-// -------------------------------------------------------------------------------------------
 
 impl Polyline {
-    /// Calculates for each line a shape around this line where the right and left edge lines have
-    /// the distance `half_width` from the center line. Returns `line_count - 2` convex shapes
-    /// (Polyline.java:345-352).
-    pub fn offset_shapes(&self, half_width: i32) -> Vec<TileShape> {
+                pub fn offset_shapes(&self, half_width: i32) -> Vec<TileShape> {
         if self.lines.is_empty() {
             return Vec::new();
         }
         self.offset_shapes_between(half_width, 0, self.lines.len() - 1)
     }
 
-    /// Calculates for each line between `from_no` and `to_no` a shape around this line, where the
-    /// right and left edge lines have the distance `half_width` from the center line
-    /// (Polyline.java:354-511).
-    pub fn offset_shapes_between(
+                pub fn offset_shapes_between(
         &self,
         half_width: i32,
         from_no: usize,
@@ -564,7 +347,6 @@ impl Polyline {
         if self.lines.is_empty() {
             return Vec::new();
         }
-        // Java: fromNo = Math.max(requestedFromNo, 0) — automatic for a usize.
         let to_no = to_no.min(self.lines.len() - 1);
         let shape_count = (to_no as i64 - from_no as i64 - 1).max(0) as usize;
         let mut shapes: Vec<TileShape> = Vec::with_capacity(shape_count);
@@ -579,33 +361,22 @@ impl Polyline {
             let mut offset_lines: [Line; 4] = [Line::new(IntPoint::ZERO, IntPoint::ZERO); 4];
 
             offset_lines[0] = self.lines[i].translate(-half_width as f64);
-            // current center line translated to the right
 
-            // create the front line of the offset shape
             let next_dir_from_curr_dir = next_dir.side_of(&current_direction);
-            // left turn from currentLine to nextLine
             if next_dir_from_curr_dir == Side::OnTheLeft {
                 offset_lines[1] = self.lines[i + 1].translate(-half_width as f64);
-                // next right line
             } else {
                 offset_lines[1] = self.lines[i + 1].opposite().translate(-half_width as f64);
-                // next left line in opposite direction
             }
 
             offset_lines[2] = self.lines[i].opposite().translate(-half_width as f64);
-            // current left line in opposite direction
 
-            // create the back line of the offset shape
             let current_dir_from_prev_dir = current_direction.side_of(&prev_dir);
-            // left turn from prevLine to currentLine
             if current_dir_from_prev_dir == Side::OnTheLeft {
                 offset_lines[3] = self.lines[i - 1].translate(-half_width as f64);
-                // previous line translated to the right
             } else {
                 offset_lines[3] = self.lines[i - 1].opposite().translate(-half_width as f64);
-                // previous left line in opposite direction
             }
-            // cut off outstanding corners with following shapes
             let mut corner_to_check: Option<FloatPoint> = None;
             let mut current_line = offset_lines[1];
             let mut check_line = if next_dir_from_curr_dir == Side::OnTheLeft {
@@ -644,14 +415,12 @@ impl Polyline {
                         && next_border_line.side_of(&self.corner_at(i)) == Side::OnTheRight
                         && next_border_line.side_of(&self.corner_at(i - 1)) == Side::OnTheRight
                     {
-                        // an outstanding corner
                         cut_dog_ear_lines.push(next_border_line);
                     }
                     tmp_curr_dir = tmp_next_dir;
                     current_line = next_border_line;
                 }
             }
-            // cut off outstanding corners with previous shapes
             check_distance_corner = self.corner_approx_at(i - 1);
             check_line = if current_dir_from_prev_dir == Side::OnTheLeft {
                 offset_lines[2]
@@ -689,7 +458,6 @@ impl Polyline {
                         && prev_border_line.side_of(&self.corner_at(i)) == Side::OnTheRight
                         && prev_border_line.side_of(&self.corner_at(i - 1)) == Side::OnTheRight
                     {
-                        // an outstanding corner
                         cut_dog_ear_lines.push(prev_border_line);
                     }
                     tmp_curr_dir = tmp_prev_dir;
@@ -702,16 +470,13 @@ impl Polyline {
                 s1 = s1.intersection(&TileShape::get_instance_from_lines(cut_dog_ear_lines));
             }
             let bounding_shape = if USE_BOUNDING_OCTAGON_FOR_OFFSET_SHAPES {
-                // intersect with the bounding octagon
                 let surr_oct = self.bounding_octagon_between(i - 1, i);
                 TileShape::Octagon(surr_oct.offset(half_width as f64))
             } else {
-                // intersect with the bounding box
                 let surr_box = self.bounding_box_between(i - 1, i);
                 let offset_box = surr_box.offset(half_width as f64);
                 TileShape::Simplex(offset_box.to_simplex())
             };
-            // Java warns when the resulting shape is empty; diagnostic only.
             shapes.push(bounding_shape.intersection_with_simplify(&s1));
 
             prev_dir = current_direction;
@@ -720,10 +485,7 @@ impl Polyline {
         shapes
     }
 
-    /// Calculates for the `no`-th line segment a shape around this line where the right and left
-    /// edge lines have the distance `half_width` from the center line, for
-    /// `0 <= no <= lines.length - 3` (Polyline.java:513-525). `None` where Java returns `null`.
-    pub fn offset_shape(&self, half_width: i32, no: usize) -> Option<TileShape> {
+                pub fn offset_shape(&self, half_width: i32, no: usize) -> Option<TileShape> {
         if no + 3 > self.lines.len() {
             // Java: FRLogger.warn("Polyline.offsetShape: no out of range")
             return None;
@@ -732,13 +494,7 @@ impl Polyline {
         result.into_iter().next()
     }
 
-    /// Calculates for the `no`-th line segment a box shape around this line where the border
-    /// lines have the distance `half_width` from the center line (Polyline.java:527-534).
-    ///
-    /// `None` where Java's `new LineSegment(this, no + 1)` is out of range: Java stores three
-    /// `null` lines and then throws a `NullPointerException` in `boundingBox()`.
-    // totalized: an out-of-range index answers None instead of NullPointerException.
-    pub fn offset_box(&self, half_width: i32, no: usize) -> Option<IntBox> {
+                        pub fn offset_box(&self, half_width: i32, no: usize) -> Option<IntBox> {
         let current_line_segment = LineSegment::from_polyline(self, no + 1)?;
         Some(
             current_line_segment
@@ -748,17 +504,9 @@ impl Polyline {
     }
 }
 
-// -------------------------------------------------------------------------------------------
-// Transformations (Polyline.java:536-586)
-// -------------------------------------------------------------------------------------------
 
 impl Polyline {
-    /// Returns the polyline translated by `vector` (Polyline.java:536-546).
-    ///
-    /// # Panics
-    /// For a [`Vector::Rational`] — see [`crate::simplex::Simplex::translate_by`].
-    // totalized: a Vector::Rational panics here; Java's ClassCastException would come later.
-    pub fn translate_by(&self, vector: &Vector) -> Result<Polyline, PolylineError> {
+                    pub fn translate_by(&self, vector: &Vector) -> Result<Polyline, PolylineError> {
         if *vector == Vector::ZERO {
             return Ok(self.clone());
         }
@@ -771,9 +519,7 @@ impl Polyline {
         Polyline::from_lines(self.lines.iter().map(|l| l.translate_by(&v)).collect())
     }
 
-    /// Returns the polyline turned by `factor` times 90 degrees around `pole`
-    /// (Polyline.java:548-555).
-    pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Result<Polyline, PolylineError> {
+            pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> Result<Polyline, PolylineError> {
         Polyline::from_lines(
             self.lines
                 .iter()
@@ -782,8 +528,7 @@ impl Polyline {
         )
     }
 
-    /// Returns an approximation of this polyline rotated around `pole` (Polyline.java:557-568).
-    pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Polyline {
+        pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> Polyline {
         if angle == 0.0 {
             return self.clone();
         }
@@ -793,13 +538,11 @@ impl Polyline {
         Polyline::from_points(&new_corners)
     }
 
-    /// Mirrors this polyline at the vertical line through `pole` (Polyline.java:570-577).
-    pub fn mirror_vertical(&self, pole: &IntPoint) -> Result<Polyline, PolylineError> {
+        pub fn mirror_vertical(&self, pole: &IntPoint) -> Result<Polyline, PolylineError> {
         Polyline::from_lines(self.lines.iter().map(|l| l.mirror_vertical(pole)).collect())
     }
 
-    /// Mirrors this polyline at the horizontal line through `pole` (Polyline.java:579-586).
-    pub fn mirror_horizontal(&self, pole: &IntPoint) -> Result<Polyline, PolylineError> {
+        pub fn mirror_horizontal(&self, pole: &IntPoint) -> Result<Polyline, PolylineError> {
         Polyline::from_lines(
             self.lines
                 .iter()
@@ -809,14 +552,9 @@ impl Polyline {
     }
 }
 
-// -------------------------------------------------------------------------------------------
-// Bounding shapes and distances (Polyline.java:588-691)
-// -------------------------------------------------------------------------------------------
 
 impl Polyline {
-    /// Returns the smallest box containing the intersection points from index `from_corner_no` to
-    /// index `to_corner_no` of the lines of this polyline (Polyline.java:588-609).
-    pub fn bounding_box_between(&self, from_corner_no: usize, to_corner_no: usize) -> IntBox {
+            pub fn bounding_box_between(&self, from_corner_no: usize, to_corner_no: usize) -> IntBox {
         let mut llx = i32::MAX as f64;
         let mut lly = llx;
         let mut urx = i32::MIN as f64;
@@ -838,15 +576,11 @@ impl Polyline {
         IntBox::new(lower_left, upper_right)
     }
 
-    /// Returns the smallest box containing the intersection points of the lines of this polyline
-    /// (Polyline.java:611-617).
-    pub fn bounding_box(&self) -> IntBox {
+            pub fn bounding_box(&self) -> IntBox {
         self.bounding_box_between(0, self.corner_count().saturating_sub(1))
     }
 
-    /// Returns the smallest octagon containing the intersection points from index `from_corner_no`
-    /// to index `to_corner_no` of the lines of this polyline (Polyline.java:619-656).
-    pub fn bounding_octagon_between(
+            pub fn bounding_octagon_between(
         &self,
         from_corner_no: usize,
         to_corner_no: usize,
@@ -889,13 +623,9 @@ impl Polyline {
         )
     }
 
-    /// Calculates an approximation of the nearest point on this polyline to `from_point`
-    /// (Polyline.java:658-686). `None` where Java returns `null`, i.e. for a polyline without
-    /// corners.
-    pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
+                pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
         let mut min_distance = f64::MAX;
         let mut nearest_point: Option<FloatPoint> = None;
-        // calculate the nearest corner point
         let corners = self.corner_approx_arr();
         for corner in &corners {
             let current_distance = corner.distance(from_point);
@@ -909,7 +639,6 @@ impl Polyline {
             let projection = from_point.projection_approx(&self.lines[i]);
             let current_distance = projection.distance(from_point);
             if current_distance < min_distance {
-                // look, if the projection is inside the segment
                 let segment_length = corners[i].distance(&corners[i - 1]);
                 if projection.distance(&corners[i]) + projection.distance(&corners[i - 1])
                     < segment_length + CTOLERANCE
@@ -922,13 +651,7 @@ impl Polyline {
         nearest_point
     }
 
-    /// Calculates the distance of `from_point` to the nearest point on this polyline
-    /// (Polyline.java:688-691).
-    ///
-    /// Java throws a `NullPointerException` for a polyline without corners; this port answers
-    /// `f64::MAX`, as `TileShape::distance` does for a shape without border lines.
-    // totalized: NullPointerException becomes f64::MAX.
-    pub fn distance(&self, from_point: &FloatPoint) -> f64 {
+                        pub fn distance(&self, from_point: &FloatPoint) -> f64 {
         match self.nearest_point_approx(from_point) {
             Some(p) => from_point.distance(&p),
             None => f64::MAX,
@@ -936,20 +659,9 @@ impl Polyline {
     }
 }
 
-// -------------------------------------------------------------------------------------------
-// Combine / split / skip (Polyline.java:693-857)
-// -------------------------------------------------------------------------------------------
 
 impl Polyline {
-    /// Combines the two polylines, if they have a common end corner. The order of lines in this
-    /// polyline is preserved. Returns the combined polyline, or a copy of this polyline if this
-    /// polyline and `other` have no common end corner. If there is something to combine at the
-    /// start of this polyline, `other` is inserted in front of this polyline; if at the end, this
-    /// polyline is inserted in front of `other` (Polyline.java:693-749).
-    ///
-    /// Java's "no common endpoint" answer is the receiver itself, not `null`, so this returns a
-    /// `Polyline` rather than an `Option`.
-    pub fn combine(&self, other: &Polyline) -> Result<Polyline, PolylineError> {
+                                    pub fn combine(&self, other: &Polyline) -> Result<Polyline, PolylineError> {
         if self.lines.len() < 3 || other.lines.len() < 3 {
             return Ok(self.clone());
         }
@@ -963,30 +675,23 @@ impl Polyline {
             } else if self.last_corner() == other.last_corner() {
                 (false, false)
             } else {
-                return Ok(self.clone()); // no common endpoint
+                return Ok(self.clone()); 
             };
         let mut new_lines: Vec<Line> = Vec::with_capacity(self.lines.len() + other.lines.len() - 2);
         if combine_at_start {
-            // insert the lines of other in front
             if combine_other_at_start {
-                // insert in reverse order, skip the first line of other
                 for i in 0..other.lines.len() - 1 {
                     new_lines.push(other.lines[other.lines.len() - i - 1].opposite());
                 }
             } else {
-                // skip the last line of other
                 new_lines.extend_from_slice(&other.lines[..other.lines.len() - 1]);
             }
-            // append the lines of this polyline, skip the first line
             new_lines.extend_from_slice(&self.lines[1..]);
         } else {
-            // insert the lines of this polyline in front, skip the last line
             new_lines.extend_from_slice(&self.lines[..self.lines.len() - 1]);
             if combine_other_at_start {
-                // skip the first line of other
                 new_lines.extend_from_slice(&other.lines[1..]);
             } else {
-                // insert in reverse order, skip the last line of other
                 for i in 1..other.lines.len() {
                     new_lines.push(other.lines[other.lines.len() - i - 1].opposite());
                 }
@@ -995,13 +700,7 @@ impl Polyline {
         Polyline::from_lines(new_lines)
     }
 
-    /// Splits this polyline at the line with index `line_index` into two, by inserting `end_line`
-    /// as concluding line of the first split piece and as the start line of the second split
-    /// piece. `end_line` and the line with index `line_index` must not be parallel. The order of
-    /// the lines in the two result pieces is preserved. `line_index` must be bigger than 0 and
-    /// less than `lines.length - 1`. Returns `None` if nothing was split
-    /// (Polyline.java:751-835).
-    pub fn split(
+                            pub fn split(
         &self,
         line_index: usize,
         end_line: &Line,
@@ -1014,18 +713,14 @@ impl Polyline {
             return Ok(None);
         }
         let new_end_corner = self.lines[line_index].intersection(end_line);
-        // Java's two FRLogger.trace calls here are diagnostics only and are not ported.
         if (line_index == 1 && Some(&new_end_corner) == self.first_corner().as_ref())
             || (line_index + 2 >= self.lines.len()
                 && Some(&new_end_corner) == self.last_corner().as_ref())
         {
-            // No split, if endLine does not intersect, but touches
-            // only this Polyline at an end point.
             return Ok(None);
         }
         let mut first_piece: Vec<Line>;
         if self.corner_at(line_index - 1) == new_end_corner {
-            // skip line segment of length 0 at the end of the first piece
             first_piece = self.lines[..line_index + 1].to_vec();
         } else {
             first_piece = Vec::with_capacity(line_index + 2);
@@ -1034,7 +729,6 @@ impl Polyline {
         }
         let mut second_piece: Vec<Line>;
         if self.corner_at(line_index) == new_end_corner {
-            // skip line segment of length 0 at the beginning of the second piece
             second_piece = self.lines[line_index..].to_vec();
         } else {
             second_piece = Vec::with_capacity(self.lines.len() - line_index + 1);
@@ -1051,15 +745,11 @@ impl Polyline {
         Ok(Some(result))
     }
 
-    /// Creates a new polyline by skipping lines from `from_no` to `to_no`
-    /// (Polyline.java:837-846).
-    pub fn skip_lines(&self, from_no: usize, to_no: usize) -> Result<Polyline, PolylineError> {
+            pub fn skip_lines(&self, from_no: usize, to_no: usize) -> Result<Polyline, PolylineError> {
         self.skip_lines_i64(from_no as i64, to_no as i64)
     }
 
-    /// [`Polyline::skip_lines`] for indices that Java computes as possibly negative `int`s
-    /// (`shorten` passes `newLineCount - 1`, Polyline.java:922).
-    fn skip_lines_i64(&self, from_no: i64, to_no: i64) -> Result<Polyline, PolylineError> {
+            fn skip_lines_i64(&self, from_no: i64, to_no: i64) -> Result<Polyline, PolylineError> {
         if from_no < 0 || to_no > self.lines.len() as i64 - 1 || from_no > to_no {
             return Ok(self.clone());
         }
@@ -1070,8 +760,7 @@ impl Polyline {
         Polyline::from_lines(new_lines)
     }
 
-    /// Returns whether this polyline contains the given point (Polyline.java:848-857).
-    pub fn contains(&self, point: &Point) -> bool {
+        pub fn contains(&self, point: &Point) -> bool {
         for i in 1..self.lines.len().saturating_sub(1) {
             if let Some(current_segment) = LineSegment::from_polyline(self, i)
                 && current_segment.contains(point)
@@ -1083,24 +772,9 @@ impl Polyline {
     }
 }
 
-// -------------------------------------------------------------------------------------------
-// Projection and shortening (Polyline.java:866-936)
-// -------------------------------------------------------------------------------------------
 
 impl Polyline {
-    /// Creates a perpendicular line segment from `point` onto the nearest line segment of this
-    /// polyline. Returns `None` if the perpendicular line does not intersect the nearest line
-    /// segment inside its segment bounds, or if `point` is contained in this polyline
-    /// (Polyline.java:866-910).
-    ///
-    /// The resulting segment runs *from* `point` *to* the polyline: its start closing line goes
-    /// through `point` in the direction of the nearest polyline line (Polyline.java:908).
-    ///
-    /// # Panics
-    /// For a [`Point::Rational`] argument — see [`Polyline::from_polygon`]; Java's
-    /// `new Line(point, dir)` would only warn there and carry on with a broken line.
-    // totalized: a rational query point panics mid-loop instead of producing a broken Line.
-    pub fn projection_line(&self, point: &Point) -> Option<LineSegment> {
+                                                pub fn projection_line(&self, point: &Point) -> Option<LineSegment> {
         let from_point = point.to_float();
         let mut min_distance = f64::MAX;
         let mut result_line: Option<Line> = None;
@@ -1113,8 +787,6 @@ impl Polyline {
                 else {
                     continue;
                 };
-                // `Line::perpendicular_direction` only ever yields an `IntDirection`, so this
-                // never falls through; the guard is here because the signature allows it.
                 let Some(current_result_line) =
                     Line::from_direction_any(int_point_of(point), &direction_towards_line)
                 else {
@@ -1125,7 +797,6 @@ impl Polyline {
                 let prev_corner_side = current_result_line.side_of(&prev_corner);
                 let next_corner_side = current_result_line.side_of(&next_corner);
                 if prev_corner_side == next_corner_side && prev_corner_side != Side::Collinear {
-                    // the projection point is outside the line segment
                     continue;
                 }
                 nearest_line = Some(self.lines[i]);
@@ -1142,10 +813,7 @@ impl Polyline {
         ))
     }
 
-    /// Shortens this polyline to `new_line_count` lines. Additionally, the last line segment is
-    /// approximately shortened to `last_segment_length`. The last corner of the new polyline is
-    /// an `IntPoint` (Polyline.java:912-936).
-    pub fn shorten(
+                pub fn shorten(
         &self,
         new_line_count: usize,
         last_segment_length: f64,
@@ -1156,12 +824,10 @@ impl Polyline {
             .change_length(&last_corner, last_segment_length)
             .round();
         if self.corner_at_i64(self.corner_count() as i64 - 2) == Point::Int(new_last_corner) {
-            // skip the last line
             return self.skip_lines_i64(new_line_count as i64 - 1, new_line_count as i64 - 1);
         }
         let mut new_lines: Vec<Line> = Vec::with_capacity(new_line_count);
         new_lines.extend_from_slice(&self.lines[..new_line_count - 2]);
-        // create the last 2 lines of the new polyline
         let mut first_line_point = self.lines[new_line_count - 2].a;
         if first_line_point == new_last_corner {
             first_line_point = self.lines[new_line_count - 2].b;
@@ -1175,15 +841,12 @@ impl Polyline {
         Polyline::from_lines(new_lines)
     }
 
-    /// [`Polyline::corner_approx_at`] for an index that Java computes as a possibly negative
-    /// `int` (`shorten`, Polyline.java:917-918).
-    fn corner_approx_at_i64(&self, corner_index: i64) -> FloatPoint {
+            fn corner_approx_at_i64(&self, corner_index: i64) -> FloatPoint {
         let no = self.clamp_corner_index(corner_index);
         self.lines[no].intersection_approx(&self.lines[no + 1])
     }
 
-    /// [`Polyline::corner_at`] for an index that Java computes as a possibly negative `int`.
-    fn corner_at_i64(&self, corner_index: i64) -> Point {
+        fn corner_at_i64(&self, corner_index: i64) -> Point {
         let no = self.clamp_corner_index(corner_index);
         self.lines[no].intersection(&self.lines[no + 1])
     }
@@ -1211,7 +874,7 @@ mod tests {
     fn corners_roundtrip_and_length() {
         let p = l_shape();
         assert_eq!(p.corner_count(), 3);
-        assert_eq!(p.lines().len(), 4); // n corners ⇒ n+1 lines (closing lines at both ends)
+        assert_eq!(p.lines().len(), 4); 
         assert_eq!(p.corners(), pts(&[(0, 0), (10, 0), (10, 10)]));
         assert_eq!(p.first_corner().unwrap(), Point::Int(IntPoint::new(0, 0)));
         assert_eq!(p.last_corner().unwrap(), Point::Int(IntPoint::new(10, 10)));
@@ -1228,15 +891,11 @@ mod tests {
 
     #[test]
     fn the_closing_lines_are_perpendicular_to_the_end_segments() {
-        // Polyline.java:44-51: lines[0] is the perpendicular through the first corner and
-        // lines[n] the perpendicular through the last corner.
         let p = l_shape();
         assert_eq!(p.lines()[0], Line::from_coords(0, 0, 0, 1));
         assert_eq!(p.lines()[1], Line::from_coords(0, 0, 10, 0));
         assert_eq!(p.lines()[2], Line::from_coords(10, 0, 10, 10));
         assert_eq!(p.lines()[3], Line::from_coords(10, 10, 11, 10));
-        // Polyline.java:59-71 recomputes the direction as from->to, so its closing line points
-        // the other way than the Polygon constructor's would.
         let two = Polyline::from_two_points(
             &Point::Int(IntPoint::new(0, 0)),
             &Point::Int(IntPoint::new(10, 0)),
@@ -1247,7 +906,6 @@ mod tests {
             Polyline::from_points(&pts(&[(0, 0), (10, 0)])).lines()[2],
             Line::from_coords(10, 0, 10, -1)
         );
-        // equal corners produce an empty polyline
         assert!(
             Polyline::from_two_points(
                 &Point::Int(IntPoint::new(1, 1)),
@@ -1297,8 +955,6 @@ mod tests {
             p.offset_box(2, 1).unwrap(),
             IntBox::from_coords(8, -2, 12, 12)
         );
-        // both shapes come out as octagons because of the bounding-octagon intersection
-        // (Polyline.java:491-494)
         assert_eq!(
             shapes[0],
             TileShape::Octagon(IntOctagon::new(-2, -2, 12, 2, -3, 13, -3, 13))
@@ -1307,7 +963,6 @@ mod tests {
             shapes[1],
             TileShape::Octagon(IntOctagon::new(8, -2, 12, 12, -3, 13, 7, 23))
         );
-        // offsetShape(halfWidth, no) is offsetShapes(halfWidth, no, no + 2)[0]
         assert_eq!(p.offset_shape(2, 0).unwrap(), shapes[0]);
         assert_eq!(p.offset_shape(2, 1).unwrap(), shapes[1]);
         assert_eq!(p.offset_shape(2, 2), None);
@@ -1319,19 +974,15 @@ mod tests {
         let b = Polyline::from_points(&pts(&[(10, 0), (10, 10)]));
         let c = a.combine(&b).unwrap();
         assert_eq!(c.corners(), pts(&[(0, 0), (10, 0), (10, 10)]));
-        // no common end corner: Java returns the receiver (Polyline.java:718-720)
         let d = Polyline::from_points(&pts(&[(50, 50), (60, 50)]));
         assert_eq!(a.combine(&d), Ok(a));
-        // split the L at its horizontal segment (line index 1) by the vertical line x = 5
         let parts = l_shape()
             .split(1, &Line::from_coords(5, 0, 5, 1))
             .unwrap()
             .expect("splits");
         assert_eq!(parts[0].corners(), pts(&[(0, 0), (5, 0)]));
         assert_eq!(parts[1].corners(), pts(&[(5, 0), (10, 0), (10, 10)]));
-        // a line parallel to the split line does not split (Polyline.java:763-765)
         assert_eq!(l_shape().split(1, &Line::from_coords(5, 0, 6, 0)), Ok(None));
-        // touching the polyline at its first corner does not split (Polyline.java:800-805)
         assert_eq!(l_shape().split(1, &Line::from_coords(0, 0, 0, 1)), Ok(None));
         assert_eq!(l_shape().split(0, &Line::from_coords(5, 0, 5, 1)), Ok(None));
     }
@@ -1349,8 +1000,6 @@ mod tests {
         let proj = p
             .projection_line(&Point::Int(IntPoint::new(12, 4)))
             .unwrap();
-        // Java's projection segment runs *from* the queried point *onto* the polyline
-        // (Polyline.java:908-909), so its start point is the query point itself.
         assert_eq!(proj.start_point(), Point::Int(IntPoint::new(12, 4)));
         assert_eq!(proj.end_point(), Point::Int(IntPoint::new(10, 4)));
     }
@@ -1382,21 +1031,15 @@ mod tests {
                 .bounding_box(),
             IntBox::from_coords(0, -10, 10, 0)
         );
-        // skipLines(0, 0) drops one line, so 4 lines become 3 and 3 corners become 2
-        // (Polyline.java:837-846).
         assert_eq!(p.skip_lines(0, 0).unwrap().corner_count(), 2);
-        // out-of-range arguments return the receiver
         assert_eq!(p.skip_lines(0, 4), Ok(p.clone()));
         assert_eq!(p.skip_lines(2, 1), Ok(p.clone()));
-        // translateBy(ZERO) returns the receiver (Polyline.java:538-540)
         assert_eq!(p.translate_by(&Vector::ZERO), Ok(p.clone()));
-        // rotateApprox(0) returns the receiver (Polyline.java:559-561)
         assert_eq!(p.rotate_approx(0.0, &FloatPoint::new(0.0, 0.0)), p);
     }
 
     #[test]
     fn bounding_octagon_between_matches_java() {
-        // Polyline.java:619-656 over the whole L shape.
         assert_eq!(
             l_shape().bounding_octagon_between(0, 2),
             IntOctagon::new(0, 0, 10, 10, 0, 10, 0, 20)
@@ -1415,18 +1058,16 @@ mod tests {
 
     #[test]
     fn from_lines_skips_parallel_and_overlapping_lines() {
-        // Polyline.java:104-131: consecutive parallel lines are dropped.
         let p = Polyline::from_lines(vec![
             Line::from_coords(0, 0, 0, 1),
             Line::from_coords(0, 0, 10, 0),
-            Line::from_coords(3, 0, 13, 0), // parallel to the previous line: skipped
+            Line::from_coords(3, 0, 13, 0), 
             Line::from_coords(10, 0, 10, 10),
             Line::from_coords(10, 10, 11, 10),
         ])
         .unwrap();
         assert_eq!(p.lines().len(), 4);
         assert_eq!(p.corners(), pts(&[(0, 0), (10, 0), (10, 10)]));
-        // fewer than 3 lines after filtering: empty polyline
         assert!(
             Polyline::from_lines(vec![
                 Line::from_coords(0, 0, 1, 0),
@@ -1436,14 +1077,6 @@ mod tests {
             .unwrap()
             .is_empty()
         );
-        // Java bug: Polyline.java:148 throws ArrayIndexOutOfBoundsException: Index -1 for this
-        // input, and the pass-level `catch (Exception)` above it aborts the routing pass.
-        //
-        // fixed: T6 (#22) — `newLength >= 1` guards the loop the way `:160` already guards the
-        // trailing access, so this array normalises to the empty polyline instead of throwing.
-        // The whole-of-input measurement and the hand-computed answer live in
-        // `crates/fr-geometry/tests/polyline.rs`'s
-        // `remove_overlaps_on_a_degenerate_array_normalises_to_a_literal`.
         let degenerate = Polyline::from_lines(vec![
             Line::from_coords(0, 0, 1, 0),
             Line::from_coords(0, 0, 0, 1),
@@ -1457,17 +1090,8 @@ mod tests {
         assert_eq!(degenerate.lines().len(), 0);
     }
 
-    /// `new Polyline(Line[])` normalises the **caller's** array: `removeConsecutiveParallelLines`
-    /// (Polyline.java:118) and `removeOverlaps` (:165) both `return lines` when they skip nothing,
-    /// and the constructor's `filteredLines[i] = filteredLines[i].opposite()` (:97) then writes
-    /// through to it. Five Plan 6 tightener sites re-read that array (see
-    /// [`Polyline::from_lines_in_place`]), and since quirk #74 the *identity* of what they read
-    /// back is board-observable: a flipped line is a new `Line` object.
-    #[test]
+                            #[test]
     fn from_lines_in_place_writes_the_normalised_lines_back_to_the_caller() {
-        // A two-corner polyline's three lines, with the middle one handed in reversed. The
-        // constructor's normalisation turns it back round, so index 1 comes back as a *different*
-        // object with a different value; indices 0 and 2 are untouched.
         let base = Polyline::from_points(&pts(&[(0, 0), (10000, 0)]));
         let mut arr = vec![base.lines()[0], base.lines()[1].opposite(), base.lines()[2]];
         let handed_in = arr.clone();
@@ -1475,22 +1099,16 @@ mod tests {
         let polyline = Polyline::from_lines_in_place(&mut arr).expect("normalises");
 
         assert_eq!(polyline.lines().len(), 3);
-        // The write-back happened, and it is Java's: the caller's array *is* the polyline's.
         assert_eq!(arr, polyline.lines());
         for (caller, built) in arr.iter().zip(polyline.lines()) {
             assert!(caller.is_same_object(built));
         }
-        // Index 1 was flipped: a new object, and no longer the reversed line handed in.
         assert!(!arr[1].is_same_object(&handed_in[1]));
         assert_ne!(arr[1], handed_in[1]);
         assert_eq!(arr[1], base.lines()[1]);
-        // Indices 0 and 2 keep the objects the caller put in, exactly as Java keeps the
-        // references it was handed.
         assert!(arr[0].is_same_object(&handed_in[0]));
         assert!(arr[2].is_same_object(&handed_in[2]));
 
-        // `from_lines` is the same construction with the write-back dropped, which is what every
-        // caller that does not re-read its array wants.
         let mut same_input = handed_in.clone();
         assert_eq!(
             Polyline::from_lines(same_input.clone()).expect("normalises"),
@@ -1500,13 +1118,8 @@ mod tests {
         assert!(same_input[1].is_same_object(&handed_in[1]));
     }
 
-    /// The negative half: when either normaliser *skips* a line it returns a fresh array, so
-    /// Java's write-back lands in the copy and the caller's array is untouched
-    /// (Polyline.java:126-130, :168-172, and the constructor's `< 3` return at :80-83).
-    #[test]
+                #[test]
     fn from_lines_in_place_leaves_the_caller_alone_when_a_line_is_skipped() {
-        // Two consecutive parallel lines: `removeConsecutiveParallelLines` skips one, two survive,
-        // and the constructor returns an empty polyline before its normalisation loop.
         let mut arr = vec![
             Line::from_coords(0, 0, 0, 1),
             Line::from_coords(0, 0, 10000, 0),

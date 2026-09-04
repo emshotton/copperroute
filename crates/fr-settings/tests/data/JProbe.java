@@ -7,18 +7,6 @@ import app.freerouting.autoroute.BoardUpdateStrategy;
 import app.freerouting.autoroute.ItemSelectionStrategy;
 import app.freerouting.util.gson.GsonProvider;
 
-/**
- * Plan 4 Task 10 probe: what `GsonProvider.GSON` writes for a fully-populated `RouterSettings`,
- * and what it reads back from the fixtures `RouterSettingsSerializationTest` and
- * `JsonFileSettingsTest` use. Every expected string in
- * `crates/fr-settings/tests/json.rs` comes from this transcript.
- *
- * Block A pins the emitted key set and key order; block B pins Java's number formatting
- * (`Number.toString()` through `JsonWriter.value(Number)`) at the four places where it differs
- * from Rust's shortest-round-trip formatter: the 1e-3 and 1e7 scientific-notation thresholds,
- * `-0.0`, and `Float.toString` vs `Double.toString` for the same decimal. Block C is the read
- * side. Block D is Gson's lenient reader on inputs `serde_json` rejects.
- */
 public final class JProbe {
 
   private JProbe() {}
@@ -29,7 +17,6 @@ public final class JProbe {
   }
 
   public static void main(String[] args) {
-    // ------------------------------------------------------------------ A
     h("A: fully populated, every non-transient field distinct");
     RouterSettings a = new RouterSettings();
     a.setLayerCount(2);
@@ -46,7 +33,6 @@ public final class JProbe {
     a.automaticNeckdown = false;
     a.maxThreads = 13;
     a.resultJsonPath = "/tmp/result.json";
-    // transient — must NOT appear
     a.maxItems = 14;
     a.saveIntermediateStages = true;
     a.ignoreNetClasses = new String[] {"x", "y"};
@@ -79,7 +65,6 @@ public final class JProbe {
     o.traceRipupCostFactor = 0.7f;
     o.maxAutoroutePasses = 36;
     o.timeoutString = "00:02:00";
-    // transient — must NOT appear
     o.boardUpdateStrategy = BoardUpdateStrategy.HYBRID;
     o.hybridRatio = "1:1";
     o.itemSelectionStrategy = ItemSelectionStrategy.PRIORITIZED;
@@ -94,19 +79,17 @@ public final class JProbe {
     s.clearanceViolationPenalty = 45.5f;
     s.bendPenalty = 46.5f;
     s.defaultBendCost = 3.5;
-    // transient — must NOT appear
     s.preferredDirectionTraceCost = new double[] {7.0, 8.0};
     s.undesiredDirectionTraceCost = new double[] {9.0, 10.0};
 
     System.out.println(GsonProvider.GSON.toJson(a));
 
-    // ------------------------------------------------------------------ B
     h("B: number formatting — Double.toString / Float.toString thresholds");
     RouterSettings b = new RouterSettings();
-    b.copperToEdgeClearanceUm = 1.0e-3; // exactly the lower threshold
-    b.holeClearanceUm = 9.999e-4; // just below it
-    b.neckWidthUm = 1.0e7; // exactly the upper threshold
-    b.scoring.defaultPreferredDirectionTraceCost = 9999999.0; // just below it
+    b.copperToEdgeClearanceUm = 1.0e-3; 
+    b.holeClearanceUm = 9.999e-4; 
+    b.neckWidthUm = 1.0e7; 
+    b.scoring.defaultPreferredDirectionTraceCost = 9999999.0; 
     b.scoring.defaultUndesiredDirectionTraceCost = -0.0;
     b.scoring.defaultBendCost = 1.0e300;
     b.scoring.unroutedNetPenalty = 5000000.0f;
@@ -147,7 +130,6 @@ public final class JProbe {
       System.out.println("THREW " + e.getClass().getName() + ": " + e.getMessage());
     }
 
-    // ------------------------------------------------------------------ C
     h("C: read side — RouterSettingsSerializationTest's API payload");
     String apiJson =
         """
@@ -210,7 +192,6 @@ public final class JProbe {
     System.out.println(
         "empty: maxPasses=" + c5.maxPasses + " fanout=" + c5.fanout + " enabled=" + c5.enabled);
 
-    // ------------------------------------------------------------------ D
     h("D: Strictness.LENIENT reader — inputs strict JSON rejects");
     for (String bad :
         new String[] {

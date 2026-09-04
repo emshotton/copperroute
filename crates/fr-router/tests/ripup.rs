@@ -1,21 +1,3 @@
-//! Plan 6 Task 13, the ripup half: `autoroute.maze.MazeRipupResolver`
-//! (`MazeRipupResolver.java:35-268`) and `autoroute.path.Connection`
-//! (`Connection.java:39-154`).
-//!
-//! # Where the numbers come from
-//!
-//! Every literal below is **read off the HEAD jar**. The probe is
-//! `scripts/differential/java/probes/P6T13Probe.java`; its whole stdout is committed as
-//! `tests/data/p6t13-drills-ripup.txt`. Each test names its probe mode and pastes the lines it
-//! asserts against. The `JavaRandom` literals additionally carry the `jshell` one-liner that
-//! reproduces them without the probe.
-//!
-//! # The fixture
-//!
-//! `P6T13Probe.build`, the same board `tests/maze_drills.rs` uses; see its module docs. The items
-//! this file names are `2` (the net-1 start pin, not routable), `6` (the bent net-2 blocker
-//! trace), `7` (a net-3 via with **one** trace contact) and `9` (a net-3 via with **two**).
-
 #![allow(clippy::too_many_lines)]
 
 use std::cell::Cell;
@@ -35,9 +17,6 @@ use fr_router::autoroute::maze::{AutorouteControl, MazeAdjustment, MazeListEleme
 use fr_router::autoroute::path::Connection;
 use fr_settings::RouterSettings;
 
-// =================================================================================================
-// The probe's board (`P6T13Probe.build`)
-// =================================================================================================
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -249,8 +228,6 @@ fn set_of(ids: &[u32]) -> BTreeSet<ItemId> {
     ids.iter().map(|id| ItemId(*id)).collect()
 }
 
-/// The board, the engine and the control the ripup tests share, held together so the maze can
-/// borrow the last two while the board stays a parameter.
 struct Fixture {
     board: Board,
     engine: AutorouteEngine,
@@ -268,18 +245,9 @@ fn fixture() -> Fixture {
     }
 }
 
-// =================================================================================================
-// calcFanoutViaRipupCostFactor (:35-66) — probe mode `fanoutfac`
-// =================================================================================================
 
 #[test]
 fn the_fanout_via_cost_factor_answers_javas_table() {
-    // === mode fanoutfac ===
-    // trace id=6  halfWidth=30 length=4_079.215610874 factor=1.081730769
-    // trace id=8  halfWidth=30 length=1_000.000000000 factor=1.000000000
-    // trace id=10 halfWidth=30 length=1_000.000000000 factor=1.000000000
-    // trace id=11 halfWidth=30 length=1_000.000000000 factor=1.000000000
-    // attached    halfWidth=30 length=600.000000000  factor=50.000000000
     let mut board = probe_board();
     for (id, want) in [(6u32, 1.081_730_769), (8, 1.0), (10, 1.0), (11, 1.0)] {
         let factor = MazeRipupResolver::calc_fanout_via_ripup_cost_factor(&board, ItemId(id));
@@ -289,8 +257,6 @@ fn the_fanout_via_cost_factor_answers_javas_table() {
         );
     }
 
-    // The `SHOVE_FIXED` two-corner arm of `:51-56`: a short trace whose only contact is a
-    // shove-fixed two-corner stub off the free via.
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, 2500), Point::new(2500, 2900)]),
         1,
@@ -313,20 +279,13 @@ fn the_fanout_via_cost_factor_answers_javas_table() {
     assert!((factor - 50.0).abs() < 5e-10, "{factor} != 50");
 }
 
-// =================================================================================================
-// checkRipup (:72-197) — probe mode `ripup`
-// =================================================================================================
 
-/// The first seeded queue element, which every `checkRipup` case below is run against.
 fn seeded_element(maze: &MazeSearchEngine<'_>) -> MazeListElement {
     maze.queue.iter().next().expect("a seeded element").clone()
 }
 
 #[test]
 fn an_unroutable_obstacle_and_a_small_door_are_both_refused() {
-    // === mode ripup ===
-    // --- not routable      smdPin -> -1
-    // --- doorIsSmall       blocker small -> -1
     let mut f = fixture();
     let counter = Counter::new();
     let mut maze = MazeSearchEngine::get_instance(
@@ -339,12 +298,10 @@ fn an_unroutable_obstacle_and_a_small_door_are_both_refused() {
     )
     .expect("init succeeds");
     let from = seeded_element(&maze);
-    // `:74-76` — a `Pin` is not routable.
     assert_eq!(
         MazeRipupResolver::check_ripup(&mut maze, &mut f.board, &from, ItemId(2), false),
         -1
     );
-    // `:77-79` — the seeded door is 2-dimensional, so `enterThroughSmallDoor` refuses at `:220`.
     assert_eq!(
         MazeRipupResolver::check_ripup(&mut maze, &mut f.board, &from, ItemId(6), true),
         -1
@@ -353,9 +310,6 @@ fn an_unroutable_obstacle_and_a_small_door_are_both_refused() {
 
 #[test]
 fn a_trace_ripup_costs_the_ripup_cost_times_the_half_width_over_the_detour() {
-    // === mode ripup ===
-    // --- ripupCosts=1000    blocker -> 29431
-    // --- ripupCosts=100000  blocker -> 2943136
     for (ripup_costs, want) in [(1000, 29431), (100_000, 2_943_136)] {
         let mut f = fixture();
         let counter = Counter::new();
@@ -381,10 +335,6 @@ fn a_trace_ripup_costs_the_ripup_cost_times_the_half_width_over_the_detour() {
 
 #[test]
 fn the_cost_is_clamped_to_max_int_over_one_hundred() {
-    // === mode ripup ===
-    // --- ripupCosts=2000000000  blocker -> 21474836
-    // `Integer.MAX_VALUE / 100 == 21474836` (`:167-168`), and `(int) ripupCost` on a double past
-    // `Integer.MAX_VALUE` saturates before the clamp even sees it (`:166`).
     let mut f = fixture();
     let counter = Counter::new();
     let mut ctrl = f.ctrl.clone();
@@ -408,13 +358,6 @@ fn the_cost_is_clamped_to_max_int_over_one_hundred() {
 
 #[test]
 fn a_via_cost_factor_scales_with_its_contact_count() {
-    // === mode ripup ===
-    // --- ripupCosts=1000        freeVia -> 1        twoContactVia -> 1
-    // --- ripupCosts=100000      freeVia -> 1        twoContactVia -> 1
-    // --- ripupCosts=2000000000  freeVia -> 1        twoContactVia -> 13
-    //
-    // `:123-125`: `costFactor *= 0.5 * max(contactCount - 1, 0)`, which is **zero** for the
-    // one-contact via — so its whole ripup cost collapses to the `max(…, 1)` of `:166`.
     for (ripup_costs, free_via, two_contact) in
         [(1000, 1, 1), (100_000, 1, 1), (2_000_000_000, 1, 13)]
     {
@@ -447,11 +390,6 @@ fn a_via_cost_factor_scales_with_its_contact_count() {
 
 #[test]
 fn the_fanout_protection_and_the_fanout_control_change_the_price() {
-    // === mode ripup ===
-    // --- removeUnconnectedVias=false (fanout protection on)
-    // blocker -> 29431   freeVia -> 1   twoContactVia -> 1
-    // --- isFanout=true
-    // blocker -> 30000
     let mut f = fixture();
     let counter = Counter::new();
     let mut ctrl = f.ctrl.clone();
@@ -468,8 +406,6 @@ fn the_fanout_protection_and_the_fanout_control_change_the_price() {
     )
     .expect("init succeeds");
     let from = seeded_element(&maze);
-    // The blocker's own fanout factor is 1.081…, which is `> 1`, so `:134` skips the connection
-    // detour and `:165` multiplies by it instead — and the two happen to answer the same 29431.
     assert_eq!(
         MazeRipupResolver::check_ripup(&mut maze, &mut f.board, &from, ItemId(6), false),
         29431
@@ -483,8 +419,6 @@ fn the_fanout_protection_and_the_fanout_control_change_the_price() {
         1
     );
 
-    // `:134`'s `!ctrl.isFanout`: the detour stays 1, so the price is the bare
-    // `ripupCosts * halfWidth`.
     maze.ctrl = &fanout_ctrl;
     assert_eq!(
         MazeRipupResolver::check_ripup(&mut maze, &mut f.board, &from, ItemId(6), false),
@@ -494,20 +428,9 @@ fn the_fanout_protection_and_the_fanout_control_change_the_price() {
 
 #[test]
 fn pass_four_randomises_and_pass_six_does_not() {
-    // === mode ripup ===  --- randomize
-    // passNo=3 blocker -> 29431   (no draw: `ripupPassNo >= 4` is false)
-    // passNo=4 blocker -> 29303   (draw 1)
-    // passNo=5 blocker -> 35440   (draw 2)
-    // passNo=6 blocker -> 29431   (no draw: `ripupPassNo % 3 != 0` is false)
-    // passNo=7 blocker -> 21087   (draw 3)
-    //
-    // The draws come from the one `Random` of the whole search, seeded with `ctrl.ripupCosts`
-    // (1000) at `MazeSearchEngine.java:79-80`, so the five calls have to run in this order on
-    // one engine.
     let mut f = fixture();
     let counter = Counter::new();
     let passes = [(3, 29431), (4, 29303), (5, 35440), (6, 29431), (7, 21087)];
-    // The controls have to outlive the maze, which borrows one of them for its whole life.
     let controls: Vec<AutorouteControl> = passes
         .iter()
         .map(|(pass_no, _)| {
@@ -535,13 +458,6 @@ fn pass_four_randomises_and_pass_six_does_not() {
 
 #[test]
 fn the_random_draw_matches_the_jvm() {
-    // ruling 5's evidence. `jshell`:
-    //   for (long s : new long[]{1000L, 5000L, 17L}) {
-    //     var r = new java.util.Random(s);
-    //     System.out.printf("%d %.17f %.17f %.17f%n", s, r.nextDouble(), r.nextDouble(),
-    //         r.nextDouble());
-    //   }
-    // and the same three lines are `=== mode random ===` of the committed transcript.
     for (seed, want) in [
         (
             1000i64,
@@ -580,23 +496,9 @@ fn the_random_draw_matches_the_jvm() {
     }
 }
 
-// =================================================================================================
-// Connection (Connection.java:39-154) — probe mode `conn`
-// =================================================================================================
 
 #[test]
 fn the_detour_is_memoised_through_the_item_autoroute_info() {
-    // === mode conn ===
-    // item 2..5 -> null   (a Pin is not routable)
-    // item 6  -> items=[6]      start=(0,2000)  end=(0,-2000)  traceLength=4_079.215610874
-    //            detour=1.019320881   memoised=true
-    // item 7  -> items=[8,7]    start=null end=null traceLength=1000  detour=2147483647
-    // item 9  -> items=[11,10,9] start=null end=null traceLength=2000 detour=2147483647
-    //
-    // The two `items=[…]` lists print in Java's `TreeSet<Item>` order, i.e. **descending** id;
-    // the port's `BTreeSet<ItemId>` is ascending, so the assertions below read `[7, 8]` and
-    // `[9, 10, 11]` for the same membership. Nothing consumes the order — see
-    // `autoroute/path/connection.rs`' type docs.
     let mut f = fixture();
     for id in [2u32, 3, 4, 5] {
         assert_eq!(
@@ -630,21 +532,17 @@ fn the_detour_is_memoised_through_the_item_autoroute_info() {
         let detour = connection.get_detour(&f.board);
         assert!((detour - 1.019_320_881).abs() < 5e-10, "{detour}");
     }
-    // `:43-46`, the memo: the second call answers the same arena slot without allocating.
     assert_eq!(f.engine.connections.len(), 1);
     assert_eq!(
         Connection::get(&mut f.board, &mut f.engine.connections, ItemId(6)),
         Some(blocker)
     );
     assert_eq!(f.engine.connections.len(), 1);
-    // `:126-128` writes the memo through **every** item of the connection.
     assert_eq!(
         fr_router::autoroute::item_info::get_precalculated_connection(&mut f.board, ItemId(6)),
         Some(blocker)
     );
 
-    // A via and its trace share one connection, and it ends in empty space at both ends, so
-    // `getDetour` answers `Integer.MAX_VALUE` (`:148-150`).
     let via = Connection::get(&mut f.board, &mut f.engine.connections, ItemId(7))
         .expect("the free via has a connection");
     let connection = f.engine.connections.get(via.0).expect("the arena holds it");
@@ -656,7 +554,6 @@ fn the_detour_is_memoised_through_the_item_autoroute_info() {
     assert_eq!(connection.end_point, None);
     assert!((connection.trace_length(&f.board) - 1_000.0).abs() < 5e-10);
     assert!((connection.get_detour(&f.board) - 2_147_483_647.0).abs() < 1e-6);
-    // The trace reaches the same memoised connection.
     assert_eq!(
         Connection::get(&mut f.board, &mut f.engine.connections, ItemId(8)),
         Some(via)
@@ -676,28 +573,9 @@ fn the_detour_is_memoised_through_the_item_autoroute_info() {
     assert!((connection.trace_length(&f.board) - 2_000.0).abs() < 5e-10);
 }
 
-// =================================================================================================
-// enterThroughSmallDoor (:219-268) and checkLeavingRippedItem (:200-213) — mode `smalldoor`
-// =================================================================================================
 
 #[test]
 fn the_small_door_check_answers_javas_table_over_every_completed_door() {
-    // === mode smalldoor ===
-    // from door=TargetItemExpansionDoor id=63 dimension=2 -> false
-    // checkLeavingRippedItem(from) -> false
-    // room 1: doors 33/35/37    blocker=true via=true  leaving=false
-    // room 2: door 33           blocker=true via=true  leaving=false
-    //         door 6206         blocker=true via=false leaving=true
-    //         door 1537988033   blocker=true via=true  leaving=false
-    //         door -1901917981  blocker=true via=true  leaving=false
-    //         door 8181055      blocker=true via=true  leaving=false
-    //         door 8209730      blocker=true via=false leaving=false
-    //         door 1619462847   blocker=true via=true  leaving=false
-    //         door -576926342   blocker=true via=true  leaving=false
-    //         door 68           blocker=true via=true  leaving=false
-    // room 6: door 37           blocker=true via=true  leaving=false
-    //         door 68           blocker=true via=true  leaving=false
-    //         door 6331         blocker=true via=false leaving=true
     let mut f = fixture();
     let counter = Counter::new();
     let mut maze = MazeSearchEngine::get_instance(
@@ -710,9 +588,6 @@ fn the_small_door_check_answers_javas_table_over_every_completed_door() {
     )
     .expect("init succeeds");
     let from = seeded_element(&maze);
-    // `:220`: a `TargetItemExpansionDoor`'s dimension is 2, so the check refuses at once, and
-    // `checkLeavingRippedItem` refuses even earlier at `:201-203` (the door is not an
-    // `ExpansionDoor`).
     assert!(!MazeRipupResolver::enter_through_small_door(
         &mut maze,
         &mut f.board,
@@ -777,30 +652,6 @@ fn the_small_door_check_answers_javas_table_over_every_completed_door() {
             table.push((room_id, door_id, blocker, via, leaving));
         }
     }
-    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`. Two things moved and both are
-    // named in Task 8's register rows.
-    //
-    // **The ids.** Room ids come from ONE shared counter across the engine's room kinds
-    // (#156/#167/#158) and door ids derive from them, so the jar's rooms `1, 2, 6` are the port's
-    // `3, 4, 15`, and the jar's mixed small-and-hash door ids
-    // (`33, 35, 37, 6206, 1537988033, -1901917981, 8181055, 8209730, 1619462847, -576926342, 68,
-    // 6331`) are the port's consecutive `97, 108, 129..135, 139, 481`.
-    //
-    // **One row is gone: fifteen doors became fourteen.** The jar's first room carries three doors
-    // and the port's carries two; the missing one is the jar's door `35`, the only door of that
-    // room that no OTHER room shares — its `33` and `37` are shared with the second and third
-    // rooms and both survive as the port's `97` and `108`. That is a door-set change, from the
-    // Task 8 fixes to the neighbour walk (#163, #171, #165b), and the ablation run at this wave
-    // rules #165's second half out: with `detach_all_doors` reverted this table is unchanged.
-    // The wave did not separate #163 from #171 here, and this comment does not claim it did.
-    //
-    // **What the test is named for is the TABLE, and the table is the jar's row for row on all
-    // fourteen that remain.** Lay the two side by side and every boolean triple matches in order:
-    // the second room's nine rows are `TTF, TFT, TTF, TTF, TTF, TFF, TTF, TTF, TTF` on both
-    // sides, the third room's three are `TTF, TTF, TFT` on both, and the first room's survivors
-    // are `TTF, TTF`. Every interesting row — the two `via=false leaving=true` and the one
-    // `via=false leaving=false` — is still produced. The assertion below is written to say that
-    // rather than only to hold the numbers.
     let shape: Vec<(i32, bool, bool, bool)> = table.iter().map(|r| (r.0, r.2, r.3, r.4)).collect();
     assert_eq!(
         shape,

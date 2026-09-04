@@ -1,86 +1,3 @@
-//! Plan 8 Task 2's acceptance: the text-scraping `BoardStatistics(byte[], FileFormat)`
-//! (core/scoring/BoardStatistics.java:436-552), `countOccurrences` (`:578-586`) and the Gson JSON
-//! surface `toString` (`:589-591`), against the HEAD jar.
-//!
-//! # The transcript
-//!
-//! `scripts/differential/java/probes/P8T2Probe.java` drives the jar over **every corpus `.dsn`**
-//! (`tests/reference/fixtures.txt`'s seven stems, both the Java checkout's source file and this
-//! repository's committed `roundtrip.dsn`), **every committed `.ses`** (the seven
-//! `unrouted.ses`), **every `batch.ses`** (`tests/reference/router-fixtures.txt`'s eight batch
-//! stems), **fifty-seven** synthetic edge cases and three hand-built `BoardStatistics` — 92 `BS`
-//! rows in all — printing the fifty DTO fields and the byte-exact `toString()` for each. Its
-//! output is committed verbatim as `tests/data/p8t2-byte-statistics.txt`, and
-//! `scripts/differential/run.sh p8t2probe` diffs it live against
-//! `scripts/differential/rust/src/bin/p8t2probe.rs` — **MATCH on all 289 lines**, against
-//! `../freerouting/build/libs/freerouting-current-executable.jar` (JDK 25,
-//! `-Djava.awt.headless=true -Duser.language=en -Duser.country=US
-//! -XX:+UnlockExperimentalVMOptions -XX:hashCode=2`).
-//!
-//! [`TRANSCRIPT`] is that file transcribed into Rust line for line, exactly as Task 0's timespan
-//! table and Task 1's job model are: a test that reads its expectations out of a file can agree
-//! with itself while disagreeing with the jar.
-//! [`the_committed_transcript_still_says_what_this_table_says`] then re-reads the file and
-//! requires the two to agree, and [`the_port_reproduces_every_transcript_row`] re-derives every
-//! row from the port and compares it against the literal.
-//!
-//! # The two `XDIFF` rows
-//!
-//! | row | Java | the port |
-//! |---|---|---|
-//! | `(parser (hostCad))` — `substring(hcIdx + 9, hcEnd)` with `hcIdx + 9 > hcEnd` (`:493`) | `StringIndexOutOfBoundsException` out of the constructor, quirk #250 | the start is clamped to the end, so the value is the empty string the slice would have held and `host` is Java's `null` |
-//! | `(parser (hostCad  ))` — an *empty* `hostCad` (`:509-510`) | `host` is `""`, and Gson prints `"host": ""` | `fr_router::score::BoardStatistics.host` is a `String`, so the port spells Java's `null` as `""` too and omits the key, quirk #251 |
-//!
-//! Both rows print `java=…` and `rust=…` on **both** sides, so the driver's diff is still empty
-//! while the transcript records the divergence.
-//!
-//! # The one file shape where the host scrape SUCCEEDS
-//!
-//! `router-dac2020-bm01/batch.ses AS DSN` (row 31) answers `host = "KiCad's Pcbnew"`, and it is
-//! the only row in the transcript that does. It is a **HEAD-jar-written** session file, so
-//! `Parser.writeScope(…, reduced = true)` (Parser.java:98-107) skipped `(stringQuote ")` and the
-//! first `)` after `(parser` closes `(hostCad …)` rather than truncating in front of it — and
-//! HEAD's own keyword *is* the camelCase one the scrape looks for (`Keyword.java:40-41`). It is
-//! reachable only by handing a `.ses` to the DSN branch, which no Freerouting code path does; the
-//! 2.3.0-written `unrouted.ses` on the row above it is snake_case and scrapes nothing. See quirk
-//! #248's clause (b).
-//!
-//! ## The migration this row went through (ruling BT, carried out at Plan 9 Task 2)
-//!
-//! **This row depends on a JAR-written `router-dac2020-bm01/batch.ses`**, and the `--from-port`
-//! regeneration of the B and C families at Plan 9 Task 2 destroyed the live copy of it. Measured at Plan 9 Task 1,
-//! which ran the regeneration and reverted it: **20** files under `tests/reference/` carry
-//! `hostCad` before, **0** after — the port writes 2.3.0's snake_case (quirk #92), so the whole
-//! camelCase corpus leaves the live tree at once and with it the only real-file exercise of
-//! quirks #248(b), #250 and #252. No literal can stand in for it, because this test reads the
-//! file's **bytes** and runs the scraper over them: the fixture *is* the assertion. And BL8 (as
-//! amended by ruling BP1) forbids reading `tests/reference-frozen/` to get it back — no test and
-//! no script may.
-//!
-//! **The resolution was pre-agreed, so the task that first moved B or C did not have to stop and
-//! ask** — and **Plan 9 Task 2 is that task**, which carried out all three steps in one commit:
-//!
-//! 1. the eight `batch.ses` files this module reads were copied into
-//!    `crates/fr-core/tests/data/p8t2-batch-ses/`, with their provenance — the jar revision
-//!    `278fe14123c49376667239659c98d41a597acce9` (2.3.1-SNAPSHOT), the generator that ran it and
-//!    the commit `4a5bce6` they were cut at — in that directory's `README.md`, because a `.ses`
-//!    file has nowhere to carry a header of its own without ceasing to be the bytes under test;
-//! 2. rows 21-28 and row 31 were repointed at them, through a new `data:` source prefix that
-//!    `bytes_of` resolves against `crates/fr-core/tests/data/` (and that `P8T2Probe` resolves the
-//!    same way, so the two halves of the transcript still name one file);
-//! 3. the `p8t2` transcript was re-cut with `scripts/differential/run.sh p8t2probe`. Every `FLD`
-//!    and `JSON` value in those nine rows is unchanged, because the migrated bytes are the same
-//!    bytes; only the `BS` rows' source column moved.
-//!
-//! BL8 stays intact — a committed test data file is not the frozen tree — and the quirk exercise
-//! survives the lane switch instead of being deleted by it.
-//!
-//! # Rows the sibling Java checkout gates
-//!
-//! Eight `BS` rows read a file out of `$FREEROUTING_JAVA_DIR` (the seven `source.dsn`s and the
-//! `AS SES` re-read). They are skipped, loudly, on a checkout without the sibling clone —
-//! `parity::require_java_dir`'s convention. Every other row travels with this repository.
-
 use fr_core::{
     BoardStatistics, BoardStatisticsExt, FileFormat, count_occurrences, to_gson_json,
     to_gson_string,
@@ -88,8 +5,6 @@ use fr_core::{
 use fr_dsn::{java_double_to_string, java_float_to_string};
 use fr_router::score::{BoardStatisticsFanout, Rectangle2DFloat};
 
-/// The FLD column order: `BoardStatistics.java:37-79`, then each DTO's own declaration order.
-/// Checked against the transcript's own `HDR` row, so a reordering cannot pass silently.
 const FIELD_PATHS: &[&str] = &[
     "host",
     "unit",
@@ -143,9 +58,6 @@ const FIELD_PATHS: &[&str] = &[
     "fanout.escaped_count",
 ];
 
-/// `tests/data/p8t2-byte-statistics.txt`, transcribed line for line. Regenerate with
-/// `scripts/differential/run.sh p8t2probe`, which prints the same 289 lines from the jar and
-/// from the port and diffs them.
 #[rustfmt::skip]
 const TRANSCRIPT: &[&str] = &[
     "HDR\thost\tunit\tboard.bounding_box.x\tboard.bounding_box.y\tboard.bounding_box.width\tboard.bounding_box.height\tboard.size.x\tboard.size.y\tboard.size.width\tboard.size.height\tlayers.total_count\tlayers.signal_count\titems.total_count\titems.trace_count\titems.via_count\titems.conduction_area_count\titems.drill_item_count\titems.pin_count\titems.component_count\titems.other_count\tcomponents.total_count\tpads.total_count\tnets.total_count\tnets.class_count\tconnections.maximum_count\tconnections.incomplete_count\ttraces.total_count\ttraces.total_segment_count\ttraces.total_length\ttraces.total_length_mm\ttraces.total_weighted_length\ttraces.average_length\ttraces.total_vertical_length\ttraces.total_horizontal_length\ttraces.total_angled_length\tbends.total_count\tbends.90_degree_count\tbends.45_degree_count\tbends.other_angle_count\tvias.total_count\tvias.through_hole_count\tvias.blind_count\tvias.buried_count\tclearance_violations.total_count\tclearance_violations.min_violation_um\tclearance_violations.max_violation_um\tclearance_violations.avg_violation_um\tfanout.total_smd_pins\tfanout.pins_to_escape\tfanout.escaped_count",
@@ -439,9 +351,6 @@ const TRANSCRIPT: &[&str] = &[
     "JSON\t91\t{\\n  \"board\": {},\\n  \"layers\": {},\\n  \"items\": {},\\n  \"components\": {},\\n  \"pads\": {},\\n  \"nets\": {},\\n  \"connections\": {},\\n  \"traces\": {},\\n  \"bends\": {},\\n  \"vias\": {},\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 7,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
 ];
 
-// =================================================================================================
-// The two whole-transcript tests
-// =================================================================================================
 
 #[test]
 fn the_committed_transcript_still_says_what_this_table_says() {
@@ -466,7 +375,6 @@ fn the_port_reproduces_every_transcript_row() {
     let mut skipped = 0usize;
     let mut checked = 0usize;
 
-    // The `BS` row that the following `FLD` / `JSON` / `XDIFF` rows belong to.
     let mut current: Option<(usize, BoardStatistics)> = None;
 
     for (line_number, line) in TRANSCRIPT.iter().enumerate() {
@@ -511,11 +419,6 @@ fn the_port_reproduces_every_transcript_row() {
                     continue;
                 };
                 let mut values = fields(stats);
-                // Quirk #251's row carries the jar's `host` literal, because the port answers
-                // `<null>` where Java answers `""`. The patch is keyed on the **declared**
-                // divergence — the `XDIFF` line the transcript puts immediately after this one —
-                // and not on the column's value, so a future row that merely happens to hold an
-                // empty `host` is a diff rather than a silently accepted divergence.
                 let declares_the_host_xdiff = TRANSCRIPT
                     .get(line_number + 1)
                     .is_some_and(|next| next.ends_with("java=host=\"\"\trust=host=<null>"));
@@ -526,8 +429,6 @@ fn the_port_reproduces_every_transcript_row() {
                 check(line, format!("FLD\t{index}\t{}", values.join("\t")));
             }
             "XDIFF" => {
-                // Neither divergence can be re-derived from the port — that is what makes it a
-                // divergence — so the row is asserted to be one of the two this task recorded.
                 checked += 1;
                 let recorded = [
                     "java=StringIndexOutOfBoundsException\trust=host=<omitted>",
@@ -547,7 +448,6 @@ fn the_port_reproduces_every_transcript_row() {
                 };
                 let json = escape(&to_gson_string(stats));
                 if columns[2] == "XDIFF" {
-                    // Quirk #251: the `java=` half is the jar's, the `rust=` half is the port's.
                     check(
                         line,
                         format!("JSON\t{index}\tXDIFF\t{}\trust={json}", columns[3]),
@@ -566,8 +466,6 @@ fn the_port_reproduces_every_transcript_row() {
         mismatches.len(),
         mismatches.join("\n\n")
     );
-    // A rebuilder that silently matched nothing would pass every assertion above. Every line but
-    // the `BS` header of a row is checked, less the two lines each skipped `java:` row carries.
     let bs_rows = TRANSCRIPT.iter().filter(|l| l.starts_with("BS\t")).count();
     assert_eq!(
         checked,
@@ -583,21 +481,7 @@ fn the_port_reproduces_every_transcript_row() {
     }
 }
 
-// =================================================================================================
-// The named behaviours the plan asks for by name
-// =================================================================================================
 
-/// Quirk #248. Two defects have to miss for the scrape to succeed, and on a real `.dsn` they
-/// never both do. (a) `searchLimit` is the **first `)` after `(parser`** (`:482`), which in a
-/// CAD-exported DSN closes `(string_quote ")`, so `(host_cad …)` lies outside `parserScope`.
-/// (b) the keywords Java looks for are the camelCase `(hostCad` / `(hostVersion` — HEAD's own
-/// spelling (`io/specctra/parser/Keyword.java:40-41`), but **not** the Specctra standard's, which
-/// every CAD exporter writes snake_case.
-///
-/// The exception that proves it is measured, not assumed: a HEAD-written **session** file carries
-/// a *reduced* parser scope with no `(stringQuote ")`, so (a) misses, (b) matches, and the scrape
-/// answers. `P8T2Probe`'s row 31 (`router-dac2020-bm01/batch.ses AS DSN`) is that shape, and no
-/// Freerouting code path hands a `.ses` to the DSN branch.
 #[test]
 fn the_dsn_host_scrape_finds_nothing_on_a_real_dsn() {
     let dsn = b"(pcb x\n  (parser\n    (string_quote \")\n    (host_cad \"KiCad's Pcbnew\")\n\
@@ -609,8 +493,6 @@ fn the_dsn_host_scrape_finds_nothing_on_a_real_dsn() {
     );
     assert!(!to_gson_string(&stats).contains("\"host\""));
 
-    // Every committed corpus DSN agrees, which is the transcript's fourteen `roundtrip.dsn` /
-    // `source.dsn` rows in one assertion.
     for stem in [
         "tutorial_board",
         "Issue026-J2_reference",
@@ -626,46 +508,27 @@ fn the_dsn_host_scrape_finds_nothing_on_a_real_dsn() {
         assert_eq!(stats.host, "", "{stem}");
     }
 
-    // The camelCase spelling *does* match — which is how the quirk is provably about the
-    // keywords and the scope, not about the port's transcription.
     let camel = b"(parser (hostCad \"KiCad\" (hostVersion \"8.0\" ))";
     let stats = BoardStatistics::from_bytes(camel, FileFormat::Dsn);
     assert_eq!(stats.host, "KiCad\" (hostVersion \"8.0,8.0");
 
-    // …and on the one real, jar-written file whose parser scope is *reduced*, the whole scrape
-    // succeeds. `Parser.writeScope:98-107` skips `(stringQuote ")` for a session file, so the
-    // first `)` closes `(hostCad …)` instead of truncating in front of it. Only `hostCad` is
-    // inside the scope, so `:509-510`'s cad-only arm runs and there is no `,`.
-    //
-    // The file is the **migrated** fixture, not `tests/reference/router-dac2020-bm01/batch.ses`:
-    // Plan 9 Task 2 regenerated the B family from the port, which writes snake_case `host_cad`
-    // (quirk #92), so the live tree no longer carries a camelCase spelling anywhere. See the
-    // module doc's migration note and that directory's README.
     let path = parity::workspace_root()
         .join("crates/fr-core/tests/data/p8t2-batch-ses/router-dac2020-bm01.ses");
     let data = std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let stats = BoardStatistics::from_bytes(&data, FileFormat::Dsn);
     assert_eq!(stats.host, "KiCad's Pcbnew");
-    // Read as the SES it actually is, the DSN branch never runs and `host` stays null.
     let as_ses = BoardStatistics::from_bytes(&data, FileFormat::Ses);
     assert_eq!(as_ses.host, "");
 }
 
-/// Quirk #250 and quirk #252's totalisations, and SF4's `java_trim`: the three places where the
-/// port answers a value Java cannot.
 #[test]
 fn the_three_totalised_answers_are_the_values_java_would_have_held() {
-    // #250: `substring(hcIdx + 9, hcEnd)` is `[17, 16)`, which Java refuses. The port clamps the
-    // start to the end and the empty value leaves `host` at Java's `null`.
     let inverted = BoardStatistics::from_bytes(b"(parser (hostCad))", FileFormat::Dsn);
     assert_eq!(inverted.host, "");
     assert!(!to_gson_string(&inverted).contains("\"host\""));
 
-    // #252: an empty needle spins for ever in Java.
     assert_eq!(count_occurrences("(net(net", ""), 0);
 
-    // SF4: `String.trim()` strips every code unit <= U+0020 — it KEEPS U+00A0, which Rust's
-    // Unicode `str::trim` would strip, and it DROPS U+0001, which `str::trim` would keep.
     let nbsp =
         BoardStatistics::from_bytes("(parser (hostCad K\u{a0} ))".as_bytes(), FileFormat::Dsn);
     assert_eq!(nbsp.host, "K\u{a0}");
@@ -674,15 +537,11 @@ fn the_three_totalised_answers_are_the_values_java_would_have_held() {
     assert_eq!(control.host, "K");
 }
 
-/// SF2 and SF3: `JsonElement.getAsString()` reads a number's **source text** and delegates a
-/// one-element array to its element — neither of which a parsed `serde_json::Value` can give
-/// back. Rows 76-88 of the transcript measure all twelve shapes against the jar.
 #[test]
 fn design_name_is_read_from_the_raw_source_token() {
     let host_of =
         |json: &str| BoardStatistics::from_bytes(json.as_bytes(), FileFormat::KicadDesignJson).host;
 
-    // The source text, not `serde_json`'s re-rendering (`100000.0` and `1.5`).
     assert_eq!(host_of("{\"designName\":1e5}"), "KiCad JSON,1e5");
     assert_eq!(host_of("{\"designName\":1.50}"), "KiCad JSON,1.50");
     assert_eq!(
@@ -692,13 +551,10 @@ fn design_name_is_read_from_the_raw_source_token() {
     );
     assert_eq!(host_of("{\"designName\":42}"), "KiCad JSON,42");
 
-    // `JsonArray.getAsString()`'s `size() == 1` delegation, recursively.
     assert_eq!(host_of("{\"designName\":[\"foo\"]}"), "KiCad JSON,foo");
     assert_eq!(host_of("{\"designName\":[[\"deep\"]]}"), "KiCad JSON,deep");
     assert_eq!(host_of("{\"designName\":[1e5]}"), "KiCad JSON,1e5");
 
-    // Every other size throws `IllegalStateException`, and an object or `null` throws
-    // `UnsupportedOperationException`; `:548` catches all three and `host` stays null.
     for json in [
         "{\"designName\":[\"a\",\"b\"]}",
         "{\"designName\":[]}",
@@ -708,29 +564,22 @@ fn design_name_is_read_from_the_raw_source_token() {
         assert_eq!(host_of(json), "", "{json}");
     }
 
-    // A boolean answers its own literal; a duplicated key answers the last occurrence, as both
-    // `LinkedTreeMap.put` and `serde_json::Map::insert` do.
     assert_eq!(host_of("{\"designName\":true}"), "KiCad JSON,true");
     assert_eq!(
         host_of("{\"designName\":\"first\",\"designName\":\"last\"}"),
         "KiCad JSON,last"
     );
 
-    // The raw scan must not be fooled by a brace or a colon inside an earlier string value.
     assert_eq!(
         host_of("{\"a\":\"}{:,[\",\"designName\":\"ok\"}"),
         "KiCad JSON,ok"
     );
-    // …nor by an escaped quote.
     assert_eq!(
         host_of("{\"a\":\"x\\\"designName\\\":1\",\"designName\":\"ok\"}"),
         "KiCad JSON,ok"
     );
 }
 
-/// Quirk #247. `countOccurrences` is a substring count, so every keyword also matches its longer
-/// relatives — and the SES layer scrape drops the chunk before the first `"(path "` and any chunk
-/// with no space in it.
 #[test]
 fn layer_rule_is_counted_as_a_layer() {
     let dsn = b"(layer_rule)(layer TOP)(network X)(net_class Y)(net N)(via_rule R)(via V)\
@@ -753,13 +602,9 @@ fn layer_rule_is_counted_as_a_layer() {
         "`(class` counts `(class_class`"
     );
 
-    // Non-overlapping: the cursor advances by the whole needle (`:583`).
     assert_eq!(count_occurrences("aaaa", "aa"), 2);
-    // totalized: an empty needle spins for ever in Java (quirk #252).
     assert_eq!(count_occurrences("aaaa", ""), 0);
 
-    // The SES layer scrape's own off-by-one: the chunk **before** the first `"(path "` is never
-    // read, and `"a(path F.Cu"` — one word, no trailing space — is dropped by `words.length >= 2`.
     let one = BoardStatistics::from_bytes(b"(path F.Cu 250 1 2)", FileFormat::Ses);
     assert_eq!(one.layers.total_count, Some(1));
     let dropped = BoardStatistics::from_bytes(b"a(path F.Cu", FileFormat::Ses);
@@ -769,8 +614,6 @@ fn layer_rule_is_counted_as_a_layer() {
     assert_eq!(repeated.layers.total_count, Some(1), "distinct names only");
 }
 
-/// `BoardStatisticsBends.java:12` and `:15`: two `@SerializedName`s begin with a digit, which is
-/// legal JSON and is not derivable from the Java field names.
 #[test]
 fn bends_keys_start_with_digits() {
     let mut stats = BoardStatistics::default();
@@ -785,8 +628,6 @@ fn bends_keys_start_with_digits() {
     assert!(!json.contains("forty"), "{json}");
 }
 
-/// `BoardStatisticsItems.java:27-28`: `componentOutlineCount` serialises as `component_count`,
-/// which collides with `components.total_count` two objects later. Java's name, not a slip.
 #[test]
 fn component_outline_count_serialises_as_component_count() {
     let mut stats = BoardStatistics::default();
@@ -804,9 +645,6 @@ fn component_outline_count_serialises_as_component_count() {
     assert!(!json.contains("component_outline"), "{json}");
 }
 
-/// Gson's reflective adapter takes the key order from the field declarations
-/// (`BoardStatistics.java:37-79`) and omits every null; `GsonProvider` never calls
-/// `serializeNulls()`.
 #[test]
 fn the_json_key_order_is_declaration_order_and_nulls_are_omitted() {
     let empty = to_gson_string(&BoardStatistics::default());
@@ -817,7 +655,6 @@ fn the_json_key_order_is_declaration_order_and_nulls_are_omitted() {
          \"escaped_count\": 0\n  }\n}";
     assert_eq!(empty, expected_empty);
 
-    // The two `String` fields lead, in that order, when they are set.
     let stats = BoardStatistics {
         host: "KiCad,8.0".to_string(),
         unit: "um".to_string(),
@@ -829,8 +666,6 @@ fn the_json_key_order_is_declaration_order_and_nulls_are_omitted() {
         "{json}"
     );
 
-    // Every key, in order, from the fully populated object the probe's `synth:populated` row
-    // pins byte for byte.
     let populated_json = to_gson_string(&populated());
     let keys: Vec<&str> = populated_json
         .lines()
@@ -857,17 +692,11 @@ fn the_json_key_order_is_declaration_order_and_nulls_are_omitted() {
         ]
     );
 
-    // No trailing newline: `Gson.toJson` returns the document and nothing after it.
     assert!(!empty.ends_with('\n'));
 }
 
-/// Scan ruling R16: twelve DTOs, not ten. `clearance_violations` is `fr-drc`'s type and its last
-/// three fields are `Double` (so `Double.toString`, not `Float.toString`), and `fanout`'s three
-/// fields are primitive `int`, so Gson emits `0` rather than omitting them.
 #[test]
 fn the_fanout_and_clearance_violation_objects_serialise() {
-    // The all-default object still carries all three `fanout` keys, and `clearance_violations`
-    // is the empty object beside it.
     let json = to_gson_string(&BoardStatistics::default());
     assert!(json.contains("  \"clearance_violations\": {},\n"), "{json}");
     assert!(
@@ -904,7 +733,6 @@ fn the_fanout_and_clearance_violation_objects_serialise() {
         "{json}"
     );
 
-    // The value form keeps the same twelve DTO keys, even though it alphabetises them.
     let value = to_gson_json(&stats);
     let object = value.as_object().expect("an object");
     assert_eq!(object.len(), 12, "twelve DTOs, no `host` and no `unit`");
@@ -912,8 +740,6 @@ fn the_fanout_and_clearance_violation_objects_serialise() {
     assert!(object.contains_key("fanout"));
 }
 
-/// The port's `to_gson_string` panics where `Gson.toJson` throws `IllegalArgumentException`:
-/// `GsonProvider` never calls `serializeSpecialFloatingPointValues()`.
 #[test]
 #[should_panic(expected = "IllegalArgumentException")]
 fn a_non_finite_float_is_refused_exactly_where_gson_throws() {
@@ -922,11 +748,7 @@ fn a_non_finite_float_is_refused_exactly_where_gson_throws() {
     let _ = to_gson_string(&stats);
 }
 
-// =================================================================================================
-// The row rebuilder — the Java probe's printer, transcribed
-// =================================================================================================
 
-/// Rebuilds one `BS` row's statistics from its `format` and `src` columns.
 fn statistics_of(format: &str, source: &str) -> BoardStatistics {
     match source {
         "null" => BoardStatistics::default(),
@@ -936,8 +758,6 @@ fn statistics_of(format: &str, source: &str) -> BoardStatistics {
         _ => {
             let data = bytes_of(source);
             match FileFormat::from_java_name(format) {
-                // `:437-439`'s null-`FileFormat` arm, which is not expressible in the port's
-                // signature and produces exactly the all-default object.
                 None => BoardStatistics::default(),
                 Some(format) => BoardStatistics::from_bytes(&data, format),
             }
@@ -961,8 +781,6 @@ fn bytes_of(source: &str) -> Vec<u8> {
             .join("tests/reference")
             .join(relative)
     } else if let Some(relative) = source.strip_prefix("data:") {
-        // A committed directed fixture beside this file. See the module doc's migration note and
-        // `crates/fr-core/tests/data/p8t2-batch-ses/README.md`.
         parity::workspace_root()
             .join("crates/fr-core/tests/data")
             .join(relative)
@@ -1091,16 +909,7 @@ fn unescape(s: &str) -> String {
     out
 }
 
-// =================================================================================================
-// The two synthetic statistics — `P8T2Probe.populated()` and `fanoutOnly()`
-// =================================================================================================
 
-/// Every field non-null and distinct, so the `synth:populated` row pins all fifty in declaration
-/// order and every float through `Float.toString` / `Double.toString`.
-///
-/// Deliberately a second copy of `scripts/differential/rust/src/bin/p8t2probe.rs`'s builder: the
-/// differential harness is its own excluded workspace and cannot be imported from here. The two
-/// cannot drift, because both are compared against the same committed transcript.
 fn populated() -> BoardStatistics {
     let mut s = BoardStatistics {
         host: "KiCad's \"Pcbnew\",8.0.4 é".to_string(),
@@ -1164,7 +973,6 @@ fn populated() -> BoardStatistics {
     s
 }
 
-/// The one DTO whose fields are primitive `int`: Gson emits `0`, it does not omit them.
 fn fanout_only() -> BoardStatistics {
     let mut s = BoardStatistics::default();
     s.fanout.total_smd_pins = 7;

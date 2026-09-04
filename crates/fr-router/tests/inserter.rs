@@ -1,33 +1,4 @@
-//! Plan 6 Task 15: `autoroute.path.FoundConnectionInserter` (FoundConnectionInserter.java:23-807)
-//! — the only class in Plan 6 that mutates the board's item set.
-//!
-//! # Where the numbers come from
-//!
-//! Every expectation below is **read off the HEAD jar**, not off this port. The probe is
-//! `scripts/differential/java/probes/P6T15Probe.java`, committed with the exact `javac`/`java`
-//! invocation in its header, and its whole stdout is committed as
-//! `tests/data/p6t15-inserter.txt`. Each test regenerates its mode's rows and compares them
-//! against the transcript line by line, so a board that differs by one item, one id, one corner
-//! or one half width fails.
-//!
-//! # The fixtures
-//!
-//! The same three boards Task 14 pinned the locator on — `P6T13Probe.buildSimple`,
-//! `P6T13Probe.build` — plus `P6T15Probe.buildToTrace` (`buildSimple` with a net-1 trace as the
-//! destination item, which is the only fixture that reaches `connectToTrace` at `:79`). The
-//! neckdown fixture and the tests that drive `insertNeckdown`/`tryNeckDown`/
 //! `insertFanoutMicroNeckdown` live in `src/autoroute/path/inserter.rs`'s own `#[cfg(test)]`
-//! module, because those three methods are package-private or private in Java and an integration
-//! test is a different crate.
-//!
-//! **That includes R2's three (Plan 9 Task 2, register row #294).** The task brief names them
-//! against *this* file — `the_micro_neckdown_fallback_never_goes_below_the_rules_minimum`,
-//! `the_fallback_still_necks_down_when_the_class_is_above_the_minimum` and
-//! `the_guard_reads_the_rules_minimum_not_the_running_board_minimum` — and they carry those exact
-//! names in `src/autoroute/path/inserter.rs`'s test module instead, for the reason in the
-//! paragraph above: `insert_fanout_micro_neckdown` is private, and a test in this crate cannot
-//! call it. The alternative was widening a private method's visibility to satisfy a file name.
-
 #![allow(clippy::too_many_lines)]
 
 use std::cell::Cell;
@@ -44,9 +15,6 @@ use fr_router::autoroute::maze::search::MazeSearchEngine;
 use fr_router::autoroute::path::{FoundConnectionInserter, FoundConnectionLocator};
 use fr_settings::RouterSettings;
 
-// =================================================================================================
-// The probe's boards, rebuilt from scratch (`P6T13Probe`'s, through `P6T14Probe`)
-// =================================================================================================
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -64,7 +32,6 @@ const SIMPLE_BOUNDING_BOX: IntBox = IntBox {
     ur: IntPoint { x: 1_000, y: 1_000 },
 };
 
-/// The rules, library and via rule every fixture shares (`P6T13Probe.build`'s prologue).
 fn base_board(bounds: IntBox) -> Board {
     let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
     let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
@@ -143,7 +110,6 @@ fn add_package(board: &mut Board, name: &str, pins: Vec<PackagePin>) -> usize {
     )
 }
 
-/// `P6T13Probe.buildSimple` — two net-1 pins on a 2000-unit square.
 fn simple_board() -> Board {
     let mut board = base_board(SIMPLE_BOUNDING_BOX);
     let default_class = board.rules.get_default_net_class();
@@ -159,26 +125,17 @@ fn simple_board() -> Board {
     board
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg);
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); // id 2
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); // id 3
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); 
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); 
     board
 }
 
-/// `simple_board` with the board's own angle restriction set to `FORTYFIVE_DEGREE`, which is the
-/// regime the **maze search** runs in — `locate`'s `angle` argument is a separate axis and never
-/// reaches the search.
-///
-/// It exists for #165's second half, `accepted at plan9-t7t8 (ruling CC)`: the free-angle search
-/// on this board no longer finds a connection, so mode `simple` had nothing to insert. `locator.rs`
-/// carries the twin of this function with the fixture matrix and the ablation that attribute it,
-/// and `KNOWN_DIVERGENCES` below carries the nine rows the re-point moves.
 fn simple_board_fortyfive() -> Board {
     let mut board = simple_board();
     board.rules.trace_angle_restriction = AngleRestriction::FortyFiveDegree;
     board
 }
 
-/// `P6T15Probe.buildToTrace` — `simple_board` plus a net-1 trace to route to.
 fn to_trace_board() -> Board {
     let mut board = simple_board();
     board.insert_trace_without_cleaning(
@@ -188,11 +145,10 @@ fn to_trace_board() -> Board {
         vec![1],
         1,
         FixedState::Unfixed,
-    ); // id 4
+    ); 
     board
 }
 
-/// `P6T13Probe.build` — the 8000-unit board whose connection crosses two drills.
 fn probe_board() -> Board {
     let mut board = base_board(BOUNDING_BOX);
     let default_class = board.rules.get_default_net_class();
@@ -223,10 +179,10 @@ fn probe_board() -> Board {
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg2);
 
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); // id 2, the start pin
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); // id 3, the destination pin
-    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed); // id 4
-    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed); // id 5
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); 
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); 
+    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed); 
+    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed); 
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[
             Point::new(0, -2000),
@@ -238,7 +194,7 @@ fn probe_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); // id 6
+    ); 
     board
         .insert_via(
             PadstackId(3),
@@ -248,7 +204,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the free via inserts"); // id 7
+        .expect("the free via inserts"); 
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, 2500), Point::new(2500, 3500)]),
         0,
@@ -256,7 +212,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); // id 8
+    ); 
     board
         .insert_via(
             PadstackId(3),
@@ -266,7 +222,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the two-contact via inserts"); // id 9
+        .expect("the two-contact via inserts"); 
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(2500, -3500)]),
         0,
@@ -274,7 +230,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); // id 10
+    ); 
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(3500, -2500)]),
         0,
@@ -282,13 +238,10 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); // id 11
+    ); 
     board
 }
 
-// =================================================================================================
-// Search, locate, insert — `P6T15Probe.locate` and `P6T15Probe.insertAndDump`
-// =================================================================================================
 
 fn probe_settings(board: &Board) -> RouterSettings {
     let mut settings = RouterSettings::new();
@@ -309,7 +262,6 @@ fn probe_control(board: &Board, net_no: i32) -> AutorouteControl {
     )
 }
 
-/// A `StopCheck` that never fires.
 struct Counter {
     calls: Cell<u32>,
 }
@@ -337,8 +289,6 @@ struct Located {
     ripped: BTreeSet<ItemId>,
 }
 
-/// `P6T15Probe.locate`: run the maze search on `board` and locate its result under `angle`, with
-/// the control the insert then reuses.
 fn locate(
     board: &mut Board,
     angle: AngleRestriction,
@@ -387,13 +337,9 @@ fn locate(
     }
 }
 
-// =================================================================================================
-// The transcript
-// =================================================================================================
 
 const T15: &str = include_str!("data/p6t15-inserter.txt");
 
-/// The rows of one `=== mode <mode> ===` section of the Task 15 transcript.
 fn t15_section(mode: &str) -> Vec<&'static str> {
     let header = format!("=== mode {mode} ===");
     let mut rows = Vec::new();
@@ -411,36 +357,7 @@ fn t15_section(mode: &str) -> Vec<&'static str> {
     rows
 }
 
-/// The rows where this port **deliberately** disagrees with the jar, as `(mode, row, jvm, rust)` —
-/// the plan's `KNOWN_DIVERGENCES` convention, the same table `autoroute_connection.rs` carries.
-///
-/// The transcript is the jar's own stdout and is never re-cut: a Plan 9 fix that changes what the
-/// port answers is recorded here instead, so the jar's row and the port's sit side by side and a
-/// reviewer can see both. **Every entry carries the register row that authorizes it**, and drift
-/// fails in both directions — a port that answers something new lands in `diffs`, and a
-/// divergence that heals is caught by the shortfall assert below and must be deleted rather than
-/// left to rot.
-///
-/// * **#165 (second half), `accepted at plan9-t7t8 (ruling CC)`** — `addCompleteRoom`'s `null`
-///   path now detaches the doors of the room it abandons. On `P6T13Probe.buildSimple` the
-///   free-angle search's only path from pin 2 to pin 3 ran through that room, so
-///   `find_connection` answers `None` and this mode's three regimes had no connection to insert at
-///   all. The search is re-pointed to [`simple_board_fortyfive`] — the same board, the same pins,
-///   the same probe, at the regime `p6t16`'s mode `plain` still matches the jar on byte for byte —
-///   and the nine rows below are the difference between the jar's free-angle search and that one.
-///   **They are port-regression pins from here, not jar-parity pins.** `locator.rs`'s
-///   [`simple_board_fortyfive`] twin carries the fixture-matrix measurement and the ablation
-///   behind the attribution; `the_free_angle_simple_board_search_finds_nothing` there is the pin
-///   that holds the retired arm.
-///
-///   **What this mode is for is unchanged and still asserted on all nine**: the `:171-405` segment
-///   loop still runs once per corner pair and still burns one id per run before the combined trace
-///   lands, the inserted item is still one `PolylineTrace` on layer 0 at half-width 30 between
-///   `(400,0)` and `(-400,0)`, and the free-angle regime still inserts the shortest of the three.
-///   Only the corner counts and the resulting id burn moved with the search.
 const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
-    // #165 second half — 90-degree locator over the 45-degree search: six corners, not five, so
-    // the loop burns 4..7 and the trace lands on 8 rather than 7.
     (
         "simple",
         3,
@@ -454,7 +371,6 @@ const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
         "    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(400,-1),(-132,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]",
         "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(399,-1),(-400,0)->(-401,0),(-400,-132)->(-400,0)] corners=[(400,0),(-400,0)]",
     ),
-    // …the 45-degree locator, likewise six corners and the same id burn.
     (
         "simple",
         14,
@@ -468,8 +384,6 @@ const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
         "    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(400,-1),(-264,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]",
         "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(401,-1),(-400,0)->(-401,0),(-400,0)->(-399,1)] corners=[(400,0),(-400,0)]",
     ),
-    // …and the free-angle locator, whose list gains its middle corner `(0,-140)`: three corners,
-    // so one extra run of the loop and the trace lands on 5 rather than 4.
     (
         "simple",
         25,
@@ -485,8 +399,6 @@ const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
     ),
 ];
 
-/// Compares the rows this port produces with the JVM's, collecting **every** difference rather
-/// than stopping at the first.
 fn assert_rows_match(mode: &str, actual: &[String]) {
     let expected = t15_section(mode);
     let mut diffs = Vec::new();
@@ -506,11 +418,6 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
         }
         diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
     }
-    // The diff assert runs FIRST, and the order is load-bearing — see the same note in
-    // `autoroute_connection.rs`, where the Task 6 reviewer mutation-verified it. A declared row
-    // that *drifts* both fails to match its entry and leaves `accounted` short; with the healed
-    // check first, that drift is reported as "delete the entry" and the real jvm/rust detail is
-    // never printed, which is exactly backwards.
     assert!(
         diffs.is_empty(),
         "mode `{mode}`: {} of {} rows differ\n{}",
@@ -535,14 +442,11 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
     );
 }
 
-// --- the probe's dump format ---------------------------------------------------------------------
 
-/// `P6T15Probe.ln`.
 fn t15_line(line: &fr_geometry::Line) -> String {
     format!("({},{})->({},{})", line.a.x, line.a.y, line.b.x, line.b.y)
 }
 
-/// `P6T15Probe.pt`.
 fn t15_corner(polyline: &Polyline, no: usize) -> String {
     match polyline.corner(no) {
         Some(Point::Int(p)) => format!("({},{})", p.x, p.y),
@@ -557,7 +461,6 @@ fn t15_corner(polyline: &Polyline, no: usize) -> String {
     }
 }
 
-/// `P6T15Probe.poly`.
 fn t15_polyline(polyline: &Polyline) -> String {
     let lines: Vec<String> = polyline.lines().iter().map(t15_line).collect();
     let corners: Vec<String> = (0..polyline.corner_count())
@@ -571,13 +474,11 @@ fn t15_polyline(polyline: &Polyline) -> String {
     )
 }
 
-/// `P6T15Probe.pointOf`.
 fn t15_point(point: &Point) -> String {
     let rounded = point.to_float().round();
     format!("({},{})", rounded.x, rounded.y)
 }
 
-/// `P6T15Probe.nets`.
 fn t15_nets(net_nos: &[i32]) -> String {
     let inner: Vec<String> = net_nos.iter().map(i32::to_string).collect();
     format!("[{}]", inner.join(","))
@@ -597,8 +498,6 @@ fn t15_type_name(item: &Item) -> &'static str {
     }
 }
 
-/// `P6T15Probe.boardDump` — `maxId=` plus one line per item in `getItems()` order (descending id,
-/// quirk #63).
 fn t15_board_dump(board: &Board) -> Vec<String> {
     let ctx = board.ctx();
     let mut out = vec![format!(
@@ -644,7 +543,6 @@ fn t15_board_dump(board: &Board) -> Vec<String> {
     out
 }
 
-/// `P6T15Probe.dumpItems`.
 fn t15_dump_items(locator: &FoundConnectionLocator) -> Vec<String> {
     let mut out = vec![
         format!(
@@ -675,7 +573,6 @@ fn t15_dump_items(locator: &FoundConnectionLocator) -> Vec<String> {
     out
 }
 
-/// `P6T15Probe.insertAndDump`.
 fn t15_insert_and_dump(board: &mut Board, located: &Located) -> Vec<String> {
     let mut out = t15_dump_items(&located.locator);
     out.push(format!("  ripped n={}", located.ripped.len()));
@@ -698,7 +595,6 @@ fn t15_insert_and_dump(board: &mut Board, located: &Located) -> Vec<String> {
     out
 }
 
-/// The three regimes, in the probe's order.
 const REGIMES: [AngleRestriction; 3] = [
     AngleRestriction::NinetyDegree,
     AngleRestriction::FortyFiveDegree,
@@ -713,24 +609,7 @@ fn regime_name(angle: AngleRestriction) -> &'static str {
     }
 }
 
-// =================================================================================================
-// The tests
-// =================================================================================================
 
-/// Probe mode `simple`: one `ResultItem`, no layer change, so `getInstance` inserts exactly one
-/// trace and `:66`/`:74`'s `insertVia` calls are both the `inputFromLayer == inputToLayer` early
-/// return of `:684-686`.
-///
-/// The 90-degree and 45-degree regimes route through a **six**-corner list and therefore run the
-/// `:171-405` segment loop five times, burning ids 4, 5, 6 and 7 before the combined trace lands
-/// on 8; the free-angle regime has three corners and burns 4 before landing on 5. That id burn is
-/// what the transcript comparison pins.
-///
-/// **The counts in that paragraph are the port's, not the jar's, since the plan9-t7t8 accept wave
-/// (ruling CC)** — the jar's are five/four/7 and two/one/4, and both sets are written out row by
-/// row in `KNOWN_DIVERGENCES`, which is also where the `#165` attribution and the re-point live.
-/// The *rule* the paragraph states — one run of the segment loop per corner pair, one id burnt per
-/// run — is the jar's and is unchanged; it is what the nine declared rows still measure.
 #[test]
 fn a_two_corner_connection_produces_one_trace_with_javas_polyline() {
     let mut rows = Vec::new();
@@ -743,9 +622,6 @@ fn a_two_corner_connection_produces_one_trace_with_javas_polyline() {
     assert_rows_match("simple", &rows);
 }
 
-/// Probe mode `via`: the connection crosses two `ExpansionDrill`s, so `connectionItems` is three
-/// traces on layers 0, 1, 0 and the **two vias come from the layer changes** at `:66` — there is
-/// no via entry in the locator's output at all (Task 14 §2.1).
 #[test]
 fn a_layer_change_produces_a_via_at_javas_location_with_javas_padstack() {
     let mut rows = Vec::new();
@@ -758,9 +634,6 @@ fn a_layer_change_produces_a_via_at_javas_location_with_javas_padstack() {
     assert_rows_match("via", &rows);
 }
 
-/// Probe mode `around`: with vias forbidden the connection walks the long way round the net-2
-/// blocker — 26 / 25 / 7 corners — which is the fixture that exercises the `:171-405` loop's
-/// `fromCornerNo` bookkeeping at length.
 #[test]
 fn the_long_way_round_inserts_javas_multi_segment_trace() {
     let mut rows = Vec::new();
@@ -773,8 +646,6 @@ fn the_long_way_round_inserts_javas_multi_segment_trace() {
     assert_rows_match("around", &rows);
 }
 
-/// Probe mode `totrace`: the destination item is a `PolylineTrace`, so `:77-91`'s
-/// `connectToTrace` runs and `:108`'s `normalizeTraces` then combines or splits what it left.
 #[test]
 fn a_trace_target_reaches_connect_to_trace_and_normalize() {
     let mut rows = Vec::new();
@@ -787,12 +658,6 @@ fn a_trace_target_reaches_connect_to_trace_and_normalize() {
     assert_rows_match("totrace", &rows);
 }
 
-/// `P6T15Probe.buildDiagTrace` — `to_trace_board` with a **slanted** target trace, so that the
-/// located connection's first corner rounds to a point that is *not* on the target polyline. It
-/// is the only fixture in this file where `:79`'s `connectToTrace` does more than
-/// `RoutingBoard.connectToTrace:1123-1126`'s "the point is already on the trace" early return —
-/// dropping the `:77-91` block leaves every other mode's board untouched, and this one's
-/// different.
 fn diag_trace_board() -> Board {
     let mut board = simple_board();
     board.insert_trace_without_cleaning(
@@ -802,12 +667,10 @@ fn diag_trace_board() -> Board {
         vec![1],
         1,
         FixedState::Unfixed,
-    ); // id 4
+    ); 
     board
 }
 
-/// Probe mode `diag`: the slanted target trace, whose `connectToTrace` stub leaves a polyline
-/// with two rational corners behind.
 #[test]
 fn a_target_trace_the_connection_misses_gets_javas_connect_to_trace_stub() {
     let mut rows = Vec::new();
@@ -820,7 +683,6 @@ fn a_target_trace_the_connection_misses_gets_javas_connect_to_trace_stub() {
     assert_rows_match("diag", &rows);
 }
 
-/// The location `:66`'s via number `which` goes to — `P6T15Probe.viaLocation`.
 fn via_location(locator: &FoundConnectionLocator, which: usize) -> IntPoint {
     let mut current_layer = locator.target_layer;
     let mut seen = 0;
@@ -836,25 +698,10 @@ fn via_location(locator: &FoundConnectionLocator, which: usize) -> IntPoint {
     panic!("no layer change #{which} in the located connection");
 }
 
-/// Probe mode `viafail`: three ways for `insertVia` (`:683-785`) to answer `false`, each of which
-/// makes `getInstance` answer **`None`** — Java's `null` — rather than an `Err`.
-///
-/// * `emptyRule` — `ctrl.viaRule` holds no via at all, so `:701`'s loop never runs,
-///   `foundSuitableSpan` stays false and `:722-729`'s arm returns false. One trace is already on
-///   the board when it does: a failed insert is **not** rolled back.
-/// * `blockedTrace` — a user-fixed foreign-net via sits on the second drill location, which the
-///   layer-1 trace's own end corner needs, so `insertTrace` fails first (`:320-404`) and `:71`
-///   answers null.
-/// * `refusedCheck` — a via rule whose only padstack does span both layers but is far too large
-///   to place, so [`ForcedViaInserter::check`] refuses every candidate and `:730-734`'s arm
-///   returns false. **This is the brief's "a refused forced via check is not an error".**
-///
-/// [`ForcedViaInserter::check`]: fr_router::board_ext::ForcedViaInserter::check
 #[test]
 fn a_refused_forced_via_check_answers_none_not_an_error() {
     let mut rows = Vec::new();
 
-    // (a) `emptyRule`.
     let mut board = probe_board();
     rows.push("=== emptyRule".to_string());
     let mut located = locate(
@@ -868,7 +715,6 @@ fn a_refused_forced_via_check_answers_none_not_an_error() {
     located.ctrl.via_rule = board.rules.via_rules.last().cloned();
     rows.extend(t15_insert_and_dump(&mut board, &located));
 
-    // (b) `blockedTrace`.
     let mut board = probe_board();
     rows.push("=== blockedTrace".to_string());
     let located = locate(
@@ -892,7 +738,6 @@ fn a_refused_forced_via_check_answers_none_not_an_error() {
         .expect("the blocking via inserts");
     rows.extend(t15_insert_and_dump(&mut board, &located));
 
-    // (c) `refusedCheck`.
     let mut board = probe_board();
     rows.push("=== refusedCheck".to_string());
     let mut located = locate(
@@ -928,16 +773,6 @@ fn a_refused_forced_via_check_answers_none_not_an_error() {
     assert_rows_match("viafail", &rows);
 }
 
-/// `getInstance:74` hands `insertVia` a **null** `lastCorner` whenever `connectionItems` is empty
-/// — quirk #180's two early returns are the producers — and `:684-686` only answers it when the
-/// two layers are equal. They need not be: `FoundConnectionLocator.java:130-135` returns with
-/// `targetLayer` at its `0` default *after* `:114` has set `startLayer = startDoor.room.getLayer()`,
-/// which is nonzero whenever the start door's room is not on layer 0.
-///
-/// The locator is forged through its public fields, as Task 14's `warn`-branch tests forge theirs
-/// — the JVM reaches this state only by reflecting a `MazeSearchEngine.Result`, so these two rows
-/// are derived from Java's **control flow** (`ForcedViaInserter.java:140` is the only dereference
-/// of `location` in `insertVia`'s reach, and `:704-706` guards `:708`), not from a probe row.
 fn forged_empty_connection(start_layer: usize) -> FoundConnectionLocator {
     FoundConnectionLocator {
         connection_items: Vec::new(),
@@ -949,10 +784,6 @@ fn forged_empty_connection(start_layer: usize) -> FoundConnectionLocator {
     }
 }
 
-/// No padstack spans layer 0 to layer 1, so Java's `:701` loop leaves `foundSuitableSpan` false,
-/// never reaches `:708`, and returns `false` from `:751` — **without** touching `location`. The
-/// answer is `Ok(None)` (`autorouteConnection:271-277`'s message-carrying `FAILED`), not a panic
-/// (`AutorouteConnectionRouter.route:155-158`'s bare one), and the board is untouched.
 #[test]
 fn a_null_last_corner_with_no_spanning_padstack_answers_none() {
     let mut board = simple_board();
@@ -975,11 +806,6 @@ fn a_null_last_corner_with_no_spanning_padstack_answers_none() {
     assert_eq!(before, t15_board_dump(&board), "nothing was inserted");
 }
 
-/// With the fixture's two-layer `via` padstack the same forged connection *does* reach `:708`,
-/// and there Java throws: `ForcedViaInserter.check` opens with
-/// `location.differenceBy(Point.ZERO)` (ForcedViaInserter.java:140). The port panics at exactly
-/// that call, which plan-6 ruling 7's `catch_unwind` turns back into the bare `FAILED` Java's
-/// NPE produces.
 #[test]
 #[should_panic(expected = "ForcedViaInserter.java:140")]
 fn a_null_last_corner_panics_where_java_dereferences_it() {
