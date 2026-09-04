@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-03T20:58:33.803302Z",
+  "generated_at": "2026-09-04T10:22:35.240893Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -61,8 +61,8 @@
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 1.043,
-      "passes_completed": 1
+      "duration_seconds": 12.679,
+      "passes_completed": 18
     },
     "optimizer": {}
   },
@@ -88,8 +88,8 @@
       "signal_count": 2
     },
     "items": {
-      "total_count": 172,
-      "trace_count": 75,
+      "total_count": 180,
+      "trace_count": 83,
       "via_count": 16,
       "conduction_area_count": 0,
       "drill_item_count": 0,
@@ -112,20 +112,20 @@
       "incomplete_count": 2
     },
     "traces": {
-      "total_count": 75,
-      "total_segment_count": 126,
-      "total_length": 3705.0537,
-      "total_length_mm": 370.50537,
-      "total_weighted_length": 1.1638736E7,
-      "average_length": 49.400715,
-      "total_vertical_length": 129.985,
-      "total_horizontal_length": 2707.608,
-      "total_angled_length": 801.3874
+      "total_count": 83,
+      "total_segment_count": 136,
+      "total_length": 3636.7085,
+      "total_length_mm": 363.67084,
+      "total_weighted_length": 1.1345717E7,
+      "average_length": 43.815765,
+      "total_vertical_length": 187.949,
+      "total_horizontal_length": 1975.692,
+      "total_angled_length": 687.16925
     },
     "bends": {
-      "total_count": 51,
-      "90_degree_count": 1,
-      "45_degree_count": 50,
+      "total_count": 53,
+      "90_degree_count": 2,
+      "45_degree_count": 51,
       "other_angle_count": 0
     },
     "vias": {
@@ -146,7 +146,7 @@
       "escaped_count": 37
     }
   },
-  "normalized_score": 939.3837,
+  "normalized_score": 939.38367,
   "resource_usage": {
     "cpu_time": 0.0,
     "max_memory": 0.0,

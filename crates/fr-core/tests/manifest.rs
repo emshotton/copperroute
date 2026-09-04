@@ -557,6 +557,67 @@ fn fanout_and_optimizer_phases_are_empty_objects() {
     }
 }
 
+/// **Quirk #267, fixed in Plan 9 Task 9: the two stages report their own pass counts.**
+///
+/// Java has one `job.currentPass` and **two** loops write it — `AutorouteBatchLoop.java:276`
+/// counting from 1 and `BatchOptimizer.java:196` counting from 0 — and
+/// `RoutingResultManifest.fromJob:124-126` then reports whichever wrote last, under a key that
+/// names the **autorouter**. Measured on the HEAD jar: `router-dac2020-bm01` at `-mp 2` logs two
+/// routing passes and one optimizer pass and its manifest says `"passes_completed": 1`.
+///
+/// The port gives each stage its own field. A three-pass routing stage followed by a one-pass
+/// optimizer stage reads back as **3 and 1**, and `phases.autorouter.passes_completed` is the
+/// router's 3 — no longer the optimizer's 1.
+///
+/// `phases.optimizer.passes_completed` is still `{}`: writing it is **Task 20's** (quirk #254),
+/// and `fanout_and_optimizer_phases_are_empty_objects` above pins that it has not been written
+/// yet. What landed here is the split, so that the number exists to be written.
+#[test]
+fn the_two_stages_report_their_own_pass_counts() {
+    let mut job = fresh_job();
+    // What `commands::route` writes from `PipelineResult`.
+    job.set_current_pass(3);
+    job.set_optimizer_pass(1);
+
+    assert_eq!(job.get_current_pass(), 3, "the routing stage's own count");
+    assert_eq!(
+        job.get_optimizer_pass(),
+        1,
+        "the optimizer stage's own count"
+    );
+
+    let phases = from_job(&job, None, false, 0, None)
+        .phases
+        .expect("phases is always allocated");
+    assert_eq!(
+        phases
+            .autorouter
+            .expect("autorouter is always allocated")
+            .passes_completed,
+        Some(3),
+        "fixed: T9 (#267) — the key that names the autorouter reports the autorouter's passes, \
+         not whichever stage announced a pass last"
+    );
+    // Task 20's obligation, still open — and deliberately so.
+    assert_eq!(
+        phases.optimizer.expect("optimizer is always allocated"),
+        PhaseDetail::default(),
+        "phases.optimizer stays an empty object until Task 20 writes it (quirk #254); the \
+         number it will be written from is on the job already"
+    );
+
+    // The old shape is what this pins against: one shared field would have let the optimizer's
+    // `1` overwrite the router's `3`.
+    let mut shared = fresh_job();
+    shared.set_current_pass(3);
+    shared.set_optimizer_pass(1);
+    assert_ne!(
+        shared.get_current_pass(),
+        shared.get_optimizer_pass(),
+        "the two writes must not land in the same field"
+    );
+}
+
 /// Quirk #254, second half: what `:131` puts in `phases.autorouter.duration_seconds` is the
 /// **whole job's** wall-clock duration, not the routing stage's.
 #[test]
@@ -818,7 +879,7 @@ fn the_pipelines_cached_statistics_equal_a_fresh_recompute() {
     let ctx = Ctx::with_disabled_budget(&settings, &sink);
     let result = RoutingPipeline::run(&mut board, &ctx).expect("the stem has a routable layer");
     assert!(
-        result.pipeline.passes_run > 0,
+        result.pipeline.router_passes_completed > 0,
         "the router must actually have run, or the comparison is about an unrouted board"
     );
 

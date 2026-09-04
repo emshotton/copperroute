@@ -71,6 +71,83 @@ pub const FANOUT_RECOVERY_STAGNATION_PASSES: i32 =
 pub const STAGNATION_SCORE_THRESHOLD: f32 = BatchAutorouter::STAGNATION_SCORE_THRESHOLD;
 
 // =================================================================================================
+// `BatchLoopExit` — the door the pass loop left by
+// =================================================================================================
+
+/// **Which door [`AutorouteBatchLoop::run`] left the pass loop by.**
+///
+/// renamed: not a Java type. Java carries the answer in one `boolean` — the stop flag — and that
+/// is precisely quirk #214: `AutorouteBatchLoop.java:571` fires `TaskState.FINISHED` only when
+/// `thread.isStopAutoRouterRequested()` is still false, and **every ordinary exit raises the flag
+/// first** (`:271` `maxPasses`, `:311` "not able to improve", `:474` and `:505` the two stagnation
+/// windows). So a CLI run that does exactly what it was asked ends `CANCELLED`, and no consumer
+/// can tell it from a user cancellation.
+///
+// fixed: T9 (#214) — the exit reason is carried out of the loop rather than inferred from one
+// flag, which is what the register row's suggested fix asks for and what `BatchLoopResult` was
+// already shaped for. [`BatchLoopExit::task_state`] is the `:571-585` decision, re-taken on the
+// reason instead of on the flag.
+///
+/// # The five doors, and why only one of them is a cancellation
+///
+/// | variant | Java site | asked for by |
+/// |---|---|---|
+/// | [`Self::Completed`] | the `while` head's own `continueAutorouting == false` (`:250`) | the board — there was nothing left to route |
+/// | [`Self::MaxPasses`] | `:268-273` | the caller — `--max-passes` |
+/// | [`Self::NoImprovement`] | `:308-313` — [`BoardHistory::restore_board`] gave up | the router |
+/// | [`Self::Stagnation`] | `:456-476` (the pass-local window) and `:486-507` (the global tracker) | the router |
+/// | [`Self::Cancelled`] | the `while` head with the flag raised by something **outside** the loop — [`RouterStop::poll_cancel`]'s operator request or [`RouterStop::poll_deadline`]'s job deadline | nobody the loop can see |
+///
+/// The first four are the loop finishing its work; only the last is a stop the caller did not
+/// ask for, and it is the only one that reports [`TaskState::Cancelled`].
+///
+/// The rank-limit arm (`:317-320`) is **not** a sixth variant: quirk #217's break was deleted in
+/// this same task — see [`AutorouteBatchLoop::run`]'s doc for the decision and its record.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BatchLoopExit {
+    /// The `while` head's own `continueAutorouting == false` (`:250`) — the last pass routed and
+    /// failed nothing, so there is no work left. Also the state of a loop that was never entered
+    /// because `:221-223` disabled the router.
+    Completed,
+    /// `:268-273` — `currentPass > settings.maxPasses`. The caller's own budget, reached.
+    MaxPasses,
+    /// `:308-313` — "the router was not able to improve the board": the best-board restore ran
+    /// out of tries on every history entry.
+    NoImprovement,
+    /// `:456-476` or `:486-507` — one of the two stagnation windows closed.
+    Stagnation,
+    /// The `while` head with the stop flag raised from outside the loop: an operator's
+    /// `notifications/cancelled` copied in by [`RouterStop::poll_cancel`], or ruling AI's job
+    /// deadline observed by [`RouterStop::poll_deadline`].
+    Cancelled,
+}
+
+impl BatchLoopExit {
+    /// `:571-585`'s decision, re-taken on the **reason** rather than on the flag.
+    ///
+    /// Java tests `!thread.isStopAutoRouterRequested()` for `FINISHED`, `job.state ==
+    /// RoutingJobState.TIMED_OUT` for `TIMED_OUT` and falls through to `CANCELLED`. The first test
+    /// is the bug (quirk #214): four of the five doors above raise that flag on the way out, so
+    /// only [`Self::Completed`] could ever reach `FINISHED`.
+    ///
+    /// `timed_out` is [`RouterStop::is_timed_out`], i.e. Java's `job.state == TIMED_OUT`, and it
+    /// is consulted for exactly the same reason `:578-584` consults it — but only on the one door
+    /// a clock can produce.
+    pub fn task_state(self, timed_out: bool) -> TaskState {
+        match self {
+            // :578-584.
+            BatchLoopExit::Cancelled if timed_out => TaskState::TimedOut,
+            BatchLoopExit::Cancelled => TaskState::Cancelled,
+            // :572-574 — a door the loop chose is a finish.
+            BatchLoopExit::Completed
+            | BatchLoopExit::MaxPasses
+            | BatchLoopExit::NoImprovement
+            | BatchLoopExit::Stagnation => TaskState::Finished,
+        }
+    }
+}
+
+// =================================================================================================
 // `BatchLoopResult` — what Java writes into fields
 // =================================================================================================
 
@@ -91,23 +168,35 @@ pub const STAGNATION_SCORE_THRESHOLD: f32 = BatchAutorouter::STAGNATION_SCORE_TH
 /// argument is that field.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BatchLoopResult {
-    /// The state `:571-585` reports. **A normal end of routing is `Cancelled`** — see quirk #214
-    /// and [`AutorouteBatchLoop::run`]'s doc.
+    /// The state `:571-585` reports.
+    ///
+    // fixed: T9 (#214) — computed by [`BatchLoopExit::task_state`] from [`Self::exit`], so a
+    // normal end of routing is `Finished` and `Cancelled` means a stop the caller did not ask
+    // for. Before the fix every ordinary exit reported `Cancelled`.
     pub state: TaskState,
+    /// **The door the loop left by** — the reason `:571`'s one flag could not carry (quirk #214).
+    ///
+    // fixed: T9 (#214).
+    pub exit: BatchLoopExit,
     /// `:587` — Java's return value: `!thread.isStopAutoRouterRequested()`.
     pub continue_routing: bool,
-    /// `currentPass` as the loop left it (`:520-522`). Because `:521` increments only when the
-    /// loop is going round again, a run that stopped at `maxPasses = n` leaves this at `n + 1`.
-    pub passes_run: i32,
-    /// The value `:276`'s `job.setCurrentPass(currentPass)` last wrote — `0` when the loop never
-    /// reached it.
+    /// **The passes the routing stage completed.**
     ///
-    /// **Not** [`Self::passes_run`], and the difference is quirk #230: `:270-274`'s cap check
-    /// runs *before* `:276`, so a `maxPasses`-capped exit leaves the job's field one behind the
-    /// local. Plan 8's CLI writes this into [`fr_core::RoutingJob::set_current_pass`], because
-    /// `RoutingResultManifest.fromJob:124-126` reports the **job's** field and not the loop's.
-    /// This crate has no `RoutingJob` to write, so it hands the value back instead.
-    pub last_reported_pass: i32,
+    /// Java has two numbers for this quantity and they disagree. `currentPass` as the loop leaves
+    /// it (`:520-522`) is what the final `TaskStateChangedEvent` carries as its `passNumber`
+    /// (`:574`, `:583`); `job.currentPass`, written at `:276`, is what
+    /// `RoutingResultManifest.fromJob:124-126` reports. `:521` increments at the end of every
+    /// iteration the loop is going round again from, and `:270-274`'s cap check then breaks
+    /// **before** `:276` runs for the aborted iteration — so on a `maxPasses = n` exit the event
+    /// says `n + 1` and the job's field says `n`, for a pass that never ran. Quirk #230.
+    ///
+    // fixed: T9 (#230) — one field, and it is the honest one: the number of passes that actually
+    // completed. The `maxPasses` door is the only exit where Java's local runs ahead — every
+    // other door either breaks mid-body (after `:276`, before `:521`) or falls out of a `while`
+    // head that `:520`'s own two conjuncts had already stopped incrementing for — so the fix is
+    // to not count the pass the cap refused to run. `BatchLoopResult::last_reported_pass` is
+    // gone with the disagreement it recorded.
+    pub passes_run: i32,
     /// What `BatchFanout.fanoutBoard` answered (`:123-172`), or `None` when the fanout stage did
     /// not run — `settings.fanout.enabled` off (`:89`) or a board with no SMD pins at all
     /// (`:90-91`). Java keeps no such field: the summary is a local, read twice, at `:173`
@@ -125,6 +214,14 @@ pub struct BatchLoopResult {
     /// at `:441-442` recomputes both **after** this point, so a `router+fanout` run records the
     /// pre-recovery numbers — which is exactly what Java's log line says.
     pub per_pass: Vec<PassRecord>,
+}
+
+impl BatchLoopResult {
+    /// The door the loop left by — [`Self::exit`], as the accessor the pipeline's interface block
+    /// names.
+    pub fn exit(&self) -> BatchLoopExit {
+        self.exit
+    }
 }
 
 // =================================================================================================
@@ -147,15 +244,23 @@ impl AutorouteBatchLoop {
     /// beside it. **`board` is Java's `job.board` (`:552`)**: on return it is the board the run
     /// chose, which may be an *older* one restored out of [`BoardHistory`].
     ///
-    /// # Java bug (quirk #214): a normal end of routing reports `CANCELLED`, not `FINISHED`
+    /// # Java bug (quirk #214), **fixed here**: a normal end of routing reported `CANCELLED`
     ///
     /// `:571` reports [`TaskState::Finished`] only when the stop flag is still `NONE`. **Every
     /// ordinary exit from the loop raises it first** — `maxPasses` (`:271`), "not able to improve"
     /// (`:311`), the rank limit (`:318`) and both stagnation windows (`:474`, `:505`). The only
     /// path that leaves the flag `NONE` is the `while` head's own `continueAutorouting == false`,
     /// i.e. a pass that routed nothing at all. So a run that stops because it hit its pass budget
-    /// — the CLI's normal case — reports `CANCELLED`, and an API consumer watching
-    /// `TaskStateChangedEvent` cannot tell it from a user cancellation.
+    /// — the CLI's normal case — reported `CANCELLED`, and an API consumer watching
+    /// `TaskStateChangedEvent` could not tell it from a user cancellation.
+    ///
+    // fixed: T9 (#214) — the loop now carries the reason out in [`BatchLoopExit`], and
+    // [`BatchLoopExit::task_state`] takes `:571-585`'s decision on that reason. The **flag** is
+    // still raised at every one of Java's arms, because four other readers depend on it
+    // (`:298-300`'s restore gate, `:520-522`'s increment, `:557-563`'s tail removal and `:587`'s
+    // return value) and lowering it would be a different program; what changed is only what the
+    // *state* is computed from. This is also the prerequisite for #227's stage-scoped stop: the
+    // two are the same defect one level apart.
     ///
     /// # Ruling 7's sole new recovery boundary
     ///
@@ -276,9 +381,6 @@ impl AutorouteBatchLoop {
 
         // :236-242.
         let mut current_pass: i32 = 1;
-        // The value `:276` last published into `job.currentPass`; see
-        // [`BatchLoopResult::last_reported_pass`].
-        let mut last_reported_pass: i32 = 0;
         let mut consecutive_no_improvement_passes: i32 = 0;
         let mut fanout_recovery_applied = false;
         let mut last_best_score = f32::NEG_INFINITY;
@@ -292,12 +394,23 @@ impl AutorouteBatchLoop {
         // neither of which anything can observe. Quirk #216 is the row; there is nothing
         // behavioural to reproduce, and `the_dead_hash_set_is_javas_only_allocation` asserts this
         // very line so it cannot be deleted as noise.
+        // fixed: T9 (#216) — the row's suggested fix is "delete the field, the two `.clear()`
+        // calls and their six lines of comment", and the port has never had them: this
+        // `not ported:` line **is** the deletion, and it stays because it is the record of what
+        // was deleted and why. The alternative the row offers — re-enabling the same-hash stop —
+        // would have to answer `:257-258`'s own ripup-budget objection first and is a product
+        // decision, not a cleanup. **No behaviour change either side.**
 
         // The two pieces of pass-to-pass state Java hangs off objects the port does not have:
         // `board.failureLog` (a `RoutingBoard` field there — see `RoutingFailureLog`'s ownership
         // note) and `router.thread`, which is the caller's `stop`.
         let mut failure_log = RoutingFailureLog::new();
         let mut per_pass: Vec<PassRecord> = Vec::new();
+
+        // fixed: T9 (#214) — the door the loop leaves by. `None` while the loop is still running;
+        // every `break` below names its own door, and a `while` head that falls through is
+        // resolved after the loop from `continue_autorouting`.
+        let mut exit: Option<BatchLoopExit> = None;
 
         // :250.
         while continue_autorouting && !stop.is_stop_auto_router_requested() {
@@ -342,14 +455,22 @@ impl AutorouteBatchLoop {
                 .is_some_and(|max| max > 0 && current_pass > max)
             {
                 stop.request_stop_auto_router();
+                // fixed: T9 (#214) — the caller's own budget, reached.
+                exit = Some(BatchLoopExit::MaxPasses);
+                // fixed: T9 (#230) — this iteration is the one the cap refused, and `:521` at the
+                // end of the previous one has already counted it. Java leaves `currentPass` here
+                // and reports it as the final event's `passNumber` while `job.currentPass` — the
+                // number the manifest prints — still holds the last pass that ran; the two then
+                // disagree by exactly one at the moment the run stops. Undoing the speculative
+                // increment is what makes both surfaces the same honest number.
+                current_pass -= 1;
                 break;
             }
 
             // :275-277 — `job.setCurrentPass(currentPass)`. The port has no `RoutingJob`
-            // (Plan 8's, spec §13), so the value is recorded and handed back as
-            // [`BatchLoopResult::last_reported_pass`]; Plan 8 Task 6's `commands::route` writes
-            // it into the job, which is what the result manifest reads.
-            last_reported_pass = current_pass;
+            // (Plan 8's, spec §13), so the value is handed back as
+            // [`BatchLoopResult::passes_run`]; Plan 8 Task 6's `commands::route` writes it into
+            // the job, which is what the result manifest reads.
             // :279-280.
             progress.on_event(&RoutingEvent::TaskStateChanged {
                 algorithm: NamedAlgorithmType::Router,
@@ -389,22 +510,32 @@ impl AutorouteBatchLoop {
                     else {
                         // :308-313 — "The router was not able to improve the board".
                         stop.request_stop_auto_router();
+                        // fixed: T9 (#214).
+                        exit = Some(BatchLoopExit::NoImprovement);
                         break;
                     };
 
-                    // :315. Order-dependent by construction: `restoreBoard` has just sorted
-                    // the list in place and bumped one entry's `restoreCount` (quirk #198),
-                    // so this rank is read off the *post-sort* order.
-                    let board_to_restore_rank = bh.rank(&board_to_restore);
-
-                    // :317-320.
-                    if rank_limit_exceeded(board_to_restore_rank) {
-                        stop.request_stop_auto_router();
-                        break;
-                    }
-
-                    // :322-334 — **a fall-through, not an `else`**: the three arms above all
-                    // `break`, so reaching here means the restore succeeded.
+                    // :315-320 — `boardToRestoreRank = bh.getRank(boardToRestore)` and the
+                    // `> BOARD_RANK_LIMIT` break it feeds.
+                    //
+                    // Java bug: `AutorouteBatchLoop.java:315-320` — the break cannot fire, because `BOARD_RANK_LIMIT` **is** `BoardHistory.MAX_HISTORY_SIZE` (`BatchAutorouter.java:40`) and `getRank` answers a 1-indexed position in a list `add` caps at that same size, so its range is `{-1} ∪ 1..=30` and `rank > 30` has no solution; the constant's own comment at `:38-39` has the reason exactly backwards (quirk #217).
+                    // fixed: T9 (#217) — **deleted**, which is the decision this task took and
+                    // recorded. The alternative the register offers is to set the limit strictly
+                    // below the cap, and that would make a documented stop reason *reachable* —
+                    // it would stop runs earlier than any freerouting has ever stopped them. That
+                    // is a product decision with its own A/B, not a cleanup, and it is
+                    // deliberately **not** taken here; the register row says so and names what
+                    // enabling it would need. Note that fixing quirk #198's `getRank` stability
+                    // does not make the branch reachable either (survey §10.2).
+                    //
+                    // The `bh.rank(...)` read goes with it: `:315`'s only consumer was `:317`.
+                    // `BoardHistory::rank` keeps its own tests — it is a real method with a real
+                    // ordering contract (quirk #198) — and `the_rank_the_loop_tests_is_read_after_
+                    // restore_boards_reorder` still pins the `:307` -> `:315` composition the loop
+                    // would perform, so deleting the branch does not delete the evidence for it.
+                    //
+                    // :322-334 — with the two arms above (`:306`'s test and `:307`'s failure) the
+                    // only ones that can `break`, reaching here means the restore succeeded.
                     //
                     // `:322-323` is `router.board = boardToRestore; board = router.board`, the
                     // two-field assignment the port collapses into one move.
@@ -442,46 +573,67 @@ impl AutorouteBatchLoop {
                 progress.on_event(&RoutingEvent::BoardSnapshot { pass: current_pass });
             }
 
-            // :422 — the stagnation detector's guard, and the reason `:509`'s `else if` is a bug.
+            // :422 — the stagnation detector's guard, and the arm `:509`'s `else if` belongs
+            // inside.
             if stagnation_guard(current_pass, continue_autorouting) {
-                // :425-427 — the pass-local counter, which a board restore resets.
-                if board_score_after > last_best_score + STAGNATION_SCORE_THRESHOLD {
-                    consecutive_no_improvement_passes = 0;
-                    last_best_score = board_score_after;
-                } else {
-                    // :429.
-                    consecutive_no_improvement_passes += 1;
-
-                    // :435-454 — the one-shot fanout recovery. Task 10 could not reach it at
-                    // all (`is_fanout_enabled()` was asserted `false`); Task 12 removed that
-                    // stub, so `p7t9 router+fanout` is now on a path that can fire it.
-                    if fanout_recovery_fires(
-                        settings,
-                        fanout_recovery_applied,
-                        stat(board_statistics_after.connections.incomplete_count),
-                        consecutive_no_improvement_passes,
-                    ) {
-                        // :440 — `removeTails(NONE)`, i.e. fanout vias included.
-                        router.remove_tails(board, None, StopConnectionOption::None, &|| {
-                            stop.is_stop_requested()
-                        })?;
-                        // :441-443.
-                        board_statistics_after = BoardStatistics::new(board);
-                        board_score_after = board_statistics_after.normalized_score(scoring);
-                        last_best_score = board_score_after;
-                        // :444-445.
+                // :425-427, :509-517 and :429 as the one three-way they are — see
+                // [`stagnation_step`], and quirk #215 for why the middle branch used to sit
+                // outside this block.
+                match stagnation_step(
+                    board_score_after,
+                    last_best_score,
+                    stat(board_statistics_after.connections.incomplete_count),
+                ) {
+                    // :425-427 — the pass-local counter, which a board restore resets.
+                    StagnationStep::ScoreImproved => {
                         consecutive_no_improvement_passes = 0;
-                        fanout_recovery_applied = true;
-                        // :446 clears the dead hash set; not ported.
+                        last_best_score = board_score_after;
                     }
+                    // :515-516 — fixed: T9 (#215); this arm is `:509-517`, moved in.
+                    StagnationStep::BoardRouted => {
+                        consecutive_no_improvement_passes = 0;
+                        last_best_score = board_score_after;
+                    }
+                    StagnationStep::Accumulate => {
+                        // :429.
+                        consecutive_no_improvement_passes += 1;
 
-                    // :456-476.
-                    if consecutive_no_improvement_passes >= STAGNATION_PASS_LIMIT {
-                        // :457.
-                        let _report = build_unrouted_report(board);
-                        // :474-475.
-                        stop.request_stop_auto_router();
-                        break;
+                        // :435-454 — the one-shot fanout recovery. Task 10 could not reach it at
+                        // all (`is_fanout_enabled()` was asserted `false`); Task 12 removed that
+                        // stub, so `p7t9 router+fanout` is now on a path that can fire it.
+                        if fanout_recovery_fires(
+                            settings,
+                            fanout_recovery_applied,
+                            stat(board_statistics_after.connections.incomplete_count),
+                            consecutive_no_improvement_passes,
+                        ) {
+                            // :440 — `removeTails(NONE)`, i.e. fanout vias included.
+                            router.remove_tails(
+                                board,
+                                None,
+                                StopConnectionOption::None,
+                                &|| stop.is_stop_requested(),
+                            )?;
+                            // :441-443.
+                            board_statistics_after = BoardStatistics::new(board);
+                            board_score_after = board_statistics_after.normalized_score(scoring);
+                            last_best_score = board_score_after;
+                            // :444-445.
+                            consecutive_no_improvement_passes = 0;
+                            fanout_recovery_applied = true;
+                            // :446 clears the dead hash set; not ported.
+                        }
+
+                        // :456-476.
+                        if consecutive_no_improvement_passes >= STAGNATION_PASS_LIMIT {
+                            // :457.
+                            let _report = build_unrouted_report(board);
+                            // :474-475.
+                            stop.request_stop_auto_router();
+                            // fixed: T9 (#214).
+                            exit = Some(BatchLoopExit::Stagnation);
+                            break;
+                        }
                     }
                 }
 
@@ -496,24 +648,17 @@ impl AutorouteBatchLoop {
                     let _report = build_unrouted_report(board);
                     // :505-506.
                     stop.request_stop_auto_router();
+                    // fixed: T9 (#214).
+                    exit = Some(BatchLoopExit::Stagnation);
                     break;
                 }
 
-            // Java bug: `AutorouteBatchLoop.java:509-517` — this `else if` hangs off `:422`'s
-            // `currentPass >= STOP_AT_PASS_MINIMUM && continueAutorouting` guard, so it runs on
-            // passes **1-7** (and on any pass where the router has stopped making progress) and
-            // never on pass 8 or later. Its own comment at `:511-514` says the opposite: it
-            // describes a rule for "a fully-routed board with score == 0" that "must NOT reset the
-            // stagnation counter … it should keep accumulating until the global tracker fires",
-            // which only makes sense inside the `>= 8` arm. As written, a fully routed board
-            // resets the counter exactly when the counter cannot yet fire, and stops resetting it
-            // exactly when it can. Quirk #215.
-            } else if stat(board_statistics_after.connections.incomplete_count) == 0
-                && board_score_after > STAGNATION_SCORE_THRESHOLD
-            {
-                // :515-516.
-                consecutive_no_improvement_passes = 0;
-                last_best_score = board_score_after;
+                // Java bug: `AutorouteBatchLoop.java:509-517` — this `else if` hangs off `:422`'s `currentPass >= STOP_AT_PASS_MINIMUM && continueAutorouting` guard, so it runs on passes **1-7** (and on any pass where the router has stopped making progress) and never on pass 8 or later, the opposite of its own comment at `:511-514` (quirk #215).
+                // fixed: T9 (#215) — the arm moved **into** the `>= 8` block above as
+                // [`StagnationStep::BoardRouted`]. Nothing is left here, so the `else` is gone rather
+                // than emptied: on passes 1-7 `:429`'s increment cannot have run, so the reset was a
+                // no-op on the counter, and `lastBestScore` is seeded to `-inf` and first read at
+                // `:425`, which is itself inside the arm.
             }
 
             // :520-522.
@@ -553,18 +698,22 @@ impl AutorouteBatchLoop {
 
         // :567-569 — `PerformanceProfiler.printResults()` / `reset()`; see the roster.
 
-        // :571-585. Quirk #214: `FINISHED` needs the flag still `NONE`, and every ordinary exit
-        // raised it.
-        let state = if !stop.is_stop_auto_router_requested() {
-            // :572-574.
-            TaskState::Finished
-        } else if stop.is_timed_out() {
-            // :578-584 — `job.state == RoutingJobState.TIMED_OUT`, which is what
-            // `RouterStop::is_timed_out` models.
-            TaskState::TimedOut
-        } else {
-            TaskState::Cancelled
-        };
+        // :571-585.
+        //
+        // fixed: T9 (#214) — the door the loop left by decides the state, not the flag every
+        // ordinary exit raises. A `while` head that fell through has no recorded door: it is
+        // `Completed` when the last pass answered "nothing left to route" (`:250`'s first
+        // conjunct) and `Cancelled` when something outside the loop raised the flag while there
+        // was still work — an operator's `poll_cancel` or ruling AI's `poll_deadline`, which are
+        // the only two writers this loop does not perform itself.
+        let exit = exit.unwrap_or({
+            if continue_autorouting {
+                BatchLoopExit::Cancelled
+            } else {
+                BatchLoopExit::Completed
+            }
+        });
+        let state = exit.task_state(stop.is_timed_out());
         progress.on_event(&RoutingEvent::TaskStateChanged {
             algorithm: NamedAlgorithmType::Router,
             state,
@@ -573,9 +722,9 @@ impl AutorouteBatchLoop {
         // :587.
         Ok(BatchLoopResult {
             state,
+            exit,
             continue_routing: !stop.is_stop_auto_router_requested(),
             passes_run: current_pass,
-            last_reported_pass,
             fanout: fanout_summary,
             per_pass,
         })
@@ -587,9 +736,10 @@ impl AutorouteBatchLoop {
 // =================================================================================================
 //
 // Java's `run` is one 552-line method and these four expressions are inside it. They are lifted
-// here — each still called from exactly one place, each carrying its Java range — because they are
-// the four decisions the loop *makes*, and every one of them is either unreachable on the corpus
-// (`final_best_board_swap`, `rank_limit_exceeded`) or reachable only after eight real passes
+// here — each carrying its Java range — because they are the decisions the loop *makes*, and
+// every one of them is either unreachable on the corpus (`final_best_board_swap`) or unreachable
+// anywhere at all (`rank_limit_exceeded`, whose call site quirk #217 deleted) or reachable only
+// after eight real passes
 // (`restore_gate`, `stagnation_guard`). A test that had to route eight passes of a real board to
 // reach a boolean would be a slow test of the router, not a test of the loop. Nothing else moved:
 // `run` reads exactly as Java does with these four names substituted for the expressions.
@@ -618,9 +768,9 @@ pub fn restore_gate(
     size_gate && modulo_gate
 }
 
-/// `:317-320` — the rank break.
+/// `:317-320`'s rank break — **the predicate, kept without its call site.**
 ///
-/// # Java bug (quirk #217): this can never fire
+/// # Java bug (quirk #217): it can never fire
 ///
 /// [`BOARD_RANK_LIMIT`] **is** `BoardHistory::MAX_HISTORY_SIZE` (`BatchAutorouter.java:40`), and
 /// `BoardHistory.getRank` answers a **1-indexed position in a list that `add` caps at
@@ -630,35 +780,96 @@ pub fn restore_gate(
 /// `BatchAutorouter.java:38-39`'s comment on the constant says "Must not exceed
 /// `BoardHistory.MAX_HISTORY_SIZE` **so the check can actually fire**" — which has the direction
 /// backwards. For the check to fire the limit must be *strictly less than* the cap; setting it
-/// equal is precisely the value that makes it dead. `the_rank_limit_can_never_fire` is the pin,
-/// and it also shows the arm is transcribed correctly by exercising it one above the limit.
-// Java bug: `AutorouteBatchLoop.java:317-320` — `boardToRestoreRank > BOARD_RANK_LIMIT` is
-// unreachable, because `BOARD_RANK_LIMIT == BoardHistory.MAX_HISTORY_SIZE` and `getRank` is
-// bounded by the history's own cap (quirk #217).
+/// equal is precisely the value that makes it dead.
+///
+// Java bug: `AutorouteBatchLoop.java:317-320` — `boardToRestoreRank > BOARD_RANK_LIMIT` is unreachable, because `BOARD_RANK_LIMIT == BoardHistory.MAX_HISTORY_SIZE` and `getRank` is bounded by the history's own cap (quirk #217).
+// fixed: T9 (#217) — **the branch is deleted from `run`** and the decision is recorded: enabling
+// the break, by setting the limit strictly below the cap, would make runs stop *earlier* than any
+// freerouting ever has, which is a product decision with its own A/B and not a cleanup. This
+// function survives its call site on purpose. It is the arithmetic the register row is *about*,
+// `the_rank_limit_can_never_fire` is what shows the row is true, and a reader who wants to enable
+// the break has the predicate, its constant and its proof in one place rather than having to
+// reconstruct them. Nothing in the pipeline calls it.
 pub fn rank_limit_exceeded(rank: i32) -> bool {
     rank > i32::try_from(BOARD_RANK_LIMIT).unwrap_or(i32::MAX)
 }
 
 /// `:422` — the stagnation detector's guard, and therefore also the guard on `:509`'s `else if`.
 ///
-/// # Java bug (quirk #215): the `else if` is attached to the wrong arm
+/// # Java bug (quirk #215), **fixed in Plan 9 Task 9**: the `else if` was attached to the wrong
+/// arm
 ///
 /// `:509-517` resets the pass-local stagnation counter when the board is fully routed and scoring
-/// above the threshold. It is the `else` of **this** predicate, so it runs on passes **1-7** — and
-/// on any pass where `autoroutePass` has already answered `false` — and never on pass 8 or later.
-/// Its own comment (`:511-514`) describes the opposite rule: "A fully-routed board with score == 0
-/// … must NOT reset the stagnation counter; it should keep accumulating until the global tracker
-/// fires", which is a statement about the arm the code cannot reach. As written the reset happens
-/// exactly while the counter is still incapable of firing, and stops happening exactly when it
-/// becomes capable.
+/// above the threshold. In Java it is the `else` of **this** predicate, so it ran on passes
+/// **1-7** — and on any pass where `autoroutePass` had already answered `false` — and never on
+/// pass 8 or later. Its own comment (`:511-514`) describes the opposite rule: "A fully-routed
+/// board with score == 0 … must NOT reset the stagnation counter; it should keep accumulating
+/// until the global tracker fires", which is a statement about the arm the code could not reach.
+/// As Java writes it the reset happens exactly while the counter is still incapable of firing,
+/// and stops happening exactly when it becomes capable.
 ///
-/// Measured on the corpus: `scripts/differential/run.sh p7t9 <ecc83> 8 router-only` prints
-/// `ROUTED-RESET pass=1` and `ROUTED-RESET pass=2` and nothing after that.
-// Java bug: `AutorouteBatchLoop.java:422` with `:509-517` — the fully-routed counter reset hangs
-// off the `currentPass >= STOP_AT_PASS_MINIMUM` guard, so it fires on passes 1-7 only, the
-// opposite of the comment at `:511-514` (quirk #215).
+/// Measured on the corpus before the fix: `scripts/differential/run.sh p7t9 <ecc83> 8
+/// router-only` prints `ROUTED-RESET pass=1` and `ROUTED-RESET pass=2` and nothing after that.
+///
+// Java bug: `AutorouteBatchLoop.java:422` with `:509-517` — the fully-routed counter reset hangs off the `currentPass >= STOP_AT_PASS_MINIMUM` guard, so it fires on passes 1-7 only, the opposite of the comment at `:511-514` (quirk #215).
+// fixed: T9 (#215) — the reset is [`StagnationStep::BoardRouted`], the third branch of `:425`'s
+// score test and therefore **inside** this guard. The guard itself is untouched: it is still
+// `currentPass >= STOP_AT_PASS_MINIMUM && continueAutorouting`, because that is where the counter
+// lives. This changes which passes reset the counter on every board that completes early, and
+// therefore where a long run stops.
 pub fn stagnation_guard(current_pass: i32, continue_autorouting: bool) -> bool {
     current_pass >= STOP_AT_PASS_MINIMUM && continue_autorouting
+}
+
+/// Which of the three arms of `:425`'s score test the stagnation block takes.
+///
+/// renamed: not a Java type — Java writes the three-way as an `if`/`else` at `:425-429` with the
+/// middle branch **misplaced** outside the enclosing `:422` guard (`:509-517`, quirk #215). It is
+/// an enum here for the reason the other four decisions in this file are functions: it is a
+/// decision over two `float`s and a count, and a test that had to route eight real passes to
+/// reach it would be a test of the router.
+///
+// fixed: T9 (#215) — [`StagnationStep::BoardRouted`] is `:509-517` in its proper place, as the
+// third branch of `:425`'s score test, which is what its own comment at `:511-514` describes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StagnationStep {
+    /// `:425-427` — the score rose past [`STAGNATION_SCORE_THRESHOLD`]. Reset the counter.
+    ScoreImproved,
+    /// `:509-517` — the board is **fully routed** and scoring above the threshold. Reset the
+    /// counter. Note the second conjunct: a fully-routed board scoring `0` takes
+    /// [`Self::Accumulate`] instead, which is exactly the rule `:511-514`'s comment states and
+    /// exactly the case Java's misplacement made unreachable.
+    BoardRouted,
+    /// `:429` — neither. The pass-local counter climbs towards [`STAGNATION_PASS_LIMIT`].
+    Accumulate,
+}
+
+/// `:425-427` + `:509-517` + `:429`, as the one three-way they are.
+///
+/// Only reachable inside [`stagnation_guard`], i.e. from pass [`STOP_AT_PASS_MINIMUM`] on and
+/// only while `autoroutePass` is still answering `true` — which is the whole of quirk #215's fix:
+/// Java evaluated the middle branch **only outside** that guard, on passes 1-7, where `:429`'s
+/// increment has never run and the counter it protects is always `0`.
+///
+/// The comparison order is Java's, and it matters: `:425`'s improvement test wins over the
+/// routed-board test, so a pass that both improved the score and completed the board reports
+/// [`StagnationStep::ScoreImproved`]. The two arms do the same two assignments, so the
+/// distinction is diagnostic rather than behavioural — but the port must not invent an order Java
+/// does not have.
+pub fn stagnation_step(
+    board_score_after: f32,
+    last_best_score: f32,
+    incomplete_count: usize,
+) -> StagnationStep {
+    // :425.
+    if board_score_after > last_best_score + STAGNATION_SCORE_THRESHOLD {
+        StagnationStep::ScoreImproved
+    // :510 — `incompleteCount == 0 && boardScoreAfter > 0.5`.
+    } else if incomplete_count == 0 && board_score_after > STAGNATION_SCORE_THRESHOLD {
+        StagnationStep::BoardRouted
+    } else {
+        StagnationStep::Accumulate
+    }
 }
 
 /// `:435-439` — the one-shot fanout recovery's four-term guard.

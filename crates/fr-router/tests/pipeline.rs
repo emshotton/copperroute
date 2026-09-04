@@ -19,7 +19,7 @@ use fr_board::prelude::*;
 use fr_router::RouterError;
 use fr_router::pipeline::{
     NamedAlgorithmType, NoopProgressSink, PipelineResult, ProgressSink, RouterBudget, RouterStop,
-    RoutingEvent, TaskState, build_unrouted_report, run_pipeline,
+    RoutingEvent, StopRequestState, TaskState, build_unrouted_report, run_pipeline,
 };
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
@@ -262,25 +262,28 @@ fn the_fanout_only_mode_sets_max_passes_to_zero_and_leaves_the_callers_settings_
 }
 
 // =================================================================================================
-// `a_max_items_stop_skips_the_optimizer_stage_but_a_max_passes_stop_does_not`
+// `neither_routing_limit_skips_the_optimizer_stage` — quirk #202, end to end
 // =================================================================================================
 
-/// Quirk candidate C, made observable end to end: `AutoroutePassRunner`'s `maxItems` gate
-/// requests an **`ALL`** stop (`request_stop()`), which `RoutingPipeline.java:117`'s
-/// `isStopRequested()` reads — so a router run that stops because it hit `--max-items` skips the
-/// optimizer stage entirely. `AutorouteBatchLoop`'s `maxPasses` cap, by contrast, requests only
-/// `AUTO_ROUTER_ONLY` (quirk #214) — `isStopRequested()` reads `false` for that, so the optimizer
-/// stage **runs** (quirk #227: it changes nothing, because the shared flag also gates its own
-/// item loop, but it runs and reports a real `TaskState`, not the "never entered"
-/// [`TaskState::Idle`] the `max_items` case reports).
+/// **Quirk #202, fixed in Plan 9 Task 9**, made observable end to end. In Java
+/// `AutoroutePassRunner`'s `maxItems` gate requests an **`ALL`** stop (`requestStop()`), which
+/// `RoutingPipeline.java:117`'s `isStopRequested()` reads — so a router run that stopped because
+/// it hit `--max-items` skipped the optimizer stage entirely, while `AutorouteBatchLoop`'s
+/// `maxPasses` cap, which requests only `AUTO_ROUTER_ONLY` (quirk #214), optimised normally. The
+/// log line even says "Stopping auto-router", and the optimizer is not the auto-router.
+///
+/// Both limits now answer `requestStopAutoRouter()`, so both arms below reach the stage; and
+/// `#227`'s stage-scoped stop then lowers that flag at the boundary, so on the way out the shared
+/// stop reads `NONE` on both paths. `TaskState::Idle` — "configured but never entered" — is what
+/// neither arm may report.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
-fn a_max_items_stop_skips_the_optimizer_stage_but_a_max_passes_stop_does_not() {
+fn neither_routing_limit_skips_the_optimizer_stage() {
     if !parity::require_java_dir() {
         return;
     }
 
-    // ---- the max_items arm: ALL, optimizer stage never enters --------------------------------
+    // ---- the max_items arm: AUTO_ROUTER_ONLY since #202, so the stage enters ------------------
     {
         let mut board = load_board(RPI);
         let mut settings = build_settings(&board, 8);
@@ -304,15 +307,26 @@ fn a_max_items_stop_skips_the_optimizer_stage_but_a_max_passes_stop_does_not() {
         )
         .expect("rpi_splitter has a routable signal layer");
 
+        // fixed: T9 (#202) — the `maxItems` gate raises `AUTO_ROUTER_ONLY`, not `ALL`, so
+        // `RoutingPipeline.java:117` no longer skips the stage; and fixed: T9 (#227) — the stage
+        // boundary then lowers that flag, so the shared stop reads `NONE` on the way out, exactly
+        // as it does after a `maxPasses` run.
         assert!(
-            stop.is_stop_requested(),
-            "the max_items gate must raise the ALL stop (AutoroutePassRunner's request_stop())"
+            !stop.is_stop_requested(),
+            "fixed: T9 (#202) — reaching --max-items must not raise the ALL stop"
         );
-        assert_eq!(
+        // The flag is `AUTO_ROUTER_ONLY` again on the way out, and that is not the stage boundary
+        // failing to lower it: `--max-items` is a **settings** limit, so the fresh
+        // `BatchAutorouter` `autoroutePassesForOptimizingItem` builds for each optimized item
+        // reads the same `settings.max_items` and trips the same `:212-221` gate on its own
+        // counter. Java raises `ALL` there and ends the job; the port raises `AUTO_ROUTER_ONLY`
+        // and ends that item's passes. What matters is that it is never `ALL`, which is the
+        // assertion above.
+        assert_eq!(stop.state(), StopRequestState::AutoRouterOnly);
+        assert_ne!(
             result.optimizer_state,
             Some(TaskState::Idle),
-            "RoutingPipeline.java:117's isStopRequested() must skip the optimizer stage when the \
-             max_items gate tripped"
+            "fixed: T9 (#202) — a --max-items run optimises, exactly as a --max-passes run does"
         );
     }
 
@@ -339,18 +353,25 @@ fn a_max_items_stop_skips_the_optimizer_stage_but_a_max_passes_stop_does_not() {
 
         assert!(
             !stop.is_stop_requested(),
-            "an ordinary maxPasses stop must leave the flag at AUTO_ROUTER_ONLY, never ALL \
-             (quirk #214)"
+            "an ordinary maxPasses stop must never raise ALL (quirk #214's five arms all call \
+             requestStopAutoRouter)"
         );
-        assert!(
-            stop.is_stop_auto_router_requested(),
-            "maxPasses being reached must raise at least AUTO_ROUTER_ONLY"
+        // fixed: T9 (#227) — the flag the `maxPasses` break raised was `AUTO_ROUTER_ONLY`, and
+        // `run_pipeline` **lowers it** at the optimizer stage boundary
+        // (`RouterStop::begin_optimizer_stage`). So after a full pipeline run the shared stop
+        // reads `NONE` again, which is the observable signature of the stage-scoped stop: before
+        // the fix it read `AUTO_ROUTER_ONLY` here and the optimizer's per-item autorouter ran
+        // zero passes because of it.
+        assert_eq!(
+            stop.state(),
+            StopRequestState::None,
+            "the routing stage's own ending must not survive into — or past — the optimizer stage"
         );
         assert_ne!(
             result.optimizer_state,
             Some(TaskState::Idle),
-            "quirk #227: an AUTO_ROUTER_ONLY stop does not skip the optimizer stage — it runs \
-             (and changes nothing), so it must report a real TaskState, not the never-entered one"
+            "an AUTO_ROUTER_ONLY stop does not skip the optimizer stage, so it must report a real \
+             TaskState, not the never-entered one"
         );
     }
 }

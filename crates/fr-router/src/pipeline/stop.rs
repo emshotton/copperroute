@@ -363,6 +363,58 @@ impl RouterStop {
         }
     }
 
+    /// **The stage-scoped stop — quirk #227's fix (Plan 9 Task 9).** Lower
+    /// `AUTO_ROUTER_ONLY` back to `NONE`, and **only** that: `ALL` and `NONE` are left exactly
+    /// where they are.
+    ///
+    /// # What it repairs
+    ///
+    /// Java shares one `StoppableThread` between the routing stage and the optimizer stage
+    /// (`RoutingPipeline.java:81-85`) and **has no writer that lowers the flag** — `grep -rn
+    /// requestStop src/main` finds `requestStop` and `requestStopAutoRouter` and no `clear`. Every
+    /// ordinary exit from `AutorouteBatchLoop.run` raises `AUTO_ROUTER_ONLY` (quirk #214's five
+    /// arms), so on entering `runOptimizationStage`:
+    ///
+    /// * `:117`'s `isStopRequested()` is `ALL` and therefore false — the stage **starts**;
+    /// * `BatchOptimizer.runBatchLoop:171` reads the same `ALL` — the pass loop **runs**;
+    /// * but `BatchAutorouter.autoroutePassesForOptimizingItem`'s loop head
+    ///   (`BatchAutorouter.java:268`) is `!isStopAutoRouterRequested()`, which is `!= NONE` — so
+    ///   **zero** autoroute passes run per item.
+    ///
+    /// Every item then rips its connections, measures a strictly worse board, fails
+    /// `result.improved()` and is restored from its snapshot. The stage costs **one whole-board
+    /// deep copy per item** and produces the board it was given.
+    ///
+    // fixed: T9 (#227) — the register row's first suggested fix, "reset the flag in
+    // `runOptimizationStage`, since it has already decided the optimizer may run", taken exactly
+    // there: [`crate::pipeline::run_pipeline`] calls this **after** `:117`'s `ALL` gate and
+    // nowhere else.
+    ///
+    /// # Why this keeps the three-state stop rather than collapsing it (survey §9.1)
+    ///
+    /// The lattice `NONE < AUTO_ROUTER_ONLY < ALL` is load bearing and this method walks **one
+    /// step of it, downwards, at one boundary**. What makes that safe is *who writes each state*:
+    ///
+    /// | state | writers | meaning at the stage boundary |
+    /// |---|---|---|
+    /// | `AUTO_ROUTER_ONLY` | `AutorouteBatchLoop`'s own arms (`:271`, `:311`, `:318`, `:474`, `:505`) and — since #202 — the `maxItems` site | "the **routing stage** is done" |
+    /// | `ALL` | [`RouterStop::request_stop`]: an operator's `notifications/cancelled` through [`RouterStop::poll_cancel`], and ruling AI's job deadline through [`RouterStop::poll_deadline`] | "the **job** is over" |
+    ///
+    /// Nothing but the routing stage's own ending ever writes `AUTO_ROUTER_ONLY`, so lowering it
+    /// — and *only* it — as the optimizer stage begins says precisely "the routing stage's ending
+    /// does not end the optimizer's". A cancellation or a deadline is `ALL`, is untouched here,
+    /// and still suppresses the stage at `:117` and ends it at `:171`. Collapsing the enum to a
+    /// bool would lose exactly that distinction, which is why the fix is a downgrade of one state
+    /// rather than a `clear()`.
+    ///
+    /// It is called **once per run**, at the one boundary, and never from inside a stage: a
+    /// second caller would let a stage lower a flag its own loop had just raised.
+    pub fn begin_optimizer_stage(&self) {
+        if self.state.get() == StopRequestState::AutoRouterOnly {
+            self.state.set(StopRequestState::None);
+        }
+    }
+
     /// `StoppableThread.isStopRequested` (`:28-30`) — `stopRequestState == ALL`.
     ///
     /// **Not** interchangeable with [`RouterStop::is_stop_auto_router_requested`]: this one is

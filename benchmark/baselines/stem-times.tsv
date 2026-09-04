@@ -1,48 +1,41 @@
 # gate-version: g1
-# task: T8
+# task: T9
 # The rolling PORT cpu_s baseline (rulings BO / BP4) -- the PREVIOUS TASK's number,
 # never the jar's. scripts/quality-ab.sh reads it as the reference for its cpu_s
-# column and rewrites it in place at each task's close, in the same commit as
-# benchmark/baselines/ab/quality-ab-<task>.tsv.
+# column and rewrites it in place at each task's close.
 #
-# SEEDING, and why the per-stem numbers are measured rather than copied.
-# The plan seeds this file from the v1.0.0-rs run of record's per-board cpu_s. That
-# run is the port's measured pre-fix position and is the right provenance -- but its
-# 605 boards are the `pcbench` corpus (`pcbench-*`), and this file's 29 rows are the
-# `tests/reference/` stems. The two sets are disjoint: not one stem is a pcbench
-# board, so there is no per-stem number in that run to copy. The seed is therefore
-# Task 0's own median-of-3 measurement of the same binary generation (the branch's
-# base commit is what produced v1.0.0-rs), and the run of record is recorded here as
-# the corpus-level position every milestone's cpu ratio is taken against.
+# T9 NOTE (ruling CI): these are the #227-BOUNDED numbers (optimizer.max_items work
+# budget, PORT_OPTIMIZER_ROUTE_WORK_BUDGET). dac2020 810s->270s (48x->16x vs T8),
+# strict-drc-cnh 258s->114s (26x->12x); every other stem is unchanged from T9. No
+# ESCALATE remains. See docs/superpowers task-9-report.md section 14.
 # v1.0.0-rs corpus cpu_s: cells 605, median 3.040, mean 25.199, total 15245.2
-#   (quoted -- benchmark/results/ is gitignored and this checkout has no copy)
 # cols:family	stem	cpu_s	cpu_spread_s
-batch	router-rpi-splitter	0.058	0.001
-batch	router-dac2020-bm01	16.750	0.081
-batch	router-j2-reference	1.048	0.001
-batch	router-tutorial-board	7.036	0.010
-batch	router-ecc83-input	0.028	0.001
-batch	router-fanout-bm11	2.795	0.025
-batch	router-strict-drc-cnh	9.849	0.066
+batch	router-rpi-splitter	0.059	0.002
+batch	router-dac2020-bm01	270.825	7.897
+batch	router-j2-reference	13.277	0.076
+batch	router-tutorial-board	7.291	0.051
+batch	router-ecc83-input	0.030	0.001
+batch	router-fanout-bm11	2.947	0.020
+batch	router-strict-drc-cnh	114.098	0.976
 batch	router-empty-board	0.007	0.000
-cli	router-rpi-splitter	0.057	0.000
-cli	router-j2-reference	1.046	0.002
-cli	router-ecc83-input	0.028	0.001
-cli	router-empty-board	0.006	0.001
-cli	router-dac2020-bm01	16.686	0.064
-cli	router-tutorial-board	7.046	0.069
-cli	router-fanout-bm11	2.792	0.067
-cli	router-strict-drc-cnh	9.672	0.149
-cli	tutorial_board	7.022	0.040
-cli	Issue026-J2_reference	1.040	0.008
-cli	large-outline	4.219	0.023
-cli	kicad-ecc83-json	0.288	0.001
-cli	kicad-complex-hierarchy-json	5.476	0.035
-drc	drc-dev-board	0.047	0.001
-drc	drc-bbd-mars-64	0.054	0.001
+cli	router-rpi-splitter	0.060	0.003
+cli	router-j2-reference	13.234	0.024
+cli	router-ecc83-input	0.030	0.001
+cli	router-empty-board	0.007	0.000
+cli	router-dac2020-bm01	274.702	7.611
+cli	router-tutorial-board	7.031	0.035
+cli	router-fanout-bm11	2.766	0.003
+cli	router-strict-drc-cnh	107.122	1.195
+cli	tutorial_board	7.015	0.037
+cli	Issue026-J2_reference	12.693	0.040
+cli	large-outline	4.190	0.009
+cli	kicad-ecc83-json	5.370	0.024
+cli	kicad-complex-hierarchy-json	5.466	0.047
+drc	drc-dev-board	0.046	0.001
+drc	drc-bbd-mars-64	0.055	0.002
 drc	drc-natural-tone-preamp	0.124	0.001
-drc	drc-issue593-rules	0.013	0.001
-drc	drc-issue593-ses	0.029	0.000
-drc	drc-issue753-cpu85	0.126	0.001
-drc	drc-issue110-relay	0.014	0.001
-drc	drc-tutorial-board	0.848	0.004
+drc	drc-issue593-rules	0.011	0.000
+drc	drc-issue593-ses	0.028	0.000
+drc	drc-issue753-cpu85	0.125	0.002
+drc	drc-issue110-relay	0.013	0.000
+drc	drc-tutorial-board	0.846	0.004

@@ -714,10 +714,26 @@ pub struct RoutingJob {
     /// [`RoutingResultManifest::from_job`](crate::RoutingResultManifest::from_job) copies it into
     /// the manifest's `resource_usage`, which `p8t2` normalises out (plan ruling 8).
     pub resource_usage: RouterJobResourceUsage,
-    /// `currentPass` (`:130-132`, private). Quirk #230 already records that this under-reports by
-    /// one on a `maxPasses`-capped exit; `PipelineResult::passes_run` is the number the port's
-    /// own surfaces use.
+    /// `currentPass` (`:130-132`, private) — **the routing stage's own completed pass count.**
+    ///
+    // fixed: T9 (#267) — in Java this one field is written by **two** loops,
+    // `AutorouteBatchLoop.java:276` (counting from 1) and `BatchOptimizer.java:196` (from 0), and
+    // `RoutingResultManifest.fromJob:124-126` reports whichever wrote last under a key naming the
+    // **autorouter**: one completed optimizer pass overwrote a three-pass routing stage with `1`.
+    // The optimizer's number now lives in [`Self::optimizer_pass`] and this field carries only
+    // the router's, which is what `phases.autorouter.passes_completed` claims to be.
+    // fixed: T9 (#230) — and the number written here is the honest one at every exit;
+    // `PipelineResult::router_passes_completed` carries the argument.
     current_pass: i32,
+    /// **The optimizer stage's own completed pass count** — `BatchOptimizer.java:196`'s
+    /// `job.setCurrentPass(currentPass)`, which Java writes into `currentPass` above.
+    ///
+    /// renamed: Java has no such field, and that absence **is** quirk #267.
+    ///
+    /// It has no manifest reader yet: `phases.optimizer.passes_completed` is allocated and never
+    /// written (quirk #254), and filling it is **Task 20's**. Plan 9 Task 9 landed the split so
+    /// that the number exists and `phases.autorouter.passes_completed` stops reporting it.
+    optimizer_pass: i32,
     /// `isCancelledByUser` (`:118`, private).
     is_cancelled_by_user: bool,
 }
@@ -750,6 +766,7 @@ impl Default for RoutingJob {
             drc_settings: DesignRulesCheckerSettings::default(),
             resource_usage: RouterJobResourceUsage::default(),
             current_pass: 0,
+            optimizer_pass: 0,
             is_cancelled_by_user: false,
         }
     }
@@ -780,14 +797,28 @@ impl RoutingJob {
 
     // ── the accessors ────────────────────────────────────────────────────────────────────────
 
-    /// `getCurrentPass` (`:249-252`).
+    /// `getCurrentPass` (`:249-252`) — the **routing** stage's completed pass count since
+    /// quirk #267's fix; see the field.
     pub fn get_current_pass(&self) -> i32 {
         self.current_pass
     }
 
-    /// `setCurrentPass` (`:254-257`).
+    /// `setCurrentPass` (`:254-257`). Only the routing stage's number may be written here —
+    /// the optimizer's goes to [`RoutingJob::set_optimizer_pass`] (quirk #267).
     pub fn set_current_pass(&mut self, current_pass: i32) {
         self.current_pass = current_pass;
+    }
+
+    /// The optimizer stage's completed pass count. No Java counterpart — see
+    /// [`RoutingJob::optimizer_pass`]'s field doc and quirk #267.
+    pub fn get_optimizer_pass(&self) -> i32 {
+        self.optimizer_pass
+    }
+
+    /// Writes the optimizer stage's completed pass count. No Java counterpart: Java's optimizer
+    /// writes `setCurrentPass` and overwrites the router's number (quirk #267).
+    pub fn set_optimizer_pass(&mut self, optimizer_pass: i32) {
+        self.optimizer_pass = optimizer_pass;
     }
 
     /// `isCancelledByUser` (`:120-123`).

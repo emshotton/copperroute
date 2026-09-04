@@ -216,8 +216,8 @@ impl AutoroutePassRunner {
         let mut routed: i32 = 0;
         let mut skipped: i32 = 0;
 
-        // :202.
-        for current_item in autoroute_item_list {
+        // :202 — one turn per `(item, qualifying net)` pair since quirk #213's fix.
+        for (current_item, route_net_no) in autoroute_item_list {
             // **Controller ruling AI's fourth poll site, added by Plan 8 Task 12 after a
             // measurement.** Ruling BB's three sites are the *pass* loop heads
             // (`batch_loop`, `fanout`, `optimizer`), and Task 11 recorded the residual latency as
@@ -272,35 +272,62 @@ impl AutoroutePassRunner {
                 break;
             }
 
-            // :207 — `currentItem.netCount()`, re-read from the **live board** because
-            // `RoutingBoard.reduceNetsOfRouteItems` can change an item's net list between
-            // connections (quirk #211). Java reads it off the `Item` *object* the list holds,
-            // which would survive removal from `itemList`; the port has only the id, so an item
-            // that had been removed would answer `net_count == 0` here and be skipped where Java
-            // would still attempt it.
+            // :207 — Java's `for (int i = 0; i < currentItem.netCount(); i++)`, a **fresh**
+            // `0..netCount()` walk per appearance whose index has no relation to the net that
+            // qualified the entry at `:375`.
             //
-            // **That case cannot arise.** `getAutorouteItems:358-359` keeps only items where
-            // `!isRoutable()`, and `MazeRipupResolver.checkRipup` (`:72-76`) refuses to rip any
-            // item where `!isRoutable()` — `return -1` before anything else — as does its
+            // fixed: T9 (#213) — gone. The work list carries `(item, qualifying net number)`
+            // pairs (see [`BatchAutorouter::autoroute_items`]), so this loop routes each pair
+            // once and on the net that asked for it. A two-net item that qualifies on both nets
+            // is routed **twice**, not four times, and never on a net nothing enqueued.
+            //
+            // Reading the net off the pair also settles quirk #211's hazard the right way round:
+            // `RoutingBoard.reduceNetsOfRouteItems` can change an item's net list between
+            // connections, so an index re-read here can name a different net than the one that
+            // qualified. The number cannot drift.
+            //
+            // The item may still have been removed from the board between its enqueueing and its
+            // turn — **that case cannot arise**: `getAutorouteItems:358-359` keeps only items
+            // where `!isRoutable()`, and `MazeRipupResolver.checkRipup` (`:72-76`) refuses to rip
+            // any item where `!isRoutable()` — `return -1` before anything else — as does its
             // `:205-212` twin. The two sets are **disjoint**, so no connection of this pass can
             // remove an item later in this pass's work list. `removeTails`
             // (`RoutingBoard.java:1197`) applies the same test, and runs after the loop in any
-            // case.
-            let net_count = board.get_item(current_item).map_or(0, |i| i.net_count());
-            for i in 0..net_count {
-                // :208-210.
+            // case. The guard is kept because the port keys items by id where Java holds the
+            // object, and Java's `:207` would answer a stale `netCount()` rather than skipping.
+            if board.get_item(current_item).is_some() {
+                // :208-210 — the same predicate `:203-205` above reads, and with one turn per
+                // pair the two checks coincide. Kept because Java has both and because the
+                // `maxItems` arm below breaks out of *this* loop, not the outer one.
                 if stop.is_stop_auto_router_requested() {
                     break;
                 }
 
-                // :212-221. `maxItems` reached: log, request an **ALL** stop, and break the net
-                // loop; `:203-205` then breaks the item loop on the next turn.
+                // :212-221. `maxItems` reached: log, request the stop, and break the net loop;
+                // `:203-205` then breaks the item loop on the next turn.
                 //
                 // Java bug: `AutoroutePassRunner.runSingleThread` (`:219`) — `thread.requestStop()` sets `ALL`, not `AUTO_ROUTER_ONLY`, so reaching `--max-items` also silences the optimizer stage at `RoutingPipeline.java:117` (quirk #202).
+                // fixed: T9 (#202) — `request_stop_auto_router()`, which is what the sibling limit
+                // does. `AutorouteBatchLoop.java:271` answers `--max-passes` with
+                // `requestStopAutoRouter()`, so a `--max-passes` run optimises and a
+                // `--max-items` run did not; the log line even says "Stopping auto-router", and
+                // **the optimizer is not the auto-router**. Both limits now mean "stop routing"
+                // and neither silently cancels a stage the caller asked for.
+                //
+                // The **three-state stop is kept**, not collapsed (survey §9.1): this site moves
+                // one step down the lattice, from `ALL` to `AUTO_ROUTER_ONLY`, and `ALL` stays
+                // reserved for what it always meant — an operator's `notifications/cancelled` and
+                // ruling AI's job deadline. Every reader of the flag is unchanged: `:203`/`:208`
+                // and the pass loop head read `!= NONE` and still stop, `:117` reads `ALL` and no
+                // longer skips, and `run_pipeline`'s stage-scoped reset (#227) lowers this state
+                // at the optimizer boundary exactly as it lowers `maxPasses`'.
+                //
+                // **Worth nothing without #227**: before the stage-scoped stop the optimizer would
+                // merely have run and changed nothing, which is what `maxPasses` already did.
                 let max_items = router.settings().max_items;
                 if max_items.is_some_and(|max| max > 0 && router.total_items_routed >= max) {
-                    // :219 — `requestStop`, not `requestStopAutoRouter`.
-                    stop.request_stop();
+                    // :219 — `requestStop` in Java; see the marker above.
+                    stop.request_stop_auto_router();
                     break;
                 }
                 // :222.
@@ -315,11 +342,9 @@ impl AutoroutePassRunner {
                 // :227-228's `netItemsBefore` is `logTraceRouteComparison`'s only input and is
                 // not computed here; see the method doc.
 
-                // :232, :239 — `currentItem.getNetNumber(i)`, read off the live board for the
-                // reason `net_count` is, and safe for the same disjointness argument.
-                let route_net_no = board
-                    .get_item(current_item)
-                    .map_or(-1, |item| item.get_net_number(i));
+                // :232, :239 — `currentItem.getNetNumber(i)` in Java; `route_net_no` is the net
+                // the work list carries (quirk #213's fix), which is the one that qualified the
+                // entry, so there is nothing to re-read off the board here.
 
                 // :238-245 -> `BatchAutorouter.autorouteItem` (`:507-514`) -> the whole of
                 // `AutorouteConnectionRouter.route`. A fresh engine per connection, because

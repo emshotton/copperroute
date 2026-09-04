@@ -374,6 +374,14 @@ impl RoutingResultManifest {
             .autorouter
             .as_mut()
             .expect("PhaseMetrics::default allocates autorouter");
+        // fixed: T9 (#267) — `job.get_current_pass()` is the **routing** stage's own count now,
+        // so this key finally means what it says. Java's two loops shared the field and this line
+        // reported whichever wrote last: `router-dac2020-bm01` at `-mp 2` logged two routing
+        // passes and one optimizer pass and printed `1`.
+        //
+        // obligation: `phases.optimizer.passes_completed` (quirk #254) is **Task 20's** to write,
+        // from `job.get_optimizer_pass()`, which Plan 9 Task 9 put on the job for it. Until then
+        // the key stays `{}` and `fanout_and_optimizer_phases_are_empty_objects` pins that.
         if job.get_current_pass() > 0 {
             autorouter.passes_completed = Some(job.get_current_pass());
         }

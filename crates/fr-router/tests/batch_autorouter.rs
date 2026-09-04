@@ -1206,7 +1206,9 @@ fn the_work_list_is_sorted_by_airline_distance() {
     let router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
     assert_eq!(
         router.autoroute_items(&board),
-        vec![c1, c2, c3],
+        // fixed: T9 (#213) — the work list carries `(item, qualifying net)` pairs; every item
+        // here is single-net, so the sort's subject is unchanged.
+        vec![(c1, 1), (c2, 2), (c3, 3)],
         "R1 (#293): the work list is ascending by calculateItemDistance. Before the fix this \
          answered [c3, c2, c1] — the descending-id walk (quirk #63), which is exactly the \
          reverse here."
@@ -1251,7 +1253,7 @@ fn equal_airline_distances_keep_the_descending_id_tie_order() {
     let router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
     assert_eq!(
         router.autoroute_items(&board),
-        vec![c3, c2, c1],
+        vec![(c3, 3), (c2, 2), (c1, 1)],
         "ties keep the descending-id walk order (quirk #63) — the order `getAutorouteItems` \
          built and the order Java's stable `List.sort` would have preserved"
     );

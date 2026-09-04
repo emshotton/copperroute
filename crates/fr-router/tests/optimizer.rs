@@ -24,8 +24,8 @@ use fr_board::prelude::*;
 use fr_geometry::{IntBox, IntOctagon, IntPoint, Shape, TileShape};
 use fr_router::pipeline::{
     AutorouteBatchLoop, BatchOptimizer, ItemRouteResult, NamedAlgorithmType, NoopProgressSink,
-    ProgressSink, RouterBudget, RouterStop, RoutingEvent, TaskState, optimizer_near_perfect_exit,
-    optimizer_route_improved,
+    PORT_OPTIMIZER_ROUTE_WORK_BUDGET, ProgressSink, RouterBudget, RouterStop, RoutingEvent,
+    StopRequestState, TaskState, optimizer_near_perfect_exit, optimizer_route_improved,
 };
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
@@ -274,27 +274,78 @@ fn the_increased_ripup_costs_are_dropped_after_one_non_improving_pass() {
     optimizer.use_increased_ripup_costs = true;
 
     // A pass that did not raise the score: `scoreAfter <= scoreBefore`.
-    let (pass_improvement, score_improvement) = optimizer.apply_pass_improvement(800.0, 800.0);
+    let (pass_improvement, force_another_pass) = optimizer.apply_pass_improvement(800.0, 800.0);
     assert_eq!(pass_improvement, 0.0, "(800 - 800) / 800 is 0");
-    assert_eq!(score_improvement, -1.0, ":215's sentinel");
+    assert!(force_another_pass, ":215's sentinel, as its own bool");
     assert!(!optimizer.use_increased_ripup_costs, ":213 clears the flag");
 
     // The very same pass again: the flag is down, so `:217` answers the real number and `:220`
     // now has something to compare against the threshold.
-    let (pass_improvement, score_improvement) = optimizer.apply_pass_improvement(800.0, 800.0);
+    let (pass_improvement, force_another_pass) = optimizer.apply_pass_improvement(800.0, 800.0);
     assert_eq!(pass_improvement, 0.0);
-    assert_eq!(
-        score_improvement, 0.0,
+    assert!(
+        !force_another_pass,
         ":217 — the arm cannot fire twice, so the loop's threshold exit is now reachable"
     );
 
     // And a pass that *did* improve never reaches the arm at all.
     let mut optimizer = BatchOptimizer::new(&settings);
     optimizer.use_increased_ripup_costs = true;
-    let (pass_improvement, score_improvement) = optimizer.apply_pass_improvement(800.0, 808.0);
+    let (pass_improvement, force_another_pass) = optimizer.apply_pass_improvement(800.0, 808.0);
     assert!((pass_improvement - 0.01).abs() < 1e-6, "8 / 800 is 1 %");
-    assert_eq!(score_improvement, pass_improvement);
+    assert!(!force_another_pass);
     assert!(optimizer.use_increased_ripup_costs, "still up");
+}
+
+/// **Quirk #228, fixed in Plan 9 Task 9: the improvement flag is a `bool`.**
+///
+/// `BatchOptimizer.java:215` assigns `scoreImprovement = -1` to mean "do not test the threshold
+/// this time — spend another pass", and `:220` tests `scoreImprovement != -1`. But `:209-210`
+/// computes `passImprovement = (scoreAfterPass - scoreBeforePass) / scoreBeforePass` into the
+/// **same variable** at `:217`, and that expression is exactly `-1.0` whenever a pass drives a
+/// positive score to hard zero. Such a pass skips the threshold exit and buys itself another pass
+/// on the reading "the ripup costs were just dropped", which is false.
+///
+/// Latent: the `:212` arm can run only once, so reaching `:217` with exactly `-1.0` needs a pass
+/// that collapses the board score, and no corpus stem does it because every item restores its own
+/// snapshot on failure. The collision is therefore asserted here, on the arithmetic, rather than
+/// on a board.
+#[test]
+fn the_improvement_flag_is_a_bool() {
+    let settings = DefaultSettings::new(&HostEnvironment::detect())
+        .get_settings()
+        .expect("DefaultSettings always answers a table")
+        .clone();
+
+    // **The collision itself.** A pass that drives 800 to 0 computes `-1.0` honestly, and it does
+    // so with the increased-ripup-costs arm already spent — so Java's `:220` would read its own
+    // sentinel out of a number that means "the board collapsed".
+    let mut optimizer = BatchOptimizer::new(&settings);
+    optimizer.use_increased_ripup_costs = false;
+    let (pass_improvement, force_another_pass) = optimizer.apply_pass_improvement(800.0, 0.0);
+    assert_eq!(
+        pass_improvement, -1.0,
+        ":209-210 — (0 - 800) / 800 is exactly Java's sentinel value"
+    );
+    assert!(
+        !force_another_pass,
+        "fixed: T9 (#228) — the decision is its own bool, so a real -1.0 is not mistaken for \
+         `:215`'s `keep going`"
+    );
+    // …and that is what `:220`'s exit reads: a pass with `pass_improvement == -1.0` and the flag
+    // down takes the threshold exit, where Java's `!= -1` test would have skipped it.
+    let threshold = 0.01_f64;
+    assert!(
+        !force_another_pass && pass_improvement < threshold,
+        "the threshold exit fires, which is what `:214`'s own comment intends"
+    );
+
+    // The two legitimate values of the flag, for completeness — and note that neither of them is
+    // a number any more.
+    let mut optimizer = BatchOptimizer::new(&settings);
+    optimizer.use_increased_ripup_costs = true;
+    assert!(optimizer.apply_pass_improvement(800.0, 800.0).1);
+    assert!(!optimizer.apply_pass_improvement(800.0, 800.0).1);
 }
 
 /// `:209-210`'s ternary: a non-positive `scoreBeforePass` answers `0` rather than dividing. That
@@ -381,23 +432,30 @@ fn a_pass_that_improves_nothing_clears_the_increased_ripup_costs_and_ends_the_st
         !pass.use_increased_ripup_costs,
         ":366 cleared the flag inside the pass"
     );
-    assert_eq!(
-        pass.score_improvement, 0.0,
+    assert!(
+        !pass.force_another_pass,
         ":217, not `:215` — `:212`'s first conjunct was already false"
     );
     assert!(!optimizer.use_increased_ripup_costs);
 }
 
-/// Quirk #202's second half, end to end at this stage: `AutoroutePassRunner:219` answers a
-/// `--max-items` limit with `requestStop()`, i.e. **`ALL`**, and `:171` is `isStopRequested()`.
-/// So a `maxItems` router stop disables the optimizer stage outright — zero passes, zero items.
+/// `:167-171`'s `ALL` gate, on its own. An `ALL` stop disables the optimizer stage outright —
+/// zero passes, zero items.
+///
+/// This **was** quirk #202's second half: `AutoroutePassRunner:219` answered a `--max-items`
+/// limit with `requestStop()`, i.e. `ALL`, where the sibling `--max-passes` limit answers
+/// `requestStopAutoRouter()`. `fixed: T9 (#202)` moved that site down the lattice, so no routing
+/// limit reaches this gate any more and the only writers of `ALL` are the ones that always meant
+/// "the job is over" — an operator's cancel and ruling AI's job deadline. The gate itself is
+/// unchanged and is what this test pins.
 #[test]
-fn a_max_items_router_stop_disables_this_stage() {
+fn an_all_stop_disables_this_stage() {
     let mut board = empty_board();
     let settings = build_settings(&board);
     let mut optimizer = BatchOptimizer::new(&settings);
     let stop = RouterStop::new();
-    // `AutoroutePassRunner.java:219`.
+    // What `RouterStop::poll_cancel` and `RouterStop::poll_deadline` write — and, in Java,
+    // `AutoroutePassRunner.java:219` as well.
     stop.request_stop();
     let mut sink = RecordingSink { events: Vec::new() };
     let result = optimizer
@@ -768,23 +826,30 @@ fn consecutive_failures_break_the_pass() {
     assert_eq!(optimizer.total_items_optimized, 5);
 }
 
-/// **Quirk #227, half two — the seam Task 15 must not flatten.**
+/// **Quirk #227, fixed in Plan 9 Task 9 — the stage begins working.**
 ///
 /// Java shares one `StoppableThread` between the two stages (`RoutingPipeline.java:81-85`) and
 /// **never lowers the flag**: `grep -rn requestStop src/main` finds no writer that does. So after
 /// any ordinary router run the flag is `AUTO_ROUTER_ONLY` (quirk #214), the optimizer stage still
-/// runs (`:171` reads `ALL`), and every `optRouteItem` inside it calls
+/// starts (`:171` reads `ALL`), and every `optRouteItem` inside it calls
 /// `autoroutePassesForOptimizingItem`, whose loop head is `!isStopAutoRouterRequested()`
 /// (`BatchAutorouter.java:268`) — **zero** autoroute passes. Each item rips its connections,
-/// measures a strictly worse board and restores the snapshot.
+/// measures a strictly worse board and restores the snapshot; the stage visited every item and
+/// changed **nothing**, at one whole-board deep copy each.
 ///
-/// The measurable consequence: the stage visits every item and changes **nothing**.
+/// The fix is [`RouterStop::begin_optimizer_stage`], which `run_pipeline` calls at the stage
+/// boundary immediately after `:117`'s `ALL` gate: it lowers `AUTO_ROUTER_ONLY` to `NONE` and
+/// leaves `ALL` alone. This test measures both sides of that one line on the same routed board —
+/// **without** it, Java's inert stage; **with** it, a stage that improves at least one item and
+/// moves the board.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
-fn an_auto_router_only_stop_leaves_every_item_rejected() {
+fn an_auto_router_only_stop_still_runs_the_optimizer() {
     if !parity::require_java_dir() {
         return;
     }
+
+    // ---- Java's seam, unchanged: the flag the router left is still up ------------------------
     let (mut board, mut settings) = routed_rpi();
     optimizer_settings(&mut settings).max_passes = Some(1);
     let before = board.structural_hash();
@@ -804,12 +869,10 @@ fn an_auto_router_only_stop_leaves_every_item_rejected() {
     );
     // PORT-REGRESSION PIN — re-cut at the M1 accept wave (ruling BV). The jar-parity value was
     // **6** (`p7t9 <rpi> 1 optimizer-shared 2 all`'s `OPT-RESULT items=6`). Plan 9 Task 2's R1
-    // (#293)/R2 (#294) leave the routed board with **5** items for the reader to offer. What the
-    // test measures — that every offered item is visited and none of them changes the board — is
-    // unchanged. Accepted at M1 (ruling BV).
+    // (#293)/R2 (#294) leave the routed board with **5** items for the reader to offer.
     assert_eq!(
         result.items_optimized, 5,
-        "and it visits every item the reader offers, all of them `improved=false`"
+        "it visits every item the reader offers, all of them `improved=false`"
     );
     assert_eq!(
         board.structural_hash(),
@@ -817,21 +880,100 @@ fn an_auto_router_only_stop_leaves_every_item_rejected() {
         "…and changes not one byte of the board, because every item routed zero passes and was \
          restored from its snapshot"
     );
+    assert!(
+        result
+            .per_pass
+            .iter()
+            .all(|pass| pass.route_improved <= 0.0),
+        "not one item improved: `:306`'s `routeImproved` never left 0 and `:365-368` drove it to -1"
+    );
 
-    // The same board with a clean flag does change, which is what makes the assertion above a
-    // measurement of the seam rather than of an inert optimizer.
-    let (mut board, settings) = routed_rpi();
+    // ---- the fix: one call at the stage boundary, and the stage does work --------------------
+    let (mut board, mut settings) = routed_rpi();
+    optimizer_settings(&mut settings).max_passes = Some(1);
     let mut optimizer = BatchOptimizer::new(&settings);
-    let clean = RouterStop::new();
+    let stop = RouterStop::new();
+    stop.request_stop_auto_router();
+    // fixed: T9 (#227) — what `run_pipeline` now does after `RoutingPipeline.java:117`'s gate.
+    stop.begin_optimizer_stage();
+    assert_eq!(
+        stop.state(),
+        StopRequestState::None,
+        "the routing stage's own ending does not end the optimizer's"
+    );
     let mut sink = NoopProgressSink;
-    optimizer
-        .run_batch_loop(&mut board, &clean, RouterBudget::disabled(), &mut sink)
+    let result = optimizer
+        .run_batch_loop(&mut board, &stop, RouterBudget::disabled(), &mut sink)
         .expect("the stage runs");
+
+    assert_eq!(result.items_optimized, 5, "the same five items are visited");
+    assert!(
+        result.per_pass.iter().any(|pass| pass.route_improved > 0.0),
+        "at least one item improved: `optRoutePass:340-348` only writes a positive \
+         `routeImproved` inside `:333`'s `result.improved()` arm, and `:365-368` would have \
+         driven it to -1 had nothing improved — got {:?}",
+        result
+            .per_pass
+            .iter()
+            .map(|p| p.route_improved)
+            .collect::<Vec<_>>()
+    );
     assert_ne!(
         board.structural_hash(),
         before,
-        "with the flag down the optimizer really does move the board"
+        "…and the board shape really changes — the whole point of the stage"
     );
+}
+
+/// **The three-state stop survives the fix.** [`RouterStop::begin_optimizer_stage`] walks one
+/// step down the `NONE < AUTO_ROUTER_ONLY < ALL` lattice and no more, so:
+///
+/// * an `ALL` stop — an operator's cancel, or ruling AI's job deadline — is **untouched**, and
+///   `RoutingPipeline.java:117` still skips the stage on it;
+/// * a `NONE` stop is untouched;
+/// * and the reset cannot leak backwards into the router, because the routing stage has already
+///   returned by the time the one call site runs, and a clock that expires afterwards still
+///   raises `ALL` over the lowered flag.
+#[test]
+fn the_stage_scoped_stop_does_not_leak_into_the_router() {
+    // `ALL` stays `ALL`: a cancellation is a cancellation.
+    let cancelled = RouterStop::new();
+    cancelled.request_stop();
+    cancelled.begin_optimizer_stage();
+    assert_eq!(cancelled.state(), StopRequestState::All);
+    assert!(
+        cancelled.is_stop_requested(),
+        "`:117` still skips the stage"
+    );
+
+    // `NONE` stays `NONE`.
+    let clean = RouterStop::new();
+    clean.begin_optimizer_stage();
+    assert_eq!(clean.state(), StopRequestState::None);
+
+    // `AUTO_ROUTER_ONLY` — and only it — is lowered.
+    let routed = RouterStop::new();
+    routed.request_stop_auto_router();
+    assert!(routed.is_stop_auto_router_requested());
+    routed.begin_optimizer_stage();
+    assert_eq!(routed.state(), StopRequestState::None);
+    assert!(!routed.is_stop_auto_router_requested());
+    assert!(!routed.is_stop_requested());
+
+    // A job deadline that expires *during* the optimizer stage still ends it, because
+    // `poll_deadline` requests `ALL` and `:171` reads `ALL`.
+    let expired = RouterStop::with_deadline(-1);
+    expired.request_stop_auto_router();
+    expired.begin_optimizer_stage();
+    assert_eq!(expired.state(), StopRequestState::None);
+    assert!(expired.poll_deadline());
+    assert!(
+        expired.is_stop_requested(),
+        "the job clock still ends the job"
+    );
+    // …and a second `begin_optimizer_stage` cannot undo it.
+    expired.begin_optimizer_stage();
+    assert_eq!(expired.state(), StopRequestState::All);
 }
 
 /// The whole stage on the routed `rpi_splitter`, pinned field by field.
@@ -891,6 +1033,53 @@ fn the_optimizer_stage_is_pinned_on_the_routed_rpi() {
     assert_eq!(pass.record.via_count, 0);
     assert_eq!(pass.record.trace_count, 9);
     assert_eq!(pass.pass_improvement, 1.739_544_245_511_34e-5);
-    assert_eq!(pass.score_improvement, pass.pass_improvement);
+    // fixed: T9 (#228) — `:217`'s arm, as its own bool: the increased ripup costs were not
+    // dropped this pass, so `:220` reads the real improvement.
+    assert!(!pass.force_another_pass);
     assert_eq!(pass.route_improved, 0.412_747_17);
+}
+
+// =================================================================================================
+// ruling CI — the optimizer's incomplete-board routing-work budget
+// =================================================================================================
+
+/// **fixed: T9 (ruling CI).** #227 made the optimizer stage do real per-item whole-board routing,
+/// which is intractable on an incompletely routed board (`Issue508-DAC2020_bm01.dsn` at `-mp 2`
+/// ran 810 s / 48x). The port bounds the stage's cumulative *incomplete-board* routing work --
+/// `sum of incompleteCount * passesRun` per item -- at [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`], and
+/// the decisive property is that a **complete**-board item (`incompleteCount == 0`) adds **zero**,
+/// so via-/length-optimization on a routed board is never bounded.
+///
+/// The whole-board behaviour is the A/B's (dac2020 30 -> 3 at ~17x instead of 48x;
+/// `j2-reference` and every cheap stem keep their full optimization). This pins the budget
+/// arithmetic that the A/B rests on, without a board.
+#[test]
+fn the_route_work_budget_bounds_only_incomplete_board_routing() {
+    assert_eq!(PORT_OPTIMIZER_ROUTE_WORK_BUDGET, 1800);
+
+    let board = empty_board();
+    let settings = build_settings(&board);
+    let mut optimizer = BatchOptimizer::new(&settings);
+
+    assert_eq!(optimizer.total_route_work, 0);
+    assert!(!optimizer.route_work_budget_spent());
+
+    optimizer.total_route_work = PORT_OPTIMIZER_ROUTE_WORK_BUDGET - 1;
+    assert!(!optimizer.route_work_budget_spent());
+    optimizer.total_route_work = PORT_OPTIMIZER_ROUTE_WORK_BUDGET;
+    assert!(optimizer.route_work_budget_spent());
+
+    let work = |incomplete: i32, passes: i32| -> i64 {
+        i64::from(incomplete.max(0)) * i64::from(passes.max(0))
+    };
+    assert_eq!(work(0, 6), 0, "a complete-board item is never charged");
+    assert_eq!(
+        work(30, 6),
+        180,
+        "an item on a 30-connection backlog is charged its attempts"
+    );
+    // ~10 items each re-routing a full ~30-connection backlog reach the budget; a complete
+    // board's hundreds of 0-cost items never do.
+    assert!(work(30, 6) * 9 < PORT_OPTIMIZER_ROUTE_WORK_BUDGET);
+    assert!(work(30, 6) * 10 >= PORT_OPTIMIZER_ROUTE_WORK_BUDGET);
 }

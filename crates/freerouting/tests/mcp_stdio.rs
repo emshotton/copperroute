@@ -1597,13 +1597,28 @@ fn a_sparse_settings_payload_composes_at_priority_70() {
         wires(&router_off) > 0,
         "the fanout pre-pass still ran; only the auto-router was disabled"
     );
-    // 2. One pass leaves more of the board incomplete than the default 9999 does.
-    assert_ne!(one_pass["ses_text"], slow_bare["ses_text"]);
+    // 2. One pass routes a **different** board from the default 9999.
+    //
+    // The load-bearing claim is that `max_passes` reached the pass loop at all, and the SES is
+    // what says so. This used to be measured as "one pass leaves more of the board incomplete",
+    // and that proxy died at Plan 9 Task 9: #227 gave the optimizer stage a stage-scoped stop, so
+    // the stage now does real work — and on this board it closes every connection the single
+    // routing pass left open. Both runs come in at **0** incomplete, which is a better board on
+    // the `max_passes = 1` path than the assertion was written to expect, and not something the
+    // proxy can express.
+    //
+    // The SES difference is the honest form of the same claim: a `max_passes` that never reached
+    // the pipeline would produce the identical bytes. The incomplete count is kept as a
+    // one-sided bound, because a *rise* on the capped path would still be the old finding.
+    assert_ne!(
+        one_pass["ses_text"], slow_bare["ses_text"],
+        "max_passes = 1 must reach the pass loop — an ignored setting would route the same board"
+    );
     assert!(
         one_pass["incompletes"].as_u64().expect("a count")
-            > slow_bare["incompletes"].as_u64().expect("a count"),
-        "max_passes = 1 must reach the pass loop: {} incomplete at one pass against {} at the \
-         default",
+            >= slow_bare["incompletes"].as_u64().expect("a count"),
+        "one routing pass cannot leave *fewer* connections open than the default budget: {} at \
+         one pass against {} at the default",
         one_pass["incompletes"],
         slow_bare["incompletes"]
     );

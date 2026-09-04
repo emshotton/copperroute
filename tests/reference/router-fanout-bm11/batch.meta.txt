@@ -1,6 +1,6 @@
 lane         port (<workspace>/scripts/differential/rust/src/bin/p7t9.rs)
-port sha     82557712427b
-plan 9 task  T8
+port sha     3d64aab44d92
+plan 9 task  T9
 java         n/a (no JVM runs in this lane)
 hash mode    n/a (the port has no Object.hashCode)
 budget       RouterBudget::disabled() (ruling AI, which survives the Plan 9 switch:

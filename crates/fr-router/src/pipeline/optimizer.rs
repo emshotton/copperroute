@@ -65,6 +65,52 @@ use crate::pipeline::stop::{PassRecord, ProgressThrottler, RouterBudget, RouterS
 use crate::pipeline::{NamedAlgorithmType, ProgressSink, RoutingEvent, TaskState};
 use crate::score::BoardStatistics;
 
+/// **fixed: T9 (ruling CI) — the port's bound on the optimizer stage's cumulative
+/// *incomplete-board routing work*.**
+///
+/// # Why the optimizer needs a bound at all
+///
+/// Java's `DefaultSettings` leaves the optimizer effectively unbounded (`optimizer.maxItems =
+/// Integer.MAX_VALUE`, `maxPasses = 100`), and that was harmless for one reason only: quirk #227
+/// meant the stage **never did any work**. #227's fix makes it do real per-item **whole-board**
+/// routing, and on an *incompletely* routed board that is intractable — each optimized item
+/// re-routes the whole unrouted backlog, so `Issue508-DAC2020_bm01.dsn` at `-mp 2` ran **810 s,
+/// 48x** Task 8's time.
+///
+/// # Why neither an item nor a pass count is the right quantity
+///
+/// The runaway must be bounded **without a wall clock** (a wall-clock budget was #234's bug). The
+/// obvious count-based knobs were measured and rejected:
+///
+/// * **`optimizer.maxItems` (a flat item cap).** The per-item cost differs ~140x between a
+///   *complete* board (the re-route finds nothing and exits in 1 pass) and an *incomplete* one (6
+///   passes over the ~30-connection backlog). A cap tight enough for dac2020 (40) regressed the
+///   cheap stem `Issue026-J2_reference` (`inc 1 -> 2`, traces lengthened), which does **~1200**
+///   cheap items across its optimizer loop passes.
+/// * **A cumulative pass count.** Same failure: a complete-board stem spends ~1200 *cheap* passes,
+///   an incomplete-board stem ~250 *expensive* ones, and a flat pass budget cannot tell them apart
+///   (a 250-pass budget left `Issue026` at `inc 2`, traces still long).
+///
+/// # The quantity that does separate them
+///
+/// The per-item routing cost is proportional to **`incompleteCount × passesRun`** — the number of
+/// connection-routing attempts the item's whole-board re-route makes. This budget accumulates
+/// exactly that, and its decisive property is that a **complete-board item contributes ZERO**
+/// (`incompleteCount == 0`): so via-/length-optimization on a fully routed board — the optimizer's
+/// actual job — is **never bounded**, and only the incomplete-board *routing* the stage now does
+/// on top of #227 is. It is a pure integer count of routing attempts — deterministic, no wall
+/// clock.
+///
+/// # The value
+///
+/// Measured (clean, single-process): dac2020 reaches `30 -> 3` incompletes by ~20-40 items and
+/// gains nothing more until the 48x tail; a budget that caps it at ~40 incomplete-board items
+/// holds it to ~190 s / **~11x** — no 48x. `Issue026-J2_reference` (mostly complete during
+/// optimization) and every parity/cheap stem stay under it and keep their full optimization. The
+/// "ideal default aggressiveness" is a milestone-bench policy question (a T18/M2 policy row); this
+/// value is the measured knee, not a tuned optimum.
+pub const PORT_OPTIMIZER_ROUTE_WORK_BUDGET: i64 = 1800;
+
 // =================================================================================================
 // `ReadSortedRouteItems` — BatchOptimizer.java:563-659
 // =================================================================================================
@@ -348,6 +394,11 @@ pub struct BatchOptimizer<'a> {
     pub min_cumulative_trace_length: f64,
     /// `protected int totalItemsOptimized` (`:36`).
     pub total_items_optimized: i32,
+    /// **fixed: T9 (ruling CI) — no Java counterpart.** The cumulative **incomplete-board routing
+    /// work** (`Σ incompleteCount × passesRun` per optimized item) the stage has spent, and the
+    /// quantity [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`] bounds. A complete-board item adds 0, so
+    /// via-/length-optimization is never bounded — only the #227 incomplete-board routing runaway.
+    pub total_route_work: i64,
     /// `protected Long deadlineMs` (`:37`), set by `runBatchLoop` (`:153-159`) from
     /// `settings.optimizer.timeoutString` and read at `:172` and `:308`.
     ///
@@ -405,6 +456,7 @@ impl<'a> BatchOptimizer<'a> {
             min_cumulative_trace_length: 0.0,
             // :36.
             total_items_optimized: 0,
+            total_route_work: 0,
             // :37.
             deadline: None,
             // :38.
@@ -503,10 +555,15 @@ impl<'a> BatchOptimizer<'a> {
     /// `BatchAutorouter`'s constructor (`:118-120`), there is **no** `null` fallback here, so a
     /// settings table without the field NPEs in Java. The `expect` reproduces that.
     ///
-    /// # The user-fixed early exit is dead (quirk #226)
+    /// # The user-fixed early exit is dead (quirk #226) and is **not** transcribed
     ///
-    /// `:436-440` is transcribed and can never fire; the marker at the site has the argument.
-    /// `p7t8 item`'s `anyUserFixed` column reads `false` on every item of every corpus stem.
+    /// `:436-440` can never fire; the marker at the site has the argument, and
+    // fixed: T9 (#226) — the loop is deleted as dead code. `p7t8 item`'s `anyUserFixed` column
+    // reads `false` on every item of every corpus stem, and
+    // `optimizer_items.rs::a_user_fixed_contact_never_reaches_the_ripped_connections` pins the
+    // property that makes it so.
+    /// no behaviour changes with it — only the per-item walk over the whole ripped-connection
+    /// set that asked the question.
     ///
     /// # `progress`, which the brief's sketch omits
     ///
@@ -597,23 +654,21 @@ impl<'a> BatchOptimizer<'a> {
         }
 
         // :434-440 — "check if the connections contain user fixed items, which should not be
-        // re-routed". **It cannot fire — quirk #226.** `rippedConnections` is filled from nothing
-        // but `getConnectionItems` (`:428-432`), which adds an item only when `isRoutable()`
+        // re-routed". **It cannot fire.** `rippedConnections` is filled from nothing but
+        // `getConnectionItems` (`:428-432`), which adds an item only when `isRoutable()`
         // (`Item.java:701-703` for the start item, `:723-726` for every step of the walk), and
         // `Trace.isRoutable` (Trace.java:206-208) / `Via.isRoutable` (Via.java:147-149) are both
         // `!isUserFixed() && netCount() > 0` over a base that answers `false`. So every member is
-        // routable, therefore not user-fixed. Transcribed anyway, because the port must read like
-        // the method and because a Java change to `isRoutable` would make it live.
+        // routable, therefore not user-fixed, and `:438`'s early return is unreachable.
         // Java bug: `BatchOptimizer.optRouteItem` (`:434-440`) — the user-fixed guard is dead: `getConnectionItems` only ever collects `isRoutable()` items and neither a user-fixed trace nor a user-fixed via is one, so the fixed geometry it advertises protecting is never in the set (quirk #226).
-        for current_item in ripped_connections.iter().rev() {
-            if board
-                .get_item(*current_item)
-                .is_some_and(Item::is_user_fixed)
-            {
-                // :438.
-                return Ok(ItemRouteResult::unimproved(item));
-            }
-        }
+        // fixed: T9 (#226) — deleted as dead code, with **no behaviour change**: the loop it
+        // replaces walked the whole ripped-connection set once per optimized item to ask a
+        // question whose answer is `false` by construction, and that cost is now saved on every
+        // item of every board. The fixed geometry the comment says it protects is protected by
+        // `getConnectionItems`, which is what `crates/fr-router/tests/optimizer_items.rs`'s
+        // `a_user_fixed_contact_never_reaches_the_ripped_connections` measures — and that test is
+        // what keeps the deletion honest, because it asserts the property the loop relied on
+        // rather than the loop.
 
         // :442-445 — `routingBoard.generateSnapshot()`. Plan-7 ruling 8: the snapshot's *item
         // state* is a clone. Its *side effects* are not: `Board::begin_undo_journal` opens the
@@ -644,6 +699,16 @@ impl<'a> BatchOptimizer<'a> {
             "BatchOptimizer.optRouteItem: settings.optimizer is dereferenced at :456 without a \
              null check — Java throws a NullPointerException here too",
         );
+        // fixed: T9 (ruling CI) — the per-item whole-board pass **count** is left at Java's
+        // `maxAutoroutePasses` (6). Ruling CI proposed capping it by `--max-passes` to restore the
+        // contract, and it was measured: capping does **not** bound cpu (the cost is `items ×
+        // per-item-reroute`, not the per-item pass count — dac2020 at `-mp 2` is ~810 s at cap 6
+        // and still > 650 s at cap 1), and it is quality-**negative** (cap 2 lost a connection,
+        // dac2020 `30 -> 4` against `30 -> 3`). The bound is instead the *routing work* the item
+        // spends — [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`], accumulated just below as
+        // `incompleteCount × passesRun` — which is 0 for a cheap complete-board item and large for
+        // an expensive incomplete-board one. The Task 9 report's ruling-CI section (§14) carries
+        // the measurement and the two rejected levers.
         let max_autoroute_passes = optimizer
             .max_autoroute_passes
             .expect("optimizer.maxAutoroutePasses is unboxed at :468");
@@ -651,7 +716,7 @@ impl<'a> BatchOptimizer<'a> {
             "BatchOptimizer.optRouteItem: settings.tracePullTightAccuracy is unboxed at :470 \
              with no null fallback — Java throws a NullPointerException here too",
         );
-        BatchAutorouter::autoroute_passes_for_optimizing_item(
+        let passes_run = BatchAutorouter::autoroute_passes_for_optimizing_item(
             board,
             self.settings,
             max_autoroute_passes,
@@ -662,6 +727,16 @@ impl<'a> BatchOptimizer<'a> {
             budget,
             progress,
         )?;
+        // fixed: T9 (ruling CI) — accumulate this item's routing work into the stage budget:
+        // `incompleteCount × passesRun`, the count of connection-routing attempts its whole-board
+        // re-route made. `passes_run` is `autoroutePassesForOptimizingItem`'s own return (`:280`),
+        // and `incomplete_count_before` is the board's backlog going in. A **complete**-board item
+        // (`incomplete_count_before == 0`) adds **zero**, so via-/length-optimization is never
+        // charged — only the incomplete-board routing #227 unblocked. See
+        // [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`].
+        self.total_route_work = self.total_route_work.saturating_add(
+            i64::from(incomplete_count_before.max(0)) * i64::from(passes_run.max(0)),
+        );
 
         // :475-482.
         let board_statistics_after = BoardStatistics::with_options(board, None, false);
@@ -876,9 +951,20 @@ pub struct OptimizerPassRecord {
     pub score_after: f32,
     /// `passImprovement` (`:209-210`) — `(after - before) / before`, or `0` when `before <= 0`.
     pub pass_improvement: f64,
-    /// `scoreImprovement` (`:215`/`:217`) as the arm left it: `-1` when the increased ripup costs
-    /// were dropped this pass, else [`Self::pass_improvement`].
-    pub score_improvement: f64,
+    /// `:212-215`'s decision, as its **own flag** rather than as a magic value of
+    /// [`Self::pass_improvement`].
+    ///
+    /// Java writes `scoreImprovement = -1` at `:215` to mean "do not test the threshold this
+    /// time — the increased ripup costs were just dropped, so spend another pass" and tests
+    /// `scoreImprovement != -1` at `:220`. `:209-210` computes `passImprovement` into the **same
+    /// variable** at `:217`, and that expression is exactly `-1.0` whenever a pass drives a
+    /// positive score to zero — so such a pass would skip the threshold exit on a false reading.
+    ///
+    // Java bug: `BatchOptimizer.runBatchLoop` (`:212-230`) — `-1` is a sentinel a real pass improvement can equal, because `:209-210`'s `(scoreAfterPass - scoreBeforePass) / scoreBeforePass` is `-1.0` for a pass that drives a positive score to hard zero and `:217` assigns it to the variable `:220` tests (quirk #228, latent).
+    // fixed: T9 (#228) — the decision is a `bool` and the number is a number. `:220`'s test is
+    // `!force_another_pass && pass_improvement < threshold`, which agrees with Java on every
+    // input except the collision, and there it takes the exit Java's own comment intends.
+    pub force_another_pass: bool,
     /// `useIncreasedRipupCosts` (`:32`) **after** the pass — cleared either by `optRoutePass`
     /// (`:365-368`, no item improved) or by `:212-215` (the board score did not rise).
     pub use_increased_ripup_costs: bool,
@@ -1024,6 +1110,15 @@ impl BatchOptimizer<'_> {
         algorithm.to_string()
     }
 
+    /// **fixed: T9 (ruling CI)** — has the optimizer stage spent its incomplete-board routing-work
+    /// budget? See [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`] for the full argument: it bounds the #227
+    /// runaway on incomplete boards while leaving a complete-board stem its full optimization,
+    /// because a complete-board item (incomplete count 0) adds nothing to the budget.
+    #[must_use]
+    pub fn route_work_budget_spent(&self) -> bool {
+        self.total_route_work >= PORT_OPTIMIZER_ROUTE_WORK_BUDGET
+    }
+
     /// `:172` and `:308` — `deadlineMs != null && System.currentTimeMillis() >= deadlineMs`,
     /// **non-strict**, on the port's monotonic clock.
     ///
@@ -1052,16 +1147,25 @@ impl BatchOptimizer<'_> {
     /// # The stop flag the loop reads is `ALL`, and the one that matters is not
     ///
     /// `:171` is `isStopRequested()`, so an `AUTO_ROUTER_ONLY` stop does **not** end this loop —
-    /// which is one half of quirk #202. The other half is the half that bites: every ordinary
+    /// which is one half of quirk #202. The other half is the half that bit: every ordinary
     /// exit from `AutorouteBatchLoop.run` raises `AUTO_ROUTER_ONLY` (quirk #214), and
     /// `BatchAutorouter.autoroutePassesForOptimizingItem`'s loop head (`BatchAutorouter.java:268`)
     /// is `!isStopAutoRouterRequested()` — so on a shared flag every `optRouteItem` in this loop
     /// rips its connections, routes **zero** passes, measures a worse board and restores the
-    /// snapshot. The stage runs and changes nothing. **Java has no reset**: `grep -rn requestStop`
+    /// snapshot. The stage ran and changed nothing. **Java has no reset**: `grep -rn requestStop`
     /// over `src/main` answers no writer that lowers the flag, and `RoutingPipeline.run`
-    /// (`:81-85`) hands both stages the one `job.thread`. The port reproduces that — this method
-    /// takes the caller's [`RouterStop`] and does not clear it — and **quirk #227** records the
-    /// consequence with its measurement. `p7t9 optimizer-shared` is the pin; `p7t9 optimizer`
+    /// (`:81-85`) hands both stages the one `job.thread`.
+    ///
+    // fixed: T9 (#227) — **not here.** This method still takes the caller's [`RouterStop`] and
+    // still does not clear it, because Java's own `runBatchLoop` does not either and the reset
+    // belongs at the stage boundary the register row names. [`crate::pipeline::run_pipeline`]
+    // calls [`RouterStop::begin_optimizer_stage`] immediately after `RoutingPipeline.java:117`'s
+    // `ALL` gate, so by the time this loop is entered on an ordinary run the flag is `NONE` and
+    // the per-item autoroute passes below actually run. A caller that hands this method an
+    // `AUTO_ROUTER_ONLY` stop directly — as `p7t9 optimizer-shared` does — still gets Java's
+    // inert stage, which is what keeps that driver an honest transcript of the jar.
+    ///
+    /// `p7t9 optimizer-shared` is the pin for the *unfixed* seam; `p7t9 optimizer`
     /// hands the stage a fresh stop on both sides so that the rest of this method is exercised at
     /// all.
     ///
@@ -1157,13 +1261,18 @@ impl BatchOptimizer<'_> {
         let mut per_pass: Vec<OptimizerPassRecord> = Vec::new();
 
         // :167-171 — `maxPasses`/`maxItems` are `Integer`s, and a `null` is "no limit".
-        // Java bug: `BatchOptimizer.runBatchLoop` (`:171`) — `isStopRequested()` is `ALL`, so an `AUTO_ROUTER_ONLY` stop (which every ordinary end of `AutorouteBatchLoop.run` leaves behind, quirk #214) lets this loop run while `BatchAutorouter.autoroutePassesForOptimizingItem:268` reads `!= NONE` and routes zero passes per item — the stage visits every item, rejects every one and changes nothing, at a whole-board deep copy each (quirk #227). Nothing in `src/main` lowers the flag, so the port must not either.
+        // Java bug: `BatchOptimizer.runBatchLoop` (`:171`) — `isStopRequested()` is `ALL`, so an `AUTO_ROUTER_ONLY` stop (which every ordinary end of `AutorouteBatchLoop.run` leaves behind, quirk #214) lets this loop run while `BatchAutorouter.autoroutePassesForOptimizingItem:268` reads `!= NONE` and routes zero passes per item — the stage visits every item, rejects every one and changes nothing, at a whole-board deep copy each (quirk #227). Nothing in `src/main` lowers the flag.
+        // fixed: T9 (#227) — `pipeline::run_pipeline` lowers `AUTO_ROUTER_ONLY` to `NONE` at the stage boundary (`RouterStop::begin_optimizer_stage`, called right after `RoutingPipeline.java:117`'s `ALL` gate), so on an ordinary run this loop is entered with the flag down and the per-item passes below really run. The transcription here is unchanged: it is the *caller* that scopes the stop, exactly as the register row asks.
         while optimizer
             .max_passes
             .is_none_or(|max_passes| current_pass < max_passes)
             && optimizer
                 .max_items
                 .is_none_or(|max_items| self.total_items_optimized < max_items)
+            // fixed: T9 (ruling CI) — the port's incomplete-board routing-work budget bounds the
+            // #227 runaway; see [`BatchOptimizer::route_work_budget_spent`]. On every parity/cheap
+            // stem the budget is never approached, so this conjunct is inert there.
+            && !self.route_work_budget_spent()
             && !stop.is_stop_requested()
         {
             // Controller ruling BB's poll seam (Plan 8 Task 11) — ruling AI's other **per-stage**
@@ -1221,7 +1330,7 @@ impl BatchOptimizer<'_> {
             let statistics_after = BoardStatistics::new(board);
             let score_after_pass = statistics_after.normalized_score(scoring);
             // :209-218.
-            let (pass_improvement, score_improvement) =
+            let (pass_improvement, force_another_pass) =
                 self.apply_pass_improvement(score_before_pass, score_after_pass);
 
             per_pass.push(OptimizerPassRecord {
@@ -1230,7 +1339,7 @@ impl BatchOptimizer<'_> {
                 score_before: score_before_pass,
                 score_after: score_after_pass,
                 pass_improvement,
-                score_improvement,
+                force_another_pass,
                 use_increased_ripup_costs: self.use_increased_ripup_costs,
                 route_improved,
                 total_items_optimized: self.total_items_optimized,
@@ -1246,7 +1355,9 @@ impl BatchOptimizer<'_> {
 
             // :220-230 — a `double` against a widened `float`.
             // Java bug: `BatchOptimizer.runBatchLoop` (`:220`) — `!= -1` is a **sentinel** test against a value `:209-210` can also produce honestly: a pass that drives a positive score to exactly zero computes `passImprovement = -1.0`, `:217` assigns it, and the threshold exit is then skipped on the false reading "the increased ripup costs were just dropped" (quirk #228, latent — no corpus pass collapses a score, because every item restores its own snapshot on failure).
-            if score_improvement != -1.0 && score_improvement < f64::from(improvement_threshold) {
+            // fixed: T9 (#228) — the sentinel is a `bool` of its own, so the threshold test reads
+            // the improvement it is about. Identical to Java on every input but the collision.
+            if !force_another_pass && pass_improvement < f64::from(improvement_threshold) {
                 break;
             }
         }
@@ -1285,10 +1396,10 @@ impl BatchOptimizer<'_> {
     /// it is the arm that decides whether the optimizer goes round again, and a test cannot reach
     /// it through a board.
     ///
-    /// Answers `(passImprovement, scoreImprovement)` and updates
+    /// Answers `(passImprovement, forceAnotherPass)` and updates
     /// [`BatchOptimizer::use_increased_ripup_costs`] exactly as `:213` does.
     ///
-    /// # `-1` means "keep going"
+    /// # "keep going" is a decision, not a number
     ///
     /// `:214`'s comment is "keep the optimizer going to try with normal ripup costs": the first
     /// pass that fails to raise the score spends the increased ripup costs rather than the
@@ -1296,10 +1407,18 @@ impl BatchOptimizer<'_> {
     /// only ever fire **once**, because `:212`'s first conjunct is then false forever — and
     /// `optRoutePass:365-368` can clear the same flag one step earlier, on the different
     /// condition "no item improved", in which case this arm never fires at all.
+    ///
+    // fixed: T9 (#228) — Java carries that decision in a magic `-1` assigned to the same
+    // `double` `:209-210` computes into, and `:209-210` produces exactly `-1.0` for any pass that
+    // drives a positive score to hard zero. The second element of this tuple is the decision and
+    // the first is the number, so the two can no longer collide. Latent on the corpus, because
+    // reaching `:217` with exactly `-1.0` needs a pass that collapses the board score to zero and
+    // every item restores its own snapshot on failure.
+    ///
     /// `pub` for the reason [`BatchOptimizer::opt_route_pass`] is: this is the arm
     /// `the_increased_ripup_costs_are_dropped_after_one_non_improving_pass` exercises, and
     /// `crates/fr-router/tests/optimizer.rs` is a separate crate.
-    pub fn apply_pass_improvement(&mut self, score_before: f32, score_after: f32) -> (f64, f64) {
+    pub fn apply_pass_improvement(&mut self, score_before: f32, score_after: f32) -> (f64, bool) {
         // :209-210 — the subtraction is a `float`, the cast and the division are `double`.
         let pass_improvement = if score_before > 0.0 {
             f64::from(score_after - score_before) / f64::from(score_before)
@@ -1307,16 +1426,16 @@ impl BatchOptimizer<'_> {
             0.0
         };
         // :212-218.
-        let score_improvement = if self.use_increased_ripup_costs && score_after <= score_before {
+        let force_another_pass = if self.use_increased_ripup_costs && score_after <= score_before {
             // :213.
             self.use_increased_ripup_costs = false;
-            // :215.
-            -1.0
+            // :215 — Java's `-1`.
+            true
         } else {
             // :217.
-            pass_improvement
+            false
         };
-        (pass_improvement, score_improvement)
+        (pass_improvement, force_another_pass)
     }
 
     /// Port of `optRoutePass(int, boolean)` (`BatchOptimizer.java:279-385`): "tries to reduce the
@@ -1425,6 +1544,12 @@ impl BatchOptimizer<'_> {
                 .max_items
                 .is_some_and(|max_items| max_items > 0 && self.total_items_optimized >= max_items)
             {
+                break;
+            }
+            // fixed: T9 (ruling CI) — stop mid-pass too once the port's routing-work budget is
+            // spent, so a single expensive optimizer pass over a huge incomplete board cannot
+            // overrun it.
+            if self.route_work_budget_spent() {
                 break;
             }
             // :327-330.

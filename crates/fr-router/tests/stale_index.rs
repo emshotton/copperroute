@@ -24,11 +24,11 @@
 //! changes a guard's count is expected to update the table and say which row moved it; that is
 //! the flip, and the `// T17:` breadcrumbs at the guard sites point back here.
 //!
-//! **Plan 9 Task 8 performed that flip.** No **fire** count moved — every one is still zero, which
-//! is #193's whole finding — but the **visit** counts moved on four of the eight stems, and the
-//! `// T8:` comments on each row of [`MEASURED`] name the commit and the fix that moved them,
-//! bisected commit by commit rather than inferred. The denominator went from 1 101 064 guard
-//! evaluations to 1 160 973.
+//! **Plan 9 Tasks 8 and 9 performed that flip.** No **fire** count has ever moved — every one is
+//! still zero, which is #193's whole finding — but the **visit** counts moved at both tasks, and
+//! the `// T8:` / `// T9:` comments on each row of [`MEASURED`] name what moved them. The
+//! denominator went 1 101 064 -> 1 160 973 at Task 8 and **1 160 973 -> 32 351 977 at Task 9**,
+//! a 27.9x rise on three stems and no change at all on the other five.
 //!
 //! # Why the counts are asserted exactly, and per stem
 //!
@@ -162,10 +162,33 @@ struct Expected {
 /// 8**, which is the flip that report's "these are characterisation pins, not fix markers" note
 /// anticipated.
 ///
-/// **Every fire count is still zero — now across 1 160 973 guard evaluations on eight boards.**
-/// #193's finding is untouched by Task 8: what moved is the *denominator*, i.e. how many times
-/// the router walks the guard sites, which is a routing change and exactly what a fix task is
-/// expected to produce. No guard started or stopped tripping.
+/// **Every fire count is still zero — now across 32 351 977 guard evaluations on eight boards.**
+/// #193's finding is untouched by Tasks 8 and 9: what moved is the *denominator*, i.e. how many
+/// times the router walks the guard sites, which is a routing change and exactly what a fix task
+/// is expected to produce. No guard started or stopped tripping.
+///
+/// # T9: one fix moved three rows, and the same fix is the task's cpu escalation
+///
+/// **#227** — the optimizer stage's stage-scoped stop — is the whole of it, and no bisection is
+/// needed to say so: the three stems that moved (`dac2020`, `j2-reference`, `strict-drc-cnh`) are
+/// exactly the three whose optimizer stage does real work now, and `router-fanout-bm11` — which
+/// runs with `optimizer=off` — did not move by one count. The other four stems route nothing or
+/// finish near-perfect, so their optimizer stage exits at `BatchOptimizer.java:182-193` before it
+/// touches an item.
+///
+/// The size of the move is the same fact the task's A/B reports as `cpu_s`: `dac2020` walks the
+/// G2 room-slot site **13 355 651** times against 353 444, a 37.8x rise beside a measured 48.4x
+/// cpu rise. This table is therefore an independent corroboration of the ruling BP4 escalation
+/// rather than a separate finding — the router really is doing tens of times more work, and it is
+/// doing it inside the optimizer's per-item autoroute passes.
+///
+/// | stem | optimizer | visits T8 -> T9 (G2 slot) |
+/// |---|---|---|
+/// | `router-dac2020-bm01` | on | 353 444 -> 13 355 651 |
+/// | `router-j2-reference` | on | 17 854 -> 296 273 |
+/// | `router-strict-drc-cnh` | on | 60 180 -> 939 226 |
+/// | `router-fanout-bm11` | **off** | 80 853 -> 80 853 (unmoved) |
+/// | the other four | on | unmoved — they route nothing or exit near-perfect |
 ///
 /// # T8: which fix moved which row — bisected, not inferred
 ///
@@ -180,14 +203,15 @@ struct Expected {
 /// | `c39d844` | **#156 + #167 + #158** | the expandable ids become one counter, which reorders `MazeListElement`'s third key and moves the **G2/G3** room-slot walk: `j2` G2 17 843 -> 17 854, `dac2020` G2 353 561 -> 353 444, `fanout-bm11` G2 80 849 -> 80 853, `strict-drc-cnh` G2 60 206 -> 60 180 and G3 7 333 -> 7 356 |
 ///
 /// `router-rpi-splitter`, `router-ecc83-input`, `router-tutorial-board` and `router-empty-board`
-/// are **unchanged by every one of the ten commits**. #159 (`9fea49e`) cannot move any of these:
+/// are **unchanged by every one of the ten commits** — and by all seven of Task 9's. #159 (`9fea49e`) cannot move any of these:
 /// it is a 90-degree-only defect and every corpus board declares `fortyfive_degree`. #160/#161,
 /// #162, #164, #165/#166 and #178 moved no count on any stem.
 const MEASURED: &[Expected] = &[
     Expected {
         stem: "router-rpi-splitter",
         fires: [0, 0, 0, 0, 0],
-        // T8: unchanged by all ten commits.
+        // T8: unchanged by all ten commits. T9: unchanged — the routed board is near-perfect, so
+        // `BatchOptimizer.java:182-193` exits before the first optimizer pass touches an item.
         visits: [76, 76, 1042, 1042, 111],
     },
     Expected {
@@ -196,8 +220,10 @@ const MEASURED: &[Expected] = &[
         // T8: was [13210, 13210, 336_796, 336_796, 39896].
         // #163 (cc6c210) -> [13161, 13161, 343_469, 343_469, 41377];
         // #171+#170 (e860a26) -> [13631, 13631, 353_561, 353_561, 43337];
-        // #156+#167+#158 (c39d844) -> below.
-        visits: [13630, 13630, 353_444, 353_444, 43337],
+        // #156+#167+#158 (c39d844) -> [13630, 13630, 353_444, 353_444, 43337].
+        // T9: #227 — the optimizer stage began doing work, so the router walks every guard site
+        // tens of times more often. This is the same board the A/B measures at 48.4x cpu.
+        visits: [144_444, 144_444, 13_355_651, 13_355_651, 2_339_316],
     },
     Expected {
         stem: "router-j2-reference",
@@ -205,20 +231,22 @@ const MEASURED: &[Expected] = &[
         // T8: was [2587, 2587, 17843, 17843, 1053].
         // #171+#170 (e860a26) moved G1a/G1b 2587 -> 3177;
         // #156+#167+#158 (c39d844) moved G2 17843 -> 17854. #163 moved nothing here.
-        visits: [3177, 3177, 17854, 17854, 1053],
+        // T9: #227, as on `dac2020`. The A/B measures this board at ~12x cpu.
+        visits: [35630, 35630, 296_273, 296_273, 21548],
     },
     Expected {
         // 438 empty `@:no_net_N` nets, so no item has an unconnected set and nothing routes —
         // `router-fixtures.txt`'s own note. The zero visits are that board, not a missing probe.
         stem: "router-tutorial-board",
         fires: [0, 0, 0, 0, 0],
-        // T8: unchanged — this board routes nothing.
+        // T8, T9: unchanged — this board routes nothing.
         visits: [0, 0, 0, 0, 0],
     },
     Expected {
         stem: "router-ecc83-input",
         fires: [0, 0, 0, 0, 0],
-        // T8: unchanged by all ten commits.
+        // T8: unchanged by all ten commits. T9: unchanged, for the same near-perfect reason as
+        // `router-rpi-splitter`.
         visits: [26, 26, 89, 89, 4],
     },
     Expected {
@@ -228,6 +256,9 @@ const MEASURED: &[Expected] = &[
         // #163 (cc6c210) -> [14952, 14952, 73080, 73080, 5455];
         // #171+#170 (e860a26) -> [17445, 17445, 80849, 80849, 6142];
         // #156+#167+#158 (c39d844) -> below.
+        // T9: **unchanged, and that is the control.** This is the one stem that runs with
+        // `optimizer=off`, so #227 cannot reach it — and none of T9's other six fixes moves a
+        // guard count either.
         visits: [17445, 17445, 80853, 80853, 6142],
     },
     Expected {
@@ -236,14 +267,16 @@ const MEASURED: &[Expected] = &[
         // T8: was [3665, 3665, 60219, 60219, 7353].
         // #163 (cc6c210) -> [3667, 3667, 60206, 60206, 7333];
         // #171+#170 (e860a26) -> [3669, 3669, 60206, 60206, 7333];
-        // #156+#167+#158 (c39d844) -> below.
-        visits: [3669, 3669, 60180, 60180, 7356],
+        // #156+#167+#158 (c39d844) -> [3669, 3669, 60180, 60180, 7356].
+        // T9: #227, as on `dac2020`. The A/B measures this board at ~26x cpu, and its incompletes
+        // fall 14 -> 2.
+        visits: [90961, 90961, 939_226, 939_226, 61424],
     },
     Expected {
         // Nothing to route (plan-7 ruling 7's `NoRoutableLayer` board).
         stem: "router-empty-board",
         fires: [0, 0, 0, 0, 0],
-        // T8: unchanged — this board has no routable signal layer.
+        // T8, T9: unchanged — this board has no routable signal layer.
         visits: [0, 0, 0, 0, 0],
     },
 ];
@@ -382,23 +415,22 @@ fn the_three_guards_are_counted_on_every_router_stem() {
     }
     let ci_only = std::env::var_os("FR_SLOW_PARITY").is_none();
     let mut report = String::new();
+    // **Collected, not asserted per stem.** A `assert_eq!` inside the loop stops at the first
+    // moved row, and on this suite a stem costs minutes — so a task that moves four rows would
+    // need four full sweeps to learn what to write into `MEASURED`. The rows are gathered, the
+    // whole table is printed, and the assertion is taken once at the end over every stem.
+    let mut moved: Vec<String> = Vec::new();
     for stem in stems(ci_only) {
         let run = route_stem(stem, true);
         report.push_str(&instrument::render(stem.name, &run.snapshot));
         let expected = expected_for(stem.name);
-        let actual: [u64; 5] = [
+        let fires: [u64; 5] = [
             run.snapshot.fires(Guard::G1aTreeEntryOutOfRange),
             run.snapshot.fires(Guard::G1bNullConnectionShape),
             run.snapshot.fires(Guard::G2RoomArrayResized),
             run.snapshot.fires(Guard::G2RoomIndexOutOfRange),
             run.snapshot.fires(Guard::G3TraceCornerOutOfRange),
         ];
-        assert_eq!(
-            actual, expected.fires,
-            "{}: the #193 guard fire counts moved. If a Task 8 fix moved them, update MEASURED \
-             and say which row did it; the order is [G1a, G1b, G2-resized, G2-out-of-range, G3].",
-            stem.name
-        );
         let visits: [u64; 5] = [
             run.snapshot.visits(Guard::G1aTreeEntryOutOfRange),
             run.snapshot.visits(Guard::G1bNullConnectionShape),
@@ -406,15 +438,35 @@ fn the_three_guards_are_counted_on_every_router_stem() {
             run.snapshot.visits(Guard::G2RoomIndexOutOfRange),
             run.snapshot.visits(Guard::G3TraceCornerOutOfRange),
         ];
-        assert_eq!(
-            visits, expected.visits,
-            "{}: the #193 guard **visit** counts moved — the router walks the guard sites a \
-             different number of times, which is a routing change, not an instrumentation one.",
+        // The row in `MEASURED`'s own syntax, so a task that has to update the table can paste it.
+        report.push_str(&format!(
+            "    MEASURED row: stem {:?} fires {fires:?} visits {visits:?}\n",
             stem.name
-        );
+        ));
+        if fires != expected.fires {
+            moved.push(format!(
+                "{}: FIRE counts moved {:?} -> {fires:?}",
+                stem.name, expected.fires
+            ));
+        }
+        if visits != expected.visits {
+            moved.push(format!(
+                "{}: VISIT counts moved {:?} -> {visits:?}",
+                stem.name, expected.visits
+            ));
+        }
     }
     // The measurement is the deliverable, so it is printed even on success (`--nocapture`).
     println!("{report}");
+    assert!(
+        moved.is_empty(),
+        "the #193 guard counts moved on {} row(s). A **fire** count moving is #193's finding \
+         changing; a **visit** count moving is a routing change, not an instrumentation one. \
+         Either way: update MEASURED and say which fix did it. The order is [G1a, G1b, \
+         G2-resized, G2-out-of-range, G3].\n{}",
+        moved.len(),
+        moved.join("\n")
+    );
 }
 
 /// Plan 7 ruling 11's shape: the instrumentation is invisible to the board.
