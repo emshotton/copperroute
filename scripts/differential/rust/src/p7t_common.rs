@@ -306,10 +306,10 @@ pub fn transcribe_run_single_thread<W: Write>(
         // :207 — Java's fresh `0..netCount()` walk, gone with quirk #213. The `netIndex` field
         // stays in the JSON and is the position of the qualifying net in the item's own net list,
         // which on every corpus board is `0` — the value the pre-fix walk printed.
-        let i = board.get_item(current_item).map_or(-1, |item| {
+        let i: i64 = board.get_item(current_item).map_or(-1, |item| {
             (0..item.net_count())
                 .find(|k| item.get_net_number(*k) == pair_net_no)
-                .unwrap_or(-1)
+                .map_or(-1, |k| k as i64)
         });
         {
             // :208-210.

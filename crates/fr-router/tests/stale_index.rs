@@ -382,23 +382,22 @@ fn the_three_guards_are_counted_on_every_router_stem() {
     }
     let ci_only = std::env::var_os("FR_SLOW_PARITY").is_none();
     let mut report = String::new();
+    // **Collected, not asserted per stem.** A `assert_eq!` inside the loop stops at the first
+    // moved row, and on this suite a stem costs minutes — so a task that moves four rows would
+    // need four full sweeps to learn what to write into `MEASURED`. The rows are gathered, the
+    // whole table is printed, and the assertion is taken once at the end over every stem.
+    let mut moved: Vec<String> = Vec::new();
     for stem in stems(ci_only) {
         let run = route_stem(stem, true);
         report.push_str(&instrument::render(stem.name, &run.snapshot));
         let expected = expected_for(stem.name);
-        let actual: [u64; 5] = [
+        let fires: [u64; 5] = [
             run.snapshot.fires(Guard::G1aTreeEntryOutOfRange),
             run.snapshot.fires(Guard::G1bNullConnectionShape),
             run.snapshot.fires(Guard::G2RoomArrayResized),
             run.snapshot.fires(Guard::G2RoomIndexOutOfRange),
             run.snapshot.fires(Guard::G3TraceCornerOutOfRange),
         ];
-        assert_eq!(
-            actual, expected.fires,
-            "{}: the #193 guard fire counts moved. If a Task 8 fix moved them, update MEASURED \
-             and say which row did it; the order is [G1a, G1b, G2-resized, G2-out-of-range, G3].",
-            stem.name
-        );
         let visits: [u64; 5] = [
             run.snapshot.visits(Guard::G1aTreeEntryOutOfRange),
             run.snapshot.visits(Guard::G1bNullConnectionShape),
@@ -406,15 +405,35 @@ fn the_three_guards_are_counted_on_every_router_stem() {
             run.snapshot.visits(Guard::G2RoomIndexOutOfRange),
             run.snapshot.visits(Guard::G3TraceCornerOutOfRange),
         ];
-        assert_eq!(
-            visits, expected.visits,
-            "{}: the #193 guard **visit** counts moved — the router walks the guard sites a \
-             different number of times, which is a routing change, not an instrumentation one.",
+        // The row in `MEASURED`'s own syntax, so a task that has to update the table can paste it.
+        report.push_str(&format!(
+            "    MEASURED row: stem {:?} fires {fires:?} visits {visits:?}\n",
             stem.name
-        );
+        ));
+        if fires != expected.fires {
+            moved.push(format!(
+                "{}: FIRE counts moved {:?} -> {fires:?}",
+                stem.name, expected.fires
+            ));
+        }
+        if visits != expected.visits {
+            moved.push(format!(
+                "{}: VISIT counts moved {:?} -> {visits:?}",
+                stem.name, expected.visits
+            ));
+        }
     }
     // The measurement is the deliverable, so it is printed even on success (`--nocapture`).
     println!("{report}");
+    assert!(
+        moved.is_empty(),
+        "the #193 guard counts moved on {} row(s). A **fire** count moving is #193's finding \
+         changing; a **visit** count moving is a routing change, not an instrumentation one. \
+         Either way: update MEASURED and say which fix did it. The order is [G1a, G1b, \
+         G2-resized, G2-out-of-range, G3].\n{}",
+        moved.len(),
+        moved.join("\n")
+    );
 }
 
 /// Plan 7 ruling 11's shape: the instrumentation is invisible to the board.
