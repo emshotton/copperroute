@@ -17,10 +17,8 @@ impl<'a> TraceTightener90<'a> {
         board: &mut Board,
         polyline: &Polyline,
     ) -> Option<Polyline> {
-        let (mut new_result, mut ever_changed) = match self.base.avoid_acid_traps(polyline) {
-            Some(replacement) => (replacement, true),
-            None => (polyline.clone(), false),
-        };
+        let mut new_result = polyline.clone();
+        let mut ever_changed = false;
         let mut changed = true;
         while changed && !self.base.is_stop_requested() {
             let mut current = new_result;

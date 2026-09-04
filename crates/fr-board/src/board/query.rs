@@ -169,8 +169,8 @@ impl Board {
     /// shape be inserted on `layer` without a clearance violation?
     ///
     /// `contact_pins` is Java's `Set<Pin> contactPins`: when it is `Some`, every pin *not* in it
-    /// counts as an obstacle even on the trace's own net, which is what keeps the router out of
-    /// acid traps (BasicBoard.java:1010-1014).
+    /// counts as an obstacle even on the trace's own net, so only the listed same-net pins are
+    /// passable (BasicBoard.java:1010-1014).
     pub fn check_trace_shape(
         &mut self,
         shape: &TileShape,

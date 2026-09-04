@@ -39,13 +39,8 @@ impl<'a> TraceTightener45<'a> {
         board: &mut Board,
         polyline: &Polyline,
     ) -> Option<Polyline> {
-        // :36. `ever_changed` is seeded from this arm, not from the loop — see
-        // [`TraceTightener90::pull_tight`](super::TraceTightener90::pull_tight) for why the
-        // `avoidAcidTraps` result counts as a change in its own right. Dead today (quirk #182).
-        let (mut new_result, mut ever_changed) = match self.base.avoid_acid_traps(polyline) {
-            Some(replacement) => (replacement, true),
-            None => (polyline.clone(), false),
-        };
+        let mut new_result = polyline.clone();
+        let mut ever_changed = false;
         // :37-38.
         let mut changed = true;
         while changed && !self.base.is_stop_requested() {

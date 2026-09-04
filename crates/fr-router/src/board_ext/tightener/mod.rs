@@ -22,13 +22,6 @@
 //! `Option`'s discriminant *is* Java's `!=`. A value comparison would differ, because several
 //! steps rebuild a polyline that happens to be value-equal to their input.
 //!
-//! # `TraceShover.springOverObstacles` is not needed
-//!
-//! `TraceTightener.avoidAcidTraps` (`:517-542`) is the family's only caller of it, and its first
-//! statement is `if (true) { return polyline; }` — the rest of the method is dead code (quirk
-//! #182). Controller ruling AA's line, which keeps `springOverObstacles` in Plan 7, therefore
-//! holds unchanged.
-//!
 //! # `PolylineTrace.change` -> `additionalUpdateAfterChange`
 //!
 //! `PolylineTrace.change` calls `board.additionalUpdateAfterChange(this)`
@@ -998,7 +991,7 @@ pub trait PolylineTraceExt {
     /// If atStart, the start of the trace polygon is corrected, else the end. Returns true, if
     /// this trace was changed."
     ///
-    /// The acid-trap correction: it walks the polygon around the border of the offset pin shape
+    /// The pin-exit correction: it walks the polygon around the border of the offset pin shape
     /// from the trace's latest entrance point to the nearest legal pin exit ray, replaces the
     /// trace's head with that polygon and inserts a `SHOVE_FIXED` exit stub.
     ///

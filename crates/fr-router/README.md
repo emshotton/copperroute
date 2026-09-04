@@ -1593,12 +1593,6 @@ whether the trace changed at all. Every step in this module therefore answers
 that happens to be value-equal to their input, so a value comparison would loop
 where Java stops (and stop where Java loops).
 
-**The tighteners do not need `springOverObstacles`, and quirk #182 is why.**
-`TraceTightener.avoidAcidTraps` is the family's only caller of it, and its first
-statement is `if (true) { return polyline; }` — the whole body below is dead.
-(`springOverObstacles` itself arrived one task later, from the *other* side —
-`insertForcedTracePolyline` calls it; see the next section.)
-
 **Quirk #34 is discharged here.** Java's four `Line.equals` call sites are
 `Simplex.borderLineIndex` (done in Plan 1) and three tightener sites —
 `TraceTightener.repositionLine:281`, `TraceTightenerAnyAngle.repositionLine:568`

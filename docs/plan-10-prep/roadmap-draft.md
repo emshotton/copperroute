@@ -125,7 +125,7 @@ mechanically, take B.
 | **T9 close** (`#227` — the optimizer stage starts doing work) | plan § "Task 9"; survey §4.2; multithreading-survey §3.2 | Turns the optimizer from free into the hottest loop in the program; supplies the acceptance rate the speculative-eval design depends on | **W3** (sizes it, or kills it) |
 | **M2** (end of T16) | plan § "Task 16"; ledger `progress.md:92` | The `#296` via column; `#231`'s stem-A/B follow-up | **W6**, **W13** |
 | **T17 report** | plan § "Task 17"; deliverable `docs/plan-9-prep/stale-index-report.md` | `#193`'s three-option recommendation. The row's status **stays `pinned`** by design | **W8** (its whole shape) |
-| **T18 — six verdicts** | plan § "Task 18", "The abandonment rule" | `#182`, `#172`, `#235`, `#104`, `#210` and the `#44+#63+#74` ordering flip: each confirmed or **measured and declined** | **W9**; also decides whether `fr_geometry::Line`'s identity counter survives |
+| **T18 — five verdicts** | plan § "Task 18", "The abandonment rule" | `#172`, `#235`, `#104`, `#210` and the `#44+#63+#74` ordering flip: each confirmed or **measured and declined** | **W9**; also decides whether `fr_geometry::Line`'s identity counter survives |
 | **T18 — the `#296` work** | ruling BV (`progress.md:84`); register row `#296` | How much of the +3.80 % corpus via inflation T18 explains | **W6** (Plan 10 inherits the residue, re-scoped per §1.3) |
 | **T18 — the large-board sort policy row** | ruling BV: *"the large-tier R1 attribution question FILED TO TASK 18 as a policy row (net-count-gated sort …, A/B'd at M3)"* | Whether the airline-first sort should be gated by net count | **W7** |
 | **M3** (end of T18) | plan § "Task 18" MILESTONE block | `overall.verdict`, hard losses, D3-small vs M1, the M2→M3 cpu ratio | **The baseline every Plan 10 A/B is taken against** — replaces the jar view |
@@ -439,14 +439,14 @@ independent of where it came from: it needs no historical justification to be wo
 
 **Benefit: QUALITY · Size: M · PENDING-on: M3's six verdicts**
 
-**Evidence.** Plan § "Task 18" and its abandonment rule: each of the six rows is committed
+**Evidence.** Plan § "Task 18" and its abandonment rule: each of the five remaining rows is committed
 separately, measured at G2 separately, carried into M3, and *"a row whose G2 shows a hard loss is
 reverted in the same task, its register row is set back to `pinned` with the measurement recorded,
 and Task 25's report names it as measured and declined"*. The plan predicts its own most likely
 decline: `#44 + #63 + #74`, the ordering flip.
 
-**Why a declined row is still a candidate.** Three of the six ship as **settings with today's
-behaviour as the default** (`router.avoid_acid_traps` off, `router.smd_via_relaxation` on,
+**Why a declined row is still a candidate.** Two of the remaining rows ship as **settings with today's
+behaviour as the default** (`router.smd_via_relaxation` on and
 `router.failure_give_up_threshold` disabled). A default decided from a **single** M3 measurement is a
 defensible first answer, not a final one — and post-fork none of the three has any claim to its
 current default beyond that measurement. Plan 10 re-measures them against the post-Plan-9 baseline,
@@ -805,7 +805,7 @@ hand.**
 
 **C. The six T18 verdicts** (plan § "Task 18")
 
-9. For each of `#182`, `#172`, `#235`, `#104`, `#210`, `#44+#63+#74`: confirmed or **measured and
+9. For each of `#172`, `#235`, `#104`, `#210`, `#44+#63+#74`: confirmed or **measured and
    declined**, with its number. → **W9**; `#172`'s outcome also feeds **W6**.
 10. Did the ordering flip survive? If not, `fr_geometry::Line`'s identity counter survives → a **W19**
     deletion row.

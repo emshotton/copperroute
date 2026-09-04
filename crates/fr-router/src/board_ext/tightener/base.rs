@@ -204,25 +204,6 @@ impl<'a> TightenerBase<'a> {
         }
     }
 
-    /// Port of `avoidAcidTraps(Polyline)` (TraceTightener.java:517-542): "wraps around pins of
-    /// the own net to avoid acid traps".
-    ///
-    /// The method's first statement is `if (true) { return polyline; }` (`:518-520`), so the
-    /// whole body below it — a `TraceShover.springOverObstacles` call and a
-    /// `board.checkPolylineTrace` guard — is **unreachable**, and every one of the three
-    /// `pullTight` overrides that opens with `avoidAcidTraps(polyline)` therefore receives its
-    /// own argument back. Answering `None` ("the argument, unchanged") is that behaviour; see
-    /// docs/java-quirks.md #182.
-    ///
-    /// This is also why the tightener family needs **none** of `TraceShover.springOverObstacles`,
-    /// which controller ruling AA keeps in Plan 7.
-    // Java bug: TraceTightener.avoidAcidTraps:518 is `if (true) return polyline;` — the rest of
-    // the method is dead. See docs/java-quirks.md.
-    pub(crate) fn avoid_acid_traps(&self, _polyline: &Polyline) -> Option<Polyline> {
-        // TraceTightener.java:518-520.
-        None
-    }
-
     /// Port of `repositionLines(Polyline)` (TraceTightener.java:215-230): "tries to shorten
     /// polyline by relocating its lines".
     ///

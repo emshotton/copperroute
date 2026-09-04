@@ -31,15 +31,8 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         board: &mut Board,
         polyline: &Polyline,
     ) -> Option<Polyline> {
-        // :36. `ever_changed` is seeded from this arm, not from the loop: Java returns
-        // `newResult`, and `PolylineTrace.pullTight:837` compares it against the **original**
-        // argument — so an `avoidAcidTraps` that answered a new object would make Java report
-        // "changed" even if all six steps below then handed their argument back. The arm is dead
-        // today (quirk #182), but the assignment is Java's and is transcribed as such.
-        let (mut new_result, mut ever_changed) = match self.base.avoid_acid_traps(polyline) {
-            Some(replacement) => (replacement, true),
-            None => (polyline.clone(), false),
-        };
+        let mut new_result = polyline.clone();
+        let mut ever_changed = false;
         // :37-38.
         let mut changed = true;
         while changed && !self.base.is_stop_requested() {

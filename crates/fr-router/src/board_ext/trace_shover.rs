@@ -981,7 +981,6 @@ impl TraceShover {
                 };
                 // :635-664.
                 let is_obstacle = if item.shares_net_no(net_numbers) {
-                    // "to avoid acid traps"
                     matches!(item, Item::Pin(_))
                         && contact_pins.is_some_and(|pins| !pins.contains(&current_item))
                 } else if let Item::ConductionArea(area) = item {
