@@ -466,11 +466,19 @@ impl LineSegment {
                         java_round(self.get_line().function_value_approx(current_x as f64)) as i32;
                 } else {
                     current_y = start_point.y + i * stair_width;
-                    // Java quirk kept verbatim (LineSegment.java:432): the function-of-y branch
-                    // calls `functionValueApprox` — the x -> y function — on a y coordinate,
-                    // where `functionInYValueApprox` is meant (as used in `stairApproximation`).
+                    // Java bug (LineSegment.java:432): the function-of-y branch calls
+                    // `functionValueApprox` — the x -> y function — on a y coordinate, where
+                    // `functionInYValueApprox` is meant and is what the non-45 sibling
+                    // `stairApproximation` uses. See docs/java-quirks.md #13.
+                    //
+                    // fixed: T11 (#13). Measured before: `(0,0) -> (7,20)` at width 2 produced
+                    // `[(0,0) (17,17) (17,6) (34,23) (34,12) (51,29) (51,18) (7,62) (7,20)]` — x
+                    // reaching 51 on a segment whose x never exceeds 7. The corrected branch is
+                    // the transpose of the healthy function-of-x one at the opposite handedness,
+                    // which is what `crates/fr-geometry/tests/nearest_and_stairs.rs` asserts.
                     current_x =
-                        java_round(self.get_line().function_value_approx(current_y as f64)) as i32;
+                        java_round(self.get_line().function_in_y_value_approx(current_y as f64))
+                            as i32;
                 }
                 current_line_point = IntPoint::new(current_x, current_y);
             }
