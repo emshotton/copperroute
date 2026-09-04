@@ -27,11 +27,21 @@ impl DrillItemMover {
     /// `vector` by shoving obstacle traces and vias aside, so that no clearance violations
     /// occur."
     ///
-    /// `ignore_items` is `Option<&mut Vec<ItemId>>` because Java's `null` and Java's non-null
-    /// argument behave differently: a non-null collection has the drill item **appended to it**
-    /// at `:63` and the caller sees that, while `null` is replaced by a fresh list (`:57-62`).
-    /// Every live call site passes a freshly allocated empty list, so the aliasing is never
-    /// observable — but it is transcribed rather than smoothed over.
+    // Java bug: `:57-63` replaces a `null` `ignoreItems` with a fresh `LinkedList`, but uses a
+    // non-null one **as is** and then `:63` appends `drillItem` to it. So a *check* — a method
+    // whose whole contract is that it does not change anything — grows its caller's collection by
+    // one element per call, and by more when the recursion through
+    // `ForcedPadRouter.checkForcedPad` re-enters. See docs/java-quirks.md #175.
+    //
+    // fixed: T10 (#175) — the collection is copied **unconditionally**, exactly as `shoveVias`
+    // (`:220-223`) already does for the same reason, and the parameter is therefore `Option<&[ItemId]>`
+    // rather than `Option<&mut Vec<ItemId>>`. The `&mut` existed only so the two paths could stay
+    // distinguishable while the port reproduced them; with one path there is nothing to
+    // distinguish, and a shared-slice parameter makes the "check does not mutate its caller"
+    // contract a type-level fact rather than a promise. No live call site observed the difference
+    // — all four (`TraceShover.java:126`, `:334`, `ForcedPadRouter.java:267`,
+    // `DrillItemMover.java:220`) pass a freshly allocated list — so nothing routed moves; what
+    // moves is that the asymmetry can no longer bite a future caller.
     ///
     /// `false` where a `drill_item` id names something that is not a drill item: Java's parameter
     /// is typed `DrillItem`, so the case cannot arise there.
@@ -47,7 +57,7 @@ impl DrillItemMover {
         vector: &Vector,
         max_recursion_depth: i32,
         max_via_recursion_depth: i32,
-        ignore_items: Option<&mut Vec<ItemId>>,
+        ignore_items: Option<&[ItemId]>,
         time_limit: Option<&TimeLimit>,
     ) -> bool {
         // DrillItemMover.java:43-45.
@@ -75,15 +85,10 @@ impl DrillItemMover {
             }
         }
 
-        // :57-63. Java's `null` argument becomes a fresh list; a supplied one is appended to.
-        let mut owned_ignore_items: Vec<ItemId>;
-        let effective_ignore_items: &mut Vec<ItemId> = match ignore_items {
-            Some(list) => list,
-            None => {
-                owned_ignore_items = Vec::new();
-                &mut owned_ignore_items
-            }
-        };
+        // :57-63, with the copy the fix makes unconditional — see the `// fixed: T10 (#175)`
+        // note above. The `null` and non-null paths now differ in nothing but where the first
+        // element comes from.
+        let mut effective_ignore_items: Vec<ItemId> = ignore_items.unwrap_or_default().to_vec();
         effective_ignore_items.push(drill_item);
 
         // :64-68.
@@ -136,7 +141,7 @@ impl DrillItemMover {
                 &net_numbers,
                 clearance_class_index,
                 attach_allowed,
-                Some(effective_ignore_items),
+                Some(&effective_ignore_items),
                 max_recursion_depth,
                 max_via_recursion_depth,
                 true,
@@ -380,7 +385,7 @@ impl DrillItemMover {
                 {
                     // :220-223. A **fresh** list per candidate, so quirk #175's append inside
                     // `check` never reaches this method's caller.
-                    let mut local_ignore_items: Vec<ItemId> =
+                    let local_ignore_items: Vec<ItemId> =
                         ignore_items.map(<[ItemId]>::to_vec).unwrap_or_default();
                     let delta = Point::Int(*try_via_center).difference_by(&current_via_center);
                     rel_coor = Some(delta.clone());
@@ -392,7 +397,7 @@ impl DrillItemMover {
                         &delta,
                         max_recursion_depth,
                         max_via_recursion_depth - 1,
-                        Some(&mut local_ignore_items),
+                        Some(&local_ignore_items),
                         None,
                     );
                     if shove_ok {

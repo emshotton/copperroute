@@ -821,8 +821,13 @@ fn drill_item_mover_check_agrees_with_the_jvm() {
 
         let delta = Vector::from(IntVector::new(300, 0));
         for via in [fixed, on_pin] {
-            let mut ignore = Vec::new();
-            let ok = DrillItemMover::check(&mut board, via, &delta, 20, 5, Some(&mut ignore), None);
+            // quirk #175 (fixed: T10): the parameter is a shared slice now, so "a check does not
+            // mutate its caller" is a type-level fact rather than a promise; the probe's
+            // `ignoreSize` column is asserted by
+            // `crates/fr-router/tests/board_ext.rs::drill_item_mover_check_does_not_mutate_its_caller`
+            // below, which covers the arm the jar's `ignoreSize=1` came from as well.
+            let ignore: Vec<ItemId> = Vec::new();
+            let ok = DrillItemMover::check(&mut board, via, &delta, 20, 5, Some(&ignore), None);
             assert!(
                 !ok,
                 "probe `check viaId={} result=false` ({angle:?})",
@@ -834,6 +839,47 @@ fn drill_item_mover_check_agrees_with_the_jvm() {
             );
         }
     }
+}
+
+/// Quirk #175, fixed at Plan 9 Task 10: `DrillItemMover.check` is a **check**, and it no longer
+/// changes anything its caller can see.
+///
+/// Java's `:57-62` replaces a `null` `ignoreItems` with a fresh `LinkedList` but uses a non-null
+/// one as is, and `:63` then appends `drillItem` to it — so the caller's collection grows by one
+/// element per call, and by more when the recursion through `ForcedPadRouter.checkForcedPad`
+/// re-enters. `P6T9Probe` mode `drill` prints exactly that: `ignoreSize=1` after a **successful**
+/// check and `ignoreSize=0` after one that refuses before `:63`. Every live Java call site happens
+/// to pass a freshly allocated list, so nothing observed it — but the asymmetry between the two
+/// paths was real, and `shoveVias` (`:220-223`) copies its list specifically to avoid it.
+///
+/// The collection is now copied unconditionally, the way `shoveVias` does. This test drives the
+/// arm that used to append — a check that gets past `:63` — and asserts the caller's list is
+/// untouched, on both the `Some` and `None` paths.
+#[test]
+fn drill_item_mover_check_does_not_mutate_its_caller() {
+    let mut board = probe_board(AngleRestriction::None);
+    let (free, _fixed, _on_pin) = insert_probe_vias(&mut board);
+
+    // A zero translation of the free via: reaches `:63` and beyond, which is where Java appended.
+    let delta = Vector::from(IntVector::new(0, 0));
+
+    let caller_list: Vec<ItemId> = vec![ItemId(1), ItemId(2)];
+    let before = caller_list.clone();
+    let ok = DrillItemMover::check(&mut board, free, &delta, 20, 5, Some(&caller_list), None);
+    assert!(
+        ok,
+        "a zero translation of the free via must succeed, so the run reaches `:63` — the arm the \
+         jar's `ignoreSize=1` came from"
+    );
+    assert_eq!(
+        caller_list, before,
+        "a check must not grow its caller's ignore list — quirk #175"
+    );
+
+    // And the `None` path, which Java already copied, still answers the same thing.
+    assert!(DrillItemMover::check(
+        &mut board, free, &delta, 20, 5, None, None
+    ));
 }
 
 /// `(angle regime, obstacle shape, extendedCheck, the centres)` — one row of probe mode `drill`'s

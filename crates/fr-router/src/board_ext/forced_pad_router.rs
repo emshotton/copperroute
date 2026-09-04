@@ -132,14 +132,14 @@ impl ForcedPadRouter {
             let delta = Point::Int(new_via_center).difference_by(&via_center);
             // :268-278. Java allocates a **fresh** `LinkedList` per via, so quirk #175's
             // side effect never reaches this method's caller.
-            let mut check_ignore_items = Vec::new();
+            let check_ignore_items = Vec::new();
             if !DrillItemMover::check(
                 board,
                 current_shove_via,
                 &delta,
                 max_recursion_depth,
                 max_via_recursion_depth - 1,
-                Some(&mut check_ignore_items),
+                Some(&check_ignore_items),
                 time_limit,
             ) {
                 return CheckDrillResult::NotDrillable;

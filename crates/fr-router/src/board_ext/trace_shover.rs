@@ -167,14 +167,14 @@ impl TraceShover {
                     return 0.0;
                 };
                 let delta = Point::Int(new_via_center[0]).difference_by(&via_center);
-                let mut ignore_items = Vec::new();
+                let ignore_items = Vec::new();
                 shove_via_ok = DrillItemMover::check(
                     board,
                     current_shove_via,
                     &delta,
                     max_recursion_depth,
                     max_via_recursion_depth - 1,
-                    Some(&mut ignore_items),
+                    Some(&ignore_items),
                     None,
                 );
             }
@@ -449,14 +449,14 @@ impl TraceShover {
                         <= max_dist_square
                 {
                     let delta = Point::Int(*try_via_center).difference_by(&via_center);
-                    let mut ignore_items = Vec::new();
+                    let ignore_items = Vec::new();
                     if DrillItemMover::check(
                         board,
                         current_shove_via,
                         &delta,
                         max_recursion_depth,
                         max_via_recursion_depth - 1,
-                        Some(&mut ignore_items),
+                        Some(&ignore_items),
                         time_limit,
                     ) {
                         shove_via_ok = true;

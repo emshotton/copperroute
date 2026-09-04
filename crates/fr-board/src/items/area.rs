@@ -555,10 +555,19 @@ impl ConductionArea {
     // Java bug: an area on anything other than exactly one net is not copied at all — Java warns
     // ("not yet implemented for areas with more than 1 net") and returns `null`
     // (ConductionArea.java:310-313), which includes an area with **zero** nets despite the
-    // message. Reproduced as `None`; see docs/java-quirks.md.
-    /// Returns `None` unless the area is on exactly one net.
+    // message. Every other `Item.copy` override always produces an item, so a caller that does
+    // not null-check gets an NPE one call later. See docs/java-quirks.md #46.
+    //
+    // fixed: T10 (#46) — the **zero-net** case, which the sketch calls out as needing no new
+    // logic at all: an area on no nets copies to an area on no nets, and `copied_header` already
+    // carries the (empty) net list. The guard is now `> 1`, so only the case Java's own warning
+    // names — "more than 1 net" — still answers `None`. The multi-net copy is deliberately left
+    // for a later plan: the constructor takes an `int[]` and would carry it, but nothing in the
+    // port constructs a multi-net conduction area, so there is no way to measure the change and
+    // "it should work" is not evidence. The register row carries that as an open question.
+    /// Returns `None` only for an area on **more than one** net.
     pub fn copy(&self, new_id: ItemId) -> Option<ConductionArea> {
-        if self.hdr.net_count() != 1 {
+        if self.hdr.net_count() > 1 {
             return None;
         }
         Some(ConductionArea {

@@ -1804,11 +1804,15 @@ mod tests {
         assert_eq!(component_outline(1).tile_shape_count(&f.ctx()), 0);
     }
 
+    /// Quirk #46, fixed at Plan 9 Task 10 — renamed from
+    /// `conduction_area_copy_fails_unless_the_area_is_on_exactly_one_net`, which was the defect's
+    /// name. Java refused `netCount() != 1` behind a warning that says "more than 1 net"; zero
+    /// nets is not more than one, and it copies now. The binding version, with the reasoning, is
+    /// `crates/fr-board/tests/layer_structure.rs::a_zero_net_conduction_area_copies`.
     #[test]
-    fn conduction_area_copy_fails_unless_the_area_is_on_exactly_one_net() {
-        // Java bug (ConductionArea.java:310-313): `netCount() != 1` warns and returns null.
+    fn conduction_area_copy_fails_only_above_one_net() {
         assert!(conduction_area(1, vec![5], true).copy(ItemId(2)).is_some());
-        assert!(conduction_area(1, vec![], true).copy(ItemId(2)).is_none());
+        assert!(conduction_area(1, vec![], true).copy(ItemId(2)).is_some());
         assert!(
             conduction_area(1, vec![5, 6], true)
                 .copy(ItemId(2))
