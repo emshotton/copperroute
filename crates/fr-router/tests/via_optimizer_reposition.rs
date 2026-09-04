@@ -216,7 +216,189 @@ fn transcript_overload_rows(tag: &str, mode: i32, prefix: &str) -> Vec<String> {
         .collect()
 }
 
-/// Overload A (`:302-365`) over `p7t4` mode 3's scripted targets, on both fixtures with vias.
+/// **Board item ids are no longer comparable across this transcript; everything else still is.**
+/// `accepted at plan9-t7t8 (ruling CC)`.
+///
+/// Task 8's door-set and id fixes (#163, #171, #165b) make the port's routing prologue mint more
+/// board items than the jar's on two of the three fixtures, so the ids the jar recorded name
+/// different items in the port's board. Measured at the accept wave: `Issue649-kicad_ecc83`'s
+/// sections are byte-identical to the jar, `Issue143-rpi_splitter`'s ids run up to 2 higher and
+/// `Issue026-J2_reference`'s up to 12, and the shift is **not** uniform — it starts partway
+/// through the routing prologue, so low ids keep their values and high ones do not.
+///
+/// The answer here is not a fitted offset. It is to compare every row with its ids **blanked**,
+/// which is exact on everything the overloads are actually about — the scripted targets and
+/// candidates, the cost pairs, the from-corners, the layers, the half widths, the clearance
+/// classes and every returned point — and then to require the ids themselves to be **one
+/// consistent renaming**: the jar's id `a` must map to the same port id everywhere in the section,
+/// and no two jar ids may map to one port id.
+///
+/// That is stronger than a pasted table and much stronger than ignoring the ids:
+///
+/// * any byte outside an id token moving fails, in either direction;
+/// * a row appearing, vanishing or changing order fails, because the blanked comparison is a
+///   whole-sequence equality;
+/// * the same jar id resolving to two different port ids fails, and two jar ids collapsing onto
+///   one port id fails — so a via genuinely swapping places with another is caught even though
+///   its number is not pinned.
+///
+/// What is deliberately given up is the id VALUES, and the reason is that they are the one thing
+/// this fixture pair can no longer say anything true about. `via_optimizer.rs` carries the
+/// retirement record for the three sections where even a renaming cannot reconcile the two boards.
+const ID_KEYS: [&str; 7] = [
+    "via id=",
+    "item id=",
+    "maxId=",
+    "repA id=",
+    "repB id=",
+    "repC id=",
+    "contacts=[",
+];
+
+/// Splits `line` into its id values, in order, and the line with each of them replaced by `#`.
+///
+/// An id is a digit run introduced by one of [`ID_KEYS`]; inside a `contacts=[a:Type,b:Type]` list
+/// the scan continues over the commas, so both contacts are ids. Coordinates, cost factors, half
+/// widths, clearance classes and layer numbers are never introduced by a key and are left alone.
+fn split_ids(line: &str) -> (Vec<i64>, String) {
+    let mut ids = Vec::new();
+    let mut blanked = String::with_capacity(line.len());
+    let mut rest = line;
+    loop {
+        let Some((at, key_len)) = ID_KEYS
+            .iter()
+            .filter_map(|key| rest.find(key).map(|at| (at, key.len())))
+            .min_by_key(|(at, _)| *at)
+        else {
+            break;
+        };
+        let head = at + key_len;
+        blanked.push_str(&rest[..head]);
+        rest = &rest[head..];
+        loop {
+            let digits = rest
+                .find(|c: char| !c.is_ascii_digit())
+                .unwrap_or(rest.len());
+            let Ok(id) = rest[..digits].parse::<i64>() else {
+                break;
+            };
+            ids.push(id);
+            blanked.push('#');
+            rest = &rest[digits..];
+            // Step over `:Type,` to reach the next id of a contact list; stop at anything else.
+            let Some(comma) = rest.find(',') else { break };
+            if rest[..comma].contains(']') || rest[..comma].contains(' ') {
+                break;
+            }
+            blanked.push_str(&rest[..=comma]);
+            rest = &rest[comma + 1..];
+        }
+    }
+    blanked.push_str(rest);
+    (ids, blanked)
+}
+
+/// The comparison described on [`ID_KEYS`]: every row equal once ids are blanked, and the ids
+/// themselves one consistent renaming.
+fn assert_rows_match_up_to_one_renaming(label: &str, ours: &[String], theirs: &[String]) {
+    let blank = |rows: &[String]| -> (Vec<Vec<i64>>, Vec<String>) {
+        rows.iter().map(|row| split_ids(row)).unzip()
+    };
+    let (our_ids, our_blanked) = blank(ours);
+    let (their_ids, their_blanked) = blank(theirs);
+    assert_eq!(
+        our_blanked, their_blanked,
+        "{label}: a difference outside the board item ids"
+    );
+
+    let mut forward: BTreeMap<i64, i64> = BTreeMap::new();
+    let mut backward: BTreeMap<i64, i64> = BTreeMap::new();
+    for (row, (theirs_row, ours_row)) in their_ids.iter().zip(&our_ids).enumerate() {
+        assert_eq!(theirs_row.len(), ours_row.len(), "{label} row {row}");
+        for (&jar, &port) in theirs_row.iter().zip(ours_row) {
+            if let Some(&seen) = forward.get(&jar) {
+                assert_eq!(
+                    seen, port,
+                    "{label} row {row}: the jar's id {jar} is the port's {seen} elsewhere and \
+                     {port} here — not one renaming"
+                );
+            }
+            if let Some(&seen) = backward.get(&port) {
+                assert_eq!(
+                    seen, jar,
+                    "{label} row {row}: the port's id {port} stands for the jar's {seen} \
+                     elsewhere and {jar} here — not one renaming"
+                );
+            }
+            forward.insert(jar, port);
+            backward.insert(port, jar);
+        }
+    }
+    assert!(
+        !forward.is_empty(),
+        "{label}: no id was compared, so the renaming check did nothing"
+    );
+}
+
+/// The transcript comparison every overload test runs.
+fn assert_overload_rows(tag: &str, mode: i32, prefix: &str) {
+    assert_rows_match_up_to_one_renaming(
+        &format!("p7t4 {tag} mode {mode}"),
+        &overload_rows(tag, mode),
+        &transcript_overload_rows(tag, mode, prefix),
+    );
+}
+
+// =================================================================================================
+// RETIREMENT RECORD — the `Issue026-J2_reference` arm of the p7t4 family (ruling CC)
+// =================================================================================================
+//
+// **What retired.** Every `j2`-keyed assertion in this file: the `j2` arm of the three
+// `overload_*_matches_the_jvm_*` tests, and the two tests that were `j2`-only,
+// `a_two_trace_via_takes_overload_c` (via 264) and `a_candidate_tie_keeps_the_first_in_contact_order`
+// (vias 231 and 130). Nothing is silently deleted; this block is the record ruling CC requires.
+//
+// **The last matching run.** `cf4c6f3`, the commit immediately before Task 8's merge `57055c1`.
+// Re-run at the accept wave in a worktree at that commit: `cargo nextest run -p fr-router
+// --test via_optimizer --test via_optimizer_reposition` — **18 passed, 0 failed**. Everything
+// below was green there and is green there still.
+//
+// **The diverging cause.** `tests/data/p7t4-via-optimizer.txt` is a **jar** transcript over a board
+// the **port** routes: `routed("Issue026-J2_reference.dsn")` calls `route_connection` twelve times
+// before the first via is examined. Task 8's fixes change what those twelve calls produce, so the
+// jar's transcript describes a board this port no longer builds. On `Issue026-J2_reference` the
+// difference is not only identity — measured at the wave, the port's `item id` for one net-10
+// trace carries corners `(1178685,-829062) (1228467,-829062)` where the jar's carries
+// `(1178686,-829063) (1228466,-829063)`, one integer unit apart on two corners. No renaming of ids
+// and no offset can reconcile that, which is exactly ruling CC's argument.
+//
+// **Why the other two fixtures did NOT retire, measured the same day.**
+// `Issue649-kicad_ecc83`'s sections are byte-identical to the jar. `Issue143-rpi_splitter`'s
+// differ **only** in board item ids, so its assertions survive under
+// `assert_rows_match_up_to_one_renaming` above — every cost pair, from-corner, layer, half width,
+// clearance class and returned point still compared against the jar, exactly.
+//
+// **The diverging cause rows.** #163, #171 and #165b (the door-set fixes) and #156/#167/#158 (one
+// shared id counter), all `fixed: T8`.
+//
+// **The authorizing rows.** Ruling CC(b) — the plan9-t7t8 bench adjudicated Task 8's BP12
+// escalation as variance and opened this accept wave; Task 8 §6a, which raised the family as a
+// design question rather than a re-cut; Task 8 §6's note that inventing a port lane for the
+// unit-level jar transcripts is a controller ruling, not a task decision.
+//
+// **What still covers the subject.** Overloads A, B and C are all still pinned against the jar
+// row for row on `Issue143-rpi_splitter` (modes 3, 4 and 5), and overload A is pinned twice more
+// by `a_one_contact_via_takes_overload_a`. What is lost with the `j2` arm is the two-trace
+// evidence for overload C's own arithmetic: `rpi`'s mode-5 section is all `SKIP` rows, so
+// **overload C's cost gates are no longer compared with the jar's on any fixture**. The DISPATCH
+// to overload C is still pinned — `rpi` classifies four vias `TWO_TRACES` in mode 0, and
+// `via_optimizer.rs`'s count assertion holds that number — so it is the arithmetic inside
+// `:434-713`, not the route into it, that this retirement costs. Reported to the controller as
+// such rather than left implicit in a row count.
+
+/// Overload A (`:302-365`) over `p7t4` mode 3's scripted targets, on the one fixture with vias
+/// whose board the port still builds the jar's way — see the retirement record above for the
+/// `j2` arm.
 ///
 /// The family reaches every branch: `k = 2` is the via centre, which is `:312-314`'s
 /// `fromLocation.equals(toLocation)`; the 100 000-unit offsets run off the board and hit
@@ -225,13 +407,7 @@ fn transcript_overload_rows(tag: &str, mode: i32, prefix: &str) -> Vec<String> {
 /// branch; and the intermediate magnitudes fall into the `:353-363` halving loop.
 #[test]
 fn overload_a_matches_the_jvm_on_every_scripted_target() {
-    for tag in ["rpi", "j2"] {
-        assert_eq!(
-            overload_rows(tag, 3),
-            transcript_overload_rows(tag, 3, "repA "),
-            "p7t4 {tag} mode 3"
-        );
-    }
+    assert_overload_rows("rpi", 3, "repA ");
 }
 
 /// Overload B (`:367-429`) over `p7t4` mode 4's scripted candidates. `k = 6` is the via centre
@@ -240,27 +416,19 @@ fn overload_a_matches_the_jvm_on_every_scripted_target() {
 /// two `FORTYFIVE_DEGREE` boards the guard is passed over and the `checkTraceSegment` pair decides.
 #[test]
 fn overload_b_matches_the_jvm_on_every_scripted_candidate() {
-    for tag in ["rpi", "j2"] {
-        assert_eq!(
-            overload_rows(tag, 4),
-            transcript_overload_rows(tag, 4, "repB "),
-            "p7t4 {tag} mode 4"
-        );
-    }
+    assert_overload_rows("rpi", 4, "repB ");
 }
 
-/// Overload C (`:434-713`) over `p7t4` mode 5's five cost pairs. `rpi`'s section is all `SKIP`
-/// rows — none of its vias classifies `TWO_TRACES` after the 12-connection prefix, so the dispatch
-/// replica is pinned too — and `j2`'s six vias x five pairs are the real evidence.
+/// Overload C (`:434-713`) over `p7t4` mode 5's five cost pairs.
+///
+/// `rpi`'s section is all `SKIP` rows, so what survives here is the **dispatch replica**, pinned
+/// against the jar's own classification of every `rpi` via. `j2`'s six vias x five pairs were the real
+/// evidence for the cost gates themselves and they retired at the plan9-t7t8 accept wave; the
+/// record above says so in those words rather than leaving the thinner test looking like the
+/// original.
 #[test]
 fn overload_c_matches_the_jvm_on_every_cost_pair() {
-    for tag in ["rpi", "j2"] {
-        assert_eq!(
-            overload_rows(tag, 5),
-            transcript_overload_rows(tag, 5, "repC "),
-            "p7t4 {tag} mode 5"
-        );
-    }
+    assert_overload_rows("rpi", 5, "repC ");
 }
 
 // =================================================================================================
@@ -282,9 +450,14 @@ fn overload_c_matches_the_jvm_on_every_cost_pair() {
 #[test]
 fn a_one_contact_via_takes_overload_a() {
     let board = routed("Issue143-rpi_splitter.dsn");
+    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: the jar's via is `187`, the
+    // port's is `189` — Task 8's door-set fixes mint two more board items over this fixture's
+    // routing prologue. Via `84` is below the point where the two boards part and keeps its
+    // number on both sides. **Both answers are the jar's, to the digit**, and so is the recursion
+    // this test is named for.
     for (via_id, overload_a_answer, final_center) in [
         (
-            ItemId(187),
+            ItemId(189),
             IntPoint::new(932_812, 1_011_224),
             IntPoint::new(932_812, 1_011_224),
         ),
@@ -349,69 +522,24 @@ fn a_one_contact_via_takes_overload_a() {
     }
 }
 
-/// `optViaLocation:118-131` — a via with **two** free trace contacts, each at an endpoint, reaches
-/// **overload C**, and the twelve arguments are the two traces' half width, clearance class, layer,
-/// per-layer cost factor and from-corner, in that order per trace.
-///
-/// Pinned on `Issue026-J2_reference`'s via 264, the first of the walk (so the board is the one the
-/// routing prologue left): overload C, called directly, answers `(1316044,-867516)`, and
-/// `opt_via_location` moves the via exactly there.
-#[test]
-fn a_two_trace_via_takes_overload_c() {
-    let board = routed("Issue026-J2_reference.dsn");
-    let via_id = ItemId(264);
-    assert_eq!(classify(&board, via_id), "TWO_TRACES");
+// **RETIRED at the plan9-t7t8 accept wave (ruling CC).**
+// `a_two_trace_via_takes_overload_c` stood here. It pinned `optViaLocation:118-131` — a via with
+// two free trace contacts reaching overload C, and the twelve arguments `:118-131` builds — on
+// `Issue026-J2_reference`'s via 264: overload C called directly answered `(1316044,-867516)` and
+// `opt_via_location` moved the via exactly there.
+//
+// It was `j2`-keyed, so the retirement record at the top of this file carries its cause, its last
+// matching run and its authorizing rows. The short version: the port no longer builds the board
+// the jar's transcript describes, by one integer unit on one net-10 trace, and via 264 is not the
+// same via on the two sides.
+//
+// **Nothing replaces the two-trace evidence for the overload's own arithmetic**: `rpi`'s mode-5
+// section is all `SKIP` rows. Recorded as the real cost of the retirement.
 
-    let mut scratch = board.clone();
-    let (t1, t2, c1, c2) = overload_c_arguments(&scratch, via_id);
-    let (hw1, cl1, layer1) = trace_params(&scratch, t1);
-    let (hw2, cl2, layer2) = trace_params(&scratch, t2);
-    let unit = ExpansionCostFactor {
-        horizontal: 1.0,
-        vertical: 1.0,
-    };
-    let before = scratch.structural_hash();
-    let direct = ViaOptimizer::reposition_via_general(
-        &mut scratch,
-        via_id,
-        hw1,
-        cl1,
-        layer1,
-        unit,
-        &c1,
-        hw2,
-        cl2,
-        layer2,
-        unit,
-        &c2,
-    );
-    assert_eq!(
-        direct,
-        Some(Point::Int(IntPoint::new(1_316_044, -867_516))),
-        "overload C on via 264"
-    );
-    assert_eq!(
-        before,
-        scratch.structural_hash(),
-        "overload C mutates nothing"
-    );
-
-    let mut scratch = board.clone();
-    assert!(
-        ViaOptimizer::opt_via_location(&mut scratch, via_id, None, 500, 10).expect("cannot fail"),
-        ":118-131 fed the move"
-    );
-    assert_eq!(
-        scratch.drill_center(via_id).expect("still a via"),
-        Point::Int(IntPoint::new(1_316_044, -867_516)),
-        "optViaLocation moved the via to overload C's answer"
-    );
-}
-
-/// **Overload B has no caller outside overload C.** In Java it is `private` and the only four
-/// invocations are the axis-parallel decomposition arms at `:599`, `:627`, `:665` and `:696`; the
-/// port must not have grown a fifth. Asserted on the source, because a call graph is not something
-/// a board fixture can show.
+// **Overload B has no caller outside overload C.** In Java it is `private` and the only four
+// invocations are the axis-parallel decomposition arms at `:599`, `:627`, `:665` and `:696`; the
+// port must not have grown a fifth. Asserted on the source, because a call graph is not something
+// a board fixture can show.
 #[test]
 fn overload_b_is_reached_only_from_c() {
     const SOURCE: &str = include_str!("../src/board_ext/via_optimizer.rs");
@@ -438,131 +566,36 @@ fn overload_b_is_reached_only_from_c() {
 // The candidate order, and the fact that nothing moves
 // =================================================================================================
 
-/// **Java wins over the plan's transcription note.** The note said "where two candidates tie, Java
-/// keeps the **first** found in contact order; the port must not use a `max_by` that keeps the
-/// last". There is no `max_by` and no scoring pass anywhere in overload C: it is a sequence of
-/// **gated attempts**, each of which returns the moment it succeeds. So the note's requirement
-/// splits into two facts, both pinned here:
-///
-/// 1. **A tie is not a candidate at all.** Every gate is a strict `>` (`:492`, `:514`, `:555`,
-///    `:597`, `:625`, `:663`, `:693`), so equal weighted distances skip the arm. `j2`'s via 231
-///    shows it end to end: with `costs1 == costs2` overload C answers `null`, and with the very
-///    same geometry under `(1.0, 2.0)` / `(2.0, 1.0)` it answers `(1228467,-826441)` and under
-///    `(2.0, 1.0)` / `(1.0, 2.0)` it answers `(1231088,-829062)` — three different answers from one
-///    board, decided only by the gates. The two `:492`/`:514` gate expressions are recomputed here
-///    from [`FloatPoint::weighted_distance`] and asserted **equal**, which is what makes the
-///    strictness observable rather than inferred.
-/// 2. **The first success returns.** Via 130's five cost pairs all answer `(1337405,-857248)`,
-///    which is the *second* from-corner: the `:462-480` overlapping-lines arm runs before every
-///    cost gate and returns whatever it finds, cost factors included or not.
-#[test]
-fn a_candidate_tie_keeps_the_first_in_contact_order() {
-    let board = routed("Issue026-J2_reference.dsn");
+// **RETIRED at the plan9-t7t8 accept wave (ruling CC).**
+// `a_candidate_tie_keeps_the_first_in_contact_order` stood here, and it is worth recording what
+// it established rather than only that it existed, because nothing replaces it.
+//
+// It answered the plan's transcription note — "where two candidates tie, Java keeps the **first**
+// found in contact order; the port must not use a `max_by` that keeps the last" — by showing the
+// note asks for the wrong thing. There is no `max_by` and no scoring pass anywhere in overload C;
+// it is a sequence of **gated attempts**, each returning the moment it succeeds. So the note
+// split into two facts:
+//
+// 1. **A tie is not a candidate at all.** Every gate is a strict `>` (`:492`, `:514`, `:555`,
+//    `:597`, `:625`, `:663`, `:693`), so equal weighted distances skip the arm. `j2`'s via 231
+//    showed it end to end: with `costs1 == costs2` overload C answered `null`, and with the very
+//    same geometry under `(1.0, 2.0)` / `(2.0, 1.0)` it answered `(1228467,-826441)` and under
+//    `(2.0, 1.0)` / `(1.0, 2.0)` `(1231088,-829062)` — three answers from one board, decided only
+//    by the gates.
+// 2. **The first success returns.** Via 130's five cost pairs all answered `(1337405,-857248)`,
+//    the *second* from-corner: `:462-480`'s overlapping-lines arm runs before every cost gate and
+//    returns whatever it finds.
+//
+// Both vias are `Issue026-J2_reference`'s, so the retirement record at the top of this file
+// carries the cause. The strictness of the gates is now unpinned on every fixture, which is the
+// second half of what this wave gave up here.
 
-    // (1) The tie, on via 231.
-    let via_id = ItemId(231);
-    let (t1, t2, c1, c2) = overload_c_arguments(&board, via_id);
-    let via_center = center_of(&board, via_id).to_float();
-    let unit = ExpansionCostFactor {
-        horizontal: 1.0,
-        vertical: 1.0,
-    };
-    // `:485-490` and `:506-512` under equal costs.
-    for corner in [&c1, &c2] {
-        let float_corner = corner.to_float();
-        let a = via_center.weighted_distance(&float_corner, unit.horizontal, unit.vertical);
-        let b = via_center.weighted_distance(&float_corner, unit.horizontal, unit.vertical);
-        assert_eq!(a, b, "equal costs make the gate a tie");
-        // The gate is `currentWeightedDistance1 > currentWeightedDistance2`; `Greater` is the only
-        // ordering that opens it, and equality is not it.
-        assert_ne!(
-            a.partial_cmp(&b),
-            Some(std::cmp::Ordering::Greater),
-            "Java's `>` is strict, so the arm is skipped"
-        );
-    }
-    let answers: Vec<Option<Point>> = COST_PAIRS
-        .iter()
-        .map(|pair| {
-            let mut scratch = board.clone();
-            ViaOptimizer::reposition_via_general(
-                &mut scratch,
-                via_id,
-                half_width_of(&board, t1),
-                clearance_of(&board, t1),
-                layer_of(&board, t1),
-                ExpansionCostFactor {
-                    horizontal: pair[0],
-                    vertical: pair[1],
-                },
-                &c1,
-                half_width_of(&board, t2),
-                clearance_of(&board, t2),
-                layer_of(&board, t2),
-                ExpansionCostFactor {
-                    horizontal: pair[2],
-                    vertical: pair[3],
-                },
-                &c2,
-            )
-        })
-        .collect();
-    assert_eq!(answers[0], None, "the tie pair reaches no candidate");
-    assert_eq!(
-        answers[1],
-        Some(Point::Int(IntPoint::new(1_228_467, -826_441))),
-        "(1,2)/(2,1) opens the :514 arm"
-    );
-    assert_eq!(
-        answers[2],
-        Some(Point::Int(IntPoint::new(1_231_088, -829_062))),
-        "(2,1)/(1,2) opens the :492 arm"
-    );
-
-    // (2) The first success returns: via 130's collinear arm ignores the costs entirely.
-    let via_id = ItemId(130);
-    let (t1, t2, c1, c2) = overload_c_arguments(&board, via_id);
-    for pair in &COST_PAIRS {
-        let mut scratch = board.clone();
-        let answer = ViaOptimizer::reposition_via_general(
-            &mut scratch,
-            via_id,
-            half_width_of(&board, t1),
-            clearance_of(&board, t1),
-            layer_of(&board, t1),
-            ExpansionCostFactor {
-                horizontal: pair[0],
-                vertical: pair[1],
-            },
-            &c1,
-            half_width_of(&board, t2),
-            clearance_of(&board, t2),
-            layer_of(&board, t2),
-            ExpansionCostFactor {
-                horizontal: pair[2],
-                vertical: pair[3],
-            },
-            &c2,
-        );
-        assert_eq!(
-            answer,
-            Some(Point::Int(IntPoint::new(1_337_405, -857_248))),
-            "via 130 answers the second from-corner whatever the costs are"
-        );
-        assert_eq!(
-            answer,
-            Some(Point::Int(c2.to_float().round())),
-            "and that answer is the nearer from-corner, :466-474"
-        );
-    }
-}
-
-/// `:712` — overload C's fall-through. Every gate can be open and every probe can still refuse, and
-/// the method then answers `null` **having changed nothing**; `optViaLocation:132-134` turns that
-/// into `return false`, which is why Task 6 could stub it inertly.
-///
-/// `j2`'s via 124 is the case: all five cost pairs answer `null`. The board-untouched half is
-/// asserted for **every** via and **every** pair, successes included — overload C never mutates.
+// `:712` — overload C's fall-through. Every gate can be open and every probe can still refuse, and
+// the method then answers `null` **having changed nothing**; `optViaLocation:132-134` turns that
+// into `return false`, which is why Task 6 could stub it inertly.
+//
+// `j2`'s via 124 is the case: all five cost pairs answer `null`. The board-untouched half is
+// asserted for **every** via and **every** pair, successes included — overload C never mutates.
 #[test]
 fn the_general_case_leaves_the_board_untouched_when_no_candidate_improves() {
     let mut board = routed("Issue026-J2_reference.dsn");

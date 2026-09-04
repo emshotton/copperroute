@@ -286,26 +286,197 @@ fn p7t4_rows(tag: &str, mode: i32) -> Vec<String> {
     out
 }
 
-/// **Every** board section of the transcript, row for row. Before Task 7 this list held seven of
-/// the nine pairs and the two `optViaLocation` runs on `Issue026-J2_reference` were excluded; the
-/// three `repositionVia` overloads closed them, so the list is now the whole table.
+// =================================================================================================
+// RETIREMENT RECORD — the `Issue026-J2_reference` arm of the p7t4 family (ruling CC)
+// =================================================================================================
+//
+// **What retired.** The three `j2` sections of `p7t4` — modes 0, 1 and 6 — and with them
+// `the_normal_contacts_are_visited_descending`, which was `j2`-only, and the `j2` arm of
+// `the_matching_runs_match_the_jvm_row_for_row`, `the_only_divergence_is_repositionvia` and
+// `the_overload_dispatch_matches_javas_contact_counts`. `via_optimizer_reposition.rs` carries the
+// same record for the `j2` arm of the three overload tests and the two `j2`-only tests there.
+// Nothing is silently deleted; this block is the record ruling CC requires.
+//
+// **The last matching run.** `cf4c6f3`, the commit immediately before Task 8's merge `57055c1`.
+// Re-run at the accept wave in a worktree at that commit: `cargo nextest run -p fr-router
+// --test via_optimizer --test via_optimizer_reposition` — **18 passed, 0 failed**.
+//
+// **The diverging cause.** `tests/data/p7t4-via-optimizer.txt` is a **jar** transcript over a board
+// the **port** routes: `routed_j2()` calls `route_connection` twelve times before the first via is
+// examined. Task 8's fixes change what those twelve calls produce. Measured at the wave, section by
+// section, against the whole transcript:
+//
+// | fixture | rows | rows differing | differing only in board item ids |
+// |---|---|---|---|
+// | `ecc83` modes 0/1/6 | 379 each | **0** | — |
+// | `rpi` modes 0/1/6 | 68 each | 7 each | **all 7** |
+// | `j2` modes 0/1/6 | 124/123/124 | 22/16/22 | 18/13/18 |
+//
+// So `ecc83` is byte-identical and `rpi`'s divergence is identity only. `j2`'s is not: one net-10
+// trace carries corners `(1178685,-829062) (1228467,-829062)` in the port's board where the jar's
+// carries `(1178686,-829063) (1228466,-829063)`, one integer unit apart on two corners, and its
+// `lines=` list differs with it. **No renaming of ids and no offset can reconcile that**, which is
+// exactly ruling CC's argument for this family. The remaining `j2` rows differ in contact ids that
+// a renaming does cover, and they retire with the section they are in rather than being kept
+// alone.
+//
+// **The diverging cause rows.** #163, #171 and #165b (the door-set fixes) and #156/#167/#158 (one
+// shared id counter), all `fixed: T8`.
+//
+// **The authorizing rows.** Ruling CC(b) — the plan9-t7t8 bench adjudicated Task 8's BP12
+// escalation as variance and opened this accept wave; Task 8 §6a, which raised the family as a
+// design question rather than a re-cut; Task 8 §6's note that inventing a port lane for the
+// unit-level jar transcripts is a controller ruling and not a task decision.
+//
+// **What survives, and what is really lost.** Six of the nine board sections are still compared
+// with the jar — `ecc83`'s three byte for byte, `rpi`'s three under one declared renaming of board
+// item ids, described at `assert_rows_match_up_to_one_renaming`. The dispatch replica still checks
+// every `ecc83` and `rpi` via's class and contact walk against the jar's own classification. What
+// is lost is `j2`'s ten `TWO_TRACES` vias: the descending contact walk of `:46` now has no
+// two-contact producer compared with the jar, and overload C's cost gates have none either. That
+// is the cost of this retirement, and it is reported to the controller as such rather than left
+// implicit in a row count.
+
+/// **Board item ids are no longer comparable on two of the three fixtures; everything else is.**
+/// `accepted at plan9-t7t8 (ruling CC)` — see the retirement record above for the measurement.
+///
+/// `ecc83`'s sections are byte-identical to the jar. `rpi`'s differ only in board item ids, so its
+/// rows are compared with the ids **blanked** — exact on every state, coordinate, net, clearance,
+/// layer, half width, corner list and result — and the ids themselves are then required to be
+/// **one consistent renaming**: the jar's id `a` must map to the same port id everywhere in the
+/// section, and no two jar ids may map to one port id.
+///
+/// That is stronger than a pasted table and much stronger than ignoring the ids:
+///
+/// * any byte outside an id token moving fails, in either direction;
+/// * a row appearing, vanishing or changing order fails, because the blanked comparison is a
+///   whole-sequence equality;
+/// * the same jar id resolving to two different port ids fails, and two jar ids collapsing onto
+///   one port id fails — so a via genuinely swapping places with another is caught even though its
+///   number is not pinned.
+const ID_KEYS: [&str; 4] = ["via id=", "item id=", "maxId=", "contacts=["];
+
+/// Splits `line` into its id values, in order, and the line with each of them replaced by `#`.
+///
+/// An id is a digit run introduced by one of [`ID_KEYS`]; inside a `contacts=[a:Type,b:Type]` list
+/// the scan continues over the commas, so both contacts are ids. Coordinates, cost factors, half
+/// widths, clearance classes and layer numbers are never introduced by a key and are left alone.
+fn split_ids(line: &str) -> (Vec<i64>, String) {
+    let mut ids = Vec::new();
+    let mut blanked = String::with_capacity(line.len());
+    let mut rest = line;
+    loop {
+        let Some((at, key_len)) = ID_KEYS
+            .iter()
+            .filter_map(|key| rest.find(key).map(|at| (at, key.len())))
+            .min_by_key(|(at, _)| *at)
+        else {
+            break;
+        };
+        let head = at + key_len;
+        blanked.push_str(&rest[..head]);
+        rest = &rest[head..];
+        loop {
+            let digits = rest
+                .find(|c: char| !c.is_ascii_digit())
+                .unwrap_or(rest.len());
+            let Ok(id) = rest[..digits].parse::<i64>() else {
+                break;
+            };
+            ids.push(id);
+            blanked.push('#');
+            rest = &rest[digits..];
+            let Some(comma) = rest.find(',') else { break };
+            if rest[..comma].contains(']') || rest[..comma].contains(' ') {
+                break;
+            }
+            blanked.push_str(&rest[..=comma]);
+            rest = &rest[comma + 1..];
+        }
+    }
+    blanked.push_str(rest);
+    (ids, blanked)
+}
+
+/// The comparison described on [`ID_KEYS`]: every row equal once ids are blanked, and the ids
+/// themselves one consistent renaming.
+fn assert_rows_match_up_to_one_renaming(label: &str, ours: &[String], theirs: &[&str]) {
+    let (our_ids, our_blanked): (Vec<Vec<i64>>, Vec<String>) =
+        ours.iter().map(|row| split_ids(row)).unzip();
+    let (their_ids, their_blanked): (Vec<Vec<i64>>, Vec<String>) =
+        theirs.iter().map(|row| split_ids(row)).unzip();
+    assert_eq!(
+        our_blanked, their_blanked,
+        "{label}: a difference outside the board item ids"
+    );
+
+    let mut forward: BTreeMap<i64, i64> = BTreeMap::new();
+    let mut backward: BTreeMap<i64, i64> = BTreeMap::new();
+    for (row, (theirs_row, ours_row)) in their_ids.iter().zip(&our_ids).enumerate() {
+        assert_eq!(theirs_row.len(), ours_row.len(), "{label} row {row}");
+        for (&jar, &port) in theirs_row.iter().zip(ours_row) {
+            if let Some(&seen) = forward.get(&jar) {
+                assert_eq!(
+                    seen, port,
+                    "{label} row {row}: the jar's id {jar} is the port's {seen} elsewhere and \
+                     {port} here — not one renaming"
+                );
+            }
+            if let Some(&seen) = backward.get(&port) {
+                assert_eq!(
+                    seen, jar,
+                    "{label} row {row}: the port's id {port} stands for the jar's {seen} \
+                     elsewhere and {jar} here — not one renaming"
+                );
+            }
+            forward.insert(jar, port);
+            backward.insert(port, jar);
+        }
+    }
+    assert!(
+        !forward.is_empty(),
+        "{label}: no id was compared, so the renaming check did nothing"
+    );
+}
+
+/// `split_ids` is load-bearing enough to be tested rather than trusted: a bug in it would let a
+/// real difference through as "an id".
+#[test]
+fn the_id_split_finds_ids_and_nothing_else() {
+    assert_eq!(split_ids("maxId=213"), (vec![213], "maxId=#".to_string()));
+    assert_eq!(
+        split_ids("via id=264 center=(1328495,-867516) contacts=[266:PolylineTrace,263:PolylineTrace] class=TWO_TRACES"),
+        (
+            vec![264, 266, 263],
+            "via id=# center=(1328495,-867516) contacts=[#:PolylineTrace,#:PolylineTrace] class=TWO_TRACES".to_string()
+        )
+    );
+    // Coordinates, nets, clearances, half widths and corner lists are NOT ids.
+    let untouched = "route k=1 item=23 net=3 state=ROUTED ripped=0";
+    assert_eq!(
+        split_ids(untouched),
+        (Vec::new(), untouched.to_string()),
+        "`item=` is not `item id=`"
+    );
+}
+
+/// **Every** board section of the transcript the two programs can still be compared on: `ecc83`'s
+/// three modes byte for byte, `rpi`'s three under one renaming of board item ids. `j2`'s three
+/// retired at the plan9-t7t8 accept wave — the record above says why and what was measured.
 #[test]
 fn the_matching_runs_match_the_jvm_row_for_row() {
-    for (tag, mode) in [
-        ("ecc83", 0),
-        ("ecc83", 1),
-        ("ecc83", 6),
-        ("rpi", 0),
-        ("rpi", 1),
-        ("rpi", 6),
-        ("j2", 0),
-        ("j2", 1),
-        ("j2", 6),
-    ] {
+    for (tag, mode) in [("ecc83", 0), ("ecc83", 1), ("ecc83", 6)] {
         assert_eq!(
             p7t4_rows(tag, mode),
             transcript_section(&format!("{tag} mode {mode}")),
-            "p7t4 {tag} mode {mode}"
+            "p7t4 {tag} mode {mode}: still byte for byte"
+        );
+    }
+    for (tag, mode) in [("rpi", 0), ("rpi", 1), ("rpi", 6)] {
+        assert_rows_match_up_to_one_renaming(
+            &format!("p7t4 {tag} mode {mode}"),
+            &p7t4_rows(tag, mode),
+            &transcript_section(&format!("{tag} mode {mode}")),
         );
     }
 }
@@ -322,9 +493,13 @@ fn the_matching_runs_match_the_jvm_row_for_row() {
 ///   the move.
 /// * `j2`'s six are `TWO_TRACES` vias, of which Java moves four through **overload C**
 ///   (`:434-713`); the moves then change the contact ids of the two it does not.
+///
+/// **`j2`'s six retired at the plan9-t7t8 accept wave (ruling CC)** with the rest of that
+/// fixture's arm; they were `264, 231, 200, 189, 130, 124` and the record above carries the cause.
+/// `rpi`'s two are the JAR's ids and are kept as the jar's — the port calls the first of them
+/// `189` — because the renaming is what the comparison resolves.
 fn formerly_divergent_vias(tag: &str, mode: i32) -> &'static [u32] {
     match (tag, mode) {
-        ("j2", 0) | ("j2", 6) => &[264, 231, 200, 189, 130, 124],
         ("rpi", 0) | ("rpi", 6) => &[187, 84],
         _ => &[],
     }
@@ -337,10 +512,10 @@ fn formerly_divergent_vias(tag: &str, mode: i32) -> &'static [u32] {
 /// rather than dumping the run.
 #[test]
 fn the_only_divergence_is_repositionvia() {
-    for (tag, mode) in [("j2", 0), ("j2", 6), ("rpi", 0), ("rpi", 6), ("ecc83", 0)] {
+    for (tag, mode) in [("rpi", 0), ("rpi", 6), ("ecc83", 0)] {
         let ours = p7t4_rows(tag, mode);
         let theirs = transcript_section(&format!("{tag} mode {mode}"));
-        assert_eq!(ours, theirs, "p7t4 {tag} mode {mode}: row for row");
+        assert_rows_match_up_to_one_renaming(&format!("p7t4 {tag} mode {mode}"), &ours, &theirs);
 
         let our_vias: Vec<&String> = ours.iter().filter(|r| r.starts_with("via ")).collect();
         let their_vias: Vec<&&str> = theirs.iter().filter(|r| r.starts_with("via ")).collect();
@@ -351,18 +526,18 @@ fn the_only_divergence_is_repositionvia() {
         );
         let mut checked = Vec::new();
         for (ours_row, theirs_row) in our_vias.iter().zip(&their_vias) {
-            let id = via_id_of(ours_row);
-            assert_eq!(id, via_id_of(theirs_row), "{tag} mode {mode}: via order");
+            let id = via_id_of(theirs_row);
             if !formerly_divergent_vias(tag, mode).contains(&id) {
                 continue;
             }
             checked.push(id);
             // The columns Task 6 could only compare on the first divergent row: `class=`,
             // `contacts=` and the centre *before* the call all agreed even then. `result=` and
-            // `after=` are the two Task 7 closed.
+            // `after=` are the two Task 7 closed. The row equality below is the id-blind one,
+            // because the ids themselves are resolved by the renaming check above.
             assert_eq!(
-                ours_row.as_str(),
-                **theirs_row,
+                split_ids(ours_row).1,
+                split_ids(theirs_row).1,
                 "{tag} mode {mode}: via {id} still diverges"
             );
         }
@@ -499,25 +674,35 @@ fn a_refused_move_leaves_the_board_byte_identical() {
 }
 
 /// `:46-78`, the dispatch, and `:46`'s descending contact walk — pinned against the JVM's own
-/// classification for **every** via of all three fixtures. `P7T4.classify` is the same twenty lines
-/// on the Java side, computed *before* the call, so this compares two independent transcriptions of
-/// `:39-106` rather than the port against itself.
+/// classification for every via of the **two** fixtures the two programs still route the same way.
+/// `P7T4.classify` is the same twenty lines on the Java side, computed *before* the call, so this
+/// compares two independent transcriptions of `:39-106` rather than the port against itself.
 ///
 /// Task 6 could only compare the first via of each run: from the second on, a via Java had moved and
 /// the port had not made the two sides classify different boards. Task 7 removed that limit.
+///
+/// **`j2` retired at the plan9-t7t8 accept wave (ruling CC)** — the record at the top of this file
+/// carries the cause. The `TWO_TRACES` count below falls from **ten to four**: six of the ten
+/// two-contact vias the walk classified were `j2`'s. `rpi`'s four remain, so the `:118` arm is
+/// still compared with the jar here; what has no jar comparison left is overload C's cost gates,
+/// which only `j2`'s mode-5 section supplied. The count is asserted rather than dropped, so the
+/// loss is a number a reader can see.
 #[test]
 fn the_overload_dispatch_matches_javas_contact_counts() {
     let mut seen = BTreeMap::new();
-    for (tag, mode) in [("rpi", 0), ("j2", 0), ("ecc83", 0)] {
+    for (tag, mode) in [("rpi", 0), ("ecc83", 0)] {
         let ours = p7t4_rows(tag, mode);
         let theirs = transcript_section(&format!("{tag} mode {mode}"));
         let ours_vias = ours.iter().filter(|r| r.starts_with("via "));
         let theirs_vias = theirs.iter().filter(|r| r.starts_with("via "));
         let mut rows = 0;
         for (ours_row, theirs_row) in ours_vias.zip(theirs_vias) {
+            // The ids themselves are resolved by `assert_rows_match_up_to_one_renaming`, which the
+            // row-for-row test runs over these same sections; what the walk order needs here is
+            // that the two sides pair the same vias, and the blanked rows say that.
             assert_eq!(
-                column(ours_row, "id="),
-                column(theirs_row, "id="),
+                split_ids(ours_row).1,
+                split_ids(theirs_row).1,
                 "{tag}: via order"
             );
             assert_eq!(
@@ -526,11 +711,17 @@ fn the_overload_dispatch_matches_javas_contact_counts() {
                 "{tag}: via {}'s dispatch class",
                 column(ours_row, "id=")
             );
-            assert_eq!(
-                column(ours_row, "contacts="),
-                column(theirs_row, "contacts="),
-                "{tag}: via {}'s contact list, descending",
-                column(ours_row, "id=")
+            // The contact LIST is compared by the blanked whole-row equality above, which covers
+            // its arity and its element types; the ids inside it are resolved by the renaming
+            // check `the_matching_runs_match_the_jvm_row_for_row` runs over these same sections.
+            // What is left to say here is the property `:46` exists for and a renaming cannot
+            // carry: the walk is DESCENDING.
+            let ours_contacts: Vec<i64> = split_ids(ours_row).0;
+            let contacts = &ours_contacts[1..];
+            assert!(
+                contacts.windows(2).all(|w| w[0] > w[1]),
+                "{tag}: via {}'s contacts are not descending: {contacts:?}",
+                column(theirs_row, "id=")
             );
             *seen
                 .entry(column(theirs_row, "class=").to_string())
@@ -550,8 +741,10 @@ fn the_overload_dispatch_matches_javas_contact_counts() {
     );
     assert_eq!(
         seen.get("TWO_TRACES").copied(),
-        Some(10),
-        "`rpi` and `j2` between them reach the two-trace arm at :118 ten times"
+        Some(4),
+        "`rpi` reaches the two-trace arm at :118 four times. It was TEN across `rpi` and `j2` \
+         until the plan9-t7t8 accept wave retired the `j2` arm — see the retirement record. The \
+         number is asserted rather than the retirement quietly absorbed."
     );
 }
 
@@ -591,16 +784,21 @@ fn a_plane_via_moves_through_overload_a() {
             two_trace.push(*via_id);
         }
     }
+    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: the jar's two one-contact vias
+    // are `187` and `84`; the port's are `189` and `84`, because Task 8's door-set fixes mint two
+    // more board items over this fixture's routing prologue. Via `84` is below the point where the
+    // two boards part and keeps its number. **Both centres below are the jar's, to the digit**,
+    // and so is the `:292-294` recursion via 84 is here for.
     assert_eq!(
         one_contact.iter().map(|id| id.0).collect::<Vec<_>>(),
-        vec![187, 84],
+        vec![189, 84],
         "the routed `rpi` prefix leaves exactly these two one-contact vias"
     );
     assert_eq!(two_trace.len(), 4);
 
-    // `p7t4` rpi modes 0 and 1, via rows 187 and 84.
+    // `p7t4` rpi modes 0 and 1, via rows 187 (the port's 189) and 84.
     for (via_id, expected) in [
-        (ItemId(187), IntPoint::new(932_812, 1_011_224)),
+        (ItemId(189), IntPoint::new(932_812, 1_011_224)),
         (ItemId(84), IntPoint::new(1_016_000, 3_119_161)),
     ] {
         for label in ["opt_via_location", "opt_plane_or_fanout_via"] {
@@ -639,67 +837,22 @@ fn a_plane_via_moves_through_overload_a() {
     }
 }
 
-/// `:46` — `via.getNormalContacts()` is a `TreeSet<Item>` and `Item.compareTo` is
-/// `other.id - id` (Item.java:95-101), so the walk is **descending** id. The two contacts of a
-/// two-contact via become `firstTrace` and `secondTrace` in that order, and the pair feeds
-/// `repositionVia`'s argument list at `:118-131` — so reversing it would silently swap the two
-/// halves of the cost calculation.
-///
-/// Task 6 could only compare the transcript's first row, because from the second on the JVM had
-/// already moved a via the port had not. Task 7 replays the sweep, so all six rows are compared —
-/// each against the board the previous call left behind, which is what the JVM's row describes.
-#[test]
-fn the_normal_contacts_are_visited_descending() {
-    let mut board = routed_j2();
-    let mut checked = 0;
-    for row in transcript_section("j2 mode 0") {
-        let Some(id) = row.strip_prefix("via id=") else {
-            continue;
-        };
-        let id: u32 = id.split(' ').next().expect("an id").parse().expect("an id");
-        let ours: Vec<u32> = board
-            .normal_contacts(ItemId(id))
-            .into_iter()
-            .rev()
-            .map(|contact| contact.0)
-            .collect();
-        let theirs: Vec<u32> = column(row, "contacts=")
-            .trim_start_matches('[')
-            .trim_end_matches(']')
-            .split(',')
-            .filter(|field| !field.is_empty())
-            .map(|field| {
-                field
-                    .split(':')
-                    .next()
-                    .expect("an id")
-                    .parse()
-                    .expect("an id")
-            })
-            .collect();
-        assert_eq!(ours, theirs, "via {id}'s contacts, descending");
-        assert!(
-            ours.windows(2).all(|w| w[0] > w[1]),
-            "via {id}'s contacts are strictly descending"
-        );
-        checked += 1;
-        // The JVM's next row describes the board *this* call leaves behind, so the sweep is
-        // replayed step by step. `j2 mode 0`'s `traceCosts` is `(1.0, 1.0)` on every layer.
-        let costs = vec![
-            ExpansionCostFactor {
-                horizontal: 1.0,
-                vertical: 1.0,
-            };
-            board.get_layer_count()
-        ];
-        ViaOptimizer::opt_via_location(&mut board, ItemId(id), Some(&costs), 500, 10)
-            .expect("cannot fail");
-    }
-    assert_eq!(
-        checked, 6,
-        "every via row of the JVM's `j2 mode 0` was compared — Task 6 could only compare the first"
-    );
-}
+// **RETIRED at the plan9-t7t8 accept wave (ruling CC).**
+// `the_normal_contacts_are_visited_descending` stood here. It pinned `:46` —
+// `via.getNormalContacts()` is a `TreeSet<Item>` and `Item.compareTo` is `other.id - id`
+// (Item.java:95-101), so the walk is **descending** id, and the two contacts of a two-contact via
+// become `firstTrace` and `secondTrace` in that order for `repositionVia`'s argument list at
+// `:118-131`. Reversing the pair would silently swap the two halves of the cost calculation.
+//
+// It replayed `j2 mode 0`'s six via rows, each against the board the previous call left behind, so
+// it was wholly `j2`-keyed and retires with that fixture's arm. The record at the top of this file
+// carries the cause and the last matching run.
+//
+// **The claim it made is not left unpinned.** `the_overload_dispatch_matches_javas_contact_counts`
+// asserts the descending order directly, on every via of `rpi` and `ecc83`, against the jar's own
+// `contacts=` column — which is the same statement without the `j2` board behind it. What is gone
+// is the replay against a MOVING board, i.e. that the order still holds after a previous via has
+// been repositioned; no surviving fixture supplies that.
 
 // =================================================================================================
 // `P6T1.java`'s choices, as `opt_changed_area.rs` transcribes them
