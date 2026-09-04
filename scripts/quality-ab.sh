@@ -263,7 +263,7 @@ OUT_DIR="$ROOT/scripts/differential/out"
 # The gate version this build of the script emits and is willing to compare against. Task 13
 # changes this to `g2`; Task 19 to `g3`. Changing it without re-cutting the previous task's rows
 # is what the refusal below exists to catch.
-GATE_VERSION="g1"
+GATE_VERSION="g2"
 
 # The `cpu_s` noise floor. `> 2x` and `> 20 %` are ruling BO's thresholds and are **not**
 # tolerances; this is the floor beneath which a "slowdown" is the machine and not the code. A
