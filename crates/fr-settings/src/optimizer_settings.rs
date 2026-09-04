@@ -94,6 +94,13 @@ pub struct OptimizerSettings {
     )]
     pub max_autoroute_passes: Option<i32>,
 
+    #[serde(
+        rename = "max_search_steps",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub max_search_steps: Option<i64>,
+
     #[serde(skip)]
     pub board_update_strategy: Option<BoardUpdateStrategy>,
 
@@ -119,6 +126,7 @@ impl OptimizerSettings {
         "additional_ripup_cost_factor_at_start",
         "trace_ripup_cost_factor",
         "max_autoroute_passes",
+        "max_search_steps",
         "board_update_strategy",
         "hybrid_ratio",
         "item_selection_strategy",

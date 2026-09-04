@@ -276,6 +276,12 @@ impl OptimizerSettings {
             FieldKind::I32,
         ),
         spec(
+            "max_search_steps",
+            "maxSearchSteps",
+            "max_search_steps",
+            FieldKind::I64,
+        ),
+        spec(
             "board_update_strategy",
             "boardUpdateStrategy",
             "board_update_strategy",
@@ -812,6 +818,7 @@ fn set_optimizer_property(
             target.trace_ripup_cost_factor = Some(java_parse_f32(value, path)?);
         }
         "max_autoroute_passes" => target.max_autoroute_passes = Some(java_parse_i32(value, path)?),
+        "max_search_steps" => target.max_search_steps = Some(java_parse_i64(value, path)?),
         "board_update_strategy" => {
             target.board_update_strategy = Some(convert_enum::<BoardUpdateStrategy>(
                 field.kind, value, path,

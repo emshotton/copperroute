@@ -105,7 +105,13 @@ impl AutoroutePassRunner {
                 let mut ripped_item_costs: BTreeMap<ItemId, i32> = BTreeMap::new();
 
                 let mut engine = None;
-                let stop_check = &|| stop.is_stop_requested();
+                let optimizer_work_budget = router.optimizer_work_budget();
+                let stop_check = &|| {
+                    stop.is_stop_requested()
+                        || optimizer_work_budget
+                            .as_ref()
+                            .is_some_and(|work| work.poll())
+                };
                 let autorouter_result = router.autoroute_item(
                     board,
                     &mut engine,

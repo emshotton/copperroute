@@ -92,7 +92,10 @@ fn a_long_option_without_an_equals_sign_is_skipped() {
 
 #[test]
 fn a_nested_long_option_is_applied_under_the_stripped_prefix() {
-    let cli = cli(&["--router.optimizer.max_threads=3"]);
+    let cli = cli(&[
+        "--router.optimizer.max_threads=3",
+        "--router.optimizer.max_search_steps=123456",
+    ]);
     assert_eq!(
         cli.get_settings()
             .unwrap()
@@ -101,6 +104,15 @@ fn a_nested_long_option_is_applied_under_the_stripped_prefix() {
             .unwrap()
             .max_threads,
         Some(3)
+    );
+    assert_eq!(
+        cli.get_settings()
+            .unwrap()
+            .optimizer
+            .as_ref()
+            .unwrap()
+            .max_search_steps,
+        Some(123_456)
     );
 }
 

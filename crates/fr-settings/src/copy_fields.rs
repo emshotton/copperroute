@@ -303,6 +303,12 @@ impl CopyFields for OptimizerSettings {
             mode,
             report,
         );
+        scalar_copy(
+            &self.max_search_steps,
+            &mut target.max_search_steps,
+            mode,
+            report,
+        );
         enum_copy(
             "board_update_strategy",
             &self.board_update_strategy,

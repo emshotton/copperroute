@@ -54,6 +54,7 @@ fn fully_populated() -> RouterSettings {
     o.additional_ripup_cost_factor_at_start = Some(35);
     o.trace_ripup_cost_factor = Some(0.7);
     o.max_autoroute_passes = Some(36);
+    o.max_search_steps = Some(37);
     o.timeout_string = Some("00:02:00".to_string());
     o.board_update_strategy = Some(BoardUpdateStrategy::Hybrid);
     o.hybrid_ratio = Some("1:1".to_string());
@@ -112,6 +113,7 @@ const FULLY_POPULATED_JSON: &str = r#"{
     "additional_ripup_cost_factor_at_start": 35,
     "trace_ripup_cost_factor": 0.7,
     "max_autoroute_passes": 36,
+    "max_search_steps": 37,
     "timeout": "00:02:00"
   },
   "scoring": {
@@ -278,6 +280,7 @@ fn scoring_and_optimizer_key_sets() {
             "additional_ripup_cost_factor_at_start",
             "trace_ripup_cost_factor",
             "max_autoroute_passes",
+            "max_search_steps",
             "timeout",
         ]
     );

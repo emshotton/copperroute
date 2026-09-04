@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::rc::Rc;
 use std::time::Instant;
 
 use fr_board::StopConnectionOption;
@@ -17,7 +18,7 @@ use crate::pipeline::airline::{ItemDistanceCache, calculate_item_distance_cached
 use crate::pipeline::board_history::BoardHistory;
 use crate::pipeline::failure_log::RoutingFailureLog;
 use crate::pipeline::pass_runner::AutoroutePassRunner;
-use crate::pipeline::stop::{ProgressThrottler, RouterBudget};
+use crate::pipeline::stop::{DeterministicWorkBudget, ProgressThrottler, RouterBudget};
 use crate::pipeline::{NamedAlgorithmType, ProgressSink, RouterStop};
 use crate::score::BoardStatistics;
 
@@ -42,6 +43,7 @@ pub struct BatchAutorouter<'a> {
     pub progress_items_since_statistics: i32,
 
     budget: RouterBudget,
+    optimizer_work_budget: Option<Rc<DeterministicWorkBudget>>,
 }
 
 impl<'a> BatchAutorouter<'a> {
@@ -107,6 +109,7 @@ impl<'a> BatchAutorouter<'a> {
             progress_statistics: None,
             progress_items_since_statistics: 0,
             budget,
+            optimizer_work_budget: None,
         }
     }
 
@@ -168,6 +171,10 @@ impl<'a> BatchAutorouter<'a> {
 
     pub fn budget(&self) -> RouterBudget {
         self.budget
+    }
+
+    pub fn optimizer_work_budget(&self) -> Option<Rc<DeterministicWorkBudget>> {
+        self.optimizer_work_budget.clone()
     }
 
     pub fn impacted_points(board: &Board, item: ItemId) -> Vec<Point> {
@@ -374,6 +381,7 @@ impl<'a> BatchAutorouter<'a> {
         stop: &RouterStop,
         budget: RouterBudget,
         progress: &mut dyn ProgressSink,
+        optimizer_work_budget: Option<Rc<DeterministicWorkBudget>>,
     ) -> Result<i32, RouterError> {
         let mut router_instance = BatchAutorouter::new(
             board,
@@ -385,6 +393,7 @@ impl<'a> BatchAutorouter<'a> {
             budget,
         );
         router_instance.is_optimizer_autorouter = true;
+        router_instance.optimizer_work_budget = optimizer_work_budget.clone();
 
         let mut still_unrouted_items = true;
         let mut current_pass_no: i32 = 1;
@@ -393,6 +402,9 @@ impl<'a> BatchAutorouter<'a> {
         while still_unrouted_items
             && !stop.is_stop_auto_router_requested()
             && current_pass_no <= max_pass_count
+            && !optimizer_work_budget
+                .as_ref()
+                .is_some_and(|work| work.exhausted())
         {
             still_unrouted_items = router_instance.autoroute_pass(
                 board,

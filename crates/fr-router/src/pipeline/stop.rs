@@ -40,6 +40,38 @@ pub struct RouterStop {
     cancel_poll: Option<CancelPoll>,
 }
 
+#[derive(Debug)]
+pub struct DeterministicWorkBudget {
+    limit: u64,
+    spent: Cell<u64>,
+}
+
+impl DeterministicWorkBudget {
+    pub fn new(limit: u64) -> Self {
+        Self {
+            limit,
+            spent: Cell::new(0),
+        }
+    }
+
+    pub fn poll(&self) -> bool {
+        let spent = self.spent.get();
+        if spent >= self.limit {
+            return true;
+        }
+        self.spent.set(spent + 1);
+        false
+    }
+
+    pub fn exhausted(&self) -> bool {
+        self.spent.get() >= self.limit
+    }
+
+    pub fn spent(&self) -> u64 {
+        self.spent.get()
+    }
+}
+
 impl std::fmt::Debug for RouterStop {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RouterStop")
@@ -318,5 +350,16 @@ mod tests {
             RouterBudget::disabled().fanout_limit_for_pass(9).limit_ms(),
             i32::MAX
         );
+    }
+
+    #[test]
+    fn deterministic_work_budget_stops_before_the_next_step() {
+        let budget = DeterministicWorkBudget::new(2);
+
+        assert!(!budget.poll());
+        assert!(!budget.poll());
+        assert!(budget.poll());
+        assert_eq!(budget.spent(), 2);
+        assert!(budget.exhausted());
     }
 }

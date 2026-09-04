@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::rc::Rc;
 
 use fr_board::items::Item;
 use fr_board::{Board, ItemId, StopConnectionOption};
@@ -12,7 +13,9 @@ use crate::pipeline::batch_loop::stat;
 use crate::pipeline::counters::RouterCounters;
 use crate::pipeline::fanout::{instant_offset_ms, parse_timespan_seconds};
 use crate::pipeline::item_route_result::ItemRouteResult;
-use crate::pipeline::stop::{PassRecord, ProgressThrottler, RouterBudget, RouterStop};
+use crate::pipeline::stop::{
+    DeterministicWorkBudget, PassRecord, ProgressThrottler, RouterBudget, RouterStop,
+};
 use crate::pipeline::{NamedAlgorithmType, ProgressSink, RoutingEvent, TaskState};
 use crate::score::BoardStatistics;
 
@@ -167,6 +170,7 @@ pub struct BatchOptimizer<'a> {
     pub total_items_optimized: i32,
     /// quantity [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`] bounds. A complete-board item adds 0, so
     pub total_route_work: i64,
+    pub search_work_budget: Option<Rc<DeterministicWorkBudget>>,
     pub deadline: Option<std::time::Instant>,
     pub is_timed_out: bool,
 }
@@ -174,6 +178,14 @@ pub struct BatchOptimizer<'a> {
 impl<'a> BatchOptimizer<'a> {
     #[must_use]
     pub fn new(settings: &'a RouterSettings) -> BatchOptimizer<'a> {
+        let search_work_budget = settings
+            .optimizer
+            .as_ref()
+            .and_then(|optimizer| optimizer.max_search_steps)
+            .and_then(|limit| u64::try_from(limit).ok())
+            .filter(|limit| *limit > 0)
+            .map(DeterministicWorkBudget::new)
+            .map(Rc::new);
         BatchOptimizer {
             settings,
             progress_throttler: ProgressThrottler::new(1000),
@@ -182,6 +194,7 @@ impl<'a> BatchOptimizer<'a> {
             min_cumulative_trace_length: 0.0,
             total_items_optimized: 0,
             total_route_work: 0,
+            search_work_budget,
             deadline: None,
             is_timed_out: false,
         }
@@ -305,6 +318,7 @@ impl<'a> BatchOptimizer<'a> {
             stop,
             budget,
             progress,
+            self.search_work_budget.clone(),
         )?;
         // [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`].
         self.total_route_work = self.total_route_work.saturating_add(
@@ -332,7 +346,8 @@ impl<'a> BatchOptimizer<'a> {
             incomplete_count_before,
             incomplete_count_after,
         );
-        let route_improved = !stop.is_stop_requested() && result.improved();
+        let route_improved =
+            !stop.is_stop_requested() && !self.search_work_budget_spent() && result.improved();
         result.update_improved(route_improved);
 
         if route_improved {
@@ -452,6 +467,12 @@ impl BatchOptimizer<'_> {
         self.total_route_work >= PORT_OPTIMIZER_ROUTE_WORK_BUDGET
     }
 
+    pub fn search_work_budget_spent(&self) -> bool {
+        self.search_work_budget
+            .as_ref()
+            .is_some_and(|work| work.exhausted())
+    }
+
     #[must_use]
     pub fn is_deadline_reached(&self) -> bool {
         self.deadline
@@ -511,6 +532,7 @@ impl BatchOptimizer<'_> {
                 .max_items
                 .is_none_or(|max_items| self.total_items_optimized < max_items)
             && !self.route_work_budget_spent()
+            && !self.search_work_budget_spent()
             && !stop.is_stop_requested()
         {
             stop.poll_cancel();
@@ -668,7 +690,7 @@ impl BatchOptimizer<'_> {
             {
                 break;
             }
-            if self.route_work_budget_spent() {
+            if self.route_work_budget_spent() || self.search_work_budget_spent() {
                 break;
             }
             let Some(current_item) = self

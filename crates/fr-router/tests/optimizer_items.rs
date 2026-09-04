@@ -668,6 +668,59 @@ fn an_unimproved_item_restores_the_clone_byte_for_byte() {
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
+fn an_exhausted_search_budget_restores_the_speculative_item() {
+    let mut board = load_board(RPI);
+    let mut settings = build_settings(&board);
+    let stop = RouterStop::new();
+    let mut sink = NoopProgressSink;
+    let mut routed_settings = settings.clone();
+    routed_settings.max_passes = Some(1);
+    AutorouteBatchLoop::run(
+        &mut board,
+        &routed_settings,
+        &stop,
+        RouterBudget::disabled(),
+        &mut sink,
+    )
+    .expect("rpi_splitter has a routable signal layer");
+
+    settings
+        .optimizer
+        .as_mut()
+        .expect("DefaultSettings always fills the optimizer block")
+        .max_search_steps = Some(1);
+    let before = board.structural_hash();
+    let mut optimizer = BatchOptimizer::new(&settings);
+    optimizer.use_increased_ripup_costs = true;
+    optimizer.min_cumulative_trace_length = f64::from(
+        fr_router::score::BoardStatistics::new(&mut board)
+            .traces
+            .total_weighted_length
+            .expect("a routed board has traces"),
+    );
+    let item = ReadSortedRouteItems::new()
+        .next(&board)
+        .expect("the routed board offers an item");
+
+    let result = optimizer
+        .opt_route_item(
+            &mut board,
+            item,
+            true,
+            false,
+            &RouterStop::new(),
+            RouterBudget::disabled(),
+            &mut sink,
+        )
+        .expect("optRouteItem answers Ok");
+
+    assert!(!result.improved());
+    assert!(optimizer.search_work_budget_spent());
+    assert_eq!(board.structural_hash(), before);
+}
+
+#[test]
+#[cfg_attr(debug_assertions, ignore)]
 fn the_real_route_work_accumulator_charges_zero_on_a_complete_board() {
     let mut board = empty_board();
     let lone_via = add_via(&mut board, 0, 0, 1, FixedState::Unfixed);

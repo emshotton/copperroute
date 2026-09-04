@@ -693,6 +693,7 @@ fn field_kinds_match_the_java_field_types() {
             ("additional_ripup_cost_factor_at_start", I32),
             ("trace_ripup_cost_factor", F32),
             ("max_autoroute_passes", I32),
+            ("max_search_steps", I64),
             ("board_update_strategy", Enum(BUS)),
             ("hybrid_ratio", Str),
             ("item_selection_strategy", Enum(ISS)),

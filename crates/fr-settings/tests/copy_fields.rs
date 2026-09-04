@@ -415,6 +415,7 @@ fn populated_optimizer() -> OptimizerSettings {
         additional_ripup_cost_factor_at_start: Some(25),
         trace_ripup_cost_factor: Some(0.75),
         max_autoroute_passes: Some(26),
+        max_search_steps: Some(27),
         board_update_strategy: Some(BoardUpdateStrategy::Hybrid),
         hybrid_ratio: Some("1:2".to_string()),
         item_selection_strategy: Some(ItemSelectionStrategy::Prioritized),

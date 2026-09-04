@@ -34,7 +34,8 @@ pub use optimizer::{
 pub use pass_runner::AutoroutePassRunner;
 pub use run::{PipelineResult, normalize_router_algorithm, run_pipeline};
 pub use stop::{
-    CancelPoll, PassRecord, ProgressThrottler, RouterBudget, RouterStop, StopRequestState,
+    CancelPoll, DeterministicWorkBudget, PassRecord, ProgressThrottler, RouterBudget, RouterStop,
+    StopRequestState,
 };
 pub use unrouted_report::build_unrouted_report;
 
