@@ -449,10 +449,16 @@ impl PolygonShape {
     ///
     // Java bug: the guard is `if (dimension() <= 2) return 0;`, but `PolygonShape.dimension()`
     // returns at most 2 (PolygonShape.java:430-442), so the guard is always true and the shoelace
-    // sum below is dead code — `area()` always answers 0. Reproduced verbatim; the shoelace body
-    // is kept so that a post-parity fix is a one-character change (`<= 2` → `< 2`).
+    // sum below is dead code — `area()` always answers 0. It is reached from `DsnFile.java:70,89`
+    // through `Shape.area()`, so the plane autoroute settings derived from a board area were
+    // derived from zero. See docs/java-quirks.md #26.
+    //
+    // fixed: T11 (#26) — `<= 2` becomes `< 2`, which is the one-character change the shoelace body
+    // was kept for, plus the `corners[len - 2]` guard the register's column asks for: a 1-corner
+    // polygon has `dimension() == 0`, so it no longer returns early, and `len - 2` would underflow.
+    // A polygon with fewer than 3 corners encloses no area, which is what `0.0` says.
     pub fn area(&self) -> f64 {
-        if self.dimension() <= 2 {
+        if self.dimension() < 2 || self.corners.len() < 3 {
             return 0.0;
         }
         // calculate half of the absolute value of
@@ -901,17 +907,25 @@ mod tests {
     #[test]
     fn convexity_area_and_split() {
         assert!(square().is_convex());
-        // Java bug (PolygonShape.java:411): `dimension() <= 2` is always true, so `area()` is
-        // always 0 — the shoelace sum below it is unreachable. Verified against the Java class.
-        assert_eq!(square().area(), 0.0);
+        // Java bug (PolygonShape.java:411): `dimension() <= 2` is always true, so `area()` was
+        // always 0 and the shoelace sum below it unreachable. fixed: T11 (#26) — both literals
+        // below were `0.0`. `square()` is 10 x 10 = 100; `l_shape()` is a 20 x 10 arm plus a
+        // 10 x 10 one = 300, which the shoelace confirms: the cross terms are
+        // 0 + 200 + 100 + 100 + 200 + 0 = 600, halved. The 100 x 100 square and the notched
+        // L the answer key hand-computes (10000 and 8400) are in
+        // `crates/fr-geometry/tests/tail.rs::area_is_not_always_zero`.
+        assert_eq!(square().area(), 100.0);
         assert_eq!(square().split_to_convex().unwrap().len(), 1);
         assert!(!l_shape().is_convex());
-        assert_eq!(l_shape().area(), 0.0);
+        assert_eq!(l_shape().area(), 300.0);
         let parts = l_shape().split_to_convex().unwrap();
         assert_eq!(parts.len(), 2);
         // The convex pieces are ordinary TileShapes, so their `area()` is the real one.
         assert!((parts.iter().map(|t| t.area()).sum::<f64>() - 300.0).abs() < 1e-9);
-        assert_eq!(l_shape().convex_hull().area(), 0.0);
+        // fixed: T11 (#26) — was `0.0`. The hull is the 20 x 20 square with the triangle
+        // (20,10)-(10,20)-(20,20) cut off, so 400 − ½·10·10 = 350; the shoelace agrees
+        // (0 + 200 + 300 + 200 + 0 = 700, halved).
+        assert_eq!(l_shape().convex_hull().area(), 350.0);
         assert_eq!(
             l_shape().convex_hull().corners().to_vec(),
             pts(&[(0, 0), (20, 0), (20, 10), (10, 20), (0, 20)])

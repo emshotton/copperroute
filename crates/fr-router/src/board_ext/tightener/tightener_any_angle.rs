@@ -4,7 +4,7 @@
 use fr_board::prelude::*;
 use fr_geometry::{Direction, IntPoint, Line, Point, Polyline, Side, Signum};
 
-use super::base::{C_MAX_COS_ANGLE, TightenerBase, new_polyline, new_polyline_in_place};
+use super::base::{C_MAX_COS_ANGLE, TightenerBase, new_polyline, new_polyline_normalised};
 use super::tightener_45::{acute_add_line, trace_polyline_of};
 
 /// `TraceTightenerAnyAngle.SKIP_LENGTH` (TraceTightenerAnyAngle.java:22).
@@ -232,13 +232,13 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                         new_lines[new_line_index].intersection_approx(&polyline.lines()[i + 2]);
                     // `new Polyline(currentLines)` normalises **currentLines itself**, and
                     // `:186`/`:188`/`:192` read its elements back out — see
-                    // `new_polyline_in_place`.
-                    let mut check_lines = vec![
+                    // `new_polyline_normalised`.
+                    let check_lines = vec![
                         current_lines[0].expect("set above when ok"),
                         current_lines[1].expect("just set"),
                         current_lines[2].expect("set above when ok"),
                     ];
-                    let built = new_polyline_in_place(&mut check_lines);
+                    let (built, check_lines) = new_polyline_normalised(&check_lines);
                     for (slot, line) in current_lines.iter_mut().zip(check_lines.iter()) {
                         *slot = Some(*line);
                     }
@@ -558,8 +558,9 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                 // :450-462.
                 current_lines[start_no + 2] = new_line;
                 // `new Polyline(currentLines)` normalises **currentLines itself**, and `:465`
-                // reads `currentLines[startNo + 2]` back out — see `new_polyline_in_place`.
-                let tmp = new_polyline_in_place(&mut current_lines);
+                // reads `currentLines[startNo + 2]` back out — see `new_polyline_normalised`.
+                let (tmp, normalised) = new_polyline_normalised(&current_lines);
+                current_lines = normalised;
                 if tmp.lines().len() == current_lines.len() {
                     let shape_to_check = tmp
                         .offset_shape(self.base.current_half_width, start_no + 1)
@@ -746,8 +747,9 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                 }
                 // :614-625. `new Polyline(currentLines)` normalises **currentLines itself**,
                 // and `:625` reads `currentLines[startNo + 2]` back out — see
-                // `new_polyline_in_place`.
-                let tmp = new_polyline_in_place(&mut current_lines);
+                // `new_polyline_normalised`.
+                let (tmp, normalised) = new_polyline_normalised(&current_lines);
+                current_lines = normalised;
                 if tmp.lines().len() == current_lines.len() {
                     let shape_to_check = tmp
                         .offset_shape(self.base.current_half_width, start_no + 1)
@@ -1174,7 +1176,7 @@ fn splice_and_normalise(
     current_lines.extend_from_slice(&lines[..keep_before_ind]);
     current_lines.push(new_line);
     current_lines.extend_from_slice(&lines[suffix_start..]);
-    let tmp = new_polyline_in_place(&mut current_lines);
+    let (tmp, current_lines) = new_polyline_normalised(&current_lines);
     (tmp, current_lines)
 }
 

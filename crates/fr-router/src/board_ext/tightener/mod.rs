@@ -1563,10 +1563,13 @@ impl PolylineTraceExt for Board {
         };
         // :1215. Ruling AE: `new Polyline(Line[])` normalises the caller's array **in place**,
         // and `:1226` reads `currentLines[currentLines.length - 2]` back out of it afterwards —
-        // one of the sites [`Polyline::from_lines_in_place`] exists for. A `from_lines` here would
-        // cut the trace at the pre-normalisation line.
-        let mut border_lines = border_lines;
-        let Ok(border_polyline) = Polyline::from_lines_in_place(&mut border_lines) else {
+        // one of the sites [`Polyline::from_lines_normalised`] exists for. A `from_lines` here
+        // would cut the trace at the pre-normalisation line.
+        //
+        // fixed: T11 (#188) — the normalised array is a return value now, so `border_lines` is not
+        // written behind its owner's back; the line read below is the same one either way.
+        let Ok((border_polyline, border_lines)) = Polyline::from_lines_normalised(&border_lines)
+        else {
             // Java's constructor cannot fail; a `PolylineError` is the port's own degeneracy and
             // refusing the correction is ruling 7's degraded value.
             return Ok(false);

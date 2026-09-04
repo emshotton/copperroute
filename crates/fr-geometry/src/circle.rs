@@ -276,16 +276,37 @@ impl Circle {
 
     /// The affine translation of this circle by `vector` (Circle.java:244-255).
     ///
-    /// Java warns "Circle.translate_by only implemented for IntVectors till now" and returns
-    /// `this` unchanged for a rational vector; ported as-is, because the Java caller sees a
-    /// value, not a crash.
+    /// **Java bug:** for a `RationalVector` Java warns "Circle.translate_by only implemented for
+    /// IntVectors till now" and returns **`this` unchanged** — a silently wrong shape, where every
+    /// sibling (`Line`, `IntBox`, `Polyline`) throws on the same input. Silently returning the
+    /// untranslated shape is the one answer no caller can detect. See docs/java-quirks.md #32.
+    ///
+    /// **fixed: T11 (#32), and the decision it required: translate-or-fail, matching the
+    /// siblings.** The alternative was to implement rational translation, and it is not available:
+    /// a `Circle`'s centre is an `IntPoint`, so a rational translation has no representable result
+    /// in general — which is precisely why Java gave up here. Given that, the honest answers are a
+    /// hard error or a documented rounding, and rounding would invent a shape the caller did not
+    /// ask for. So this panics, as `Line`/`IntBox`/`Polyline` throw.
+    ///
+    /// No caller in the port reaches it: nothing constructs a `Vector::Rational` and hands it to a
+    /// circle, which is why the silent-wrong-answer went unnoticed rather than being relied on.
+    ///
+    /// # Panics
+    ///
+    /// On a `Vector::Rational`, where Java returned the untranslated circle.
     pub fn translate_by(&self, vector: &Vector) -> Circle {
         if *vector == Vector::ZERO {
             return *self;
         }
         let Vector::Int(int_vector) = vector else {
-            // Java: FRLogger.warn("Circle.translate_by only implemented for IntVectors till now")
-            return *self;
+            // fixed: T11 (#32). Java bug: `FRLogger.warn("Circle.translate_by only implemented for
+            // IntVectors till now")` and `return this` — the untranslated circle. Now a hard error,
+            // like every sibling shape's throw on the same input.
+            panic!(
+                "Circle.translateBy is not implemented for a RationalVector (Circle.java:249-252); \
+                 a circle's centre is an IntPoint, so a rational translation has no representable \
+                 result. Java returned the untranslated circle here, which no caller could detect."
+            );
         };
         Circle::new(self.center.translate_by(int_vector), self.radius)
     }

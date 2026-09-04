@@ -581,6 +581,25 @@ impl IntBox {
 
     /// Divides this box into sections with width and height at most max_section_width of about
     /// equal size.
+    ///
+    /// **Java bug:** `IntBox.divideIntoSections` (IntBox.java:645-685) is a covariant override that
+    /// grids the box directly and skips the base algorithm's `dimension() == 2` filter
+    /// (TileShape.java:908-913), so degenerate grid cells survive into the result. They arise
+    /// whenever `sectionLength * (count - 1) == length`: for a `6 x 6` box at
+    /// `max_section_width = 1.6`, `xcount = ycount = 4` but `sectionLength = 2`, so the fourth row
+    /// and the fourth column are zero-width — **16 raw sections where 9 have area**, which is the
+    /// register's own example. See docs/java-quirks.md #18.
+    ///
+    /// **fixed: T11 (#18)** — the same filter the base algorithm applies.
+    ///
+    /// One correction to the task's answer key, checked against the Java source: it states that
+    /// "the base class filters `dimension() != 2` and returns the shape itself", and expects a
+    /// degenerate box `[0,0 .. 100,0]` to answer **1** section. The base guard at
+    /// TileShape.java:900-905 is `isEmpty()`, not `dimension() != 2`, and its `dimension() == 2`
+    /// filter would drop a degenerate shape's only section too — so the base answers **0** there
+    /// as well, and this override answers 0 both before and after the fix (`ycount = ceil(0/30)`
+    /// is 0, so the grid loop never runs). Area is conserved either way, because a degenerate box
+    /// has none.
     pub fn divide_into_sections(&self, max_section_width: f64) -> Vec<IntBox> {
         if max_section_width <= 0.0 {
             return Vec::new();
@@ -607,12 +626,17 @@ impl IntBox {
                 } else {
                     current_lower_left_x + section_length_x
                 };
-                result.push(IntBox::from_coords(
+                let section = IntBox::from_coords(
                     current_lower_left_x,
                     current_lower_left_y,
                     current_upper_right_x,
                     current_upper_right_y,
-                ));
+                );
+                // fixed: T11 (#18) — the base algorithm's `dimension() == 2` filter, which this
+                // covariant override skipped. A zero-width or zero-height cell is not a section.
+                if section.dimension() == 2 {
+                    result.push(section);
+                }
             }
         }
         result

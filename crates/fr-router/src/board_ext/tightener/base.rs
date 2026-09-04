@@ -32,16 +32,22 @@ pub(crate) fn new_polyline(lines: Vec<Line>) -> Polyline {
 }
 
 /// [`new_polyline`] for the tighteners' six `new Polyline(<local array>)` sites that **re-read
-/// that array afterwards**.
+/// that array afterwards**, returning the polyline **and** the array those sites should read.
 ///
 /// Java's constructor normalises the caller's array in place — see
-/// [`Polyline::from_lines_in_place`], which carries the Java line numbers — so
+/// [`Polyline::from_lines_normalised`], which carries the Java line numbers — so
 /// `TraceTightener.java:311`'s `newLine = checkLines[1]` and its five siblings read the
 /// *normalised* line, whose direction may have been flipped and which is therefore a different
-/// `Line` object. Reproducing that is load-bearing since quirk #74: a flipped line is a new
-/// identity token, and `PolylineTrace.change` compares tokens.
-pub(crate) fn new_polyline_in_place(lines: &mut Vec<Line>) -> Polyline {
-    Polyline::from_lines_in_place(lines).unwrap_or_else(|e| {
+/// `Line` object. That matters since quirk #74: a flipped line is a new identity token, and
+/// `PolylineTrace.change` compares tokens.
+///
+/// fixed: T11 (#188) — this was `new_polyline_in_place(&mut Vec<Line>)` and mutated its caller's
+/// vector. The normalised array is now a **return value**, so no local array is written behind its
+/// owner's back and the six sites read what they built. The answer is unchanged: the second
+/// element is the polyline's own lines exactly when Java's write-back would have fired, and the
+/// untouched input otherwise.
+pub(crate) fn new_polyline_normalised(lines: &[Line]) -> (Polyline, Vec<Line>) {
+    Polyline::from_lines_normalised(lines).unwrap_or_else(|e| {
         panic!("new Polyline(Line[]) threw (Polyline.java:148, quirk #22): {e}")
     })
 }
@@ -334,9 +340,9 @@ impl<'a> TightenerBase<'a> {
                 continue;
             }
             // :297-309. `new Polyline(checkLines)` normalises **checkLines itself**, and
-            // `:311` reads element 1 back out of it — see `new_polyline_in_place`.
-            let mut check_lines = vec![check_line_0, check_line_1, check_line_2];
-            let tmp = new_polyline_in_place(&mut check_lines);
+            // `:311` reads element 1 back out of it — see `new_polyline_normalised`.
+            let check_lines = vec![check_line_0, check_line_1, check_line_2];
+            let (tmp, check_lines) = new_polyline_normalised(&check_lines);
             let check_line_1 = check_lines[1];
             let mut check_ok = false;
             if tmp.lines().len() == 3 {

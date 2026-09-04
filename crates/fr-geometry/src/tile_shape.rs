@@ -1918,11 +1918,31 @@ mod tests {
         assert!(!b.contains_approx(&b));
         assert!(!b.contains_float(&FloatPoint::new(0.0, 5.0)));
         assert!(!b.contains_float_tol(&FloatPoint::new(0.0, 5.0), 0.0));
-        // ... but IntOctagon overrides it with an inclusive coordinate test that accepts the
-        // border (IntOctagon.java:327-343).
+        // Java bug: IntOctagon overrode it with an *inclusive* coordinate test that accepted the
+        // border (IntOctagon.java:327-343), so the same point on the same border answered
+        // differently depending on which representation held the shape. fixed: T11 (#17) — the
+        // octagon is exclusive too, and the assertion below was `assert!(oct.contains_float(...))`.
         let oct = TileShape::Octagon(IntBox::from_coords(0, 0, 10, 10).to_int_octagon());
-        assert!(oct.contains_float(&FloatPoint::new(0.0, 5.0)));
+        assert!(!oct.contains_float(&FloatPoint::new(0.0, 5.0)));
         assert!(!oct.contains_float_tol(&FloatPoint::new(0.0, 5.0), 0.0));
+        // The three representations of the same square now agree about their own border, which is
+        // the whole of #17.
+        let as_box = TileShape::Box(IntBox::from_coords(0, 0, 10, 10));
+        let as_simplex = TileShape::Simplex(IntBox::from_coords(0, 0, 10, 10).to_simplex());
+        for p in [
+            FloatPoint::new(0.0, 5.0),
+            FloatPoint::new(5.0, 0.0),
+            FloatPoint::new(10.0, 5.0),
+            FloatPoint::new(5.0, 5.0),
+            FloatPoint::new(-1.0, 5.0),
+        ] {
+            assert_eq!(oct.contains_float(&p), as_box.contains_float(&p), "{p:?}");
+            assert_eq!(
+                oct.contains_float(&p),
+                as_simplex.contains_float(&p),
+                "{p:?}"
+            );
+        }
     }
 
     #[test]

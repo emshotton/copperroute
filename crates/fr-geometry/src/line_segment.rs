@@ -823,14 +823,29 @@ mod tests {
         assert_eq!(LineSegment::from_tile_shape(&b, 4), None);
     }
 
+    /// fixed: T11 (#17) — this test used to ask `contains_float`, and passed only because
+    /// `IntOctagon` answered *inclusively* where the box and the simplex answer exclusively.
+    ///
+    /// The bounding octagon of a horizontal segment is `[0,0 .. 10,0]`: **degenerate**, with no
+    /// interior at all, so under the exclusive convention no point is strictly inside it and the
+    /// old assertions were beneficiaries of the quirk rather than casualties of the fix — a
+    /// bounding *box* asked the same way has always answered `false`. The property the test is
+    /// for — the bounding shape covers the segment — is border-inclusive containment, which is
+    /// `TileShape::contains(&Point)` (`!is_outside`), and that is what it now asks.
     #[test]
     fn bounding_octagon_covers_the_segment() {
         let s = seg(0, 0, 10, 0);
         let oct = s.bounding_octagon();
         assert_eq!(oct.bounding_box(), IntBox::from_coords(0, 0, 10, 0));
-        assert!(oct.contains_float(&crate::float_point::FloatPoint::new(0.0, 0.0)));
-        assert!(oct.contains_float(&crate::float_point::FloatPoint::new(10.0, 0.0)));
-        assert!(oct.contains_float(&crate::float_point::FloatPoint::new(5.0, 0.0)));
+        let shape = TileShape::Octagon(oct);
+        for (x, y) in [(0, 0), (10, 0), (5, 0)] {
+            assert!(
+                shape.contains(&Point::Int(IntPoint::new(x, y))),
+                "({x},{y})"
+            );
+        }
+        // Degenerate, so nothing is strictly inside — the box would say the same.
+        assert!(!shape.contains_float(&crate::float_point::FloatPoint::new(5.0, 0.0)));
     }
 
     #[test]

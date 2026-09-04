@@ -369,20 +369,36 @@ impl IntOctagon {
 
     /// Returns true if `point` is contained in this octagon. Because of the parameter type
     /// `FloatPoint`, the function may not be exact close to the border.
+    /// Java bug: `IntOctagon.contains(FloatPoint)` (IntOctagon.java:327-343) is **inclusive** on
+    /// the border, where the generic `TileShape.contains(FloatPoint)` that the box and the simplex
+    /// take (TileShape.java:161-183, via `side_of_float(point, 0.0) != OnTheRight`) is
+    /// **exclusive**. The same point on the same border answered differently depending on which
+    /// representation held the shape. Measured on `Oct[0,0,100,100,-100,100,0,200]` against
+    /// `Box[0,0 .. 100,100]`: all three of `(0,50)`, `(50,0)` and `(100,50)` disagreed.
+    /// See docs/java-quirks.md #17.
+    ///
+    /// **fixed: T11 (#17), and the decision it required.** The convention chosen is the
+    /// **exclusive** one, applied here so that all three representations agree — the octagon moves
+    /// to the box's and the simplex's answer rather than the other way round. Two reasons:
+    /// `contains_float` is one method with three implementations and the disagreement was between
+    /// them, so aligning it is the whole of the fix; and the *integer* `TileShape::contains(&Point)`
+    /// is a different method with a deliberately different contract (`!is_outside`, border
+    /// included), which nothing here asks to change and which changing would be a far larger
+    /// behavioural move than this row authorises.
     pub fn contains_float(&self, point: &FloatPoint) -> bool {
-        if self.left_x as f64 > point.x
-            || self.bottom_y as f64 > point.y
-            || (self.right_x as f64) < point.x
-            || (self.top_y as f64) < point.y
+        if self.left_x as f64 >= point.x
+            || self.bottom_y as f64 >= point.y
+            || (self.right_x as f64) <= point.x
+            || (self.top_y as f64) <= point.y
         {
             return false;
         }
         let tmp1 = point.x - point.y;
         let tmp2 = point.x + point.y;
-        self.upper_left_diagonal_x as f64 <= tmp1
-            && self.lower_right_diagonal_x as f64 >= tmp1
-            && self.lower_left_diagonal_x as f64 <= tmp2
-            && self.upper_right_diagonal_x as f64 >= tmp2
+        (self.upper_left_diagonal_x as f64) < tmp1
+            && (self.lower_right_diagonal_x as f64) > tmp1
+            && (self.lower_left_diagonal_x as f64) < tmp2
+            && (self.upper_right_diagonal_x as f64) > tmp2
     }
 
     /// Returns the smallest octagon containing this octagon and `other`.
