@@ -1,3 +1,31 @@
+//! Plan 6 Task 12: `MazeSearchEngine`'s room-door expansion and cost model
+//! (`autoroute/maze/MazeSearchEngine.java:390-966`, `:1105-1215`) and the check-only
+//! `MazeTraceShover` (`autoroute/maze/MazeTraceShover.java:32-314`).
+//!
+//! # Where the numbers come from
+//!
+//! Every literal below — the expansion and sorting values, the bend threshold, the door ids, the
+//! `roomShapeIsThick` boundary, the neckdown half width and every `checkShoveTraceLine` answer —
+//! is **read off the HEAD jar**. The probe is
+//! `scripts/differential/java/probes/P6T12Probe.java`, committed with the exact `javac`/`java`
+//! invocation in its header; its whole stdout is committed as
+//! `tests/data/p6t12-maze-expand.txt`. Each test names its probe mode and pastes the lines it
+//! asserts against.
+//!
+//! # The fixture, and the two switches it throws
+//!
+//! The board is Task 11's — `P6T11Probe.build`'s two-pin board with the two traces replaced by an
+//! obstacle box (see `tests/maze_search.rs` for why the traces had to go). Two control fields are
+//! set by hand, exactly as the probe sets them:
+//!
+//! * `viasAllowed = false`, because the drill-page block of `MazeSearchEngine.java:601-623` calls
+//!   `MazeExpansionEngine`, which is Task 13's;
+//! * `bendCosts[0] = 100.0` in the cost-model tests, because `RouterSettings` answers `0.0` for
+//!   this board and the whole of `:856-873` would be dead.
+//!
+//! `ripupAllowed` is already `false` (AutorouteControl.java:184), which is what keeps
+//! `MazeRipupResolver` — also Task 13's — out of the way.
+
 #![allow(clippy::too_many_lines)]
 
 use std::cell::Cell;
@@ -18,6 +46,10 @@ use fr_router::autoroute::maze::trace_shover::{DoorSection, MazeTraceShover};
 use fr_router::autoroute::maze::{AutorouteControl, MazeAdjustment, MazeListElement};
 use fr_settings::RouterSettings;
 
+// =================================================================================================
+// The probe's board, rebuilt from scratch (`P6T11Probe.build`, shared with `tests/maze_search.rs`)
+// =================================================================================================
+
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -10_000,
@@ -29,6 +61,10 @@ const BOUNDING_BOX: IntBox = IntBox {
     },
 };
 
+/// `P6T11Probe.build`: two layers, a 200-unit clearance matrix with a "wide" class, an empty via
+/// rule on the default net class (`AutorouteControl.rebuildViaInfo:235` dereferences it), two
+/// declared nets (quirk #173), a two-pin component — an SMD pad at (-500, 0) on layer 0 and a
+/// through pad at (500, 0) on both layers, both on net 1 — and one obstacle box.
 fn probe_board() -> Board {
     let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
     let mut clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
@@ -107,6 +143,7 @@ fn probe_board() -> Board {
     board
 }
 
+/// `new RouterSettings(board)` (RouterSettings.java:127-131).
 fn probe_settings(board: &Board) -> RouterSettings {
     let mut settings = RouterSettings::new();
     settings.set_layer_count(board.get_layer_count());
@@ -114,6 +151,7 @@ fn probe_settings(board: &Board) -> RouterSettings {
     settings
 }
 
+/// `P6T11Probe.control`.
 fn probe_control(board: &Board, net_no: i32) -> AutorouteControl {
     let settings = probe_settings(board);
     let trace_costs = settings.get_trace_costs();
@@ -126,12 +164,14 @@ fn probe_control(board: &Board, net_no: i32) -> AutorouteControl {
     )
 }
 
+/// `P6T11Probe.engine`: `new AutorouteEngine(board, 1, false)` then `initConnection(net, …)`.
 fn probe_engine(board: &mut Board, net_no: i32) -> AutorouteEngine {
     let mut engine = AutorouteEngine::new(board, 1, false);
     engine.init_connection(board, net_no, None);
     engine
 }
 
+/// A `StopCheck` that never fires — every test here is past `occupyNextElement`'s only check.
 struct Counter {
     calls: Cell<u32>,
 }
@@ -149,10 +189,14 @@ impl Counter {
     }
 }
 
+/// `[ItemId(2), …]` — the probe's `setOf`, which is a `TreeSet<Item>`.
 fn set_of(ids: &[u32]) -> BTreeSet<ItemId> {
     ids.iter().map(|id| ItemId(*id)).collect()
 }
 
+/// One queue row, in the shape `P6T11Probe.dumpQueue` prints it:
+/// `(door id, section, expansionValue, sortingValue, next-room id, shape entry a, shape entry b,
+/// roomRipped, adjustment, alreadyChecked, ripupCost)`.
 type QueueRow = (
     i32,
     i32,
@@ -167,6 +211,10 @@ type QueueRow = (
     i32,
 );
 
+/// `P6T11Probe.dumpQueue` prints `expansionValue`/`sortingValue` with `%.9f` and every
+/// `FloatPoint` with `%.6f`, so the transcript pins those values to nine and six decimals. The
+/// assertions below are made at exactly that precision — anything finer would be asserting digits
+/// the ground truth does not contain.
 fn r9(x: f64) -> f64 {
     (x * 1e9).round() / 1e9
 }
@@ -197,16 +245,23 @@ fn queue_rows(maze: &MazeSearchEngine<'_>) -> Vec<QueueRow> {
         .collect()
 }
 
+/// `P6T12Probe`'s control: the shared one with `viasAllowed` switched off.
 fn expand_control(board: &Board, net_no: i32) -> AutorouteControl {
     let mut ctrl = probe_control(board, net_no);
     ctrl.vias_allowed = false;
     ctrl
 }
 
+/// Drain the queue, so a hand-driven `expandToDoorSection` case starts from an empty one — the
+/// probe's `maze.mazeExpansionList.clear()`.
 fn drain(maze: &mut MazeSearchEngine<'_>) {
     while maze.queue.pop_first().is_some() {}
 }
 
+/// `P6T12Probe.doorAt`: two complete free-space rooms meeting on the vertical segment `x`,
+/// `y ± 100`, and the 1-dimensional door between them — so the door's
+/// `getShape().centreOfGravity()` is `(x, y)` and `getSectionSegments` allocates exactly one
+/// section.
 fn door_at(maze: &mut MazeSearchEngine<'_>, x: i32, y: i32, id1: i32, id2: i32) -> DoorId {
     let a = maze.engine.rooms.new_complete_room(
         Some(TileShape::Box(IntBox::from_coords(
@@ -233,6 +288,26 @@ fn door_at(maze: &mut MazeSearchEngine<'_>, x: i32, y: i32, id1: i32, id2: i32) 
         .new_door(RoomRef::Complete(a), RoomRef::Complete(b), 1)
 }
 
+// =================================================================================================
+// The pop loop's tail — the first test that runs `expandToRoomDoors` for real
+// =================================================================================================
+
+/// Probe mode `pop`. `init` seeds two elements; the first `occupyNextElement` pops door 64 and
+/// runs the whole of `expandToRoomDoors` on room 2 — `completeNeighbourRooms` (room count 3 → 4),
+/// `expandToTargetDoors` (the destination door 95), and `expandToDoor` over the **post-completion**
+/// door list (66, 67, 33).
+/// ```text
+/// --- after pop 1 occupyNextElement=true
+/// completeRooms n=4
+/// queue n=5
+///   [0] 66  expansion=0.000000000     sorting=830.000000000    nextRoom=4
+///   [1] 95  expansion=1000.000000000  sorting=1000.000000000   nextRoom=null
+///   [2] 66  expansion=1550.000000000  sorting=3930.000000000   nextRoom=4
+///   [3] 67  expansion=11149.268182262 sorting=20379.268182262  nextRoom=5
+///   [4] 33  expansion=10846.197490365 sorting=21737.317726594  nextRoom=1
+/// ```
+/// Rows [0] and [2] share the id 66 by coincidence: the first is the `TargetItemExpansionDoor`
+/// `31 * item(2) + room(4)`, the second the `ExpansionDoor` `min(2,4) * 31 + max(2,4)`.
 #[test]
 fn the_first_pop_expands_the_start_room_through_every_door_of_it() {
     let mut board = probe_board();
@@ -259,6 +334,18 @@ fn the_first_pop_expands_the_start_room_through_every_door_of_it() {
         "completeNeighbourRooms added room 5"
     );
 
+    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`. Room and door ids come from ONE
+    // shared counter across the engine's room kinds (#156/#167/#158), so all five door ids and
+    // all four room ids moved: doors `66, 95, 66, 67, 33` -> `75, 100, 230, 232, 193`, rooms
+    // `4, -, 4, 5, 1` -> `13, -, 13, 15, 6`. **Everything the test is named for is the jar's, to
+    // the last digit**: five elements — one per door of the start room — in the same order, with
+    // the same sorting and expansion values (`0.0/830.0`, `1000.0/1000.0`, `1550.0/3930.0`,
+    // `11149.268182262/20379.268182262`, `10846.197490365/21737.317726594`), the same shape
+    // entries, and the same `None` destination door afterwards.
+    //
+    // Note the two rows that read door `66` on BOTH sides of the jar's list now read `75` and
+    // `230`: the shared counter also separated a door-id collision the jar's hash produced, which
+    // is #171's family and is asserted by the two ids differing rather than only by their values.
     assert_eq!(
         queue_rows(&maze),
         vec![
@@ -332,6 +419,16 @@ fn the_first_pop_expands_the_start_room_through_every_door_of_it() {
     assert_eq!(maze.destination_door(), None);
 }
 
+/// Probe mode `pop2`. The second pop takes door 66's element, whose room 4 is only 1041 units tall
+/// — `nextRoomShape.minWidth() < 2 * halfWidth` (`:458`), so `nextRoomIsThick` is **false** and
+/// every candidate is refused: the destination target door by `checkForcedTracePolyline` (`:690`),
+/// the doors by `segmentProjection` or the small-door `continue` of `:743-748`. The queue simply
+/// loses its head.
+/// ```text
+/// --- after pop 2 occupyNextElement=true
+/// completeRooms n=5
+/// queue n=4   (rows [1]..[4] of the previous dump, unchanged)
+/// ```
 #[test]
 fn the_second_pop_into_a_thin_room_expands_nothing() {
     let mut board = probe_board();
@@ -363,6 +460,14 @@ fn the_second_pop_into_a_thin_room_expands_nothing() {
     );
 }
 
+/// Probe mode `inactive`. `:396-401`: an inactive **signal** layer answers `true` — "the from door
+/// section has to be occupied" — with nothing expanded at all, before `completeNeighbourRooms` even
+/// runs.
+/// ```text
+/// layer0isSignal=true
+/// expandToRoomDoors=true
+/// queue n=2   (the two seeded elements, untouched)
+/// ```
 #[test]
 fn an_inactive_layer_is_never_expanded_into() {
     let mut board = probe_board();
@@ -390,6 +495,13 @@ fn an_inactive_layer_is_never_expanded_into() {
     assert_eq!(maze.engine.complete_expansion_rooms().len(), 3);
 }
 
+// =================================================================================================
+// The cost model (`expandToDoorSection`, :791-966)
+// =================================================================================================
+
+/// Build the probe's `bend` fixture: a room on layer 0 for the `from` element, a backtrack door
+/// whose shape is centred on the origin, and a fresh `to` door centred on `(2000, dy)` whose one
+/// section is already allocated. Returns `(from element, to door)`.
 fn bend_fixture(
     maze: &mut MazeSearchEngine<'_>,
     dy: i32,
@@ -429,6 +541,20 @@ fn bend_fixture(
     (from, to_door)
 }
 
+/// Probe mode `bend`. `:856-873` charges `ctrl.bendCosts[layer]` when the cross product of the
+/// incoming and outgoing directions satisfies `crossProduct² > 0.01 · |prev|² · |next|²`, i.e.
+/// `sin² > 0.01`. With `prev = (1000, 0)` and `next = (1000, dy)` that reduces to `99·dy² > 1000²`,
+/// so the threshold sits between `dy = 100` and `dy = 101` — and the four rows below straddle it
+/// by one unit:
+/// ```text
+/// bendCosts[0]=100.0    traceCosts[0] horizontal=1.0 vertical=2.0    backtrackCog=(0.000000,0.000000)
+/// dy=0    expansion=1000.000000000  (= √(1000² + 0²)      , no bend)
+/// dy=100  expansion=1019.803902719  (= √(1000² + 200²)    , no bend)
+/// dy=101  expansion=1120.198019994  (= √(1000² + 202²) + 100)
+/// dy=1000 expansion=2336.067977500  (= √(1000² + 2000²) + 100)
+/// ```
+/// The `vertical = 2.0` cost is why `dy` is doubled inside the root: the distance is
+/// `FloatPoint.weightedDistance`, not the Euclidean one.
 #[test]
 fn the_bend_penalty_fires_exactly_above_sin_squared_one_percent() {
     for (dy, expected_expansion, expected_sorting, bend_charged) in [
@@ -440,6 +566,8 @@ fn the_bend_penalty_fires_exactly_above_sin_squared_one_percent() {
         let mut board = probe_board();
         let mut engine = probe_engine(&mut board, 1);
         let mut ctrl = probe_control(&board, 1);
+        // The board's `RouterSettings` answer `bendCosts = [0.0, 0.0]`, which would make the whole
+        // of `:856-873` dead; the probe sets the same field.
         ctrl.bend_costs[0] = 100.0;
         let counter = Counter::new();
         let mut maze = MazeSearchEngine::get_instance(
@@ -484,6 +612,7 @@ fn the_bend_penalty_fires_exactly_above_sin_squared_one_percent() {
             )],
             "dy={dy}"
         );
+        // The unweighted straight-line term, so the assertion above cannot pass by accident.
         let straight = (1000.0f64 * 1000.0 + 4.0 * f64::from(dy) * f64::from(dy)).sqrt();
         let charged = r9(expected_expansion) - r9((straight * 1e9).round() / 1e9);
         assert!(
@@ -493,6 +622,18 @@ fn the_bend_penalty_fires_exactly_above_sin_squared_one_percent() {
     }
 }
 
+/// Probe mode `bend`, the `addCosts` × `adjustment` matrix. `:885-887` and `:904-906`:
+/// `roomRipped` and `ripupCost` are set only by a **positive `addCosts` with `Adjustment.NONE`**;
+/// a `LEFT`/`RIGHT` adjustment carries the cost into the values but leaves both flags clear. The
+/// second clause of `:887` — `fromElement.alreadyChecked && fromElement.roomRipped` — sets
+/// `roomRipped` and leaves `ripupCost` at 0.
+/// ```text
+/// dy=0 addCosts=0 adjustment=NONE  => expansion=1000.0 roomRipped=false ripupCost=0
+/// dy=0 addCosts=7 adjustment=NONE  => expansion=1007.0 roomRipped=true  ripupCost=7
+/// dy=0 addCosts=7 adjustment=RIGHT => expansion=1007.0 roomRipped=false ripupCost=0
+/// dy=0 addCosts=7 adjustment=LEFT  => expansion=1007.0 roomRipped=false ripupCost=0
+/// expandToDoorSection rippedParent => expansion=1000.0 roomRipped=true  ripupCost=0
+/// ```
 #[test]
 fn room_ripped_and_the_ripup_cost_follow_add_costs_and_the_adjustment() {
     let cases: [(i32, MazeAdjustment, f64, bool, i32); 4] = [
@@ -549,6 +690,12 @@ fn room_ripped_and_the_ripup_cost_follow_add_costs_and_the_adjustment() {
     }
 }
 
+/// Probe mode `bend`, the `rippedParent` row: `:887`'s second clause propagates `roomRipped` from
+/// an **already-checked** parent and leaves `ripupCost` at 0, because no ripup was paid here.
+/// ```text
+/// expandToDoorSection rippedParent => true
+///   [0] door=ExpansionDoor id=28961 … expansion=1000.000000000 sorting=2330.000000000 roomRipped=true … ripupCost=0
+/// ```
 #[test]
 fn an_already_checked_ripped_parent_propagates_room_ripped_but_not_the_cost() {
     let mut board = probe_board();
@@ -595,6 +742,13 @@ fn an_already_checked_ripped_parent_propagates_room_ripped_but_not_the_cost() {
     );
 }
 
+/// Probe mode `bend`, the tail. `:798-849`: an already-occupied section and a `null` shape entry
+/// are both refused, and neither touches the queue.
+/// ```text
+/// expandToDoorSection occupied  => false
+/// expandToDoorSection nullEntry => false
+/// queue n=0
+/// ```
 #[test]
 fn an_occupied_section_and_a_null_shape_entry_are_both_refused() {
     let mut board = probe_board();
@@ -649,6 +803,24 @@ fn an_occupied_section_and_a_null_shape_entry_are_both_refused() {
     assert_eq!(maze.queue.len(), 0);
 }
 
+// =================================================================================================
+// roomShapeIsThick (:1105-1123) and checkNeckDownAtDestPin (:1207-1215)
+// =================================================================================================
+
+/// Probe mode `thick`. `:1122` compares `traceHalfWidth + clearanceCompensationValue` against
+/// `ctrl.compensatedTraceHalfWidth[layer]`, and the compensation is **the trace's own**, not the
+/// control's — which is why a trace of half width 1500 is already "thick" against a compensated
+/// 1600. The two non-trace, non-via arms take `:1118-1121`'s `obstacleHalfWidth = 0` and answer
+/// false.
+/// ```text
+/// compensatedTraceHalfWidth[0]=1600   clearanceCompensationValue(1,0)=100
+/// obstacleArea => false
+/// pin => false
+/// trace id=8 halfWidth=2000 roomShapeIsThick=true
+/// trace id=7 halfWidth=1600 roomShapeIsThick=true
+/// trace id=6 halfWidth=1500 roomShapeIsThick=true
+/// trace id=5 halfWidth=100  roomShapeIsThick=false
+/// ```
 #[test]
 fn room_shape_is_thick_at_the_compensated_half_width_boundary() {
     let mut board = probe_board();
@@ -659,6 +831,8 @@ fn room_shape_is_thick_at_the_compensated_half_width_boundary() {
         assert_eq!(ctrl.compensated_trace_half_width[0], 1600);
         let tree = maze.search_tree;
         drop(maze);
+        // The obstacle area (item 4) is neither a trace nor a via, and the through pin (item 3) is
+        // a `DrillItem` but not a `Via`: both take the `FRLogger.warn` arm.
         for item in [ItemId(4), ItemId(3)] {
             let room = engine.rooms.new_obstacle_room(&mut board, item, 0, tree);
             let maze = MazeSearchEngine::new(&mut engine, &ctrl);
@@ -686,6 +860,7 @@ fn room_shape_is_thick_at_the_compensated_half_width_boundary() {
     let mut engine = probe_engine(&mut board, 1);
     let ctrl = probe_control(&board, 1);
     let tree = engine.tree;
+    // `getItems()` is descending id, which is the order the probe prints.
     let mut rows = Vec::new();
     for id in board.items_in_board_order() {
         if !matches!(board.items.get(&id), Some(Item::Trace(_))) {
@@ -712,8 +887,35 @@ fn room_shape_is_thick_at_the_compensated_half_width_boundary() {
     let _ = tree;
 }
 
+/// Probe mode `neck`, and quirk #179 — **fixed at Plan 9 Task 10**.
+///
+/// `checkNeckDownAtDestPin`'s name and javadoc both say *destination* pin, and Java's loop never
+/// asks: it answers the neckdown half width of the **first** target door whose item is a `Pin`,
+/// and `return`s from inside the loop. On this board room 2's target doors are `(item 2 = the
+/// **start** pin, item 3 = the destination pin)`, so the jar answers the start pin's `49.0`:
+///
+/// ```text
+/// room=2 layer=0 targetDoors=2 checkNeckDownAtDestPin=49.0
+/// room=4 layer=0 targetDoors=2 checkNeckDownAtDestPin=49.0
+/// bareRoom checkNeckDownAtDestPin=0.0
+/// ```
+///
+/// That matters because the one caller, `expandToRoomDoors:409-413`, narrows `halfWidthAdd` **and**
+/// `halfWidth` to the answer, and those decide `doorIsSmall` (`:415`) and `nextRoomIsThick`
+/// (`:458`, `:474`) for the whole round. The room the search is *passing through* is planned at a
+/// pin's neckdown that belongs to the other end of the connection.
+///
+/// The port now tests `isDestinationDoor()` inside the loop, so the same two rooms answer the
+/// **destination** pin's `69.0` instead of the start pin's `49.0` — a 20-unit-wider trace through
+/// a room the search only passes through. The board and the pins are unchanged; only the question
+/// asked of them is. This is a deliberate divergence from the committed `P6T12Probe` transcript,
+/// which is a jar reference and is not re-cut.
+///
+/// The start pin's neckdown is not lost: `expandToRoomDoors:442-451`, a few lines further down the
+/// same caller, applies it separately and deliberately, and
+/// [`the_neckdown_call_sites_narrow_the_half_width_for_the_whole_round`] covers that site.
 #[test]
-fn check_neck_down_at_dest_pin_answers_the_first_pin_target_door_whichever_it_is() {
+fn a_start_pin_neckdown_does_not_shrink_a_pass_through_trace() {
     let mut board = probe_board();
     let mut engine = probe_engine(&mut board, 1);
     let ctrl = probe_control(&board, 1);
@@ -733,39 +935,69 @@ fn check_neck_down_at_dest_pin_answers_the_first_pin_target_door_whichever_it_is
         .iter()
         .map(|e| e.next_room.expect("a seeded element has a room"))
         .collect();
-    let answers: Vec<(i32, f64)> = rooms
-        .iter()
-        .map(|room| {
-            (
-                maze.engine.rooms.room_id_no(*room).expect("a live room"),
-                maze.check_neck_down_at_dest_pin(&board, *room),
-            )
-        })
-        .collect();
-    assert_eq!(answers, vec![(7, 49.0), (13, 49.0)]);
+
+    // The premise, asserted rather than assumed: the room's **first** target door is item 2, the
+    // start pin. That ordering is the whole reason the quirk was observable here, and a board on
+    // which the destination pin came first would make this test vacuous.
     let first_target_item = {
         let door = maze.engine.rooms.room_target_doors(rooms[0])[0];
         maze.engine.rooms.target_door(door).expect("live").item
     };
     assert_eq!(first_target_item, ItemId(2));
 
+    let answers: Vec<(i32, f64)> = rooms
+        .iter()
+        .map(|room| {
+            (
+                maze.engine.rooms.room_id_no(*room).expect("a live room"),
+                maze.check_neck_down_at_dest_pin(&mut board, *room),
+            )
+        })
+        .collect();
+    // PORT-REGRESSION PIN on the room ids (Task 8's counter shift, re-cut by Task 9's accept
+    // wave): the jar numbers these rooms `2, 4`, the port `7, 13`. The **value** is quirk #179's:
+    // the destination pin's `69.0`, not the start pin's `49.0` the jar answers.
+    assert_eq!(
+        answers,
+        vec![(7, 69.0), (13, 69.0)],
+        "the destination pin's 69.0, not the start pin's 49.0 the jar answers — quirk #179"
+    );
+
+    // A room with no target doors at all still answers 0.
     let bare = maze.engine.rooms.new_complete_room(
         Some(TileShape::Box(IntBox::from_coords(0, 0, 10, 10))),
         0,
         950,
     );
     assert_eq!(
-        maze.check_neck_down_at_dest_pin(&board, RoomRef::Complete(bare)),
+        maze.check_neck_down_at_dest_pin(&mut board, RoomRef::Complete(bare)),
         0.0
     );
 }
 
+// =================================================================================================
+// The small door, the snapshot and the stale tree entry
+// =================================================================================================
+
+/// Probe mode `smalldoor`. Entering through an **`ExpansionDoor`** rather than a target door makes
+/// `:405` bite and `doorIsSmall` (`:415`) decide the round. At the control's own half width the
+/// door is big enough and four elements are expanded; at an absurd half width the door is small,
+/// `:501-511` returns `somethingExpanded` — still `false`, because `expandToTargetDoors` refused at
+/// `:634-646` too — and nothing is expanded.
+/// ```text
+/// room=2 door=33 dimension=1 doorShape=[-4700,-10000..-4700,0] shapeEntry=(-4700.000000,-5000.000000)
+/// halfWidth=1600   doorIsSmall=false expandToRoomDoors=true    queue n=4  (95, 64, 67, 66)
+/// halfWidth=100000 doorIsSmall=true  expandToRoomDoors=false   queue n=0
+/// ```
 #[test]
 fn a_small_door_refuses_the_whole_round() {
     for (half_width, door_is_small, expanded) in [(1600, false, true), (100_000, true, false)] {
         let mut board = probe_board();
         let mut engine = probe_engine(&mut board, 1);
         let mut ctrl = expand_control(&board, 1);
+        // The probe sets this **after** `getInstance`; `init` never reads
+        // `compensatedTraceHalfWidth`, so setting it first leaves the seeded queue identical —
+        // which the assertion below checks before anything else happens.
         ctrl.compensated_trace_half_width[0] = half_width;
         let counter = Counter::new();
         let mut maze = MazeSearchEngine::get_instance(
@@ -782,6 +1014,10 @@ fn a_small_door_refuses_the_whole_round() {
         let seed = maze.queue.iter().next().expect("two seeded").clone();
         let room = seed.next_room.expect("a seeded element has a room");
         let door = maze.engine.rooms.room_doors(room)[0];
+        // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: jar door id `33`, port `193`.
+        // Door ids derive from room ids and the room-id counter is now shared across the engine's
+        // room kinds (#156/#167/#158). `dimension=1` below, and the refusal this test is named
+        // for, are the jar's and unmoved.
         assert_eq!(maze.engine.rooms.door_id_no(door), Some(193));
         assert_eq!(
             maze.engine.rooms.door(door).expect("live").dimension,
@@ -821,6 +1057,11 @@ fn a_small_door_refuses_the_whole_round() {
             .map(|e| maze.engine.expandable_id_no(e.door))
             .collect();
         if expanded {
+            // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: jar `95, 64, 67, 66`,
+            // port `100, 69, 232, 230`. Door ids derive from room ids and the room-id counter is
+            // now shared across the engine's room kinds (#156/#167/#158). The claim — a small
+            // door refuses the WHOLE round, so the `else` arm is empty — is unmoved, and so is
+            // the expanded arm's row count and order.
             assert_eq!(ids, vec![100, 69, 232, 230]);
         } else {
             assert!(ids.is_empty(), "a small door expands nothing");
@@ -828,6 +1069,19 @@ fn a_small_door_refuses_the_whole_round() {
     }
 }
 
+/// Probe mode `snapshot`, and a **correction to the task brief**. The brief asks for
+/// "`the_door_snapshot_is_taken_before_completing_neighbours`"; Java takes it at `:559`, which is
+/// *after* `completeNeighbourRooms` (`:419`). The distinction is observable: completing room 2's
+/// neighbours **removes one door and adds another**, and the round below expands through the
+/// post-completion list — door 67, which did not exist when the pop began, is visited, and the
+/// door that completion dropped is not.
+/// ```text
+/// room=2 doorsBefore=4
+/// doorsAfterCompletion=3
+///   door[0] id=33 dimension=1 inSnapshot=true  shape=[-4700,-10000..-4700,0]
+///   door[1] id=66 dimension=1 inSnapshot=true  shape=[-4700,0..600,0]
+///   door[2] id=67 dimension=1 inSnapshot=false shape=[-4700,-10000..600,-1041]
+/// ```
 #[test]
 fn the_door_list_is_snapshotted_after_completing_neighbours() {
     let mut board = probe_board();
@@ -856,6 +1110,7 @@ fn the_door_list_is_snapshotted_after_completing_neighbours() {
     maze.engine.complete_neighbour_rooms(&mut board, room);
     let after: Vec<DoorId> = maze.engine.rooms.room_doors(room).to_vec();
     assert_eq!(after.len(), 3, "doorsAfterCompletion=3");
+    /// `(door id, dimension, was in the pre-completion list, bounding box)`.
     type DoorRow = (i32, i32, bool, (i32, i32, i32, i32));
     let rows: Vec<DoorRow> = after
         .iter()
@@ -875,6 +1130,9 @@ fn the_door_list_is_snapshotted_after_completing_neighbours() {
             )
         })
         .collect();
+    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: room and door ids come from
+    // ONE shared counter across the engine's room kinds (#156/#167/#158), so every id below moved
+    // and nothing else did — costs, shapes, entry points, dimensions and row counts are the jar's.
     assert_eq!(
         rows,
         vec![
@@ -883,8 +1141,20 @@ fn the_door_list_is_snapshotted_after_completing_neighbours() {
             (232, 1, false, (-4700, -10_000, 600, -1041)),
         ]
     );
+    // And probe mode `pop` shows the round expanding 66, 67 and 33 — the post-completion list.
 }
 
+/// Probe mode `stale`. `expandToTargetDoors`' guard at `:656-658` compares the door's
+/// `treeEntryNo` against the item's **current** `treeShapeCount`, and skips silently when the
+/// trace or pad has been rebuilt underneath it. With a healthy fixture one destination door is
+/// expanded; with every `treeEntryNo` forced to 99 the method answers false and the queue stays
+/// empty — no warning, no throw.
+/// ```text
+/// expandToTargetDoors healthy=true    queue n=1  (door 95, expansion=1000.0, sorting=1000.0)
+/// targetDoor item=2 treeEntryNo=99 treeShapeCount=1
+/// targetDoor item=3 treeEntryNo=99 treeShapeCount=2
+/// expandToTargetDoors stale=false     queue n=0
+/// ```
 #[test]
 fn a_stale_tree_entry_is_skipped_silently() {
     let mut board = probe_board();
@@ -907,6 +1177,10 @@ fn a_stale_tree_entry_is_skipped_silently() {
     drain(&mut maze);
     assert!(maze.expand_to_target_doors(&mut board, &seed, true, false, &mid));
     assert_eq!(
+        // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: jar door id `95`, port
+        // `100`; shared room-id counter (#156/#167/#158). The costs, the entry points and the
+        // single row — the stale entry skipped silently, leaving exactly one element — are the
+        // jar's.
         queue_rows(&maze),
         vec![(
             100,
@@ -935,6 +1209,20 @@ fn a_stale_tree_entry_is_skipped_silently() {
     assert_eq!(maze.queue.len(), 0);
 }
 
+// =================================================================================================
+// MazeTraceShover (MazeTraceShover.java:32-314) and shoveTraceRoom (:1130-1201)
+// =================================================================================================
+
+/// Probe mode `shove`, first half. `shoveTraceRoom` and `checkShoveTraceLine` are **check-only**:
+/// the board's item count is the same before and after, and the two early `true`s of `:39-44` —
+/// a from-door that is not an `ExpansionDoor`, and an obstacle item that is not a `PolylineTrace`
+/// — answer with an empty door list.
+/// ```text
+/// itemCountBefore=4
+/// shoveTraceRoom(obstacleArea)=true
+/// itemCountAfter=4
+/// checkShoveTraceLine targetDoorFrom=true sections=0
+/// ```
 #[test]
 fn shove_trace_room_does_not_mutate_the_board() {
     let mut board = probe_board();
@@ -975,6 +1263,15 @@ fn shove_trace_room_does_not_mutate_the_board() {
     assert!(out.is_empty(), "sections=0");
 }
 
+/// The probe's `shove` fixture: the shared board plus a net-2 obstacle trace whose half width and
+/// clearance class match the control's, so the `:48-51` guard lets the algorithm through. Its
+/// three tree shapes are the probe's:
+/// ```text
+/// trace id=5 halfWidth=1500 clearanceClass=1 lines=5 treeShapes=3
+///   treeShape[0]=[-8600,-9600..1600,-6400]
+///   treeShape[1]=[-1600,-9600..1600,-2900]
+///   treeShape[2]=[-1600,-6100..7600,-2900]
+/// ```
 fn shove_board() -> Board {
     let mut board = probe_board();
     board.insert_trace_without_cleaning(
@@ -993,6 +1290,9 @@ fn shove_board() -> Board {
     board
 }
 
+/// `P6T12Probe.shoveOne`'s four doors: `fromDoor` on the upper edge's left half, one more on the
+/// upper edge's right half, one on the lower edge and one on the left edge — so the collector of
+/// `:236-312` has a candidate on either side of the shove line.
 fn shove_doors(
     maze: &mut MazeSearchEngine<'_>,
     board: &mut Board,
@@ -1006,6 +1306,7 @@ fn shove_doors(
         .room_shape(room_ref)
         .expect("the room has a shape")
         .bounding_box();
+    // Java's `int` division truncates toward zero, and so does Rust's.
     let mid_x = (b.ll.x + b.ur.x) / 2;
     let mid_y = (b.ll.y + b.ur.y) / 2;
     let mut make = |llx, lly, urx, ury, id| {
@@ -1029,9 +1330,23 @@ fn shove_doors(
     from_door
 }
 
+/// Probe mode `shove`, the 24-cell table over the trace's three segments. Every cell is Java's
+/// answer for `checkShoveTraceLine` on a 1-dimensional from-door, with the shape entry anchored at
+/// either end of the door segment and the shove going either way. The `false`s are `:131-133`'s
+/// `sectionOk` refusal — "shove only from the right most section to the right or from the left most
+/// section to the left" — and every cell collects **no** door section, because
+/// `TraceShover::check_segment` cannot open one on this board.
+/// ```text
+/// --- cornerNo=0 roomBox=[-8600,-9600..1600,-6400] doorSections=1
+///   left=false entryAtA=true => false | left=false entryAtA=false => true
+///   left=true  entryAtA=true => true  | left=true  entryAtA=false => false
+/// --- cornerNo=1 roomBox=[-1600,-9600..1600,-2900] doorSections=1   (all four true)
+/// --- cornerNo=2 roomBox=[-1600,-6100..7600,-2900] doorSections=1   (as cornerNo=0)
+/// ```
 #[test]
 fn the_shover_answers_javas_table_over_the_three_trace_segments() {
     let expected: [[bool; 4]; 3] = [
+        // (left=false, atA=true), (false, false), (true, true), (true, false)
         [false, true, true, false],
         [true, true, true, true],
         [false, true, true, false],
@@ -1124,6 +1439,16 @@ fn the_shover_answers_javas_table_over_the_three_trace_segments() {
     }
 }
 
+/// Probe mode `shove`, the link-door half. A 2-dimensional door between the obstacle rooms of two
+/// consecutive segments of the **same** trace takes `:73-96`, where `endPointsMatching` is the
+/// identity arm of `:321-322`. Both shove directions answer `true` with no sections, and
+/// `shoveTraceRoom` — whose `:1131-1137` guard passes because the door has one section — pushes
+/// nothing onto the queue.
+/// ```text
+/// --- linkDoor id=163873 shape=[-1600,-6100..1600,-2900] maxWidth=3862.924345622109 sections=1
+///   link left=false => true sections=0    shoveTraceRoom left=false => true    queue n=0
+///   link left=true  => true sections=0    shoveTraceRoom left=true  => true    queue n=0
+/// ```
 #[test]
 fn a_two_dimensional_link_door_takes_javas_other_shove_branch() {
     let mut board = shove_board();
@@ -1161,6 +1486,8 @@ fn a_two_dimensional_link_door_takes_javas_other_shove_branch() {
             .new_door(RoomRef::Complete(free), RoomRef::Obstacle(seg2), 1);
         maze.engine.rooms.add_door(RoomRef::Obstacle(seg2), door);
     }
+    // PORT-REGRESSION PIN, same wave and cause: the jar's link-door id is the `31*a+b` hash
+    // `163873`; the port's doors are numbered from the shared counter and this one is `161`.
     assert_eq!(maze.engine.rooms.door_id_no(link_door), Some(161));
     let link_shape = maze.engine.rooms.door_shape(link_door).expect("live");
     let b = link_shape.bounding_box();
@@ -1211,6 +1538,14 @@ fn a_two_dimensional_link_door_takes_javas_other_shove_branch() {
     }
 }
 
+/// Probe mode `shove`, the tail — **hazard N**. `ObstacleExpansionRoom` snapshots its shape but
+/// keeps its `indexInItem`, so shortening the trace underneath it leaves the index past the end of
+/// the current polyline. `:65-66` answers `false` with an empty door list: no warning, no throw,
+/// and no attempt to index `lines[traceCornerNo + 2]`.
+/// ```text
+/// --- stale indexInItem=2 lines=3
+///   checkShoveTraceLine=false sections=0
+/// ```
 #[test]
 fn a_stale_trace_index_is_refused_silently_by_the_shover() {
     let mut board = shove_board();
@@ -1261,6 +1596,7 @@ fn a_stale_trace_index_is_refused_silently_by_the_shover() {
         ripup_cost: 0,
     };
 
+    // The trace shrinks underneath the room, exactly as pull-tight or a shove would leave it.
     match board.items.get_mut(&ItemId(5)) {
         Some(Item::Trace(trace)) => trace.set_polyline(Polyline::from_points(&[
             Point::new(-7000, -8000),
@@ -1302,9 +1638,33 @@ fn a_stale_trace_index_is_refused_silently_by_the_shover() {
     assert!(out.is_empty(), "sections=0");
 }
 
+/// Probe mode `neck2` — the two `withNeckdown` call sites, which is where quirk #179 *bites*.
+/// `:407-414` runs only for an `ExpansionDoor` and narrows **both** `halfWidthAdd` and `halfWidth`;
+/// `:442-451` runs only for a `TargetItemExpansionDoor` and narrows `halfWidth` alone. Either way
+/// the value comes from `checkNeckDownAtDestPin`, i.e. the *start* pin's `49.0`.
+///
+/// The round is run on **room 4**, whose shape has `minWidth() = 687.49`: `:458`'s
+/// `minWidth() < 2 * halfWidth` makes it **thin** against the control's 1600 and **thick** against
+/// the pin's 49, so each site flips.
+/// ```text
+/// --- site=targetDoor    withNeckdown=false targetDoor=66     room=4 roomMinWidth=687.4942085903301 checkNeckDownAtDestPin=49.0
+///   expandToRoomDoors=false   queue n=0
+/// --- site=targetDoor    withNeckdown=true  targetDoor=66
+///   expandToRoomDoors=true    queue n=1   (97, expansion=1000.0, sorting=1000.0)
+/// --- site=expansionDoor withNeckdown=false expansionDoor=66 dimension=1
+///   expandToRoomDoors=true    queue n=1   (ExpansionDoor 129, expansion=1007.153180628, sorting=3572.056297706)
+/// --- site=expansionDoor withNeckdown=true  expansionDoor=66 dimension=1
+///   expandToRoomDoors=true    queue n=2   (66 @1550.0/2380.0, 97 @2550.0/2550.0)
+/// ```
 #[test]
 fn the_neckdown_call_sites_narrow_the_half_width_for_the_whole_round() {
     type Expected = (bool, Vec<(i32, f64, f64)>);
+    // PORT-REGRESSION PINS, `accepted at plan9-t7t8 (ruling CC)`: the door ids in the four cases
+    // are the jar's `97`, `129`, `66`, `97`, and the port's `106`, `418`, `75`, `106` — the shared
+    // room-id counter (#156/#167/#158) numbers doors too. **Every cost pair is the jar's** and so
+    // is the shape of the answer, which is what #179 is read off: the `targetDoor` site expands
+    // nothing without neckdown and one element with it, and the `expansionDoor` site expands one
+    // element either way but a second appears with neckdown on.
     let cases: [(&str, bool, Expected); 4] = [
         ("targetDoor", false, (false, vec![])),
         ("targetDoor", true, (true, vec![(106, 1000.0, 1000.0)])),
@@ -1340,8 +1700,10 @@ fn the_neckdown_call_sites_narrow_the_half_width_for_the_whole_round() {
         )
         .expect("init succeeds on this board");
 
+        // The **second** seeded element: room 4, 1041 units tall.
         let seed = maze.queue.iter().last().expect("two seeded").clone();
         let room = seed.next_room.expect("a room");
+        // PORT-REGRESSION PIN, same wave and cause: jar room `4`, port `13`.
         assert_eq!(maze.engine.rooms.room_id_no(room), Some(13));
         let room_min_width = maze
             .engine
@@ -1351,13 +1713,19 @@ fn the_neckdown_call_sites_narrow_the_half_width_for_the_whole_round() {
             .min_width();
         assert!((room_min_width - 687.494_208_590_330_1).abs() < 1e-9);
         assert_eq!(ctrl.compensated_trace_half_width[0], 1600);
-        assert_eq!(maze.check_neck_down_at_dest_pin(&board, room), 49.0);
+        // quirk #179, fixed at T10: the jar answers the **start** pin's 49.0 here because its
+        // loop never asks `isDestinationDoor()`; the port answers the destination pin's 69.0.
+        // The start pin's own neckdown is applied by the *other* call site, `:442-451`, which is
+        // what the rest of this test measures.
+        assert_eq!(maze.check_neck_down_at_dest_pin(&mut board, room), 69.0);
 
         let element = if site == "targetDoor" {
+            // PORT-REGRESSION PIN, same wave and cause: jar `66`, port `75`.
             assert_eq!(maze.engine.expandable_id_no(seed.door), 75);
             seed
         } else {
             let door = maze.engine.rooms.room_doors(room)[0];
+            // PORT-REGRESSION PIN, same wave and cause: jar `66`, port `230`.
             assert_eq!(maze.engine.rooms.door_id_no(door), Some(230));
             assert_eq!(maze.engine.rooms.door(door).expect("live").dimension, 1);
             let centre = maze

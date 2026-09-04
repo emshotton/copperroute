@@ -109,6 +109,19 @@ right: `MazeSearchEngine.init:970-971` is the *only* board write inside the maze
 corpus it is a no-op. Everything else in the census happens strictly after the search that could
 have been corrupted by it.
 
+**Resolved at Plan 9 Task 10 (register row #297): the corpus is sparse, the predicate is sound.**
+The zero above had two readings and this measurement could not separate them — no corpus board
+presents the configuration, or the port's predicate is mis-ported and the guard is dead by defect.
+Task 10 built the configuration directly: a pin declared on nets `{1, 2}` with a net-2 trace
+ending exactly at its centre, searched for net 1. **The predicate fires**, on the foreign trace
+only, and the trace's tree shape really is reduced;
+`crates/fr-router/tests/stale_index.rs::the_tie_pin_reduction_fires_on_a_genuine_tie_pin` is that
+board, with `…_keys_on_the_net_and_on_the_pin_being_a_tie` as its two negative controls (searching
+the other net reduces the other trace; a pin on one net fires nothing — which is the configuration
+every pin on all eight stems is in). The line-by-line re-derivation against `:157-162` was done
+alongside and agrees: the port's two tests are De Morgan's of Java's, and nothing else. So the
+census column stays **0**, and it stays 0 for the reason a reader would hope.
+
 ---
 
 ## 4. The characterisation — why the indices do not go stale
@@ -211,10 +224,14 @@ something this report has absorbed — it has not.
    interactive board editor re-enters the autorouter with a board a human has just modified, and
    `AutorouteEngine`'s lifetime there is not this port's concern (no GUI, `global-constraints.md`).
    If the guards were added for the GUI, the corpus can never show it.
-3. **`reduceTraceShapesAtTiePins` is a no-op on the whole corpus.** Zero reductions on six routed
+3. ~~**`reduceTraceShapesAtTiePins` is a no-op on the whole corpus.** Zero reductions on six routed
    boards. That is either "no corpus board has a multi-net tie pin contacting a foreign trace" or a
    port defect in the predicate at `:157-162`. It is *not* a #193 question and it is **not** in Task
-   8's fix list; it deserves its own survey row.
+   8's fix list; it deserves its own survey row.~~ **CLOSED — register row #297, resolved at Plan 9
+   Task 10 with the first reading.** A directed fixture presenting the configuration makes the
+   predicate fire, on the foreign trace only, and the trace's tree shape really is reduced; the
+   line-by-line re-derivation against `:157-162` agrees. No fix is owed. See §3 above and
+   `crates/fr-router/tests/stale_index.rs`'s tie-pin block.
 
 ---
 

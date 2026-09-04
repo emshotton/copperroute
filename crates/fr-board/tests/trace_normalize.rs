@@ -1490,3 +1490,150 @@ fn the_checked_and_unchecked_normalisation_entry_points_agree() {
         b.normalize_traces_checked(1, &|| false)
     );
 }
+
+// ---------------------------------------------------------------------------------------------
+// Quirk #72 (fixed: T10) — `splitInsideDrillPadProhibited`'s precedence
+// ---------------------------------------------------------------------------------------------
+
+/// `trace_board`'s single layer plus one same-net **pin** whose pad covers `(10000, 0)` while its
+/// centre sits at `(12000, 0)`, i.e. a point inside a pin pad that is *not* the pin's centre —
+/// which is the exact condition `splitInsideDrillPadProhibited` exists to refuse
+/// (`PolylineTrace.java:780-785` returns `false`, "split allowed", only at the centre).
+///
+/// The trace doubles back so that its **last corner is `(10000, 0)`**, lying on its own first
+/// segment. That is what makes the quirk reachable: Java's `lastCorner` half is tested for *this*
+/// trace as well, so the trace's own end point at the split point answered "split allowed" even
+/// though the pad had already been found.
+fn pin_pad_board() -> (Board, ItemId, ItemId) {
+    let ls = LayerStructure::new(vec![Layer::new("l0".to_string(), true)]);
+    let cm = ClearanceMatrix::get_default_instance(&ls, 10);
+    let mut rules = BoardRules::new(ls.clone(), cm);
+    rules.create_default_net_class();
+    let default_class = rules.get_default_net_class();
+
+    let mut padstacks = Padstacks::new(ls);
+    // A generous pad: 6000 units across, so `(10000, 0)` is well inside it and `(12000, 0)` — the
+    // pin centre — is a different point that the same pad also covers.
+    let pin_pad = padstacks.add(
+        "pin",
+        vec![Some(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -3000, -3000, 3000, 3000,
+        ))))],
+        true,
+        false,
+    );
+    let mut packages = Packages::new();
+    let pkg = packages.add(
+        "pkg",
+        vec![PackagePin::new(
+            "P1",
+            pin_pad,
+            IntVector::new(12000, 0).into(),
+            0.0,
+        )],
+        None,
+        None,
+        None,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        true,
+    );
+    let mut components = Components::new();
+    components.add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg);
+
+    let outline = vec![PolylineShapeRef::Polygon(PolygonShape::from_points(&[
+        Point::new(-1_000_000, -1_000_000),
+        Point::new(1_000_000, -1_000_000),
+        Point::new(1_000_000, 1_000_000),
+        Point::new(-1_000_000, 1_000_000),
+    ]))];
+    let mut board = Board::new(
+        outline,
+        0,
+        IntBox::from_coords(-2_000_000, -2_000_000, 2_000_000, 2_000_000),
+        rules,
+        BoardLibrary::new(padstacks, packages),
+        components,
+        Communication::default(),
+    );
+    board.rules.nets.add("N1", 1, false, default_class);
+
+    let pin = board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    let trace = tr(
+        &mut board,
+        200,
+        1,
+        FixedState::Unfixed,
+        &[0, 0, 20000, 0, 20000, 20000, 10000, 0],
+    );
+    (board, trace, pin)
+}
+
+/// Quirk #72, fixed at Plan 9 Task 10.
+///
+/// `PolylineTrace.java:786-787` is
+///
+/// ```java
+/// if (currentTrace != this && currentTrace.firstCorner().equals(intersection)
+///     || currentTrace.lastCorner().equals(intersection))
+/// ```
+///
+/// which parses as `((currentTrace != this && first) || last)`. The `lastCorner` half is
+/// therefore tested for **this** trace too, and for a foreign trace whose first corner did not
+/// match — and its body is `return false`, i.e. *split allowed*, taken **even though a pad was
+/// already found** two arms above. So a trace could be cut inside a pin pad.
+///
+/// Parenthesised as `currentTrace != this && (first || last)`, which the `currentTrace != this`
+/// guard makes the only coherent reading: the arm means "another trace already ends here, so this
+/// split is redundant", and a trace is never *another* trace.
+///
+/// The board is `pin_pad_board`: a pin pad containing `(10000, 0)` with its centre at
+/// `(12000, 0)`, and a trace that doubles back so its own last corner is `(10000, 0)`. Splitting
+/// there is exactly a cut inside a pin pad, and it must be refused.
+#[test]
+fn a_trace_is_not_cut_inside_a_pin_pad() {
+    let (mut board, trace, pin) = pin_pad_board();
+    let split_point = Point::new(10000, 0);
+
+    // The premises, asserted rather than assumed — each is a way the test could pass for the
+    // wrong reason.
+    assert_ne!(
+        board.drill_center(pin),
+        Some(split_point.clone()),
+        "the split point must be inside the pad but NOT at the pin's centre, or \
+         `PolylineTrace.java:780-785` allows the split for a different reason"
+    );
+    let picked = board.pick_items(&split_point, Some(0));
+    assert!(
+        picked.contains(&pin),
+        "the pin pad must cover the split point"
+    );
+    assert!(
+        picked.contains(&trace),
+        "and the trace must be picked there too — it is the `currentTrace == this` case"
+    );
+    assert_eq!(
+        board.get_item(trace).and_then(|item| match item {
+            Item::Trace(t) => t.last_corner(),
+            _ => None,
+        }),
+        Some(split_point.clone()),
+        "the trace's own last corner is the split point — the condition Java's precedence let \
+         answer `split allowed`"
+    );
+
+    let before = trace_ids(&board);
+    let pieces = board
+        .split_trace_at_point(trace, &split_point)
+        .expect("no normalisation failure");
+    assert_eq!(
+        pieces, None,
+        "a trace must not be cut inside a pin pad — quirk #72"
+    );
+    assert_eq!(
+        trace_ids(&board),
+        before,
+        "and the board is left exactly as it was"
+    );
+}

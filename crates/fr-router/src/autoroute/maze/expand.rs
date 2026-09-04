@@ -1,3 +1,49 @@
+//! Part B of `autoroute.maze.MazeSearchEngine` (MazeSearchEngine.java:390-966, `:1105-1215`) —
+//! the room-door expansion and the cost model that scores it.
+//!
+//! Task 11's `search.rs` owns the frame: the struct, `init`, and the pop loop that dispatches
+//! here. This file is the body of one pop: `expandToRoomDoors` (`:390-626`) decides whether the
+//! room behind the popped door section may be crossed at all, `expandToTargetDoors` (`:629-705`)
+//! reaches the start and destination items inside it, `expandToDoor` (`:707-761`) walks the room's
+//! other doors, and `expandToDoorSection` (`:791-966`) is where every new queue element and every
+//! number in it is made. Three helpers round it out: `roomShapeIsThick` (`:1105-1123`),
+//! `shoveTraceRoom` (`:1130-1201`) and `checkNeckDownAtDestPin` (`:1207-1215`).
+//!
+//! # The cost model, in one place
+//!
+//! `expandToDoorSection` is the only producer of `MazeListElement`s outside `init`, so it is the
+//! only place the A\* costs are formed (`:855-887`):
+//!
+//! * a **bend penalty** of `ctrl.bendCosts[layer]`, charged when the cross product of the incoming
+//!   and outgoing directions satisfies `sin² > 0.01` (about 5.7°) — a *normalised* test, so it is
+//!   scale-independent;
+//! * `expansionValue = from.expansionValue + addCosts + bend + weightedDistance(from.mid, to.mid)`
+//!   under the layer's horizontal/vertical trace costs;
+//! * `sortingValue = expansionValue + destinationDistance.calculate(mid, layer)` — the admissible
+//!   lower bound that makes the queue an A\* frontier;
+//! * `roomRipped` is set by a **positive `addCosts` with no adjustment**, or inherited from an
+//!   already-checked parent that was itself ripped; `ripupCost` records only the former.
+//!
+//! # What Task 13 filled in
+//!
+//! Four call sites here were `unimplemented!` markers until Task 13:
+//! `MazeRipupResolver.checkLeavingRippedItem` / `.checkRipup` (`:506`, `:519`) and
+//! `MazeExpansionEngine.expandToDrillPage` / `.expandToDrill` (`:611`, `:620`, the second through
+//! `Via.getAutorouteDrillInfo`). They now dispatch to
+//! [`MazeRipupResolver`] and [`MazeExpansionEngine`]. Their branches are
+//! guarded by `ctrl.ripupAllowed`, `currentDoorIsSmall` and `ctrl.viasAllowed`, so a control with
+//! vias and ripup switched off still runs the whole of this file — which is what
+//! `crates/fr-router/tests/maze_expand.rs` does.
+//!
+//! # Visibility
+//!
+//! All seven of this file's Java methods are `private`, and all seven are `pub` here, for the
+//! reason `search.rs`' module docs give for its four: Java's own test for them is a reflective
+//! probe (`scripts/differential/java/probes/P6T12Probe.java` calls `setAccessible(true)` on
+//! exactly these), Rust integration tests have no reflection, and the branches that matter — the
+//! layer-active gate, the small-door refusal, the bend threshold, the stale-index `continue`s —
+//! are not separable through `occupyNextElement` alone.
+
 use fr_board::{Board, Item, ObstacleRoomId};
 use fr_geometry::{FloatLine, FloatPoint, Point, Polyline, java_min};
 
@@ -14,6 +60,22 @@ use crate::autoroute::maze::{
 use crate::board_ext::RoutingBoardExt;
 
 impl MazeSearchEngine<'_> {
+    // =============================================================================================
+    // expandToRoomDoors (:390-626)
+    // =============================================================================================
+
+    /// Port of `expandToRoomDoors(MazeListElement)` (MazeSearchEngine.java:390-626): "expands the
+    /// other door section of the room. Returns true, if the from door section has to be occupied,
+    /// and false, if the occupation is delayed."
+    ///
+    /// Java takes no `Stoppable` here — `occupyNextElement`'s check at `:323` is the last one
+    /// before this runs — so the port's parameter list has no `stop` either.
+    ///
+    /// Every `FRLogger.trace` payload (`:421-438`, `:560-588`) is dropped, and with it the
+    /// `doorCountBeforeCompletion` / `doorCountAfterCompletion` pair that exists only to fill one
+    /// in.
+    /// Plan 7 Task 14b's level-8 room label: `obst<item id>:<index in item>` for an obstacle
+    /// room, `free` for anything else — Java's `p7t14bRoom`. Instrumentation only.
     fn p7t14b_room(&self, room: RoomRef) -> String {
         match room {
             RoomRef::Obstacle(id) => self.engine.rooms.obstacle_room(id).map_or_else(
@@ -29,39 +91,51 @@ impl MazeSearchEngine<'_> {
         board: &mut Board,
         list_element: &MazeListElement,
     ) -> bool {
+        // :392-394. "Complete the neighbour rooms to make sure, that the doors of this room will
+        // not change later on."
         let Some(next_room) = list_element.next_room else {
+            // Java's caller (`:375`) has already tested `nextRoom != null`.
             return true;
         };
         let Some(layer_index) = self.engine.rooms.room_layer(board, next_room) else {
+            // Java would NPE on `nextRoom.getLayer()`.
             return true;
         };
 
+        // :396-401.
         let layer_active = self.ctrl.layer_active[layer_index];
         if !layer_active && board.layer_structure().layers[layer_index].is_signal {
             return true;
         }
 
+        // :403-416.
         let mut half_width = f64::from(self.ctrl.compensated_trace_half_width[layer_index]);
         let mut current_door_is_small = false;
         if let ExpandableRef::Door(current_door) = list_element.door {
             let mut half_width_add = half_width + f64::from(TRACE_WIDTH_TOLERANCE);
             if self.ctrl.with_neckdown {
+                // :407-414. "try evtl. neckdown at a destination pin".
                 let neck_down_half_width = self.check_neck_down_at_dest_pin(board, next_room);
                 if neck_down_half_width > 0.0 {
                     half_width_add = java_min(half_width_add, neck_down_half_width);
                     half_width = half_width_add;
                 }
             }
+            // :415.
             current_door_is_small = self.door_is_small(board, current_door, 2.0 * half_width_add);
         }
 
+        // :418-420. The two door counts either side are the dropped trace payload's; the call is
+        // not.
         self.engine.complete_neighbour_rooms(board, next_room);
 
+        // :440.
         let shape_entry_middle = list_element
             .shape_entry
             .a
             .middle_point(&list_element.shape_entry.b);
 
+        // :442-451. "try evtl. neckdown at a start pin".
         if self.ctrl.with_neckdown
             && let ExpandableRef::TargetDoor(door) = list_element.door
         {
@@ -82,22 +156,30 @@ impl MazeSearchEngine<'_> {
             }
         }
 
+        // :453-477.
         let mut next_room_is_thick = true;
         if let RoomRef::Obstacle(obstacle_room) = next_room {
+            // :454-455.
             next_room_is_thick = self.room_shape_is_thick(board, obstacle_room);
         } else {
+            // :457.
             let Some(next_room_shape) = self.engine.rooms.room_shape(next_room).cloned() else {
                 return true;
             };
             if next_room_shape.min_width() < 2.0 * half_width {
+                // :458-459. "to prevent problems with the opposite side".
                 next_room_is_thick = false;
             } else if !list_element.already_checked
                 && self.expandable_dimension(list_element.door) == 1
                 && !current_door_is_small
             {
+                // :460-476. "The algorithm below works only, if location is on the border of
+                // roomShape. That is only the case for 1 dimensional doors. For small doors the
+                // check is done in check_leaving_via below."
                 let nearest_points =
                     next_room_shape.nearest_border_points_approx(&shape_entry_middle, 2);
                 if nearest_points.len() < 2 {
+                    // "MazeSearchEngine.expand_to_room_doors: nearestPoints.length == 2 expected"
                     next_room_is_thick = false;
                 } else {
                     let current_distance = nearest_points[1].distance(&shape_entry_middle);
@@ -106,6 +188,7 @@ impl MazeSearchEngine<'_> {
             }
         }
 
+        // :478-489. "check for drill to a foreign conduction area on split plane."
         if !layer_active && let ExpandableRef::Drill(drill) = list_element.door {
             let drill_location = self
                 .engine
@@ -114,6 +197,15 @@ impl MazeSearchEngine<'_> {
                 .get(drill.0)
                 .map(|drill| drill.location.clone());
             if let Some(drill_location) = drill_location {
+                // `new ItemSelectionFilter(SelectableChoices.CONDUCTION)` also selects both
+                // FIXED and UNFIXED (ItemSelectionFilter.java:27-32), so the fixed half of
+                // `Item.isSelectedByFilter` never rejects anything and the filter reduces to
+                // "is a ConductionArea" (ConductionArea.java:407-413).
+                //
+                // Java's `pickItems` answers a `TreeSet<Item>`, i.e. **descending** id
+                // (`Item.compareTo`, Item.java:95-101), so the walk is `.rev()`. The order is
+                // not observable — the loop answers `true` for *any* foreign-net member —
+                // but the convention is to walk Java's order regardless.
                 let picked_items = board.pick_items(&drill_location, Some(layer_index));
                 for current_item in picked_items.into_iter().rev() {
                     let is_foreign_conduction =
@@ -128,6 +220,7 @@ impl MazeSearchEngine<'_> {
             }
         }
 
+        // :490-491.
         let mut something_expanded = self.expand_to_target_doors(
             board,
             list_element,
@@ -136,16 +229,23 @@ impl MazeSearchEngine<'_> {
             &shape_entry_middle,
         );
 
+        // :493-495.
         if !layer_active {
             return true;
         }
 
+        // :497.
         let mut ripup_costs: i32 = 0;
 
         match next_room {
+            // :499-512. A `CompleteFreeSpaceExpansionRoom` is Java's `FreeSpaceExpansionRoom`
+            // here: an incomplete one can never be a `MazeListElement.nextRoom`, which is typed
+            // `CompleteExpansionRoom`.
             RoomRef::Complete(_) if !list_element.already_checked && current_door_is_small => {
                 let mut enter_through_small_door = false;
                 if next_room_is_thick {
+                    // :504-506. "check to enter the thick room from a ripped item through a small
+                    // door (after ripup)".
                     enter_through_small_door =
                         MazeRipupResolver::check_leaving_ripped_item(self, board, list_element);
                 }
@@ -154,8 +254,10 @@ impl MazeSearchEngine<'_> {
                 }
             }
             RoomRef::Obstacle(obstacle_room) if !list_element.already_checked => {
+                // :513-556.
                 let mut room_rippable = false;
                 if self.ctrl.ripup_allowed {
+                    // :518-520.
                     let obstacle_item = self
                         .engine
                         .rooms
@@ -174,6 +276,7 @@ impl MazeSearchEngine<'_> {
                     room_rippable = ripup_costs >= 0;
                 }
 
+                // :523-552.
                 if ripup_costs != ALREADY_RIPPED_COSTS && next_room_is_thick {
                     let obstacle_item = self
                         .engine
@@ -187,9 +290,12 @@ impl MazeSearchEngine<'_> {
                         && self.ctrl.max_shove_trace_recursion_depth > 0
                         && obstacle_is_trace
                     {
+                        // :528.
                         let shoved = self.shove_trace_room(board, list_element, obstacle_room);
                         if !shoved {
                             if ripup_costs > 0 {
+                                // :530-548. "delay the occupation by ripup to allow shoving the
+                                // room by another door sections."
                                 let new_element = MazeListElement {
                                     door: list_element.door,
                                     section_no_of_door: list_element.section_no_of_door,
@@ -205,14 +311,17 @@ impl MazeSearchEngine<'_> {
                                     room_ripped: true,
                                     adjustment: list_element.adjustment,
                                     already_checked: true,
+                                    // :546. Java writes the field after construction.
                                     ripup_cost: ripup_costs,
                                 };
                                 self.push(new_element, board);
                             }
+                            // :549.
                             return something_expanded;
                         }
                     }
                 }
+                // :553-555.
                 if !room_rippable {
                     return true;
                 }
@@ -220,7 +329,12 @@ impl MazeSearchEngine<'_> {
             _ => {}
         }
 
+        // :559. **The snapshot.** `new LinkedList<>(nextRoom.getDoors())` is taken *after*
+        // `completeNeighbourRooms` (`:419`) has already rewritten the list — it guards the
+        // iteration below, not the completion above.
         let room_doors_snapshot = self.engine.rooms.room_doors(next_room).to_vec();
+        // Plan 7 Task 14b's level-8 `EXPROOM` ledger (quirk #229) — the room's door list in
+        // iteration order; see [`crate::autoroute::maze::queue::p7t14b_maze_ledger`].
         if p7t14b_maze_ledger() {
             let mut line = format!(
                 "EXPROOM room={} n={}",
@@ -241,7 +355,10 @@ impl MazeSearchEngine<'_> {
             eprintln!("{line}");
         }
 
+        // :590-598.
         for to_door in room_doors_snapshot {
+            // :591-593. Java's `==` on the two `ExpandableObject`s is reference identity, which
+            // is `ExpandableRef` equality here: a target door is never equal to an expansion door.
             if list_element.door == ExpandableRef::Door(to_door) {
                 continue;
             }
@@ -257,10 +374,13 @@ impl MazeSearchEngine<'_> {
             }
         }
 
+        // :600-623. "Expand also the drill pages intersecting the room."
         if self.ctrl.vias_allowed && !matches!(list_element.door, ExpandableRef::Drill(_)) {
             if (something_expanded || next_room_is_thick)
                 && matches!(next_room, RoomRef::Complete(_))
             {
+                // :602-614. "avoid setting somethingExpanded to true when nextRoom is thin to
+                // allow occupying by different sections of the door".
                 let Some(next_room_shape) = self.engine.rooms.room_shape(next_room).cloned() else {
                     return something_expanded;
                 };
@@ -278,6 +398,7 @@ impl MazeSearchEngine<'_> {
                     something_expanded = true;
                 }
             } else if let RoomRef::Obstacle(obstacle_room) = next_room {
+                // :615-621.
                 let obstacle_item = self
                     .engine
                     .rooms
@@ -287,9 +408,12 @@ impl MazeSearchEngine<'_> {
                     .and_then(|item| board.items.get(&item))
                     .is_some_and(|item| matches!(item, Item::Via(_)));
                 if let (Some(current_via), true) = (obstacle_item, is_via) {
+                    // :618-619. `Via.getAutorouteDrillInfo(autorouteSearchTree)` — a `None` is
+                    // the port's stale-item read, where Java holds the live `Via`.
                     if let Some(via_drill_info) =
                         via_autoroute_drill_info(self.engine, board, current_via)
                     {
+                        // :620.
                         MazeExpansionEngine::expand_to_drill(
                             self,
                             board,
@@ -302,9 +426,22 @@ impl MazeSearchEngine<'_> {
             }
         }
 
+        // :625.
         something_expanded
     }
 
+    // =============================================================================================
+    // expandToTargetDoors (:629-705)
+    // =============================================================================================
+
+    /// Port of `expandToTargetDoors(MazeListElement, boolean, boolean, FloatPoint)`
+    /// (MazeSearchEngine.java:629-704): "expand the target doors of the room. Returns true, if at
+    /// least 1 target door was expanded."
+    ///
+    /// The two `continue`s at `:653-668` are the stale-index guard the comment there calls
+    /// "prevents warning when indices become stale during routing": an item's tree shapes can be
+    /// rebuilt underneath a `TargetItemExpansionDoor` that keeps its `treeEntryNo`. Both are
+    /// silent, and both are transcribed verbatim.
     pub fn expand_to_target_doors(
         &mut self,
         board: &mut Board,
@@ -316,9 +453,12 @@ impl MazeSearchEngine<'_> {
         let Some(next_room) = list_element.next_room else {
             return false;
         };
+        // :634-647.
         if current_door_is_small {
             let mut enter_through_small_door = false;
             if let ExpandableRef::Door(door) = list_element.door {
+                // :636-643. "otherwise entering through the small door may fail, because it was
+                // not checked."
                 let from_room = self
                     .engine
                     .rooms
@@ -332,9 +472,14 @@ impl MazeSearchEngine<'_> {
                 return false;
             }
         }
+        // :648.
         let mut result = false;
+        // :649. A snapshot, because `expandToDoorSection` can append to the queue but not to the
+        // room — Java iterates the live `List` and the port needs an owned copy to satisfy the
+        // borrow checker; the two agree because nothing in the loop touches the room's doors.
         let target_doors = self.engine.rooms.room_target_doors(next_room).to_vec();
         for to_door in target_doors {
+            // :650-652.
             if list_element.door == ExpandableRef::TargetDoor(to_door) {
                 continue;
             }
@@ -342,11 +487,17 @@ impl MazeSearchEngine<'_> {
                 continue;
             };
             let (item, tree_entry_no) = (door.item, door.tree_entry_no);
+            // :653-659. "Validate index before calling - prevents warning when indices become
+            // stale during routing". `treeEntryNo` is a `usize` here, so Java's `< 0` arm is
+            // unrepresentable.
             let tree_shape_count = board.item_tree_shape_count(item, self.search_tree);
+            // T17: the denominator — a zero fire count only means something if the test ran.
             crate::autoroute::instrument::record_visit(
                 crate::autoroute::instrument::Guard::G1aTreeEntryOutOfRange,
             );
             if tree_entry_no >= tree_shape_count {
+                // T17: #193's G1a. `recoverable` is "the item still has shapes, so a re-derived
+                // index would name one" — a shape count of 0 means the item has left the tree.
                 crate::autoroute::instrument::record_guard(
                     crate::autoroute::instrument::Guard::G1aTreeEntryOutOfRange,
                     u64::from(item.0),
@@ -356,6 +507,7 @@ impl MazeSearchEngine<'_> {
                 );
                 continue;
             }
+            // :660-668.
             let target_shape = {
                 let ctx = board.ctx();
                 board
@@ -370,10 +522,16 @@ impl MazeSearchEngine<'_> {
                         )
                     })
             };
+            // T17: the denominator for G1b.
             crate::autoroute::instrument::record_visit(
                 crate::autoroute::instrument::Guard::G1bNullConnectionShape,
             );
             let Some(target_shape) = target_shape else {
+                // "Item's tree shape index out of range (can happen when traces are modified
+                // during routing)".
+                // T17: #193's G1b. The index passed G1a's bound, so the item *has* this many
+                // shapes; the refusal is `getTraceConnectionShape`'s own, which is a different
+                // failure and is never recoverable by re-deriving the index.
                 crate::autoroute::instrument::record_guard(
                     crate::autoroute::instrument::Guard::G1bNullConnectionShape,
                     u64::from(item.0),
@@ -383,11 +541,15 @@ impl MazeSearchEngine<'_> {
                 );
                 continue;
             };
+            // :669.
             let Some(connection_point) = target_shape.nearest_point_approx(shape_entry_middle)
             else {
+                // Java would NPE; an empty target shape has no connection point either way.
                 continue;
             };
+            // :670-694.
             if !next_room_is_thick {
+                // "check the line from shapeEntryMiddle to the nearest point."
                 let current_net_numbers = [self.ctrl.net_number];
                 let Some(current_layer) = self.engine.rooms.room_layer(board, next_room) else {
                     continue;
@@ -414,8 +576,10 @@ impl MazeSearchEngine<'_> {
                 }
             }
 
+            // :696.
             let new_shape_entry = FloatLine::new(connection_point, connection_point);
 
+            // :698-701.
             if self.expand_to_door_section(
                 board,
                 ExpandableRef::TargetDoor(to_door),
@@ -428,9 +592,22 @@ impl MazeSearchEngine<'_> {
                 result = true;
             }
         }
+        // :703.
         result
     }
 
+    // =============================================================================================
+    // expandToDoor (:707-760)
+    // =============================================================================================
+
+    /// Port of `expandToDoor(ExpansionDoor, MazeListElement, int, boolean, Adjustment)`
+    /// (MazeSearchEngine.java:707-759): "return true, if at least 1 door section was expanded."
+    ///
+    /// `:715` is one of the three `getSectionSegments` calls that can **reallocate** the door's
+    /// section array (Task 11 review S2). Java reads `toDoor.sectionArr[i]` at `:718` through the
+    /// field, i.e. through the array that call has just installed, and `expandToDoorSection` reads
+    /// it again through `getMazeSearchElement`. The port resolves the door out of the arena at
+    /// both points for exactly that reason: nothing is cached across the call.
     pub fn expand_to_door(
         &mut self,
         board: &mut Board,
@@ -446,11 +623,16 @@ impl MazeSearchEngine<'_> {
         let Some(layer) = self.engine.rooms.room_layer(board, next_room) else {
             return false;
         };
+        // :713.
         let half_width = f64::from(self.ctrl.compensated_trace_half_width[layer]);
+        // :714.
         let mut something_expanded = false;
+        // :715 — allocates the section array.
         let line_sections = self.engine.rooms.door_section_segments(to_door, half_width);
 
+        // :717-758.
         for (i, line_section) in line_sections.iter().enumerate() {
+            // :718-720.
             let is_occupied = self
                 .engine
                 .rooms
@@ -462,6 +644,7 @@ impl MazeSearchEngine<'_> {
             }
             let new_shape_entry;
             if next_room_is_thick {
+                // :722-740.
                 new_shape_entry = *line_section;
                 let door = self.engine.rooms.door(to_door);
                 let both_free_space = door.is_some_and(|door| {
@@ -470,13 +653,17 @@ impl MazeSearchEngine<'_> {
                 });
                 let dimension = door.map_or(0, |door| door.dimension);
                 if dimension == 1 && line_sections.len() == 1 && both_free_space {
+                    // "check entering the toDoor at an acute corner of the shape of
+                    // listElement.nextRoom"
                     let shape_entry_middle = new_shape_entry.a.middle_point(&new_shape_entry.b);
                     let Some(room_shape) = self.engine.rooms.room_shape(next_room).cloned() else {
                         return false;
                     };
+                    // :732-734.
                     if room_shape.min_width() < 2.0 * half_width {
                         return false;
                     }
+                    // :735-739.
                     let nearest_points =
                         room_shape.nearest_border_points_approx(&shape_entry_middle, 2);
                     if nearest_points.len() < 2
@@ -486,6 +673,8 @@ impl MazeSearchEngine<'_> {
                     }
                 }
             } else {
+                // :741-753. "expand only doors on the opposite side of the room from the
+                // shapeEntry."
                 let dimension = self
                     .engine
                     .rooms
@@ -495,6 +684,7 @@ impl MazeSearchEngine<'_> {
                     && i == 0
                     && line_sections[0].b.distance_square(&line_sections[0].a) < 1.0
                 {
+                    // "toDoor is small belonging to a via or thin room"
                     continue;
                 }
                 let Some(projected) = segment_projection(&list_element.shape_entry, line_section)
@@ -504,6 +694,7 @@ impl MazeSearchEngine<'_> {
                 new_shape_entry = projected;
             }
 
+            // :755-757.
             if self.expand_to_door_section(
                 board,
                 ExpandableRef::Door(to_door),
@@ -516,9 +707,23 @@ impl MazeSearchEngine<'_> {
                 something_expanded = true;
             }
         }
+        // :759.
         something_expanded
     }
 
+    // =============================================================================================
+    // expandToDoorSection (:791-966) — the cost model
+    // =============================================================================================
+
+    /// Port of `expandToDoorSection(ExpandableObject, int, FloatLine, MazeListElement, int,
+    /// Adjustment)` (MazeSearchEngine.java:791-965): "return true, if the door section was
+    /// successfully expanded."
+    ///
+    /// `shape_entry` is an `Option` because Java's parameter is nullable and `:799` tests it:
+    /// `expandToDoor`'s `segmentProjection` can answer `null`, and so can a caller in Task 13.
+    ///
+    /// Both `FRLogger.trace` blocks (`:800-848`, `:907-963`) are dropped; the `return false` the
+    /// first guards and the `mazeExpansionList.add` the second precedes are not.
     #[allow(clippy::too_many_arguments)]
     pub fn expand_to_door_section(
         &mut self,
@@ -530,6 +735,9 @@ impl MazeSearchEngine<'_> {
         add_costs: i32,
         adjustment: MazeAdjustment,
     ) -> bool {
+        // :798-799. Java evaluates `door.getMazeSearchElement(sectionIndex).isOccupied` *before*
+        // the null test on `shapeEntry`, so an unallocated section array throws even for a null
+        // entry; the port resolves it in the same order.
         let door_section_occupied = self
             .engine
             .maze_search_element(door, section_index)
@@ -541,28 +749,35 @@ impl MazeSearchEngine<'_> {
             })
             .is_occupied;
         let Some(shape_entry) = shape_entry else {
+            // :799-849.
             return false;
         };
         if door_section_occupied {
             return false;
         }
         let Some(from_next_room) = from_element.next_room else {
+            // Java's `door.otherRoom(null)` answers null, and `getLayer()` on it throws.
             return false;
         };
+        // :851-853.
         let next_room = self.engine.expandable_other_room(door, from_next_room);
         let Some(layer) = self.engine.rooms.room_layer(board, from_next_room) else {
             return false;
         };
         let shape_entry_middle = shape_entry.a.middle_point(&shape_entry.b);
 
+        // :855-873. The bend penalty.
         let mut bend_cost_penalty = 0.0;
         if self.ctrl.bend_costs[layer] > 0.0
             && let Some(backtrack_door) = from_element.backtrack_door
         {
+            // :857.
             let from_mid = from_element
                 .shape_entry
                 .a
                 .middle_point(&from_element.shape_entry.b);
+            // :858-859. "Build vectors prev→current and current→next to detect a direction
+            // change."
             let Some(backtrack_cog) = self.expandable_shape_centre(backtrack_door) else {
                 return false;
             };
@@ -573,6 +788,8 @@ impl MazeSearchEngine<'_> {
             let cross_product = prev_dx * next_dy - prev_dy * next_dx;
             let sq_len_prev = prev_dx * prev_dx + prev_dy * prev_dy;
             let sq_len_next = next_dx * next_dx + next_dy * next_dy;
+            // :867-872. "Use a normalized threshold (sin² of angle > 0.01, approx. 5.7°) to
+            // be scale-independent."
             if sq_len_prev > 0.0
                 && sq_len_next > 0.0
                 && (cross_product * cross_product) > 0.01 * sq_len_prev * sq_len_next
@@ -581,6 +798,7 @@ impl MazeSearchEngine<'_> {
             }
         }
 
+        // :875-882.
         let expansion_value = from_element.expansion_value
             + f64::from(add_costs)
             + bend_cost_penalty
@@ -592,13 +810,17 @@ impl MazeSearchEngine<'_> {
                 self.ctrl.trace_costs[layer].horizontal,
                 self.ctrl.trace_costs[layer].vertical,
             );
+        // :883-884.
         let sorting_value = expansion_value
             + self
                 .destination_distance
                 .calculate_from_point(&shape_entry_middle, layer);
+        // :885-887.
         let room_ripped = add_costs > 0 && adjustment == MazeAdjustment::None
             || from_element.already_checked && from_element.room_ripped;
 
+        // :889-906. "Store the direct ripup cost on this element (non-zero only when this specific
+        // door caused a ripup; propagated roomRipped from a parent keeps ripupCost=0)."
         let new_element = MazeListElement {
             door,
             section_no_of_door: section_index,
@@ -617,19 +839,41 @@ impl MazeSearchEngine<'_> {
                 0
             },
         };
+        // :964. The guarded `add`, whose answer Java discards (quirk #178's sibling site).
         self.push(new_element, board);
+        // :965.
         true
     }
 
+    // =============================================================================================
+    // roomShapeIsThick (:1105-1123)
+    // =============================================================================================
+
+    /// Port of `roomShapeIsThick(ObstacleExpansionRoom)` (MazeSearchEngine.java:1105-1123).
+    ///
+    /// The `FRLogger.warn` at `:1119` is dropped; its `obstacleHalfWidth = 0` is not, and it is
+    /// reachable — an `ObstacleArea` room and a `Pin` room both take it (the pin is a `DrillItem`
+    /// but not a `Via`), and `0 >= compensatedTraceHalfWidth` is false for every positive trace.
+    ///
+    /// **The `Via` arm (`:1115-1117`) is reached, and Task 17 measured it.** The controller's
+    /// Task 12 note listed it among the arms no unit fixture discriminates; Task 17's acceptance
+    /// corpus enters it **33** times on `router-rpi-splitter`, **163** on `router-j2-reference`
+    /// and **6 564** on `router-dac2020-bm01` (`tests/reference/router-fixtures.txt`), and every
+    /// connection of all three matches the HEAD jar byte for byte. `router-ecc83-input` and
+    /// `router-tutorial-board` never reach it. This is a coverage note rather than an obligation
+    /// marker: the arm was transcribed and is now exercised, so there is nothing left to close.
     pub fn room_shape_is_thick(&self, board: &Board, obstacle_room: ObstacleRoomId) -> bool {
         let Some(room) = self.engine.rooms.obstacle_room(obstacle_room) else {
             return false;
         };
+        // :1106-1107.
         let obstacle_item = room.get_item();
         let Some(layer) = room.get_layer(board) else {
             return false;
         };
+        // :1108-1121.
         let obstacle_half_width = match board.items.get(&obstacle_item) {
+            // :1109-1113.
             Some(Item::Trace(trace)) => {
                 let clearance_class = trace.hdr.clearance_class();
                 let compensation = board
@@ -641,24 +885,42 @@ impl MazeSearchEngine<'_> {
                     });
                 f64::from(trace.get_half_width()) + f64::from(compensation)
             }
+            // :1115-1117.
             Some(Item::Via(via)) => {
                 let ctx = board.ctx();
                 match via.get_tree_shape_on_layer(self.search_tree, layer, &ctx) {
                     Some(via_shape) => 0.5 * via_shape.max_width(),
+                    // Java would NPE on a via with no shape on this layer.
                     None => return false,
                 }
             }
+            // :1118-1121.
             _ => 0.0,
         };
+        // :1122.
         obstacle_half_width >= f64::from(self.ctrl.compensated_trace_half_width[layer])
     }
 
+    // =============================================================================================
+    // shoveTraceRoom (:1130-1201)
+    // =============================================================================================
+
+    /// Port of `shoveTraceRoom(MazeListElement, ObstacleExpansionRoom)`
+    /// (MazeSearchEngine.java:1130-1201): "shoves a trace room and expands the corresponding
+    /// doors. Return false, if no door was expanded. In this case occupation of the door_section
+    /// by ripup can be delayed to allow shoving the room from a different door section."
+    ///
+    /// It is check-only — see [`MazeTraceShover`]'s module docs. The two halves are symmetric: the
+    /// left one is skipped for an element already adjusted `RIGHT` and vice versa, and each turns
+    /// its collected [`DoorSection`]s into queue elements whose adjustment is `LEFT`/`RIGHT` for a
+    /// 2-dimensional link door and `NONE` otherwise (`:1153-1159`, `:1184-1190`).
     pub fn shove_trace_room(
         &mut self,
         board: &mut Board,
         list_element: &MazeListElement,
         obstacle_room: ObstacleRoomId,
     ) -> bool {
+        // Plan 7 Task 14b's level-8 `SHOVEROOM` ledger (quirk #229).
         if p7t14b_maze_ledger() {
             eprintln!(
                 "SHOVEROOM item={} sec={} cnt={} adj={:?}",
@@ -673,6 +935,11 @@ impl MazeSearchEngine<'_> {
                 list_element.adjustment
             );
         }
+        // :1131-1137. "No delay of occupation necessary because inner sections of a door are
+        // currently not shoved."
+        // `listElement.door.mazeSearchElementCount()` (`:1132`). `None` is the still-null
+        // `sectionArr` Java throws on (ExpansionDoor.java:95-97); `occupyNextElement` has already
+        // resolved a section of this door, so it is unreachable here.
         let section_count = i32::try_from(
             self.engine
                 .maze_search_element_count(list_element.door)
@@ -689,7 +956,9 @@ impl MazeSearchEngine<'_> {
         {
             return true;
         }
+        // :1138.
         let mut result = false;
+        // :1139-1169.
         if list_element.adjustment != MazeAdjustment::Right {
             let mut left_to_door_section_list: Vec<DoorSection> = Vec::new();
             if MazeTraceShover::check_shove_trace_line(
@@ -704,6 +973,7 @@ impl MazeSearchEngine<'_> {
                 result = true;
             }
             for current_left_door_section in left_to_door_section_list {
+                // :1153-1159. "the door is the link door to the next room".
                 let current_adjustment = if self
                     .engine
                     .rooms
@@ -727,6 +997,7 @@ impl MazeSearchEngine<'_> {
             }
         }
 
+        // :1171-1199.
         if list_element.adjustment != MazeAdjustment::Left {
             let mut right_to_door_section_list: Vec<DoorSection> = Vec::new();
             if MazeTraceShover::check_shove_trace_line(
@@ -741,6 +1012,7 @@ impl MazeSearchEngine<'_> {
                 result = true;
             }
             for current_right_door_section in right_to_door_section_list {
+                // :1184-1190.
                 let current_adjustment = if self
                     .engine
                     .rooms
@@ -763,30 +1035,96 @@ impl MazeSearchEngine<'_> {
                 );
             }
         }
+        // :1200.
         result
     }
 
-    pub fn check_neck_down_at_dest_pin(&self, board: &Board, room: RoomRef) -> f64 {
+    // =============================================================================================
+    // checkNeckDownAtDestPin (:1207-1215)
+    // =============================================================================================
+
+    /// Port of `checkNeckDownAtDestPin(CompleteExpansionRoom)` (MazeSearchEngine.java:1207-1215):
+    /// "checks, if the next room contains a destination pin, where evtl. neckdown is necessary.
+    /// Return the neck down width in this case, or 0, if no such pin was found."
+    ///
+    /// # Java bug: `MazeSearchEngine.checkNeckDownAtDestPin`
+    ///
+    /// The name and the javadoc both say *destination* pin; the loop (`:1209-1213`) never calls
+    /// `isDestinationDoor()`. It answers the neckdown half width of the **first** target door
+    /// whose item is a `Pin` — start pin or destination pin, whichever the room lists first — and
+    /// `return`s from inside the loop, so a room whose first pin has no neckdown answers `0`
+    /// without looking at the rest. `docs/java-quirks.md` #179, JVM-pinned by `P6T12Probe` mode
+    /// `neck`: room 2's target doors are `(item 2 = the start pin, item 3 = the destination pin)`
+    /// and the answer is the *start* pin's `49.0`.
+    ///
+    /// fixed: T10 (#179) — two changes, and together they make the name, the javadoc and the
+    /// body agree:
+    ///
+    /// * `is_destination_door()` is tested **inside** the loop, so a **start** pin's neckdown can
+    ///   no longer answer for a destination pin's. Its one caller, `expand_to_room_doors:409-413`,
+    ///   narrows `half_width_add` **and** `half_width` to whatever this returns, and those decide
+    ///   `door_is_small` (`:415`) and `next_room_is_thick` (`:458`, `:474`) for the whole round —
+    ///   so a start pin's neckdown silently shrank the trace the search planned through a room it
+    ///   was only *passing through*. Note `:442-451`, a few lines further down the same caller,
+    ///   already applies the start pin's neckdown separately and deliberately; this method's job
+    ///   was only ever the other end.
+    /// * a pin with **no** neckdown `continue`s rather than `return`s, so a room whose first
+    ///   destination pin happens to have none no longer hides a later one.
+    ///
+    /// The signature takes `&mut Board` because `isDestinationDoor` reaches the item's autoroute
+    /// info through `item.getAutorouteInfo()` (`TargetItemExpansionDoor.java:46`), which **creates
+    /// it on demand** — one of the twelve creating call sites (see
+    /// [`crate::autoroute::item_info`]).
+    ///
+    /// **Read together with R2 (Task 2) and #51 (Task 14)** — the three neckdown defects compound,
+    /// and survey §10.2 requires them to be measured together rather than credited separately.
+    /// This task's `neckdown_below_class_width` column is committed for Task 14's joint table.
+    pub fn check_neck_down_at_dest_pin(&self, board: &mut Board, room: RoomRef) -> f64 {
+        // :1208.
         let target_doors = self.engine.rooms.room_target_doors(room);
-        let ctx = board.ctx();
+        // :1209-1213.
         for current_target_door in target_doors {
             let Some(door) = self.engine.rooms.target_door(*current_target_door) else {
                 continue;
             };
-            if let Some(Item::Pin(pin)) = board.items.get(&door.item) {
-                let Some(layer) = self.engine.rooms.room_layer(board, room) else {
-                    return 0.0;
-                };
-                return f64::from(pin.get_trace_neckdown_halfwidth(layer, &ctx));
+            let item = door.item;
+            if !matches!(board.items.get(&item), Some(Item::Pin(_))) {
+                continue;
+            }
+            // fixed: T10 (#179) — the question the method's own name asks.
+            if !door.is_destination_door(board) {
+                continue;
+            }
+            let Some(layer) = self.engine.rooms.room_layer(board, room) else {
+                continue;
+            };
+            let ctx = board.ctx();
+            let Some(Item::Pin(pin)) = board.items.get(&item) else {
+                continue;
+            };
+            let neckdown_half_width = f64::from(pin.get_trace_neckdown_halfwidth(layer, &ctx));
+            // fixed: T10 (#179) — `continue`, not `return`: a destination pin without a neckdown
+            // is not an answer, it is a pin to skip.
+            if neckdown_half_width > 0.0 {
+                return neckdown_half_width;
             }
         }
+        // :1214.
         0.0
     }
 
+    // =============================================================================================
+    // The two `ExpandableObject` reads this file needs
+    // =============================================================================================
+
+    /// `ExpandableObject.getDimension()` (ExpandableObject.java:13) over the four implementors —
+    /// `MazeSearchEngine.java:461`'s virtual call.
     fn expandable_dimension(&self, object: ExpandableRef) -> i32 {
         self.engine.expandable_dimension(object)
     }
 
+    /// `ExpandableObject.getShape().centreOfGravity()` (`MazeSearchEngine.java:859`) over the four
+    /// implementors. `None` is Java's `NullPointerException` on a door whose rooms have no shape.
     fn expandable_shape_centre(&self, object: ExpandableRef) -> Option<FloatPoint> {
         Some(self.engine.expandable_shape(object)?.centre_of_gravity())
     }
