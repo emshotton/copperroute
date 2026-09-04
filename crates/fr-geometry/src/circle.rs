@@ -311,10 +311,19 @@ impl Circle {
         Circle::new(self.center.translate_by(int_vector), self.radius)
     }
 
-    /// Java stub: warns "Circle.nearest_point_approx not yet implemented" and returns `null`
-    /// (Circle.java:257-261).
-    pub fn nearest_point_approx(&self, _point: &FloatPoint) -> Option<FloatPoint> {
-        None
+    pub fn nearest_point_approx(&self, point: &FloatPoint) -> Option<FloatPoint> {
+        let center = self.center.to_float();
+        let dx = point.x - center.x;
+        let dy = point.y - center.y;
+        let length = (dx * dx + dy * dy).sqrt();
+        if length == 0.0 {
+            return Some(FloatPoint::new(center.x + self.radius as f64, center.y));
+        }
+        let scale = self.radius as f64 / length;
+        Some(FloatPoint::new(
+            center.x + dx * scale,
+            center.y + dy * scale,
+        ))
     }
 
     /// The distance between `point` and its nearest point on the border (Circle.java:263-267).
@@ -369,10 +378,11 @@ impl Circle {
         }
     }
 
-    /// Java stub: warns "Circle.cutout not yet implemented" and returns `null`
-    /// (Circle.java:305-309).
-    pub fn cutout(&self, _polyline: &Polyline) -> Option<Vec<Polyline>> {
-        None
+    pub fn cutout(&self, polyline: &Polyline) -> Option<Vec<Polyline>> {
+        let max_segment_length = (self.radius / 32).max(1);
+        self.bounding_tile_max_seg(max_segment_length)
+            .cutout_polyline(polyline)
+            .ok()
     }
 
     /// A division of this circle into convex pieces: the single bounding tile
@@ -525,7 +535,8 @@ mod tests {
         assert_eq!(c.split_to_convex().len(), 1);
         assert!(c.get_holes().is_empty());
         assert!(c.corner_approx_arr().is_empty());
-        assert!(c.nearest_point_approx(&FloatPoint::new(0.0, 0.0)).is_none());
+        let nearest = c.nearest_point_approx(&FloatPoint::new(0.0, 0.0)).unwrap();
+        assert!((nearest.distance(&c.center.to_float()) - c.radius as f64).abs() < 1e-9);
     }
 
     #[test]

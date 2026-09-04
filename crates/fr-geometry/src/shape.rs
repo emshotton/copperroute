@@ -481,10 +481,7 @@ impl Shape {
         match self {
             Shape::Tile(t) => polygon.intersects_tile_shape(t),
             Shape::Circle(c) => polygon.intersects_circle(c),
-            Shape::Polygon(_) => panic!(
-                "PolygonShape.intersects(PolygonShape) recurses forever \
-                 (PolygonShape.java:118-121 has no PolygonShape overload to bind to)"
-            ),
+            Shape::Polygon(other) => polygon.intersects_polygon(other),
         }
     }
 }
@@ -964,8 +961,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "recurses forever")]
-    fn polygon_against_polygon_reproduces_the_java_stack_overflow() {
+    fn polygon_against_polygon_intersects() {
         let p1 = Shape::Polygon(PolygonShape::from_points(&pts(&[
             (0, 0),
             (10, 0),
@@ -978,7 +974,7 @@ mod tests {
             (20, 20),
             (5, 20),
         ])));
-        p1.intersects(&p2);
+        assert!(p1.intersects(&p2));
     }
 
     #[test]

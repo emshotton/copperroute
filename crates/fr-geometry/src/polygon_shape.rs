@@ -9,6 +9,7 @@
 //! fixed seed 99 at the top of every non-memoised call (PolygonShape.java:534), so recomputing
 //! reproduces the identical division sequence.
 
+use crate::float_line::FloatLine;
 use crate::float_point::FloatPoint;
 use crate::int_box::IntBox;
 use crate::int_octagon::IntOctagon;
@@ -200,29 +201,62 @@ impl PolygonShape {
         }
     }
 
-    /// Java stub: warns "PolygonShape.cutout not yet implemented" and returns `null`
-    /// (PolygonShape.java:167-171).
-    pub fn cutout(&self, _polyline: &Polyline) -> Option<Vec<Polyline>> {
-        None
+    pub fn intersects_polygon(&self, other: &PolygonShape) -> bool {
+        let left = self.convex_pieces();
+        let right = other.convex_pieces();
+        left.iter().any(|left_piece| {
+            right
+                .iter()
+                .any(|right_piece| left_piece.intersects(right_piece))
+        })
     }
 
-    /// Java stub: returns `this` for a zero offset, otherwise warns "PolygonShape.enlarge not yet
-    /// implemented" and returns `null` (PolygonShape.java:173-180).
+    pub fn cutout(&self, polyline: &Polyline) -> Option<Vec<Polyline>> {
+        let mut pieces = vec![polyline.clone()];
+        for cutter in self.convex_pieces() {
+            let mut remaining = Vec::new();
+            for piece in pieces {
+                remaining.extend(cutter.cutout_polyline(&piece).ok()?);
+            }
+            pieces = remaining;
+        }
+        Some(pieces)
+    }
+
     pub fn enlarge(&self, offset: f64) -> Option<PolygonShape> {
         if offset == 0.0 {
             return Some(self.clone());
         }
-        None
+        if self.corners.len() < 3 || !offset.is_finite() {
+            return None;
+        }
+        let mut shifted = Vec::with_capacity(self.corners.len());
+        for index in 0..self.corners.len() {
+            let a = self.corners[index].to_float();
+            let b = self.corners[(index + 1) % self.corners.len()].to_float();
+            shifted.push(FloatLine::new(a, b).translate(-offset));
+        }
+        let mut corners = Vec::with_capacity(shifted.len());
+        for index in 0..shifted.len() {
+            let previous = &shifted[(index + shifted.len() - 1) % shifted.len()];
+            corners.push(Point::Int(previous.intersection(&shifted[index])?.round()));
+        }
+        Some(PolygonShape::from_points(&corners))
     }
 
-    /// Java stub: warns "PolygonShape.border_distance not yet implemented" and returns 0
-    /// (PolygonShape.java:182-186).
-    pub fn border_distance(&self, _point: &FloatPoint) -> f64 {
-        0.0
+    pub fn border_distance(&self, point: &FloatPoint) -> f64 {
+        if self.corners.is_empty() {
+            return f64::MAX;
+        }
+        (0..self.corners.len())
+            .map(|index| {
+                let a = self.corners[index].to_float();
+                let b = self.corners[(index + 1) % self.corners.len()].to_float();
+                FloatLine::new(a, b).segment_distance(point)
+            })
+            .fold(f64::MAX, f64::min)
     }
 
-    /// `borderDistance(centreOfGravity())`, hence always 0 while `borderDistance` is a stub
-    /// (PolygonShape.java:188-191).
     pub fn smallest_radius(&self) -> f64 {
         self.border_distance(&PolylineShapeOps::centre_of_gravity(self))
     }
@@ -241,11 +275,6 @@ impl PolygonShape {
         !self.is_outside(point)
     }
 
-    /// Returns true if `point` is contained in this shape, but not on the border
-    /// (PolygonShape.java:209-215).
-    ///
-    /// Because `containsOnBorder` is a Java stub that always answers `false`, this is exactly
-    /// `contains`.
     pub fn contains_inside(&self, point: &Point) -> bool {
         if self.contains_on_border(point) {
             return false;
@@ -262,17 +291,29 @@ impl PolygonShape {
             .any(|piece| !piece.is_outside(point))
     }
 
-    /// Java stub: the body is a commented-out warning followed by `return false`
-    /// (PolygonShape.java:228-232). Ported as-is.
-    pub fn contains_on_border(&self, _point: &Point) -> bool {
-        // FRLogger.warn("PolygonShape.contains_on_edge not yet implemented");
-        false
+    pub fn contains_on_border(&self, point: &Point) -> bool {
+        (0..self.corners.len()).any(|index| {
+            let a = &self.corners[index];
+            let b = &self.corners[(index + 1) % self.corners.len()];
+            if point.side_of(a, b) != Side::Collinear {
+                return false;
+            }
+            let point = point.to_float();
+            let a = a.to_float();
+            let b = b.to_float();
+            point.x >= a.x.min(b.x)
+                && point.x <= a.x.max(b.x)
+                && point.y >= a.y.min(b.y)
+                && point.y <= a.y.max(b.y)
+        })
     }
 
-    /// Java stub: warns "PolygonShape.distance not yet implemented" and returns 0
-    /// (PolygonShape.java:234-238).
-    pub fn distance(&self, _point: &FloatPoint) -> f64 {
-        0.0
+    pub fn distance(&self, point: &FloatPoint) -> f64 {
+        if self.contains_float(point) {
+            0.0
+        } else {
+            self.border_distance(point)
+        }
     }
 
     /// Returns the affine translation of the shape by `vector` (PolygonShape.java:240-250).
@@ -993,17 +1034,6 @@ mod tests {
     }
 
     #[test]
-    fn stubs_match_the_java_stubs() {
-        let s = square();
-        assert_eq!(s.border_distance(&FloatPoint::new(100.0, 100.0)), 0.0);
-        assert_eq!(s.smallest_radius(), 0.0);
-        assert_eq!(s.distance(&FloatPoint::new(100.0, 100.0)), 0.0);
-        assert!(!s.contains_on_border(&Point::Int(IntPoint::new(0, 0))));
-        assert_eq!(s.enlarge(0.0), Some(s.clone()));
-        assert_eq!(s.enlarge(1.0), None);
-    }
-
-    #[test]
     fn transformations_round_trip() {
         let s = square();
         assert_eq!(
@@ -1051,12 +1081,12 @@ mod tests {
         assert_eq!(s.dimension(), 2);
         assert!(s.is_bounded());
         assert!(!s.is_empty());
-        assert_eq!(
-            s.cutout(&crate::polyline::Polyline::from_two_points(
+        let pieces = s
+            .cutout(&crate::polyline::Polyline::from_two_points(
                 &Point::Int(IntPoint::new(-5, 5)),
-                &Point::Int(IntPoint::new(15, 5))
-            )),
-            None
-        );
+                &Point::Int(IntPoint::new(15, 5)),
+            ))
+            .unwrap();
+        assert_eq!(pieces.len(), 2);
     }
 }
