@@ -347,6 +347,16 @@ impl TraceShover {
         max_spring_over_recursion_depth: i32,
         time_limit: Option<&TimeLimit>,
     ) -> bool {
+        // fixed: T10 (#174) — the other half of the row. Java never clears
+        // `shoveFailingObstacle` on entry (the field is declared at `RoutingBoard.java:72` and
+        // written only at a refusal), so a `check` that refuses on a path that sets nothing
+        // leaves whatever an *earlier* call wrote — possibly an item from a different call on a
+        // different net — for `MazeRipupResolver` to tear up, and on a fresh board the field can
+        // simply be null. Clearing here makes the field mean one thing: "the culprit of the call
+        // that just refused". Every `return false` below now writes it; the recursion is safe
+        // because an inner call that succeeds leaves `None` and an outer refusal writes its own
+        // culprit after the inner call has returned.
+        board.clear_shove_failing_obstacle();
         // :242-244.
         if time_limit.is_some_and(TimeLimit::is_exceeded) {
             return false;
@@ -454,9 +464,22 @@ impl TraceShover {
                     }
                 }
             }
-            // :348-350. Java does **not** set `shoveFailingObstacle` here, unlike every other
-            // refusal in this method.
+            // :348-350.
+            //
+            // Java bug: this refusal — every one of `tryShoveViaPoints`' candidate centres failed
+            // `DrillItemMover.check` — is a bare `return false` that does **not** set
+            // `shoveFailingObstacle`, unlike every other refusal in this method (`:251` the
+            // outline, `:263`/`:306`/`:357` `shapeEntries.getFoundObstacle()`, `:318` the via
+            // itself one branch up). The field is not diagnostic: `MazeRipupResolver` reads it to
+            // decide what to tear up. See docs/java-quirks.md #174.
+            //
+            // fixed: T10 (#174) — the culprit is `current_shove_via`, exactly as `:318` already
+            // writes it one branch up, and the entry of this method now clears the field (see the
+            // top). Together those close both halves of the row: a caller that refuses here and
+            // reads the field is handed the via that could not be moved, and can no longer be
+            // handed an item left over from a different `check` call on a different net.
             if !shove_via_ok {
+                board.set_shove_failing_obstacle(Some(current_shove_via));
                 return false;
             }
         }
