@@ -299,19 +299,14 @@ fn turn_90_degree_turns_the_polyline_and_clears_the_derived_data() {
 }
 
 #[test]
-fn rotate_approx_rotates_the_polyline_but_does_not_clear_the_derived_data() {
+fn a_rotated_trace_clears_its_tree_shapes() {
     let mut t = trace(1, two_point_polyline(), 0, 1000);
-    let stale = vec![Some(TileShape::Box(IntBox::from_coords(1, 2, 3, 4)))];
     t.hdr
-        .set_precalculated_tree_shapes(TreeId(0), stale.clone());
+        .set_precalculated_tree_shapes(TreeId(0), vec![Some(TileShape::Box(IntBox::EMPTY))]);
     t.rotate_approx(90.0, &FloatPoint::new(0.0, 0.0));
     assert_eq!(t.first_corner(), Some(p(-10_000, 10_000)));
     assert_eq!(t.last_corner(), Some(p(-10_000, 20_000)));
-    assert_eq!(
-        t.hdr.get_precalculated_tree_shapes(TreeId(0)),
-        Some(stale.as_slice()),
-        "PolylineTrace.rotateApprox does not call clearDerivedData (Java bug, quirk #60)"
-    );
+    assert_eq!(t.hdr.get_precalculated_tree_shapes(TreeId(0)), None);
 }
 
 #[test]

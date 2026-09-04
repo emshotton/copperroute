@@ -126,6 +126,7 @@ impl PolylineTrace {
 
     pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint) {
         self.lines = self.lines.rotate_approx(angle_in_degree.to_radians(), pole);
+        self.hdr.clear_derived_data();
     }
 
     pub fn change_placement_side(
