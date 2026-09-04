@@ -699,32 +699,111 @@ fn board_outline_shape_accessors_match_java() {
     assert_eq!(outline.get_half_width(), 100);
 }
 
+/// **fixed: T11 (#55).** Java bug: `BoardOutline.translateBy` (BoardOutline.java:112-121) and its
+/// three siblings assign the transformed shape back to the **loop variable** of an enhanced `for`
+/// — `for (PolylineShape currentShape : this.shapes) currentShape = currentShape.translateBy(v);`
+/// — which binds a copy of the reference, so `this.shapes` was never written and the outline did
+/// not move, turn, rotate or mirror.
+///
+/// This test was `board_outline_transforms_leave_the_outline_shapes_where_they_were` and pinned
+/// that: the outline's bounding box stayed at `(100,100 .. 900,900)` through a translate of
+/// 10 000, a quarter turn, a 30-degree rotation and a mirror.
+///
+/// Only the lazily built `keepoutArea` followed the transform, because that one *is* a field
+/// assignment — and that is what made the fourth assertion below the interesting one. The keepout
+/// is rebuilt from the shapes if it has **not** been built yet, so before the fix an outline's
+/// curves and its outside-keepout ended up in different places or the same place depending purely
+/// on whether anyone had touched the keepout first. The two halves are now transformed together
+/// and agree either way.
 #[test]
-fn board_outline_transforms_leave_the_outline_shapes_where_they_were() {
-    // Java bug: `BoardOutline.translateBy` (BoardOutline.java:112-121) — and its three siblings
-    // — assign the transformed shape back to the **loop variable**
-    // (`for (PolylineShape currentShape : this.shapes) currentShape = currentShape.translateBy(
-    // vector);`), so `this.shapes` is never written. Only the cached `keepoutArea` moves.
+fn the_outline_moves_turns_rotates_and_mirrors() {
     let f = Fixture::new();
-    let mut outline = BoardOutline::new(hdr(1), vec![outline_square()]);
-    // Fill the keepout cache first, so the second half of the Java body has something to do.
+    let square = || BoardOutline::new(hdr(1), vec![outline_square()]);
+    let base = square();
+    let base_box = base.bounding_box();
+    let base_lines = base.line_count();
+    let base_shape = base.get_shape(0).map(|s| s.as_ops().bounding_box());
     assert_eq!(
-        outline.get_keepout_area(&f.ctx()).bounding_box(),
-        bx(0, 0, 1000, 1000)
+        base_box,
+        bx(100, 100, 900, 900),
+        "the untransformed outline"
     );
 
-    outline.translate_by(&Vector::new(10_000, 0));
-    assert_eq!(outline.bounding_box(), bx(100, 100, 900, 900));
+    // 1. The outline moved: its bounding box is the transform of its bounding box.
+    let mut moved = square();
+    moved.translate_by(&Vector::new(10_000, 0));
     assert_eq!(
-        outline.get_keepout_area(&f.ctx()).bounding_box(),
-        bx(10_000, 0, 11_000, 1000)
+        moved.bounding_box(),
+        bx(10_100, 100, 10_900, 900),
+        "translate: the outline moved"
     );
 
-    let mut outline = BoardOutline::new(hdr(2), vec![outline_square()]);
-    outline.turn_90_degree(1, &IntPoint::new(0, 0));
-    outline.rotate_approx(30.0, &FloatPoint::new(0.0, 0.0));
-    outline.change_placement_side(&IntPoint::new(0, 0));
-    assert_eq!(outline.bounding_box(), bx(100, 100, 900, 900));
+    // 2. Every shape moved, not merely the box.
+    assert_eq!(
+        moved.get_shape(0).map(|s| s.as_ops().bounding_box()),
+        base_shape.map(|b| bx(b.ll.x + 10_000, b.ll.y, b.ur.x + 10_000, b.ur.y)),
+        "translate: the shape itself moved"
+    );
+
+    // 3. Nothing was lost on the way.
+    assert_eq!(
+        moved.line_count(),
+        base_lines,
+        "translate: the line count is preserved"
+    );
+
+    // 4. The outline and its keepout stay together — the assertion that was false before the fix
+    //    for a *reason* rather than by accident. Build the keepout first, so the transform has to
+    //    move an already-materialised one, and check it against the outline's own new box.
+    let mut both = square();
+    assert_eq!(
+        both.get_keepout_area(&f.ctx()).bounding_box(),
+        bx(0, 0, 1000, 1000),
+        "the keepout is the board box with the outline as its hole"
+    );
+    both.translate_by(&Vector::new(10_000, 0));
+    assert_eq!(
+        both.get_keepout_area(&f.ctx()).bounding_box(),
+        bx(10_000, 0, 11_000, 1000),
+        "the keepout moved"
+    );
+    assert_eq!(
+        both.bounding_box(),
+        moved.bounding_box(),
+        "and the outline moved with it — an outline that had its keepout built and one that did \
+         not now agree, where before the fix only the keepout followed the transform"
+    );
+
+    // The other three transforms move the outline too. A quarter turn about the origin sends
+    // (100,100 .. 900,900) to (-900,100 .. -100,900); the mirror in x = 0 sends it back.
+    let mut turned = square();
+    turned.turn_90_degree(1, &IntPoint::new(0, 0));
+    assert_eq!(
+        turned.bounding_box(),
+        bx(-900, 100, -100, 900),
+        "turn_90_degree: the outline turned"
+    );
+    assert_eq!(turned.line_count(), base_lines);
+
+    let mut mirrored = square();
+    mirrored.change_placement_side(&IntPoint::new(0, 0));
+    assert_eq!(
+        mirrored.bounding_box(),
+        bx(-900, 100, -100, 900),
+        "change_placement_side: the outline mirrored"
+    );
+    assert_eq!(mirrored.line_count(), base_lines);
+
+    // A 180-degree rotation about the origin is exact even through the float path, so it can be
+    // asserted as a literal rather than a tolerance.
+    let mut rotated = square();
+    rotated.rotate_approx(180.0, &FloatPoint::new(0.0, 0.0));
+    assert_eq!(
+        rotated.bounding_box(),
+        bx(-900, -900, -100, -100),
+        "rotate_approx: the outline rotated"
+    );
+    assert_eq!(rotated.line_count(), base_lines);
 }
 
 #[test]
