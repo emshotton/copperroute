@@ -403,6 +403,28 @@ fn a_drill_page_element_costs_one_normal_via_and_keeps_the_room() {
     );
 }
 
+#[test]
+fn a_shape_ending_on_a_page_boundary_reaches_the_next_page() {
+    let mut board = probe_board();
+    board.bounding_box = IntBox::from_coords(-12_000, -12_000, 12_000, 12_000);
+    let engine = probe_engine(&mut board, 1);
+    let pages = engine.drill_pages();
+    assert!(pages.column_count() > 1);
+    let bounds = pages.bounds();
+    let boundary_x = bounds.ll.x + pages.page_width();
+    let shape = TileShape::Box(IntBox::from_coords(
+        bounds.ll.x + 1,
+        bounds.ll.y + 1,
+        boundary_x,
+        bounds.ll.y + pages.page_height() - 1,
+    ));
+
+    assert_eq!(
+        pages.overlapping_pages(&shape),
+        [pages.page_id(0, 0), pages.page_id(1, 0)]
+    );
+}
+
 struct DrillFixture {
     board: Board,
     engine: AutorouteEngine,

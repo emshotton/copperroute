@@ -72,31 +72,42 @@ impl DrillPageArray {
 
     pub fn overlapping_pages(&self, shape: &TileShape) -> Vec<PageId> {
         let mut result = Vec::new();
+        if self.column_count <= 0 || self.row_count <= 0 {
+            return result;
+        }
         let shape_box = shape.bounding_box().intersection(&self.bounds);
 
-        let min_j = (f64::from(shape_box.ll.y.wrapping_sub(self.bounds.ll.y))
-            / f64::from(self.page_height))
-        .floor() as i32;
-        let max_j =
-            f64::from(shape_box.ur.y.wrapping_sub(self.bounds.ll.y)) / f64::from(self.page_height);
-        let min_i = (f64::from(shape_box.ll.x.wrapping_sub(self.bounds.ll.x))
-            / f64::from(self.page_width))
-        .floor() as i32;
-        let max_i =
-            f64::from(shape_box.ur.x.wrapping_sub(self.bounds.ll.x)) / f64::from(self.page_width);
+        let min_j = shape_box
+            .ll
+            .y
+            .wrapping_sub(self.bounds.ll.y)
+            .div_euclid(self.page_height);
+        let max_j = shape_box
+            .ur
+            .y
+            .wrapping_sub(self.bounds.ll.y)
+            .div_euclid(self.page_height)
+            .min(self.row_count - 1);
+        let min_i = shape_box
+            .ll
+            .x
+            .wrapping_sub(self.bounds.ll.x)
+            .div_euclid(self.page_width);
+        let max_i = shape_box
+            .ur
+            .x
+            .wrapping_sub(self.bounds.ll.x)
+            .div_euclid(self.page_width)
+            .min(self.column_count - 1);
 
-        let mut j = min_j;
-        while f64::from(j) < max_j {
-            let mut i = min_i;
-            while f64::from(i) < max_i {
+        for j in min_j..=max_j {
+            for i in min_i..=max_i {
                 let page = self.page_id(i, j);
                 let intersection = shape.intersection(&self.page(page).get_shape());
-                if intersection.dimension() > 1 {
+                if intersection.dimension() >= 1 {
                     result.push(page);
                 }
-                i += 1;
             }
-            j += 1;
         }
         result
     }
