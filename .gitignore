@@ -13,3 +13,5 @@ __pycache__/
 # machine-normalised reference. It deliberately leaves the failing run's log behind for the reader
 # — its message names the path — and that leftover must not look like an untracked reference.
 /tests/reference/**/*.tmp
+*.DS_Store
+/.claude
