@@ -80,10 +80,10 @@ pub fn write(board: &Board, design_name: &str) -> String {
             && via_rule.via_count() > 0
         {
             let via_info = via_rule.get_via(0);
-            if let Some(via_pad) = board.library.padstacks.get(via_info.get_padstack()) {
-                if let Some(shape) = via_pad.get_shape(0) {
-                    via_diameter = f64::from(shape.bounding_box().width()) / scale_factor;
-                }
+            if let Some(via_pad) = board.library.padstacks.get(via_info.get_padstack())
+                && let Some(shape) = via_pad.get_shape(0)
+            {
+                via_diameter = f64::from(shape.bounding_box().width()) / scale_factor;
             }
         }
         let via_drill = via_diameter * 0.5;

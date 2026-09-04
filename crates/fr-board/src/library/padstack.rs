@@ -76,17 +76,17 @@ impl Padstack {
                 _ => &self.name[colon_index + 1..],
             };
             let filtered_drill = strip_non_digits(drill_str);
-            if let Ok(drill_dia) = filtered_drill.parse::<f64>() {
-                if let Some(last_underscore) = self.name[..=colon_index].rfind('_') {
-                    let outer_str = &self.name[last_underscore + 1..colon_index];
-                    let filtered_outer = strip_non_digits(outer_str);
-                    if let Ok(outer_dia) = filtered_outer.parse::<f64>()
-                        && outer_dia > 0.0
-                    {
-                        let actual_outer_radius = self.smallest_radius();
-                        if actual_outer_radius > 0.0 {
-                            return actual_outer_radius * (drill_dia / outer_dia);
-                        }
+            if let Ok(drill_dia) = filtered_drill.parse::<f64>()
+                && let Some(last_underscore) = self.name[..=colon_index].rfind('_')
+            {
+                let outer_str = &self.name[last_underscore + 1..colon_index];
+                let filtered_outer = strip_non_digits(outer_str);
+                if let Ok(outer_dia) = filtered_outer.parse::<f64>()
+                    && outer_dia > 0.0
+                {
+                    let actual_outer_radius = self.smallest_radius();
+                    if actual_outer_radius > 0.0 {
+                        return actual_outer_radius * (drill_dia / outer_dia);
                     }
                 }
             }

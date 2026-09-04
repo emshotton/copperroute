@@ -342,10 +342,8 @@ pub fn apply_command_line_arguments(args: &[String]) -> LegacyBridge {
                 );
                 i += 1;
             }
-        } else if arg.starts_with("-dct") || arg.starts_with("-ll") {
-            if value_of(i).is_some() {
-                i += 1;
-            }
+        } else if (arg.starts_with("-dct") || arg.starts_with("-ll")) && value_of(i).is_some() {
+            i += 1;
         }
 
         i += 1;

@@ -985,24 +985,24 @@ pub fn insert_net_class(
     } else {
         board.rules.append_net_class_named(&net_class.name)
     };
-    if let Some(trace_clearance_class) = &net_class.trace_clearance_class {
-        if let Some(no) = board.rules.clearance_matrix.get_no(trace_clearance_class) {
-            board
-                .rules
-                .net_classes
-                .get_mut(board_net_class)
-                .set_trace_clearance_class(no);
-        }
+    if let Some(trace_clearance_class) = &net_class.trace_clearance_class
+        && let Some(no) = board.rules.clearance_matrix.get_no(trace_clearance_class)
+    {
+        board
+            .rules
+            .net_classes
+            .get_mut(board_net_class)
+            .set_trace_clearance_class(no);
     }
-    if let Some(via_rule_name) = &net_class.via_rule {
-        if let Some(via_rule) = board.rules.get_via_rule(via_rule_name) {
-            let via_rule = board.rules.via_rules[via_rule.0].clone();
-            board
-                .rules
-                .net_classes
-                .get_mut(board_net_class)
-                .set_via_rule(Some(via_rule));
-        }
+    if let Some(via_rule_name) = &net_class.via_rule
+        && let Some(via_rule) = board.rules.get_via_rule(via_rule_name)
+    {
+        let via_rule = board.rules.via_rules[via_rule.0].clone();
+        board
+            .rules
+            .net_classes
+            .get_mut(board_net_class)
+            .set_via_rule(Some(via_rule));
     }
     if net_class.max_trace_length > 0.0 {
         let value = coordinate_transform.dsn_to_board(net_class.max_trace_length);
@@ -1604,9 +1604,7 @@ fn insert_component(
         )
         .id;
 
-    let Some(component_location) = component_location else {
-        return None;
-    };
+    let component_location = component_location?;
     let component_translation = Point::Int(component_location).difference_by(&Point::ZERO);
     let fixed_state = if location.position_fixed {
         FixedState::SystemFixed
@@ -1704,15 +1702,14 @@ fn insert_component(
                 .get(default_net_class)
                 .default_item_clearance_classes
                 .get(ItemClass::Area);
-            if let Some(keepout_info) = current_keepout_infos.get(&current_keepout.name) {
-                if let Some(current_clearance_class) = board
+            if let Some(keepout_info) = current_keepout_infos.get(&current_keepout.name)
+                && let Some(current_clearance_class) = board
                     .rules
                     .clearance_matrix
                     .get_no(&keepout_info.clearance_class)
-                    && current_clearance_class > 0
-                {
-                    clearance_class = current_clearance_class;
-                }
+                && current_clearance_class > 0
+            {
+                clearance_class = current_clearance_class;
             }
             if let Ok(layer) = usize::try_from(layer) {
                 insert_package_keepout(

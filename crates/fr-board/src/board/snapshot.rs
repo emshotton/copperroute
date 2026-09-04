@@ -139,10 +139,10 @@ impl Board {
     }
 
     pub(crate) fn save_for_undo(&mut self, id: ItemId) {
-        if let Some(journal) = self.undo_journal.as_mut() {
-            if !journal.created.contains(&id) {
-                journal.saved.insert(id);
-            }
+        if let Some(journal) = self.undo_journal.as_mut()
+            && !journal.created.contains(&id)
+        {
+            journal.saved.insert(id);
         }
     }
 
