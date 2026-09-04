@@ -370,23 +370,31 @@ fn run_job(dsn: &str, max_passes: i32, max_items: Option<i32>, strict_drc: bool)
         path.display().to_string().replace(".dsn", ".ses"),
         "-mp".to_string(),
         max_passes.to_string(),
-        // `TestingSettings`' **constructor**
+        // **This line reproduces a Java *test-harness* defect, not a router decision** — quirk
+        // #233, and it stays. `TestingSettings`' **constructor**
         // (`src/test/java/app/freerouting/settings/sources/TestingSettings.java:23-25`):
         //
         //     // Keep legacy fixture expectations stable unless a test explicitly opts in.
         //     this.settings.copperToEdgeClearanceUm = 0.0;
         //
         // Every job in the fixture suite carries it — a test that passes no `TestingSettings` gets
-        // one built for it at `RoutingFixtureTest.java:71-73`. It is not a detail: `0.0` is not the
-        // `DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM` 500.0 that a real `-de/-do` run uses, so
-        // `applyCopperToEdgeClearanceOverride` writes **zero** into the `board_edge` row instead of
-        // 500 µm and the fixture suite routes a materially more permissive board than the CLI does
-        // (quirk #231; Task 15b measured the same board's SES at 15 254 B against 14 644 B for
-        // exactly this switch). Measured here: with the CLI's 500 µm,
-        // `Issue508-DAC2020_bm01.dsn` at `maxPasses = 2` leaves **34** incomplete on the HEAD jar
-        // itself, above `issue508Bm01First2PassesOnly`'s bound of 28; with the fixture suite's
-        // `0.0` both sides come in under it — the port leaves 27. Leaving this line out would make every bound below a bound on
-        // a board the Java suite never routes.
+        // one built for it at `RoutingFixtureTest.java:71-73`. So the whole Java fixture suite
+        // measures a board **no real run produces**: `0.0` is not the 500.0 a `-de/-do` run
+        // carries, so `applyCopperToEdgeClearanceOverride` writes zero into the `board_edge` row
+        // instead of 500 µm and every bound below is a bound on a materially more permissive
+        // board than the CLI's. Measured: with the CLI's 500 µm, `Issue508-DAC2020_bm01.dsn` at
+        // `maxPasses = 2` leaves **34** incomplete on the HEAD jar itself, above
+        // `issue508Bm01First2PassesOnly`'s bound of 28; with the fixture suite's `0.0` both sides
+        // come in under it — the port leaves 27.
+        //
+        // The value is therefore deliberate here and **must not be read as the port's default**.
+        // Quirk #231 is fixed (Plan 9 Task 10) and the option is now continuous — `=0`, `=500`
+        // and `=500.000001` all take the same path — which is exactly what lets this call site
+        // mean one thing only: "the Java fixture suite asked for zero". The register's own
+        // recommendation on #233 is that the Java suite should take its default from
+        // `DefaultSettings` like every other value and let the tests that want 0 µm say so; this
+        // line is the port saying so on their behalf, so the bounds stay comparable.
+        // `the_copper_to_edge_override_is_continuous` below is the fix's own directed test.
         "--router.copper_to_edge_clearance_um=0.0".to_string(),
     ];
     if let Some(items) = max_items {
@@ -655,4 +663,99 @@ fn strict_drc_cnh_pipeline_adds_no_violations_beyond_the_sixteen_pre_existing() 
         true,
     );
     check_job("Issue555-CNH_Functional_Tester_1.dsn", &result, 30, 16);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Quirk #231 (fixed: T10) — the copper-to-edge option is continuous, and keyed on provenance
+// ---------------------------------------------------------------------------------------------
+
+/// The `board_edge` clearance class index and the outline's class, after running the whole
+/// [`prepare_board`] seam with `copper_to_edge_clearance_um` set to `configured`.
+///
+/// `None` for `configured` is "no source supplied the value", which is the shape
+/// `RouterSettings` carries until one does — the provenance half of the fix.
+fn copper_override_outcome(dsn: &str, configured: Option<f64>) -> (Option<usize>, usize) {
+    let mut board = load_board(dsn);
+    let mut settings = build_settings(&board);
+    settings.copper_to_edge_clearance_um = configured;
+    // The hole override is a separate knob and would append a second class; hold it out so the
+    // class indices below say only what this test is about.
+    settings.hole_clearance_um = None;
+    prepare_board(&mut board, &settings);
+    let board_edge = board.rules.clearance_matrix.get_no("board_edge");
+    let outline = board.get_outline().expect("the fixture has an outline");
+    let outline_class = board
+        .get_item(outline)
+        .expect("the outline is an item")
+        .clearance_class();
+    (board_edge, outline_class)
+}
+
+/// Quirk #231, fixed at Plan 9 Task 10 — the fix's own directed test.
+///
+/// Java's `applyCopperToEdgeClearanceOverride` guard (`HeadlessBoardManager.java:501-507`) made
+/// the option **discontinuous at its own default**: on a board whose outline carries an explicit,
+/// non-fallback DSN clearance class, `=500` left the board alone while `=500.000001` and `=0`
+/// appended a `board_edge` class, wrote the value into its whole row and column on every layer
+/// and re-pointed the outline at it. A user who typed the default meaning the default got the one
+/// behaviour the option could not otherwise produce.
+///
+/// `Issue143-rpi_splitter.dsn` is that board — the only one of the sixteen corpus boards whose
+/// outline (`boundary`) carries an explicit class, and so the only one Java's guard could ever
+/// stop. Two properties, both asserted here:
+///
+/// 1. **continuity** — `=500`, `=500.000001` and `=0` all take the same path;
+/// 2. **provenance** — the decision to leave an explicit outline class alone is keyed on whether a
+///    source actually supplied the value, which the settings ladder knows exactly
+///    (`RouterSettings::copper_to_edge_clearance_um` is `None` until one does) and which no
+///    comparison of the value against a constant can ever recover.
+#[cfg_attr(debug_assertions, ignore)]
+#[test]
+fn the_copper_to_edge_override_is_continuous() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let dsn = "fixtures/Issue143-rpi_splitter.dsn";
+
+    // The provenance case, and the baseline for everything below: no source supplied the value,
+    // so the outline keeps the class its own DSN gave it and no `board_edge` class exists.
+    let (unsupplied_edge, unsupplied_outline) = copper_override_outcome(dsn, None);
+    assert_eq!(
+        unsupplied_edge, None,
+        "with no source supplying the value the override must not run at all"
+    );
+
+    // The three supplied values. Every one of them fires, and all three land the outline on the
+    // same appended `board_edge` class — which is what "continuous" means.
+    let supplied = [
+        ("the default, typed", 500.0_f64),
+        ("a hair above the default", 500.000_001_f64),
+        ("zero", 0.0_f64),
+    ];
+    let mut outcomes = Vec::new();
+    for (name, value) in supplied {
+        let (edge, outline_class) = copper_override_outcome(dsn, Some(value));
+        let edge = edge.unwrap_or_else(|| {
+            panic!("{name} ({value}): an explicitly supplied value must append board_edge")
+        });
+        assert_eq!(
+            outline_class, edge,
+            "{name} ({value}): the outline must be re-pointed at board_edge"
+        );
+        assert_ne!(
+            outline_class, unsupplied_outline,
+            "{name} ({value}): this board's outline carries an explicit DSN class, so the \
+             re-pointing is observable"
+        );
+        outcomes.push((name, value, edge, outline_class));
+    }
+    let (first_name, first_value, first_edge, first_outline) = outcomes[0];
+    for &(name, value, edge, outline_class) in &outcomes[1..] {
+        assert_eq!(
+            (edge, outline_class),
+            (first_edge, first_outline),
+            "{name} ({value}) and {first_name} ({first_value}) must be indistinguishable — \
+             quirk #231's discontinuity at the default is what this test exists to forbid"
+        );
+    }
 }

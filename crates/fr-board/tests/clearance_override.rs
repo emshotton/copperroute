@@ -7,9 +7,10 @@
 //!
 //! * a board that already declares a `board_edge` clearance class, so the
 //!   `matrix.getNo(...) < 0` guard reuses it instead of appending (HeadlessBoardManager.java:519);
-//! * an outline carrying an explicit, non-fallback clearance class — the `:501-507` guard's
-//!   early return, which only `router-rpi-splitter` reaches on the corpus, together with the
-//!   1e-9 discontinuity beside it;
+//! * an outline carrying an explicit, non-fallback clearance class — where Java's `:501-507`
+//!   guard early-returned, which only `router-rpi-splitter` reaches on the corpus. Plan 9 Task 10
+//!   removed that guard (quirk #231), so the case this file covers is now the *absence* of the
+//!   1e-9 discontinuity that used to sit beside it;
 //! * `ClearanceMatrix.setValue`'s odd → even rounding meeting an odd board-unit value;
 //! * re-applying the same hole clearance twice, i.e. `changed == false` with no keepouts.
 //!
@@ -72,40 +73,95 @@ fn a_negative_copper_clearance_changes_nothing() {
     assert_eq!(board.rules.clearance_matrix, before);
 }
 
-/// `:501-507`, the guard that decides everything (quirk #231): the default value is ignored only
-/// when the outline carries an explicit, non-fallback class — and any other value fires
-/// regardless.
+/// Quirk #231's inversion, fixed at Plan 9 Task 10: Java's `:501-507` guard made the **default**
+/// the one value that could be ignored, so a value the user typed to mean exactly what the
+/// default means was the one thing the option refused to do.
+///
+/// Named for the property that replaces it: an explicitly supplied value is applied, and the
+/// number it happens to be does not enter into it. The board here is the `router-rpi-splitter`
+/// shape — an outline carrying an explicit, non-fallback DSN clearance class — which is the only
+/// one of the sixteen corpus boards Java's guard could ever stop. All three of `=500`,
+/// `=500.000001` and `=0` now land the same class on it, differing only in the number they write.
+///
+/// The size of the change, re-measured at this task on `Issue026-J2_reference.dsn` at `-mp 3`
+/// through the real CLI (`freerouting route -de … -do …`, `FR_ROUTER_BUDGET=disabled`):
+/// **15 254 B** at 500 µm against **14 644 B** at 0 µm, first differing at char 741. That is the
+/// scale of the board this option silently decides, on every run, and Java logged it at `debug`.
 #[test]
-fn the_default_value_is_the_only_one_the_guard_can_ignore() {
+fn an_explicitly_supplied_default_is_applied() {
     let mut board = p2t11_board();
     // The fixture's outline uses the fallback AREA class, i.e. the 15-of-16 corpus shape. Give
     // it the explicit `wide` class and it becomes the `router-rpi-splitter` shape — the one board
-    // the guard can stop.
+    // Java's guard could stop.
     let outline = board.get_outline().expect("p2t11_board has an outline");
     assert!(board.change_clearance_class_index(outline, board_builder::WIDE_CLEARANCE_CLASS));
     let (outline_class, default_area_class) = outline_and_default_area_class(&mut board);
     assert_ne!(outline_class, default_area_class);
 
-    // The default value + an explicit outline class: the one early return.
+    // The default value, explicitly supplied: Java's one early return, now applied.
     let mut at_default = board.clone();
     let before = at_default.rules.clearance_matrix.clone();
     assert!(
-        !at_default.apply_copper_to_edge_clearance_override(DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM)
+        at_default.apply_copper_to_edge_clearance_override(DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM),
+        "the default value is no longer the one value the option refuses"
     );
-    assert_eq!(at_default.rules.clearance_matrix, before);
+    assert_ne!(at_default.rules.clearance_matrix, before);
+    let at_default_class = at_default
+        .rules
+        .clearance_matrix
+        .get_no(BOARD_EDGE_CLEARANCE_CLASS_NAME)
+        .expect("board_edge appended");
+    assert_eq!(
+        at_default
+            .get_item(outline)
+            .expect("an item")
+            .clearance_class(),
+        at_default_class,
+        "the outline is re-pointed at board_edge, explicit class or not"
+    );
 
-    // A hair off the default, on the same board: it fires.
+    // A hair off the default, on the same board: indistinguishable. `1e-6 µm` is far below one
+    // board unit, so even the number written into the matrix is the same one.
     let mut off_default = board.clone();
     assert!(
         off_default
             .apply_copper_to_edge_clearance_override(DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM + 1e-6)
     );
-    assert!(
-        off_default
+    assert_eq!(
+        off_default.rules.clearance_matrix, at_default.rules.clearance_matrix,
+        "500 and 500.000001 are the same board — the discontinuity at the default is gone"
+    );
+
+    // And zero, the far end of the range, differs only in the value it writes.
+    let mut at_zero = board.clone();
+    assert!(at_zero.apply_copper_to_edge_clearance_override(0.0));
+    let at_zero_class = at_zero
+        .rules
+        .clearance_matrix
+        .get_no(BOARD_EDGE_CLEARANCE_CLASS_NAME)
+        .expect("board_edge appended at zero too");
+    assert_eq!(at_zero_class, at_default_class);
+    assert_eq!(
+        at_zero
+            .get_item(outline)
+            .expect("an item")
+            .clearance_class(),
+        at_zero_class
+    );
+    assert_eq!(
+        at_zero
             .rules
             .clearance_matrix
-            .get_no(BOARD_EDGE_CLEARANCE_CLASS_NAME)
-            .is_some()
+            .get_value(at_zero_class, 1, 0, false),
+        0
+    );
+    assert_ne!(
+        at_default
+            .rules
+            .clearance_matrix
+            .get_value(at_default_class, 1, 0, false),
+        0,
+        "the three runs differ in the number they write and in nothing else"
     );
 }
 

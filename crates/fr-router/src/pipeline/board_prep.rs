@@ -61,11 +61,28 @@ use fr_settings::RouterSettings;
 /// (`:470-471`, `:350-351`). The headless settings ladder always fills both
 /// (`DefaultSettings.java:78, :81`), so on a CLI run both fire.
 ///
+/// **This `Option` is quirk #231's provenance test** (fixed at Plan 9 Task 10). Java's
+/// `applyCopperToEdgeClearanceOverride` carried a second guard of its own, `:501-507`, which
+/// left a board with an explicit DSN outline-clearance class alone when the configured value
+/// *equalled* the 500 µm default — a numeric guess at "nobody asked for this". The guess is
+/// gone; the fact is here. `RouterSettings::copper_to_edge_clearance_um` is `None` until a
+/// source supplies it, so `None` means no source asked for a board-edge keep-out and the
+/// outline's own class survives untouched, and `Some(v)` means one did — at which point `v` is
+/// applied uniformly, whether it is `0`, `500` or `500.000001`. That is what makes the option
+/// **continuous**.
+///
 /// Returns whether the board changed, i.e. `copper_changed || hole_changed`. Java returns
-/// `void`; the flag exists so a caller can log or assert on it.
+/// `void`; the flag exists so a caller can log or assert on it — and quirk #231's other half is
+/// that Java logged the mutation at `FRLogger.debug` (`:546-552`), invisible at the default log
+/// level, on a change that reaches the output bytes of every corpus board. The port has no
+/// logger below `crates/freerouting`, so this return value **is** the report, and its callers
+/// (`freerouting::commands::route`, `freerouting::mcp::tools::route_board`, through
+/// `fr_core::apply_router_settings_for_loaded_board`) raise it to `tracing::info!`.
 pub fn prepare_board(board: &mut Board, settings: &RouterSettings) -> bool {
-    // HeadlessBoardManager.java:746.
+    // HeadlessBoardManager.java:746, with `:501-507`'s value-equality guard replaced by this
+    // `Option` — see the provenance paragraph above.
     let copper_changed = match settings.copper_to_edge_clearance_um {
+        // fixed: T10 (#231)
         Some(clearance_um) => board.apply_copper_to_edge_clearance_override(clearance_um),
         None => false,
     };

@@ -28,9 +28,19 @@
 //!
 //! # `a_defaulted_500_and_an_explicit_500_diverge`
 //!
-//! Quirk #231 is Plan 7 Task 15b's and is re-asserted here rather than re-ported: the
-//! `:501-507` guard keys on the *value*, so the same 500 µm behaves differently depending on
-//! whether the board's outline carries an explicit DSN clearance class.
+//! Quirk #231 is Plan 7 Task 15b's and is asserted here rather than re-ported. Java's `:501-507`
+//! guard keyed on the *value*, so the same 500 µm behaved differently depending on whether the
+//! board's outline carried an explicit DSN clearance class. **Plan 9 Task 10 removed the guard**;
+//! the test keeps its name and inverts its assertions, so that the fix commit's diff reads as
+//! "this used to diverge, now it does not".
+//!
+//! The committed `P8T3Probe` transcript replayed by
+//! [`the_p8t3_transcript_replays_cell_for_cell`] is untouched by that fix: none of its three
+//! fixtures has an explicit, non-fallback outline clearance class, so none of them is a board
+//! Java's guard could ever stop. The corpus board that *is* — `router-rpi-splitter` — belongs to
+//! the sixteen-board `P7T15bProbe` transcript, whose replay
+//! (`crates/fr-router/tests/clearance_override.rs`) names the two diverging variants in its own
+//! `KNOWN_DIVERGENCES` table.
 
 use std::collections::BTreeMap;
 
@@ -544,45 +554,75 @@ fn the_override_runs_once_on_a_dsn_load() {
         "one pass appends `board_edge` and `hole_edge`"
     );
 
-    // A second pass — what survey ruling AD says Java does. It appends nothing and reclassifies
-    // nothing, but it is not what Java does, and the port does not do it.
+    // A second pass — what survey ruling AD says Java does. It leaves the board **exactly** where
+    // the first pass left it, which is why the double application the survey describes would have
+    // been invisible had it existed. It is not what Java does, and the port does not do it.
+    //
+    // The observable is board *state*, not the returned flag. Before quirk #231's fix the copper
+    // override's `:501-507` guard happened to early-return on the second pass — the first pass had
+    // moved the outline off the fallback AREA class, so a defaulted 500 µm was refused — and the
+    // flag came back `false` for that reason rather than because nothing would have changed.
+    // With the guard gone the second pass re-runs and rewrites the same numbers over themselves,
+    // so it reports that it ran while changing nothing at all. The state assertions below are the
+    // ones that were always carrying the claim.
     let mut twice = board.clone();
-    let changed_again = apply_router_settings_for_loaded_board(&mut twice, &mut settings);
+    let _ran_again = apply_router_settings_for_loaded_board(&mut twice, &mut settings);
     assert_eq!(
         twice.rules.clearance_matrix.get_class_count(),
         classes_after_one,
         "a second pass appends no further clearance class"
     );
-    assert!(
-        !changed_again,
-        "a second pass changes nothing — `changed` is false and no keepout is reclassified, \
-         which is why the double application the survey describes would have been invisible \
-         had it existed"
+    assert_eq!(
+        twice.rules.clearance_matrix, board.rules.clearance_matrix,
+        "a second pass writes the same numbers back over themselves — no cell moves"
+    );
+    assert_eq!(
+        twice.rules.get_hole_clearance(),
+        board.rules.get_hole_clearance()
+    );
+    assert_eq!(
+        twice
+            .get_outline()
+            .and_then(|id| twice.get_item(id).map(fr_board::Item::clearance_class)),
+        board
+            .get_outline()
+            .and_then(|id| board.get_item(id).map(fr_board::Item::clearance_class)),
+        "and the outline stays on the class the first pass put it on"
     );
 }
 
-/// Quirk #231, re-asserted through the loader rather than re-ported (scan ruling R2).
+/// Quirk #231, through the loader rather than re-ported (scan ruling R2) — and **fixed at Plan 9
+/// Task 10**, which is what this test now asserts.
 ///
-/// `applyCopperToEdgeClearanceOverride:501-507` returns early only when the configured value **is**
-/// the 500 µm default *and* the outline carries an explicit (non-fallback) DSN clearance class.
-/// `Issue143-rpi_splitter.dsn` is the one corpus board whose outline does — its `boundary` class —
-/// so it is the board on which a defaulted 500 and an explicit 500.000001 part company.
+/// `applyCopperToEdgeClearanceOverride:501-507` returned early only when the configured value
+/// **was** the 500 µm default *and* the outline carried an explicit (non-fallback) DSN clearance
+/// class. `Issue143-rpi_splitter.dsn` is the one corpus board whose outline does — its `boundary`
+/// class — so it was the board on which a defaulted 500 and an explicit 500.000001 parted
+/// company. Named for the property that replaces that: they do not.
+///
+/// The test kept its shape and inverted its assertions deliberately, so the diff at the fix
+/// commit reads as "this used to diverge, now it does not" rather than as a new test appearing
+/// beside a deleted one.
 #[test]
 fn a_defaulted_500_and_an_explicit_500_diverge() {
     let (bytes, design_name) = read_dsn_bytes("fixtures/Issue143-rpi_splitter.dsn");
     let pristine = read_board(&bytes, &design_name);
     let classes = pristine.rules.clearance_matrix.get_class_count();
 
-    // The default: the guard fires, the board is untouched.
+    // The default, supplied by the ladder: it applies. Java's guard stopped exactly this.
     let mut defaulted = pristine.clone();
     let mut settings = settings_for(Some(500.0), 0.0);
-    assert!(!apply_router_settings_for_loaded_board(
+    assert!(apply_router_settings_for_loaded_board(
         &mut defaulted,
         &mut settings
     ));
-    assert_eq!(defaulted.rules.clearance_matrix.get_class_count(), classes);
+    assert_eq!(
+        defaulted.rules.clearance_matrix.get_class_count(),
+        classes + 1,
+        "the default 500 µm appends `board_edge` on an explicit-outline-class board too"
+    );
 
-    // A value the user typed to mean the same thing: the guard cannot fire.
+    // A value the user typed to mean the same thing: indistinguishable.
     let mut explicit = pristine.clone();
     let mut settings = settings_for(Some(500.000_001), 0.0);
     assert!(apply_router_settings_for_loaded_board(
@@ -594,18 +634,47 @@ fn a_defaulted_500_and_an_explicit_500_diverge() {
         classes + 1,
         "500.000001 µm appends `board_edge`"
     );
-    assert_ne!(
+    assert_eq!(
         defaulted
             .get_outline()
             .and_then(|id| defaulted.get_item(id).map(fr_board::Item::clearance_class)),
         explicit
             .get_outline()
             .and_then(|id| explicit.get_item(id).map(fr_board::Item::clearance_class)),
-        "the outline's clearance class is where the divergence lands"
+        "the outline's clearance class is where the divergence used to land; the option is \
+         continuous now, so the two agree"
+    );
+    assert_eq!(
+        defaulted.rules.clearance_matrix, explicit.rules.clearance_matrix,
+        "1e-6 µm is far below one board unit, so even the written value is the same"
     );
 
-    // And on the other 15 boards the guard cannot fire at all, because the DSN reader gives the
-    // outline the fallback AREA class — so the *default* mutates.
+    // The decision the guard was guessing at is keyed on provenance instead: with **no** source
+    // supplying the value the override does not run, and this board's explicit `boundary` outline
+    // class survives untouched.
+    let mut unsupplied = pristine.clone();
+    let mut settings = settings_for(None, 0.0);
+    assert!(!apply_router_settings_for_loaded_board(
+        &mut unsupplied,
+        &mut settings
+    ));
+    assert_eq!(
+        unsupplied.rules.clearance_matrix.get_class_count(),
+        classes,
+        "no source supplied the value, so no board-edge keep-out is imposed"
+    );
+    assert_ne!(
+        unsupplied
+            .get_outline()
+            .and_then(|id| unsupplied.get_item(id).map(fr_board::Item::clearance_class)),
+        defaulted
+            .get_outline()
+            .and_then(|id| defaulted.get_item(id).map(fr_board::Item::clearance_class)),
+        "provenance, not the number, is what decides"
+    );
+
+    // And on the other 15 boards, where the DSN reader gives the outline the fallback AREA class,
+    // the default mutated before the fix and mutates after it — unchanged.
     let (bytes, design_name) = read_dsn_bytes("examples/tutorial_board/tutorial_board.dsn");
     let mut fallback = read_board(&bytes, &design_name);
     let classes = fallback.rules.clearance_matrix.get_class_count();

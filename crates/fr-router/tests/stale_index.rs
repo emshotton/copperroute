@@ -206,13 +206,28 @@ struct Expected {
 /// are **unchanged by every one of the ten commits** — and by all seven of Task 9's. #159 (`9fea49e`) cannot move any of these:
 /// it is a 90-degree-only defect and every corpus board declares `fortyfive_degree`. #160/#161,
 /// #162, #164, #165/#166 and #178 moved no count on any stem.
+///
+/// # T10: one row moved, and it is a board-shape change rather than a search change
+///
+/// **#231** — the copper-to-edge override becomes continuous — moves **`router-rpi-splitter`
+/// alone**, because it is the only corpus board Java's `:501-507` guard could stop: its outline
+/// carries an explicit `boundary` clearance class, so the default 500 µm board-edge keep-out used
+/// to be refused there and is now applied like everywhere else. The maze therefore walks a
+/// differently shaped free space. Still zero fires on every guard.
 const MEASURED: &[Expected] = &[
     Expected {
         stem: "router-rpi-splitter",
         fires: [0, 0, 0, 0, 0],
         // T8: unchanged by all ten commits. T9: unchanged — the routed board is near-perfect, so
         // `BatchOptimizer.java:182-193` exits before the first optimizer pass touches an item.
-        visits: [76, 76, 1042, 1042, 111],
+        // T10 #231 (the copper-to-edge override becomes continuous) -> below. This is the one
+        // corpus board whose outline carries an explicit DSN clearance class, so it is the only
+        // one whose board Java's `:501-507` guard used to leave alone; it now carries the same
+        // 500 µm board-edge keep-out as the other fifteen, and the maze walks a differently
+        // shaped free space. Was T9's [76, 76, 1042, 1042, 111]. No guard started or stopped
+        // tripping, and the routed SES is byte-identical either way — the traces here are
+        // nowhere near the edge.
+        visits: [75, 75, 1059, 1059, 114],
     },
     Expected {
         stem: "router-dac2020-bm01",

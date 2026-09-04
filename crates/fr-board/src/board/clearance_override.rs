@@ -21,14 +21,21 @@
 //! # Why this matters at *default* settings
 //!
 //! `DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM = 500.0` (`settings/sources/DefaultSettings.java:78`)
-//! reads like a knob nobody turns, but the `:501-507` guard makes the default the value that
-//! *fires*: it early-returns only when the configured value **is** the default **and** the
-//! outline carries an explicit (non-fallback) DSN clearance class. On 15 of the 16 corpus
-//! boards the DSN reader gives the outline the default AREA class, so a plain
-//! `-de <dsn> -do <ses>` run appends a `board_edge` clearance class, writes 500 µm into its
-//! whole row *and* column on every layer, and re-points the outline at it — which moves the
-//! routed traces and therefore the SES bytes (quirk #231, and the 15 254 B vs 14 644 B
-//! measurement in the Task 15b report).
+//! reads like a knob nobody turns, but it is the value that *fires*: on a plain
+//! `-de <dsn> -do <ses>` run the headless ladder fills the field, so the override appends a
+//! `board_edge` clearance class, writes 500 µm into its whole row *and* column on every layer,
+//! and re-points the outline at it — which moves the routed traces and therefore the SES bytes
+//! (quirk #231, and the 15 254 B vs 14 644 B measurement in the Task 15b report).
+//!
+//! **Quirk #231, fixed at Plan 9 Task 10.** Java gated all of that on `:501-507`, which
+//! early-returned when the configured value *equalled* the 500.0 default (to 1e-9) **and** the
+//! outline carried an explicit, non-fallback DSN clearance class. That made the option
+//! discontinuous at its own default and reached only 15 of the 16 corpus boards; the sixteenth,
+//! `router-rpi-splitter`, whose `boundary` outline carries an explicit class, was left alone by
+//! `=500` and rewritten by `=500.000001`. The guard is removed: the option is **continuous**,
+//! every non-negative value is applied uniformly, and the decision it was really trying to make —
+//! "did anybody ask for a board-edge keep-out?" — is read from the settings ladder's own
+//! `Option`, in [`fr_router::pipeline::prepare_board`], where it is a fact rather than a guess.
 //!
 //! `DEFAULT_HOLE_CLEARANCE_UM = 0.0` (`DefaultSettings.java:81`) is inert on the corpus in
 //! *effect* — `setHoleClearance(0)` over an existing 0 — but the method itself has no early
@@ -88,9 +95,13 @@ pub const BOARD_EDGE_CLEARANCE_CLASS_NAME: &str = "board_edge";
 pub const HOLE_EDGE_CLEARANCE_CLASS_NAME: &str = "hole_edge";
 
 /// `DefaultSettings.DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM`
-/// (`settings/sources/DefaultSettings.java:78`), duplicated here because
-/// [`Board::apply_copper_to_edge_clearance_override`]'s `:501-507` guard compares against it and
-/// `fr-board` cannot depend on `fr-settings` (the edge runs the other way).
+/// (`settings/sources/DefaultSettings.java:78`), duplicated here because `fr-board` cannot depend
+/// on `fr-settings` (the edge runs the other way).
+///
+/// Java's `:501-507` guard compared the configured value against this constant; quirk #231's fix
+/// removed that comparison ([`Board::apply_copper_to_edge_clearance_override`]), so the constant
+/// is now documentation and a cross-crate consistency pin rather than a live input to the
+/// override.
 ///
 /// `crates/fr-router/tests/clearance_override.rs` asserts this constant equals
 /// `fr_settings::sources::DefaultSettings::DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM`, so the two
@@ -126,8 +137,12 @@ impl Board {
     /// `clearance_um`, write it into that class's whole row **and** column on every layer, and
     /// re-point the board outline at it.
     ///
-    /// Returns whether the board changed — Java returns `void` and logs at `FRLogger.debug`
-    /// (`:546-552`), which is invisible at the default log level.
+    /// Returns whether the override **ran** — Java returns `void` and logs at `FRLogger.debug`
+    /// (`:546-552`), which is invisible at the default log level. On a load it ran exactly when
+    /// it changed the board, because nothing has written `board_edge` before it; re-running it on
+    /// a board it has already processed still answers `true` while writing the same numbers back
+    /// over themselves (`crates/fr-core/tests/overrides.rs::the_override_runs_once_on_a_dsn_load`
+    /// asserts the state idempotence that claim rests on).
     ///
     /// The `null` guards of `:467-472` (no board, no job, no router settings, no configured
     /// value) are the caller's: [`fr_router::pipeline::prepare_board`] only calls this when
@@ -135,11 +150,13 @@ impl Board {
     /// unavailable" is not representable — a `Board` always has `rules` and a
     /// `ClearanceMatrix`.
     ///
-    /// **The `:501-507` guard is the whole story of when this fires** (quirk #231): it returns
-    /// early only when the value is the default *and* the outline does **not** use the fallback
-    /// AREA class. Passing the default 500.0 on a board whose outline carries an explicit DSN
-    /// clearance class is therefore the *only* way to leave the board alone; 500.000001 mutates
-    /// it.
+    /// **The `:501-507` guard is gone** (quirk #231, fixed at Plan 9 Task 10). Java returned
+    /// early when the value *was* the default and the outline carried an explicit DSN clearance
+    /// class, which made the option discontinuous at its own default — `=500` left such a board
+    /// alone, `=500.000001` and `=0` rewrote it. The option is now **continuous**: every
+    /// non-negative value is applied uniformly, and "nobody asked for a board-edge keep-out" is
+    /// expressed where it actually lives, as `RouterSettings::copper_to_edge_clearance_um ==
+    /// None` in [`fr_router::pipeline::prepare_board`].
     pub fn apply_copper_to_edge_clearance_override(&mut self, clearance_um: f64) -> bool {
         // HeadlessBoardManager.java:474-480: negative warns and returns.
         if clearance_um < 0.0 {
@@ -149,28 +166,27 @@ impl Board {
         let Some(outline_id) = self.get_outline() else {
             return false;
         };
-        // :496-500.
-        let default_net_class = self.rules.get_default_net_class();
-        let default_area_class_no = self
-            .rules
-            .net_classes
-            .get(default_net_class)
-            .default_item_clearance_classes
-            .get(ItemClass::Area);
-        let outline_class_no = self
-            .items
-            .get(&outline_id)
-            .expect("Board::apply_copper_to_edge_clearance_override: get_outline just found it")
-            .clearance_class();
-        // :501-507 — the only early return that depends on the board.
-        let uses_fallback_outline_class = outline_class_no == default_area_class_no;
-        let uses_default_edge_clearance_value =
-            (clearance_um - DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM).abs() < 1e-9;
-        // Keep explicit DSN outline-clearance classes untouched when only the global default is
-        // active (:505).
-        if uses_default_edge_clearance_value && !uses_fallback_outline_class {
-            return false;
-        }
+        // :496-507 — `usesFallbackOutlineClass`, `usesDefaultEdgeClearanceValue` and the early
+        // return they gate.
+        //
+        // fixed: T10 (#231) — the guard is gone. It read the *value* to guess the user's intent
+        // ("is this number the default? then nobody asked for it"), which made the option
+        // discontinuous at its own default: `=500` left a board with an explicit outline class
+        // alone while `=500.000001` and `=0` rewrote a whole clearance row and column and
+        // re-pointed the outline. The intent it was guessing at is carried exactly, one level up:
+        // `RouterSettings::copper_to_edge_clearance_um` is `None` until a source supplies it, and
+        // [`fr_router::pipeline::prepare_board`] calls this method only when it is `Some`. So
+        // "leave an explicit DSN outline-clearance class alone when nobody asked for a board-edge
+        // keep-out" is now keyed on **provenance** — no source supplied the value — and this
+        // method applies whatever value it is handed, uniformly, whatever the outline's class.
+        //
+        // Consequence, stated rather than hidden: the headless ladder always fills the field
+        // (`DefaultSettings.java:78`), so on a `-de/-do` run the 500 µm board-edge keep-out now
+        // applies to **16 of 16** corpus boards rather than 15 — `router-rpi-splitter`, whose
+        // `boundary` outline carries an explicit class, joins the other fifteen. Whether that
+        // default should apply at all is a separate question, measured as a stem A/B at Plan 9
+        // Task 16 (ruling BP3); recommendation 3 keeps 500 µm as the default here so the
+        // regeneration reads as one change rather than two.
 
         // :509-516.
         let configured_clearance_board_units = self.clearance_override_board_units(clearance_um);
