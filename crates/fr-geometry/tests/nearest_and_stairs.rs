@@ -234,37 +234,19 @@ fn a_forty_five_degree_segment_is_still_its_two_end_points() {
     );
 }
 
-// =================================================================================================
-// #9 — deferred to Task 13, and measured here so the deferral is checkable
-// =================================================================================================
-
-/// Quirk **#9 is not fixed in Task 11**. `FloatPoint.circleCenter` divides by zero on horizontal
-/// input; Java answers `(x, NaN)` and this port answers `None`. It is the *mechanism* of #82, so
-/// fixing it here would move #82's behaviour without #82's measurement — the split is named at
-/// both ends and the arm lands in **Task 13**.
-///
-/// This test records what the port does today, so that the deferral rests on a measurement rather
-/// than on a promise, and so Task 13 has a before-picture it did not have to take itself. The
-/// interesting part is that the circumcentre **exists and is computable** — only three of the six
-/// argument orders find it, which is exactly why the remedy is "swap the point roles for the
-/// horizontal case".
 #[test]
-fn circle_center_is_deferred_to_task_13() {
+fn circle_center_of_a_horizontal_or_vertical_input_is_finite() {
     let a = FloatPoint::new(0.0, 0.0);
     let b = FloatPoint::new(1000.0, 0.0);
     let c = FloatPoint::new(1000.0, 1000.0);
+    let expected = Some(FloatPoint::new(500.0, 500.0));
 
-    // First pair horizontal: the divide-by-zero.
-    assert_eq!(a.circle_center(&b, &c), None);
-    // First pair vertical: also refused.
-    assert_eq!(b.circle_center(&c, &a), None);
-    // And the order that works — the circumcentre of the three points is (500, 500), so the
-    // answer the other two orders refuse is not merely available, it is the same triangle's.
-    assert_eq!(
-        c.circle_center(&a, &b),
-        Some(FloatPoint::new(500.0, 500.0)),
-        "the circumcentre exists; only the argument order decides whether it is found"
-    );
+    assert_eq!(a.circle_center(&b, &c), expected);
+    assert_eq!(a.circle_center(&c, &b), expected);
+    assert_eq!(b.circle_center(&a, &c), expected);
+    assert_eq!(b.circle_center(&c, &a), expected);
+    assert_eq!(c.circle_center(&a, &b), expected);
+    assert_eq!(c.circle_center(&b, &a), expected);
 }
 
 /// A `LineSegment` from `(ax, ay)` to `(bx, by)`, closed at each end by the perpendicular through

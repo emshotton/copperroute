@@ -440,12 +440,20 @@ impl FloatPoint {
     /// `crates/fr-geometry/tests/nearest_and_stairs.rs::circle_center_is_deferred_to_task_13`
     /// pins those three rows, so Task 13 inherits a before-picture rather than a promise.
     pub fn circle_center(&self, p1: &FloatPoint, p2: &FloatPoint) -> Option<FloatPoint> {
-        let slope1 = (p1.y - self.y) / (p1.x - self.x);
-        let slope2 = (p2.y - p1.y) / (p2.x - p1.x);
-        let center_x = (slope1 * slope2 * (self.y - p2.y) + slope2 * (self.x + p1.x)
-            - slope1 * (p1.x + p2.x))
-            / (2.0 * (slope2 - slope1));
-        let center_y = (0.5 * (self.x + p1.x) - center_x) / slope1 + 0.5 * (self.y + p1.y);
+        let denominator =
+            2.0 * (self.x * (p1.y - p2.y) + p1.x * (p2.y - self.y) + p2.x * (self.y - p1.y));
+        if denominator == 0.0 {
+            return None;
+        }
+        let self_size = self.x * self.x + self.y * self.y;
+        let p1_size = p1.x * p1.x + p1.y * p1.y;
+        let p2_size = p2.x * p2.x + p2.y * p2.y;
+        let center_x =
+            (self_size * (p1.y - p2.y) + p1_size * (p2.y - self.y) + p2_size * (self.y - p1.y))
+                / denominator;
+        let center_y =
+            (self_size * (p2.x - p1.x) + p1_size * (self.x - p2.x) + p2_size * (p1.x - self.x))
+                / denominator;
         if center_x.is_finite() && center_y.is_finite() {
             Some(FloatPoint::new(center_x, center_y))
         } else {

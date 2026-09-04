@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::{Board, DelaunayCorner, ItemId, ItemKind, PlanarDelaunayTriangulation};
-use fr_geometry::{FloatPoint, Signum};
+use fr_geometry::FloatPoint;
 
 use crate::airline::AirLine;
 
@@ -234,24 +234,14 @@ impl PartialOrd for Edge {
 
 impl Ord for Edge {
     fn cmp(&self, other: &Edge) -> Ordering {
-        let mut result = self.length_square - other.length_square;
-        if result == 0.0 {
-            result = self.from_corner.x - other.from_corner.x;
-            if result == 0.0 {
-                result = self.from_corner.y - other.from_corner.y;
-            }
-            if result == 0.0 {
-                result = self.to_corner.x - other.to_corner.x;
-            }
-            if result == 0.0 {
-                result = self.to_corner.y - other.to_corner.y;
-            }
-        }
-        match Signum::as_int_f64(result) {
-            -1 => Ordering::Less,
-            1 => Ordering::Greater,
-            _ => Ordering::Equal,
-        }
+        self.length_square
+            .total_cmp(&other.length_square)
+            .then_with(|| self.from_corner.x.total_cmp(&other.from_corner.x))
+            .then_with(|| self.from_corner.y.total_cmp(&other.from_corner.y))
+            .then_with(|| self.to_corner.x.total_cmp(&other.to_corner.x))
+            .then_with(|| self.to_corner.y.total_cmp(&other.to_corner.y))
+            .then_with(|| self.from_item.cmp(&other.from_item))
+            .then_with(|| self.to_item.cmp(&other.to_item))
     }
 }
 
@@ -379,48 +369,42 @@ mod tests {
     }
 
     #[test]
-    fn an_exact_five_way_tie_drops_the_second_edge() {
+    fn edges_with_identical_geometry_keep_distinct_items() {
         let first = edge(0, (0.0, 0.0), 1, (10.0, 0.0));
         let second = edge(2, (0.0, 0.0), 3, (10.0, 0.0));
-        assert_eq!(first.cmp(&second), Ordering::Equal);
-        assert_eq!(first, second);
-        assert_ne!(
-            (first.from_item, first.to_item),
-            (second.from_item, second.to_item),
-        );
 
-        let mut set = BTreeSet::new();
-        assert!(set.insert(first.clone()));
-        assert!(!set.insert(second));
-        assert_eq!(set.len(), 1);
-        let kept = set.iter().next().expect("one element");
-        assert_eq!(
-            (kept.from_item, kept.to_item),
-            (first.from_item, first.to_item)
-        );
+        assert_eq!(BTreeSet::from([first, second]).len(), 2);
     }
 
     #[test]
-    fn a_nan_edge_swallows_or_is_swallowed_depending_on_insertion_order() {
+    fn edge_ordering_is_total_for_nan_coordinates() {
+        let finite = edge(0, (0.0, 0.0), 1, (10.0, 0.0));
+        let nan = edge(0, (f64::NAN, 0.0), 1, (10.0, 0.0));
+
+        assert_eq!(BTreeSet::from([finite, nan]).len(), 2);
+    }
+
+    #[test]
+    fn a_nan_length_does_not_compare_equal() {
         let short = edge(0, (0.0, 0.0), 1, (10.0, 0.0));
         let long = edge(2, (0.0, 0.0), 3, (20.0, 0.0));
         let nan = edge(4, (f64::INFINITY, 0.0), 5, (f64::INFINITY, 0.0));
         assert!(nan.length_square.is_nan());
-        assert_eq!(nan.cmp(&short), Ordering::Equal);
-        assert_eq!(short.cmp(&nan), Ordering::Equal);
+        assert_ne!(nan.cmp(&short), Ordering::Equal);
+        assert_ne!(short.cmp(&nan), Ordering::Equal);
         assert_eq!(short.cmp(&long), Ordering::Less);
 
         let mut nan_first = BTreeSet::new();
         assert!(nan_first.insert(nan.clone()));
-        assert!(!nan_first.insert(short.clone()));
-        assert!(!nan_first.insert(long.clone()));
-        assert_eq!(nan_first.len(), 1);
+        assert!(nan_first.insert(short.clone()));
+        assert!(nan_first.insert(long.clone()));
+        assert_eq!(nan_first.len(), 3);
 
         let mut nan_last = BTreeSet::new();
         assert!(nan_last.insert(short));
         assert!(nan_last.insert(long));
-        assert!(!nan_last.insert(nan));
-        assert_eq!(nan_last.len(), 2);
+        assert!(nan_last.insert(nan));
+        assert_eq!(nan_last.len(), 3);
     }
 
     #[test]

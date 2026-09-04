@@ -31,6 +31,53 @@ impl Point {
     /// Standard implementation of the zero point (an `IntPoint`, as in Java).
     pub const ZERO: Point = Point::Int(IntPoint::ZERO);
 
+    pub fn inside_circumcircle(&self, a: &Point, b: &Point, c: &Point) -> bool {
+        fn row(point: &Point) -> [BigInt; 4] {
+            let (x, y, z) = match point {
+                Point::Int(point) => (BigInt::from(point.x), BigInt::from(point.y), BigInt::one()),
+                Point::Rational(point) => (point.x.clone(), point.y.clone(), point.z.clone()),
+            };
+            [&x * &z, &y * &z, &x * &x + &y * &y, &z * &z]
+        }
+
+        fn determinant(mut matrix: [[BigInt; 4]; 4]) -> BigInt {
+            let mut previous = BigInt::one();
+            let mut sign = 1_i8;
+            for pivot_index in 0..3 {
+                let Some(pivot_row) =
+                    (pivot_index..4).find(|&row| !matrix[row][pivot_index].is_zero())
+                else {
+                    return BigInt::zero();
+                };
+                if pivot_row != pivot_index {
+                    matrix.swap(pivot_row, pivot_index);
+                    sign = -sign;
+                }
+                let pivot = matrix[pivot_index][pivot_index].clone();
+                for row in pivot_index + 1..4 {
+                    for column in pivot_index + 1..4 {
+                        matrix[row][column] = (&matrix[row][column] * &pivot
+                            - &matrix[row][pivot_index] * &matrix[pivot_index][column])
+                            / &previous;
+                    }
+                }
+                previous = pivot;
+            }
+            if sign < 0 {
+                -matrix[3][3].clone()
+            } else {
+                matrix[3][3].clone()
+            }
+        }
+
+        let value = determinant([row(a), row(b), row(c), row(self)]);
+        match c.side_of(a, b) {
+            Side::OnTheLeft => value.is_positive(),
+            Side::OnTheRight => value.is_negative(),
+            Side::Collinear => false,
+        }
+    }
+
     /// Creates an IntPoint from x and y. If x or y is too big for an IntPoint, a RationalPoint is
     /// created. Java `Point.getInstance(int, int)`.
     ///
@@ -329,6 +376,24 @@ mod tests {
         assert!(matches!(Point::new(5, 5), Point::Int(_)));
         assert!(matches!(Point::new(CRIT_INT + 1, 0), Point::Rational(_)));
         assert!(matches!(Point::new(CRIT_INT, 0), Point::Int(_)));
+    }
+
+    #[test]
+    fn circumcircle_membership_is_exact_and_orientation_independent() {
+        let a = Point::new(0, 0);
+        let b = Point::new(CRIT_INT, 0);
+        let c = Point::new(0, CRIT_INT);
+        let inside = Point::new(1, 1);
+        let boundary = Point::new(CRIT_INT, CRIT_INT);
+        let outside = Point::new(CRIT_INT * 2, CRIT_INT * 2);
+
+        assert!(inside.inside_circumcircle(&a, &b, &c));
+        assert!(inside.inside_circumcircle(&a, &c, &b));
+        assert!(!boundary.inside_circumcircle(&a, &b, &c));
+        assert!(!outside.inside_circumcircle(&a, &b, &c));
+
+        let rational_inside = Point::from_big(BigInt::from(1), BigInt::from(1), BigInt::from(2));
+        assert!(rational_inside.inside_circumcircle(&a, &b, &c));
     }
 
     #[test]

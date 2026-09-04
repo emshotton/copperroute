@@ -151,14 +151,17 @@ impl PlanarDelaunayTriangulation {
         let mut rng = JavaRandom::new(SEED);
         shuffle(&mut corner_list, &mut rng);
 
-        let bounding_coor = CRIT_INT;
+        let bounding_coor = CRIT_INT * 4;
         let bounding_corners = [
-            this.new_corner(None, Point::Int(IntPoint::new(bounding_coor, 0))),
-            this.new_corner(None, Point::Int(IntPoint::new(0, bounding_coor))),
             this.new_corner(
                 None,
-                Point::Int(IntPoint::new(-bounding_coor, -bounding_coor)),
+                Point::Int(IntPoint::new(-bounding_coor, -bounding_coor / 2)),
             ),
+            this.new_corner(
+                None,
+                Point::Int(IntPoint::new(bounding_coor, -bounding_coor / 2)),
+            ),
+            this.new_corner(None, Point::Int(IntPoint::new(1, bounding_coor))),
         ];
 
         let edge_lines = [
@@ -492,14 +495,11 @@ impl PlanarDelaunayTriangulation {
             return true;
         };
 
-        let inside_circle = self.corners[right_opposite.0]
-            .coor
-            .to_float()
-            .inside_circle(
-                &self.corners[start_corner.0].coor.to_float(),
-                &self.corners[left_opposite.0].coor.to_float(),
-                &self.corners[end_corner.0].coor.to_float(),
-            );
+        let inside_circle = self.corners[right_opposite.0].coor.inside_circumcircle(
+            &self.corners[start_corner.0].coor,
+            &self.corners[left_opposite.0].coor,
+            &self.corners[end_corner.0].coor,
+        );
         !inside_circle
     }
 
@@ -959,6 +959,27 @@ mod tests {
             .collect()
     }
 
+    fn coordinate_edges(
+        triangulation: &PlanarDelaunayTriangulation,
+    ) -> BTreeSet<((i32, i32), (i32, i32))> {
+        edge_tuples(triangulation)
+            .into_iter()
+            .map(|(_, start, _, end)| {
+                if start < end {
+                    (start, end)
+                } else {
+                    (end, start)
+                }
+            })
+            .collect()
+    }
+
+    fn grid(size: i32) -> Vec<(i32, i32)> {
+        (0..size)
+            .flat_map(|x| (0..size).map(move |y| (x * 1000, y * 1000)))
+            .collect()
+    }
+
     fn deep_validate(triangulation: &PlanarDelaunayTriangulation) -> bool {
         fn walk(t: &PlanarDelaunayTriangulation, triangle: TriangleId) -> bool {
             if t.is_leaf(triangle) {
@@ -1054,18 +1075,12 @@ mod tests {
     }
 
     #[test]
-    fn square_pins_javas_four_edges() {
-        let triangulation = triangulate(&[(0, 0), (1000, 0), (1000, 1000), (0, 1000)]);
-        assert_eq!(
-            edge_tuples(&triangulation),
-            vec![
-                (2, (1000, 0), 1, (0, 0)),
-                (1, (0, 0), 4, (0, 1000)),
-                (2, (1000, 0), 4, (0, 1000)),
-                (2, (1000, 0), 3, (1000, 1000)),
-            ]
-        );
-        assert!(deep_validate(&triangulation));
+    fn a_square_pin_grid_keeps_every_edge() {
+        for (size, expected) in [(2, 5), (5, 56), (6, 85)] {
+            let triangulation = triangulate(&grid(size));
+            assert_eq!(triangulation.get_edge_lines().len(), expected);
+            assert!(deep_validate(&triangulation));
+        }
     }
 
     #[test]
@@ -1081,8 +1096,8 @@ mod tests {
     fn collinear_triple_gives_the_two_segments_of_the_path() {
         let triangulation = triangulate(&[(0, 0), (500, 500), (1000, 1000)]);
         assert_eq!(
-            edge_tuples(&triangulation),
-            vec![(1, (0, 0), 2, (500, 500)), (2, (500, 500), 3, (1000, 1000)),]
+            coordinate_edges(&triangulation),
+            BTreeSet::from([((0, 0), (500, 500)), ((500, 500), (1000, 1000)),])
         );
         assert!(deep_validate(&triangulation));
     }
@@ -1099,22 +1114,33 @@ mod tests {
             (300, 400),
         ]);
         let edges = edge_tuples(&triangulation);
-        assert_eq!(
-            edges,
-            vec![
-                (7, (300, 400), 6, (300, 400)),
-                (5, (300, 400), 6, (300, 400)),
-                (2, (1000, 0), 4, (0, 1000)),
-                (2, (1000, 0), 1, (0, 0)),
-                (4, (0, 1000), 1, (0, 0)),
-                (4, (0, 1000), 6, (300, 400)),
-                (6, (300, 400), 2, (1000, 0)),
-                (1, (0, 0), 6, (300, 400)),
-                (2, (1000, 0), 3, (1000, 1000)),
-            ]
-        );
+        assert_eq!(edges.len(), 10);
         assert!(edges[0].0 == 7 && edges[0].2 == 6);
         assert!(deep_validate(&triangulation));
+    }
+
+    #[test]
+    fn the_edge_set_is_independent_of_insertion_order() {
+        let points = random_points(50, 1_337);
+        let forward = triangulate(&points);
+        let reversed = triangulate(&points.iter().copied().rev().collect::<Vec<_>>());
+
+        assert_eq!(coordinate_edges(&forward), coordinate_edges(&reversed));
+    }
+
+    #[test]
+    fn a_seven_by_seven_dense_draw_keeps_every_edge() {
+        let mut rng = XorShift64(0x13_82_09);
+        for _ in 0..2000 {
+            let mut points = BTreeSet::new();
+            while points.len() < 49 {
+                points.insert((rng.bounded(7001) - 3500, rng.bounded(7001) - 3500));
+            }
+            let points: Vec<_> = points.into_iter().collect();
+            let triangulation = triangulate(&points);
+            let expected = 3 * points.len() - 3 - hull_boundary_point_count(&points);
+            assert_eq!(triangulation.get_edge_lines().len(), expected);
+        }
     }
 
     #[test]
