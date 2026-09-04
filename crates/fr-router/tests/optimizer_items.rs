@@ -38,8 +38,9 @@ use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_geometry::{IntBox, IntOctagon, IntPoint, Point, Polyline, Shape, TileShape};
 use fr_router::pipeline::{
-    AutorouteBatchLoop, BatchAutorouter, BatchOptimizer, NoopProgressSink, ReadSortedRouteItems,
-    RouterBudget, RouterStop, optimizer_ripup_costs,
+    AutorouteBatchLoop, BatchAutorouter, BatchOptimizer, NoopProgressSink,
+    PORT_OPTIMIZER_ROUTE_WORK_BUDGET, ReadSortedRouteItems, RouterBudget, RouterStop,
+    optimizer_ripup_costs,
 };
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
@@ -841,4 +842,150 @@ fn an_unimproved_item_restores_the_clone_byte_for_byte() {
         board.communication.id_gen.max_generated_id() > id_after_first,
         "…but the ids the failed attempt burned stay burned (BasicBoard.undo:1233-1240)"
     );
+}
+
+// =================================================================================================
+// ruling CI — the real routing-work accumulator (SF1)
+// =================================================================================================
+
+/// **fixed: T9 (ruling CI), SF1.** The invariant the whole bound rests on is that a **complete**-
+/// board item charges the routing-work budget **zero** (so via-/length-optimization is never
+/// bounded) while an **incomplete**-board item charges `incompleteCount × passesRun`. The
+/// synthetic pin `optimizer.rs::the_route_work_budget_bounds_only_incomplete_board_routing`
+/// checks the *arithmetic* against a re-implemented closure; **this** test drives the **production**
+/// [`BatchOptimizer::total_route_work`] accumulator through real `opt_route_item` calls, so a
+/// regression that dropped the `incomplete_count_before` factor is caught in the fast lane rather
+/// than only in the slow-lane dac2020/cnh A/B.
+///
+/// Release-gated like every routed-board test in this file: fast in release (the default lane
+/// runs release), minutes in an unoptimised debug build.
+#[test]
+#[cfg_attr(debug_assertions, ignore)]
+fn the_real_route_work_accumulator_charges_zero_on_a_complete_board() {
+    // ---- complete board: a single via on a net has nothing to connect, so incomplete == 0 ------
+    let mut board = empty_board();
+    let lone_via = add_via(&mut board, 0, 0, 1, FixedState::Unfixed);
+    let settings = build_settings(&board);
+    let mut sink = NoopProgressSink;
+
+    // Route once at maxPasses=1 to initialise the board's trees exactly as the routed-board tests
+    // do; there is nothing to route, so the board stays complete.
+    let stop = RouterStop::new();
+    AutorouteBatchLoop::run(
+        &mut board,
+        &settings,
+        &stop,
+        RouterBudget::disabled(),
+        &mut sink,
+    )
+    .expect("the synthetic board has a routable signal layer");
+    assert_eq!(
+        BatchAutorouter::calculate_incomplete_count(&mut board),
+        0,
+        "a single-via net is complete — incomplete_count_before will be 0"
+    );
+
+    let mut optimizer = BatchOptimizer::new(&settings);
+    optimizer.use_increased_ripup_costs = true;
+    assert_eq!(
+        optimizer.total_route_work, 0,
+        "a fresh stage has spent nothing"
+    );
+    let stop = RouterStop::new();
+    optimizer
+        .opt_route_item(
+            &mut board,
+            lone_via,
+            true,
+            false,
+            &stop,
+            RouterBudget::disabled(),
+            &mut sink,
+        )
+        .expect("optRouteItem answers Ok on a complete board");
+    // The production accumulator, not a closure: the item ran real passes, and the board was
+    // complete, so its charge is `0 × passesRun == 0`. A regression to `+= passesRun` would make
+    // this non-zero and the whole bound would start strangling complete-board optimization.
+    assert_eq!(
+        optimizer.total_route_work, 0,
+        "invariant-2b: a complete-board item charges the budget nothing"
+    );
+    assert!(!optimizer.route_work_budget_spent());
+}
+
+/// The other half, on the production accumulator: an **incomplete**-board item charges
+/// `incompleteCount × passesRun` — so the `incomplete_count_before` factor is present. Uses the
+/// routed `rpi_splitter`, which R2 (#294) leaves with a stubborn incomplete count the router
+/// cannot close, so the board handed to the optimizer is genuinely incomplete.
+#[test]
+#[cfg_attr(debug_assertions, ignore)]
+fn the_real_route_work_accumulator_charges_incomplete_count_times_passes() {
+    let mut board = load_board(RPI);
+    let settings = build_settings(&board);
+    let stop = RouterStop::new();
+    let mut sink = NoopProgressSink;
+    let mut routed_settings = settings.clone();
+    routed_settings.max_passes = Some(1);
+    AutorouteBatchLoop::run(
+        &mut board,
+        &routed_settings,
+        &stop,
+        RouterBudget::disabled(),
+        &mut sink,
+    )
+    .expect("rpi_splitter has a routable signal layer");
+
+    let incomplete_before = BatchAutorouter::calculate_incomplete_count(&mut board);
+    assert!(
+        incomplete_before >= 2,
+        "the routed rpi is incomplete (R2's stubborn connections); got {incomplete_before}"
+    );
+
+    let mut optimizer = BatchOptimizer::new(&settings);
+    optimizer.use_increased_ripup_costs = true;
+    optimizer.min_cumulative_trace_length = f64::from(
+        fr_router::score::BoardStatistics::new(&mut board)
+            .traces
+            .total_weighted_length
+            .expect("a routed board has traces"),
+    );
+    let mut reader = ReadSortedRouteItems::new();
+    let item = reader
+        .next(&board)
+        .expect("the routed board offers an item");
+
+    let stop = RouterStop::new();
+    optimizer
+        .opt_route_item(
+            &mut board,
+            item,
+            true,
+            false,
+            &stop,
+            RouterBudget::disabled(),
+            &mut sink,
+        )
+        .expect("optRouteItem answers Ok");
+
+    // The charge is `incomplete_count_before × passesRun`. `passesRun` is
+    // `autoroutePassesForOptimizingItem`'s return, in `1..=maxAutoroutePasses+1` (`= 7`). So the
+    // charge is a positive multiple of `incomplete_count_before` — which a regression that dropped
+    // the factor (`+= passesRun`) would break, because `passesRun` is not a multiple of
+    // `incomplete_count_before >= 2` for every pass count.
+    let work = optimizer.total_route_work;
+    let inc = i64::try_from(incomplete_before).expect("a non-negative count");
+    assert!(work > 0, "an incomplete-board item is charged, got {work}");
+    assert_eq!(
+        work % inc,
+        0,
+        "the charge {work} must be a multiple of incomplete_count_before {inc} — the factor is \
+         present"
+    );
+    let passes = work / inc;
+    assert!(
+        (1..=7).contains(&passes),
+        "the quotient {passes} is passesRun, which lives in 1..=maxAutoroutePasses+1"
+    );
+    // And the value is well under the budget on one item, so the budget only bites in aggregate.
+    assert!(work < PORT_OPTIMIZER_ROUTE_WORK_BUDGET);
 }
