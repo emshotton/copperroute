@@ -72,6 +72,8 @@ impl BoardHistory {
 
         let entry = BoardHistoryEntry::new(board, &self.scoring);
         self.boards.push(entry);
+        self.boards
+            .sort_by(|left, right| java_float_compare(right.score, left.score));
     }
 
     pub fn clear(&mut self) {
@@ -99,7 +101,7 @@ impl BoardHistory {
     }
 
     pub fn max_score(&self) -> f32 {
-        let mut max_score = 0.0f32;
+        let mut max_score = f32::NEG_INFINITY;
         for entry in &self.boards {
             if entry.score > max_score {
                 max_score = entry.score;
@@ -114,9 +116,6 @@ impl BoardHistory {
         } else {
             max_allowed_restore_count
         };
-
-        self.boards
-            .sort_by(|o1, o2| java_float_compare(o2.score, o1.score));
 
         for entry in &mut self.boards {
             if entry.restore_count <= max_allowed_restore_count {
