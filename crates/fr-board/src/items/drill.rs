@@ -77,6 +77,7 @@ impl DrillItemData {
     }
 
     fn clear_derived_data(&mut self) {
+        self.min_width.take();
         self.first_layer.take();
         self.last_layer.take();
     }

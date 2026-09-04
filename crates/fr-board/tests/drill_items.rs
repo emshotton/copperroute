@@ -398,7 +398,7 @@ fn translating_a_via_moves_its_centre_and_drops_the_shape_cache() {
 }
 
 #[test]
-fn min_width_survives_clear_derived_data() {
+fn a_via_that_changes_side_recomputes_its_minimum_width() {
     let mut padstacks = Padstacks::new(layers());
     let wide = padstacks.add(
         "WIDE",
@@ -424,7 +424,7 @@ fn min_width_survives_clear_derived_data() {
     via.change_placement_side(&IntPoint::ZERO, &ctx);
     assert_eq!(via.get_padstack_id(), narrow);
     assert_eq!(via.first_layer(&ctx), 1);
-    assert_eq!(via.min_width(&ctx), 100.0);
+    assert_eq!(via.min_width(&ctx), 10.0);
 }
 
 #[test]
