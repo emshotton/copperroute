@@ -13,12 +13,13 @@ fn never() -> bool {
 }
 
 const TRANSCRIPT: &str = include_str!("data/p7t4-via-optimizer.txt");
+const TASK_16_GOLDEN: &str = include_str!("data/p9t16-via-optimizer.txt");
 
-fn transcript_section(name: &str) -> Vec<&'static str> {
+fn section<'a>(transcript: &'a str, name: &str) -> Vec<&'a str> {
     let header = format!("######## {name}");
     let mut rows = Vec::new();
     let mut inside = false;
-    for line in TRANSCRIPT.lines() {
+    for line in transcript.lines() {
         if line.starts_with("######## ") {
             inside = line == header;
             continue;
@@ -162,7 +163,12 @@ fn rows_c(out: &mut Vec<String>, board: &mut Board, via_id: ItemId) {
 }
 
 fn transcript_overload_rows(tag: &str, mode: i32, prefix: &str) -> Vec<String> {
-    transcript_section(&format!("{tag} mode {mode}"))
+    let transcript = if mode == 3 {
+        TRANSCRIPT
+    } else {
+        TASK_16_GOLDEN
+    };
+    section(transcript, &format!("{tag} mode {mode}"))
         .into_iter()
         .filter(|row| row.starts_with(prefix))
         .map(str::to_string)
@@ -270,12 +276,12 @@ fn overload_a_matches_the_jvm_on_every_scripted_target() {
 }
 
 #[test]
-fn overload_b_matches_the_jvm_on_every_scripted_candidate() {
+fn overload_b_matches_the_task_16_golden_on_every_scripted_candidate() {
     assert_overload_rows("rpi", 4, "repB ");
 }
 
 #[test]
-fn overload_c_matches_the_jvm_on_every_cost_pair() {
+fn overload_c_matches_the_task_16_golden_on_every_cost_pair() {
     assert_overload_rows("rpi", 5, "repC ");
 }
 

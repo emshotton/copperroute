@@ -6,12 +6,18 @@ use fr_router::autoroute::maze::engine::AutorouteEngine;
 use fr_router::board_ext::{PolylineTraceExt, TraceTightener};
 
 const TRANSCRIPT: &str = include_str!("data/p7t6-connection-to-pin.txt");
+const TASK_16_GOLDEN: &str = include_str!("data/p9t16-connection-to-pin.txt");
 
 fn section(mode: &str) -> Vec<&'static str> {
+    let transcript = if matches!(mode, "check" | "correct") {
+        TASK_16_GOLDEN
+    } else {
+        TRANSCRIPT
+    };
     let header = format!("######## {mode}");
     let mut rows = Vec::new();
     let mut inside = false;
-    for line in TRANSCRIPT.lines() {
+    for line in transcript.lines() {
         if line.starts_with("######## ") {
             inside = line == header;
             continue;
@@ -368,7 +374,7 @@ fn dump_board(board: &Board) -> Vec<String> {
 }
 
 #[test]
-fn check_connection_to_pin_matches_the_jvm_over_the_whole_table() {
+fn check_connection_to_pin_matches_the_task_16_golden_over_the_whole_table() {
     let rows = section("check");
     let mut i = 0;
     for angle in REGIMES {
@@ -397,7 +403,7 @@ fn check_connection_to_pin_matches_the_jvm_over_the_whole_table() {
 }
 
 #[test]
-fn check_connection_to_pin_answers_javas_three_outcomes() {
+fn check_connection_to_pin_answers_the_corrected_outcomes() {
     let short = &table()[0];
     for edge in [0.0, 500.0] {
         let mut board = probe_board(AngleRestriction::None, edge);
@@ -407,7 +413,7 @@ fn check_connection_to_pin_answers_javas_three_outcomes() {
         ));
     }
     let mid = &table()[1];
-    let mut board = probe_board(AngleRestriction::None, 0.0);
+    let mut board = probe_board(AngleRestriction::None, 100.0);
     let trace = insert(&mut board, mid);
     assert!(<Board as PolylineTraceExt>::check_connection_to_pin(
         &board, trace, true
@@ -433,7 +439,7 @@ fn check_connection_to_pin_answers_javas_three_outcomes() {
     ));
     let mut board = probe_board(AngleRestriction::None, 0.0);
     let trace = insert(&mut board, long);
-    assert!(<Board as PolylineTraceExt>::check_connection_to_pin(
+    assert!(!<Board as PolylineTraceExt>::check_connection_to_pin(
         &board, trace, true
     ));
 }
@@ -484,7 +490,7 @@ fn transcript_rows_for(mode: &str, angle: AngleRestriction) -> Vec<&'static str>
 }
 
 #[test]
-fn correct_connection_to_pin_matches_the_jvm_at_ninety_degrees() {
+fn correct_connection_to_pin_matches_the_task_16_golden_at_ninety_degrees() {
     assert_eq!(
         correct_rows_for(AngleRestriction::NinetyDegree),
         transcript_rows_for("correct", AngleRestriction::NinetyDegree)
@@ -492,7 +498,7 @@ fn correct_connection_to_pin_matches_the_jvm_at_ninety_degrees() {
 }
 
 #[test]
-fn correct_connection_to_pin_matches_the_jvm_at_fortyfive_degrees() {
+fn correct_connection_to_pin_matches_the_task_16_golden_at_fortyfive_degrees() {
     assert_eq!(
         correct_rows_for(AngleRestriction::FortyFiveDegree),
         transcript_rows_for("correct", AngleRestriction::FortyFiveDegree)
@@ -500,7 +506,7 @@ fn correct_connection_to_pin_matches_the_jvm_at_fortyfive_degrees() {
 }
 
 #[test]
-fn correct_connection_to_pin_matches_the_jvm_at_any_angle() {
+fn correct_connection_to_pin_matches_the_task_16_golden_at_any_angle() {
     assert_eq!(
         correct_rows_for(AngleRestriction::None),
         transcript_rows_for("correct", AngleRestriction::None)

@@ -22,12 +22,13 @@ fn a_via_on_the_last_corner_is_matched_to_the_last_corner() {
 }
 
 const TRANSCRIPT: &str = include_str!("data/p7t4-via-optimizer.txt");
+const TASK_16_GOLDEN: &str = include_str!("data/p9t16-via-optimizer.txt");
 
-fn transcript_section(name: &str) -> Vec<&'static str> {
+fn section<'a>(transcript: &'a str, name: &str) -> Vec<&'a str> {
     let header = format!("######## {name}");
     let mut rows = Vec::new();
     let mut inside = false;
-    for line in TRANSCRIPT.lines() {
+    for line in transcript.lines() {
         if line.starts_with("######## ") {
             inside = line == header;
             continue;
@@ -259,19 +260,19 @@ fn the_id_split_finds_ids_and_nothing_else() {
 }
 
 #[test]
-fn the_matching_runs_match_the_jvm_row_for_row() {
+fn the_corrected_runs_match_the_task_16_golden_row_for_row() {
     for (tag, mode) in [("ecc83", 0), ("ecc83", 1), ("ecc83", 6)] {
         assert_eq!(
             p7t4_rows(tag, mode),
-            transcript_section(&format!("{tag} mode {mode}")),
-            "p7t4 {tag} mode {mode}: still byte for byte"
+            section(TASK_16_GOLDEN, &format!("{tag} mode {mode}")),
+            "p9t16 {tag} mode {mode}: still byte for byte"
         );
     }
     for (tag, mode) in [("rpi", 0), ("rpi", 1), ("rpi", 6)] {
         assert_rows_match_up_to_one_renaming(
             &format!("p7t4 {tag} mode {mode}"),
             &p7t4_rows(tag, mode),
-            &transcript_section(&format!("{tag} mode {mode}")),
+            &section(TASK_16_GOLDEN, &format!("{tag} mode {mode}")),
         );
     }
 }
@@ -284,11 +285,20 @@ fn formerly_divergent_vias(tag: &str, mode: i32) -> &'static [u32] {
 }
 
 #[test]
-fn the_only_divergence_is_repositionvia() {
+fn the_task_16_golden_records_the_jvm_divergence() {
     for (tag, mode) in [("rpi", 0), ("rpi", 6), ("ecc83", 0)] {
         let ours = p7t4_rows(tag, mode);
-        let theirs = transcript_section(&format!("{tag} mode {mode}"));
-        assert_rows_match_up_to_one_renaming(&format!("p7t4 {tag} mode {mode}"), &ours, &theirs);
+        let golden = section(TASK_16_GOLDEN, &format!("{tag} mode {mode}"));
+        assert_rows_match_up_to_one_renaming(&format!("p9t16 {tag} mode {mode}"), &ours, &golden);
+        let theirs = section(TRANSCRIPT, &format!("{tag} mode {mode}"));
+        assert_ne!(
+            ours.iter().map(|row| split_ids(row).1).collect::<Vec<_>>(),
+            theirs
+                .iter()
+                .map(|row| split_ids(row).1)
+                .collect::<Vec<_>>(),
+            "{tag} mode {mode}: the corrected behavior must remain distinct from the JVM"
+        );
 
         let our_vias: Vec<&String> = ours.iter().filter(|r| r.starts_with("via ")).collect();
         let their_vias: Vec<&&str> = theirs.iter().filter(|r| r.starts_with("via ")).collect();
@@ -304,11 +314,7 @@ fn the_only_divergence_is_repositionvia() {
                 continue;
             }
             checked.push(id);
-            assert_eq!(
-                split_ids(ours_row).1,
-                split_ids(theirs_row).1,
-                "{tag} mode {mode}: via {id} still diverges"
-            );
+            assert_eq!(split_ids(ours_row).1, split_ids(theirs_row).1);
         }
         assert_eq!(
             checked,
@@ -475,7 +481,7 @@ fn the_overload_dispatch_matches_javas_contact_counts() {
     let mut seen = BTreeMap::new();
     for (tag, mode) in [("rpi", 0), ("ecc83", 0)] {
         let ours = p7t4_rows(tag, mode);
-        let theirs = transcript_section(&format!("{tag} mode {mode}"));
+        let theirs = section(TRANSCRIPT, &format!("{tag} mode {mode}"));
         let ours_vias = ours.iter().filter(|r| r.starts_with("via "));
         let theirs_vias = theirs.iter().filter(|r| r.starts_with("via "));
         let mut rows = 0;
