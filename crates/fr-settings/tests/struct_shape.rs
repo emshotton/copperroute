@@ -260,6 +260,7 @@ fn field_names_pin_javas_declaration_order() {
             "additional_ripup_cost_factor_at_start",
             "trace_ripup_cost_factor",
             "max_autoroute_passes",
+            "max_search_steps",
             "board_update_strategy",
             "hybrid_ratio",
             "item_selection_strategy",
