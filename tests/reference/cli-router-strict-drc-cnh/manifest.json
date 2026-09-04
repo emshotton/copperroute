@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-04T03:31:19.033232Z",
+  "generated_at": "2026-09-04T10:35:12.154135Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -61,7 +61,7 @@
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 258.312,
+      "duration_seconds": 106.481,
       "passes_completed": 2
     },
     "optimizer": {}
@@ -88,9 +88,9 @@
       "signal_count": 2
     },
     "items": {
-      "total_count": 2312,
-      "trace_count": 222,
-      "via_count": 0,
+      "total_count": 2314,
+      "trace_count": 223,
+      "via_count": 1,
       "conduction_area_count": 2,
       "drill_item_count": 0,
       "pin_count": 966,
@@ -112,25 +112,25 @@
       "incomplete_count": 2
     },
     "traces": {
-      "total_count": 222,
-      "total_segment_count": 604,
-      "total_length": 60030.645,
-      "total_length_mm": 6003.0645,
-      "total_weighted_length": 3.0359606E8,
-      "average_length": 270.40833,
-      "total_vertical_length": 10772.165,
-      "total_horizontal_length": 17675.004,
-      "total_angled_length": 19441.111
+      "total_count": 223,
+      "total_segment_count": 622,
+      "total_length": 62160.426,
+      "total_length_mm": 6216.0425,
+      "total_weighted_length": 3.119461E8,
+      "average_length": 278.74628,
+      "total_vertical_length": 12051.436,
+      "total_horizontal_length": 19956.027,
+      "total_angled_length": 17972.984
     },
     "bends": {
-      "total_count": 382,
-      "90_degree_count": 3,
-      "45_degree_count": 379,
+      "total_count": 399,
+      "90_degree_count": 2,
+      "45_degree_count": 397,
       "other_angle_count": 0
     },
     "vias": {
-      "total_count": 0,
-      "through_hole_count": 0,
+      "total_count": 1,
+      "through_hole_count": 1,
       "blind_count": 0,
       "buried_count": 0
     },
@@ -146,7 +146,7 @@
       "escaped_count": 3
     }
   },
-  "normalized_score": 974.3745,
+  "normalized_score": 974.37415,
   "resource_usage": {
     "cpu_time": 0.0,
     "max_memory": 0.0,

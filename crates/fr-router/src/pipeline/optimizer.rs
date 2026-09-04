@@ -704,10 +704,11 @@ impl<'a> BatchOptimizer<'a> {
         // contract, and it was measured: capping does **not** bound cpu (the cost is `items ×
         // per-item-reroute`, not the per-item pass count — dac2020 at `-mp 2` is ~810 s at cap 6
         // and still > 650 s at cap 1), and it is quality-**negative** (cap 2 lost a connection,
-        // dac2020 `30 -> 4` against `30 -> 3`). The bound is instead the *cumulative* pass count
-        // across the whole stage — [`PORT_OPTIMIZER_AUTOROUTE_PASS_BUDGET`], accumulated just below
-        // — which distinguishes a cheap complete-board item (1 pass) from an expensive
-        // incomplete-board item (6). The Task 9 report's ruling-CI section carries the measurement.
+        // dac2020 `30 -> 4` against `30 -> 3`). The bound is instead the *routing work* the item
+        // spends — [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`], accumulated just below as
+        // `incompleteCount × passesRun` — which is 0 for a cheap complete-board item and large for
+        // an expensive incomplete-board one. The Task 9 report's ruling-CI section (§14) carries
+        // the measurement and the two rejected levers.
         let max_autoroute_passes = optimizer
             .max_autoroute_passes
             .expect("optimizer.maxAutoroutePasses is unboxed at :468");
