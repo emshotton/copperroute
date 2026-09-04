@@ -1,53 +1,76 @@
+//! Port of `board/optimize/TraceTightenerAnyAngle.java` (1004 lines): "auxiliary class containing
+//! internal functions for pulling any angle traces tight".
+
 use fr_board::prelude::*;
 use fr_geometry::{Direction, IntPoint, Line, Point, Polyline, Side, Signum};
 
-use super::base::{C_MAX_COS_ANGLE, TightenerBase, new_polyline, new_polyline_in_place};
+use super::base::{C_MAX_COS_ANGLE, TightenerBase, new_polyline, new_polyline_normalised};
 use super::tightener_45::{acute_add_line, trace_polyline_of};
 
+/// `TraceTightenerAnyAngle.SKIP_LENGTH` (TraceTightenerAnyAngle.java:22).
 const SKIP_LENGTH: f64 = 10.0;
 
+/// `class TraceTightenerAnyAngle extends TraceTightener` (TraceTightenerAnyAngle.java:20).
 pub struct TraceTightenerAnyAngle<'a> {
     pub(crate) base: TightenerBase<'a>,
 }
 
 impl<'a> TraceTightenerAnyAngle<'a> {
+    /// Port of the constructor (TraceTightenerAnyAngle.java:24-32).
     pub(crate) fn new(base: TightenerBase<'a>) -> TraceTightenerAnyAngle<'a> {
         TraceTightenerAnyAngle { base }
     }
 
+    /// Port of `pullTight(Polyline)` (TraceTightenerAnyAngle.java:35-56).
+    ///
+    /// Java's own comment at `:44-49` explains why `reduceLines` + `skipLines` sit in front of
+    /// `reduceCorners`: with consecutive corners closer than one grid point `reduceCorners` can
+    /// loop with `smoothenCorners`, and the two new steps introduce no new directions.
     pub(crate) fn pull_tight(
         &mut self,
         board: &mut Board,
         polyline: &Polyline,
     ) -> Option<Polyline> {
+        // :36. `ever_changed` is seeded from this arm, not from the loop: Java returns
+        // `newResult`, and `PolylineTrace.pullTight:837` compares it against the **original**
+        // argument — so an `avoidAcidTraps` that answered a new object would make Java report
+        // "changed" even if all six steps below then handed their argument back. The arm is dead
+        // today (quirk #182), but the assignment is Java's and is transcribed as such.
         let (mut new_result, mut ever_changed) = match self.base.avoid_acid_traps(polyline) {
             Some(replacement) => (replacement, true),
             None => (polyline.clone(), false),
         };
+        // :37-38.
         let mut changed = true;
         while changed && !self.base.is_stop_requested() {
             let mut current = new_result;
             let mut any = false;
+            // :40.
             if let Some(tmp) = self.base.skip_segments_of_length_0(board, &current) {
                 current = tmp;
                 any = true;
             }
+            // :41.
             if let Some(tmp0) = self.reduce_lines(board, &current) {
                 current = tmp0;
                 any = true;
             }
+            // :42.
             if let Some(tmp1) = self.skip_lines(board, &current) {
                 current = tmp1;
                 any = true;
             }
+            // :51.
             if let Some(tmp2) = self.reduce_corners(board, &current) {
                 current = tmp2;
                 any = true;
             }
+            // :52.
             if let Some(tmp3) = self.reposition_lines(board, &current) {
                 current = tmp3;
                 any = true;
             }
+            // :53.
             if let Some(result) = self.smoothen_corners(board, &current) {
                 current = result;
                 any = true;
@@ -56,14 +79,29 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             changed = any;
             ever_changed |= any;
         }
+        // :55.
         if ever_changed { Some(new_result) } else { None }
     }
 
+    /// Port of the private `reduceCorners(Polyline)` (TraceTightenerAnyAngle.java:61-219): "tries
+    /// to reduce the corner count of polyline by replacing two consecutive lines by a line through
+    /// IntPoints near the previous corner and the next corner, if that is possible without
+    /// clearance violation."
     fn reduce_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
+        // :62-65.
         if polyline.lines().len() < 4 {
             return None;
         }
         let last_index = polyline.lines().len() - 4;
+        // :67-75. Java's `newLines` array is null-filled and its bounds throw; a `Vec` of the
+        // same length indexed with `[]` panics the same way **out of bounds** — but not in
+        // bounds: an unwritten in-bounds slot silently carries `lines[0]`'s value *and its
+        // identity token* (quirk #74), where Java carries `null` and NPEs inside
+        // `new Polyline(...)`. Every slot that survives into the result is written first, so the
+        // difference is unreachable; it is a silent-wrong-answer shape rather than a panic
+        // shape, so a future edit to the write pattern has to re-check it.
+        // `currentLines` is reused across iterations, so a slot the guarded branches did not
+        // write keeps its previous value.
         let mut new_lines: Vec<Line> = vec![polyline.lines()[0]; polyline.lines().len()];
         new_lines[0] = polyline.lines()[0];
         new_lines[1] = polyline.lines()[1];
@@ -71,8 +109,10 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         let mut polyline_changed = false;
         let mut current_lines: [Option<Line>; 3] = [None, None, None];
 
+        // :77.
         for i in 0..=last_index {
             let mut skip_line = false;
+            // :79-85.
             let new_a =
                 new_lines[new_line_index - 1].intersection_approx(&new_lines[new_line_index]);
             let new_b = polyline
@@ -88,6 +128,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                     ));
 
             if in_clip_shape {
+                // :88.
                 current_lines[1] = Some(Line::new(new_a.round(), new_b.round()));
                 let mut ok = true;
                 let first_corner = polyline
@@ -96,8 +137,10 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                 let last_corner = polyline
                     .last_corner()
                     .expect("a polyline has a last corner");
+                // :90-100.
                 if new_line_index == 1 {
                     if !matches!(first_corner, Point::Int(_)) {
+                        // The first corner must not be changed.
                         ok = false;
                     } else {
                         let dir = current_lines[1].expect("just set").direction();
@@ -112,8 +155,10 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                 } else {
                     current_lines[0] = Some(new_lines[new_line_index - 1]);
                 }
+                // :101-111.
                 if i == last_index {
                     if !matches!(last_corner, Point::Int(_)) {
+                        // The last corner must not be changed.
                         ok = false;
                     } else {
                         let dir = current_lines[1].expect("just set").direction();
@@ -129,6 +174,8 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                     current_lines[2] = Some(polyline.lines()[i + 3]);
                 }
 
+                // :113-134: the intersections must land near `newA` and `newB` — near-parallel
+                // lines are numerically unstable.
                 const CHECK_DIST: f64 = 100.0;
                 if ok {
                     let check_is = current_lines[0]
@@ -146,6 +193,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                         ok = false;
                     }
                 }
+                // :135-143.
                 if ok && i == 1 && !matches!(first_corner, Point::Int(_)) {
                     let new_corner = current_lines[0]
                         .expect("set above when ok")
@@ -159,6 +207,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                         ok = false;
                     }
                 }
+                // :144-154.
                 if ok
                     && last_index >= 1
                     && i == last_index - 1
@@ -176,16 +225,20 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                         ok = false;
                     }
                 }
+                // :155-171.
                 let mut current_polyline: Option<Polyline> = None;
                 if ok {
                     let skip_corner =
                         new_lines[new_line_index].intersection_approx(&polyline.lines()[i + 2]);
-                    let mut check_lines = vec![
+                    // `new Polyline(currentLines)` normalises **currentLines itself**, and
+                    // `:186`/`:188`/`:192` read its elements back out — see
+                    // `new_polyline_normalised`.
+                    let check_lines = vec![
                         current_lines[0].expect("set above when ok"),
                         current_lines[1].expect("just set"),
                         current_lines[2].expect("set above when ok"),
                     ];
-                    let built = new_polyline_in_place(&mut check_lines);
+                    let (built, check_lines) = new_polyline_normalised(&check_lines);
                     for (slot, line) in current_lines.iter_mut().zip(check_lines.iter()) {
                         *slot = Some(*line);
                     }
@@ -193,12 +246,15 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                         ok = false;
                     }
                     let length_before = skip_corner.distance(&new_a) + skip_corner.distance(&new_b);
+                    // 1.5 added because of possible inaccuracy SQRT_2 by twice rounding.
                     let length_after = built.length_approx() + 1.5;
                     if length_after >= length_before {
+                        // May happen from rounding to integer; prevents an infinite loop.
                         ok = false;
                     }
                     current_polyline = Some(built);
                 }
+                // :173-182.
                 if ok {
                     let shape_to_check = current_polyline
                         .as_ref()
@@ -208,13 +264,16 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                     skip_line = self.base.check(board, &shape_to_check);
                 }
             }
+            // :184-207.
             if skip_line {
                 polyline_changed = true;
                 new_lines[new_line_index] = current_lines[1].expect("set when skipLine");
                 if new_line_index == 1 {
+                    // Make the first line perpendicular to the current line.
                     new_lines[0] = current_lines[0].expect("set when skipLine");
                 }
                 if i == last_index {
+                    // Make the last line perpendicular to the current line.
                     new_line_index += 1;
                     new_lines[new_line_index] = current_lines[2].expect("set when skipLine");
                 }
@@ -231,10 +290,12 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                     new_lines[new_line_index] = polyline.lines()[i + 3];
                 }
             }
+            // :208-211: skip the line if it is parallel to the previous one.
             if new_lines[new_line_index].is_parallel(&new_lines[new_line_index - 1]) {
                 new_line_index -= 1;
             }
         }
+        // :213-218.
         if !polyline_changed {
             return None;
         }
@@ -242,37 +303,49 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         Some(new_polyline(new_lines))
     }
 
+    /// Port of the private `smoothenCorners(Polyline)` (TraceTightenerAnyAngle.java:222-247):
+    /// "tries to smoothen polyline by cutting off corners, if possible."
     fn smoothen_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
+        // :223-225.
         if polyline.lines().len() < 4 {
             return None;
         }
+        // :226-228.
         let mut polyline_changed = false;
         let mut lines: Vec<Line> = polyline.lines().to_vec();
+        // :230.
         let mut i: usize = 0;
         while i + 3 < lines.len() {
             if let Some(new_line) = self.smoothen_corner(board, &lines, i) {
+                // :232-241.
                 polyline_changed = true;
                 lines.insert(i + 2, new_line);
                 i += 1;
             }
             i += 1;
         }
+        // :243-246.
         if !polyline_changed {
             return None;
         }
         Some(new_polyline(lines))
     }
 
+    /// Port of the `repositionLines(Polyline)` **override** (TraceTightenerAnyAngle.java:250-274):
+    /// "tries to shorten polyline by relocating its lines."
     pub(crate) fn reposition_lines(
         &mut self,
         board: &mut Board,
         polyline: &Polyline,
     ) -> Option<Polyline> {
+        // :252-254.
         if polyline.lines().len() < 5 {
             return None;
         }
+        // :255-257.
         let mut polyline_changed = false;
         let mut lines: Vec<Line> = polyline.lines().to_vec();
+        // :258-269.
         for i in 0..lines.len() - 4 {
             if let Some(new_line) = self.reposition_line(board, &lines, i) {
                 polyline_changed = true;
@@ -280,24 +353,34 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                 if lines[i + 2].is_parallel(&lines[i + 1])
                     || lines[i + 2].is_parallel(&lines[i + 3])
                 {
+                    // Calculation of corners is not possible before skipping parallel lines.
                     break;
                 }
             }
         }
+        // :270-273.
         if !polyline_changed {
             return None;
         }
         Some(new_polyline(lines))
     }
 
+    /// Port of the private `reduceLines(Polyline)` (TraceTightenerAnyAngle.java:280-394): "tries
+    /// to reduce the number of lines of polyline by moving lines parallel beyond the intersection
+    /// of the next or previous lines."
     fn reduce_lines(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
+        // :281-283.
         if polyline.lines().len() < 6 {
             return None;
         }
+        // :284-285.
         let mut polyline_changed = false;
         let mut lines: Vec<Line> = polyline.lines().to_vec();
+        // :286 — `lines` is reassigned inside the loop, so the bound is re-read every round and
+        // `--i` at `:387` re-examines the index the removal moved into.
         let mut i: usize = 2;
         while i + 2 < lines.len() {
+            // :287-294.
             let prev_corner = lines[i - 2].intersection_approx(&lines[i - 1]);
             let next_corner = lines[i + 1].intersection_approx(&lines[i + 2]);
             let in_clip_shape = self.base.current_clip_shape.is_none()
@@ -306,22 +389,27 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                 i += 1;
                 continue;
             }
+            // :295-301.
             let translate_line = lines[i];
             let prev_dist = translate_line.signed_distance(&prev_corner);
             let next_dist = translate_line.signed_distance(&next_corner);
             if Signum::of_f64(prev_dist) != Signum::of_f64(next_dist) {
+                // The 2 corners are on different sides of the translateLine.
                 i += 1;
                 continue;
             }
+            // :302-312.
             let mut translate_dist = if prev_dist.abs() < next_dist.abs() {
                 prev_dist
             } else {
                 next_dist
             };
             if translate_dist == 0.0 {
+                // The line segment may have length 0.
                 i += 1;
                 continue;
             }
+            // :313-324: make sure we have crossed the nearest corner.
             let line_side = translate_line.side_of_float_exact(&prev_corner);
             let mut new_line = translate_line.translate(-translate_dist);
             let sign = Signum::as_int_f64(translate_dist);
@@ -335,6 +423,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                 new_line_side_of_prev_corner = new_line.side_of_float_exact(&prev_corner);
                 new_line_side_of_next_corner = new_line.side_of_float_exact(&next_corner);
             }
+            // :325-336.
             let mut crossed_corners_before_count = 0_usize;
             let mut crossed_corners_after_count = 0_usize;
             if new_line_side_of_prev_corner != line_side {
@@ -347,6 +436,8 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                 i += 1;
                 continue;
             }
+            // :337-356: the next-nearest corner and the nearest corner must be on different
+            // sides of newLine.
             if crossed_corners_before_count > 0 {
                 if i < 3 {
                     i += 1;
@@ -369,6 +460,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                     continue;
                 }
             }
+            // :357-368.
             let keep_before_ind = i - crossed_corners_before_count;
             let (tmp, current_lines) = splice_and_normalise(
                 &lines,
@@ -376,6 +468,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                 new_line,
                 i + 1 + crossed_corners_after_count,
             );
+            // :369-379.
             let mut check_ok = false;
             if tmp.lines().len() == current_lines.len() {
                 let shape_to_check = tmp
@@ -383,6 +476,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                     .expect("keepBeforeInd - 1 is below tileShapeCount");
                 check_ok = self.base.check(board, &shape_to_check);
             }
+            // :380-388.
             if check_ok {
                 if board.changed_area.is_some() {
                     let layer = self.base.current_layer;
@@ -395,29 +489,35 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             }
             i += 1;
         }
+        // :390-393.
         if !polyline_changed {
             return None;
         }
         Some(new_polyline(lines))
     }
 
+    /// Port of the private `smoothenCorner(Line[], int)` (TraceTightenerAnyAngle.java:396-494).
     fn smoothen_corner(
         &mut self,
         board: &mut Board,
         lines: &[Line],
         start_no: usize,
     ) -> Option<Line> {
+        // :397-399.
         if lines.len() - start_no < 4 {
             return None;
         }
+        // :400-403.
         let current_corner = lines[start_no + 1].intersection_approx(&lines[start_no + 2]);
         if self.base.current_clip_shape.is_some() && !self.base.clip_contains(&current_corner) {
             return None;
         }
+        // :404-409: lines that are already nearly parallel are not divided any further.
         let cosinus_angle = lines[start_no + 1].cos_angle(&lines[start_no + 2]);
         if cosinus_angle > C_MAX_COS_ANGLE {
             return None;
         }
+        // :410-420.
         let prev_corner = lines[start_no].intersection_approx(&lines[start_no + 1]);
         let next_corner = lines[start_no + 2].intersection_approx(&lines[start_no + 3]);
         let prev_dir = lines[start_no + 1].direction();
@@ -425,6 +525,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         let middle_dir = prev_dir.middle_approx(&next_dir);
         let translate_line =
             TightenerBase::line_through(&current_corner, &Direction::Int(middle_dir));
+        // :421-434.
         let prev_dist = translate_line.signed_distance(&prev_corner);
         let next_dist = translate_line.signed_distance(&next_corner);
         let (nearest_point, mut max_translate_dist) = if prev_dist.abs() < next_dist.abs() {
@@ -435,34 +536,43 @@ impl<'a> TraceTightenerAnyAngle<'a> {
         if max_translate_dist.abs() < 1.0 {
             return None;
         }
+        // :435-443.
         let mut current_lines: Vec<Line> = Vec::with_capacity(lines.len() + 1);
         current_lines.extend_from_slice(&lines[..start_no + 2]);
-        current_lines.push(lines[start_no + 2]);
+        current_lines.push(lines[start_no + 2]); // placeholder, overwritten at :450 every round
         current_lines.extend_from_slice(&lines[start_no + 2..]);
         let mut translate_dist = max_translate_dist;
         let mut delta_dist = max_translate_dist;
         let side_of_nearest_point = translate_line.side_of_float_exact(&nearest_point);
         let sign = Signum::as_int_f64(max_translate_dist);
         let mut result: Option<Line> = None;
+        // :444.
         while delta_dist.abs() > f64::from(self.base.min_translate_dist) {
             let mut check_ok = false;
+            // :446-449.
             let new_line = translate_line.translate(-translate_dist);
             let new_line_side_of_nearest_point = new_line.side_of_float_exact(&nearest_point);
             if new_line_side_of_nearest_point == side_of_nearest_point
                 || new_line_side_of_nearest_point == Side::Collinear
             {
+                // :450-462.
                 current_lines[start_no + 2] = new_line;
-                let tmp = new_polyline_in_place(&mut current_lines);
+                // `new Polyline(currentLines)` normalises **currentLines itself**, and `:465`
+                // reads `currentLines[startNo + 2]` back out — see `new_polyline_normalised`.
+                let (tmp, normalised) = new_polyline_normalised(&current_lines);
+                current_lines = normalised;
                 if tmp.lines().len() == current_lines.len() {
                     let shape_to_check = tmp
                         .offset_shape(self.base.current_half_width, start_no + 1)
                         .expect("startNo + 1 is below tileShapeCount");
                     check_ok = self.base.check(board, &shape_to_check);
                 }
+                // :463-473.
                 delta_dist /= 2.0;
                 if check_ok {
                     result = Some(current_lines[start_no + 2]);
                     if translate_dist == max_translate_dist {
+                        // Biggest possible change.
                         break;
                     }
                     translate_dist += delta_dist;
@@ -470,13 +580,17 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                     translate_dist -= delta_dist;
                 }
             } else {
+                // :474-479: moved a little bit too far at the first time because of numerical
+                // inaccuracy.
                 let shorten_value = f64::from(sign) * 0.5;
                 max_translate_dist -= shorten_value;
                 translate_dist -= shorten_value;
                 delta_dist -= shorten_value;
             }
         }
+        // :481-483.
         result?;
+        // :485-492.
         if board.changed_area.is_some() {
             let layer = self.base.current_layer;
             let new_prev_corner =
@@ -486,18 +600,30 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             board.join_changed_area(&new_prev_corner, layer);
             board.join_changed_area(&new_next_corner, layer);
         }
+        // :493.
         result
     }
 
+    /// Port of the `repositionLine(Line[], int)` **override**
+    /// (TraceTightenerAnyAngle.java:497-657).
+    ///
+    /// Note that `startNo` counts from a different end than the base class's `no`: the line this
+    /// method moves is `lines[startNo + 2]`, not `lines[no]`.
+    ///
+    /// `:568` and `:576` are the other two of quirk #34's four `Line.equals` call sites: a
+    /// `translate` by less than one unit answers a line with different end points that denotes
+    /// the same line, so both use [`Line::equals_geometric`].
     pub(crate) fn reposition_line(
         &mut self,
         board: &mut Board,
         lines: &[Line],
         start_no: usize,
     ) -> Option<Line> {
+        // :498-500.
         if lines.len() - start_no < 5 {
             return None;
         }
+        // :501-510: the corners of the line to translate must be inside the clip shape.
         if self.base.current_clip_shape.is_some() {
             for i in 1..3 {
                 let current_corner =
@@ -507,51 +633,69 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                 }
             }
         }
+        // :511-514.
         let translate_line = lines[start_no + 2];
         let mut prev_corner = lines[start_no].intersection_approx(&lines[start_no + 1]);
         let mut next_corner = lines[start_no + 3].intersection_approx(&lines[start_no + 4]);
         let mut prev_dist = translate_line.signed_distance(&prev_corner);
+        // :515-528: move also all lines through the start corner of the line to translate.
         let mut corners_skipped_before: usize = 0;
         let mut corners_skipped_after: usize = 0;
         const EPSILON: f64 = 0.001;
         while prev_dist.abs() < EPSILON {
             corners_skipped_before += 1;
             let Some(current_no) = start_no.checked_sub(corners_skipped_before) else {
+                // The first corner is on the line to translate.
                 return None;
             };
             prev_corner = lines[current_no].intersection_approx(&lines[current_no + 1]);
             prev_dist = translate_line.signed_distance(&prev_corner);
         }
+        // :529-540.
         let mut next_dist = translate_line.signed_distance(&next_corner);
         while next_dist.abs() < EPSILON {
             corners_skipped_after += 1;
             let current_no = start_no + 3 + corners_skipped_after;
             if current_no + 2 >= lines.len() {
+                // The last corner is on the line to translate.
                 return None;
             }
             next_corner = lines[current_no].intersection_approx(&lines[current_no + 1]);
             next_dist = translate_line.signed_distance(&next_corner);
         }
+        // :541-544.
         if Signum::of_f64(prev_dist) != Signum::of_f64(next_dist) {
             return None;
         }
+        // :545-553.
         let (nearest_point, mut max_translate_dist) = if prev_dist.abs() < next_dist.abs() {
             (prev_corner, prev_dist)
         } else {
             (next_corner, next_dist)
         };
+        // :554-557. Java's two `arraycopy`s skip index `startNo + 2`, leaving that one slot
+        // `null`; the port copies the whole array instead, so the slot holds `lines[startNo + 2]`
+        // until `:584` (below) overwrites it. Unobservable: nothing reads that index before the
+        // write — not the `cornersSkippedBefore`/`After` loops (which touch `startNo + 1 - i` and
+        // `startNo + 3 + i`), not `new Polyline`, not the `changedArea` block — and `result` is
+        // only ever set from it after the write.
         let mut current_lines: Vec<Line> = lines.to_vec();
+        // :558-563.
         let mut translate_dist = max_translate_dist;
         let mut delta_dist = max_translate_dist;
         let side_of_nearest_point = translate_line.side_of_float_exact(&nearest_point);
         let sign = Signum::as_int_f64(max_translate_dist);
         let mut result: Option<Line> = None;
         let mut first_time = true;
+        // :564.
         while first_time || delta_dist.abs() > f64::from(self.base.min_translate_dist) {
             let mut check_ok = false;
+            // :566.
             let mut new_line = translate_line.translate(-translate_dist);
+            // :567-579 — quirk #34 twice.
             if first_time && translate_dist.abs() < 1.0 {
                 if new_line.equals_geometric(&translate_line) {
+                    // Try the parallel line through the nearestPoint.
                     let rounded_nearest_point: IntPoint = nearest_point.round();
                     if nearest_point.distance(&rounded_nearest_point.to_float())
                         < translate_dist.abs()
@@ -567,12 +711,16 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                     return None;
                 }
             }
+            // :580-582.
             let new_line_side_of_nearest_point = new_line.side_of_float_exact(&nearest_point);
             if new_line_side_of_nearest_point == side_of_nearest_point
                 || new_line_side_of_nearest_point == Side::Collinear
             {
                 first_time = false;
                 current_lines[start_no + 2] = new_line;
+                // :585-613: `cornersSkippedBefore > 0` or `cornersSkippedAfter > 0` happens very
+                // rarely, but the handling is important — for example when 3 or more consecutive
+                // corners are equal.
                 let mut prev_translated_line = new_line;
                 for k in 0..corners_skipped_before {
                     let prev_line_no = start_no + 1 - corners_skipped_before;
@@ -597,17 +745,23 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                         current_translate_line.translate(-current_translate_dist);
                     current_lines[start_no + 3 + k] = prev_translated_line;
                 }
-                let tmp = new_polyline_in_place(&mut current_lines);
+                // :614-625. `new Polyline(currentLines)` normalises **currentLines itself**,
+                // and `:625` reads `currentLines[startNo + 2]` back out — see
+                // `new_polyline_normalised`.
+                let (tmp, normalised) = new_polyline_normalised(&current_lines);
+                current_lines = normalised;
                 if tmp.lines().len() == current_lines.len() {
                     let shape_to_check = tmp
                         .offset_shape(self.base.current_half_width, start_no + 1)
                         .expect("startNo + 1 is below tileShapeCount");
                     check_ok = self.base.check(board, &shape_to_check);
                 }
+                // :626-636.
                 delta_dist /= 2.0;
                 if check_ok {
                     result = Some(current_lines[start_no + 2]);
                     if translate_dist == max_translate_dist {
+                        // Biggest possible change.
                         break;
                     }
                     translate_dist += delta_dist;
@@ -615,13 +769,16 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                     translate_dist -= delta_dist;
                 }
             } else {
+                // :637-642.
                 let shorten_value = f64::from(sign) * 0.5;
                 max_translate_dist -= shorten_value;
                 translate_dist -= shorten_value;
                 delta_dist -= shorten_value;
             }
         }
+        // :644-646.
         result?;
+        // :648-655.
         if board.changed_area.is_some() {
             let layer = self.base.current_layer;
             let new_prev_corner =
@@ -631,14 +788,20 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             board.join_changed_area(&new_prev_corner, layer);
             board.join_changed_area(&new_next_corner, layer);
         }
+        // :656.
         result
     }
 
+    /// Port of the private `skipLines(Polyline)` (TraceTightenerAnyAngle.java:659-755).
     fn skip_lines(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
+        // :660.
         let mut i: usize = 1;
         while i + 3 < polyline.lines().len() {
+            // :661.
             for j in 0..=1 {
+                // :662-673.
                 let (mut current_line, corner1, corner2) = if j == 0 {
+                    // Try to skip the line before the i+2-th line.
                     (
                         polyline.lines()[i + 2],
                         polyline.corner_approx(i).expect("i is below cornerCount"),
@@ -647,6 +810,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                             .expect("i - 1 is below cornerCount"),
                     )
                 } else {
+                    // Try to skip the line after the i-th line.
                     (
                         polyline.lines()[i],
                         polyline
@@ -657,14 +821,17 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                             .expect("i + 2 is below cornerCount"),
                     )
                 };
+                // :674-679.
                 let in_clip_shape = self.base.current_clip_shape.is_none()
                     || (self.base.clip_contains(&corner1) && self.base.clip_contains(&corner2));
                 if !in_clip_shape {
                     continue;
                 }
+                // :681-705.
                 let mut side1 = current_line.side_of_float_exact(&corner1);
                 let mut side2 = current_line.side_of_float_exact(&corner2);
                 if side1 != side2 {
+                    // The two corners are on different sides of the line.
                     let reduced_polyline = skip_lines_of(polyline, i + 1, i + 1);
                     if reduced_polyline.lines().len() == polyline.lines().len() - 1 {
                         let shape_index = if j == 0 { i } else { i - 1 };
@@ -681,9 +848,11 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                         }
                     }
                 }
+                // :706-709: now try skipping 2 lines.
                 if i + 4 >= polyline.lines().len() {
                     break;
                 }
+                // :710-718.
                 let corner3 = if j == 1 {
                     polyline
                         .corner_approx(i + 3)
@@ -696,13 +865,17 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                 if self.base.current_clip_shape.is_some() && !self.base.clip_contains(&corner3) {
                     continue;
                 }
+                // :719-727.
                 if j == 0 {
+                    // `currentLine` is one line later than in the case of skipping 1 line when
+                    // coming from behind.
                     current_line = polyline.lines()[i + 3];
                     side1 = current_line.side_of_float_exact(&corner1);
                     side2 = current_line.side_of_float_exact(&corner2);
                 } else {
                     side1 = current_line.side_of_float_exact(&corner3);
                 }
+                // :728-751.
                 if side1 != side2 {
                     let reduced_polyline = skip_lines_of(polyline, i + 1, i + 2);
                     if reduced_polyline.lines().len() == polyline.lines().len() - 2 {
@@ -724,19 +897,24 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             }
             i += 1;
         }
+        // :754.
         None
     }
 
+    /// Port of `smoothenStartCornerAtTrace(PolylineTrace)`
+    /// (TraceTightenerAnyAngle.java:758-877).
     pub(crate) fn smoothen_start_corner_at_trace(
         &mut self,
         board: &mut Board,
         trace: ItemId,
     ) -> Option<Polyline> {
         let trace_polyline = trace_polyline_of(board, trace)?;
+        // :765-769.
         let current_end_corner = trace_polyline.corner(0)?;
         if self.base.clip_is_outside(&current_end_corner) {
             return None;
         }
+        // :771-783.
         let mut current_prev_end_corner = trace_polyline.corner(1)?;
         let skip_short_segment = !matches!(current_end_corner, Point::Int(_))
             && current_end_corner
@@ -751,9 +929,11 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             current_prev_end_corner = trace_polyline.corner(2)?;
             start_line_no += 1;
         }
+        // :784-786.
         let line_direction = trace_polyline.lines()[start_line_no].direction();
         let prev_line_direction = trace_polyline.lines()[start_line_no + 1].direction();
 
+        // :788-827.
         let contacts = board.trace_start_contacts(trace);
         let found = super::scan_contacts(
             board,
@@ -767,6 +947,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             false,
         )?;
 
+        // :828-833.
         let mut new_line_count = trace_polyline.lines().len() + 1;
         let mut diff: usize = 1;
         if skip_short_segment {
@@ -774,6 +955,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             diff -= 1;
         }
         if found.acute_angle {
+            // :834-861.
             let other_trace_line = found.other_trace_line.expect("acuteAngle implies a match");
             let new_line_dir = if found.prev_corner_side == Some(Side::OnTheLeft) {
                 other_trace_line.direction().turn_45_degree(2)
@@ -789,6 +971,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                     .other_trace_corner_approx
                     .expect("acuteAngle implies a match"),
             )?;
+            // :855-860.
             let mut new_lines: Vec<Line> = Vec::with_capacity(new_line_count);
             new_lines.push(other_trace_line);
             new_lines.push(add_line);
@@ -796,6 +979,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             new_lines.truncate(new_line_count);
             return Some(new_polyline(new_lines));
         } else if found.bend {
+            // :862-875.
             let other_trace_line = found.other_trace_line.expect("bend implies a match");
             let other_prev_trace_line = found.other_prev_trace_line.expect("bend implies a match");
             let mut check_line_arr: Vec<Line> = Vec::with_capacity(new_line_count);
@@ -810,19 +994,31 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             new_lines.extend_from_slice(&trace_polyline.lines()[2..]);
             return Some(new_polyline(new_lines));
         }
+        // :876.
         None
     }
 
+    /// Port of `smoothenEndCornerAtTrace(PolylineTrace)` (TraceTightenerAnyAngle.java:880-1003).
+    ///
+    /// **fixed: T11 (#183).** `:907-908` computed `prevLineDirection` from **`lines[endLineNo]`**,
+    /// the same line `lineDirection` comes from, where its 45-degree sibling reads
+    /// `lines[length - 3]` (TraceTightener45.java:585-586) and this class's own start-corner
+    /// method reads `lines[startLineNo + 1]` (:785-786). The `bend` arm needs two *different*
+    /// directions and two reads of one line cannot supply them, so the whole `bend` branch of the
+    /// any-angle end-corner smoothener was unreachable. It now reads `lines[endLineNo - 1]`.
+    /// See docs/java-quirks.md #183.
     pub(crate) fn smoothen_end_corner_at_trace(
         &mut self,
         board: &mut Board,
         trace: ItemId,
     ) -> Option<Polyline> {
         let trace_polyline = trace_polyline_of(board, trace)?;
+        // :887-891.
         let current_end_corner = trace_polyline.last_corner()?;
         if self.base.clip_is_outside(&current_end_corner) {
             return None;
         }
+        // :893-905.
         let line_count = trace_polyline.lines().len();
         let mut current_prev_end_corner =
             trace_polyline.corner(trace_polyline.corner_count() - 2)?;
@@ -839,9 +1035,32 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             current_prev_end_corner = trace_polyline.corner(trace_polyline.corner_count() - 3)?;
             end_line_no -= 1;
         }
+        // :906-908.
+        // Java bug: `TraceTightenerAnyAngle.smoothenEndCornerAtTrace` reads `prevLineDirection`
+        // from `lines[endLineNo]`, the same line as `lineDirection` (:907-908); the 45-degree
+        // sibling reads `lines[length - 3]` (TraceTightener45.java:586) and this class's own
+        // *start*-corner method reads `lines[startLineNo + 1]` (:785-786). See
+        // docs/java-quirks.md #183.
+        //
+        // fixed: T11 (#183). The consequence was total rather than marginal:
+        // `scan_contacts` sets `bend` only when `lineDirection.projection(otherDir)` is ZERO
+        // **and** `prevLineDirection.projection(otherDir)` is POSITIVE, and `Direction.projection`
+        // is a pure function of its two arguments — so two equal directions cannot satisfy both,
+        // and the whole `bend` branch below was unreachable for every input.
+        //
+        // `endLineNo - 1` is the register's remedy, and it cannot underflow: without
+        // `skipShortSegment`, `end_line_no` is `line_count - 2` and `line_count >= 3`; with it,
+        // the `corner_count < 3` guard above forces `line_count >= 4` before the decrement. The
+        // guard below states that rather than leaving it to be re-derived.
+        if end_line_no == 0 {
+            return None;
+        }
         let line_direction = trace_polyline.lines()[end_line_no].direction().opposite();
-        let prev_line_direction = trace_polyline.lines()[end_line_no].direction().opposite();
+        let prev_line_direction = trace_polyline.lines()[end_line_no - 1]
+            .direction()
+            .opposite();
 
+        // :910-951.
         let contacts = board.trace_end_contacts(trace);
         let found = super::scan_contacts(
             board,
@@ -855,6 +1074,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             true,
         )?;
 
+        // :953-958.
         let mut new_line_count = line_count + 1;
         let mut diff: usize = 0;
         if skip_short_segment {
@@ -862,6 +1082,7 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             diff += 1;
         }
         if found.acute_angle {
+            // :960-987.
             let other_trace_line = found.other_trace_line.expect("acuteAngle implies a match");
             let new_line_dir = if found.prev_corner_side == Some(Side::OnTheLeft) {
                 other_trace_line.direction().turn_45_degree(6)
@@ -877,12 +1098,20 @@ impl<'a> TraceTightenerAnyAngle<'a> {
                     .other_trace_corner_approx
                     .expect("acuteAngle implies a match"),
             )?;
+            // :981-986.
             let mut new_lines: Vec<Line> = vec![other_trace_line; new_line_count];
             new_lines[..line_count - 1].copy_from_slice(&trace_polyline.lines()[..line_count - 1]);
             new_lines[new_line_count - 2] = add_line;
             new_lines[new_line_count - 1] = other_trace_line;
             return Some(new_polyline(new_lines));
         } else if found.bend {
+            // :988-1001 — **reachable since fixed: T11 (#183)**. This arm used to be dead for
+            // every input: `scan_contacts` sets `bend` only when
+            // `lineDirection.projection(otherDir)` is `ZERO` *and*
+            // `prevLineDirection.projection(otherDir)` is `POSITIVE`, and `:907-908` made the two
+            // directions equal, so `Direction.projection` — a pure function of its two arguments
+            // — answered the same `Signum` for both tests. It was transcribed anyway against the
+            // day the index was corrected; that day is T11.
             let other_trace_line = found.other_trace_line.expect("bend implies a match");
             let other_prev_trace_line = found.other_prev_trace_line.expect("bend implies a match");
             let mut check_line_arr: Vec<Line> = vec![other_trace_line; new_line_count];
@@ -897,16 +1126,22 @@ impl<'a> TraceTightenerAnyAngle<'a> {
             new_lines[line_count - 1] = other_trace_line;
             return Some(new_polyline(new_lines));
         }
+        // :1002.
         None
     }
 }
 
+/// `polyline.skipLines(fromNo, toNo)` (Polyline.java), which every caller in this file treats as
+/// total; [`Polyline::skip_lines`]'s `Err` is Java's `ArrayIndexOutOfBoundsException` out of the
+/// normalising constructor (quirk #22).
 fn skip_lines_of(polyline: &Polyline, from_no: usize, to_no: usize) -> Polyline {
     polyline
         .skip_lines(from_no, to_no)
         .unwrap_or_else(|e| panic!("Polyline.skipLines threw (quirk #22): {e}"))
 }
 
+/// `(IntPoint) point` — Java's implicit narrowing where an `instanceof IntPoint` test has already
+/// run.
 fn int_point_of(point: &Point) -> IntPoint {
     match point {
         Point::Int(p) => *p,
@@ -914,6 +1149,22 @@ fn int_point_of(point: &Point) -> IntPoint {
     }
 }
 
+/// `TraceTightenerAnyAngle.reduceLines:357-368` — build the spliced candidate array and hand it
+/// to `new Polyline(currentLines)`.
+///
+/// **Split out of `reduce_lines` so the write-back is directly testable.** Java's constructor
+/// normalises `currentLines` *in place* (`:368`), and `:386`'s `lines = currentLines` then makes
+/// that normalised array the loop's whole working state and, at `:393`, the polyline the method
+/// returns — so the `Vec` this answers must be the **normalised** array, not the spliced one.
+/// The `tmp.lines.length == currentLines.length` gate at `:370` is exactly
+/// [`Polyline::from_lines_in_place`]'s write-back condition, so every `:386` that executes reads
+/// a normalised array.
+///
+/// Building this with `new_polyline(current_lines.clone())` would carry the *un*-normalised
+/// array forward, whose lines still point the wrong way and still hold their pre-flip identity
+/// tokens (quirks #188 and #74). This is the sixth of Java's six in-place `new Polyline(Line[])`
+/// sites, and the strongest: the array does not merely get re-read, it *becomes* the state.
+/// Found by the Plan 6 final whole-branch review.
 fn splice_and_normalise(
     lines: &[Line],
     keep_before_ind: usize,
@@ -925,7 +1176,7 @@ fn splice_and_normalise(
     current_lines.extend_from_slice(&lines[..keep_before_ind]);
     current_lines.push(new_line);
     current_lines.extend_from_slice(&lines[suffix_start..]);
-    let tmp = new_polyline_in_place(&mut current_lines);
+    let (tmp, current_lines) = new_polyline_normalised(&current_lines);
     (tmp, current_lines)
 }
 
@@ -933,6 +1184,19 @@ fn splice_and_normalise(
 mod reduce_lines_write_back_tests {
     use super::*;
 
+    /// The write-back at `TraceTightenerAnyAngle.java:368`, pinned at the site that consumes it.
+    ///
+    /// The array handed in is a normalised polyline's own lines with the middle one reversed —
+    /// the shape `:357-368` produces whenever the spliced `newLine` points the other way. Nothing
+    /// is skipped, so Java's `removeConsecutiveParallelLines` / `removeOverlaps` both `return
+    /// lines` (the caller's array) and the constructor's flip loop writes
+    /// `filteredLines[i].opposite()` into it. The caller must therefore see a **different `Line`
+    /// object** at that index, carrying the value the polyline carries.
+    ///
+    /// This is the assertion a `new_polyline(current_lines.clone())` at the call site fails:
+    /// with a clone, `current_lines[1]` is still the very object that was pushed in, so
+    /// `is_same_object` answers `true` and the reversed direction survives into `:386`'s
+    /// `lines = currentLines`.
     #[test]
     fn splice_and_normalise_writes_the_flipped_line_back_into_the_loops_array() {
         let corners = [
@@ -945,19 +1209,24 @@ mod reduce_lines_write_back_tests {
         let lines = straight.lines().to_vec();
         assert!(lines.len() >= 4);
 
+        // `newLine` is line 1 pointing the other way — same line, opposite direction, and a
+        // *new* object, exactly as `Line.opposite()` allocates one in Java.
         let reversed = lines[1].opposite();
         assert!(!reversed.is_same_object(&lines[1]));
 
         let (tmp, current_lines) = splice_and_normalise(&lines, 1, reversed, 2);
 
+        // Nothing was skipped, so Java's write-back happened: `:370`'s gate holds.
         assert_eq!(current_lines.len(), lines.len());
         assert_eq!(tmp.lines().len(), current_lines.len());
+        // ... and the caller's array carries the normalised line, not the one it pushed.
         assert!(
             !current_lines[1].is_same_object(&reversed),
             "`:368` must normalise the caller's array in place (quirk #188)"
         );
         assert_eq!(current_lines[1], lines[1]);
         assert_eq!(current_lines.as_slice(), tmp.lines());
+        // Every other element is untouched, object for object.
         for i in (0..current_lines.len()).filter(|i| *i != 1) {
             assert!(current_lines[i].is_same_object(&lines[i]), "index {i}");
         }

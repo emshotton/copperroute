@@ -1,21 +1,39 @@
+//! Port of `board/model/structure/ShapeEntrySide.java` and
+//! `board/model/structure/ShapeAndEntrySide.java`: which border side of a tile shape a shove
+//! enters from, and the trace shape with its dog ears cut off.
+//!
+//! Both types belong to the shove algorithm (Plan 7), which needs them ready-made; nothing in
+//! Plan 2 calls them except the tests below.
+
 use fr_geometry::{FloatLine, FloatPoint, Line, LineSegment, Point, Polyline, Side, TileShape};
 
 use crate::board::Board;
 use crate::ids::ItemId;
 use crate::items::{Item, PolylineTrace};
 
+/// Port of `ShapeEntrySide` (`board/model/structure/ShapeEntrySide.java`, Java's
+/// `CalcFromSide`): the index of the border line of a tile shape where something enters, plus
+/// the intersection point on it.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ShapeEntrySide {
+    /// Java `public final int no` (ShapeEntrySide.java:17). Java's `-1` (the `NOT_CALCULATED`
+    /// sentinel and the "not found" result) is kept as a signed value, because
+    /// `ShapeTraceEntries.searchFromSide` (ShapeTraceEntries.java:445) tests `fromSide.no >= 0`
+    /// and `resort` (:465) tests it again against the border-line count.
     pub no: i32,
+    /// Java `public FloatPoint borderIntersection` (ShapeEntrySide.java:18); `null` is `None`.
     pub border_intersection: Option<FloatPoint>,
 }
 
 impl ShapeEntrySide {
+    /// Port of `ShapeEntrySide.NOT_CALCULATED` (ShapeEntrySide.java:16).
     pub const NOT_CALCULATED: ShapeEntrySide = ShapeEntrySide {
         no: -1,
         border_intersection: None,
     };
 
+    /// Port of the `ShapeEntrySide(int, FloatPoint)` constructor (ShapeEntrySide.java:157-160):
+    /// values already calculated.
     pub fn new(no: i32, border_intersection: Option<FloatPoint>) -> ShapeEntrySide {
         ShapeEntrySide {
             no,
@@ -23,10 +41,20 @@ impl ShapeEntrySide {
         }
     }
 
+    /// Port of the `ShapeEntrySide(Polyline, int, TileShape)` constructor
+    /// (ShapeEntrySide.java:26-62): the edge of `shape` where `polyline` enters, searched
+    /// backwards from segment `no`.
+    ///
+    /// When no segment crosses the border at all, the first corner of the polyline is inside the
+    /// shape and Java falls back to the border line nearest that corner along `polyline.lines[1]`
+    /// (:41-59).
+    // renamed: the four Java constructors -> `new`, `from_polyline`, `from_point` and
+    // `from_line_segment` (Rust has no overloading).
     pub fn from_polyline(polyline: &Polyline, no: usize, shape: &TileShape) -> ShapeEntrySide {
         let mut fromside_no: i32 = -1;
         let mut intersection: Option<FloatPoint> = None;
         let mut border_intersection_found = false;
+        // ShapeEntrySide.java:31-40.
         for current_no in (1..=no).rev() {
             let Some(current_seg) = LineSegment::from_polyline(polyline, current_no) else {
                 continue;
@@ -42,6 +70,7 @@ impl ShapeEntrySide {
             }
         }
         if !border_intersection_found {
+            // ShapeEntrySide.java:41-59.
             let Some(from_point) = polyline.corner_approx(0) else {
                 return ShapeEntrySide::new(fromside_no, intersection);
             };
@@ -65,7 +94,11 @@ impl ShapeEntrySide {
         ShapeEntrySide::new(fromside_no, intersection)
     }
 
+    /// Port of the `ShapeEntrySide(Point, TileShape)` constructor (ShapeEntrySide.java:68-75):
+    /// the border side of `shape` nearest `from_point`, used by the shove-drill-item algorithm.
+    ///
     /// Java's `FRLogger.warn("CalcFromSide: this.no >= 0 expected")` (:72) is dropped; the `-1`
+    /// it warns about is stored either way.
     pub fn from_point(from_point: &Point, shape: &TileShape) -> ShapeEntrySide {
         let Some(border_projection) = shape.nearest_border_point(from_point) else {
             return ShapeEntrySide::NOT_CALCULATED;
@@ -76,6 +109,13 @@ impl ShapeEntrySide {
         ShapeEntrySide::new(no, Some(border_projection.to_float()))
     }
 
+    /// Port of the `ShapeEntrySide(LineSegment, TileShape, boolean)` constructor
+    /// (ShapeEntrySide.java:81-154): the side two edges round from where `line_segment` first
+    /// crosses the shape, in the shove direction.
+    ///
+    /// The fallback branch (:108-145) runs when no border line separates the segment's two end
+    /// points; it picks the border side whose perpendicular projection of the start point lands
+    /// on it, then applies the same `± 2` rotation.
     pub fn from_line_segment(
         line_segment: &LineSegment,
         shape: &TileShape,
@@ -94,6 +134,7 @@ impl ShapeEntrySide {
         let mut prev_side = check_line.side_of_float_exact(&first_corner);
         let mut front_side_no: i32 = -1;
 
+        // ShapeEntrySide.java:90-107.
         for i in 1..=border_line_count {
             let next_corner = if i == border_line_count {
                 first_corner
@@ -120,6 +161,7 @@ impl ShapeEntrySide {
         }
 
         if front_side_no < 0 {
+            // ShapeEntrySide.java:108-145.
             let mut min_distance = f64::MAX;
             let mut nearest_side = 0usize;
             for i in 0..border_line_count {
@@ -146,11 +188,14 @@ impl ShapeEntrySide {
             let no = rotate_side(nearest_side, border_line_count, shove_to_the_left);
             return ShapeEntrySide::new(no as i32, middle_of_side(shape, no, border_line_count));
         }
+        // ShapeEntrySide.java:146-153.
         let no = rotate_side(front_side_no as usize, border_line_count, shove_to_the_left);
         ShapeEntrySide::new(no as i32, middle_of_side(shape, no, border_line_count))
     }
 }
 
+/// `(side + 2) % count` when shoving left, `(side + count - 2) % count` otherwise
+/// (ShapeEntrySide.java:134-138,146-150).
 fn rotate_side(side: usize, border_line_count: usize, shove_to_the_left: bool) -> usize {
     if shove_to_the_left {
         (side + 2) % border_line_count
@@ -159,19 +204,48 @@ fn rotate_side(side: usize, border_line_count: usize, shove_to_the_left: bool) -
     }
 }
 
+/// The middle of border side `no` (ShapeEntrySide.java:141-143,151-153).
 fn middle_of_side(shape: &TileShape, no: usize, border_line_count: usize) -> Option<FloatPoint> {
     let prev_corner = shape.corner_approx(no)?;
     let next_corner = shape.corner_approx((no + 1) % border_line_count)?;
     Some(prev_corner.middle_point(&next_corner))
 }
 
+/// Port of `ShapeAndEntrySide` (`board/model/structure/ShapeAndEntrySide.java`): a trace's tree
+/// shape with its dog ears cut off, plus the side a shove should push it from.
+///
+/// # Quirks #7 and #68 — one defect from two sides, both fixed in T11
+///
+/// The `fromSideIndex = currentShape.borderLineIndex(cutLine)` calls (ShapeAndEntrySide.java:59,63)
+/// land on `IntBox.borderLineIndex` / `IntOctagon.borderLineIndex`, which in Java are **stubs**
+/// that log a warning and return `-1` unconditionally; only `Simplex.borderLineIndex` really
+/// searches (**#7**). In the same file, both dog-ear cuts are guarded by an always-true reference
+/// comparison, so a cut that removed nothing still set `cutOffAtStart`/`cutOffAtEnd` and sent this
+/// search after a border line the shape does not have (**#68**).
+///
+/// The register lists the two separately and does not connect them, but they are the same failure:
+/// #68 starts searches that should never have started, and #7 makes them unrecoverable when they
+/// do. Fixing either alone leaves the other visible, so T11 fixes both here — the box and the
+/// octagon now answer geometrically (see `IntBox::border_line_index`), and the cut guards compare
+/// the shapes by value.
+///
+/// `scripts/differential/java/P2T11.java` mode 5 pins all four
+/// `(cut_off_at_start, cut_off_at_end)` combinations and is the before/after evidence.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShapeAndEntrySide {
+    /// Java `public final TileShape shape` (ShapeAndEntrySide.java:17).
     pub shape: TileShape,
+    /// Java `public final ShapeEntrySide fromSide` (ShapeAndEntrySide.java:18); `null` is `None`.
     pub from_side: Option<ShapeEntrySide>,
 }
 
 impl ShapeAndEntrySide {
+    /// Port of the `ShapeAndEntrySide(PolylineTrace, int, boolean, boolean)` constructor
+    /// (ShapeAndEntrySide.java:25-78).
+    ///
+    /// `board` and `trace_id` replace Java's `trace.board`, which the constructor reads three
+    /// times (`:27`, and once in each of the two private cut-line helpers). `None` if `trace_id`
+    /// is not a trace, or if it has no tree shape at `index`.
     pub fn new(
         board: &Board,
         trace_id: ItemId,
@@ -183,6 +257,8 @@ impl ShapeAndEntrySide {
             return None;
         };
         let search_tree = board.trees.get_default_tree();
+        // ShapeAndEntrySide.java:28: `trace.getTreeShape(searchTree, index)`, which recomputes if
+        // the trace's cache was dropped since insertion (Item.java:212-226).
         let current_shape = board
             .item_tree_shape_ref(trace_id, search_tree.id(), index)?
             .into_owned();
@@ -196,6 +272,22 @@ impl ShapeAndEntrySide {
         ))
     }
 
+    /// The same constructor for a trace that is **not in the board's item list** — the substitute
+    /// trace pieces [`crate::board::ShapeTraceEntries::next_substitute_trace_piece`] hands back —
+    /// given a tree shape already computed by [`free_trace_tree_shapes`].
+    ///
+    /// Java needs no twin: `nextSubstituteTracePiece` builds the piece with `this.board` as its
+    /// back-pointer (ShapeTraceEntries.java:281), so `Item.getTreeShape` (Item.java:213) sees a
+    /// non-null board, finds no cached shapes and calls `calculateTreeShapes(searchTree)` — once,
+    /// **memoised on the item** (Item.java:228-238), so every later index is a lookup. The port's
+    /// pieces are plain values with no back-pointer and therefore no cache, so the shape vector is
+    /// computed by the caller, once per piece, and indexed here. Taking the shape rather than the
+    /// index is what keeps a piece with *k* tile shapes at *k* lookups instead of *k* full
+    /// recomputations.
+    ///
+    /// Added in plan-6 Task 9 for `TraceShover.check` (TraceShover.java:392-393), the first
+    /// caller of `ShapeAndEntrySide` on a substitute piece; [`ShapeAndEntrySide::new`] keeps its
+    /// signature and delegates.
     pub fn from_free_trace(
         board: &Board,
         trace: &PolylineTrace,
@@ -207,6 +299,10 @@ impl ShapeAndEntrySide {
         Self::build(board, trace, tree_shape, index, orthogonal, in_shove_check)
     }
 
+    /// The body of `ShapeAndEntrySide(PolylineTrace, int, boolean, boolean)`
+    /// (ShapeAndEntrySide.java:29-77), once `:28`'s tree shape has been fetched — from the board
+    /// for [`ShapeAndEntrySide::new`], and computed on the spot for
+    /// [`ShapeAndEntrySide::from_free_trace`].
     fn build(
         board: &Board,
         trace: &PolylineTrace,
@@ -219,8 +315,10 @@ impl ShapeAndEntrySide {
         let mut current_shape = current_shape;
         let mut current_from_side: Option<ShapeEntrySide> = None;
         if orthogonal {
+            // ShapeAndEntrySide.java:32-33.
             current_shape = TileShape::Box(current_shape.bounding_box());
         } else {
+            // ShapeAndEntrySide.java:35-69.
             let mut cut_off_at_start = false;
             let mut cut_off_at_end = false;
             current_shape = TileShape::Simplex(current_shape.to_simplex());
@@ -229,7 +327,26 @@ impl ShapeAndEntrySide {
             if let Some(end_cutline) = end_cutline {
                 let cut_plane = TileShape::get_instance_from_line(end_cutline);
                 let tmp_shape = current_shape.intersection(&cut_plane);
-                if !tmp_shape.is_empty() {
+                // Java bug: ShapeAndEntrySide.java:41 reads `tmpShape != currentShape &&
+                // !tmpShape.isEmpty()`, but `!=` on two `TileShape` *references* is identity, and
+                // `Simplex.intersection(Simplex)` always allocates (Simplex.java:620-630), so the
+                // first half is always true. The effective condition is just "non-empty" — so a
+                // cut that removed nothing still set `cutOffAtEnd`, and the `fromSide` search
+                // below then hunted for a border line the shape does not have. That is the same
+                // defect as #7's `-1` from the other side: #7 makes the hunt unrecoverable, #68
+                // starts hunts that never needed to happen.
+                //
+                // fixed: T11 (#68).
+                //
+                // The comparison is now by **value**, via Java's own
+                // `TileShape.contains(TileShape)`. `tmp_shape` is an intersection and so is
+                // always a subset of `current_shape`; the two are therefore equal as regions
+                // exactly when `tmp_shape` still contains every corner of `current_shape`, and a
+                // half-plane removes a piece of a convex shape iff it excludes one of its
+                // corners. Structural equality of the two line vectors would not do: the
+                // intersection sorts its lines and drops the redundant cut line, so an unchanged
+                // region can come back described differently.
+                if !tmp_shape.is_empty() && !tmp_shape.contains_tile(&current_shape) {
                     current_shape = TileShape::Simplex(tmp_shape.to_simplex());
                     cut_off_at_end = true;
                 }
@@ -239,11 +356,14 @@ impl ShapeAndEntrySide {
             if let Some(start_cutline) = start_cutline {
                 let cut_plane = TileShape::get_instance_from_line(start_cutline);
                 let tmp_shape = current_shape.intersection(&cut_plane);
-                if !tmp_shape.is_empty() {
+                // Java bug: ShapeAndEntrySide.java:50, the same always-true identity comparison as
+                // above. fixed: T11 (#68), the same way.
+                if !tmp_shape.is_empty() && !tmp_shape.contains_tile(&current_shape) {
                     current_shape = TileShape::Simplex(tmp_shape.to_simplex());
                     cut_off_at_start = true;
                 }
             }
+            // ShapeAndEntrySide.java:55-69.
             let mut from_side_index: Option<usize> = None;
             let mut current_cut_line: Option<Line> = None;
             if cut_off_at_start {
@@ -267,6 +387,7 @@ impl ShapeAndEntrySide {
                 ));
             }
         }
+        // ShapeAndEntrySide.java:71-75.
         if current_from_side.is_none() && !in_shove_check {
             current_from_side = Some(ShapeEntrySide::from_polyline(
                 trace.polyline(),
@@ -281,6 +402,13 @@ impl ShapeAndEntrySide {
     }
 }
 
+/// The default tree's shapes for a trace that is **not in the board's item list**, in the order
+/// `Item.getTreeShape(tree, index)` (Item.java:212-226) would answer them.
+///
+/// Java's substitute trace pieces carry a board back-pointer, so `getPrecalculatedTreeShapes`
+/// (Item.java:228-238) computes the vector once and memoises it on the item; the port's pieces are
+/// plain values, so the caller holds the vector instead. Added in plan-6 Task 9 alongside
+/// [`ShapeAndEntrySide::from_free_trace`], which indexes it.
 pub fn free_trace_tree_shapes(board: &Board, trace: &PolylineTrace) -> Vec<Option<TileShape>> {
     let ctx = board.ctx();
     board
@@ -289,6 +417,8 @@ pub fn free_trace_tree_shapes(board: &Board, trace: &PolylineTrace) -> Vec<Optio
         .calculate_tree_shapes(&Item::Trace(trace.clone()), &ctx)
 }
 
+/// Port of the private `ShapeAndEntrySide.calcCutlineAtEnd`
+/// (ShapeAndEntrySide.java:80-100).
 fn calc_cutline_at_end(
     index: usize,
     trace_lines: &Polyline,
@@ -316,6 +446,8 @@ fn calc_cutline_at_end(
     )
 }
 
+/// Port of the private `ShapeAndEntrySide.calcCutlineAtStart`
+/// (ShapeAndEntrySide.java:102-119).
 fn calc_cutline_at_start(
     index: usize,
     trace_lines: &Polyline,

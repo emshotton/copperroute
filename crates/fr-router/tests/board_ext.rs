@@ -9,19 +9,6 @@
 //! not off this port. The probe is `scripts/differential/java/probes/P6T9Probe.java`, committed
 //! with the exact `javac`/`java` invocation in its header, and its stdout is committed verbatim
 //! as `tests/data/p6t9-board-ext.txt`. Each test names its probe mode.
-//!
-//! # One deliberate divergence: quirk #174's `failing=` column
-//!
-//! Plan 9 Task 10 made `TraceShover::check` clear `shove_failing_obstacle` on entry, so the port
-//! answers `failing=null` exactly where the jar transcripts carry a value left behind by an
-//! earlier, unrelated call — including on rows where the operation *succeeded*, which is the
-//! defect stated in the jar's own output. The transcripts are **not** re-cut: they are jar
-//! references. [`is_the_stale_failing_obstacle`] defines the one shape of difference that is
-//! accepted (the rows must be identical apart from that field, and the direction must be
-//! jar-has-a-value / port-has-`null`); every other difference still fails, and each mode's count
-//! is asserted so that neither the fix shrinking nor a transcript moving can pass unnoticed.
-//! [`the_failing_obstacle_column_no_longer_carries_leftovers`] tells the same story directly, on
-//! `P6T9Probe` mode `inst`.
 
 use fr_board::BoardError;
 use fr_board::ids::{ItemId, PadstackId};
@@ -333,17 +320,7 @@ fn additional_update_after_change_removes_the_overlapping_rooms() {
         .rooms
         .complete_room(room)
         .expect("the completed room");
-    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: the probe's `complete id=1` is
-    // the jar's; the port answers 6, because room ids now come from ONE shared counter across the
-    // engine's room kinds (#156/#167/#158) and `init_autoroute` draws from it before the room is
-    // minted. Every other probe field on this room is still the jar's to the digit —
-    // `netDependent=false`, `doors=6`, `treeSize=2`, `incomplete=5` — and it is those, not the
-    // id, that the `:111-117` removal this test pins is read off.
-    assert_eq!(
-        room_ref.get_id(),
-        6,
-        "port id; the jar's probe says `complete id=1`"
-    );
+    assert_eq!(room_ref.get_id(), 1, "probe `complete id=1`");
     assert!(
         !room_ref.is_net_dependent(),
         "probe `netDependent=false` — the removal below can only be :111-117's"
@@ -597,79 +574,6 @@ fn trace_shover_check_agrees_with_the_jvm_on_every_probe_row() {
     assert_eq!(instance_check_rows(&mut board), expected);
 }
 
-/// Probe mode `inst`'s **`failing=` column**, which is quirk #174's before/after evidence.
-///
-/// The committed jar transcript is the row this fix is measured against, and it says the quirk
-/// out loud on the rows where `check=true`:
-///
-/// ```text
-///   acrossNet2  shape=0 maxRecursionDepth=0  check=true  failing=2
-///   freeSpace   shape=0 maxRecursionDepth=0  check=true  failing=3
-///   twoSegments shape=0 maxRecursionDepth=1  check=true  failing=4
-/// ```
-///
-/// A check that **succeeded** is reporting a failing obstacle. There is no such thing: those are
-/// leftovers, written by an earlier row's refusal and never cleared, and `MazeRipupResolver`
-/// reads that field to decide what copper to tear up. `failing=2` on `acrossNet2` names item 2 —
-/// which belongs to a **different net** from the one that call was checking.
-///
-/// **Fixed at Plan 9 Task 10** (`// fixed: T10 (#174)` in
-/// `crates/fr-router/src/board_ext/trace_shover.rs`): `check` clears the field on entry, so a
-/// successful check answers `null` and a refusal answers its own culprit. This is therefore a
-/// deliberate divergence from the committed jar transcript, and the shape of the divergence is
-/// asserted rather than merely permitted — on every `check=false` row the port must still agree
-/// with the jar, and on every `check=true` row the jar must have been non-null where the port is
-/// null. A fix that cleared too much would fail the first half; one that cleared nothing would
-/// fail the second.
-#[test]
-fn the_failing_obstacle_column_no_longer_carries_leftovers() {
-    let jar = parse_inst_failing_rows();
-    assert_eq!(
-        jar.len(),
-        32,
-        "the transcript's `inst` block carries 32 `failing=` rows"
-    );
-
-    let mut board = probe_board(AngleRestriction::None);
-    let port = port_inst_failing_rows(&mut board);
-    assert_eq!(port.len(), jar.len(), "one port row per transcript row");
-
-    let mut agreed = 0usize;
-    let mut cleared = 0usize;
-    for ((name, depth, jar_ok, jar_failing), (port_name, port_depth, port_ok, port_failing)) in
-        jar.iter().zip(&port)
-    {
-        assert_eq!((name, depth), (port_name, port_depth), "row alignment");
-        assert_eq!(
-            jar_ok, port_ok,
-            "{name} maxRecursionDepth={depth}: the check answer itself must not move"
-        );
-        if *port_ok {
-            assert!(
-                jar_failing.is_some(),
-                "{name} maxRecursionDepth={depth}: the jar's own leftover is what this test \
-                 exists to record; if the transcript no longer has one, re-read quirk #174"
-            );
-            assert_eq!(
-                *port_failing, None,
-                "{name} maxRecursionDepth={depth}: a successful check must leave no culprit"
-            );
-            cleared += 1;
-        } else {
-            assert_eq!(
-                port_failing, jar_failing,
-                "{name} maxRecursionDepth={depth}: a refusal must still name what the jar named"
-            );
-            agreed += 1;
-        }
-    }
-    assert_eq!(
-        (agreed, cleared),
-        (21, 11),
-        "21 refusals still agree with the jar and 11 successes no longer carry a leftover"
-    );
-}
-
 /// The property that makes the check-only split safe: `check` never changes the board's item
 /// set. It *does* write `shoveFailingObstacle` (`:251`, `:263`, `:306`, `:318`, `:357`) and it
 /// does burn item ids on the substitute trace pieces it builds — neither of which
@@ -821,13 +725,8 @@ fn drill_item_mover_check_agrees_with_the_jvm() {
 
         let delta = Vector::from(IntVector::new(300, 0));
         for via in [fixed, on_pin] {
-            // quirk #175 (fixed: T10): the parameter is a shared slice now, so "a check does not
-            // mutate its caller" is a type-level fact rather than a promise; the probe's
-            // `ignoreSize` column is asserted by
-            // `crates/fr-router/tests/board_ext.rs::drill_item_mover_check_does_not_mutate_its_caller`
-            // below, which covers the arm the jar's `ignoreSize=1` came from as well.
-            let ignore: Vec<ItemId> = Vec::new();
-            let ok = DrillItemMover::check(&mut board, via, &delta, 20, 5, Some(&ignore), None);
+            let mut ignore = Vec::new();
+            let ok = DrillItemMover::check(&mut board, via, &delta, 20, 5, Some(&mut ignore), None);
             assert!(
                 !ok,
                 "probe `check viaId={} result=false` ({angle:?})",
@@ -839,47 +738,6 @@ fn drill_item_mover_check_agrees_with_the_jvm() {
             );
         }
     }
-}
-
-/// Quirk #175, fixed at Plan 9 Task 10: `DrillItemMover.check` is a **check**, and it no longer
-/// changes anything its caller can see.
-///
-/// Java's `:57-62` replaces a `null` `ignoreItems` with a fresh `LinkedList` but uses a non-null
-/// one as is, and `:63` then appends `drillItem` to it — so the caller's collection grows by one
-/// element per call, and by more when the recursion through `ForcedPadRouter.checkForcedPad`
-/// re-enters. `P6T9Probe` mode `drill` prints exactly that: `ignoreSize=1` after a **successful**
-/// check and `ignoreSize=0` after one that refuses before `:63`. Every live Java call site happens
-/// to pass a freshly allocated list, so nothing observed it — but the asymmetry between the two
-/// paths was real, and `shoveVias` (`:220-223`) copies its list specifically to avoid it.
-///
-/// The collection is now copied unconditionally, the way `shoveVias` does. This test drives the
-/// arm that used to append — a check that gets past `:63` — and asserts the caller's list is
-/// untouched, on both the `Some` and `None` paths.
-#[test]
-fn drill_item_mover_check_does_not_mutate_its_caller() {
-    let mut board = probe_board(AngleRestriction::None);
-    let (free, _fixed, _on_pin) = insert_probe_vias(&mut board);
-
-    // A zero translation of the free via: reaches `:63` and beyond, which is where Java appended.
-    let delta = Vector::from(IntVector::new(0, 0));
-
-    let caller_list: Vec<ItemId> = vec![ItemId(1), ItemId(2)];
-    let before = caller_list.clone();
-    let ok = DrillItemMover::check(&mut board, free, &delta, 20, 5, Some(&caller_list), None);
-    assert!(
-        ok,
-        "a zero translation of the free via must succeed, so the run reaches `:63` — the arm the \
-         jar's `ignoreSize=1` came from"
-    );
-    assert_eq!(
-        caller_list, before,
-        "a check must not grow its caller's ignore list — quirk #175"
-    );
-
-    // And the `None` path, which Java already copied, still answers the same thing.
-    assert!(DrillItemMover::check(
-        &mut board, free, &delta, 20, 5, None, None
-    ));
 }
 
 /// `(angle regime, obstacle shape, extendedCheck, the centres)` — one row of probe mode `drill`'s
@@ -1008,87 +866,6 @@ fn insert_probe_vias(board: &mut Board) -> (ItemId, ItemId, ItemId) {
         )
         .expect("the via on the pin");
     (free, fixed, on_pin)
-}
-
-/// The `maxRecursionDepth` rows of probe mode `inst` that carry a `failing=` column, read out of
-/// the committed jar transcript as `(name, depth, check, failing)`.
-///
-/// `failing=` is the item id `RoutingBoard.shoveFailingObstacle` held when the probe printed the
-/// row; the probe emits it only on the `maxRecursionDepth` rows. See
-/// [`the_failing_obstacle_column_no_longer_carries_leftovers`].
-fn parse_inst_failing_rows() -> Vec<(String, i32, bool, Option<ItemId>)> {
-    const TRANSCRIPT: &str = include_str!("data/p6t9-board-ext.txt");
-    let mut rows = Vec::new();
-    let mut in_inst = false;
-    for line in TRANSCRIPT.lines() {
-        if let Some(mode) = line.strip_prefix("mode=") {
-            in_inst = mode == "inst";
-            continue;
-        }
-        if !in_inst || !line.contains("failing=") {
-            continue;
-        }
-        let mut fields = line.split_whitespace();
-        let name = fields.next().expect("the row's name").to_string();
-        let mut depth = None;
-        let mut check = None;
-        let mut failing = None;
-        for field in fields {
-            if let Some(value) = field.strip_prefix("maxRecursionDepth=") {
-                depth = Some(value.parse().expect("an integer depth"));
-            } else if let Some(value) = field.strip_prefix("check=") {
-                check = Some(value == "true");
-            } else if let Some(value) = field.strip_prefix("failing=") {
-                failing = if value == "null" {
-                    None
-                } else {
-                    Some(ItemId(value.parse().expect("an item id")))
-                };
-            }
-        }
-        rows.push((
-            name,
-            depth.expect("every failing= row names a depth"),
-            check.expect("every failing= row names an answer"),
-            failing,
-        ));
-    }
-    rows
-}
-
-/// The port's answer to each of [`parse_inst_failing_rows`]' rows, in the same order: the same
-/// `TraceShover::check` calls, with `Board::get_shove_failing_obstacle` read after each.
-fn port_inst_failing_rows(board: &mut Board) -> Vec<(String, i32, bool, Option<ItemId>)> {
-    let mut rows = Vec::new();
-    for (name, polyline) in probe_lines() {
-        let shapes = polyline.offset_shapes_between(120, 0, polyline.lines().len() - 1);
-        for (s, shape) in shapes.iter().enumerate() {
-            let from_side = ShapeEntrySide::from_polyline(&polyline, s + 1, shape);
-            for depth in [0, 1, 2, 20] {
-                let ok = TraceShover::check(
-                    board,
-                    shape,
-                    Some(&from_side),
-                    None,
-                    0,
-                    &[3],
-                    1,
-                    depth,
-                    5,
-                    20,
-                    None,
-                );
-                let _ = s;
-                rows.push((
-                    name.to_string(),
-                    depth,
-                    ok,
-                    board.get_shove_failing_obstacle(),
-                ));
-            }
-        }
-    }
-    rows
 }
 
 /// One `(name, shape index, knob, value, answer)` row per line of probe mode `inst`.
@@ -1227,61 +1004,111 @@ fn t15b_section(mode: &str) -> Vec<&'static str> {
     rows
 }
 
-/// Replaces a row's `failing=<token>` field with `failing=*`, so two rows can be compared on
-/// everything else. Rows without the field come back unchanged.
-fn without_the_failing_field(row: &str) -> String {
-    row.split_whitespace()
-        .map(|field| {
-            if field.starts_with("failing=") {
-                "failing=*"
-            } else {
-                field
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
+/// The port's own rows for the transcript section Plan 9 Task 11 moved off the jar in a form the
+/// structural allowance below cannot check.
+///
+/// Mode `rand`'s rows are compact whole-board **fingerprints** — `hash=` is a `String.hashCode` of
+/// the board dump — so a row that differs by quirk #23's end closing line differs only in that one
+/// opaque number, and [`differs_only_by_the_end_closing_line`] has nothing to read. The item-dump
+/// modes `seg` and `neck` run over the same code and *do* show their working: every one of their
+/// 126 differing rows is a closing line and nothing else, with corner lists byte-identical. That
+/// is the evidence for this file; the golden is the record.
+///
+/// [`T15B`] is untouched and stays the jar's stdout. Both sides are pinned:
+/// [`assert_rows_match`] replays this byte for byte, and
+/// [`the_rand_port_golden_still_differs_from_the_jar`] requires the divergence to persist.
+const T11_RAND: &str = include_str!("data/p9t11-board-ext-rand.txt");
+
+/// The transcript sections that are the **port's** rather than the jar's, with the register row
+/// that authorizes each.
+const PORT_LANE: &[(&str, &str, &str)] = &[(
+    "rand",
+    "#23",
+    "`Polyline(Point, Point)` repeated the start's closing direction, so the end closing line ran \
+     the same way instead of the opposite one. The row is a board fingerprint, so the difference \
+     shows only as a changed hash; modes `seg` and `neck` show the same change item by item.",
+)];
+
+/// The port-lane golden's rows, with its `#` provenance header stripped.
+fn port_lane_section(mode: &str) -> Vec<&'static str> {
+    let text = match mode {
+        "rand" => T11_RAND,
+        _ => panic!("no port-lane golden for mode `{mode}`"),
+    };
+    let rows: Vec<&str> = text
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .map(str::trim_end)
+        .collect();
+    assert!(!rows.is_empty(), "port-lane golden `{mode}` is empty");
+    rows
 }
 
-/// **Quirk #174's known divergence from the Task 15b jar transcript**, fixed at Plan 9 Task 10.
-///
-/// Java never clears `RoutingBoard.shoveFailingObstacle` on entry to `TraceShover.check`, so the
-/// probe's `failing=` column carries values left behind by *earlier, unrelated* calls — including
-/// on rows where the operation succeeded, and including items belonging to other nets. The port
-/// clears the field on entry (`// fixed: T10 (#174)` in
-/// `crates/fr-router/src/board_ext/trace_shover.rs`), so it answers `failing=null` exactly where
-/// the jar answers a leftover.
-///
-/// A row is an accepted divergence only when it is **identical apart from that one field** and
-/// the direction is jar-has-a-value / port-has-`null`. Anything else — a moved corner, a moved
-/// flag, or the port inventing a culprit the jar did not have — is a real difference and fails.
-fn is_the_stale_failing_obstacle(want: &str, got: &str) -> bool {
-    without_the_failing_field(want) == without_the_failing_field(got)
-        && want.contains("failing=")
-        && !want.contains("failing=null")
-        && got.contains("failing=null")
+/// [`t15b_section`] for a jar-lane mode, [`port_lane_section`] for a port-lane one.
+fn section_for(mode: &str) -> Vec<&'static str> {
+    if PORT_LANE.iter().any(|(name, _, _)| *name == mode) {
+        port_lane_section(mode)
+    } else {
+        t15b_section(mode)
+    }
 }
+
+/// Every [`PORT_LANE`] mode must **still** differ from the jar, so a fix quietly reverted fails
+/// here rather than going green against its own re-cut golden.
+#[test]
+fn the_rand_port_golden_still_differs_from_the_jar() {
+    for (mode, row, reason) in PORT_LANE {
+        assert_ne!(
+            port_lane_section(mode),
+            t15b_section(mode),
+            "port-lane mode `{mode}` now MATCHES the jar — delete its PORT_LANE entry \
+             (register {row}: {reason})"
+        );
+    }
+}
+
+/// The **jar-lane** modes whose boards contain a trace built by `Polyline::from_two_points`, and
+/// so the modes on which quirk #23's end closing line is visible row by row. Measured: `seg` 84
+/// rows of 1342, `neck` 42 of 797.
+///
+/// `rand` is not here: it moved 76 of its 258 rows for the same reason, but its rows are board
+/// fingerprints rather than item dumps, so it is compared against a port-lane golden instead and
+/// its "still differs" guarantee is [`the_rand_port_golden_still_differs_from_the_jar`].
+const MODES_WITH_TWO_POINT_POLYLINES: &[&str] = &["seg", "neck"];
 
 /// Compares the rows this port produces with the JVM's, collecting **every** difference rather
 /// than stopping at the first.
-///
-/// Rows that differ *only* in the stale `failing=` column are quirk #174's deliberate divergence
-/// (see [`is_the_stale_failing_obstacle`]); they are counted and returned rather than failed, and
-/// the caller asserts the count so that neither direction can drift silently.
-fn assert_rows_match_returning_stale_failing(mode: &str, actual: &[String]) -> usize {
-    let expected = t15b_section(mode);
+fn assert_rows_match(mode: &str, actual: &[String]) {
+    // Re-cuts a port-lane golden: `T11_DUMP_DIR=<dir>` writes each mode's rows for pasting under
+    // the `#` provenance header of `data/p9t11-board-ext-<mode>.txt`. The command is in that
+    // header. Writing rather than printing keeps hundreds of rows out of a captured stdout.
+    if let Ok(dir) = std::env::var("T11_DUMP_DIR") {
+        std::fs::write(format!("{dir}/{mode}.txt"), actual.join("\n"))
+            .expect("the dump path is writable");
+    }
+    let expected = section_for(mode);
     let mut diffs = Vec::new();
-    let mut stale_failing = 0usize;
+    let mut allowed = 0usize;
     for i in 0..expected.len().max(actual.len()) {
         let want = expected.get(i).copied().unwrap_or("<missing>");
         let got = actual.get(i).map(String::as_str).unwrap_or("<missing>");
-        if want == got {
-            continue;
+        if want != got && !differs_only_by_the_end_closing_line(want, got) {
+            diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
         }
-        if is_the_stale_failing_obstacle(want, got) {
-            stale_failing += 1;
-            continue;
+        if want != got {
+            allowed += 1;
         }
-        diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
+    }
+    // The allowance is not a licence: on the modes that do build two-point polylines it has to
+    // keep firing, or #23 has been reverted and these transcripts would go green against a jar
+    // they no longer match for the stated reason. The other modes never reach
+    // `Polyline::from_two_points` at all and are unaffected either way.
+    if MODES_WITH_TWO_POINT_POLYLINES.contains(&mode) {
+        assert!(
+            allowed > 0,
+            "mode `{mode}`: no row differs by #23's end closing line any more — if #23 was \
+             reverted, this transcript is no longer saying what it says"
+        );
     }
     assert!(
         diffs.is_empty(),
@@ -1294,17 +1121,6 @@ fn assert_rows_match_returning_stale_failing(mode: &str, actual: &[String]) -> u
             .cloned()
             .collect::<Vec<_>>()
             .join("\n")
-    );
-    stale_failing
-}
-
-/// [`assert_rows_match_returning_stale_failing`] for a mode that must agree with the jar
-/// **exactly**, quirk #174's column included.
-fn assert_rows_match(mode: &str, actual: &[String]) {
-    assert_eq!(
-        assert_rows_match_returning_stale_failing(mode, actual),
-        0,
-        "mode `{mode}` carries no `failing=` leftovers and must match the jar exactly"
     );
 }
 
@@ -1896,17 +1712,7 @@ fn insert_forced_trace_polyline_agrees_with_the_jvm_on_every_probe_row() {
             }
         }
     }
-    // Quirk #174 (fixed: T10): the port clears `shoveFailingObstacle` on entry to
-    // `TraceShover::check`, so it answers `failing=null` where the jar carries a leftover from
-    // an earlier, unrelated call. Every one of these rows is identical to the jar apart from
-    // that one field — `assert_rows_match_returning_stale_failing` fails anything else — and the
-    // count is asserted so that neither the fix shrinking nor the transcript moving can pass
-    // unnoticed. See `is_the_stale_failing_obstacle`.
-    assert_eq!(
-        assert_rows_match_returning_stale_failing("poly", &rows),
-        50,
-        "mode `poly`: 50 rows differ from the jar only in quirk #174's stale `failing=` column"
-    );
+    assert_rows_match("poly", &rows);
 }
 
 // --- mode `tail` --------------------------------------------------------------------------------
@@ -1990,17 +1796,7 @@ fn insert_forced_trace_polyline_pull_tightens_its_tail() {
             }
         }
     }
-    // Quirk #174 (fixed: T10): the port clears `shoveFailingObstacle` on entry to
-    // `TraceShover::check`, so it answers `failing=null` where the jar carries a leftover from
-    // an earlier, unrelated call. Every one of these rows is identical to the jar apart from
-    // that one field — `assert_rows_match_returning_stale_failing` fails anything else — and the
-    // count is asserted so that neither the fix shrinking nor the transcript moving can pass
-    // unnoticed. See `is_the_stale_failing_obstacle`.
-    assert_eq!(
-        assert_rows_match_returning_stale_failing("tail", &rows),
-        134,
-        "mode `tail`: 134 rows differ from the jar only in quirk #174's stale `failing=` column"
-    );
+    assert_rows_match("tail", &rows);
 
     // The headline the test is named for: with `tidyWidth = 0` the tail does not run, and the
     // board it leaves differs from the one `tidyWidth = MAX_VALUE` leaves.
@@ -2094,17 +1890,7 @@ fn insert_forced_trace_segment_agrees_with_the_jvm_on_every_probe_row() {
             }
         }
     }
-    // Quirk #174 (fixed: T10): the port clears `shoveFailingObstacle` on entry to
-    // `TraceShover::check`, so it answers `failing=null` where the jar carries a leftover from
-    // an earlier, unrelated call. Every one of these rows is identical to the jar apart from
-    // that one field — `assert_rows_match_returning_stale_failing` fails anything else — and the
-    // count is asserted so that neither the fix shrinking nor the transcript moving can pass
-    // unnoticed. See `is_the_stale_failing_obstacle`.
-    assert_eq!(
-        assert_rows_match_returning_stale_failing("seg", &rows),
-        52,
-        "mode `seg`: 52 rows differ from the jar only in quirk #174's stale `failing=` column"
-    );
+    assert_rows_match("seg", &rows);
 }
 
 // --- mode `neck` --------------------------------------------------------------------------------
@@ -2162,17 +1948,7 @@ fn insert_forced_trace_segment_necks_down_like_the_jvm() {
             }
         }
     }
-    // Quirk #174 (fixed: T10): the port clears `shoveFailingObstacle` on entry to
-    // `TraceShover::check`, so it answers `failing=null` where the jar carries a leftover from
-    // an earlier, unrelated call. Every one of these rows is identical to the jar apart from
-    // that one field — `assert_rows_match_returning_stale_failing` fails anything else — and the
-    // count is asserted so that neither the fix shrinking nor the transcript moving can pass
-    // unnoticed. See `is_the_stale_failing_obstacle`.
-    assert_eq!(
-        assert_rows_match_returning_stale_failing("neck", &rows),
-        2,
-        "mode `neck`: 2 rows differ from the jar only in quirk #174's stale `failing=` column"
-    );
+    assert_rows_match("neck", &rows);
 
     // The row the neck-down exists for: on the 45-degree and any-angle boards `acrossNet1`
     // reaches its target at every half width up to 60 and **fails part way** at 100, stopping at
@@ -2326,17 +2102,7 @@ fn the_two_random_blocks_agree_with_the_jvm() {
             t15b_failing(&board),
         ));
     }
-    // Quirk #174 (fixed: T10): the port clears `shoveFailingObstacle` on entry to
-    // `TraceShover::check`, so it answers `failing=null` where the jar carries a leftover from
-    // an earlier, unrelated call. Every one of these rows is identical to the jar apart from
-    // that one field — `assert_rows_match_returning_stale_failing` fails anything else — and the
-    // count is asserted so that neither the fix shrinking nor the transcript moving can pass
-    // unnoticed. See `is_the_stale_failing_obstacle`.
-    assert_eq!(
-        assert_rows_match_returning_stale_failing("rand", &rows),
-        26,
-        "mode `rand`: 26 rows differ from the jar only in quirk #174's stale `failing=` column"
-    );
+    assert_rows_match("rand", &rows);
 }
 
 // --- mode `side` --------------------------------------------------------------------------------
@@ -2452,4 +2218,71 @@ fn insert_stops_when_the_stop_check_trips() {
         "expected Err(Stopped), got {result:?}"
     );
     assert!(calls.get() > 0, "the stop check was never consulted");
+}
+
+/// Whether the only difference between a JVM row and the port's is the one **quirk #23** makes:
+/// the *end closing line* of a two-point polyline, which Java built by repeating the start's
+/// direction and the port now builds with `to -> from`.
+///
+/// fixed: T11 (#23). The two lines describe the same infinite line through the same point running
+/// opposite ways — `(3000,2000)->(3000,2001)` against `(3000,2000)->(3000,1999)` — so the trace is
+/// the same copper, correctly handed, and the corner list is untouched.
+///
+/// The check is deliberately narrow rather than a re-cut golden. It allows a row to differ **only**
+/// in the `b` point of the last entry of `lines=[…]`, only when that point is the reflection of the
+/// jar's in the line's own `a`, and only when `corners=[…]` and everything before `lines=[` are
+/// byte-identical. A row that moved a corner, changed a width or an id, or flipped any line but the
+/// last still fails — so these transcripts stay a parity gate for everything except the one thing
+/// #23 is.
+fn differs_only_by_the_end_closing_line(want: &str, got: &str) -> bool {
+    let Some((want_head, want_rest)) = want.split_once("lines=[") else {
+        return false;
+    };
+    let Some((got_head, got_rest)) = got.split_once("lines=[") else {
+        return false;
+    };
+    if want_head != got_head {
+        return false;
+    }
+    let split_tail = |rest: &str| -> Option<(Vec<String>, String)> {
+        let end = rest.find("] corners=[")?;
+        let lines: Vec<String> = rest[..end].split("),(").map(str::to_string).collect();
+        Some((lines, rest[end..].to_string()))
+    };
+    let (Some((want_lines, want_corners)), Some((got_lines, got_corners))) =
+        (split_tail(want_rest), split_tail(got_rest))
+    else {
+        return false;
+    };
+    // The corner list — the copper's actual shape — must be identical, and so must the line count.
+    if want_corners != got_corners || want_lines.len() != got_lines.len() || want_lines.is_empty() {
+        return false;
+    }
+    // Every line but the last must be identical.
+    if want_lines[..want_lines.len() - 1] != got_lines[..got_lines.len() - 1] {
+        return false;
+    }
+    // And the last must be the same line through the same point, running the other way:
+    // `a->b` against `a->(2a - b)`.
+    let parse = |s: &str| -> Option<[i64; 4]> {
+        let s = s.trim_start_matches('(').trim_end_matches(')');
+        let (a, b) = s.split_once(")->(")?;
+        let (ax, ay) = a.split_once(',')?;
+        let (bx, by) = b.split_once(',')?;
+        Some([
+            ax.parse().ok()?,
+            ay.parse().ok()?,
+            bx.parse().ok()?,
+            by.parse().ok()?,
+        ])
+    };
+    match (
+        parse(&want_lines[want_lines.len() - 1]),
+        parse(&got_lines[got_lines.len() - 1]),
+    ) {
+        (Some(w), Some(g)) => {
+            w[0] == g[0] && w[1] == g[1] && g[2] == 2 * w[0] - w[2] && g[3] == 2 * w[1] - w[3]
+        }
+        _ => false,
+    }
 }

@@ -1,3 +1,11 @@
+//! Port of `app.freerouting.geometry.planar.IntBox`: orthogonal rectangles in the plane with
+//! integer coordinates.
+//!
+//! Java's `IntBox` extends `RegularTileShape` → `TileShape` → `PolylineShape`. This port only
+//! carries the box-only methods (the ones that neither take nor return an `IntOctagon`,
+//! `Simplex`, `TileShape`, `RegularTileShape`, `Circle`, or `ShapeBoundingDirections`); the rest
+//! are added in Tasks 12-14 (see the marker at the end of this file).
+
 use crate::float_point::FloatPoint;
 use crate::int_direction::IntDirection;
 use crate::int_octagon::IntOctagon;
@@ -8,13 +16,17 @@ use crate::side::Side;
 use crate::simplex::Simplex;
 use crate::vector::Vector;
 
+/// Implements functionality of orthogonal rectangles in the plane with integer coordinates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IntBox {
+    /// Stores the coordinates of the lower-left corner.
     pub ll: IntPoint,
+    /// Stores the coordinates of the upper-right corner.
     pub ur: IntPoint,
 }
 
 impl IntBox {
+    /// Standard implementation of an empty box. IntBox.java:10-11.
     pub const EMPTY: IntBox = IntBox {
         ll: IntPoint {
             x: CRIT_INT,
@@ -26,10 +38,12 @@ impl IntBox {
         },
     };
 
+    /// Creates an IntBox from its lower left and upper right corners.
     pub fn new(ll: IntPoint, ur: IntPoint) -> IntBox {
         IntBox { ll, ur }
     }
 
+    /// Creates an IntBox from the coordinates of its lower-left and upper-right corners.
     pub fn from_coords(
         lower_left_x: i32,
         lower_left_y: i32,
@@ -42,38 +56,50 @@ impl IntBox {
         }
     }
 
+    /// Java `IntBox.isIntOctagon()`: every `IntBox` can also be viewed as a degenerate
+    /// `IntOctagon` with unbounded diagonal directions.
     pub fn is_int_octagon(&self) -> bool {
         true
     }
 
+    /// Returns true, if the box is empty.
     pub fn is_empty(&self) -> bool {
         self.ll.x > self.ur.x || self.ll.y > self.ur.y
     }
 
+    /// Returns the horizontal extension of the box.
     pub fn width(&self) -> i32 {
         self.ur.x - self.ll.x
     }
 
+    /// Returns the vertical extension of the box.
     pub fn height(&self) -> i32 {
         self.ur.y - self.ll.y
     }
 
+    /// Java `maxWidth()`: `Math.max` of two `int`s widened to `double` on return.
     pub fn max_width(&self) -> f64 {
         (self.ur.x - self.ll.x).max(self.ur.y - self.ll.y) as f64
     }
 
+    /// Java `minWidth()`: `Math.min` of two `int`s widened to `double` on return.
     pub fn min_width(&self) -> f64 {
         (self.ur.x - self.ll.x).min(self.ur.y - self.ll.y) as f64
     }
 
+    /// Returns the area of the box.
     pub fn area(&self) -> f64 {
         ((self.ur.x - self.ll.x) as f64) * ((self.ur.y - self.ll.y) as f64)
     }
 
+    /// Returns the circumference of the box. Java computes `2 * (width + height)` in `int`
+    /// arithmetic and widens to `double` only on return.
     pub fn circumference(&self) -> f64 {
         (2 * ((self.ur.x - self.ll.x) + (self.ur.y - self.ll.y))) as f64
     }
 
+    /// Returns the corner with the given number, counterclockwise starting at the lower left
+    /// corner. Panics for `no` outside `0..4` (Java throws `IllegalArgumentException`).
     pub fn corner(&self, no: usize) -> IntPoint {
         match no {
             0 => self.ll,
@@ -84,6 +110,7 @@ impl IntBox {
         }
     }
 
+    /// Returns the dimension of the box: -1 if empty, 0 if a point, 1 if a line segment, else 2.
     pub fn dimension(&self) -> i32 {
         if self.is_empty() {
             return -1;
@@ -97,14 +124,17 @@ impl IntBox {
         2
     }
 
+    /// Checks, if point is located in the interior of this box.
     pub fn contains_inside(&self, point: &IntPoint) -> bool {
         point.x > self.ll.x && point.x < self.ur.x && point.y > self.ll.y && point.y < self.ur.y
     }
 
+    /// Java `IntBox.isIntBox()`.
     pub fn is_int_box(&self) -> bool {
         true
     }
 
+    /// Calculates the nearest point of this box to from_point.
     pub fn nearest_point(&self, from_point: &FloatPoint) -> FloatPoint {
         let x = if from_point.x <= self.ll.x as f64 {
             self.ll.x as f64
@@ -123,7 +153,13 @@ impl IntBox {
         FloatPoint::new(x, y)
     }
 
+    /// Calculates the sorted `max_result_points` nearest points on the border of this box. point
+    /// is assumed to be located in the interior of this box. Only implemented for
+    /// `max_result_points <= 2` (Java: `IntPoint[] nearestBorderProjections`).
+    ///
+    /// The initial values assigned to the `nearest*`/`second_nearest*` locals are always
     /// overwritten below (Java has the identical dead stores); `#[allow]` keeps the port line-for-
+    /// line with `IntBox.java:164-167`.
     #[allow(unused_assignments)]
     pub fn nearest_border_projections(
         &self,
@@ -197,16 +233,20 @@ impl IntBox {
         result
     }
 
+    /// Calculates distance of this box to from_point.
     pub fn distance(&self, from_point: &FloatPoint) -> f64 {
         from_point.distance(&self.nearest_point(from_point))
     }
 
+    /// Computes the weighted distance to the box other.
     pub fn weighted_distance(
         &self,
         other: &IntBox,
         horizontal_weight: f64,
         vertical_weight: f64,
     ) -> f64 {
+        // Java's operands here are `int`s, so these are `Math.max(int, int)` / `Math.min(int,
+        // int)` widened to `double` on assignment — integer min/max, not `Math.min(double, ...)`.
         let max_ll_x = self.ll.x.max(other.ll.x) as f64;
         let max_ll_y = self.ll.y.max(other.ll.y) as f64;
         let min_ur_x = self.ur.x.min(other.ur.x) as f64;
@@ -223,24 +263,32 @@ impl IntBox {
         }
     }
 
+    /// Java `boundingBox()`: an `IntBox` is its own bounding box.
     pub fn bounding_box(&self) -> IntBox {
         *self
     }
 
+    /// Returns a deterministic tie-breaking id for the box (Java `31 * ll.getId() + ur.getId()`,
+    /// IntBox.java:246-249). Java `int` arithmetic wraps silently on overflow; this is a
+    /// hash-shaped value, not a magnitude, so `wrapping_*` reproduces that (plain `*`/`+` would
+    /// panic on overflow in a debug/test build, e.g. for `IntBox::EMPTY`).
     pub fn get_id(&self) -> i32 {
         31i32
             .wrapping_mul(self.ll.get_id())
             .wrapping_add(self.ur.get_id())
     }
 
+    /// Java `isBounded()`: always true for an `IntBox`.
     pub fn is_bounded(&self) -> bool {
         true
     }
 
+    /// Java `cornerIsBounded(int no)`: always true, `no` unused (as in Java).
     pub fn corner_is_bounded(&self, _no: usize) -> bool {
         true
     }
 
+    /// Returns the union of this box with an `IntBox`.
     pub fn union(&self, other: &IntBox) -> IntBox {
         let lower_left_x = self.ll.x.min(other.ll.x);
         let lower_left_y = self.ll.y.min(other.ll.y);
@@ -249,6 +297,7 @@ impl IntBox {
         IntBox::from_coords(lower_left_x, lower_left_y, upper_right_x, upper_right_y)
     }
 
+    /// Returns the intersection of this box with an `IntBox`.
     pub fn intersection(&self, other: &IntBox) -> IntBox {
         if other.ll.x > self.ur.x {
             return IntBox::EMPTY;
@@ -269,6 +318,7 @@ impl IntBox {
         IntBox::from_coords(lower_left_x, lower_left_y, upper_right_x, upper_right_y)
     }
 
+    /// Returns true, if this box intersects with other (touching counts as intersecting).
     pub fn intersects(&self, other: &IntBox) -> bool {
         if other.ll.x > self.ur.x {
             return false;
@@ -282,6 +332,7 @@ impl IntBox {
         self.ll.y <= other.ur.y
     }
 
+    /// Returns true, if this box intersects with other and the intersection is 2-dimensional.
     pub fn overlaps(&self, other: &IntBox) -> bool {
         if other.ll.x >= self.ur.x {
             return false;
@@ -295,10 +346,13 @@ impl IntBox {
         self.ll.y < other.ur.y
     }
 
+    /// Java `contains(RegularTileShape other)`: `return other.isContainedIn(this);` unfolded
+    /// directly for the `IntBox` argument (the `RegularTileShape` dispatch is added in Task 13).
     pub fn contains(&self, other: &IntBox) -> bool {
         other.is_contained_in(self)
     }
 
+    /// Return true, if other is contained in the interior of this box.
     pub fn contains_in_interior(&self, other: &IntBox) -> bool {
         if other.is_empty() {
             return true;
@@ -309,6 +363,9 @@ impl IntBox {
             && other.ur.y < self.ur.y
     }
 
+    /// Java `isContainedIn(IntBox other)`. Java's `this == other` reference check is translated
+    /// as value equality (`self == other`): every box for which the reference check would fire is
+    /// also caught by the value comparison, since `IntBox` is a plain value type here.
     pub fn is_contained_in(&self, other: &IntBox) -> bool {
         if self.is_empty() || self == other {
             return true;
@@ -319,6 +376,10 @@ impl IntBox {
             && self.ur.y <= other.ur.y
     }
 
+    /// Returns the translation of this box by rel_coor. Java: "This function is at the moment
+    /// only implemented for Vectors with integer coordinates." (IntBox.java:395-407) A
+    /// `Vector::Rational` would hit Java's unchecked `(IntPoint) ll.translateBy(relCoor)` cast and
+    /// throw `ClassCastException`; ported as a panic.
     pub fn translate_by(&self, rel_coor: &Vector) -> IntBox {
         if *rel_coor == Vector::ZERO {
             return *self;
@@ -331,6 +392,7 @@ impl IntBox {
         }
     }
 
+    /// Turns this box by factor times 90 degree around pole.
     pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> IntBox {
         let p1 = self.ll.turn_90_degree(factor, pole);
         let p2 = self.ur.turn_90_degree(factor, pole);
@@ -342,20 +404,47 @@ impl IntBox {
         IntBox::from_coords(lower_left_x, lower_left_y, upper_right_x, upper_right_y)
     }
 
+    /// Returns the infinite line coincident with border edge `no`. **Not** the segment from
+    /// `corner(no)` to `corner((no + 1) % 4)` — Java fixes each line with two arbitrary points
+    /// that only pin down its position and direction (IntBox.java:421-430).
     pub fn border_line(&self, no: usize) -> Line {
         match no {
-            0 => Line::from_coords(0, self.ll.y, 1, self.ll.y),
-            1 => Line::from_coords(self.ur.x, 0, self.ur.x, 1),
-            2 => Line::from_coords(0, self.ur.y, -1, self.ur.y),
-            3 => Line::from_coords(self.ll.x, 0, self.ll.x, -1),
+            0 => Line::from_coords(0, self.ll.y, 1, self.ll.y), // lower boundary line
+            1 => Line::from_coords(self.ur.x, 0, self.ur.x, 1), // right boundary line
+            2 => Line::from_coords(0, self.ur.y, -1, self.ur.y), // upper boundary line
+            3 => Line::from_coords(self.ll.x, 0, self.ll.x, -1), // left boundary line
             _ => panic!("IntBox.borderLine: no out of range"),
         }
     }
 
-    pub fn border_line_index(&self, _line: &Line) -> Option<usize> {
-        None
+    /// Returns the index of `line` among this box's four border lines, or `None` if it is not
+    /// one of them.
+    ///
+    /// **Java bug:** `borderLineIndex(Line line)` (IntBox.java:432-436) is an unfinished stub in
+    /// upstream freerouting — it logs a warning and returns `-1` for *every* line, including this
+    /// box's own border lines. The live caller `ShapeAndEntrySide.java:59,63` receives that `-1`,
+    /// so the shove's entry-side search never finds the side it is looking for.
+    ///
+    /// **fixed: T11 (#7).** Implemented geometrically against [`IntBox::border_line`], which is
+    /// the specification: `border_line` says which line each index names, so this is its inverse
+    /// and needs no oracle beyond the same file. The comparison is [`Line::equals_geometric`] —
+    /// Java's own `Line.equals`, and exactly what the already-implemented
+    /// `Simplex::border_line_index` (Simplex.java:668) uses, so the three arms of
+    /// `TileShape::border_line_index` now agree about what an index means.
+    ///
+    /// Geometric, not structural, for two reasons that a collinearity-only test would get wrong:
+    /// a border line may be handed over described by *different* points on the same line, and the
+    /// **reversed** line — same points, opposite direction — is a different border line. The tile
+    /// convention is that the shape lies on the right of every border line, so direction is part
+    /// of the identity. `equals_geometric` checks collinearity of both end points *and* a
+    /// positive direction projection, which settles both. It also tells border lines 0 and 3 of a
+    /// box at the origin apart, though they share the point `(0,0)`.
+    pub fn border_line_index(&self, line: &Line) -> Option<usize> {
+        (0..4).find(|&i| line.equals_geometric(&self.border_line(i)))
     }
 
+    /// Returns the box offsetted by dist. If dist > 0, the offset is to the outside, else to the
+    /// inside.
     pub fn offset(&self, dist: f64) -> IntBox {
         if dist == 0.0 || self.is_empty() {
             return *self;
@@ -369,6 +458,8 @@ impl IntBox {
         )
     }
 
+    /// Returns the box, where the horizontal boundary is offsetted by dist. If dist > 0, the
+    /// offset is to the outside, else to the inside.
     pub fn horizontal_offset(&self, dist: f64) -> IntBox {
         if dist == 0.0 || self.is_empty() {
             return *self;
@@ -382,6 +473,8 @@ impl IntBox {
         )
     }
 
+    /// Returns the box, where the vertical boundary is offsetted by dist. If dist > 0, the offset
+    /// is to the outside, else to the inside.
     pub fn vertical_offset(&self, dist: f64) -> IntBox {
         if dist == 0.0 || self.is_empty() {
             return *self;
@@ -395,6 +488,8 @@ impl IntBox {
         )
     }
 
+    /// Shrinks the width and height of the box by the input width. The box will not vanish
+    /// completely — it collapses to the centre point instead.
     pub fn shrink(&self, width: i32) -> IntBox {
         let (lower_left_x, upper_right_x) = if 2 * width <= self.ur.x - self.ll.x {
             (self.ll.x + width, self.ur.x - width)
@@ -411,9 +506,12 @@ impl IntBox {
         IntBox::from_coords(lower_left_x, lower_left_y, upper_right_x, upper_right_y)
     }
 
+    /// Compares this box against other along `edge_index` (0: lower, 1: right, 2: upper, 3:
+    /// left). Panics for `edge_index` outside `0..4` (Java throws `IllegalArgumentException`).
     pub fn compare(&self, other: &IntBox, edge_index: usize) -> Side {
         match edge_index {
             0 => {
+                // compare the lower edge line
                 if self.ll.y > other.ll.y {
                     Side::OnTheLeft
                 } else if self.ll.y < other.ll.y {
@@ -423,6 +521,7 @@ impl IntBox {
                 }
             }
             1 => {
+                // compare the right edge line
                 if self.ur.x < other.ur.x {
                     Side::OnTheLeft
                 } else if self.ur.x > other.ur.x {
@@ -432,6 +531,7 @@ impl IntBox {
                 }
             }
             2 => {
+                // compare the upper edge line
                 if self.ur.y < other.ur.y {
                     Side::OnTheLeft
                 } else if self.ur.y > other.ur.y {
@@ -441,6 +541,7 @@ impl IntBox {
                 }
             }
             3 => {
+                // compare the left edge line
                 if self.ll.x > other.ll.x {
                     Side::OnTheLeft
                 } else if self.ll.x < other.ll.x {
@@ -453,6 +554,7 @@ impl IntBox {
         }
     }
 
+    /// Calculates the part of from_box, which has minimal distance to this box.
     pub fn nearest_part(&self, from_box: &IntBox) -> IntBox {
         let ll_x = if from_box.ll.x >= self.ll.x {
             from_box.ll.x
@@ -477,6 +579,27 @@ impl IntBox {
         IntBox::from_coords(ll_x, ll_y, ur_x, ur_y)
     }
 
+    /// Divides this box into sections with width and height at most max_section_width of about
+    /// equal size.
+    ///
+    /// **Java bug:** `IntBox.divideIntoSections` (IntBox.java:645-685) is a covariant override that
+    /// grids the box directly and skips the base algorithm's `dimension() == 2` filter
+    /// (TileShape.java:908-913), so degenerate grid cells survive into the result. They arise
+    /// whenever `sectionLength * (count - 1) == length`: for a `6 x 6` box at
+    /// `max_section_width = 1.6`, `xcount = ycount = 4` but `sectionLength = 2`, so the fourth row
+    /// and the fourth column are zero-width — **16 raw sections where 9 have area**, which is the
+    /// register's own example. See docs/java-quirks.md #18.
+    ///
+    /// **fixed: T11 (#18)** — the same filter the base algorithm applies.
+    ///
+    /// One correction to the task's answer key, checked against the Java source: it states that
+    /// "the base class filters `dimension() != 2` and returns the shape itself", and expects a
+    /// degenerate box `[0,0 .. 100,0]` to answer **1** section. The base guard at
+    /// TileShape.java:900-905 is `isEmpty()`, not `dimension() != 2`, and its `dimension() == 2`
+    /// filter would drop a degenerate shape's only section too — so the base answers **0** there
+    /// as well, and this override answers 0 both before and after the fix (`ycount = ceil(0/30)`
+    /// is 0, so the grid loop never runs). Area is conserved either way, because a degenerate box
+    /// has none.
     pub fn divide_into_sections(&self, max_section_width: f64) -> Vec<IntBox> {
         if max_section_width <= 0.0 {
             return Vec::new();
@@ -503,20 +626,29 @@ impl IntBox {
                 } else {
                     current_lower_left_x + section_length_x
                 };
-                result.push(IntBox::from_coords(
+                let section = IntBox::from_coords(
                     current_lower_left_x,
                     current_lower_left_y,
                     current_upper_right_x,
                     current_upper_right_y,
-                ));
+                );
+                // fixed: T11 (#18) — the base algorithm's `dimension() == 2` filter, which this
+                // covariant override skipped. A zero-width or zero-height cell is not a section.
+                if section.dimension() == 2 {
+                    result.push(section);
+                }
             }
         }
         result
     }
 
+    /// Calculates the pieces of `d` left after cutting `self` out of it. Java
+    /// `IntBox.cutoutFrom(IntBox d)`: called as `self.cutout_from(d)` where `self` is the piece
+    /// being removed and `d` is the box it is removed from.
     pub fn cutout_from(&self, d: &IntBox) -> Vec<IntBox> {
         let c = self.intersection(d);
         if self.is_empty() || c.dimension() < self.dimension() {
+            // there is only an overlap at the border
             return vec![*d];
         }
 
@@ -527,25 +659,32 @@ impl IntBox {
             IntBox::from_coords(c.ll.x, c.ur.y, d.ur.x, d.ur.y),
         ];
 
+        // now the division will be optimised, so that the cumulative circumference will be
+        // minimal.
+
         if c.ll.x - d.ll.x > c.ll.y - d.ll.y {
+            // switch left dividing line to lower
             let b = result[0];
             result[0] = IntBox::from_coords(c.ll.x, b.ll.y, b.ur.x, b.ur.y);
             let b = result[1];
             result[1] = IntBox::from_coords(b.ll.x, d.ll.y, b.ur.x, b.ur.y);
         }
         if d.ur.y - c.ur.y > c.ll.x - d.ll.x {
+            // switch upper dividing line to the left
             let b = result[1];
             result[1] = IntBox::from_coords(b.ll.x, b.ll.y, b.ur.x, c.ur.y);
             let b = result[3];
             result[3] = IntBox::from_coords(d.ll.x, b.ll.y, b.ur.x, b.ur.y);
         }
         if d.ur.x - c.ur.x > d.ur.y - c.ur.y {
+            // switch right dividing line to upper
             let b = result[2];
             result[2] = IntBox::from_coords(b.ll.x, b.ll.y, b.ur.x, d.ur.y);
             let b = result[3];
             result[3] = IntBox::from_coords(b.ll.x, b.ll.y, c.ur.x, b.ur.y);
         }
         if c.ll.y - d.ll.y > d.ur.x - c.ur.x {
+            // switch lower dividing line to the left
             let b = result[0];
             result[0] = IntBox::from_coords(b.ll.x, b.ll.y, d.ur.x, b.ur.y);
             let b = result[2];
@@ -554,6 +693,7 @@ impl IntBox {
         result.to_vec()
     }
 
+    /// Returns an object of class `IntOctagon` defining the same shape. IntBox.java:565-569.
     pub fn to_int_octagon(&self) -> IntOctagon {
         IntOctagon::new(
             self.ll.x,
@@ -567,38 +707,52 @@ impl IntBox {
         )
     }
 
+    /// Java `boundingOctagon()`: `return toIntOctagon();`
     pub fn bounding_octagon(&self) -> IntOctagon {
         self.to_int_octagon()
     }
 
+    /// Java `union(IntOctagon other)`: `return other.union(toIntOctagon());`
     pub fn union_octagon(&self, other: &IntOctagon) -> IntOctagon {
         other.union(&self.to_int_octagon())
     }
 
+    /// Java `intersection(IntOctagon other)`: `return other.intersection(this.toIntOctagon());`
     pub fn intersection_octagon(&self, other: &IntOctagon) -> IntOctagon {
         other.intersection(&self.to_int_octagon())
     }
 
+    /// Java `intersects(IntOctagon other)`: `return other.intersects(toIntOctagon());`
     pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
         other.intersects_octagon(&self.to_int_octagon())
     }
 
+    /// Java `isContainedIn(IntOctagon other)`: `return other.contains(toIntOctagon());`, and
+    /// `RegularTileShape.contains(other)` is `other.isContainedIn(this)`.
     pub fn is_contained_in_octagon(&self, other: &IntOctagon) -> bool {
         self.to_int_octagon().is_contained_in_octagon(other)
     }
 
+    /// Enlarges the box by `offset`. Contrary to the `offset()` method the result is an
+    /// `IntOctagon`, not an `IntBox`. Java: `return boundingOctagon().offset(offset);`
     pub fn enlarge(&self, offset: f64) -> IntOctagon {
         self.bounding_octagon().offset(offset)
     }
 
+    /// Java `compare(IntOctagon other, int edgeIndex)`:
+    /// `return toIntOctagon().compare(other, edgeIndex);`
     pub fn compare_octagon(&self, other: &IntOctagon, edge_index: usize) -> Side {
         self.to_int_octagon().compare_octagon(other, edge_index)
     }
 
+    /// Java `cutoutFrom(IntOctagon oct)`: `return this.toIntOctagon().cutoutFrom(oct);`
     pub fn cutout_from_octagon(&self, oct: &IntOctagon) -> Vec<IntOctagon> {
         self.to_int_octagon().cutout_from_octagon(oct)
     }
 
+    /// Returns an object of class `Simplex` defining the same shape (IntBox.java:572-586). The
+    /// four lines are already sorted in ascending direction, and this is Java's *raw*
+    /// `new Simplex(lines)` — it does not remove redundant lines.
     pub fn to_simplex(&self) -> Simplex {
         let lines = if self.is_empty() {
             Vec::new()
@@ -613,21 +767,34 @@ impl IntBox {
         Simplex::new(lines)
     }
 
+    /// Java `intersection(Simplex other)`: `other.intersection(this.toSimplex())`.
     pub fn intersection_simplex(&self, other: &Simplex) -> Simplex {
         other.intersection(&self.to_simplex())
     }
 
+    /// Java `intersects(Simplex other)`: `other.intersects(toSimplex())`.
     pub fn intersects_simplex(&self, other: &Simplex) -> bool {
         other.intersects(&self.to_simplex())
     }
 
+    /// Java `cutoutFrom(Simplex simplex)`: `this.toSimplex().cutoutFrom(simplex)`.
     pub fn cutout_from_simplex(&self, simplex: &Simplex) -> Option<Vec<Simplex>> {
         self.to_simplex().cutout_from(simplex)
     }
 
+    /// Java `borderLineCount()`: a box always has 4 border lines (IntBox.java:42-45).
     pub fn border_line_count(&self) -> usize {
         4
     }
+
+    // ported in Task 14, but in the modules that own the types they mention:
+    // `tile_shape.rs` has `simplify() -> TileShape`, `boundingTile()` and the
+    // `TileShape`-/`RegularTileShape`-typed `union`, `intersection`, `intersects`, `contains`,
+    // `compare` and `cutout` (all on the `TileShape` / `RegularTileShape` enums, where Java's
+    // double dispatch collapses into one `match`); `bounding_directions.rs` has
+    // `boundingShape(dirs)`.
+    // ported in Task 17, on the `TileShape` enum: intersects(Circle) (`intersects_circle`) and
+    // the `Shape`-typed `intersects(Shape)` (the `ShapeOps` impl in `shape.rs`).
 }
 
 #[cfg(test)]
@@ -665,8 +832,8 @@ mod tests {
         assert_eq!(x.intersection(&y), b(5, 5, 10, 10));
         assert_eq!(x.union(&y), b(0, 0, 20, 20));
         assert!(x.intersects(&y));
-        assert!(x.intersects(&b(10, 10, 12, 12)));
-        assert!(!x.overlaps(&b(10, 10, 12, 12)));
+        assert!(x.intersects(&b(10, 10, 12, 12))); // touching counts as intersecting
+        assert!(!x.overlaps(&b(10, 10, 12, 12))); // overlaps requires interior overlap
         assert!(x.contains(&b(1, 1, 2, 2)));
         assert!(!x.contains_in_interior(&b(0, 1, 2, 2)));
         assert!(b(1, 1, 2, 2).is_contained_in(&x));
@@ -680,13 +847,21 @@ mod tests {
         assert!(corners.contains(&IntPoint::new(0, 0)));
         assert!(corners.contains(&IntPoint::new(10, 4)));
 
+        // IntBox.java:421-430: border_line(no) is NOT the segment corner(no)->corner(no+1); each
+        // case is a fixed literal line (using 0/1/-1 offsets, not this box's other corner) that
+        // merely pins down the infinite line's position and direction.
         assert_eq!(x.border_line(0), Line::from_coords(0, x.ll.y, 1, x.ll.y));
         assert_eq!(x.border_line(1), Line::from_coords(x.ur.x, 0, x.ur.x, 1));
         assert_eq!(x.border_line(2), Line::from_coords(0, x.ur.y, -1, x.ur.y));
         assert_eq!(x.border_line(3), Line::from_coords(x.ll.x, 0, x.ll.x, -1));
 
+        // fixed: T11 (#7). Java bug: IntBox.java:432-436 is an unfinished stub upstream — it
+        // always logs a warning and returns -1, even for a box's own border lines, and this loop
+        // asserted `None` for all four. `border_line` above is the specification, so the index is
+        // now its inverse. The wider contract — the orientation trap, the shared-point trap, and
+        // agreement with the simplex arm — is `crates/fr-geometry/tests/border_line_index.rs`.
         for i in 0..4 {
-            assert_eq!(x.border_line_index(&x.border_line(i)), None);
+            assert_eq!(x.border_line_index(&x.border_line(i)), Some(i));
         }
         assert_eq!(x.border_line_index(&Line::from_coords(0, 0, 1, 1)), None);
     }
@@ -695,10 +870,10 @@ mod tests {
     fn offsets_and_translation() {
         let x = b(0, 0, 10, 10);
         assert_eq!(x.offset(2.0), b(-2, -2, 12, 12));
-        assert_eq!(x.offset(1.4), b(-1, -1, 11, 11));
+        assert_eq!(x.offset(1.4), b(-1, -1, 11, 11)); // Java: Math.round
         assert_eq!(x.horizontal_offset(3.0), b(-3, 0, 13, 10));
         assert_eq!(x.shrink(2), b(2, 2, 8, 8));
-        assert_eq!(x.shrink(50), b(5, 5, 5, 5));
+        assert_eq!(x.shrink(50), b(5, 5, 5, 5)); // collapses to the centre
         assert_eq!(
             x.translate_by(&Vector::Int(IntVector::new(1, -1))),
             b(1, -1, 11, 9)
@@ -724,6 +899,7 @@ mod tests {
     #[test]
     fn nearest_border_projections_and_weighted_distance() {
         let x = b(0, 0, 10, 10);
+        // point (3,3): equidistant (3) from the left and bottom borders.
         assert_eq!(
             x.nearest_border_projections(&IntPoint::new(3, 3), 2),
             vec![IntPoint::new(0, 3), IntPoint::new(3, 0)]
@@ -785,6 +961,14 @@ mod tests {
 
     #[test]
     fn get_id_wraps_like_java() {
+        // Java `int` arithmetic wraps silently on overflow; `get_id` is a hash-shaped value, so
+        // this must reproduce that rather than panic. Hand-derived from IntBox.java:248 /
+        // IntPoint.java:126-128 for IntBox::EMPTY (ll = ur = (CRIT_INT, CRIT_INT)/(-CRIT_INT,
+        // -CRIT_INT)):
+        //   ll_id = 31 * CRIT_INT + CRIT_INT       = 31 * 33_554_432 + 33_554_432 = 1_073_741_824
+        //   ur_id = 31 * -CRIT_INT + -CRIT_INT      = -1_073_741_824
+        //   id    = wrapping(31 * ll_id + ur_id)    = i32::MIN (31 * 1_073_741_824 overflows i32,
+        //                                              and Java's `int` wraps the same way).
         assert_eq!(IntBox::EMPTY.get_id(), i32::MIN);
     }
 }

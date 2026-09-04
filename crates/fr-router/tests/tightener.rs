@@ -1,3 +1,18 @@
+//! Plan 6 Task 15a (controller ruling AB): the pull-tight family —
+//! `board/optimize/TraceTightener{,90,45,AnyAngle}.java` and `PolylineTrace.pullTight`'s two
+//! overloads.
+//!
+//! # Where the numbers come from
+//!
+//! Every expectation below is **read off the HEAD jar**, not off this port. The probe is
+//! `scripts/differential/java/probes/P6T15aProbe.java`, committed with the exact `javac`/`java`
+//! invocation in its header, and its stdout is committed verbatim as
+//! `tests/data/p6t15a-tightener.txt`. The three regime tables and the three 256-row random
+//! blocks are compared against that transcript row by row rather than pasted twice; the small,
+//! load-bearing rows — `getInstance`'s dispatch, the `Math.max(minTranslateDist, 100)` clamp,
+//! quirk #34's `Line.equals` guard and the four refusals of `PolylineTrace.pullTight:811-828` —
+//! are additionally asserted as literals so the intent survives a regenerated transcript.
+
 use fr_board::ids::ItemId;
 use fr_board::items::Item;
 use fr_board::prelude::*;
@@ -7,8 +22,13 @@ use fr_geometry::{
 };
 use fr_router::board_ext::{PolylineTraceExt, TraceTightener};
 
+// =================================================================================================
+// The committed JVM transcript
+// =================================================================================================
+
 const TRANSCRIPT: &str = include_str!("data/p6t15a-tightener.txt");
 
+/// The rows of one `######## <mode>` section of the transcript, trailing blanks trimmed.
 fn section(mode: &str) -> Vec<&'static str> {
     let header = format!("######## {mode}");
     let mut rows = Vec::new();
@@ -25,6 +45,10 @@ fn section(mode: &str) -> Vec<&'static str> {
     assert!(!rows.is_empty(), "transcript section `{mode}` is empty");
     rows
 }
+
+// =================================================================================================
+// The probe's board, rebuilt from scratch (`P6T9Probe.build`, which `P6T15aProbe` reuses)
+// =================================================================================================
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -51,6 +75,9 @@ fn rules_with_wide_class(angle: AngleRestriction) -> BoardRules {
     rules
 }
 
+/// `P6T9Probe.build(angleRestriction)`: two layers, a 200-unit clearance matrix with a "wide"
+/// class, a two-pin component (an **SMD** pad at (-500, 0) on layer 0 only and a **through** pad
+/// at (500, 0) on both layers) and two traces, one on net 1 and one on net 2.
 fn probe_board(angle: AngleRestriction) -> Board {
     let mut padstacks = Padstacks::new(layers());
     let smd = padstacks.add(
@@ -139,6 +166,8 @@ fn never() -> bool {
     false
 }
 
+/// `TraceTightener.getInstance(board, new int[0], null, minTranslateDist, null, -1, null, -1)` —
+/// `P6T15aProbe.algo`.
 fn algo(board: &mut Board, min_translate_dist: i32) -> TraceTightener<'static> {
     TraceTightener::get_instance(
         board,
@@ -152,10 +181,17 @@ fn algo(board: &mut Board, min_translate_dist: i32) -> TraceTightener<'static> {
     )
 }
 
+// =================================================================================================
+// The probe's dump format
+// =================================================================================================
+
+/// `P6T15aProbe.ln` — `(ax,ay)->(bx,by)`.
 fn dump_line(line: &Line) -> String {
     format!("({},{})->({},{})", line.a.x, line.a.y, line.b.x, line.b.y)
 }
 
+/// `P6T15aProbe.pt` — an `IntPoint` corner prints exactly, any other prints its `cornerApprox`
+/// through `Double.toString`.
 fn dump_corner(polyline: &Polyline, no: usize) -> String {
     match polyline.corner(no).expect("no is below cornerCount") {
         Point::Int(p) => format!("({},{})", p.x, p.y),
@@ -170,6 +206,7 @@ fn dump_corner(polyline: &Polyline, no: usize) -> String {
     }
 }
 
+/// `P6T15aProbe.poly`.
 fn dump_polyline(polyline: &Polyline) -> String {
     let lines: Vec<String> = polyline.lines().iter().map(dump_line).collect();
     let corners: Vec<String> = (0..polyline.corner_count())
@@ -183,16 +220,20 @@ fn dump_polyline(polyline: &Polyline) -> String {
     )
 }
 
+/// `P6T15aProbe.pointOf` — `p.toFloat().round()`, rendered `(x,y)`.
 fn dump_point(point: &Point) -> String {
     let rounded = point.to_float().round();
     format!("({},{})", rounded.x, rounded.y)
 }
 
+/// `P6T15aProbe.nets` — `java.util.Arrays.toString` with the spaces removed.
 fn dump_nets(net_nos: &[i32]) -> String {
     let inner: Vec<String> = net_nos.iter().map(i32::to_string).collect();
     format!("[{}]", inner.join(","))
 }
 
+/// `P6T15aProbe.dumpBoard` — `maxId=` plus one line per item in `getItems()` order (descending
+/// id, quirk #63).
 fn dump_board(board: &Board) -> Vec<String> {
     let mut out = vec![format!(
         "    maxId={}",
@@ -236,6 +277,10 @@ fn dump_board(board: &Board) -> Vec<String> {
     }
     out
 }
+
+// =================================================================================================
+// The fixed polyline table (`P6T15aProbe.table`)
+// =================================================================================================
 
 fn p(x: i32, y: i32) -> Point {
     Point::new(x, y)
@@ -374,6 +419,7 @@ fn table() -> Vec<Case> {
     ]
 }
 
+/// `P6T15aProbe.fixedTable`, replayed against this port.
 fn fixed_table_rows(angle: AngleRestriction) -> Vec<String> {
     let mut board = probe_board(angle);
     let mut out = vec![format!("regime={}", java_angle_name(angle))];
@@ -421,6 +467,7 @@ fn fixed_table_rows(angle: AngleRestriction) -> Vec<String> {
         ));
     }
 
+    // The clip-shape gate.
     let clip = IntOctagon::new(0, 0, 100, 100, -200, 200, -200, 200);
     for case in table() {
         let before = Polyline::from_points(&case.corners);
@@ -451,6 +498,7 @@ fn fixed_table_rows(angle: AngleRestriction) -> Vec<String> {
         ));
     }
 
+    // `minTranslateDist` below the `Math.max(.., 100)` floor, on the `detour` case.
     for mtd in [0, 1, 100, 5000] {
         let before = Polyline::from_points(&table()[3].corners);
         let mut a = algo(&mut board, mtd);
@@ -465,6 +513,10 @@ fn fixed_table_rows(angle: AngleRestriction) -> Vec<String> {
     out
 }
 
+/// The probe prints `after == before` — Java's reference identity. This port keeps that
+/// distinction in the `Option` its steps answer; at the public
+/// [`TraceTightener::pull_tight_polyline`] boundary the value is already materialised, so the
+/// test recovers it the only way a value type can: an unchanged polyline is byte-identical.
 fn same_polyline(before: &Polyline, after: &Polyline) -> bool {
     before.lines() == after.lines()
 }
@@ -477,6 +529,17 @@ fn java_angle_name(angle: AngleRestriction) -> &'static str {
     }
 }
 
+// =================================================================================================
+// `TraceTightener.getInstance` (TraceTightener.java:87-114) — probe mode `inst`
+// =================================================================================================
+
+/// Probe mode `inst`, first six rows of each regime:
+///
+/// ```text
+/// regime=NINETY_DEGREE mtd=-5 class=TraceTightener90 minTranslateDist=100 …
+/// regime=FORTYFIVE_DEGREE mtd=101 class=TraceTightener45 minTranslateDist=101 …
+/// regime=NONE mtd=500 class=TraceTightenerAnyAngle minTranslateDist=500 …
+/// ```
 #[test]
 fn get_instance_dispatches_on_the_board_angle_restriction() {
     for (angle, expected) in [
@@ -495,6 +558,8 @@ fn get_instance_dispatches_on_the_board_angle_restriction() {
     }
 }
 
+/// Probe mode `inst`: `getInstance:112` is `Math.max(minTranslateDist, 100)`, so `-5`, `0` and
+/// `99` all become `100` and `101` stays `101`.
 #[test]
 fn get_instance_clamps_min_translate_dist_at_one_hundred() {
     let mut board = probe_board(AngleRestriction::None);
@@ -512,6 +577,8 @@ fn get_instance_clamps_min_translate_dist_at_one_hundred() {
     }
 }
 
+/// Probe mode `inst`, the `splitTracesAtKeepPoint` rows: `false` without a keep point and
+/// `true` at `(0, 200)`, which lies on the net-1 trace's second segment.
 #[test]
 fn split_traces_at_keep_point_splits_only_with_a_keep_point() {
     for angle in [
@@ -547,6 +614,7 @@ fn split_traces_at_keep_point_splits_only_with_a_keep_point() {
     }
 }
 
+/// The whole of probe mode `inst`, replayed row for row.
 #[test]
 fn inst_mode_matches_the_jvm() {
     let expected = section("inst");
@@ -602,6 +670,22 @@ fn inst_mode_matches_the_jvm() {
     assert_rows("inst", &expected, &actual);
 }
 
+// =================================================================================================
+// Quirk #34: `Line.equals` at `TraceTightener.repositionLine:281` — probe mode `lineeq`
+// =================================================================================================
+
+/// Probe mode `lineeq`, the `translate` table:
+///
+/// ```text
+/// translate dist=0.0 line=(0,0)->(1,1) equals=true structural=false sameRef=false
+/// translate dist=0.4 line=(-1,0)->(0,1) equals=false structural=false sameRef=false
+/// ```
+///
+/// `Line.translate(0.0)` on `(0,0)->(1000,1000)` answers a line with **different end points**
+/// that denotes the same line of the plane: Java's geometric `equals` says `true`, the
+/// structural end-point comparison the port derives says `false`. `repositionLine:281` reads the
+/// geometric answer to decide whether the translation moved the line at all, so porting it as
+/// `==` would silently disable the guard.
 #[test]
 fn reposition_line_uses_geometric_line_equality() {
     let diagonal = Line::from_coords(0, 0, 1000, 1000);
@@ -620,12 +704,20 @@ fn reposition_line_uses_geometric_line_equality() {
         "the derived structural PartialEq disagrees — this is quirk #34's whole point"
     );
 
+    // The other side of the same coin: a line that is genuinely moved is unequal both ways.
     let moved = diagonal.translate(0.4);
     assert_eq!(dump_line(&moved), "(-1,0)->(0,1)");
     assert!(!moved.equals_geometric(&diagonal));
     assert!(moved != diagonal);
 }
 
+/// The whole of probe mode `lineeq`, replayed row for row.
+///
+/// The `pair (7,9)->(7,9) vs (7,9)->(7,9) equals=true` row is the **one** documented divergence
+/// on [`Line::equals_geometric`]: Java's `equals` opens with a `this == other` reference
+/// shortcut, which the port cannot have, so a degenerate line compared with *itself* answers
+/// `true` in Java and `false` here. The row is asserted against the port's answer with that
+/// substitution named, rather than being quietly skipped.
 #[test]
 fn lineeq_mode_matches_the_jvm() {
     let expected = section("lineeq");
@@ -639,12 +731,14 @@ fn lineeq_mode_matches_the_jvm() {
         (base, same_geometry, false),
         (base, opposite, false),
         (base, parallel, false),
+        // Java's reference shortcut: the same object compared with itself.
         (degenerate, degenerate, true),
         (degenerate, Line::from_coords(7, 9, 7, 9), false),
     ];
     let mut actual: Vec<String> = Vec::new();
     for (x, y, same_ref) in pairs {
         let equals = if same_ref {
+            // Line.java:58-60 — `if (this == other) return true;`.
             true
         } else {
             x.equals_geometric(&y)
@@ -670,6 +764,7 @@ fn lineeq_mode_matches_the_jvm() {
             translated == diagonal
         ));
     }
+    // The four hand-built line arrays of `P6T15aProbe.lineEquality`, in all three regimes.
     let scripts: [(&str, Vec<Line>); 4] = [
         (
             "square",
@@ -722,9 +817,13 @@ fn lineeq_mode_matches_the_jvm() {
         let mut board = probe_board(angle);
         for (name, lines) in &scripts {
             let mut a = algo(&mut board, 500);
+            // The probe primes the instance off a polyline of its own; the scripts are raw
+            // line arrays the normalising constructor would mangle.
             let priming = Polyline::from_points(&[p(-3000, -3000), p(-1000, -3000)]);
             a.pull_tight_polyline(&mut board, &priming, 0, 30, &[3], 1, None);
             for no in 0..=2 {
+                // Java throws `ArrayIndexOutOfBoundsException` at `lines[no - 2]` for the base
+                // body's `no < 2`; the port's `usize` subtraction panics at the same read.
                 let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     a.reposition_line(&mut board, lines, no)
                 }));
@@ -757,6 +856,10 @@ fn lineeq_mode_matches_the_jvm() {
     assert_rows("lineeq", &expected, &actual);
 }
 
+// =================================================================================================
+// The three regime tables — probe modes `t90`, `t45`, `tany`
+// =================================================================================================
+
 #[test]
 fn ninety_degree_regime_matches_the_jvm() {
     assert_rows(
@@ -784,6 +887,10 @@ fn any_angle_regime_matches_the_jvm() {
     );
 }
 
+// =================================================================================================
+// `PolylineTrace.pullTight` — probe mode `trace`
+// =================================================================================================
+
 #[test]
 fn polyline_trace_pull_tight_matches_the_jvm() {
     let expected = section("trace");
@@ -793,6 +900,7 @@ fn polyline_trace_pull_tight_matches_the_jvm() {
         AngleRestriction::FortyFiveDegree,
         AngleRestriction::None,
     ] {
+        // (a) `pullTight(TraceTightener)` on the two traces the board already carries.
         let mut board = probe_board(angle);
         actual.push(format!("regime={} overload=algo", java_angle_name(angle)));
         let mut a = algo(&mut board, 500);
@@ -812,6 +920,7 @@ fn polyline_trace_pull_tight_matches_the_jvm() {
         }
         actual.extend(dump_board(&board));
 
+        // (b) a freshly inserted detour trace, which the tightener can actually shorten.
         let mut board = probe_board(angle);
         actual.push(format!(
             "regime={} overload=algo-detour",
@@ -835,6 +944,7 @@ fn polyline_trace_pull_tight_matches_the_jvm() {
         }
         actual.extend(dump_board(&board));
 
+        // (c) the `(ownNetOnly, accuracy, Stoppable)` overload.
         for own_net_only in [true, false] {
             let mut board = probe_board(angle);
             actual.push(format!(
@@ -864,6 +974,7 @@ fn polyline_trace_pull_tight_matches_the_jvm() {
             actual.extend(dump_board(&board));
         }
 
+        // (d) the refusals of `:811-828`.
         let mut board = probe_board(angle);
         actual.push(format!(
             "regime={} overload=refusals",
@@ -917,6 +1028,16 @@ fn polyline_trace_pull_tight_matches_the_jvm() {
     assert_rows("trace", &expected, &actual);
 }
 
+/// Probe mode `trace`, `regime=NINETY_DEGREE overload=refusals`:
+///
+/// ```text
+///   shoveFixed changed=false
+///   otherNetFilter changed=false
+///   removed changed=false
+/// ```
+///
+/// `PolylineTrace.pullTight:811-823` refuses a trace that is off the board, one that is
+/// shove-fixed, and one whose nets do not match a non-empty `onlyNetNoArr`.
 #[test]
 fn pull_tight_refuses_a_shove_fixed_a_filtered_and_a_removed_trace() {
     let mut board = probe_board(AngleRestriction::NinetyDegree);
@@ -948,6 +1069,9 @@ fn pull_tight_refuses_a_shove_fixed_a_filtered_and_a_removed_trace() {
     ));
 }
 
+/// A net class with `pullTight` off refuses at `PolylineTrace.pullTight:824-828`, before the
+/// tightener ever runs. `NetClass.pullTight` defaults to `true` (NetClass.java:34), which is why
+/// the autoroute insertion path tightens unconditionally.
 #[test]
 fn pull_tight_honours_the_net_class_flag() {
     let mut board = probe_board(AngleRestriction::NinetyDegree);
@@ -974,9 +1098,29 @@ fn pull_tight_honours_the_net_class_flag() {
     );
 }
 
+// =================================================================================================
+// `smoothenEndCornersAtTrace` — probe mode `smooth`
+// =================================================================================================
+
+/// **fixed: T11 (#183) — PORT LANE.** `TraceTightenerAnyAngle.smoothenEndCornerAtTrace` read
+/// `prevLineDirection` from `lines[endLineNo]`, the same line `lineDirection` comes from
+/// (`:907-908`), where the 45-degree sibling reads `lines[length - 3]` and this class's own
+/// *start*-corner method reads `lines[startLineNo + 1]`. The `bend` arm needs
+/// `lineDirection.projection(otherDir) == ZERO` **and**
+/// `prevLineDirection.projection(otherDir) == POSITIVE`, and `Direction.projection` is a pure
+/// function of its two arguments — so two equal directions cannot satisfy both and the arm was
+/// unreachable for every input.
+///
+/// The reachability was **measured on this fixture**, which is the answer key's proof shape rather
+/// than a geometry literal: with `lines[endLineNo]` the `bend` arm executes **0** times over this
+/// whole test; with `lines[endLineNo - 1]` it executes **3**. The rows that move are the ones
+/// where the corrected `prevLineDirection` changes what `scan_contacts` finds, which is the fix
+/// doing exactly what it is for.
+///
+/// The section is therefore the port's, per rulings BT and CC/BV — see [`PORT_LANE`].
 #[test]
 fn smoothen_end_corners_at_trace_matches_the_jvm() {
-    let expected = section("smooth");
+    let expected = section_for("smooth");
     let mut actual: Vec<String> = Vec::new();
     for angle in [
         AngleRestriction::NinetyDegree,
@@ -988,6 +1132,10 @@ fn smoothen_end_corners_at_trace_matches_the_jvm() {
         insert_smoothen_fixture(&mut board);
         let mut a = algo(&mut board, 500);
         for id in trace_ids(&board) {
+            // `P6T15aProbe.smoothen` primes the instance the way
+            // `smoothenEndCornersAtTrace:406-409` does before calling either override
+            // directly: Java's `currentNetNumbers` is `null` until then and
+            // `BasicBoard.checkTraceShape:1017` dereferences it.
             let (layer, half_width, nets, cl, polyline) = {
                 let trace = polyline_trace_of(&board, id).expect("a live trace");
                 (
@@ -1023,9 +1171,18 @@ fn smoothen_end_corners_at_trace_matches_the_jvm() {
         }
         actual.extend(dump_board(&board));
     }
+    // Re-cuts the port-lane golden: `T11_DUMP_SMOOTH=<path>` writes the rows this run produced,
+    // for pasting under `data/p9t11-tightener-smooth.txt`'s `#` provenance header, where the
+    // command is recorded. Writing rather than printing keeps 143 rows out of a captured stdout.
+    if let Ok(path) = std::env::var("T11_DUMP_SMOOTH") {
+        std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
+    }
     assert_rows("smooth", &expected, &actual);
 }
 
+/// `TraceTightener90.smoothenStartCornerAtTrace` / `smoothenEndCornerAtTrace`
+/// (TraceTightener90.java:160-168) answer `null` unconditionally, so the 90-degree regime never
+/// smoothens an end corner at all.
 #[test]
 fn the_ninety_degree_regime_never_smoothens_an_end_corner() {
     let mut board = probe_board(AngleRestriction::NinetyDegree);
@@ -1036,6 +1193,28 @@ fn the_ninety_degree_regime_never_smoothens_an_end_corner() {
     }
 }
 
+// =================================================================================================
+// `PolylineTrace.pullTight:841-861` — probe mode `pinedge`
+// =================================================================================================
+
+/// Probe mode `pinedge`: the `angleRestriction != NINETY_DEGREE && getPinEdgeToTurnDist() > 0`
+/// branch of `PolylineTrace.pullTight:841-861`, which calls `swapConnectionToPin` and
+/// `correctConnectionToPin` — two `PolylineTrace` methods Plan 6 deferred (controller ruling AB
+/// moved the five `TraceTightener*` / `pullTight` names into Plan 6 and named nothing else) and
+/// **Plan 7 Task 5 has since landed**, together with `checkConnectionToPin`.
+///
+/// **Both Java and the port answer `false` at that branch on this fixture, before and after
+/// Task 5.** With `pinEdgeToTurnDist = 500` the fixture *does* enter the branch — the net-2 trace
+/// in the 90-degree and any-angle regimes reaches `:841` with `newLines == lines` — and none of
+/// the four calls succeeds, so every row matches either way. That is not because the branch is
+/// inert: `P6T9Probe`'s pad is a **square** 100 x 100 on a two-pin package, so `Pin.java:274-276`
+/// doubles `padXyFactor` to 3.0 and `Padstack.getTraceExitDirections:182-193` answers all four
+/// directions — an exit-restriction set that refuses nothing. The fixture where the pair fires is
+/// `P7T6`'s 400 x 100 pad on a four-pin package; see `crates/fr-router/tests/connection_to_pin.rs`.
+/// This test therefore keeps its value as a **regression pin on the unchanged rows**.
+///
+/// Plan 6 itself never reaches the branch at all: `FoundConnectionInserter.insertTrace:140-141`
+/// sets `pinEdgeToTurnDist` to `-1` for the whole insertion and restores it at `:447`.
 #[test]
 fn pin_edge_branch_matches_the_jvm() {
     let expected = section("pinedge");
@@ -1064,9 +1243,14 @@ fn pin_edge_branch_matches_the_jvm() {
     assert_rows("pinedge", &expected, &actual);
 }
 
+// =================================================================================================
+// The three random blocks — probe modes `rand90`, `rand45`, `randany`
+// =================================================================================================
+
 const RANDOM_COUNT: usize = 256;
 const RANDOM_SEED: i64 = 4242;
 
+/// `P6T15aProbe.randomTable`, replayed with [`JavaRandom`] so the two sides draw the same stream.
 fn random_rows(angle: AngleRestriction) -> Vec<String> {
     let mut board = probe_board(angle);
     let mut out = vec![format!(
@@ -1136,6 +1320,17 @@ fn random_block_matches_the_jvm_in_the_any_angle_regime() {
     );
 }
 
+// =================================================================================================
+// The `StopCheck` (plan-6 ruling 6)
+// =================================================================================================
+
+/// `TraceTightener.isStopRequested` (`:195-212`) is consulted once per round of every regime's
+/// `pullTight` loop (`:29`, `:38`, `:38`), so a check that trips at once leaves the polyline
+/// exactly as the first round produced it and, crucially, **returns** rather than looping.
+///
+/// Java has no error channel here at all — `isStopRequested` only ends the loop — so the answer
+/// is a polyline, never a `BoardError`. The `Err(BoardError::Stopped)` the port can produce
+/// comes from the `fr-board` walks under `smoothenEndCornersAtTrace`, which is the next test.
 #[test]
 fn pull_tight_stops_when_the_stop_check_trips() {
     let mut board = probe_board(AngleRestriction::None);
@@ -1159,11 +1354,17 @@ fn pull_tight_stops_when_the_stop_check_trips() {
         "an already-stopped run leaves the polyline alone"
     );
 
+    // The same run without the stop shortens it, which is what makes the assertion above a
+    // statement about the stop check rather than about this polyline.
     let mut b = algo(&mut board, 500);
     let tightened = b.pull_tight_polyline(&mut board, &before, 0, 30, &[3], 1, None);
     assert_ne!(tightened.lines(), before.lines());
 }
 
+/// A stop check that trips reaches [`BoardError::Stopped`] through
+/// `smoothenEndCornersAtTrace1`'s `splitTraces` / `normalizeTraces` walks (`:448-452`), the two
+/// `fr-board` loops quirk #76 never leaves. Java cannot answer this at all; plan-6 ruling 6 is
+/// what puts a `StopCheck` there.
 #[test]
 fn smoothen_end_corners_stops_when_the_stop_check_trips() {
     let mut board = probe_board(AngleRestriction::FortyFiveDegree);
@@ -1185,6 +1386,13 @@ fn smoothen_end_corners_stops_when_the_stop_check_trips() {
     );
 }
 
+// =================================================================================================
+// Helpers
+// =================================================================================================
+
+/// `P6T15aProbe.smoothen`'s six extra net-3 traces plus the net-1 trace that starts on the SMD
+/// pin: three junctions that reach the `acuteAngle` arm, the `bend` arm (and through it
+/// `repositionLine`) and the `else { return null; }` arm of the contact loop.
 fn insert_smoothen_fixture(board: &mut Board) {
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[p(-500, 0), p(-1200, 700)]),
@@ -1232,6 +1440,8 @@ fn detour_polyline() -> Polyline {
     ])
 }
 
+/// The board's traces in `getItems()` order (descending id, quirk #63) — the order
+/// `P6T15aProbe` iterates.
 fn trace_ids(board: &Board) -> Vec<ItemId> {
     board
         .get_items()
@@ -1247,17 +1457,89 @@ fn polyline_of(board: &Board, id: ItemId) -> Option<&Polyline> {
     }
 }
 
+/// Compare two row lists and report the first difference with its line number, so a diff in a
+/// 771-row random block names the row rather than dumping the block.
+///
+/// `expected` is the JVM transcript's section, except for a [`PORT_LANE`] mode, where it is the
+/// port's own re-cut golden — see [`section_for`].
 fn assert_rows(mode: &str, expected: &[&str], actual: &[String]) {
+    let lane = if PORT_LANE.iter().any(|(name, _, _)| *name == mode) {
+        "port-lane golden"
+    } else {
+        "JVM transcript"
+    };
     for (i, (want, got)) in expected.iter().zip(actual.iter()).enumerate() {
         assert_eq!(
             *want,
             got.as_str(),
-            "mode `{mode}` row {i} differs from the JVM transcript"
+            "mode `{mode}` row {i} differs from the {lane}"
         );
     }
     assert_eq!(
         expected.len(),
         actual.len(),
-        "mode `{mode}` row count differs from the JVM transcript"
+        "mode `{mode}` row count differs from the {lane}"
     );
+}
+
+// =================================================================================================
+// The port lane (ruling BT / CC)
+// =================================================================================================
+
+/// The port's own rows for the transcript section Plan 9 Task 11 deliberately moved off the jar.
+///
+/// [`TRANSCRIPT`] is untouched and stays the jar's stdout — still the record of what the jar does,
+/// and still the input corpus. This is what the *port* answers over the same input, so both sides
+/// are pinned and drift fails in both directions: [`assert_rows`] replays this byte for byte, and
+/// [`the_port_lane_modes_still_differ_from_the_jar`] requires the divergence to persist, so a fix
+/// silently reverted fails here too.
+const T11_SMOOTH: &str = include_str!("data/p9t11-tightener-smooth.txt");
+
+/// The sections that are the **port's** rather than the jar's, each with the register row that
+/// authorizes the divergence.
+const PORT_LANE: &[(&str, &str, &str)] = &[(
+    "smooth",
+    "#183",
+    "`TraceTightenerAnyAngle.smoothenEndCornerAtTrace` read `prevLineDirection` from the same \
+     line as `lineDirection`, so the `bend` arm — which needs the two to differ — was unreachable \
+     for every input. Reading `lines[endLineNo - 1]` makes it reachable: measured 0 executions \
+     before and 3 after, over this very fixture.",
+)];
+
+/// The port-lane golden's rows, with its `#` provenance header stripped.
+fn port_lane_section(mode: &str) -> Vec<&'static str> {
+    let text = match mode {
+        "smooth" => T11_SMOOTH,
+        _ => panic!("no port-lane golden for mode `{mode}`"),
+    };
+    let rows: Vec<&str> = text
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .map(str::trim_end)
+        .collect();
+    assert!(!rows.is_empty(), "port-lane golden `{mode}` is empty");
+    rows
+}
+
+/// [`section`] for a jar-lane mode, [`port_lane_section`] for a port-lane one.
+fn section_for(mode: &str) -> Vec<&'static str> {
+    if PORT_LANE.iter().any(|(name, _, _)| *name == mode) {
+        port_lane_section(mode)
+    } else {
+        section(mode)
+    }
+}
+
+/// Every [`PORT_LANE`] mode must **still** differ from the jar. Without this, a fix that was
+/// quietly reverted would go green against its own re-cut golden and nothing would notice.
+#[test]
+fn the_port_lane_modes_still_differ_from_the_jar() {
+    for (mode, row, reason) in PORT_LANE {
+        assert_ne!(
+            port_lane_section(mode),
+            section(mode),
+            "port-lane mode `{mode}` now MATCHES the jar — delete its PORT_LANE entry \
+             (register {row}: {reason})"
+        );
+    }
 }

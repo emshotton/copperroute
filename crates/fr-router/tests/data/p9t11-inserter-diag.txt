@@ -1,0 +1,54 @@
+# PORT LANE (ruling BT / CC). The port's own rows for `p6t15-inserter.txt` mode `diag`,
+# re-cut at Plan 9 Task 11. `p6t15-inserter.txt` stays byte-for-byte the jar's stdout and is
+# still the record of what the jar does; this file is what the port answers over the same input,
+# and `the_diag_port_golden_still_differs_from_the_jar` requires the two to keep differing so a
+# silent revert fails here too. The authorizing register rows are in inserter.rs's PORT_LANE.
+# Re-cut with: T11_EMIT_PORT_GOLDEN=1 cargo test -p fr-router --test inserter -- --ignored --nocapture emit_the_diag_port_golden
+=== NINETY_DEGREE
+  startItem=3 startLayer=1 targetItem=4 targetLayer=0
+  connectionItems n=2
+    [0] layer=0 corners=3 (200,640) (615,640) (615,585)
+    [1] layer=1 corners=3 (615,585) (400,585) (400,0)
+  ripped n=0
+  insert=ok maxIdBefore=4
+    maxId=13
+    item id=13 type=PolylineTrace nets=[1] cl=1 layer=1 hw=30 n=3 lines=[(615,585)->(732,542),(615,585)->(400,0),(400,0)->(517,-43)] corners=[(615,585),(400,0)]
+    item id=11 type=Via nets=[1] cl=1 center=(615,585) padstack=via layers=0..1
+    item id=10 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=4 lines=[(-400,600)->(400,653),(200,640)->(615,640),(615,640)->(615,585),(615,585)->(614,585)] corners=[~(203.77358490566039,640.0),(615,640),(615,585)]
+    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(200,640)->(615,640),(-400,600)->(400,653),(400,653)->(453,-147)] corners=[~(203.77358490566039,640.0),(400,653)]
+    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-400,600)->(-453,1400),(-400,600)->(400,653),(200,640)->(615,640)] corners=[(-400,600),~(203.77358490566039,640.0)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== FORTYFIVE_DEGREE
+  startItem=3 startLayer=1 targetItem=4 targetLayer=0
+  connectionItems n=2
+    [0] layer=0 corners=3 (200,640) (560,640) (615,585)
+    [1] layer=1 corners=3 (615,585) (400,370) (400,0)
+  ripped n=0
+  insert=ok maxIdBefore=4
+    maxId=13
+    item id=13 type=PolylineTrace nets=[1] cl=1 layer=1 hw=30 n=3 lines=[(615,585)->(732,542),(615,585)->(400,0),(400,0)->(517,-43)] corners=[(615,585),(400,0)]
+    item id=11 type=Via nets=[1] cl=1 center=(615,585) padstack=via layers=0..1
+    item id=10 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=4 lines=[(-400,600)->(400,653),(200,640)->(560,640),(560,640)->(615,585),(615,585)->(614,584)] corners=[~(203.77358490566039,640.0),(560,640),(615,585)]
+    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(200,640)->(560,640),(-400,600)->(400,653),(400,653)->(453,-147)] corners=[~(203.77358490566039,640.0),(400,653)]
+    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-400,600)->(-453,1400),(-400,600)->(400,653),(200,640)->(560,640)] corners=[(-400,600),~(203.77358490566039,640.0)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+=== NONE
+  startItem=3 startLayer=1 targetItem=4 targetLayer=0
+  connectionItems n=2
+    [0] layer=0 corners=2 (200,640) (615,585)
+    [1] layer=1 corners=2 (615,585) (400,0)
+  ripped n=0
+  insert=ok maxIdBefore=4
+    maxId=11
+    item id=11 type=PolylineTrace nets=[1] cl=1 layer=1 hw=30 n=3 lines=[(615,585)->(732,542),(615,585)->(400,0),(400,0)->(283,43)] corners=[(615,585),(400,0)]
+    item id=10 type=Via nets=[1] cl=1 center=(615,585) padstack=via layers=0..1
+    item id=9 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-400,600)->(400,653),(200,640)->(615,585),(615,585)->(604,502)] corners=[~(201.25767103568452,639.8333207061141),(615,585)]
+    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(200,640)->(615,585),(-400,600)->(400,653),(400,653)->(453,-147)] corners=[~(201.25767103568452,639.8333207061141),(400,653)]
+    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-400,600)->(-453,1400),(-400,600)->(400,653),(200,640)->(615,585)] corners=[(-400,600),~(201.25767103568452,639.8333207061141)]
+    item id=3 type=Pin nets=[1] cl=1 center=(400,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)
+    item id=1 type=BoardOutline nets=[] cl=0

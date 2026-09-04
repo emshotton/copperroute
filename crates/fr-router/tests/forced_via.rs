@@ -1,4 +1,20 @@
-use std::collections::BTreeSet;
+//! Plan 6 Task 10: `board.actions.ForcedPadRouter.checkForcedPad` (with `inFrontOfPad` and
+//! `calcFromSide`) and `board.actions.ForcedViaInserter`'s `checkLayer` / `check` / the two
+//! private helpers.
+//!
+//! # Where the numbers come from
+//!
+//! Every expectation below is **read off the HEAD jar**, not off this port. The probe is
+//! `scripts/differential/java/probes/P6T10Probe.java`, committed with the exact `javac`/`java`
+//! invocation in its header, and its stdout is committed verbatim as
+//! `tests/data/p6t10-forced-via.txt`. The big tables (920 `inFrontOfPad` rows, 360 `checkLayer`
+//! rows, 384 `ForcedViaInserter.check` rows and the 200-row random table) are compared against
+//! that transcript row by row rather than pasted twice; the small, load-bearing rows — the
+//! `inFrontOfPad` asymmetry that pins quirk #176, the shove-via budget gate, the arm Task 9 left
+//! `unimplemented!()` — are additionally asserted as literals so the intent survives a
+//! regenerated transcript.
+
+use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::BoardError;
 use fr_board::ids::{ItemId, PadstackId};
@@ -12,8 +28,13 @@ use fr_router::board_ext::{
     CheckDrillResult, DrillItemMover, ForcedPadRouter, ForcedViaInserter, TraceShover,
 };
 
+// =================================================================================================
+// The committed JVM transcript
+// =================================================================================================
+
 const TRANSCRIPT: &str = include_str!("data/p6t10-forced-via.txt");
 
+/// The `  …` rows of one `######## <mode>` section of the transcript, trimmed.
 fn section(mode: &str) -> Vec<&'static str> {
     let header = format!("######## {mode}");
     let mut rows = Vec::new();
@@ -31,6 +52,7 @@ fn section(mode: &str) -> Vec<&'static str> {
     rows
 }
 
+/// The `key=value` fields of a probe row, e.g. `line=above fromSide=0 … -> true`.
 fn field<'a>(row: &'a str, key: &str) -> &'a str {
     let needle = format!(" {key}=");
     let start = row
@@ -44,6 +66,8 @@ fn field<'a>(row: &'a str, key: &str) -> &'a str {
     }
 }
 
+/// A probe field whose value is a `java.util.Arrays.toString` array — `[0, 0]`, which carries a
+/// space and so cannot be read with [`field`] — or the bare word `null`.
 fn bracketed_field<'a>(row: &'a str, key: &str) -> &'a str {
     let needle = format!(" {key}=");
     let start = row
@@ -58,6 +82,7 @@ fn bracketed_field<'a>(row: &'a str, key: &str) -> &'a str {
     }
 }
 
+/// Everything after the row's ` -> `.
 fn answer(row: &str) -> &str {
     let start = row
         .find(" -> ")
@@ -66,6 +91,7 @@ fn answer(row: &str) -> &str {
     row[start..].trim()
 }
 
+/// `IntOctagon[leftX,bottomY,rightX,topY,ulDiag,lrDiag,llDiag,urDiag]`, the probe's `oct()` form.
 fn parse_octagon(text: &str) -> IntOctagon {
     let inner = text
         .strip_prefix("IntOctagon[")
@@ -79,6 +105,7 @@ fn parse_octagon(text: &str) -> IntOctagon {
     IntOctagon::new(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7])
 }
 
+/// `(x,y)`, the probe's point form.
 fn parse_pair(text: &str) -> (i32, i32) {
     let inner = text
         .strip_prefix('(')
@@ -108,6 +135,10 @@ fn nets(field_value: &str) -> Vec<i32> {
             .collect()
     }
 }
+
+// =================================================================================================
+// The probe's boards, rebuilt from scratch
+// =================================================================================================
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -149,6 +180,7 @@ fn through_octagon() -> Shape {
     )))
 }
 
+/// `P6T10Probe.build`, which is `P6T9Probe.build` verbatim.
 fn probe_board(angle: AngleRestriction) -> Board {
     let mut padstacks = Padstacks::new(two_layers());
     let smd = padstacks.add(
@@ -230,6 +262,8 @@ fn probe_board(angle: AngleRestriction) -> Board {
     board
 }
 
+/// `P6T10Probe.buildFourLayer`: a 5x4 trace lattice on each of four layers plus sixteen big
+/// through pins in four components.
 fn four_layer_board() -> Board {
     let mut padstacks = Padstacks::new(four_layers());
     let _through = padstacks.add(
@@ -349,6 +383,10 @@ fn four_layer_board() -> Board {
     board
 }
 
+/// `P6T10Probe.fromSides()`'s lane board: [`probe_board`] plus five net-3 traces — a vertical
+/// one at x = 3000, a horizontal one at y = 5000, and a three-sided pocket around (-3000, -3000)
+/// — inserted in the probe's order, so a shape placed against them has a different **first**
+/// acceptable border line depending on where the copper sits.
 fn lane_board(angle: AngleRestriction) -> Board {
     let mut board = probe_board(angle);
     for corners in [
@@ -370,6 +408,7 @@ fn lane_board(angle: AngleRestriction) -> Board {
     board
 }
 
+/// `P6T10Probe.padShapes()`, in probe order.
 fn pad_shapes() -> Vec<(&'static str, TileShape)> {
     vec![
         (
@@ -403,6 +442,7 @@ fn pad_shapes() -> Vec<(&'static str, TileShape)> {
     ]
 }
 
+/// `P6T10Probe.frontLines()`, in probe order.
 fn front_lines() -> Vec<(&'static str, Line)> {
     vec![
         (
@@ -448,6 +488,7 @@ fn front_lines() -> Vec<(&'static str, Line)> {
     ]
 }
 
+/// `P6T10Probe.FRONT_PAD`.
 fn front_pad() -> TileShape {
     TileShape::Octagon(IntOctagon::new(-100, -100, 100, 100, -200, 200, -200, 200))
 }
@@ -456,6 +497,11 @@ fn centre_of(shape: &TileShape) -> Point {
     Point::Int(shape.centre_of_gravity().round())
 }
 
+// =================================================================================================
+// `ForcedPadRouter.inFrontOfPad`
+// =================================================================================================
+
+/// Probe mode `front`, all 160 grid rows plus the three fall-through rows.
 #[test]
 fn in_front_of_pad_agrees_with_the_jvm_on_every_probe_row() {
     let pad = front_pad();
@@ -486,9 +532,13 @@ fn in_front_of_pad_agrees_with_the_jvm_on_every_probe_row() {
         "probe mode `front` should carry 10 lines x 8 sides x 2 withSides x 2 widths rows"
     );
 
+    // `:205-208`: a `fromSide` outside 0..=7 warns and answers `true`.
     let above = &lines[0].1;
     assert!(ForcedPadRouter::in_front_of_pad(above, &pad, 8, 30, true));
     assert!(ForcedPadRouter::in_front_of_pad(above, &pad, -1, 30, true));
+    // 600 randomised `(octagon, line, fromSide, width, withSides)` rows, so the eight-case switch
+    // is exercised on more than one pad — a consolidated `min`/`max` that happened to agree on
+    // the fixed octagon would show up here. 406 `false` / 194 `true` on the JVM.
     let mut rnd_rows = 0usize;
     for row in section("front") {
         let trimmed = row.trim_start();
@@ -515,6 +565,13 @@ fn in_front_of_pad_agrees_with_the_jvm_on_every_probe_row() {
     }
     assert_eq!(rnd_rows, 600);
 
+    // The trap `:59-62` sets: "not a box and not an octagon" is **not** the same predicate as
+    // "not an int octagon". A triangle whose three sides are all multiples of 45 degrees passes
+    // `Simplex.isIntOctagon` (Simplex.java:365-379), so the switch runs on its bounding octagon.
+    //
+    // ```text
+    //   fortyFiveTriangle isIntOctagon=true -> false
+    // ```
     let forty_five_triangle = TileShape::get_instance_from_points(&[
         IntPoint::new(0, 0),
         IntPoint::new(500, 0),
@@ -531,6 +588,12 @@ fn in_front_of_pad_agrees_with_the_jvm_on_every_probe_row() {
         30,
         true
     ));
+    // `:59-62` proper: a genuinely non-45-degree simplex answers `true` for every `fromSide`
+    // without looking at the line.
+    //
+    // ```text
+    //   nonOctagon isIntOctagon=false fromSide=0..7 -> true
+    // ```
     let skew_triangle = TileShape::get_instance_from_points(&[
         IntPoint::new(0, 0),
         IntPoint::new(500, 100),
@@ -551,6 +614,21 @@ fn in_front_of_pad_agrees_with_the_jvm_on_every_probe_row() {
     }
 }
 
+/// **Quirk #176.** `inFrontOfPad`'s `case 0` third disjunct (ForcedPadRouter.java:78) reads
+/// `Math.min(lineA.x + lineA.y, lineB.x + lineB.x)` — `lineB.x` twice, where all seven sibling
+/// cases and the two neighbouring disjuncts read `x + y`. The observable consequence is that at
+/// `fromSide = 0` the answer depends on **which end point of the line is `a`**, even though the
+/// two `Line`s describe the same geometry; `fromSide = 7`, whose corresponding disjunct is
+/// spelled correctly, is symmetric on the same pair.
+///
+/// Probe mode `front`:
+///
+/// ```text
+///   line=typoA fromSide=0 width=30 withSides=false -> true
+///   line=typoB fromSide=0 width=30 withSides=false -> false
+///   line=typoA fromSide=7 width=30 withSides=false -> true
+///   line=typoB fromSide=7 width=30 withSides=false -> true
+/// ```
 #[test]
 fn in_front_of_pad_is_asymmetric_in_a_and_b_at_from_side_zero() {
     let pad = front_pad();
@@ -566,6 +644,7 @@ fn in_front_of_pad_is_asymmetric_in_a_and_b_at_from_side_zero() {
                 !ForcedPadRouter::in_front_of_pad(&backwards, &pad, 0, width, with_sides),
                 "probe `line=typoB fromSide=0 -> false` — the `lineB.x + lineB.x` typo"
             );
+            // The correctly spelled sibling: symmetric.
             assert!(ForcedPadRouter::in_front_of_pad(
                 &forwards, &pad, 7, width, with_sides
             ));
@@ -576,6 +655,12 @@ fn in_front_of_pad_is_asymmetric_in_a_and_b_at_from_side_zero() {
     }
 }
 
+// =================================================================================================
+// `ForcedPadRouter.checkForcedPad`
+// =================================================================================================
+
+/// Probe mode `pad`: the full `shape x nets x copperSharing x onlyFront` grid in both angle
+/// regimes, plus the recursion-budget ladder, the `ignoreItems` row and the shove-via block.
 #[test]
 fn check_forced_pad_agrees_with_the_jvm_on_every_probe_row() {
     let mut angle = AngleRestriction::None;
@@ -731,6 +816,10 @@ fn check_forced_pad_agrees_with_the_jvm_on_every_probe_row() {
     let _ = (free_via, fixed_via);
 }
 
+/// The check methods must not touch the item set: `checkForcedPad` builds substitute trace pieces
+/// and consults the shove algorithms, but never inserts. (It *does* advance the board's item-id
+/// counter — `ShapeTraceEntries.nextSubstituteTracePiece` constructs real `PolylineTrace`s, which
+/// Task 9 §9.3 records — so this pins `structural_hash`, not the raw counter.)
 #[test]
 fn check_forced_pad_does_not_mutate_the_board() {
     let mut board = probe_board(AngleRestriction::None);
@@ -757,6 +846,23 @@ fn check_forced_pad_does_not_mutate_the_board() {
     assert_eq!(board.structural_hash(), before);
 }
 
+// =================================================================================================
+// The cycle Task 9 left open
+// =================================================================================================
+
+/// Probe mode `drill`. Task 9 could pin only `viaId=7` and `viaId=8` — the two arms that answer
+/// before `checkForcedPad`; every other row here reaches the arm that was `unimplemented!()`
+/// until this task, so this test is the one that proves the cycle is closed.
+///
+/// ```text
+///   check viaId=6 delta=(300,0) result=true ignoreSize=1
+///   check viaId=7 delta=(300,0) result=false ignoreSize=0
+///   check viaId=8 delta=(300,0) result=false ignoreSize=0
+///   check viaId=6 delta=(-1500,-2000) result=false ignoreSize=1
+///   check viaId=6 delta=(-2000,-1600) result=true ignoreSize=1
+///   check viaId=6 delta=(-1500,-1900) result=false ignoreSize=1
+///   check viaId=6 delta=(300,0) viaDepth=0 result=true
+/// ```
 #[test]
 fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
     for angle in [AngleRestriction::None, AngleRestriction::NinetyDegree] {
@@ -795,26 +901,25 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
         assert_eq!((free, fixed, on_pin), (ItemId(6), ItemId(7), ItemId(8)));
 
         let delta = Vector::from(IntVector::new(300, 0));
-        let ignore: Vec<ItemId> = Vec::new();
+        let mut ignore = Vec::new();
         assert!(
-            DrillItemMover::check(&mut board, free, &delta, 20, 5, Some(&ignore), None),
+            DrillItemMover::check(&mut board, free, &delta, 20, 5, Some(&mut ignore), None),
             "probe `check viaId=6 delta=(300,0) result=true`"
         );
-        // quirk #175 (fixed: T10): Java's `:63` appended the drill item to the **caller's** list,
-        // so the jar's probe prints `ignoreSize=1` after this successful check. The collection is
-        // copied unconditionally now, the way `shoveVias:220-223` already did, and the parameter
-        // is a shared slice — so the caller's list is untouched. The routing answer above, which
-        // is what the probe row actually measures, is unchanged.
-        assert!(ignore.is_empty());
+        assert_eq!(
+            ignore,
+            vec![free],
+            "quirk #175: `:63` appends the drill item to the caller's list"
+        );
         for via in [fixed, on_pin] {
-            let ignore: Vec<ItemId> = Vec::new();
+            let mut ignore = Vec::new();
             assert!(!DrillItemMover::check(
                 &mut board,
                 via,
                 &delta,
                 20,
                 5,
-                Some(&ignore),
+                Some(&mut ignore),
                 None
             ));
             assert!(ignore.is_empty());
@@ -824,7 +929,7 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
             (-2000, -1600, true),
             (-1500, -1900, false),
         ] {
-            let ignore: Vec<ItemId> = Vec::new();
+            let mut ignore = Vec::new();
             assert_eq!(
                 DrillItemMover::check(
                     &mut board,
@@ -832,24 +937,29 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
                     &Vector::from(IntVector::new(dx, dy)),
                     20,
                     5,
-                    Some(&ignore),
+                    Some(&mut ignore),
                     None,
                 ),
                 expected,
                 "probe `check viaId=6 delta=({dx},{dy}) result={expected}` ({angle:?})"
             );
-            // quirk #175 (fixed: T10), as above: the jar's `ignoreSize=1` is the caller's list
-            // being mutated by a check, and it no longer is.
-            assert!(ignore.is_empty());
+            assert_eq!(ignore, vec![free]);
         }
-        let ignore: Vec<ItemId> = Vec::new();
+        let mut ignore = Vec::new();
         assert!(
-            DrillItemMover::check(&mut board, free, &delta, 20, 0, Some(&ignore), None),
+            DrillItemMover::check(&mut board, free, &delta, 20, 0, Some(&mut ignore), None),
             "probe `check viaId=6 delta=(300,0) viaDepth=0 result=true`"
         );
     }
 }
 
+// =================================================================================================
+// `ForcedPadRouter.calcFromSide` and `ForcedViaInserter.calculateFromSide`
+// =================================================================================================
+
+/// Probe mode `side`, the `calcFromSide` block. Note every answer has `border=null`: Java builds
+/// `new ShapeEntrySide(i, null)` (`:480`, `:488`), so the border intersection is never filled in
+/// by this calculator — unlike `calculateFromSide`, which always fills it.
 #[test]
 fn calc_from_side_agrees_with_the_jvm() {
     let mut angle = AngleRestriction::None;
@@ -893,6 +1003,10 @@ fn calc_from_side_agrees_with_the_jvm() {
     assert_eq!(checked, 42, "7 shapes x 3 offsets x 2 regimes");
 }
 
+/// Probe mode `side`, the `lane` block: 504 rows whose answers are **not** all `-1` and `0`
+/// (`no` takes -1, 0, 1 and 3), so the order in which `calcFromSide` sweeps
+/// `offsetShape.borderLine(i)` — and its fall-back second sweep at clearance class 0 — are
+/// pinned rather than merely exercised.
 #[test]
 fn calc_from_side_walks_javas_border_line_order() {
     let mut board = lane_board(AngleRestriction::None);
@@ -951,6 +1065,8 @@ fn calc_from_side_walks_javas_border_line_order() {
     );
 }
 
+/// Probe mode `side`, the `calculateFromSide` block: the orthogonal sweep (`:384-420`), the
+/// diagonal fallback (`:424-459`) and the two `null` arms.
 #[test]
 fn calculate_from_side_agrees_with_the_jvm() {
     let via_shape = TileShape::Octagon(IntOctagon::new(-100, -100, 100, 100, -200, 200, -200, 200));
@@ -1018,6 +1134,19 @@ fn calculate_from_side_agrees_with_the_jvm() {
     assert_eq!(checked, 36, "6 rooms x 3 distances x 2 regimes");
 }
 
+// =================================================================================================
+// `ForcedViaInserter.holeCheckShape`
+// =================================================================================================
+
+/// Probe mode `hole`:
+///
+/// ```text
+///   holeClearance=0 padstack=thru drillRadius=31.5000 -> null
+///   holeClearance=100 padstack=thru drillRadius=31.5000 -> Circle[858,858..1142,1142]
+///   holeClearance=100 padstack=smd drillRadius=22.5000 -> Circle[867,867..1133,1133]
+///   holeClearance=400 padstack=thru drillRadius=31.5000 -> Circle[558,558..1442,1442]
+///   holeClearance=400 padstack=smd drillRadius=22.5000 -> Circle[567,567..1433,1433]
+/// ```
 #[test]
 fn hole_check_shape_agrees_with_the_jvm() {
     let mut board = probe_board(AngleRestriction::None);
@@ -1052,6 +1181,11 @@ fn hole_check_shape_agrees_with_the_jvm() {
     }
 }
 
+// =================================================================================================
+// `ForcedViaInserter.checkLayer`
+// =================================================================================================
+
+/// `P6T10Probe.checkLayer`'s five probe spots, in order.
 fn layer_spots() -> Vec<(&'static str, Point)> {
     vec![
         ("onNet1", Point::new(0, 200)),
@@ -1062,6 +1196,8 @@ fn layer_spots() -> Vec<(&'static str, Point)> {
     ]
 }
 
+/// Probe mode `layer`, every row of the `spot x radius x attachSmd x thw x nets` grid in both
+/// angle regimes, plus the `tinyRoom` row where `calculateFromSide` answers `null` (`:70-72`).
 #[test]
 fn check_layer_agrees_with_the_jvm_on_every_probe_row() {
     let room = TileShape::Box(IntBox::from_coords(-3000, -3000, 3000, 3000));
@@ -1122,12 +1258,17 @@ fn check_layer_agrees_with_the_jvm_on_every_probe_row() {
     );
 }
 
+/// `:118-124`: the via phase and the trace phase each answer a `CheckDrillResult`, and
+/// `DRILLABLE_WITH_ATTACH_SMD` from **either** wins. On the probe board the SMD pin at (-500, 0)
+/// is what produces it, and `attachSmdAllowed` only reaches the via phase — the trace phase
+/// hard-codes `true` at `:111` — so the promotion is observable from both sides.
 #[test]
 fn check_layer_promotes_to_attach_smd_when_either_phase_does() {
     let room = TileShape::Box(IntBox::from_coords(-3000, -3000, 3000, 3000));
     let mut board = probe_board(AngleRestriction::None);
     let on_smd = Point::new(-500, 0);
 
+    // Via phase only (`traceHalfWidth = 0` returns at `:92-94`), with copper sharing allowed.
     assert_eq!(
         ForcedViaInserter::check_layer(
             &mut board,
@@ -1145,6 +1286,7 @@ fn check_layer_promotes_to_attach_smd_when_either_phase_does() {
         ),
         CheckDrillResult::DrillableWithAttachSmd
     );
+    // Via phase refuses without it.
     assert_eq!(
         ForcedViaInserter::check_layer(
             &mut board,
@@ -1162,6 +1304,7 @@ fn check_layer_promotes_to_attach_smd_when_either_phase_does() {
         ),
         CheckDrillResult::NotDrillable
     );
+    // `viaRadius <= 0` skips the via phase entirely (`:43-45`) — DRILLABLE, no promotion.
     assert_eq!(
         ForcedViaInserter::check_layer(
             &mut board,
@@ -1179,6 +1322,8 @@ fn check_layer_promotes_to_attach_smd_when_either_phase_does() {
         ),
         CheckDrillResult::Drillable
     );
+    // Both phases run and the trace phase (whose `copperSharingAllowed` is the hard-coded `true`
+    // at `:111`) supplies the promotion.
     assert_eq!(
         ForcedViaInserter::check_layer(
             &mut board,
@@ -1198,11 +1343,29 @@ fn check_layer_promotes_to_attach_smd_when_either_phase_does() {
     );
 }
 
+/// `:88-90` and `:117-119`: a `NOT_DRILLABLE` from either phase is returned immediately.
+///
+/// Probe mode `layer` supplies both halves. The through pin at (500, 0) is unshovable and copper
+/// sharing is off, so **phase 1** refuses whatever the trace half width is:
+///
+/// ```text
+///   spot=onThruPin radius=60.0000 attachSmd=false thw=0 nets=[3] -> NOT_DRILLABLE
+/// ```
+///
+/// while at (0, 200) the 60-unit via clears the net-1 trace but a 400-unit start-trace circle
+/// does not, so **phase 2** is the one that refuses:
+///
+/// ```text
+///   spot=onNet1 radius=60.0000 attachSmd=false thw=0   nets=[3] -> DRILLABLE
+///   spot=onNet1 radius=60.0000 attachSmd=false thw=30  nets=[3] -> DRILLABLE
+///   spot=onNet1 radius=60.0000 attachSmd=false thw=400 nets=[3] -> NOT_DRILLABLE
+/// ```
 #[test]
 fn check_layer_short_circuits_on_the_first_not_drillable() {
     let room = TileShape::Box(IntBox::from_coords(-3000, -3000, 3000, 3000));
     for angle in [AngleRestriction::None, AngleRestriction::NinetyDegree] {
         let mut board = probe_board(angle);
+        // Phase 1 refuses.
         for thw in [0, 30, 400] {
             assert_eq!(
                 ForcedViaInserter::check_layer(
@@ -1223,6 +1386,7 @@ fn check_layer_short_circuits_on_the_first_not_drillable() {
                 "probe `spot=onThruPin radius=60.0000 attachSmd=false thw={thw} nets=[3]`"
             );
         }
+        // Phase 1 passes and phase 2 decides.
         for (thw, expected) in [
             (0, CheckDrillResult::Drillable),
             (30, CheckDrillResult::Drillable),
@@ -1247,6 +1411,7 @@ fn check_layer_short_circuits_on_the_first_not_drillable() {
                 "probe `spot=onNet1 radius=60.0000 attachSmd=false thw={thw} nets=[3]`"
             );
         }
+        // `location` is not an `IntPoint` (`:46-48`) — refused before either phase runs.
         assert_eq!(
             ForcedViaInserter::check_layer(
                 &mut board,
@@ -1271,6 +1436,9 @@ fn check_layer_short_circuits_on_the_first_not_drillable() {
     }
 }
 
+/// The brief's `0 diffs` table: 200 pseudo-random `(location, layer, net, radius, halfWidth)`
+/// triples through `checkLayer` on a four-layer board with sixteen unshovable pins and a trace
+/// lattice on every layer. Probe mode `rand`; 108 `DRILLABLE` and 92 `NOT_DRILLABLE` on the JVM.
 #[test]
 fn check_layer_agrees_with_the_jvm_on_two_hundred_random_triples() {
     let mut board = four_layer_board();
@@ -1323,6 +1491,11 @@ fn check_layer_agrees_with_the_jvm_on_two_hundred_random_triples() {
     );
 }
 
+// =================================================================================================
+// `ForcedViaInserter.check`
+// =================================================================================================
+
+/// `P6T10Probe.checkVia`'s six probe spots, in order.
 fn check_spots() -> Vec<(&'static str, Point)> {
     vec![
         ("onNet1", Point::new(0, 200)),
@@ -1334,6 +1507,9 @@ fn check_spots() -> Vec<(&'static str, Point)> {
     ]
 }
 
+/// Probe mode `check`: every row of the `holeClearance x spot x attachSmd x nets x pen` grid in
+/// both angle regimes, including the `shoveFailingLayer` each refusal records (`:180`, `:205`,
+/// `:234`).
 #[test]
 fn forced_via_inserter_check_agrees_with_the_jvm_on_every_probe_row() {
     let spots = check_spots();
@@ -1400,6 +1576,8 @@ fn forced_via_inserter_check_agrees_with_the_jvm_on_every_probe_row() {
     );
 }
 
+/// The `check` answers must agree with what `checkLayer` says for the same geometry wherever
+/// both are asked the same question: a via that fits, and one that does not.
 #[test]
 fn check_agrees_with_check_layer_where_the_via_fits_and_where_it_does_not() {
     let mut board = probe_board(AngleRestriction::None);
@@ -1407,6 +1585,7 @@ fn check_agrees_with_check_layer_where_the_via_fits_and_where_it_does_not() {
     let via_info = ViaInfo::new("v", through, 1, false);
     let room = TileShape::Box(IntBox::from_coords(-3000, -3000, 3000, 3000));
 
+    // Free space: both answer yes.
     assert!(ForcedViaInserter::check(
         &mut board,
         &via_info,
@@ -1435,6 +1614,7 @@ fn check_agrees_with_check_layer_where_the_via_fits_and_where_it_does_not() {
         CheckDrillResult::Drillable
     );
 
+    // On the foreign through pin: both refuse.
     assert!(!ForcedViaInserter::check(
         &mut board,
         &via_info,
@@ -1465,14 +1645,31 @@ fn check_agrees_with_check_layer_where_the_via_fits_and_where_it_does_not() {
     );
 }
 
+// =================================================================================================
+// Task 10b — the via-insertion chain: `ForcedPadRouter::forced_pad`, `TraceShover::insert`,
+// `DrillItemMover::{insert, shove_vias}` and `ForcedViaInserter::insert`
+// =================================================================================================
+//
+// # Where these numbers come from
+//
+// `scripts/differential/java/probes/P6T10bProbe.java`, committed with its stdout as
+// `tests/data/p6t10b-via-insert.txt`. Every row here **mutates the board**, so the probe rebuilds
+// its board per row and prints the whole item list in `getItems()` order (descending id, quirk
+// #63) plus `communication.idGenerator.maxGeneratedId()` — which is what pins controller ruling
+// AA's "exact board-state parity": item ids, split-trace polylines, via positions and padstacks,
+// and the item order itself.
+
 const TRANSCRIPT_10B: &str = include_str!("data/p6t10b-via-insert.txt");
 
+/// One probe row of a mutating mode: the `  …` line, the `    maxId=… items=…` line under it and
+/// the `    item …` lines under that.
 struct ProbeCase {
     row: &'static str,
     max_id: u32,
     items: Vec<&'static str>,
 }
 
+/// The `######## <mode>` section of [`TRANSCRIPT_10B`], parsed into [`ProbeCase`]s.
 fn cases(mode: &str) -> Vec<ProbeCase> {
     let header = format!("######## {mode}");
     let mut out: Vec<ProbeCase> = Vec::new();
@@ -1507,16 +1704,19 @@ fn cases(mode: &str) -> Vec<ProbeCase> {
     out
 }
 
+/// `P6T10bProbe.pt` — `p.toFloat().round()`, rendered `(x,y)`.
 fn dump_point(point: &Point) -> String {
     let rounded = point.to_float().round();
     format!("({},{})", rounded.x, rounded.y)
 }
 
+/// `P6T10bProbe.nets` — `java.util.Arrays.toString` with the spaces removed.
 fn dump_nets(net_nos: &[i32]) -> String {
     let inner: Vec<String> = net_nos.iter().map(i32::to_string).collect();
     format!("[{}]", inner.join(","))
 }
 
+/// `P6T10bProbe.dump()` — one line per item, in `Board::get_items()` order (descending id).
 fn dump_board(board: &Board) -> Vec<String> {
     let ctx = board.ctx();
     let mut out = Vec::new();
@@ -1590,6 +1790,8 @@ fn max_generated_id(board: &Board) -> u32 {
     board.communication.id_gen.max_generated_id().0
 }
 
+/// `String.hashCode()` (JLS: `s[0]*31^(n-1) + …`, `int` arithmetic, so wrapping) of the probe's
+/// `maxId|items|dump` string — mode `rand`'s compact whole-board fingerprint.
 fn java_string_hash(text: &str) -> i32 {
     let mut hash: i32 = 0;
     for c in text.chars() {
@@ -1608,6 +1810,7 @@ fn board_fingerprint(board: &Board) -> i32 {
     java_string_hash(&text)
 }
 
+/// Assert the whole board state against one probe row.
 fn assert_board_matches(board: &Board, case: &ProbeCase) {
     assert_eq!(
         max_generated_id(board),
@@ -1629,6 +1832,13 @@ fn assert_board_matches(board: &Board, case: &ProbeCase) {
     }
 }
 
+/// [`assert_board_matches`] as a predicate rather than an assertion, for the one probe axis a
+/// Plan 9 fix has moved off the jar — see `trace_shover_insert_agrees_with_the_jvm_on_every_probe_row`.
+fn board_matches(board: &Board, case: &ProbeCase) -> bool {
+    max_generated_id(board) == case.max_id && dump_board(board) == case.items
+}
+
+/// `P6T10bProbe.buildWithVia` — the probe board plus a free, unfixed net-3 via.
 fn probe_board_with_via(angle: AngleRestriction, via_center: Point) -> (Board, ItemId) {
     let mut board = probe_board(angle);
     let through = PadstackId(board.library.padstacks.get_by_name("thru").unwrap().no);
@@ -1646,6 +1856,7 @@ fn probe_board_with_via(angle: AngleRestriction, via_center: Point) -> (Board, I
     (board, via)
 }
 
+/// `P6T10bProbe.padShape` — a box in the 90-degree regime, an octagon otherwise.
 fn probe_pad_shape(centre: IntPoint, radius: i32, is_90: bool) -> TileShape {
     if is_90 {
         TileShape::Box(IntBox::from_coords(
@@ -1668,6 +1879,7 @@ fn probe_pad_shape(centre: IntPoint, radius: i32, is_90: bool) -> TileShape {
     }
 }
 
+/// `P6T10bProbe.spots()`.
 fn probe_spots() -> [(&'static str, IntPoint); 5] {
     [
         ("onNet1Trace", IntPoint::new(0, 200)),
@@ -1682,6 +1894,9 @@ fn never_stop() -> impl Fn() -> bool {
     || false
 }
 
+/// Mode `pad`: `ForcedPadRouter.forcedPad` over 5 spots x 2 radii x 2 net arrays x
+/// `copperSharingAllowed` x 2 recursion depths x `changedArea` on/off, in both angle regimes,
+/// plus the two early arms — **320 grid rows and 2 extra rows**, each with its whole board.
 #[test]
 fn forced_pad_agrees_with_the_jvm_on_every_probe_row() {
     let stop = never_stop();
@@ -1748,6 +1963,7 @@ fn forced_pad_agrees_with_the_jvm_on_every_probe_row() {
         "2 regimes x 5 spots x 2 radii x 2 nets x 2 share x 2 depths x 2 changedArea"
     );
 
+    // `:355-358` — an empty pad shape answers `true` and leaves the board alone.
     let empty_case = probe_rows.next().expect("the emptyShape row");
     let mut board = probe_board(AngleRestriction::None);
     board.set_shove_failing_obstacle(None);
@@ -1770,6 +1986,8 @@ fn forced_pad_agrees_with_the_jvm_on_every_probe_row() {
     );
     assert_board_matches(&board, &empty_case);
 
+    // `:359-362` — a pad outside the bounding box answers `false` and records the outline, which
+    // on a board built without one is `null`.
     let outside_case = probe_rows.next().expect("the outsideBoundingBox row");
     let mut board = probe_board(AngleRestriction::None);
     board.set_shove_failing_obstacle(None);
@@ -1794,11 +2012,48 @@ fn forced_pad_agrees_with_the_jvm_on_every_probe_row() {
     assert!(probe_rows.next().is_none(), "every `pad` row was consumed");
 }
 
+/// The number of the 320 `trace` grid rows whose board **moved off the jar** when T11 fixed
+/// quirk #177. Every one of them is a `changedArea=false` row, and every one of them moved to the
+/// answer its `changedArea=true` twin already gave — the test below asserts both, so this literal
+/// is a count, not a claim on its own.
+/// Measured: **4** — `spot=onNet1Trace r=60 nets=[3] maxRec=20`, at `spring=0` and `spring=3`, in
+/// both angle regimes. That is the row the register's JVM-pinned literal already named (three
+/// traces, ids 6/7/8, where a marked board leaves one, id 8 with all eight corners), and it is the
+/// only grid point at which the un-normalized pieces are distinguishable: everywhere else the
+/// shove either fails, or leaves a single piece that normalisation would not have changed.
+const MOVED_BY_177: usize = 4;
+
+/// Mode `trace`: `TraceShover.insert` over the same grid plus the spring-over budget — **320 grid
+/// rows and 2 extra rows**.
+///
+/// # PORT-REGRESSION PIN on the `changedArea=false` axis — fixed: T11 (#177)
+///
+/// This transcript is the jar's own stdout, and 316 of its 320 grid rows still match it exactly.
+/// The rest are the rows quirk #177 moved: `TraceShover.insert:572` dereferenced a null
+/// `changedArea` and its own `catch` swallowed the `NullPointerException`, so an unmarked board
+/// kept the substitute pieces un-normalized. `ForcedPadRouter.forcedPad:439-444` guards the
+/// identical call in the identical loop, so the two mutating halves of the shove disagreed about
+/// the same board state, and the register's own remedy was to compute `optArea` the way the
+/// sibling already does.
+///
+/// Under ruling CC (the M1 accept wave's precedent, ruling BV) a jar row a Plan 9 fix moves is
+/// **re-cut as a port-regression pin with provenance** rather than left red. The re-cut here is
+/// not a literal but the invariant that replaces it, which is stronger than a transcript row and
+/// cannot rot into agreement with a future bug: for every one of the moved rows, the port's
+/// unmarked board must equal the board its **marked** twin produces. That is the sibling being
+/// the specification, asserted 320 rows wide instead of on the one hand-picked row
+/// `an_unmarked_changed_area_still_normalises` uses.
+///
+/// The jar comparison is kept for every other row and every other axis, so a real parity
+/// regression anywhere else in the grid still fails here.
 #[test]
 fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
     let stop = never_stop();
     let mut probe_rows = cases("trace").into_iter();
     let mut checked = 0usize;
+    let mut moved: Vec<String> = Vec::new();
+    let mut unmarked_boards: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut marked_boards: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for angle in [AngleRestriction::None, AngleRestriction::NinetyDegree] {
         let is_90 = angle == AngleRestriction::NinetyDegree;
         for (label, centre) in probe_spots() {
@@ -1806,6 +2061,11 @@ fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
                 for net_arr in [vec![1], vec![3]] {
                     for max_recursion_depth in [0, 20] {
                         for spring_over in [0, 3] {
+                            // Everything but the `changedArea` axis: the key that pairs a
+                            // `changedArea=false` row with its `changedArea=true` twin.
+                            let key = format!(
+                                "{is_90}|{label}|{radius}|{net_arr:?}|{max_recursion_depth}|{spring_over}"
+                            );
                             for with_changed_area in [false, true] {
                                 let case = probe_rows.next().expect("a probe row per grid point");
                                 let mut board = probe_board(angle);
@@ -1842,7 +2102,15 @@ fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
                                     "shoveFailingObstacle after `{}`",
                                     case.row
                                 );
-                                assert_board_matches(&board, &case);
+                                if with_changed_area || board_matches(&board, &case) {
+                                    assert_board_matches(&board, &case);
+                                } else {
+                                    moved.push(case.row.to_string());
+                                    unmarked_boards.insert(key.clone(), dump_board(&board));
+                                }
+                                if with_changed_area {
+                                    marked_boards.insert(key.clone(), dump_board(&board));
+                                }
                                 checked += 1;
                             }
                         }
@@ -1852,6 +2120,33 @@ fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
         }
     }
     assert_eq!(checked, 320);
+
+    // fixed: T11 (#177). Every row that has moved off the jar is a `changedArea=false` row, and it
+    // moved because `TraceShover.insert:572` no longer dereferences a null `changedArea`. See the
+    // doc comment above for why these rows are a port-regression pin rather than a parity failure.
+    assert!(
+        moved.iter().all(|row| row.contains("changedArea=false")),
+        "a row moved off the jar on an axis #177 does not touch:\n{}",
+        moved.join("\n")
+    );
+    assert_eq!(
+        moved.len(),
+        MOVED_BY_177,
+        "the number of probe rows #177 moves changed:\n{}",
+        moved.join("\n")
+    );
+    // And they moved *to* the marked board's answer, which is the whole content of the fix: the
+    // sibling `ForcedPadRouter.forcedPad` is the specification, so the shove's result must not
+    // depend on whether the caller happened to be marking the changed area.
+    for (key, unmarked) in &unmarked_boards {
+        assert_eq!(
+            unmarked,
+            marked_boards
+                .get(key)
+                .expect("every unmarked row has its marked twin"),
+            "fixed: T11 (#177) — the two halves of the shove still disagree at `{key}`"
+        );
+    }
 
     let empty_case = probe_rows.next().expect("the emptyShape row");
     let mut board = probe_board(AngleRestriction::None);
@@ -1900,12 +2195,31 @@ fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
     );
 }
 
+/// **fixed: T11 (#177).** Java bug: with `board.changedArea == null`,
+/// `TraceShover.insert:572`'s `board.changedArea.getArea(layer)` throws a `NullPointerException`
+/// that the `catch (Exception)` one line down swallows — so the substitute pieces were inserted
+/// **un-normalized**: three separate traces (ids 6, 7, 8), where the identical call on a board
+/// that *is* marking its changed area normalizes them into one (id 8, all eight corners).
+/// `ForcedPadRouter.forcedPad:439-444` guards the same null in the same loop over the same
+/// pieces, so the two mutating halves of the shove disagreed about the same board state.
+///
+/// This test was `trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
+/// unnormalized` and pinned that three-trace board as the unmarked answer.
+///
+/// The sibling is the specification, so the binding assertion is now an **equality between the
+/// two halves** rather than two literals: the board after the shove does not depend on whether
+/// `changed_area` was marked. It holds exactly — the unmarked board is not merely "also one
+/// trace", it is the *same* board, item for item and corner for corner, and `maxGeneratedId` is 8
+/// on both sides as it always was. The marked half's literal is kept below so the pair still says
+/// what that board is, rather than only that the two agree about something.
 #[test]
-fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_unnormalized() {
+fn an_unmarked_changed_area_still_normalises() {
     let stop = never_stop();
     let shape = probe_pad_shape(IntPoint::new(0, 200), 60, false);
     let from_side = ShapeEntrySide::from_point(&Point::new(0, 200), &shape);
 
+    // changedArea == null. Probe row `spot=onNet1Trace r=60 nets=[3] maxRec=20 spring=0
+    // changedArea=false`, whose JVM answer is the three un-normalized pieces.
     let mut board = probe_board(AngleRestriction::None);
     assert!(board.changed_area.is_none());
     assert!(
@@ -1925,12 +2239,16 @@ fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
         .unwrap()
     );
     assert_eq!(max_generated_id(&board), 8);
+    let unmarked = dump_board(&board);
+    // One trace, not three. The pinned answer was
+    //   id=8 corners=[(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0)]
+    //   id=7 corners=[(269,400),(500,400)]
+    //   id=6 corners=[(-500,0),(-269,0)]
+    // — the same copper, left in the three pieces `nextSubstituteTracePiece` built.
     assert_eq!(
-        dump_board(&board),
+        unmarked,
         vec![
-            "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0)]",
-            "    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(269,400),(500,400)]",
-            "    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(-500,0),(-269,0)]",
+            "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(500,400),(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0),(-500,0)]",
             "    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 corners=[(-800,300),(-800,900),(300,900)]",
             "    item id=3 type=Pin nets=[1] cl=1 padstack=thru center=(500,0)",
             "    item id=2 type=Pin nets=[1] cl=1 padstack=smd center=(-500,0)",
@@ -1938,6 +2256,7 @@ fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
         ]
     );
 
+    // changedArea != null: the half that always worked, and the specification for the half above.
     let mut board = probe_board(AngleRestriction::None);
     board.start_marking_changed_area();
     assert!(
@@ -1957,8 +2276,9 @@ fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
         .unwrap()
     );
     assert_eq!(max_generated_id(&board), 8);
+    let marked = dump_board(&board);
     assert_eq!(
-        dump_board(&board),
+        marked,
         vec![
             "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(500,400),(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0),(-500,0)]",
             "    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 corners=[(-800,300),(-800,900),(300,900)]",
@@ -1967,8 +2287,19 @@ fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
             "    item id=1 type=BoardOutline nets=[] cl=0",
         ]
     );
+
+    // The invariant, stated on its own: the shove does not depend on whether the caller happened
+    // to be marking the changed area. This is the assertion that would catch a future divergence
+    // between `TraceShover::insert` and `ForcedPadRouter::forced_pad` even if both literals above
+    // were updated together.
+    assert_eq!(
+        unmarked, marked,
+        "fixed: T11 (#177) — the shove's two mutating halves agree about the same board state"
+    );
 }
 
+/// Mode `shove`: `DrillItemMover.shoveVias` (144 rows) then `DrillItemMover.insert` (72 rows) and
+/// the shove-fixed row, in both angle regimes.
 #[test]
 fn drill_item_mover_shove_vias_and_insert_agree_with_the_jvm() {
     let stop = never_stop();
@@ -2053,6 +2384,7 @@ fn drill_item_mover_shove_vias_and_insert_agree_with_the_jvm() {
                 }
             }
         }
+        // `:117-119` — a shove-fixed drill item refuses without touching the board.
         let case = probe_rows.next().expect("the shoveFixed row");
         let (mut board, unfixed) = probe_board_with_via(angle, Point::new(2000, 2000));
         board.set_shove_failing_obstacle(None);
@@ -2097,6 +2429,9 @@ fn drill_item_mover_shove_vias_and_insert_agree_with_the_jvm() {
     );
 }
 
+/// Mode `via`: `ForcedViaInserter.insert` over 2 hole clearances x 7 spots x `attachSmd` x 2 net
+/// arrays x 3 `tracePenHalfwidthArr`s, in both angle regimes — **336 rows**, each with its whole
+/// board, the `shoveFailingLayer` it left and the `shoveFailingObstacle`.
 #[test]
 fn forced_via_inserter_insert_agrees_with_the_jvm_on_every_probe_row() {
     let stop = never_stop();
@@ -2163,6 +2498,11 @@ fn forced_via_inserter_insert_agrees_with_the_jvm_on_every_probe_row() {
     assert!(probe_rows.next().is_none(), "every `via` row was consumed");
 }
 
+/// The plan-3 ruling F path, asserted as literals: a via inserted at a corner of the net-1 trace
+/// reaches `BasicBoard.insertVia:287-293` -> `splitTraces` -> `PolylineTrace.split` and **splits
+/// the trace it crosses in two**, with the `StopCheck` never tripping.
+///
+/// Probe row: `hc=0 spot=crossesNet1Trace attachSmd=false nets=[1] pen=[0,0]`.
 #[test]
 fn insert_splits_the_traces_it_crosses() {
     let stop = never_stop();
@@ -2184,6 +2524,8 @@ fn insert_splits_the_traces_it_crosses() {
         )
         .unwrap()
     );
+    // The via is id 6 (burnt before the split), and the split pieces are 7 and 8: the id-burn
+    // order is `insertVia` -> `splitTraces` -> `split`, exactly as Java's.
     assert_eq!(max_generated_id(&board), 8);
     assert_eq!(
         dump_board(&board),
@@ -2199,10 +2541,16 @@ fn insert_splits_the_traces_it_crosses() {
     );
 }
 
+/// Plan-6 ruling 6, the other half of plan-3 ruling F: on a ladder board (quirk #76's minimal
+/// repro) the walk `insertVia` -> `splitTraces` -> `PolylineTrace.split` ->
+/// `Item.getConnectionItems` does not terminate in Java, so the port threads a [`StopCheck`]
+/// through it. A check that trips after `n` calls must answer [`BoardError::Stopped`] — never
+/// hang, and never be swallowed by the `catch` at `TraceShover.java:573` / `ForcedPadRouter`'s.
 #[test]
 fn insert_stops_when_the_stop_check_trips() {
     let mut board = probe_board(AngleRestriction::None);
     board.start_marking_changed_area();
+    // `P6T10bProbe.buildLadder`: four rungs between two rails, all on net 3.
     for i in 0..4 {
         let x = 1000 + i * 200;
         board.insert_trace_without_cleaning(
@@ -2253,6 +2601,12 @@ fn insert_stops_when_the_stop_check_trips() {
     assert!(calls.get() > 3, "the stop check was actually consulted");
 }
 
+/// The brief's `forced_pad_shoves_a_foreign_via_and_reports_the_moved_items`: a pad shape over a
+/// free foreign-net via reaches `DrillItemMover.shoveVias` (`forcedPad:364`), which moves the via
+/// out of the way and leaves it at the JVM's coordinates.
+///
+/// Probe rows: `shoveVias via=freeSpace r=80 nets=[1] maxViaRec=1 share=false` and the
+/// `maxViaRec=0` row above it, where the budget is spent and the via stays put.
 #[test]
 fn forced_pad_shoves_a_foreign_via_and_reports_the_moved_items() {
     let stop = never_stop();
@@ -2260,6 +2614,7 @@ fn forced_pad_shoves_a_foreign_via_and_reports_the_moved_items() {
     let shape = probe_pad_shape(centre, 80, false);
     let from_side = ShapeEntrySide::from_point(&Point::Int(centre), &shape);
 
+    // The via budget is spent: `shoveVias:206-208` answers `true` without moving anything.
     let (mut board, via) = probe_board_with_via(AngleRestriction::None, Point::Int(centre));
     board.start_marking_changed_area();
     assert!(
@@ -2290,6 +2645,7 @@ fn forced_pad_shoves_a_foreign_via_and_reports_the_moved_items() {
         "    item id=6 type=Via nets=[3] cl=1 padstack=thru center=(2000,2000) attach=false"
     );
 
+    // One unit of via budget is enough: the via moves to (2368, 2000).
     let (mut board, _via) = probe_board_with_via(AngleRestriction::None, Point::Int(centre));
     board.start_marking_changed_area();
     assert!(
@@ -2317,6 +2673,12 @@ fn forced_pad_shoves_a_foreign_via_and_reports_the_moved_items() {
     );
 }
 
+/// The brief's `insert_on_an_unroutable_layer_returns_false_and_leaves_the_board_unchanged`: a
+/// `tracePenHalfwidthArr` wide enough that the start-trace circle cannot be shoved makes
+/// `ForcedViaInserter.insert` refuse at `:343-344` **before** `BasicBoard.insertVia` — so no id
+/// is burnt, no via exists, and the board is byte-identical to the one it started with.
+///
+/// Probe row: `hc=0 spot=crossesNet1Trace attachSmd=false nets=[1] pen=[400,400]`.
 #[test]
 fn insert_on_an_unroutable_layer_returns_false_and_leaves_the_board_unchanged() {
     let stop = never_stop();
@@ -2347,6 +2709,9 @@ fn insert_on_an_unroutable_layer_returns_false_and_leaves_the_board_unchanged() 
     assert_eq!(board.structural_hash(), before);
 }
 
+/// The brief's `>= 100 random cases each, 0 diffs`: **five blocks of 120** pseudo-random rows,
+/// one per method, each asserting the answer, `maxId`, the item count and a `String.hashCode` of
+/// the whole board dump — so a single wrong coordinate anywhere on the board fails the row.
 #[test]
 fn the_five_random_blocks_agree_with_the_jvm() {
     let stop = never_stop();
@@ -2384,8 +2749,14 @@ fn the_five_random_blocks_agree_with_the_jvm() {
             let spring_over = next_int(3);
             let copper_sharing = next_int(2) == 0;
             let with_changed_area = next_int(2) == 0;
+            // `P6T10bProbe.randomBlock`: the via is placed near the probed shape, so the
+            // `shoveVias` block has something to shove; see the comment there.
             let via_x = x + next_int(700) - 350;
             let via_y = y + next_int(700) - 350;
+            // `P6T10bProbe.randomBlock`'s block-2 narrowing: the `shoveVias` rows put the via
+            // inside the shape, off the shape's net and with a via budget, because a row that
+            // takes one of `:203-208`'s two skip arms proves nothing. The skip arms themselves
+            // are the deterministic `shove` mode's job.
             let (via_x, via_y, net_no, max_via_recursion_depth) = if which == 2 {
                 (
                     x + (via_x - x) / 3,

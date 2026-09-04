@@ -480,3 +480,48 @@ fn read_unit_scope_is_javas_dead_always_false_override() {
     let mut p = ReadScopeParameter::new(scan("mil)"), &options);
     assert!(!read_unit_scope(&mut p).expect("no scan error"));
 }
+
+// =================================================================================================
+// Plan 9 Task 11, quirk #88 — `PolygonPath.boundingBox` grew the upper x bound once per coordinate
+// =================================================================================================
+
+/// **fixed: T11 (#88).** `bounds[2] = Math.max(bounds[2], arr[i]) + offset` put the `+ offset`
+/// **outside** the `max` on the x axis (PolygonPath.java:122) where the y axis one line below has
+/// it inside (:126), so the upper x bound grew by `width/2` once per x coordinate instead of once
+/// in total. The y axis getting it right is what makes it a transcription slip rather than intent.
+///
+/// The recurrence `b_k = max(b_{k-1}, x_{k-1}) + off` solves to `max_j (x_j + (k-j)·off)`, so the
+/// over-estimate is `(k-2)·offset` for a closed path and grows **linearly with the corner count**.
+/// For the square below — 4 corners at width 200, so `offset = 100` — that is `1300` where `1100`
+/// is right:
+///
+/// ```text
+/// bounds[2] from i32::MIN, x coordinates 0, 1000, 1000, 0:
+///   after 0    : max(MIN, 0)    + 100 =  100
+///   after 1000 : max(100, 1000) + 100 = 1100
+///   after 1000 : max(1100,1000) + 100 = 1200
+///   after 0    : max(1200, 0)   + 100 = 1300     <- and the path's own maximum is 1000
+/// ```
+///
+/// A 100-corner keepout outline at the same width was over-wide by about 9800 units. `boundingBox`
+/// is used for sizing, so tightening it shrinks boxes.
+#[test]
+fn bounding_box_is_square_for_a_square_path() {
+    let path = DsnPolygonPath::new(
+        DsnLayer::signal(),
+        200.0,
+        vec![0.0, 0.0, 1000.0, 0.0, 1000.0, 1000.0, 0.0, 1000.0],
+    );
+    let b = path.bounding_box();
+    assert_eq!(b.coor[0], -100.0);
+    assert_eq!(b.coor[1], -100.0);
+    assert_eq!(b.coor[3], 1100.0);
+    assert_eq!(b.coor[2], 1100.0, "fixed: T11 (#88) — was 1300.0");
+    // The path is a square, so its bounding box must be one. That statement survives a change of
+    // fixture where the four literals above would not.
+    assert_eq!(
+        b.coor[2] - b.coor[0],
+        b.coor[3] - b.coor[1],
+        "a square path has a square bounding box"
+    );
+}
