@@ -2,53 +2,40 @@
 # task: T9
 # The rolling PORT cpu_s baseline (rulings BO / BP4) -- the PREVIOUS TASK's number,
 # never the jar's. scripts/quality-ab.sh reads it as the reference for its cpu_s
-# column and rewrites it in place at each task's close, in the same commit as
-# benchmark/baselines/ab/quality-ab-<task>.tsv.
+# column and rewrites it in place at each task's close.
 #
-# SEEDING, and why the per-stem numbers are measured rather than copied.
-# The plan seeds this file from the v1.0.0-rs run of record's per-board cpu_s. That
-# run is the port's measured pre-fix position and is the right provenance -- but its
-# 605 boards are the `pcbench` corpus (`pcbench-*`), and this file's 29 rows are the
-# `tests/reference/` stems. The two sets are disjoint: not one stem is a pcbench
-# board, so there is no per-stem number in that run to copy. The seed is therefore
-# Task 0's own median-of-3 measurement of the same binary generation (the branch's
-# base commit is what produced v1.0.0-rs), and the run of record is recorded here as
-# the corpus-level position every milestone's cpu ratio is taken against.
+# T9 NOTE (ruling CI): these are the #227-BOUNDED numbers (optimizer.max_items work
+# budget, PORT_OPTIMIZER_ROUTE_WORK_BUDGET). dac2020 810s->270s (48x->16x vs T8),
+# strict-drc-cnh 258s->114s (26x->12x); every other stem is unchanged from T9. No
+# ESCALATE remains. See docs/superpowers task-9-report.md section 14.
 # v1.0.0-rs corpus cpu_s: cells 605, median 3.040, mean 25.199, total 15245.2
-#   (quoted -- benchmark/results/ is gitignored and this checkout has no copy)
-#
-# T9 NOTE (ruling BP4): four of these rows are the pre-authorised #227 escalation and
-# six more are flagged SLOWER. `router-dac2020-bm01` and `router-strict-drc-cnh` are
-# 26x-48x their T8 numbers because the optimizer stage began working; the corpus
-# median moved 1.001x. These are the numbers the next task is measured against, and
-# they will move again if the controller reworks #227.
 # cols:family	stem	cpu_s	cpu_spread_s
-batch	router-rpi-splitter	0.063	0.004
-batch	router-dac2020-bm01	810.455	58.592
-batch	router-j2-reference	13.198	1.680
-batch	router-tutorial-board	8.375	0.087
-batch	router-ecc83-input	0.036	0.013
-batch	router-fanout-bm11	3.205	0.139
-batch	router-strict-drc-cnh	258.495	19.660
-batch	router-empty-board	0.006	0.001
-cli	router-rpi-splitter	0.056	0.002
-cli	router-j2-reference	12.538	0.182
-cli	router-ecc83-input	0.026	0.002
-cli	router-empty-board	0.005	0.000
-cli	router-dac2020-bm01	781.270	24.518
-cli	router-tutorial-board	6.953	0.140
-cli	router-fanout-bm11	2.796	0.065
-cli	router-strict-drc-cnh	256.421	2.091
-cli	tutorial_board	6.957	0.001
-cli	Issue026-J2_reference	12.542	0.195
-cli	large-outline	4.127	0.032
-cli	kicad-ecc83-json	5.266	0.350
-cli	kicad-complex-hierarchy-json	5.395	0.107
-drc	drc-dev-board	0.045	0.001
-drc	drc-bbd-mars-64	0.054	0.002
-drc	drc-natural-tone-preamp	0.126	0.012
-drc	drc-issue593-rules	0.014	0.001
-drc	drc-issue593-ses	0.028	0.001
-drc	drc-issue753-cpu85	0.122	0.001
-drc	drc-issue110-relay	0.013	0.002
-drc	drc-tutorial-board	0.833	0.015
+batch	router-rpi-splitter	0.059	0.002
+batch	router-dac2020-bm01	270.825	7.897
+batch	router-j2-reference	13.277	0.076
+batch	router-tutorial-board	7.291	0.051
+batch	router-ecc83-input	0.030	0.001
+batch	router-fanout-bm11	2.947	0.020
+batch	router-strict-drc-cnh	114.098	0.976
+batch	router-empty-board	0.007	0.000
+cli	router-rpi-splitter	0.060	0.003
+cli	router-j2-reference	13.234	0.024
+cli	router-ecc83-input	0.030	0.001
+cli	router-empty-board	0.007	0.000
+cli	router-dac2020-bm01	274.702	7.611
+cli	router-tutorial-board	7.031	0.035
+cli	router-fanout-bm11	2.766	0.003
+cli	router-strict-drc-cnh	107.122	1.195
+cli	tutorial_board	7.015	0.037
+cli	Issue026-J2_reference	12.693	0.040
+cli	large-outline	4.190	0.009
+cli	kicad-ecc83-json	5.370	0.024
+cli	kicad-complex-hierarchy-json	5.466	0.047
+drc	drc-dev-board	0.046	0.001
+drc	drc-bbd-mars-64	0.055	0.002
+drc	drc-natural-tone-preamp	0.124	0.001
+drc	drc-issue593-rules	0.011	0.000
+drc	drc-issue593-ses	0.028	0.000
+drc	drc-issue753-cpu85	0.125	0.002
+drc	drc-issue110-relay	0.013	0.000
+drc	drc-tutorial-board	0.846	0.004

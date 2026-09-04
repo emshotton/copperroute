@@ -65,6 +65,52 @@ use crate::pipeline::stop::{PassRecord, ProgressThrottler, RouterBudget, RouterS
 use crate::pipeline::{NamedAlgorithmType, ProgressSink, RoutingEvent, TaskState};
 use crate::score::BoardStatistics;
 
+/// **fixed: T9 (ruling CI) — the port's bound on the optimizer stage's cumulative
+/// *incomplete-board routing work*.**
+///
+/// # Why the optimizer needs a bound at all
+///
+/// Java's `DefaultSettings` leaves the optimizer effectively unbounded (`optimizer.maxItems =
+/// Integer.MAX_VALUE`, `maxPasses = 100`), and that was harmless for one reason only: quirk #227
+/// meant the stage **never did any work**. #227's fix makes it do real per-item **whole-board**
+/// routing, and on an *incompletely* routed board that is intractable — each optimized item
+/// re-routes the whole unrouted backlog, so `Issue508-DAC2020_bm01.dsn` at `-mp 2` ran **810 s,
+/// 48x** Task 8's time.
+///
+/// # Why neither an item nor a pass count is the right quantity
+///
+/// The runaway must be bounded **without a wall clock** (a wall-clock budget was #234's bug). The
+/// obvious count-based knobs were measured and rejected:
+///
+/// * **`optimizer.maxItems` (a flat item cap).** The per-item cost differs ~140x between a
+///   *complete* board (the re-route finds nothing and exits in 1 pass) and an *incomplete* one (6
+///   passes over the ~30-connection backlog). A cap tight enough for dac2020 (40) regressed the
+///   cheap stem `Issue026-J2_reference` (`inc 1 -> 2`, traces lengthened), which does **~1200**
+///   cheap items across its optimizer loop passes.
+/// * **A cumulative pass count.** Same failure: a complete-board stem spends ~1200 *cheap* passes,
+///   an incomplete-board stem ~250 *expensive* ones, and a flat pass budget cannot tell them apart
+///   (a 250-pass budget left `Issue026` at `inc 2`, traces still long).
+///
+/// # The quantity that does separate them
+///
+/// The per-item routing cost is proportional to **`incompleteCount × passesRun`** — the number of
+/// connection-routing attempts the item's whole-board re-route makes. This budget accumulates
+/// exactly that, and its decisive property is that a **complete-board item contributes ZERO**
+/// (`incompleteCount == 0`): so via-/length-optimization on a fully routed board — the optimizer's
+/// actual job — is **never bounded**, and only the incomplete-board *routing* the stage now does
+/// on top of #227 is. It is a pure integer count of routing attempts — deterministic, no wall
+/// clock.
+///
+/// # The value
+///
+/// Measured (clean, single-process): dac2020 reaches `30 -> 3` incompletes by ~20-40 items and
+/// gains nothing more until the 48x tail; a budget that caps it at ~40 incomplete-board items
+/// holds it to ~190 s / **~11x** — no 48x. `Issue026-J2_reference` (mostly complete during
+/// optimization) and every parity/cheap stem stay under it and keep their full optimization. The
+/// "ideal default aggressiveness" is a milestone-bench policy question (a T18/M2 policy row); this
+/// value is the measured knee, not a tuned optimum.
+pub const PORT_OPTIMIZER_ROUTE_WORK_BUDGET: i64 = 1800;
+
 // =================================================================================================
 // `ReadSortedRouteItems` — BatchOptimizer.java:563-659
 // =================================================================================================
@@ -348,6 +394,11 @@ pub struct BatchOptimizer<'a> {
     pub min_cumulative_trace_length: f64,
     /// `protected int totalItemsOptimized` (`:36`).
     pub total_items_optimized: i32,
+    /// **fixed: T9 (ruling CI) — no Java counterpart.** The cumulative **incomplete-board routing
+    /// work** (`Σ incompleteCount × passesRun` per optimized item) the stage has spent, and the
+    /// quantity [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`] bounds. A complete-board item adds 0, so
+    /// via-/length-optimization is never bounded — only the #227 incomplete-board routing runaway.
+    pub total_route_work: i64,
     /// `protected Long deadlineMs` (`:37`), set by `runBatchLoop` (`:153-159`) from
     /// `settings.optimizer.timeoutString` and read at `:172` and `:308`.
     ///
@@ -405,6 +456,7 @@ impl<'a> BatchOptimizer<'a> {
             min_cumulative_trace_length: 0.0,
             // :36.
             total_items_optimized: 0,
+            total_route_work: 0,
             // :37.
             deadline: None,
             // :38.
@@ -647,6 +699,15 @@ impl<'a> BatchOptimizer<'a> {
             "BatchOptimizer.optRouteItem: settings.optimizer is dereferenced at :456 without a \
              null check — Java throws a NullPointerException here too",
         );
+        // fixed: T9 (ruling CI) — the per-item whole-board pass **count** is left at Java's
+        // `maxAutoroutePasses` (6). Ruling CI proposed capping it by `--max-passes` to restore the
+        // contract, and it was measured: capping does **not** bound cpu (the cost is `items ×
+        // per-item-reroute`, not the per-item pass count — dac2020 at `-mp 2` is ~810 s at cap 6
+        // and still > 650 s at cap 1), and it is quality-**negative** (cap 2 lost a connection,
+        // dac2020 `30 -> 4` against `30 -> 3`). The bound is instead the *cumulative* pass count
+        // across the whole stage — [`PORT_OPTIMIZER_AUTOROUTE_PASS_BUDGET`], accumulated just below
+        // — which distinguishes a cheap complete-board item (1 pass) from an expensive
+        // incomplete-board item (6). The Task 9 report's ruling-CI section carries the measurement.
         let max_autoroute_passes = optimizer
             .max_autoroute_passes
             .expect("optimizer.maxAutoroutePasses is unboxed at :468");
@@ -654,7 +715,7 @@ impl<'a> BatchOptimizer<'a> {
             "BatchOptimizer.optRouteItem: settings.tracePullTightAccuracy is unboxed at :470 \
              with no null fallback — Java throws a NullPointerException here too",
         );
-        BatchAutorouter::autoroute_passes_for_optimizing_item(
+        let passes_run = BatchAutorouter::autoroute_passes_for_optimizing_item(
             board,
             self.settings,
             max_autoroute_passes,
@@ -665,6 +726,16 @@ impl<'a> BatchOptimizer<'a> {
             budget,
             progress,
         )?;
+        // fixed: T9 (ruling CI) — accumulate this item's routing work into the stage budget:
+        // `incompleteCount × passesRun`, the count of connection-routing attempts its whole-board
+        // re-route made. `passes_run` is `autoroutePassesForOptimizingItem`'s own return (`:280`),
+        // and `incomplete_count_before` is the board's backlog going in. A **complete**-board item
+        // (`incomplete_count_before == 0`) adds **zero**, so via-/length-optimization is never
+        // charged — only the incomplete-board routing #227 unblocked. See
+        // [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`].
+        self.total_route_work = self.total_route_work.saturating_add(
+            i64::from(incomplete_count_before.max(0)) * i64::from(passes_run.max(0)),
+        );
 
         // :475-482.
         let board_statistics_after = BoardStatistics::with_options(board, None, false);
@@ -1038,6 +1109,15 @@ impl BatchOptimizer<'_> {
         algorithm.to_string()
     }
 
+    /// **fixed: T9 (ruling CI)** — has the optimizer stage spent its incomplete-board routing-work
+    /// budget? See [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`] for the full argument: it bounds the #227
+    /// runaway on incomplete boards while leaving a complete-board stem its full optimization,
+    /// because a complete-board item (incomplete count 0) adds nothing to the budget.
+    #[must_use]
+    pub fn route_work_budget_spent(&self) -> bool {
+        self.total_route_work >= PORT_OPTIMIZER_ROUTE_WORK_BUDGET
+    }
+
     /// `:172` and `:308` — `deadlineMs != null && System.currentTimeMillis() >= deadlineMs`,
     /// **non-strict**, on the port's monotonic clock.
     ///
@@ -1188,6 +1268,10 @@ impl BatchOptimizer<'_> {
             && optimizer
                 .max_items
                 .is_none_or(|max_items| self.total_items_optimized < max_items)
+            // fixed: T9 (ruling CI) — the port's incomplete-board routing-work budget bounds the
+            // #227 runaway; see [`BatchOptimizer::route_work_budget_spent`]. On every parity/cheap
+            // stem the budget is never approached, so this conjunct is inert there.
+            && !self.route_work_budget_spent()
             && !stop.is_stop_requested()
         {
             // Controller ruling BB's poll seam (Plan 8 Task 11) — ruling AI's other **per-stage**
@@ -1459,6 +1543,12 @@ impl BatchOptimizer<'_> {
                 .max_items
                 .is_some_and(|max_items| max_items > 0 && self.total_items_optimized >= max_items)
             {
+                break;
+            }
+            // fixed: T9 (ruling CI) — stop mid-pass too once the port's routing-work budget is
+            // spent, so a single expensive optimizer pass over a huge incomplete board cannot
+            // overrun it.
+            if self.route_work_budget_spent() {
                 break;
             }
             // :327-330.

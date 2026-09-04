@@ -554,10 +554,16 @@ fn dac2020_bm01_pipeline_first_151_nets_leaves_at_most_126_incompletes() {
 /// intermediate 69 -> 71, while the multi-pass -mp 10 final IMPROVED (dac2020 38 -> 30 incompletes,
 /// now 1 ahead of the reference; corpus clean-pass 0.550 -> 0.567 at plan9-t7t8). The intermediate
 /// is a stale midpoint, not a regression; the final is a win.
+/// **`FR_SLOW_PARITY`-gated since Plan 9 Task 9 (ruling CI/CH).** This routes the corpus's hardest
+/// board through the **whole pipeline including the optimizer**, and with #227 the optimizer now
+/// does real per-item whole-board routing — so this went from 14 s to ~290 s even with the ruling
+/// CI item-work budget in force. That is slow-lane work, exactly like `batch_parity`'s slow stems,
+/// and it must not sit in the default `cargo nextest` lane (which ruling CI requires back near
+/// 40 s). The claim is unchanged; only the lane is.
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn dac2020_bm01_pipeline_one_pass_leaves_at_most_71_incompletes() {
-    if !parity::require_java_dir() {
+    if std::env::var_os("FR_SLOW_PARITY").is_none() || !parity::require_java_dir() {
         return;
     }
     let result = run_job("fixtures/Issue508-DAC2020_bm01.dsn", 1, None, false);
@@ -577,10 +583,12 @@ fn dac2020_bm01_pipeline_one_pass_leaves_at_most_71_incompletes() {
 /// the HEAD jar itself, `Auto-routing stage completed … final score: 825.63 (34 unrouted …)`),
 /// while the fixture suite runs `TestingSettings`' `0.0` and gets under this bound. Same jar,
 /// same board, same two passes — a 500 µm board-edge keep-out is the only thing between them.
+/// **`FR_SLOW_PARITY`-gated since Plan 9 Task 9 (ruling CI/CH)** — the whole pipeline on the
+/// hardest board, two passes, optimizer included; see the one-pass row above for why.
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn dac2020_bm01_pipeline_two_passes_leave_at_most_37_incompletes() {
-    if !parity::require_java_dir() {
+    if std::env::var_os("FR_SLOW_PARITY").is_none() || !parity::require_java_dir() {
         return;
     }
     let result = run_job("fixtures/Issue508-DAC2020_bm01.dsn", 2, None, false);
@@ -629,10 +637,15 @@ fn j2_reference_pipeline_leaves_at_most_three_incompletes_and_under_sixty_drills
 /// the only one where `exactClearanceViolations` is a non-zero number: it is the assertion that
 /// Task 8's `enforce_strict_drc` rollback works, because a strict-DRC pass that failed to roll
 /// back would leave 17 or more.
+/// **`FR_SLOW_PARITY`-gated since Plan 9 Task 9 (ruling CI/CH)** — the whole pipeline on the CNH
+/// board at `maxPasses(100)` with the optimizer on. #227 gives that a working optimizer, which
+/// takes CNH from 14 to 2 incompletes at the cost of ~150 s (the ruling CI item-work budget caps
+/// it there instead of a far larger runaway); that is slow-lane work and must not sit in the
+/// default lane.
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn strict_drc_cnh_pipeline_adds_no_violations_beyond_the_sixteen_pre_existing() {
-    if !parity::require_java_dir() {
+    if std::env::var_os("FR_SLOW_PARITY").is_none() || !parity::require_java_dir() {
         return;
     }
     let result = run_job(

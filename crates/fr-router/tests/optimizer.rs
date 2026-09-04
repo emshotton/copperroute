@@ -24,8 +24,8 @@ use fr_board::prelude::*;
 use fr_geometry::{IntBox, IntOctagon, IntPoint, Shape, TileShape};
 use fr_router::pipeline::{
     AutorouteBatchLoop, BatchOptimizer, ItemRouteResult, NamedAlgorithmType, NoopProgressSink,
-    ProgressSink, RouterBudget, RouterStop, RoutingEvent, StopRequestState, TaskState,
-    optimizer_near_perfect_exit, optimizer_route_improved,
+    PORT_OPTIMIZER_ROUTE_WORK_BUDGET, ProgressSink, RouterBudget, RouterStop, RoutingEvent,
+    StopRequestState, TaskState, optimizer_near_perfect_exit, optimizer_route_improved,
 };
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
@@ -1037,4 +1037,49 @@ fn the_optimizer_stage_is_pinned_on_the_routed_rpi() {
     // dropped this pass, so `:220` reads the real improvement.
     assert!(!pass.force_another_pass);
     assert_eq!(pass.route_improved, 0.412_747_17);
+}
+
+// =================================================================================================
+// ruling CI — the optimizer's incomplete-board routing-work budget
+// =================================================================================================
+
+/// **fixed: T9 (ruling CI).** #227 made the optimizer stage do real per-item whole-board routing,
+/// which is intractable on an incompletely routed board (`Issue508-DAC2020_bm01.dsn` at `-mp 2`
+/// ran 810 s / 48x). The port bounds the stage's cumulative *incomplete-board* routing work --
+/// `sum of incompleteCount * passesRun` per item -- at [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`], and
+/// the decisive property is that a **complete**-board item (`incompleteCount == 0`) adds **zero**,
+/// so via-/length-optimization on a routed board is never bounded.
+///
+/// The whole-board behaviour is the A/B's (dac2020 30 -> 3 at ~17x instead of 48x;
+/// `j2-reference` and every cheap stem keep their full optimization). This pins the budget
+/// arithmetic that the A/B rests on, without a board.
+#[test]
+fn the_route_work_budget_bounds_only_incomplete_board_routing() {
+    assert_eq!(PORT_OPTIMIZER_ROUTE_WORK_BUDGET, 1800);
+
+    let board = empty_board();
+    let settings = build_settings(&board);
+    let mut optimizer = BatchOptimizer::new(&settings);
+
+    assert_eq!(optimizer.total_route_work, 0);
+    assert!(!optimizer.route_work_budget_spent());
+
+    optimizer.total_route_work = PORT_OPTIMIZER_ROUTE_WORK_BUDGET - 1;
+    assert!(!optimizer.route_work_budget_spent());
+    optimizer.total_route_work = PORT_OPTIMIZER_ROUTE_WORK_BUDGET;
+    assert!(optimizer.route_work_budget_spent());
+
+    let work = |incomplete: i32, passes: i32| -> i64 {
+        i64::from(incomplete.max(0)) * i64::from(passes.max(0))
+    };
+    assert_eq!(work(0, 6), 0, "a complete-board item is never charged");
+    assert_eq!(
+        work(30, 6),
+        180,
+        "an item on a 30-connection backlog is charged its attempts"
+    );
+    // ~10 items each re-routing a full ~30-connection backlog reach the budget; a complete
+    // board's hundreds of 0-cost items never do.
+    assert!(work(30, 6) * 9 < PORT_OPTIMIZER_ROUTE_WORK_BUDGET);
+    assert!(work(30, 6) * 10 >= PORT_OPTIMIZER_ROUTE_WORK_BUDGET);
 }
