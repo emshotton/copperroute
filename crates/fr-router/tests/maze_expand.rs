@@ -334,15 +334,27 @@ fn the_first_pop_expands_the_start_room_through_every_door_of_it() {
         "completeNeighbourRooms added room 5"
     );
 
+    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`. Room and door ids come from ONE
+    // shared counter across the engine's room kinds (#156/#167/#158), so all five door ids and
+    // all four room ids moved: doors `66, 95, 66, 67, 33` -> `75, 100, 230, 232, 193`, rooms
+    // `4, -, 4, 5, 1` -> `13, -, 13, 15, 6`. **Everything the test is named for is the jar's, to
+    // the last digit**: five elements — one per door of the start room — in the same order, with
+    // the same sorting and expansion values (`0.0/830.0`, `1000.0/1000.0`, `1550.0/3930.0`,
+    // `11149.268182262/20379.268182262`, `10846.197490365/21737.317726594`), the same shape
+    // entries, and the same `None` destination door afterwards.
+    //
+    // Note the two rows that read door `66` on BOTH sides of the jar's list now read `75` and
+    // `230`: the shared counter also separated a door-id collision the jar's hash produced, which
+    // is #171's family and is asserted by the two ids differing rather than only by their values.
     assert_eq!(
         queue_rows(&maze),
         vec![
             (
-                66,
+                75,
                 0,
                 0.0,
                 830.0,
-                Some(4),
+                Some(13),
                 (-500.0, 0.0),
                 (-500.0, 0.0),
                 false,
@@ -351,7 +363,7 @@ fn the_first_pop_expands_the_start_room_through_every_door_of_it() {
                 0
             ),
             (
-                95,
+                100,
                 0,
                 1000.0,
                 1000.0,
@@ -364,11 +376,11 @@ fn the_first_pop_expands_the_start_room_through_every_door_of_it() {
                 0
             ),
             (
-                66,
+                230,
                 0,
                 1550.0,
                 3930.0,
-                Some(4),
+                Some(13),
                 (-3098.0, 0.0),
                 (-1002.0, 0.0),
                 false,
@@ -377,11 +389,11 @@ fn the_first_pop_expands_the_start_room_through_every_door_of_it() {
                 0
             ),
             (
-                67,
+                232,
                 0,
                 11_149.268_182_262,
                 20_379.268_182_262,
-                Some(5),
+                Some(15),
                 (-3_884.326_137, -8_621.203_369),
                 (-215.673_863, -2_419.796_631),
                 false,
@@ -390,11 +402,11 @@ fn the_first_pop_expands_the_start_room_through_every_door_of_it() {
                 0
             ),
             (
-                33,
+                193,
                 0,
                 10_846.197_490_365,
                 21_737.317_726_594,
-                Some(1),
+                Some(6),
                 (-4700.0, -8398.0),
                 (-4700.0, -1602.0),
                 false,
@@ -914,7 +926,10 @@ fn check_neck_down_at_dest_pin_answers_the_first_pin_target_door_whichever_it_is
             )
         })
         .collect();
-    assert_eq!(answers, vec![(2, 49.0), (4, 49.0)]);
+    // PORT-REGRESSION PIN, same wave and cause: jar rooms `2, 4`, port `7, 13`. The answer this
+    // test is named for — `49.0` from BOTH rooms, whichever pin's target door comes first — is
+    // the jar's on both rows.
+    assert_eq!(answers, vec![(7, 49.0), (13, 49.0)]);
     // The first target door of room 2 is item **2**, the start pin — so this is not the
     // destination pin's answer, whatever the method is called.
     let first_target_item = {
@@ -973,7 +988,11 @@ fn a_small_door_refuses_the_whole_round() {
         let seed = maze.queue.iter().next().expect("two seeded").clone();
         let room = seed.next_room.expect("a seeded element has a room");
         let door = maze.engine.rooms.room_doors(room)[0];
-        assert_eq!(maze.engine.rooms.door_id_no(door), Some(33));
+        // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: jar door id `33`, port `193`.
+        // Door ids derive from room ids and the room-id counter is now shared across the engine's
+        // room kinds (#156/#167/#158). `dimension=1` below, and the refusal this test is named
+        // for, are the jar's and unmoved.
+        assert_eq!(maze.engine.rooms.door_id_no(door), Some(193));
         assert_eq!(
             maze.engine.rooms.door(door).expect("live").dimension,
             1,
@@ -1012,7 +1031,12 @@ fn a_small_door_refuses_the_whole_round() {
             .map(|e| maze.engine.expandable_id_no(e.door))
             .collect();
         if expanded {
-            assert_eq!(ids, vec![95, 64, 67, 66]);
+            // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: jar `95, 64, 67, 66`,
+            // port `100, 69, 232, 230`. Door ids derive from room ids and the room-id counter is
+            // now shared across the engine's room kinds (#156/#167/#158). The claim — a small
+            // door refuses the WHOLE round, so the `else` arm is empty — is unmoved, and so is
+            // the expanded arm's row count and order.
+            assert_eq!(ids, vec![100, 69, 232, 230]);
         } else {
             assert!(ids.is_empty(), "a small door expands nothing");
         }
@@ -1080,12 +1104,15 @@ fn the_door_list_is_snapshotted_after_completing_neighbours() {
             )
         })
         .collect();
+    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: room and door ids come from
+    // ONE shared counter across the engine's room kinds (#156/#167/#158), so every id below moved
+    // and nothing else did — costs, shapes, entry points, dimensions and row counts are the jar's.
     assert_eq!(
         rows,
         vec![
-            (33, 1, true, (-4700, -10_000, -4700, 0)),
-            (66, 1, true, (-4700, 0, 600, 0)),
-            (67, 1, false, (-4700, -10_000, 600, -1041)),
+            (193, 1, true, (-4700, -10_000, -4700, 0)),
+            (230, 1, true, (-4700, 0, 600, 0)),
+            (232, 1, false, (-4700, -10_000, 600, -1041)),
         ]
     );
     // And probe mode `pop` shows the round expanding 66, 67 and 33 — the post-completion list.
@@ -1124,9 +1151,13 @@ fn a_stale_tree_entry_is_skipped_silently() {
     drain(&mut maze);
     assert!(maze.expand_to_target_doors(&mut board, &seed, true, false, &mid));
     assert_eq!(
+        // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: jar door id `95`, port
+        // `100`; shared room-id counter (#156/#167/#158). The costs, the entry points and the
+        // single row — the stale entry skipped silently, leaving exactly one element — are the
+        // jar's.
         queue_rows(&maze),
         vec![(
-            95,
+            100,
             0,
             1000.0,
             1000.0,
@@ -1429,7 +1460,9 @@ fn a_two_dimensional_link_door_takes_javas_other_shove_branch() {
             .new_door(RoomRef::Complete(free), RoomRef::Obstacle(seg2), 1);
         maze.engine.rooms.add_door(RoomRef::Obstacle(seg2), door);
     }
-    assert_eq!(maze.engine.rooms.door_id_no(link_door), Some(163_873));
+    // PORT-REGRESSION PIN, same wave and cause: the jar's link-door id is the `31*a+b` hash
+    // `163873`; the port's doors are numbered from the shared counter and this one is `161`.
+    assert_eq!(maze.engine.rooms.door_id_no(link_door), Some(161));
     let link_shape = maze.engine.rooms.door_shape(link_door).expect("live");
     let b = link_shape.bounding_box();
     assert_eq!(
@@ -1600,18 +1633,24 @@ fn a_stale_trace_index_is_refused_silently_by_the_shover() {
 #[test]
 fn the_neckdown_call_sites_narrow_the_half_width_for_the_whole_round() {
     type Expected = (bool, Vec<(i32, f64, f64)>);
+    // PORT-REGRESSION PINS, `accepted at plan9-t7t8 (ruling CC)`: the door ids in the four cases
+    // are the jar's `97`, `129`, `66`, `97`, and the port's `106`, `418`, `75`, `106` — the shared
+    // room-id counter (#156/#167/#158) numbers doors too. **Every cost pair is the jar's** and so
+    // is the shape of the answer, which is what #179 is read off: the `targetDoor` site expands
+    // nothing without neckdown and one element with it, and the `expansionDoor` site expands one
+    // element either way but a second appears with neckdown on.
     let cases: [(&str, bool, Expected); 4] = [
         ("targetDoor", false, (false, vec![])),
-        ("targetDoor", true, (true, vec![(97, 1000.0, 1000.0)])),
+        ("targetDoor", true, (true, vec![(106, 1000.0, 1000.0)])),
         (
             "expansionDoor",
             false,
-            (true, vec![(129, 1_007.153_180_628, 3_572.056_297_706)]),
+            (true, vec![(418, 1_007.153_180_628, 3_572.056_297_706)]),
         ),
         (
             "expansionDoor",
             true,
-            (true, vec![(66, 1550.0, 2380.0), (97, 2550.0, 2550.0)]),
+            (true, vec![(75, 1550.0, 2380.0), (106, 2550.0, 2550.0)]),
         ),
     ];
     for (site, neckdown, (expanded, rows)) in cases {
@@ -1638,7 +1677,8 @@ fn the_neckdown_call_sites_narrow_the_half_width_for_the_whole_round() {
         // The **second** seeded element: room 4, 1041 units tall.
         let seed = maze.queue.iter().last().expect("two seeded").clone();
         let room = seed.next_room.expect("a room");
-        assert_eq!(maze.engine.rooms.room_id_no(room), Some(4));
+        // PORT-REGRESSION PIN, same wave and cause: jar room `4`, port `13`.
+        assert_eq!(maze.engine.rooms.room_id_no(room), Some(13));
         let room_min_width = maze
             .engine
             .rooms
@@ -1650,11 +1690,13 @@ fn the_neckdown_call_sites_narrow_the_half_width_for_the_whole_round() {
         assert_eq!(maze.check_neck_down_at_dest_pin(&board, room), 49.0);
 
         let element = if site == "targetDoor" {
-            assert_eq!(maze.engine.expandable_id_no(seed.door), 66);
+            // PORT-REGRESSION PIN, same wave and cause: jar `66`, port `75`.
+            assert_eq!(maze.engine.expandable_id_no(seed.door), 75);
             seed
         } else {
             let door = maze.engine.rooms.room_doors(room)[0];
-            assert_eq!(maze.engine.rooms.door_id_no(door), Some(66));
+            // PORT-REGRESSION PIN, same wave and cause: jar `66`, port `230`.
+            assert_eq!(maze.engine.rooms.door_id_no(door), Some(230));
             assert_eq!(maze.engine.rooms.door(door).expect("live").dimension, 1);
             let centre = maze
                 .engine

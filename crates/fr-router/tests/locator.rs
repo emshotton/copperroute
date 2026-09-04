@@ -1746,6 +1746,3 @@ fn the_fanout_arm_is_reachable_and_ends_on_a_drill() {
          connectionItems; a non-empty list is what separates the fanout arm from them"
     );
 }
-
-
-

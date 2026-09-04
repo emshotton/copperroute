@@ -403,6 +403,25 @@ fn expected_lines() -> Vec<&'static str> {
         .collect()
 }
 
+/// The lines where this port **deliberately** disagrees with the jar, as `(line, jvm, rust)` —
+/// the plan's `KNOWN_DIVERGENCES` convention. The transcript is the jar's own stdout and is never
+/// re-cut; a Plan 9 fix that changes what the port answers is recorded here instead, both sides
+/// pinned, so drift fails in both directions and a healed divergence must be deleted rather than
+/// left to rot.
+///
+/// * **Task 8's door-set and id fixes (#163, #171, #165b), `accepted at plan9-t7t8 (ruling CC)`**
+///   — the port burns **two more board item ids** than the jar while routing `B8`, so its `maxId`
+///   is 192 where the jar's is 190. Nothing else on the line or anywhere else in the 291 moves:
+///   the board's structural hash is still `H5`, its score is still `599.98035` to the digit, and
+///   it still holds `49` items. Two ids consumed and released during the route are exactly the
+///   kind of thing an id counter records and a board does not, which is why this is the only line
+///   of the transcript that moved.
+const KNOWN_DIVERGENCES: &[(usize, &str, &str)] = &[(
+    7,
+    "  B8 hash=H5 score=599.98035 items=49 maxId=190",
+    "  B8 hash=H5 score=599.98035 items=49 maxId=192",
+)];
+
 fn assert_lines_match(actual: &[String]) {
     let expected = expected_lines();
     // A truncated or re-cut transcript must fail loudly rather than silently comparing nothing:
@@ -421,16 +440,27 @@ fn assert_lines_match(actual: &[String]) {
     }
 
     let mut diffs = Vec::new();
+    let mut accounted = 0usize;
     for i in 0..expected.len().max(actual.len()) {
         let want = expected.get(i).copied().unwrap_or("<missing>");
         let got = actual
             .get(i)
             .map(|row| row.trim_end())
             .unwrap_or("<missing>");
-        if want != got {
-            diffs.push(format!("line {i}\n  jvm:  {want}\n  rust: {got}"));
+        if want == got {
+            continue;
         }
+        if KNOWN_DIVERGENCES
+            .iter()
+            .any(|(line, jvm, rust)| *line == i && *jvm == want && *rust == got)
+        {
+            accounted += 1;
+            continue;
+        }
+        diffs.push(format!("line {i}\n  jvm:  {want}\n  rust: {got}"));
     }
+    // The diff assert runs FIRST, and the order is load-bearing — see the same note in
+    // `autoroute_connection.rs`, where the Task 6 reviewer mutation-verified it.
     assert!(
         diffs.is_empty(),
         "{} of {} transcript lines differ\n{}",
@@ -442,6 +472,14 @@ fn assert_lines_match(actual: &[String]) {
             .cloned()
             .collect::<Vec<_>>()
             .join("\n")
+    );
+    assert_eq!(
+        accounted,
+        KNOWN_DIVERGENCES.len(),
+        "the transcript declares {} known divergence(s) from the jar but only {accounted} of them \
+         still differ — a divergence that has healed must be deleted from KNOWN_DIVERGENCES, not \
+         left to rot",
+        KNOWN_DIVERGENCES.len()
     );
 }
 

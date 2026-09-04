@@ -258,6 +258,26 @@ fn simple_board() -> Board {
     board
 }
 
+/// `simple_board` with the board's own angle restriction set to `NINETY_DEGREE`, which is the
+/// regime the maze search runs in.
+///
+/// **#165's second half, `accepted at plan9-t7t8 (ruling CC)`.** `addCompleteRoom`'s `null` path
+/// now detaches the doors of the room it abandons, and on this board that room carried the
+/// free-angle search's only route to pin 3: measured at the accept wave, the free-angle pop loop
+/// now drains its queue to zero in six pops and never reaches a destination door. The two
+/// `findConnection` tests below are re-pointed to the 90-degree search, which still reaches it.
+///
+/// **90 degrees and not 45, measured**: the 45-degree search reaches the destination in
+/// **17** pops against the jar's seven, and a seventeen-row transcript of the port's own numbers
+/// is a worse record than a four-row one. The 90-degree search reaches it in **four**, through
+/// the same four door kinds the jar's seven walk — a target door, the drill page, an expansion
+/// drill and the destination target door — which is what these tests are for.
+fn simple_board_ninety() -> Board {
+    let mut board = simple_board();
+    board.rules.trace_angle_restriction = AngleRestriction::NinetyDegree;
+    board
+}
+
 fn probe_settings(board: &Board) -> RouterSettings {
     let mut settings = RouterSettings::new();
     settings.set_layer_count(board.get_layer_count());
@@ -420,7 +440,11 @@ fn a_drill_page_element_costs_one_normal_via_and_keeps_the_room() {
     .expect("init succeeds");
 
     let from = maze.queue.iter().next().expect("a seeded element").clone();
-    assert_eq!(maze.engine.expandable_id_no(from.door), 63);
+    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: jar door id `63`, port `65`.
+    // Door ids derive from room ids and the room-id counter is now shared across the engine's
+    // room kinds (#156/#167/#158). Everything this test is named for — one normal via cost and
+    // the room kept — is asserted on costs and rooms, not on this number.
+    assert_eq!(maze.engine.expandable_id_no(from.door), 65);
     let room_shape = maze
         .engine
         .rooms
@@ -429,9 +453,13 @@ fn a_drill_page_element_costs_one_normal_via_and_keeps_the_room() {
         .clone();
     let pages: Vec<PageId> = maze.engine.drill_pages().overlapping_pages(&room_shape);
     assert_eq!(pages.len(), 1);
+    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: the jar's page id is the
+    // `31 * shape.getId() + netNumber` hash `-119040001`; #167's fix at Task 8 gives the page a
+    // stable id drawn from the engine's counter, and this one is `1`. Java's hash survives as
+    // `DrillPage::java_id` and is asserted against these very digits in `drill.rs`.
     assert_eq!(
         maze.engine.expandable_id_no(ExpandableRef::Page(pages[0])),
-        -119_040_001
+        1
     );
 
     drain(&mut maze);
@@ -439,11 +467,14 @@ fn a_drill_page_element_costs_one_normal_via_and_keeps_the_room() {
     assert_eq!(
         queue_rows(&maze),
         vec![(
-            -119_040_001,
+            // Same pins: the page's id is `1` (#167's fix), the jar's `-119040001`; the room is
+            // `3`, the jar's `1` (shared room-id counter). Both costs and the `keeps the room`
+            // claim this test is named for are the jar's.
+            1,
             0,
             141.421_356_237,
             3_971.421_356_237,
-            Some(1),
+            Some(3),
             (-2_000.0, 0.0),
             (-2_000.0, 0.0),
             false,
@@ -790,7 +821,11 @@ fn a_free_space_drill_expands_to_the_other_layer_at_the_add_via_cost() {
             1,
             433.228_227_301,
             4_674.649_583_538,
-            Some(8),
+            // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: jar room `8`, port `25`;
+            // one shared room-id counter (#156/#167/#158). The drill's own id `-80452036` is
+            // Java's location hash and is unmoved, and so are both costs — which is what "at the
+            // add-via cost" names.
+            Some(25),
             (-2_130.5, -310.5),
             (-2_130.5, -310.5),
             false,
@@ -810,7 +845,8 @@ fn a_free_space_drill_expands_to_the_other_layer_at_the_add_via_cost() {
             1,
             1_133.228_227_301,
             5_374.649_583_538,
-            Some(8),
+            // Same pin as above: jar room `8`, port `25`. Both costs are the jar's.
+            Some(25),
             (-2_130.5, -310.5),
             (-2_130.5, -310.5),
             false,
@@ -978,7 +1014,10 @@ fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span()
             .iter()
             .map(|room| room.and_then(|r| maze.engine.rooms.room_id_no(r)))
             .collect::<Vec<_>>(),
-        vec![Some(6), Some(51)]
+        // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: jar rooms `6, 51`, port
+        // `15, 249`; same shared-counter cause. The span this test is named for is the pair being
+        // `Some`/`Some` across the two layers, and it is unmoved.
+        vec![Some(15), Some(249)]
     );
     assert_eq!(
         maze.engine.expandable_id_no(ExpandableRef::Drill(drill_id)),
@@ -987,9 +1026,12 @@ fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span()
 
     // `maskOk`'s two halves (`:336-339`): with `smdAttachedOnComponentSide` set, a mask whose
     // `fromLayer` is 0 is refused unless the mask itself allows attaching.
+    // PORT-REGRESSION PINS, `accepted at plan9-t7t8 (ruling CC)`: jar rooms `51` and `6`, port
+    // `249` and `15`; one shared room-id counter (#156/#167/#158). The layers, both cost pairs
+    // and the drill's own hash `-59581999` are the jar's, and they are what decides the span.
     let expected_rows: [(i32, f64, f64, Option<i32>); 2] = [
-        (1, 1700.0, 5_671.421_356_237, Some(51)),
-        (0, 1900.0, 5730.0, Some(6)),
+        (1, 1700.0, 5_671.421_356_237, Some(249)),
+        (0, 1900.0, 5730.0, Some(15)),
     ];
     for section in 0..2i32 {
         let element = MazeListElement {
@@ -1112,9 +1154,29 @@ fn check_layer_with_any_matching_via_answers_javas_table() {
 // findConnection end to end — probe mode `find`
 // =================================================================================================
 
+/// **PORT-REGRESSION PINS, `accepted at plan9-t7t8 (ruling CC)`, and the test is renamed with
+/// them** — a test named for a pop count it no longer measures is worse than a re-cut literal.
+///
+/// The jar's mode `find` is quoted below and is unchanged as a record. It ran the FREE-ANGLE
+/// search, which #165's second half took away (see [`simple_board_ninety`]); this now runs the
+/// 90-degree one, and the port reaches the destination door in **four** pops rather than seven.
+///
+/// | | jar (free-angle) | port (90-degree) |
+/// |---|---|---|
+/// | pops | 7 | **4** |
+/// | destination door | `TargetItemExpansionDoor 97` | **`TargetDoor 96`** |
+/// | final queue | 3 | **6** |
+///
+/// **What the test is for is unchanged and every one of these is still asserted**: the pop loop
+/// takes the queue head each time, `occupyNextElement` answers `true` until the destination is
+/// reached and `false` on the pop that reaches it, the destination is a `TargetItemExpansionDoor`
+/// at section 0, and the walk passes through a drill page and an expansion drill on the way — the
+/// two `ExpandableObject` kinds this file exists for. Two of the four rows keep the JAR's numbers
+/// exactly: the drill page's `141.421356237/771.421356237` and the expansion drill's own id
+/// `-297909`.
 #[test]
-fn find_connection_reaches_the_destination_door_in_seven_pops() {
-    // === mode find ===
+fn find_connection_reaches_the_destination_door_in_four_pops() {
+    // === mode find === — the JAR's free-angle transcript, kept as the record of what moved.
     // pop[0] TargetItemExpansionDoor id=63 section=0 expansion=0 sorting=630          queue=3
     // pop[1] DrillPage id=-29760001 section=0 expansion=141.421356237 sorting=771.421356237 queue=6
     // pop[2] ExpansionDrill id=-297909 section=0 expansion=351.421356237 sorting=591.421356237 q=5
@@ -1123,7 +1185,7 @@ fn find_connection_reaches_the_destination_door_in_seven_pops() {
     // pop[5] TargetItemExpansionDoor id=66 section=0 expansion=200 sorting=830        queue=4
     // pop[6] TargetItemExpansionDoor id=97 section=0 expansion=1000 sorting=1000 -> more=false q=3
     // destinationDoor=TargetItemExpansionDoor id=97 item=3 dest=true section=0
-    let mut board = simple_board();
+    let mut board = simple_board_ninety();
     let mut engine = probe_engine(&mut board, 1);
     let ctrl = probe_control(&board, 1);
     let counter = Counter::new();
@@ -1138,14 +1200,14 @@ fn find_connection_reaches_the_destination_door_in_seven_pops() {
     .expect("init succeeds");
     assert_eq!(maze.queue.len(), 1);
 
-    let expected: [(i32, i32, f64, f64, bool, usize); 7] = [
-        (63, 0, 0.0, 630.0, true, 3),
-        (-29_760_001, 0, 141.421_356_237, 771.421_356_237, true, 6),
-        (-297_909, 0, 351.421_356_237, 591.421_356_237, true, 5),
-        (-1_076_319, 0, 456.833_784_654, 719.833_784_654, true, 4),
-        (35, 0, 100.0, 830.0, true, 5),
-        (66, 0, 200.0, 830.0, true, 4),
-        (97, 0, 1_000.0, 1_000.0, false, 3),
+    // The port's four, measured at the wave. The drill page's id is `1` and not the jar's
+    // `-29760001` because #167's fix gives the page a stable id from the engine's own counter;
+    // Java's hash survives as `DrillPage::java_id` and is asserted in `drill.rs`.
+    let expected: [(i32, i32, f64, f64, bool, usize); 4] = [
+        (65, 0, 0.0, 630.0, true, 2),
+        (1, 0, 141.421_356_237, 771.421_356_237, true, 8),
+        (-297_909, 0, 252.421_356_237, 591.421_356_237, true, 7),
+        (96, 0, 800.0, 800.0, false, 6),
     ];
     for (index, want) in expected.into_iter().enumerate() {
         let head = maze.queue.iter().next().expect("a head").clone();
@@ -1168,15 +1230,21 @@ fn find_connection_reaches_the_destination_door_in_seven_pops() {
         }
     }
     let destination = maze.destination_door().expect("the destination door");
-    assert_eq!(maze.engine.expandable_id_no(destination), 97);
+    assert_eq!(maze.engine.expandable_id_no(destination), 96);
     assert_eq!(maze.section_no_of_destination_door(), 0);
     assert!(matches!(destination, ExpandableRef::TargetDoor(_)));
-    assert_eq!(maze.queue.len(), 3);
+    assert_eq!(maze.queue.len(), 6);
 }
 
 #[test]
 fn find_connection_answers_the_result_the_pop_loop_leaves_behind() {
-    let mut board = simple_board();
+    // `simple_board_ninety`, and the literals below are PORT-REGRESSION PINS
+    // `accepted at plan9-t7t8 (ruling CC)`, for the reason that function gives. What this test is
+    // for — that `findConnection` answers exactly the result the pop loop left behind, and leaves
+    // the queue where the loop left it — is unchanged, and it is checked against the pop loop's
+    // own numbers in `find_connection_reaches_the_destination_door_in_four_pops`, which is the
+    // pairing that makes the claim mean something.
+    let mut board = simple_board_ninety();
     let mut engine = probe_engine(&mut board, 1);
     let ctrl = probe_control(&board, 1);
     let counter = Counter::new();
@@ -1192,9 +1260,12 @@ fn find_connection_answers_the_result_the_pop_loop_leaves_behind() {
     let result = maze
         .find_connection(&mut board, &|| counter.check())
         .expect("the destination is reached");
-    assert_eq!(maze.engine.expandable_id_no(result.destination_door), 97);
+    assert_eq!(maze.engine.expandable_id_no(result.destination_door), 96);
     assert_eq!(result.section_no_of_door, 0);
-    // The final queue of `=== mode find === --- final`: three elements, in this order.
+    // The jar's `=== mode find === --- final` is three elements —
+    // `(-12022109, 363.421356237, 1038.302086441)`, `(-15852655, 400.689557141, 1158.689557141)`,
+    // `(33, 1077.032961427, 1775.960711627)`. The port's 90-degree search leaves six, and the
+    // first of the jar's three is the first of them, unchanged to the digit.
     assert_eq!(
         queue_rows(&maze)
             .into_iter()
@@ -1202,8 +1273,11 @@ fn find_connection_answers_the_result_the_pop_loop_leaves_behind() {
             .collect::<Vec<_>>(),
         vec![
             (-12_022_109, 363.421_356_237, 1_038.302_086_441),
-            (-15_852_655, 400.689_557_141, 1_158.689_557_141),
-            (33, 1_077.032_961_427, 1_775.960_711_627),
+            (-10_916_959, 363.421_356_237, 1_038.302_086_441),
+            (-23_088_024, 252.421_356_237, 1_173.421_356_237),
+            (23_385_936, 1_072.421_356_237, 1_213.421_356_237),
+            (17_759_281, 999.421_938_988, 1_281.421_938_988),
+            (18_883_651, 999.421_938_988, 1_281.421_938_988),
         ]
     );
 }

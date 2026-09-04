@@ -623,7 +623,12 @@ const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
     // #165 second half — the abandoned room is detached, so `buildSimple`'s only path from pin 2
     // to pin 3 is gone: the connection FAILs and no trace is inserted, which shortens the item
     // dump by one and drops `maxId` from 4 to 3.
-    ("plain", 23, "  result=ROUTED:", "  result=FAILED: Failed to route connection between pin of component #1 and pin #1 of component #1, because no connection was found between their nets."),
+    (
+        "plain",
+        23,
+        "  result=ROUTED:",
+        "  result=FAILED: Failed to route connection between pin of component #1 and pin #1 of component #1, because no connection was found between their nets.",
+    ),
     ("plain", 24, "  state=ROUTED", "  state=FAILED"),
     ("plain", 28, "    maxId=4", "    maxId=3"),
     (

@@ -753,20 +753,34 @@ fn an_eight_sided_obstacle_room_gets_eight_doors() {
     dump_doors(result, &rooms, &mut actual);
     dump_target_doors(result, &rooms, &mut actual);
     dump_incomplete_rooms(&rooms, &[], &mut actual);
+    // PORT-REGRESSION PINS in the script below, `accepted at plan9-t7t8 (ruling CC)`: the
+    // `incN` tokens. Java's `IncompleteFreeSpaceExpansionRoom.getId` is the hash
+    // `31 * shape.getId() + layer` over a MUTABLE shape (quirk #158, hazard C), so the jar printed
+    // eight wide hash values here. #158's fix at Task 8 gives the room an
+    // `id_no` drawn from the engine's shared counter as it enters the arena, and the port prints
+    // the counter's small consecutive ids instead. Nothing else in the script moved: the door
+    // count, every door's dimension, every shape and every corner list is the jar's to the digit,
+    // and so is the `incompleteRooms` block below.
+    //
+    // Java's arithmetic is not lost — it survives as `IncompleteFreeSpaceExpansionRoom::java_id`,
+    // which still panics on the whole-plane room exactly where Java NPEs, with its own tests
+    // beside it. The jar's tokens, for the record:
+    // `inc-475676864 inc943169552 inc1803269220 inc-1549944256 inc-1656480944 inc184106368`
+    // `inc-1738579036 inc-1129576944` -> `inc8 inc9 inc10 inc11 inc12 inc13 inc14 inc15`.
     assert_script(
         &actual,
         r#"
   result=obs5/0 shape=Oct[-1340,-240,-260,1440,-2464,-336,-1264,864] corners=(-1024.0,-240.0;-576.0,-240.0;-260.0,76.0;-260.0,1124.0;-576.0,1440.0;-1024.0,1440.0;-1340.0,1124.0;-1340.0,76.0)
   doors n=9
     [0] first=obs5/0 second=obs5/1 dim=2 shape=Oct[-1340,360,-260,1440,-2464,-620,-664,864] corners=(-1024.0,360.0;-260.0,360.0;-260.0,360.0;-260.0,1124.0;-576.0,1440.0;-1024.0,1440.0;-1340.0,1124.0;-1340.0,676.0)
-    [1] first=obs5/0 second=inc-475676864 dim=1 shape=Oct[-1024,-240,-576,-240,-784,-336,-1264,-816] corners=(-1024.0,-240.0;-576.0,-240.0;-576.0,-240.0;-576.0,-240.0;-576.0,-240.0;-1024.0,-240.0;-1024.0,-240.0;-1024.0,-240.0)
-    [2] first=obs5/0 second=inc943169552 dim=1 shape=Oct[-576,-240,-260,76,-336,-336,-816,-184] corners=(-576.0,-240.0;-576.0,-240.0;-260.0,76.0;-260.0,76.0;-260.0,76.0;-260.0,76.0;-576.0,-240.0;-576.0,-240.0)
-    [3] first=obs5/0 second=inc1803269220 dim=1 shape=Oct[-260,76,-260,1124,-1384,-336,-184,864] corners=(-260.0,76.0;-260.0,76.0;-260.0,76.0;-260.0,1124.0;-260.0,1124.0;-260.0,1124.0;-260.0,1124.0;-260.0,76.0)
-    [4] first=obs5/0 second=inc-1549944256 dim=1 shape=Oct[-576,1124,-260,1440,-2016,-1384,864,864] corners=(-260.0,1124.0;-260.0,1124.0;-260.0,1124.0;-260.0,1124.0;-576.0,1440.0;-576.0,1440.0;-576.0,1440.0;-576.0,1440.0)
-    [5] first=obs5/0 second=inc-1656480944 dim=1 shape=Oct[-1024,1440,-576,1440,-2464,-2016,416,864] corners=(-1024.0,1440.0;-576.0,1440.0;-576.0,1440.0;-576.0,1440.0;-576.0,1440.0;-1024.0,1440.0;-1024.0,1440.0;-1024.0,1440.0)
-    [6] first=obs5/0 second=inc184106368 dim=1 shape=Oct[-1340,1124,-1024,1440,-2464,-2464,-216,416] corners=(-1340.0,1124.0;-1340.0,1124.0;-1024.0,1440.0;-1024.0,1440.0;-1024.0,1440.0;-1024.0,1440.0;-1340.0,1124.0;-1340.0,1124.0)
-    [7] first=obs5/0 second=inc-1738579036 dim=1 shape=Oct[-1340,76,-1340,1124,-2464,-1416,-1264,-216] corners=(-1340.0,76.0;-1340.0,76.0;-1340.0,76.0;-1340.0,1124.0;-1340.0,1124.0;-1340.0,1124.0;-1340.0,1124.0;-1340.0,76.0)
-    [8] first=obs5/0 second=inc-1129576944 dim=1 shape=Oct[-1340,-240,-1024,76,-1416,-784,-1264,-1264] corners=(-1024.0,-240.0;-1024.0,-240.0;-1024.0,-240.0;-1024.0,-240.0;-1340.0,76.0;-1340.0,76.0;-1340.0,76.0;-1340.0,76.0)
+    [1] first=obs5/0 second=inc8 dim=1 shape=Oct[-1024,-240,-576,-240,-784,-336,-1264,-816] corners=(-1024.0,-240.0;-576.0,-240.0;-576.0,-240.0;-576.0,-240.0;-576.0,-240.0;-1024.0,-240.0;-1024.0,-240.0;-1024.0,-240.0)
+    [2] first=obs5/0 second=inc9 dim=1 shape=Oct[-576,-240,-260,76,-336,-336,-816,-184] corners=(-576.0,-240.0;-576.0,-240.0;-260.0,76.0;-260.0,76.0;-260.0,76.0;-260.0,76.0;-576.0,-240.0;-576.0,-240.0)
+    [3] first=obs5/0 second=inc10 dim=1 shape=Oct[-260,76,-260,1124,-1384,-336,-184,864] corners=(-260.0,76.0;-260.0,76.0;-260.0,76.0;-260.0,1124.0;-260.0,1124.0;-260.0,1124.0;-260.0,1124.0;-260.0,76.0)
+    [4] first=obs5/0 second=inc11 dim=1 shape=Oct[-576,1124,-260,1440,-2016,-1384,864,864] corners=(-260.0,1124.0;-260.0,1124.0;-260.0,1124.0;-260.0,1124.0;-576.0,1440.0;-576.0,1440.0;-576.0,1440.0;-576.0,1440.0)
+    [5] first=obs5/0 second=inc12 dim=1 shape=Oct[-1024,1440,-576,1440,-2464,-2016,416,864] corners=(-1024.0,1440.0;-576.0,1440.0;-576.0,1440.0;-576.0,1440.0;-576.0,1440.0;-1024.0,1440.0;-1024.0,1440.0;-1024.0,1440.0)
+    [6] first=obs5/0 second=inc13 dim=1 shape=Oct[-1340,1124,-1024,1440,-2464,-2464,-216,416] corners=(-1340.0,1124.0;-1340.0,1124.0;-1024.0,1440.0;-1024.0,1440.0;-1024.0,1440.0;-1024.0,1440.0;-1340.0,1124.0;-1340.0,1124.0)
+    [7] first=obs5/0 second=inc14 dim=1 shape=Oct[-1340,76,-1340,1124,-2464,-1416,-1264,-216] corners=(-1340.0,76.0;-1340.0,76.0;-1340.0,76.0;-1340.0,1124.0;-1340.0,1124.0;-1340.0,1124.0;-1340.0,1124.0;-1340.0,76.0)
+    [8] first=obs5/0 second=inc15 dim=1 shape=Oct[-1340,-240,-1024,76,-1416,-784,-1264,-1264] corners=(-1024.0,-240.0;-1024.0,-240.0;-1024.0,-240.0;-1024.0,-240.0;-1340.0,76.0;-1340.0,76.0;-1340.0,76.0;-1340.0,76.0)
   targetDoors n=0
   incompleteRooms n=8
     [0] layer=0 shape=Oct[-10000,-10000,10000,-240,-9760,20000,-20000,9760] corners=(-10000.0,-10000.0;10000.0,-10000.0;10000.0,-10000.0;10000.0,-240.0;10000.0,-240.0;-10000.0,-240.0;-10000.0,-240.0;-10000.0,-10000.0) contained=Oct[-1024,-240,-576,-240,-784,-336,-1264,-816] doors=1
@@ -834,15 +848,28 @@ fn an_orthogonal_obstacle_room_with_no_neighbours_gets_one_room_per_board_side()
     dump_doors(result, &rooms, &mut actual);
     dump_target_doors(result, &rooms, &mut actual);
     dump_incomplete_rooms(&rooms, &[], &mut actual);
+    // PORT-REGRESSION PINS in the script below, `accepted at plan9-t7t8 (ruling CC)`: the
+    // `incN` tokens. Java's `IncompleteFreeSpaceExpansionRoom.getId` is the hash
+    // `31 * shape.getId() + layer` over a MUTABLE shape (quirk #158, hazard C), so the jar printed
+    // four wide hash values here. #158's fix at Task 8 gives the room an
+    // `id_no` drawn from the engine's shared counter as it enters the arena, and the port prints
+    // the counter's small consecutive ids instead. Nothing else in the script moved: the door
+    // count, every door's dimension, every shape and every corner list is the jar's to the digit,
+    // and so is the `incompleteRooms` block below.
+    //
+    // Java's arithmetic is not lost — it survives as `IncompleteFreeSpaceExpansionRoom::java_id`,
+    // which still panics on the whole-plane room exactly where Java NPEs, with its own tests
+    // beside it. The jar's tokens, for the record:
+    // `inc-297914650 inc-10116850 inc-287845850 inc-307834650` -> `inc8 inc9 inc10 inc11`.
     assert_script(
         &actual,
         r#"
   result=obs2/0 shape=Box[-650,-150..-350,150] corners=(-650.0,-150.0;-350.0,-150.0;-350.0,150.0;-650.0,150.0)
   doors n=4
-    [0] first=obs2/0 second=inc-297914650 dim=1 shape=Box[-650,-150..-350,-150] corners=(-650.0,-150.0;-350.0,-150.0;-350.0,-150.0;-650.0,-150.0)
-    [1] first=obs2/0 second=inc-10116850 dim=1 shape=Box[-350,-150..-350,150] corners=(-350.0,-150.0;-350.0,-150.0;-350.0,150.0;-350.0,150.0)
-    [2] first=obs2/0 second=inc-287845850 dim=1 shape=Box[-650,150..-350,150] corners=(-650.0,150.0;-350.0,150.0;-350.0,150.0;-650.0,150.0)
-    [3] first=obs2/0 second=inc-307834650 dim=1 shape=Box[-650,-150..-650,150] corners=(-650.0,-150.0;-650.0,-150.0;-650.0,150.0;-650.0,150.0)
+    [0] first=obs2/0 second=inc8 dim=1 shape=Box[-650,-150..-350,-150] corners=(-650.0,-150.0;-350.0,-150.0;-350.0,-150.0;-650.0,-150.0)
+    [1] first=obs2/0 second=inc9 dim=1 shape=Box[-350,-150..-350,150] corners=(-350.0,-150.0;-350.0,-150.0;-350.0,150.0;-350.0,150.0)
+    [2] first=obs2/0 second=inc10 dim=1 shape=Box[-650,150..-350,150] corners=(-650.0,150.0;-350.0,150.0;-350.0,150.0;-650.0,150.0)
+    [3] first=obs2/0 second=inc11 dim=1 shape=Box[-650,-150..-650,150] corners=(-650.0,-150.0;-650.0,-150.0;-650.0,150.0;-650.0,150.0)
   targetDoors n=0
   incompleteRooms n=4
     [0] layer=0 shape=Box[-10000,-10000..10000,-150] corners=(-10000.0,-10000.0;10000.0,-10000.0;10000.0,-150.0;-10000.0,-150.0) contained=Box[-650,-150..-350,-150] doors=1
@@ -1080,16 +1107,28 @@ fn the_three_regimes_disagree_on_the_same_room() {
     assert!(any[2..6].iter().all(|line| line.contains(" dim=1 ")));
 
     // The 45-degree class leaves the box alone and answers two-dimensional octagon doors.
-    assert_eq!(deg45[0], "  result=cfsr1 shape=Box[-2000,-1000..0,1000]");
+    //
+    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: the jar's completed room is
+    // `cfsr1`, the port's is `cfsr2`. Room ids come from ONE shared counter across the engine's
+    // room kinds (#156/#167/#158), and the seed incomplete room this call completes now draws
+    // from that counter too, so the complete room it becomes is the second id issued rather than
+    // the first — and the orthogonal arm below moves from `cfsr2` to `cfsr3` by the same step.
+    // The SHAPES, the door counts and the door dimensions on all three arms are the jar's, and
+    // they are what the three-way disagreement this test is named for is read off.
+    assert_eq!(deg45[0], "  result=cfsr2 shape=Box[-2000,-1000..0,1000]");
     assert_eq!(deg45[1], "  doors n=2");
     assert!(deg45[2..4].iter().all(|line| line.contains(" dim=2 ")));
     assert!(deg45[2..4].iter().all(|line| line.contains("shape=Oct[")));
 
     // The orthogonal class enlarges the room, and its doors are boxes.
+    //
+    // Same pin: jar `cfsr2`, port `cfsr3`, `accepted at plan9-t7t8 (ruling CC)`.
     assert_eq!(
         orthogonal[0],
-        "  result=cfsr2 shape=Box[-2000,-10000..0,1000]"
+        "  result=cfsr3 shape=Box[-2000,-10000..0,1000]"
     );
+    // The three arms must stay three DIFFERENT answers, which is the whole subject; the
+    // `assert_ne!`s above are what hold it, and they are unaffected by the id re-cut.
     assert_eq!(orthogonal[1], "  doors n=2");
     assert!(orthogonal[2..4].iter().all(|line| line.contains(" dim=2 ")));
     assert!(

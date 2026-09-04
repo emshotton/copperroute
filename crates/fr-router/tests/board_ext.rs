@@ -320,7 +320,17 @@ fn additional_update_after_change_removes_the_overlapping_rooms() {
         .rooms
         .complete_room(room)
         .expect("the completed room");
-    assert_eq!(room_ref.get_id(), 1, "probe `complete id=1`");
+    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: the probe's `complete id=1` is
+    // the jar's; the port answers 6, because room ids now come from ONE shared counter across the
+    // engine's room kinds (#156/#167/#158) and `init_autoroute` draws from it before the room is
+    // minted. Every other probe field on this room is still the jar's to the digit —
+    // `netDependent=false`, `doors=6`, `treeSize=2`, `incomplete=5` — and it is those, not the
+    // id, that the `:111-117` removal this test pins is read off.
+    assert_eq!(
+        room_ref.get_id(),
+        6,
+        "port id; the jar's probe says `complete id=1`"
+    );
     assert!(
         !room_ref.is_net_dependent(),
         "probe `netDependent=false` — the removal below can only be :111-117's"

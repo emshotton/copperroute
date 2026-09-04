@@ -665,13 +665,133 @@ fn p7t3_rows(mode: i32) -> Vec<String> {
     out
 }
 
+/// Where this port **deliberately** disagrees with the jar on this transcript, and by how much —
+/// the plan's `KNOWN_DIVERGENCES` convention, in the form this particular divergence deserves.
+///
+/// **Task 8's door-set and id fixes (#163, #171, #165b), `accepted at plan9-t7t8 (ruling CC)`.**
+/// The port burns **two more board item ids** than the jar over this board's route. That is the
+/// whole of it: every differing row differs only in an `item id=` or a `maxId=`, and every one of
+/// those differs by exactly `+2`.
+///
+/// Pinning forty-two multi-hundred-character item lines twice over would bury that sentence in
+/// the noise it is a summary of, so the divergence is declared as the **rule** instead: shift the
+/// jar's ids by [`KNOWN_ID_OFFSET`] and the two transcripts must be byte-identical. This is the
+/// stronger pin, not the looser one, and it fails in more directions than a paste would:
+///
+/// * any byte outside an id token moving — a state, a net, a clearance, a coordinate, a corner
+///   list, either `changedArea` line, the `sweep` line, one of the nine `route k=` lines — fails
+///   at once, because the comparison after the shift is exact;
+/// * the offset changing from 2 to anything else fails, in either direction;
+/// * a row HEALING fails, because [`KNOWN_DIVERGENT_ROWS`] counts them and the count is asserted;
+/// * a row appearing where the jar and the port had agreed fails the same way.
+const KNOWN_ID_OFFSET: i32 = 2;
+
+/// How many rows of each mode carry [`KNOWN_ID_OFFSET`], measured at the accept wave. A healed
+/// divergence must be deleted from this table rather than left to rot, exactly as a pasted entry
+/// would have to be.
+const KNOWN_DIVERGENT_ROWS: [(i32, usize); 5] = [(0, 4), (1, 9), (2, 10), (3, 7), (4, 12)];
+
+/// `line` with every `item id=N` and `maxId=N` shifted by `KNOWN_ID_OFFSET`.
+fn shift_ids(line: &str) -> String {
+    let mut out = String::with_capacity(line.len() + 8);
+    let mut rest = line;
+    while let Some(cut) = ["item id=", "maxId="]
+        .iter()
+        .filter_map(|token| rest.find(token).map(|at| (at, token.len())))
+        .min()
+    {
+        let (at, token_len) = cut;
+        let head = at + token_len;
+        out.push_str(&rest[..head]);
+        rest = &rest[head..];
+        let digits = rest
+            .find(|c: char| !c.is_ascii_digit())
+            .unwrap_or(rest.len());
+        match rest[..digits].parse::<i32>() {
+            Ok(id) => out.push_str(&(id + KNOWN_ID_OFFSET).to_string()),
+            Err(_) => out.push_str(&rest[..digits]),
+        }
+        rest = &rest[digits..];
+    }
+    out.push_str(rest);
+    out
+}
+
+fn assert_mode_matches(mode: i32) {
+    let expected = transcript_mode(mode);
+    let actual = p7t3_rows(mode);
+    let mut diffs = Vec::new();
+    let mut accounted = 0usize;
+    for i in 0..expected.len().max(actual.len()) {
+        let want = expected.get(i).copied().unwrap_or("<missing>");
+        let got = actual
+            .get(i)
+            .map(|row| row.trim_end())
+            .unwrap_or("<missing>");
+        if want == got {
+            continue;
+        }
+        if shift_ids(want) == got {
+            accounted += 1;
+            continue;
+        }
+        diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
+    }
+    // The diff assert runs FIRST, and the order is load-bearing — see the same note in
+    // `autoroute_connection.rs`, where the Task 6 reviewer mutation-verified it.
+    assert!(
+        diffs.is_empty(),
+        "p7t3 mode {mode}: {} of {} rows differ by more than the declared id offset\n{}",
+        diffs.len(),
+        expected.len().max(actual.len()),
+        diffs
+            .iter()
+            .take(12)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    let declared = KNOWN_DIVERGENT_ROWS
+        .iter()
+        .find(|(m, _)| *m == mode)
+        .expect("every mode declares its row count")
+        .1;
+    assert_eq!(
+        accounted, declared,
+        "p7t3 mode {mode} declares {declared} row(s) carrying the +{KNOWN_ID_OFFSET} id offset \
+         but {accounted} still do — a divergence that has healed must be deleted from \
+         KNOWN_DIVERGENT_ROWS, not left to rot"
+    );
+}
+
+/// `shift_ids` is load-bearing enough to be tested rather than trusted: a bug in it would let a
+/// real difference through as "the declared offset".
+#[test]
+fn the_id_shift_moves_ids_and_nothing_else() {
+    assert_eq!(shift_ids("maxId=213"), "maxId=215");
+    assert_eq!(
+        shift_ids("item id=187 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1038683)"),
+        "item id=189 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1038683)"
+    );
+    // Coordinates, net numbers, clearances, half widths and corner lists are NOT ids.
+    let untouched = "  sweep regime=NINETY_DEGREE pinEdgeToTurnDist=20320.0 traceCosts=null";
+    assert_eq!(shift_ids(untouched), untouched);
+    let route = "route k=1 item=23 net=3 state=ROUTED ripped=0";
+    assert_eq!(shift_ids(route), route, "`item=` is not `item id=`");
+    // Every occurrence, not only the first.
+    assert_eq!(
+        shift_ids("item id=1 x item id=2 maxId=3"),
+        "item id=3 x item id=4 maxId=5"
+    );
+}
+
 #[test]
 fn the_whole_sweep_matches_the_jvm_on_a_real_board() {
     // Mode 4 (vias present, the `ViaOptimizer` arm live) joined the loop when Plan 7 Task 7 landed
     // the three `repositionVia` overloads; before that it was `mode_four_is_task_sevens_obligation`,
     // a `#[should_panic]`.
     for mode in [0, 1, 2, 3, 4] {
-        assert_eq!(p7t3_rows(mode), transcript_mode(mode), "p7t3 mode {mode}");
+        assert_mode_matches(mode);
     }
 }
 

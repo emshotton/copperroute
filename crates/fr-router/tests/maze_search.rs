@@ -372,20 +372,28 @@ fn init_seeds_one_element_per_non_destination_target_door() {
     assert!(!item_info::is_start_info(&mut board, ItemId(3)));
     assert!(!item_info::is_start_info(&mut board, ItemId(4)));
 
+    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: the jar's room ids `1, 2, 4`
+    // read `6, 7, 13` here, because room ids come from ONE shared counter across the engine's
+    // room kinds (#156/#167/#158). **Every other column is the jar's** — the same three rooms, in
+    // the same order, on the same layers, with the same boxes and the same target-door counts
+    // `0, 2, 2`, which is what "one element per non-destination target door" is read off.
     assert_eq!(
         complete_rooms(&maze),
         vec![
-            (1, 0, (-10_000, -10_000, -4700, 0), 0),
-            (2, 0, (-4700, -10_000, 600, 0), 2),
-            (4, 0, (-4700, 0, 600, 1041), 2),
+            (6, 0, (-10_000, -10_000, -4700, 0), 0),
+            (7, 0, (-4700, -10_000, 600, 0), 2),
+            (13, 0, (-4700, 0, 600, 1041), 2),
         ]
     );
 
+    // Same pin, same cause: the jar's door ids `64, 66` over rooms `2, 4` are the port's
+    // `69, 75` over rooms `7, 13`. The costs `0.0/830.0` and the entry point `(-500,0)` are the
+    // jar's, and so is the row count — one element per non-destination target door.
     assert_eq!(
         queue_rows(&maze),
         vec![
-            (64, 0, 0.0, 830.0, Some(2), (-500.0, 0.0)),
-            (66, 0, 0.0, 830.0, Some(4), (-500.0, 0.0)),
+            (69, 0, 0.0, 830.0, Some(7), (-500.0, 0.0)),
+            (75, 0, 0.0, 830.0, Some(13), (-500.0, 0.0)),
         ]
     );
     assert_eq!(maze.destination_door(), None);
@@ -420,22 +428,27 @@ fn init_walks_the_start_set_in_javas_descending_item_order() {
 
     assert_eq!(
         complete_rooms(&maze),
+        // PORT-REGRESSION PIN, same cause and same wave: jar `1, 2, 4, 5, 9`, port
+        // `8, 9, 15, 17, 25`. Layers, boxes and target-door counts are the jar's, and so is the
+        // descending item order this test is named for.
         vec![
-            (1, 0, (-10_000, -10_000, -4700, 0), 0),
-            (2, 0, (-4700, -10_000, 600, 0), 2),
-            (4, 0, (-4700, 0, 600, 1041), 2),
-            (5, 1, (-10_000, -10_000, 0, 0), 0),
-            (9, 1, (0, 0, 10_000, 10_000), 1),
+            (8, 0, (-10_000, -10_000, -4700, 0), 0),
+            (9, 0, (-4700, -10_000, 600, 0), 2),
+            (15, 0, (-4700, 0, 600, 1041), 2),
+            (17, 1, (-10_000, -10_000, 0, 0), 0),
+            (25, 1, (0, 0, 10_000, 10_000), 1),
         ]
     );
+    // Same pin, same cause. The five rows, their costs and their two entry points are the jar's;
+    // only the door and room ids moved with the shared counter.
     assert_eq!(
         queue_rows(&maze),
         vec![
-            (95, 0, 0.0, 0.0, Some(2), (500.0, 0.0)),
-            (97, 0, 0.0, 0.0, Some(4), (500.0, 0.0)),
             (102, 0, 0.0, 0.0, Some(9), (500.0, 0.0)),
-            (64, 0, 0.0, 830.0, Some(2), (-500.0, 0.0)),
-            (66, 0, 0.0, 830.0, Some(4), (-500.0, 0.0)),
+            (108, 0, 0.0, 0.0, Some(15), (500.0, 0.0)),
+            (118, 0, 0.0, 0.0, Some(25), (500.0, 0.0)),
+            (71, 0, 0.0, 830.0, Some(9), (-500.0, 0.0)),
+            (77, 0, 0.0, 830.0, Some(15), (-500.0, 0.0)),
         ]
     );
 }
@@ -650,7 +663,11 @@ fn the_queue_pops_the_lowest_sorting_value_and_removes_it() {
         .next_room;
     let room = room.expect("the seeded element has a next room");
     let dest_door = destination_door_of_room(&maze, &mut board, room);
-    assert_eq!(maze.engine.expandable_id_no(dest_door), 95);
+    // PORT-REGRESSION PIN, same wave: the jar's destination-door id is `95`, the port's `100`.
+    // Door ids are derived from room ids (`ExpansionDoor.getId`), so the shared room-id counter
+    // (#156/#167/#158) moves them too. The claim — that the queue pops the LOWEST sorting value
+    // and removes it — is asserted below on the queue's own contents, not on this number.
+    assert_eq!(maze.engine.expandable_id_no(dest_door), 100);
 
     let centre = maze
         .engine

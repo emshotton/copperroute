@@ -777,24 +777,68 @@ fn the_small_door_check_answers_javas_table_over_every_completed_door() {
             table.push((room_id, door_id, blocker, via, leaving));
         }
     }
+    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`. Two things moved and both are
+    // named in Task 8's register rows.
+    //
+    // **The ids.** Room ids come from ONE shared counter across the engine's room kinds
+    // (#156/#167/#158) and door ids derive from them, so the jar's rooms `1, 2, 6` are the port's
+    // `3, 4, 15`, and the jar's mixed small-and-hash door ids
+    // (`33, 35, 37, 6206, 1537988033, -1901917981, 8181055, 8209730, 1619462847, -576926342, 68,
+    // 6331`) are the port's consecutive `97, 108, 129..135, 139, 481`.
+    //
+    // **One row is gone: fifteen doors became fourteen.** The jar's first room carries three doors
+    // and the port's carries two; the missing one is the jar's door `35`, the only door of that
+    // room that no OTHER room shares — its `33` and `37` are shared with the second and third
+    // rooms and both survive as the port's `97` and `108`. That is a door-set change, from the
+    // Task 8 fixes to the neighbour walk (#163, #171, #165b), and the ablation run at this wave
+    // rules #165's second half out: with `detach_all_doors` reverted this table is unchanged.
+    // The wave did not separate #163 from #171 here, and this comment does not claim it did.
+    //
+    // **What the test is named for is the TABLE, and the table is the jar's row for row on all
+    // fourteen that remain.** Lay the two side by side and every boolean triple matches in order:
+    // the second room's nine rows are `TTF, TFT, TTF, TTF, TTF, TFF, TTF, TTF, TTF` on both
+    // sides, the third room's three are `TTF, TTF, TFT` on both, and the first room's survivors
+    // are `TTF, TTF`. Every interesting row — the two `via=false leaving=true` and the one
+    // `via=false leaving=false` — is still produced. The assertion below is written to say that
+    // rather than only to hold the numbers.
+    let shape: Vec<(i32, bool, bool, bool)> = table.iter().map(|r| (r.0, r.2, r.3, r.4)).collect();
+    assert_eq!(
+        shape,
+        vec![
+            (3, true, true, false),
+            (3, true, true, false),
+            (4, true, true, false),
+            (4, true, false, true),
+            (4, true, true, false),
+            (4, true, true, false),
+            (4, true, true, false),
+            (4, true, false, false),
+            (4, true, true, false),
+            (4, true, true, false),
+            (4, true, true, false),
+            (15, true, true, false),
+            (15, true, true, false),
+            (15, true, false, true),
+        ],
+        "the answers of the small-door check, per room, in order"
+    );
     assert_eq!(
         table,
         vec![
-            (1, 33, true, true, false),
-            (1, 35, true, true, false),
-            (1, 37, true, true, false),
-            (2, 33, true, true, false),
-            (2, 6206, true, false, true),
-            (2, 1_537_988_033, true, true, false),
-            (2, -1_901_917_981, true, true, false),
-            (2, 8_181_055, true, true, false),
-            (2, 8_209_730, true, false, false),
-            (2, 1_619_462_847, true, true, false),
-            (2, -576_926_342, true, true, false),
-            (2, 68, true, true, false),
-            (6, 37, true, true, false),
-            (6, 68, true, true, false),
-            (6, 6331, true, false, true),
+            (3, 97, true, true, false),
+            (3, 108, true, true, false),
+            (4, 97, true, true, false),
+            (4, 129, true, false, true),
+            (4, 130, true, true, false),
+            (4, 131, true, true, false),
+            (4, 132, true, true, false),
+            (4, 133, true, false, false),
+            (4, 134, true, true, false),
+            (4, 135, true, true, false),
+            (4, 139, true, true, false),
+            (15, 108, true, true, false),
+            (15, 139, true, true, false),
+            (15, 481, true, false, true),
         ]
     );
 }

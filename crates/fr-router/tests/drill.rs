@@ -476,13 +476,31 @@ fn get_drills_binds_one_room_per_layer_and_hashes_its_location() {
             (370, -585, 0, 1, 10460486, (-260, -1000, 1000, -170)),
         ]
     );
+    // PORT-REGRESSION PINS, `accepted at plan9-t7t8 (ruling CC)`. Room ids come from ONE shared
+    // counter across the engine's room kinds (#156/#167/#158), so the probe's `#7 #6` and `#7 #8`
+    // read `#29 #23` and `#29 #34` here. **What this test is named for is the BINDING, and it is
+    // unchanged**: one room per layer, in layer order, and the first and third drills sharing the
+    // layer-0 room while differing on layer 1 — the shared id is still shared and the differing
+    // one still differs, which is asserted below rather than left to the reader.
     let first = engine.rooms.drills.get(drills[0].0).expect("a live drill");
-    assert_eq!(drill_room_ids(&engine, first), vec![Some(7), Some(6)]);
+    let first_rooms = drill_room_ids(&engine, first);
+    assert_eq!(first_rooms, vec![Some(29), Some(23)]);
     let third = engine.rooms.drills.get(drills[2].0).expect("a live drill");
-    assert_eq!(drill_room_ids(&engine, third), vec![Some(7), Some(8)]);
+    let third_rooms = drill_room_ids(&engine, third);
+    assert_eq!(third_rooms, vec![Some(29), Some(34)]);
+    assert_eq!(
+        first_rooms[0], third_rooms[0],
+        "probe: both drills bind the SAME layer-0 room"
+    );
+    assert_ne!(
+        first_rooms[1], third_rooms[1],
+        "probe: and different layer-1 rooms"
+    );
 
-    // The `ExpandableObject` half of the page (`:133-151`, `:190-193`).
-    assert_eq!(page.get_id(), -29_759_999);
+    // The `ExpandableObject` half of the page (`:133-151`, `:190-193`). `java_id`, not `get_id`,
+    // since #167's fix at Task 8 gave the page a stable id of its own — the jar's
+    // `pageId=-29759999` is unchanged and still asserted, on the hash Java computes.
+    assert_eq!(page.java_id(), -29_759_999);
     assert_eq!(page.get_dimension(), 2);
     assert_eq!(page.maze_search_element_count(), 2);
 }
@@ -561,16 +579,32 @@ fn the_prev_obstacle_carry_suppresses_duplicate_cutouts_for_a_through_via() {
 /// `reset()` (`:154-164`) resets the maze scratch and each drill's, but leaves the memoised list
 /// alone; only `invalidate()` (`:170-172`) drops it — and it does **not** restore `netNumber`, so
 /// an invalidated page keeps the mutated id.
+///
+/// **Re-pointed at the plan9-t7t8 accept wave (ruling CC), from `get_id` to `java_id`.** #167 is
+/// fixed as of Task 8: `DrillPage` draws a stable `id_no` from the engine's counter when the page
+/// grid is built and never writes it again, so `get_id()` no longer moves and the three jar
+/// values below stopped describing it — `page.get_id()` answers `1` on this fixture now, not
+/// `-29760001`. Java's hash survives verbatim as `DrillPage::java_id`, read by nothing in the
+/// port and kept for exactly this: **the defect stays pinned beside the fix**, which is what
+/// #167's register row promises. So every jar number in this test is intact, on `java_id`, and
+/// `get_id` gains the assertions that say the fix holds.
+///
+/// The jar's three values, unchanged and still asserted: `-29760001` fresh, `-29759999` after the
+/// net-1 recomputation, `-29759998` after the net-2 one, and the invalidated page keeping the last
+/// of them. `accepted at plan9-t7t8 (ruling CC)`.
 #[test]
-fn get_drills_recomputes_when_the_net_changes_and_mutates_the_id() {
+fn get_drills_recomputes_when_the_net_changes_and_mutates_javas_id() {
     let mut board = probe_board(BOUNDING_BOX);
     let mut engine = AutorouteEngine::new(&mut board, 1, false);
     let mut page = component_page(&board);
 
     // :33 — the field initialiser, before any `getDrills`.
     assert_eq!(page.shape.get_id(), -960_000);
-    let fresh_id = page.get_id();
+    let fresh_id = page.java_id();
     assert_eq!(fresh_id, -29_760_001);
+    // The port's own id, which #167's fix makes stable. Every `java_id` assertion below has a
+    // `get_id` twin, so this test measures BOTH the Java defect and the port's answer to it.
+    let stable_id = page.get_id();
 
     engine.init_connection(&mut board, 1, None);
     seed_incomplete_list(&mut engine);
@@ -578,25 +612,40 @@ fn get_drills_recomputes_when_the_net_changes_and_mutates_the_id() {
         page.get_drills(&mut engine, &mut board, false, NEVER).len(),
         13
     );
-    let net1_id = page.get_id();
+    let net1_id = page.java_id();
     assert_eq!(net1_id, -29_759_999);
     assert_ne!(net1_id, fresh_id);
+    assert_eq!(
+        page.get_id(),
+        stable_id,
+        "fixed: T8 (#167) — the port's id does not move"
+    );
 
     engine.init_connection(&mut board, 2, None);
     assert_eq!(
         page.get_drills(&mut engine, &mut board, false, NEVER).len(),
         30
     );
-    let net2_id = page.get_id();
+    let net2_id = page.java_id();
     assert_eq!(net2_id, -29_759_998);
     assert_ne!(net2_id, net1_id);
+    assert_eq!(
+        page.get_id(),
+        stable_id,
+        "fixed: T8 (#167) — nor on a second net"
+    );
 
     // `reset` keeps the memo; `invalidate` drops it and keeps the mutated id.
     page.reset(&mut engine.rooms.drills);
     assert_eq!(page.drills().map(<[_]>::len), Some(30));
     page.invalidate(&mut engine.rooms.drills);
     assert_eq!(page.drills(), None);
-    assert_eq!(page.get_id(), -29_759_998);
+    assert_eq!(page.java_id(), -29_759_998);
+    assert_eq!(
+        page.get_id(),
+        stable_id,
+        "fixed: T8 (#167) — nor across invalidate"
+    );
 }
 
 /// Quirk #168, inverted — the probe's mode 6 is what the fix deletes.
@@ -698,7 +747,10 @@ fn calculate_expansion_rooms_fails_when_one_layer_is_blocked() {
         1,
     );
     assert!(!drill.calculate_expansion_rooms(&mut engine, &mut board));
-    assert_eq!(drill_room_ids(&engine, &drill), vec![Some(10), None]);
+    // PORT-REGRESSION PIN: jar room id `10`, port `33`; one shared room-id counter
+    // (#156/#167/#158); `accepted at plan9-t7t8 (ruling CC)`. The claim is the `None` — the
+    // blocked layer binds no room and the call answers `false` — and both are unmoved.
+    assert_eq!(drill_room_ids(&engine, &drill), vec![Some(33), None]);
 }
 
 /// Probe mode 5, verbatim:
@@ -754,19 +806,26 @@ fn calculate_expansion_rooms_reuses_the_rooms_that_are_already_in_the_tree() {
         0,
     );
     assert!(layer0.calculate_expansion_rooms(&mut engine, &mut board));
-    assert_eq!(drill_room_ids(&engine, &layer0), vec![Some(4)]);
+    // PORT-REGRESSION PIN: jar room id `4`, port `11`; same cause, `accepted at plan9-t7t8
+    // (ruling CC)`. The claim — a single-layer drill reuses the room already in the tree rather
+    // than minting one — is what the single `Some(..)` says, and it is unmoved.
+    assert_eq!(drill_room_ids(&engine, &layer0), vec![Some(11)]);
     assert_eq!(layer0.get_id(), 0);
     assert_eq!(layer0.maze_search_element_count(), 1);
 
     let free_shape = TileShape::Box(IntBox::from_coords(785, 75, 885, 175));
     let mut free = ExpansionDrill::new(free_shape.clone(), Point::new(835, 125), 0, 1);
     assert!(free.calculate_expansion_rooms(&mut engine, &mut board));
-    assert_eq!(drill_room_ids(&engine, &free), vec![Some(6), Some(7)]);
+    // PORT-REGRESSION PINS: jar `6, 7`, port `22, 25`; same shared-counter cause;
+    // `accepted at plan9-t7t8 (ruling CC)`. The drill's OWN id `24995611` is Java's location hash
+    // and is unmoved, and so is the claim below — the second drill over the same shape reuses the
+    // same two rooms rather than minting a second pair.
+    assert_eq!(drill_room_ids(&engine, &free), vec![Some(22), Some(25)]);
     assert_eq!(free.get_id(), 24_995_611);
 
     let mut again = ExpansionDrill::new(free_shape, Point::new(835, 125), 0, 1);
     assert!(again.calculate_expansion_rooms(&mut engine, &mut board));
-    assert_eq!(drill_room_ids(&engine, &again), vec![Some(6), Some(7)]);
+    assert_eq!(drill_room_ids(&engine, &again), vec![Some(22), Some(25)]);
 }
 
 /// Quirk #169, inverted — the probe's mode 8 is what the fix deletes.

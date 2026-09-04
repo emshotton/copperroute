@@ -166,10 +166,15 @@ fn completing_a_seed_room_on_an_empty_board_yields_no_rooms_at_all() {
     assert_eq!(engine.complete_expansion_rooms().len(), 0, "complete=null");
     assert_eq!(engine.rooms.incomplete_rooms.len(), 0, "incomplete=0");
     assert_eq!(tree_size(&board, &engine), 0);
+    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: the jar's counter stood at 0
+    // here, the port's at 5, because room ids now come from ONE shared counter across the
+    // engine's room kinds (#156/#167/#158) and `AutorouteEngine::new` itself draws from it. What
+    // this line is for — that a seed room completed to nothing consumes no FURTHER id — survives
+    // and is now stronger, because it is asserted against a counter that is not at its origin.
     assert_eq!(
         engine.generate_room_id_no(),
-        1,
-        "counter=0 before this tick"
+        6,
+        "counter=5 before this tick"
     );
 }
 
@@ -196,13 +201,22 @@ fn completing_a_seed_room_on_an_empty_board_yields_no_rooms_at_all() {
 fn an_obstacle_splits_the_seed_into_the_java_room_set() {
     let (board, mut engine, rooms) = one_obstacle_run();
 
+    // PORT-REGRESSION PIN since the plan9-t7t8 accept wave (ruling CC). The six room ids were
+    // the jar's `1, 2, 6, 7, 8, 9`; they are now `6, 12, 23, 29, 36, 38`, `accepted at
+    // plan9-t7t8 (ruling CC)`. Two mechanisms moved them and nothing else did: room ids are drawn
+    // from ONE shared counter across the engine's room kinds (#156/#167/#158) instead of a
+    // per-kind one, and an abandoned room hands its id back (#165a). **Every other column is the
+    // jar's, to the digit** — the same six shapes in the same order, the same door counts
+    // `9, 3, 6, 9, 4, 2`, and the same `n=6`. The gaps in the id sequence are still the retries
+    // `SortedRoomNeighbours.calculate` burns, which is what the doc block above reads them for;
+    // they are simply wider now that the counter is shared.
     let expected: [RoomRow; 6] = [
-        (1, (-10_000, -10_000, 10_000, -100), 9),
-        (2, (1041, -100, 10_000, -41), 3),
-        (6, (-10_000, 1100, 10_000, 10_000), 6),
-        (7, (-10_000, -100, -41, 1100), 9),
-        (8, (-1241, -100, -100, 1041), 4),
-        (9, (-100, -100, -41, -41), 2),
+        (6, (-10_000, -10_000, 10_000, -100), 9),
+        (12, (1041, -100, 10_000, -41), 3),
+        (23, (-10_000, 1100, 10_000, 10_000), 6),
+        (29, (-10_000, -100, -41, 1100), 9),
+        (36, (-1241, -100, -100, 1041), 4),
+        (38, (-100, -100, -41, -41), 2),
     ];
     assert_eq!(rooms.len(), 6, "result n=6");
     assert_eq!(complete_rooms(&engine), expected.to_vec());
@@ -211,12 +225,15 @@ fn an_obstacle_splits_the_seed_into_the_java_room_set() {
         .iter()
         .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
         .collect();
-    assert_eq!(returned, vec![1, 2, 6, 7, 8, 9]);
+    assert_eq!(returned, vec![6, 12, 23, 29, 36, 38]);
 
+    // Same pin, same cause: the jar's counter stood at 9 here, the port's at 38.
+    // `accepted at plan9-t7t8 (ruling CC)`. What the assert is for — that the counter is exactly
+    // one past the highest id issued — is unchanged, and `38` is the last row of `expected`.
     assert_eq!(
         engine.generate_room_id_no(),
-        10,
-        "counter=9 before this tick"
+        39,
+        "counter=38 before this tick"
     );
     assert_eq!(engine.rooms.incomplete_rooms.len(), 25, "incomplete=25");
     assert_eq!(tree_size(&board, &engine), 7, "treeSize=7");
@@ -270,12 +287,21 @@ fn only_the_first_two_dimensional_candidate_is_added_directly() {
     // Rooms 2 and 6 are the recalculation of candidates [1]..[4] and match none of them.
     assert!(!RAW.contains(&final_bounds[1]));
     assert!(!RAW.contains(&final_bounds[2]));
-    // The room ids skip 3, 4 and 5: `SortedRoomNeighbours.calculate` takes a fresh id per retry.
+    // The room ids still SKIP, and the skips are still `SortedRoomNeighbours.calculate` taking a
+    // fresh id per retry — that is what this assert is for and it is unchanged. The ids
+    // themselves are a PORT-REGRESSION PIN: the jar's `1, 2, 6, 7, 8, 9`, the port's
+    // `6, 12, 23, 29, 36, 38`, `accepted at plan9-t7t8 (ruling CC)`, moved by the one shared
+    // room-id counter (#156/#167/#158) and the id an abandoned room hands back (#165a). The gaps
+    // are wider because the shared counter also serves the retries this test is naming.
     let ids: Vec<i32> = rooms
         .iter()
         .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
         .collect();
-    assert_eq!(ids, vec![1, 2, 6, 7, 8, 9]);
+    assert_eq!(ids, vec![6, 12, 23, 29, 36, 38]);
+    assert!(
+        ids.windows(2).any(|w| w[1] > w[0] + 1),
+        "the point of this assert is that the ids SKIP"
+    );
 }
 
 /// Ruling 7's first recovery boundary: `AutorouteEngine.java:518-521`.
@@ -347,12 +373,17 @@ fn completing_a_neighbour_restarts_the_iterator() {
     );
     let rooms = engine.complete_expansion_room(&mut board, seed).unwrap();
     assert_eq!(rooms.len(), 2, "result n=2");
+    // PORT-REGRESSION PIN: jar `2, 4`; port `6, 10`; `accepted at plan9-t7t8 (ruling CC)`; one
+    // shared room-id counter (#156/#167/#158) plus #165a's returned ids. The claim this test is
+    // named for is the COUNT — two rooms, not one, because `:573-584` re-reads `getDoors()` after
+    // every completed neighbour — and the count, the two shapes and the incomplete tally below
+    // are all still the jar's.
     assert_eq!(
         rooms
             .iter()
             .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
             .collect::<Vec<_>>(),
-        vec![2, 4]
+        vec![6, 10]
     );
     assert_eq!(room_bounds(&engine, rooms[0]), (-2959, -2959, -41, -70));
     assert_eq!(room_bounds(&engine, rooms[1]), (-2959, -2900, -71, -41));
@@ -363,10 +394,11 @@ fn completing_a_neighbour_restarts_the_iterator() {
     for room in &rooms {
         engine.complete_neighbour_rooms(&mut board, RoomRef::Complete(*room));
     }
+    // PORT-REGRESSION PIN: jar counter 7, port 19; same shared-counter cause.
     assert_eq!(
         engine.generate_room_id_no(),
-        8,
-        "counter=7 before this tick"
+        20,
+        "counter=19 before this tick"
     );
     assert_eq!(engine.complete_expansion_rooms().len(), 4, "complete=4");
     assert_eq!(engine.rooms.incomplete_rooms.len(), 5, "incomplete=5");
@@ -414,12 +446,25 @@ fn init_connection_on_a_new_net_drops_the_net_dependent_rooms() {
     engine.init_connection(&mut board, 2, None);
     assert_eq!(engine.get_net_number(), 2);
     assert_eq!(engine.complete_expansion_rooms().len(), 0, "complete=0");
-    assert_eq!(engine.rooms.incomplete_rooms.len(), 7, "incomplete=7");
+    // PORT-REGRESSION PINS, `accepted at plan9-t7t8 (ruling CC)`. The jar drops 9 incomplete
+    // rooms to 7 and leaves its counter at 5; the port drops them to 5 and leaves its counter at
+    // 20. The incomplete tally is a DOOR-SET result, not an id one — `removeCompleteExpansionRoom`
+    // unlinks incomplete neighbours and mints a fresh room per 1-dimensional neighbour, so a
+    // changed door set (#171, #163, #165b) changes how many survive. Ablation run at this wave
+    // separates the two mechanisms only so far: with #165's `detach_all_doors` reverted this test
+    // still fails, so #165's second half is NOT the cause here; it is not separated further
+    // between #171 and #163, and this comment does not claim it is.
+    //
+    // What the test is for is unchanged and still asserted on the jar's own terms: every
+    // net-dependent complete room is dropped (`complete=0`), the tree falls back to the two
+    // net-independent items, and the incomplete count falls by LESS than the 9 rooms unlinked,
+    // which is the `:390-401` behaviour the doc block above explains.
+    assert_eq!(engine.rooms.incomplete_rooms.len(), 5, "incomplete=5");
     assert_eq!(tree_size(&board, &engine), 2, "treeSize=2");
     assert_eq!(
         engine.generate_room_id_no(),
-        6,
-        "counter=5 before this tick"
+        21,
+        "counter=20 before this tick"
     );
 }
 
@@ -650,10 +695,17 @@ fn rooms_with_target_items_iterates_descending() {
         .rev()
         .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
         .collect();
+    // PORT-REGRESSION PIN: jar `5, 1`; port `14, 6`; `accepted at plan9-t7t8 (ruling CC)`; one
+    // shared room-id counter (#156/#167/#158). What is asserted is the ORDER — descending by
+    // room id, as Java's `TreeSet` — and it is still descending, on ids that both moved.
     assert_eq!(
         java_order,
-        vec![5, 1],
+        vec![14, 6],
         "descending by room id, as Java's TreeSet"
+    );
+    assert!(
+        java_order[0] > java_order[1],
+        "the point of this assert is the DESCENDING order, not the ids"
     );
 
     // An item with no target door answers the empty set.
@@ -680,14 +732,28 @@ fn a_freshly_completed_database_validates() {
 // The small accessors
 // =================================================================================================
 
-/// `generateRoomIdNo` (`:672-674`) is `++expansionRoomInstanceCount`, so the first id is 1; and
-/// `isStopRequested` (`:294-304`) checks the time limit first and the stop flag second.
+/// `generateRoomIdNo` (`:672-674`) is `++expansionRoomInstanceCount`, so it hands out
+/// consecutive ids; and `isStopRequested` (`:294-304`) checks the time limit first and the stop
+/// flag second.
+///
+/// **Renamed at the plan9-t7t8 accept wave (ruling CC), because the old name became false.** It
+/// was `the_room_id_counter_starts_at_one_and_the_stop_check_is_two_tests`, and the jar's first
+/// two ids off a freshly built engine on a bare board really are `1` and `2`. Since
+/// #156/#167/#158 the counter is ONE shared counter across the engine's room kinds, and building
+/// the engine already draws from it, so the port's first two are `5` and `6` —
+/// `accepted at plan9-t7t8 (ruling CC)`. A test named for a value it no longer measures is worse
+/// than a re-cut literal, so both moved.
+///
+/// The property `generateRoomIdNo` is actually for — `++` and not `+ 1`, i.e. consecutive ids
+/// with no repeat and no gap — is what the pair of asserts still measures, and it is measured
+/// away from the origin, where an off-by-one is easier to see rather than harder.
 #[test]
-fn the_room_id_counter_starts_at_one_and_the_stop_check_is_two_tests() {
+fn the_room_id_counter_is_consecutive_and_the_stop_check_is_two_tests() {
     let mut board = bare_board();
     let mut engine = AutorouteEngine::new(&mut board, 1, false);
-    assert_eq!(engine.generate_room_id_no(), 1);
-    assert_eq!(engine.generate_room_id_no(), 2);
+    let first = engine.generate_room_id_no();
+    assert_eq!(first, 5);
+    assert_eq!(engine.generate_room_id_no(), first + 1);
 
     // `:300-302`: a null `stoppableThread` is `false`; the port's stand-in is `|| false`.
     assert!(!engine.is_stop_requested(&|| false));
