@@ -397,16 +397,66 @@ fn t15_section(mode: &str) -> Vec<&'static str> {
     rows
 }
 
-/// Compares the rows this port produces with the JVM's, collecting **every** difference rather
-/// than stopping at the first.
+/// The port's own rows for the transcript sections a Plan 9 fix has deliberately moved off the
+/// jar — the port lane, per ruling BT ("a reference family moves to the port lane the first fix
+/// that touches it") and ruling CC/BV's re-cut-with-provenance rule.
+///
+/// [`T15`] is untouched and stays the jar's stdout: it is still the record of what the jar does,
+/// and still the input corpus. This file is what the *port* answers over the same input. Both
+/// sides are pinned, so drift fails in both directions:
+///
+/// * [`assert_rows_match`] replays this golden byte for byte for a mode in [`PORT_LANE`], so any
+///   change that moves a row fails;
+/// * [`the_port_lane_modes_still_differ_from_the_jar`] requires every listed mode to *still*
+///   differ from [`T15`], so a fix silently reverted fails too.
+const T11_DIAG: &str = include_str!("data/p9t11-inserter-diag.txt");
+
+/// The transcript sections that are the **port's** rather than the jar's, each with the register
+/// row that authorizes the divergence. A mode not listed here is still compared against the jar.
+///
+/// `simple` is deliberately **not** here: it diverges at this tip for a reason that is not Task
+/// 11's, and it belongs to whoever moved it.
+const PORT_LANE: &[(&str, &str, &str)] = &[(
+    "diag",
+    "#186",
+    "`FoundConnectionInserter` handed `connectToTrace` a trace the insert had already split away, \
+     so the stub was inserted against a polyline the board no longer held and the two tail \
+     removals then deleted both halves of the split trace. The jar's rows show trace 4 gone and \
+     its line surviving only inside the combined trace 17; the port keeps both halves (ids 6 and \
+     7) and lands the connection as a third trace.",
+)];
+
+/// The port-lane golden's rows, with its `#` provenance header stripped.
+fn port_lane_section(mode: &str) -> Vec<&'static str> {
+    let text = match mode {
+        "diag" => T11_DIAG,
+        _ => panic!("no port-lane golden for mode `{mode}`"),
+    };
+    let rows: Vec<&str> = text
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .map(str::trim_end)
+        .collect();
+    assert!(!rows.is_empty(), "port-lane golden `{mode}` is empty");
+    rows
+}
+
+/// Compares the rows this port produces with the JVM's — or, for a [`PORT_LANE`] mode, with the
+/// port's own re-cut golden — collecting **every** difference rather than stopping at the first.
 fn assert_rows_match(mode: &str, actual: &[String]) {
-    let expected = t15_section(mode);
+    let in_port_lane = PORT_LANE.iter().any(|(name, _, _)| *name == mode);
+    let expected = if in_port_lane {
+        port_lane_section(mode)
+    } else {
+        t15_section(mode)
+    };
+    let lane = if in_port_lane { "port" } else { "jvm" };
     let mut diffs = Vec::new();
     for i in 0..expected.len().max(actual.len()) {
         let want = expected.get(i).copied().unwrap_or("<missing>");
         let got = actual.get(i).map(String::as_str).unwrap_or("<missing>");
         if want != got {
-            diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
+            diffs.push(format!("row {i}\n  {lane}:  {want}\n  rust: {got}"));
         }
     }
     assert!(
@@ -421,6 +471,44 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
             .collect::<Vec<_>>()
             .join("\n")
     );
+}
+
+/// Every [`PORT_LANE`] mode must **still** differ from the jar. Without this, a fix that was
+/// quietly reverted would go green against its own re-cut golden and nothing would notice; with
+/// it, the re-cut is a statement about a divergence that has to keep existing.
+#[test]
+fn the_port_lane_modes_still_differ_from_the_jar() {
+    for (mode, row, reason) in PORT_LANE {
+        assert_ne!(
+            port_lane_section(mode),
+            t15_section(mode),
+            "port-lane mode `{mode}` now MATCHES the jar — delete its PORT_LANE entry \
+             (register {row}: {reason})"
+        );
+    }
+}
+
+/// Re-cuts [`T11_DIAG`]. `#[ignore]`d because it is a generator, not a check.
+///
+/// ```text
+/// cargo test -p fr-router --test inserter -- --ignored --nocapture emit_the_diag_port_golden
+/// ```
+#[test]
+#[ignore = "generator: prints the port-lane golden for re-cutting"]
+fn emit_the_diag_port_golden() {
+    let mut rows = Vec::new();
+    for regime in REGIMES {
+        let mut board = diag_trace_board();
+        rows.push(format!("=== {}", regime_name(regime)));
+        let located = locate(&mut board, regime, &[2, 3], &[4], false);
+        rows.extend(t15_insert_and_dump(&mut board, &located));
+    }
+    for line in T11_DIAG.lines().take_while(|l| l.starts_with('#')) {
+        println!("{line}");
+    }
+    for row in rows {
+        println!("{row}");
+    }
 }
 
 // --- the probe's dump format ---------------------------------------------------------------------
@@ -688,8 +776,42 @@ fn diag_trace_board() -> Board {
     board
 }
 
-/// Probe mode `diag`: the slanted target trace, whose `connectToTrace` stub leaves a polyline
-/// with two rational corners behind.
+/// Probe mode `diag`: the slanted target trace, which the connection lands in the **middle** of.
+///
+/// # fixed: T11 (#186) — PORT LANE. The by-eye review the plan requires, recorded
+///
+/// Java bug: `FoundConnectionInserter:77`/`:92` pass `connection.targetItem` / `startItem` to
+/// `connectToTrace` **by object reference**, taken during the locator's walk. By the time they are
+/// used, the insert has split that very trace in two (`insertVia` -> `splitTraces` ->
+/// `PolylineTrace.split`, which *removes* the original and inserts two pieces). Java's reference
+/// keeps the dead object alive, so the stub is inserted against a polyline the board no longer
+/// holds — and the two tail removals at that dead polyline's end corners then delete **both**
+/// halves. The register calls this the most visible geometry change in it, and the plan asks for
+/// one stem's diff to be reviewed by eye. This is that stem, and this is that review.
+///
+/// The target is trace 4, `(-400,600) -> (400,653)`, and the connection lands on it at
+/// `~(203.77358490566039, 640.0)` (`~(201.2576…, 639.8333…)` in the `NONE` regime).
+///
+/// **The jar's board** (`p6t15-inserter.txt`, unchanged) holds, on layer 0, exactly one net-1
+/// trace: id 17, whose corner list is
+/// `(200,640), ~(200.0164…,639.7510…), ~(203.7735…,640.0), (615,640), (615,585)`. Trace 4 is
+/// gone, ids 6 and 7 never survive, and trace 4's line `(-400,600)->(400,653)` appears only inside
+/// id 17. So the copper of the target trace on **both** sides of the landing point — from
+/// `(-400,600)` up to the landing point, and from there on to `(400,653)` — is simply not on the
+/// board any more. What is left of it is the sliver between `(200,640)` and `~(203.77,640)` that
+/// the stub itself drew. `maxId` is 17: four ids were burnt deleting and re-combining.
+///
+/// **The port's board** (`p9t11-inserter-diag.txt`) holds three layer-0 net-1 traces:
+/// id 6 `(-400,600) -> ~(203.7735…,640.0)` and id 7 `~(203.7735…,640.0) -> (400,653)` — the two
+/// halves of the split, together covering trace 4's original extent exactly — and id 10, the
+/// routed connection, running from the landing point to the via at `(615,585)`. Trace 4's line
+/// `(-400,600)->(400,653)` is present in all three. `maxId` is 13, because nothing was deleted and
+/// re-combined. The layer-1 trace and the via are **identical to the jar's** (id 13 and id 11), so
+/// the change is confined to exactly the trace the stale reference was about.
+///
+/// Line conservation, the answer key's invariant, therefore holds: every line of the target trace
+/// is reachable from a live trace, and no orphan is left. All three angle regimes show the same
+/// shape.
 #[test]
 fn a_target_trace_the_connection_misses_gets_javas_connect_to_trace_stub() {
     let mut rows = Vec::new();

@@ -63,14 +63,14 @@ pub struct FoundConnectionInserter {
     first_corner: Option<IntPoint>,
 }
 
-/// The live `Trace` reference `:77`/`:92` hold, reduced to the three fields
-/// `RoutingBoard.connectToTrace` reads off it. See [`FoundConnectionInserter::trace_snapshot`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct TraceSnapshot {
-    polyline: Polyline,
-    layer: usize,
-    net_nos: Vec<i32>,
-}
+// fixed: T11 (#186). `TraceSnapshot` — the live `Trace` reference `:77`/`:92` held, reduced to
+// the three fields `RoutingBoard.connectToTrace` reads off it (`polyline()`, `getLayer()`,
+// `netNumbers`), taken before the insert loop — is gone with the defect it modelled. The two
+// traces are looked up by id *after* the insert instead, so there is no stale reference left to
+// snapshot. `Board::connect_to_trace_of`, the entry point that took such a snapshot, stays: it is
+// still the body of `connectToTrace` below its three reads of `toTrace`, and
+// `Board::connect_to_trace` — the id-taking entry point this now calls — is written in terms of
+// it.
 
 impl FoundConnectionInserter {
     /// Port of the private constructor `FoundConnectionInserter(RoutingBoard, AutorouteControl)`
@@ -111,28 +111,30 @@ impl FoundConnectionInserter {
         let Some(connection) = connection else {
             return Ok(None);
         };
-        // `:77` and `:92` read `connection.targetItem` / `connection.startItem`, which Java holds
-        // as live **object references** taken during the locator's walk. The insert below can
-        // split either of them in two (`BasicBoard.splitTraces` through `insertVia`) or remove
-        // it outright, and Java's reference survives that: `connectToTrace` then works off the
-        // original, undivided polyline and removes the tails at *its* two end corners. An id
-        // lookup after the insert answers `None` and skips the whole block. So the two traces are
-        // snapshotted here, where Java's references are already live and the board still holds
-        // them — see `docs/java-quirks.md` #186 and `Board::connect_to_trace_of`.
+        // fixed: T11 (#186). Java bug: `:77` and `:92` read `connection.targetItem` /
+        // `connection.startItem`, which Java holds as live **object references** taken during the
+        // locator's walk. The insert loop below can split either of them in two
+        // (`BasicBoard.splitTraces` through `insertVia`, which **removes** the original and
+        // inserts two pieces) or remove it outright as a trace tail. Java's reference keeps the
+        // dead object alive, so `connectToTrace` read the original, undivided `polyline()`, its
+        // `getLayer()` and its `netNumbers`, inserted a stub against a polyline the board no
+        // longer held, and then removed the trace tails at *that dead polyline's* two end corners
+        // — which, on a target trace the connection landed in the middle of, deleted **both
+        // halves of the split**. Measured on the HEAD jar: both halves of trace 4 gone, its line
+        // surviving only inside a combined trace.
         //
-        // obligation: `AutorouteEngine.autorouteConnection:260-263` — Java's reference is older
-        // still, taken during the locator's walk, so a start or target trace that the *ripup*
-        // removes at `:260` is a live object there and `None` here. Strictly smaller than the
-        // deviation #186 fixes; Task 16 owns that ripup and should pass the snapshot in rather
-        // than let this method take it. **Re-marked in Task 17**: measured over the whole
-        // acceptance corpus (369 connections, `tests/reference/router-fixtures.txt`), the ripup
-        // never removes either endpoint — `connection.start_item` and `connection.target_item`
-        // resolve on the board at this point in **all 311** evaluations, the 97 connections that
-        // did rip something included. The sibling snapshot that *is* reached is
-        // `describe_connection`'s (`engine.rs`), which `router-j2-reference` k = 19 forced Task 17
-        // to fix.
-        let target_trace = Self::trace_snapshot(board, connection.target_item);
-        let start_trace = Self::trace_snapshot(board, connection.start_item);
+        // The port used to reproduce that by snapshotting both traces here, before the loop, where
+        // Java's references are still live. The traces are now looked up **by id after the
+        // insert**, which is the register's own remedy: the stub then reaches a trace that exists,
+        // and the two tail removals stop deleting live copper. A trace the insert really did
+        // remove resolves to `None` and the block is skipped, which is the honest answer — there
+        // is no trace there to connect to.
+        //
+        // The `AutorouteEngine.autorouteConnection:260-263` obligation that used to sit here goes
+        // with the snapshot: it was about a reference taken *earlier still*, during the locator's
+        // walk, and there is no longer a reference to be stale. (Task 17 measured that ripup as
+        // never removing either endpoint — all 311 evaluations over the 369-connection corpus —
+        // so nothing observable rested on it either way.)
         // :45.
         let mut current_layer = connection.target_layer;
         // :46.
@@ -189,14 +191,12 @@ impl FoundConnectionInserter {
         // item from `ctrl.traceHalfWidth[connection.startLayer]`, while
         // `RoutingBoard.connectToTrace:1135` inserts it on `toTrace.getLayer()` — the target
         // trace's layer. The two indices are crossed; see docs/java-quirks.md #187.
-        if let Some(target_trace) = &target_trace
+        if let Some(target_item) = connection.target_item
             && let Some(first_corner) = new_instance.first_corner
         {
-            board.connect_to_trace_of(
+            board.connect_to_trace(
                 &Point::Int(first_corner),
-                &target_trace.polyline,
-                target_trace.layer,
-                &target_trace.net_nos,
+                target_item,
                 ctrl.trace_half_width[connection.start_layer],
                 ctrl.trace_clearance_class_index,
             );
@@ -207,14 +207,12 @@ impl FoundConnectionInserter {
         // Java bug: FoundConnectionInserter.getInstance:97 is the mirror of `:82` — the stub onto
         // the **start** item is sized from `ctrl.traceHalfWidth[connection.targetLayer]` and
         // inserted on the start trace's own layer. docs/java-quirks.md #187.
-        if let Some(start_trace) = &start_trace
+        if let Some(start_item) = connection.start_item
             && let Some(last_corner) = new_instance.last_corner
         {
-            board.connect_to_trace_of(
+            board.connect_to_trace(
                 &Point::Int(last_corner),
-                &start_trace.polyline,
-                start_trace.layer,
-                &start_trace.net_nos,
+                start_item,
                 ctrl.trace_half_width[connection.target_layer],
                 ctrl.trace_clearance_class_index,
             );
@@ -225,22 +223,6 @@ impl FoundConnectionInserter {
 
         // :110.
         Ok(Some(new_instance))
-    }
-
-    /// What `:77`'s and `:92`'s `instanceof PolylineTrace` reference carries into
-    /// `RoutingBoard.connectToTrace` — the three fields it reads (`polyline()`, `getLayer()`,
-    /// `netNumbers`), taken while the item is still in the board.
-    fn trace_snapshot(board: &Board, item: Option<ItemId>) -> Option<TraceSnapshot> {
-        let id = item?;
-        let item @ Item::Trace(trace) = board.get_item(id)? else {
-            // `:77`/`:92`'s `instanceof PolylineTrace`, which a `Pin` start or target fails.
-            return None;
-        };
-        Some(TraceSnapshot {
-            polyline: trace.polyline().clone(),
-            layer: trace.get_layer(),
-            net_nos: item.net_nos().to_vec(),
-        })
     }
 
     /// Port of `insertTrace(ResultItem)` (`:127-453`): "inserts the trace by shoving aside
