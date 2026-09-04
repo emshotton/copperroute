@@ -289,20 +289,31 @@ fn turn_90_degree_wraps_the_rotation_and_turns_the_translation_around_the_pole()
 fn rotate_approx_rounds_the_new_translation_and_complements_the_angle_when_flipped() {
     // ObstacleArea.rotateApprox (ObstacleArea.java:227-244). Driver T7b:
     // `rotateApprox(30, pole(50,50)) float=(18.3013, 204.9038) -> (18,205)`, and
-    // `turnAngle when sideChanged && rotateFirst = 330`. Note that only the *stored rotation*
-    // takes the complement; the translation is rotated by the original `angleInDegree`
-    // (ObstacleArea.java:240-241) — the same split Java's `Component.rotate` has (quirk #48).
+    // `turnAngle when sideChanged && rotateFirst = 330`.
+    //
+    // Java bug: only the *stored rotation* took the complement; the translation was rotated by the
+    // original `angleInDegree` (ObstacleArea.java:240-241) — the same split Java's
+    // `Component.rotate` has (quirk #48). fixed: T11 (#57): the flipped case below asserted
+    // `(18, 205)`, the unflipped answer, and now asserts the 330-degree one.
     let mut f = Fixture::new();
     let mut area = obstacle_area(1, 0.0, false);
     area.rotate_approx(30.0, &FloatPoint::new(50.0, 50.0), &f.ctx());
     assert_eq!(area.get_rotation_in_degree(), 30.0);
     assert_eq!(*area.get_translation(), Vector::new(18, 205));
 
+    // Flipped, with `flipStyleRotateFirst`: the stored rotation is 330 and the translation now
+    // follows it. `(100,200)` about `(50,50)` is `(50,150)` relative; rotated by -30 degrees that
+    // is `(50·cos30 + 150·sin30, -50·sin30 + 150·cos30) = (118.30, 104.90)`, so `(168.30, 154.90)`
+    // absolute, rounding to `(168, 155)`.
     f.set_flip_style_rotate_first(true);
     let mut area = obstacle_area(1, 0.0, true);
     area.rotate_approx(30.0, &FloatPoint::new(50.0, 50.0), &f.ctx());
     assert_eq!(area.get_rotation_in_degree(), 330.0);
-    assert_eq!(*area.get_translation(), Vector::new(18, 205));
+    assert_eq!(
+        *area.get_translation(),
+        Vector::new(168, 155),
+        "fixed: T11 (#57) — was (18, 205), the +30 answer under a -30 rotation field"
+    );
 }
 
 #[test]
@@ -519,12 +530,18 @@ fn component_outline_rotate_approx_complements_the_angle_on_the_back() {
     // ComponentOutline.rotateApprox (ComponentOutline.java:158-175): `!this.isFront &&
     // flipStyleRotateFirst` takes `360 - angleInDegree`, the mirror image of
     // ObstacleArea.java:230-232.
+    //
+    // Java bug: the identical split as quirk #48 — the rotation field took the complement and the
+    // translation did not.
+    // fixed: T11 (#57, #48) — this site is named by both rows. The translation below asserted
+    // `(18, 205)` and now asserts `(168, 155)`, the same arithmetic as the `ObstacleArea` sibling
+    // above.
     let mut f = Fixture::new();
     f.set_flip_style_rotate_first(true);
     let mut outline = component_outline(1, false, 0.0);
     outline.rotate_approx(30.0, &FloatPoint::new(50.0, 50.0), &f.ctx());
     assert_eq!(outline.get_rotation_in_degree(), 330.0);
-    assert_eq!(*outline.get_translation(), Vector::new(18, 205));
+    assert_eq!(*outline.get_translation(), Vector::new(168, 155));
 
     // On the front the angle is used as given.
     let mut outline = component_outline(2, true, 0.0);

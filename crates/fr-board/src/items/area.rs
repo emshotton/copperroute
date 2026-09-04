@@ -244,10 +244,18 @@ impl ObstacleAreaData {
 
     /// Port of `ObstacleArea.rotateApprox` (ObstacleArea.java:227-244).
     ///
-    /// Note the asymmetry Java has here and in `Component.rotate` (quirk #48): the *stored*
+    /// Java bug: the asymmetry Java has here and in `Component.rotate` (quirk #48) — the *stored*
     /// rotation takes the complement `360 - angleInDegree` for a flipped area under
     /// `flipStyleRotateFirst`, but the translation is rotated by the original `angleInDegree`
-    /// (ObstacleArea.java:240-241).
+    /// (ObstacleArea.java:240-241), so the two disagree by `360 - 2*angle`. Quirk #57.
+    ///
+    /// The complement is the intended angle, because Java computes `turnAngle` under an
+    /// explanatory comment about back-side mirroring order and then fails to use it. The geometry
+    /// now follows it; the decision is recorded on `Component::rotate`.
+    //
+    // fixed: T11 (#57, #48) — this site is named by both rows, and all three sites move in one
+    // commit: fixing one alone would make them disagree with each other rather than with the
+    // truth, which is strictly worse than the shared error.
     fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint, ctx: &ItemCtx<'_>) {
         let mut turn_angle = angle_in_degree;
         if self.side_changed && ctx.components.get_flip_style_rotate_first() {
@@ -257,7 +265,7 @@ impl ObstacleAreaData {
         let new_translation = self
             .translation
             .to_float()
-            .rotate(angle_in_degree.to_radians(), pole);
+            .rotate(turn_angle.to_radians(), pole);
         self.translation = Point::Int(new_translation.round()).difference_by(&Point::ZERO);
         self.absolute_area.take();
         self.convex_pieces.take();
@@ -881,6 +889,13 @@ impl ComponentOutline {
 
     /// Port of `ComponentOutline.rotateApprox` (ComponentOutline.java:158-175), the mirror image
     /// of `ObstacleArea.rotateApprox`: the complement is taken for a **back-side** outline.
+    ///
+    /// Java bug: the identical split as quirk #48 and `ObstacleArea::rotate_approx` — the stored
+    /// rotation took `turnAngle` and the translation `angleInDegree`. Quirk #57.
+    /// The decision is recorded on `Component::rotate`.
+    //
+    // fixed: T11 (#57, #48) — this site is named by both rows, in the same commit as its two
+    // siblings.
     pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint, ctx: &ItemCtx<'_>) {
         let mut turn_angle = angle_in_degree;
         if !self.is_front && ctx.components.get_flip_style_rotate_first() {
@@ -890,7 +905,7 @@ impl ComponentOutline {
         let new_translation = self
             .translation
             .to_float()
-            .rotate(angle_in_degree.to_radians(), pole);
+            .rotate(turn_angle.to_radians(), pole);
         self.translation = Point::Int(new_translation.round()).difference_by(&Point::ZERO);
         self.clear_derived_data();
     }
