@@ -801,19 +801,10 @@ impl Simplex {
             }
             let current_piece = Simplex::new(piece_lines);
             result_list.push(current_piece.intersection(outer_simplex));
-            // fixed: T11 (#11). Java's `:860` is `nextDivisionLine = prevDivisionLine;` — the
-            // carry-forward assignment with its operands the wrong way round, in the one place a
-            // carry-forward belongs. `nextDivisionLine` is recomputed at the top of the next
-            // iteration, so as written it is dead twice over and `prevDivisionLine` stays null
-            // forever, which makes both `mergePrevDivisionLine` branches unreachable.
-            //
-            // The value carried is `lastCurrDivisionLine`, not `nextDivisionLine`: the guard's own
-            // comment is "the previous division line may intersect currentDivisionLines[0] inside
-            // divideSimplex", so `prev` has to bound the piece just emitted, and it is exactly the
-            // counterpart of `mergeFirstDivisionLine`'s clip against the *first* piece a few lines
-            // above. `nextDivisionLine` is `divisionLineArr[nextCornerNo][0]`, which at the next
-            // iteration is that corner's *own* first division line — self-referential, and not
-            // "previous" under any reading.
+            // pinned: #11 — Java's `:860` is `nextDivisionLine = prevDivisionLine;`, the dead
+            // assignment this loop deliberately does not port; the row stays reproduced. Task 11
+            // examined it and left it pinned — see the `prev_division_line` declaration above for
+            // the full reasoning and the measurement.
         }
         Some(result_list)
     }
