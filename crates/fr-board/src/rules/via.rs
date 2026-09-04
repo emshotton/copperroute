@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 use std::fmt;
-use std::num::NonZeroU64;
 
 use crate::ids::{PadstackId, ViaInfoId, ViaRuleId};
 
@@ -12,7 +11,6 @@ pub struct ViaInfo {
     padstack: PadstackId,
     clearance_class_index: usize,
     attach_smd_allowed: bool,
-    serial: Option<NonZeroU64>,
 }
 
 impl ViaInfo {
@@ -27,12 +25,7 @@ impl ViaInfo {
             padstack,
             clearance_class_index,
             attach_smd_allowed: drill_to_smd_allowed,
-            serial: None,
         }
-    }
-
-    pub fn is_same_object(&self, other: &ViaInfo) -> bool {
-        self.serial.is_some() && self.serial == other.serial
     }
 
     pub fn get_name(&self) -> &str {
@@ -98,19 +91,9 @@ impl fmt::Display for ViaInfo {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone, Eq, Default)]
 pub struct ViaInfos {
     list: Vec<ViaInfo>,
-    next_serial: NonZeroU64,
-}
-
-impl Default for ViaInfos {
-    fn default() -> ViaInfos {
-        ViaInfos {
-            list: Vec::new(),
-            next_serial: NonZeroU64::MIN,
-        }
-    }
 }
 
 impl PartialEq for ViaInfos {
@@ -124,15 +107,10 @@ impl ViaInfos {
         ViaInfos::default()
     }
 
-    pub fn add(&mut self, mut via_info: ViaInfo) -> bool {
+    pub fn add(&mut self, via_info: ViaInfo) -> bool {
         if self.name_exists(via_info.get_name()) {
             return false;
         }
-        via_info.serial = Some(self.next_serial);
-        self.next_serial = self
-            .next_serial
-            .checked_add(1)
-            .expect("via-info serials cannot wrap");
         self.list.push(via_info);
         true
     }
@@ -245,7 +223,7 @@ impl ViaRule {
     }
 
     pub fn contains(&self, via_info: &ViaInfo) -> bool {
-        self.vias.iter().any(|v| v.is_same_object(via_info))
+        self.vias.iter().any(|v| v == via_info)
     }
 
     pub fn contains_padstack(&self, padstack: PadstackId) -> bool {
@@ -510,6 +488,16 @@ mod tests {
         assert_eq!(info.get_padstack(), PadstackId(4));
         assert_eq!(info.get_clearance_class_index(), 5);
         assert!(info.attach_smd_allowed());
+    }
+
+    #[test]
+    fn via_info_equality_is_by_value() {
+        let base = ViaInfo::new("via", PadstackId(1), 2, false);
+        assert_eq!(base, ViaInfo::new("via", PadstackId(1), 2, false));
+        assert_ne!(base, ViaInfo::new("other", PadstackId(1), 2, false));
+        assert_ne!(base, ViaInfo::new("via", PadstackId(2), 2, false));
+        assert_ne!(base, ViaInfo::new("via", PadstackId(1), 3, false));
+        assert_ne!(base, ViaInfo::new("via", PadstackId(1), 2, true));
     }
 
     #[test]

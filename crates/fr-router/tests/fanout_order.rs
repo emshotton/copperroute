@@ -468,7 +468,7 @@ fn the_combined_via_rule_holds_both_sources() {
 }
 
 #[test]
-fn the_combined_via_rule_appends_a_value_equal_via_from_a_second_rule() {
+fn a_redeclared_via_rule_is_deduplicated_by_value() {
     let mut infos = ViaInfos::new();
     infos.add(ViaInfo::new("V", PadstackId(1), 1, false));
     let mut net_class_rule = ViaRule::new("kicad_default");
@@ -484,21 +484,10 @@ fn the_combined_via_rule_appends_a_value_equal_via_from_a_second_rule() {
         board_rule.get_via(0),
         "the two are value-equal, which is what makes this the interesting case"
     );
-    assert!(
-        !net_class_rule
-            .get_via(0)
-            .is_same_object(board_rule.get_via(0)),
-        "…and separately registered, so Java's `==` says no"
-    );
-
     let combined = combined_fallback_via_rule(&net_class_rule, std::slice::from_ref(&board_rule));
-    assert_eq!(
-        combined.via_count(),
-        2,
-        "identity dedup appends the duplicate; a value dedup would answer 1"
-    );
+    assert_eq!(combined.via_count(), 1);
     let names: Vec<&str> = combined.iter().map(ViaInfo::get_name).collect();
-    assert_eq!(names, ["V", "V"]);
+    assert_eq!(names, ["V"]);
 }
 
 #[test]
