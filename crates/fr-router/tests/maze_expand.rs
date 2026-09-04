@@ -887,17 +887,35 @@ fn room_shape_is_thick_at_the_compensated_half_width_boundary() {
     let _ = tree;
 }
 
-/// Probe mode `neck`, and quirk #179. `checkNeckDownAtDestPin`'s name and javadoc both say
-/// *destination* pin, and its loop never asks: it answers the neckdown half width of the **first**
-/// target door whose item is a `Pin`, and `return`s from inside the loop. Room 2's target doors are
-/// `(item 2 = the start pin, item 3 = the destination pin)`, and the answer is the *start* pin's.
+/// Probe mode `neck`, and quirk #179 — **fixed at Plan 9 Task 10**.
+///
+/// `checkNeckDownAtDestPin`'s name and javadoc both say *destination* pin, and Java's loop never
+/// asks: it answers the neckdown half width of the **first** target door whose item is a `Pin`,
+/// and `return`s from inside the loop. On this board room 2's target doors are `(item 2 = the
+/// **start** pin, item 3 = the destination pin)`, so the jar answers the start pin's `49.0`:
+///
 /// ```text
 /// room=2 layer=0 targetDoors=2 checkNeckDownAtDestPin=49.0
 /// room=4 layer=0 targetDoors=2 checkNeckDownAtDestPin=49.0
 /// bareRoom checkNeckDownAtDestPin=0.0
 /// ```
+///
+/// That matters because the one caller, `expandToRoomDoors:409-413`, narrows `halfWidthAdd` **and**
+/// `halfWidth` to the answer, and those decide `doorIsSmall` (`:415`) and `nextRoomIsThick`
+/// (`:458`, `:474`) for the whole round. The room the search is *passing through* is planned at a
+/// pin's neckdown that belongs to the other end of the connection.
+///
+/// The port now tests `isDestinationDoor()` inside the loop, so the same two rooms answer the
+/// **destination** pin's `69.0` instead of the start pin's `49.0` — a 20-unit-wider trace through
+/// a room the search only passes through. The board and the pins are unchanged; only the question
+/// asked of them is. This is a deliberate divergence from the committed `P6T12Probe` transcript,
+/// which is a jar reference and is not re-cut.
+///
+/// The start pin's neckdown is not lost: `expandToRoomDoors:442-451`, a few lines further down the
+/// same caller, applies it separately and deliberately, and
+/// [`the_neckdown_call_sites_narrow_the_half_width_for_the_whole_round`] covers that site.
 #[test]
-fn check_neck_down_at_dest_pin_answers_the_first_pin_target_door_whichever_it_is() {
+fn a_start_pin_neckdown_does_not_shrink_a_pass_through_trace() {
     let mut board = probe_board();
     let mut engine = probe_engine(&mut board, 1);
     let ctrl = probe_control(&board, 1);
@@ -917,34 +935,42 @@ fn check_neck_down_at_dest_pin_answers_the_first_pin_target_door_whichever_it_is
         .iter()
         .map(|e| e.next_room.expect("a seeded element has a room"))
         .collect();
-    let answers: Vec<(i32, f64)> = rooms
-        .iter()
-        .map(|room| {
-            (
-                maze.engine.rooms.room_id_no(*room).expect("a live room"),
-                maze.check_neck_down_at_dest_pin(&board, *room),
-            )
-        })
-        .collect();
-    // PORT-REGRESSION PIN, same wave and cause: jar rooms `2, 4`, port `7, 13`. The answer this
-    // test is named for — `49.0` from BOTH rooms, whichever pin's target door comes first — is
-    // the jar's on both rows.
-    assert_eq!(answers, vec![(7, 49.0), (13, 49.0)]);
-    // The first target door of room 2 is item **2**, the start pin — so this is not the
-    // destination pin's answer, whatever the method is called.
+
+    // The premise, asserted rather than assumed: the room's **first** target door is item 2, the
+    // start pin. That ordering is the whole reason the quirk was observable here, and a board on
+    // which the destination pin came first would make this test vacuous.
     let first_target_item = {
         let door = maze.engine.rooms.room_target_doors(rooms[0])[0];
         maze.engine.rooms.target_door(door).expect("live").item
     };
     assert_eq!(first_target_item, ItemId(2));
 
+    let answers: Vec<(i32, f64)> = rooms
+        .iter()
+        .map(|room| {
+            (
+                maze.engine.rooms.room_id_no(*room).expect("a live room"),
+                maze.check_neck_down_at_dest_pin(&mut board, *room),
+            )
+        })
+        .collect();
+    // PORT-REGRESSION PIN on the room ids (Task 8's counter shift, re-cut by Task 9's accept
+    // wave): the jar numbers these rooms `2, 4`, the port `7, 13`. The **value** is quirk #179's:
+    // the destination pin's `69.0`, not the start pin's `49.0` the jar answers.
+    assert_eq!(
+        answers,
+        vec![(7, 69.0), (13, 69.0)],
+        "the destination pin's 69.0, not the start pin's 49.0 the jar answers — quirk #179"
+    );
+
+    // A room with no target doors at all still answers 0.
     let bare = maze.engine.rooms.new_complete_room(
         Some(TileShape::Box(IntBox::from_coords(0, 0, 10, 10))),
         0,
         950,
     );
     assert_eq!(
-        maze.check_neck_down_at_dest_pin(&board, RoomRef::Complete(bare)),
+        maze.check_neck_down_at_dest_pin(&mut board, RoomRef::Complete(bare)),
         0.0
     );
 }
@@ -1687,7 +1713,11 @@ fn the_neckdown_call_sites_narrow_the_half_width_for_the_whole_round() {
             .min_width();
         assert!((room_min_width - 687.494_208_590_330_1).abs() < 1e-9);
         assert_eq!(ctrl.compensated_trace_half_width[0], 1600);
-        assert_eq!(maze.check_neck_down_at_dest_pin(&board, room), 49.0);
+        // quirk #179, fixed at T10: the jar answers the **start** pin's 49.0 here because its
+        // loop never asks `isDestinationDoor()`; the port answers the destination pin's 69.0.
+        // The start pin's own neckdown is applied by the *other* call site, `:442-451`, which is
+        // what the rest of this test measures.
+        assert_eq!(maze.check_neck_down_at_dest_pin(&mut board, room), 69.0);
 
         let element = if site == "targetDoor" {
             // PORT-REGRESSION PIN, same wave and cause: jar `66`, port `75`.

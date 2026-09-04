@@ -1056,20 +1056,57 @@ impl MazeSearchEngine<'_> {
     /// without looking at the rest. `docs/java-quirks.md` #179, JVM-pinned by `P6T12Probe` mode
     /// `neck`: room 2's target doors are `(item 2 = the start pin, item 3 = the destination pin)`
     /// and the answer is the *start* pin's `49.0`.
-    pub fn check_neck_down_at_dest_pin(&self, board: &Board, room: RoomRef) -> f64 {
+    ///
+    /// fixed: T10 (#179) — two changes, and together they make the name, the javadoc and the
+    /// body agree:
+    ///
+    /// * `is_destination_door()` is tested **inside** the loop, so a **start** pin's neckdown can
+    ///   no longer answer for a destination pin's. Its one caller, `expand_to_room_doors:409-413`,
+    ///   narrows `half_width_add` **and** `half_width` to whatever this returns, and those decide
+    ///   `door_is_small` (`:415`) and `next_room_is_thick` (`:458`, `:474`) for the whole round —
+    ///   so a start pin's neckdown silently shrank the trace the search planned through a room it
+    ///   was only *passing through*. Note `:442-451`, a few lines further down the same caller,
+    ///   already applies the start pin's neckdown separately and deliberately; this method's job
+    ///   was only ever the other end.
+    /// * a pin with **no** neckdown `continue`s rather than `return`s, so a room whose first
+    ///   destination pin happens to have none no longer hides a later one.
+    ///
+    /// The signature takes `&mut Board` because `isDestinationDoor` reaches the item's autoroute
+    /// info through `item.getAutorouteInfo()` (`TargetItemExpansionDoor.java:46`), which **creates
+    /// it on demand** — one of the twelve creating call sites (see
+    /// [`crate::autoroute::item_info`]).
+    ///
+    /// **Read together with R2 (Task 2) and #51 (Task 14)** — the three neckdown defects compound,
+    /// and survey §10.2 requires them to be measured together rather than credited separately.
+    /// This task's `neckdown_below_class_width` column is committed for Task 14's joint table.
+    pub fn check_neck_down_at_dest_pin(&self, board: &mut Board, room: RoomRef) -> f64 {
         // :1208.
         let target_doors = self.engine.rooms.room_target_doors(room);
-        let ctx = board.ctx();
         // :1209-1213.
         for current_target_door in target_doors {
             let Some(door) = self.engine.rooms.target_door(*current_target_door) else {
                 continue;
             };
-            if let Some(Item::Pin(pin)) = board.items.get(&door.item) {
-                let Some(layer) = self.engine.rooms.room_layer(board, room) else {
-                    return 0.0;
-                };
-                return f64::from(pin.get_trace_neckdown_halfwidth(layer, &ctx));
+            let item = door.item;
+            if !matches!(board.items.get(&item), Some(Item::Pin(_))) {
+                continue;
+            }
+            // fixed: T10 (#179) — the question the method's own name asks.
+            if !door.is_destination_door(board) {
+                continue;
+            }
+            let Some(layer) = self.engine.rooms.room_layer(board, room) else {
+                continue;
+            };
+            let ctx = board.ctx();
+            let Some(Item::Pin(pin)) = board.items.get(&item) else {
+                continue;
+            };
+            let neckdown_half_width = f64::from(pin.get_trace_neckdown_halfwidth(layer, &ctx));
+            // fixed: T10 (#179) — `continue`, not `return`: a destination pin without a neckdown
+            // is not an answer, it is a pin to skip.
+            if neckdown_half_width > 0.0 {
+                return neckdown_half_width;
             }
         }
         // :1214.
