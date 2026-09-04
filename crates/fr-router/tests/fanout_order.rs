@@ -530,7 +530,7 @@ fn a_net_class_keeps_its_detached_via_rule_when_a_rules_file_replaces_it() {
 }
 
 #[test]
-fn the_four_target_strategy_carries_the_ripped_set_into_the_second_attempt() {
+fn a_successful_retry_does_not_destroy_the_first_attempts_rips() {
     let source = include_str!("../src/board_ext/routing_board_ext.rs");
     let body = source
         .rsplit_once("fn fanout(")
@@ -543,12 +543,22 @@ fn the_four_target_strategy_carries_the_ripped_set_into_the_second_attempt() {
     assert_eq!(
         body.matches("let mut ripped_item_list").count(),
         1,
-        ":1058 declares the set once"
+        "the first attempt owns its rip set"
     );
     assert_eq!(
         body.matches("&mut ripped_item_list").count(),
-        3,
-        "the closest-target attempt, the retry and the > 4 arm all take the same binding"
+        2,
+        "only the closest-target and > 4 paths receive the first set"
+    );
+    assert_eq!(
+        body.matches("let mut retry_ripped_item_list").count(),
+        1,
+        "the retry starts without the abandoned attempt's requested rips"
+    );
+    assert_eq!(
+        body.matches("ripped_item_list.extend(retry_ripped_item_list)").count(),
+        1,
+        "a routed retry reports its own rips back to the caller"
     );
     assert_eq!(
         body.matches("autoroute_connection(").count(),

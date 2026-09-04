@@ -840,15 +840,20 @@ impl RoutingBoardExt for Board {
                     && first.state != AutorouteAttemptState::AlreadyConnected
                     && sorted_unconnected_list.len() > 1;
                 result = Some(if retry {
-                    autoroute_engine.autoroute_connection(
+                    let mut retry_ripped_item_list = BTreeSet::new();
+                    let retry_result = autoroute_engine.autoroute_connection(
                         self,
                         &pin_connected_set,
                         &unconnected_set,
                         &ctrl_settings,
-                        &mut ripped_item_list,
+                        &mut retry_ripped_item_list,
                         None,
                         stop,
-                    )
+                    );
+                    if retry_result.state == AutorouteAttemptState::Routed {
+                        ripped_item_list.extend(retry_ripped_item_list);
+                    }
+                    retry_result
                 } else {
                     first
                 });
