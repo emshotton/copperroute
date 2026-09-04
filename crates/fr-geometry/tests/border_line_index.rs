@@ -90,7 +90,10 @@ fn border_line_index_is_geometric() {
 #[test]
 fn a_border_line_described_by_other_points_is_still_that_border_line() {
     let b = box_();
-    assert_eq!(b.border_line_index(&Line::from_coords(-7, 0, 12, 0)), Some(0));
+    assert_eq!(
+        b.border_line_index(&Line::from_coords(-7, 0, 12, 0)),
+        Some(0)
+    );
     assert_eq!(
         b.border_line_index(&Line::from_coords(100, -40, 100, 900)),
         Some(1)

@@ -603,16 +603,30 @@ impl TraceShover {
     ///   `obstaclesShovable = false` is then dead: the very next line returns.
     /// * **there is no `stackDepth() > 1` gate.** `check:305-308` has one; this does not.
     ///
-    /// # Java bug: `TraceShover.insert:572` dereferences a null `changedArea` (quirk #177)
+    /// # Java bug: `TraceShover.insert:572` dereferences a null `changedArea` (quirk #177) — fixed: T11 (#177)
     ///
     /// `:572` is `currentSubstituteTrace.normalize(board.changedArea.getArea(layer))` with no
     /// null guard, inside the `try` whose `catch (Exception e)` swallows everything. So on a board
-    /// that is **not** marking its changed area the normalisation never runs: the substitute
-    /// pieces stay on the board un-normalized and un-combined. `ForcedPadRouter.forcedPad:439-443`
-    /// guards the identical call. The port reproduces the asymmetry — see
-    /// [`swallow_normalize_error`](crate::board_ext) — and
-    /// `trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_unnormalized`
-    /// pins both sides of it against the JVM.
+    /// that is **not** marking its changed area the normalisation never ran: the substitute pieces
+    /// stayed on the board un-normalized and un-combined — JVM-pinned as **three** traces where a
+    /// marked board leaves **one**. `ForcedPadRouter.forcedPad:439-444` guards the identical call
+    /// in the identical loop, so the two mutating halves of the shove disagreed about the same
+    /// board state.
+    ///
+    /// **The sibling is the specification.** `opt_area` is now computed the way `forcedPad`
+    /// already computed it, and the invariant is that the board after the shove does not depend on
+    /// whether `changed_area` happens to be marked. `an_unmarked_changed_area_still_normalises`
+    /// (`crates/fr-router/tests/forced_via.rs`) replaces the pinned literal `3` with `1`, which is
+    /// the answer a marked board already produced.
+    ///
+    /// **On "narrow the catch".** The register asks for that in the same breath, and in Java it is
+    /// load-bearing: the `catch (Exception e)` was hiding the very `NullPointerException` that was
+    /// the defect, filing it under "Couldn't normalize trace." The port has no NPE to hide — it
+    /// modelled the null as an `Option` and skipped — so there is nothing here left to narrow, and
+    /// the error handling stays byte-for-byte the sibling's
+    /// ([`swallow_normalize_error`](crate::board_ext), which already lets `BoardError::Stopped`
+    /// through and drops the rest). Narrowing *this* site alone would have re-created the very
+    /// asymmetry #177 is about, from the other direction.
     #[allow(clippy::too_many_arguments)]
     pub fn insert(
         board: &mut Board,
@@ -818,22 +832,25 @@ impl TraceShover {
             };
             // :569. The piece keeps the id `nextSubstituteTracePiece` burnt for it.
             let inserted = board.insert_item(Item::Trace(current_substitute_trace));
-            // :571-575. Java bug: `TraceShover.insert`'s `board.changedArea.getArea(layer)` has
-            // no null guard, so on a board that is not marking its changed area this throws a
-            // `NullPointerException` the `catch` one line down swallows — and the piece is left
-            // un-normalized. Quirk #177; see the doc comment above.
-            match board
+            // :571-575. fixed: T11 (#177). Java bug: `TraceShover.insert`'s
+            // `board.changedArea.getArea(layer)` has no null guard, so on a board that is not
+            // marking its changed area it throws a `NullPointerException` that the `catch` one
+            // line down swallows — leaving the piece un-normalized. The port modelled that as
+            // "skip the normalisation for `None`", which is the same observable outcome.
+            //
+            // `opt_area` is now computed exactly the way `ForcedPadRouter.forcedPad:439-444`
+            // already computed it — the sibling *is* the specification, because it is the same
+            // loop over the same pieces, and the two mutating halves of the shove had no business
+            // disagreeing about the same board state. See the doc comment above.
+            let opt_area = board
                 .changed_area
                 .as_ref()
-                .map(|changed_area| changed_area.get_area(layer))
-            {
-                None => {}
-                Some(opt_area) => swallow_normalize_error(board.normalize_trace_checked(
-                    inserted,
-                    Some(&opt_area),
-                    stop,
-                ))?,
-            }
+                .map(|changed_area| changed_area.get_area(layer));
+            swallow_normalize_error(board.normalize_trace_checked(
+                inserted,
+                opt_area.as_ref(),
+                stop,
+            ))?;
             // :577-587.
             if let Some(end_corners) = end_corners {
                 for corner in end_corners.into_iter().flatten() {

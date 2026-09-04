@@ -1822,10 +1822,7 @@ mod tests {
             bx().border_line_index(&bx().border_line(0).unwrap()),
             Some(0)
         );
-        assert_eq!(
-            oct.border_line_index(&oct.border_line(0).unwrap()),
-            Some(0)
-        );
+        assert_eq!(oct.border_line_index(&oct.border_line(0).unwrap()), Some(0));
     }
 
     #[test]
