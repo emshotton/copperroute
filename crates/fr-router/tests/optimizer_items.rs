@@ -5,9 +5,9 @@ use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_geometry::{IntBox, IntOctagon, IntPoint, Point, Polyline, Shape, TileShape};
 use fr_router::pipeline::{
-    AutorouteBatchLoop, BatchAutorouter, BatchOptimizer, NoopProgressSink,
-    PORT_OPTIMIZER_ROUTE_WORK_BUDGET, ReadSortedRouteItems, RouterBudget, RouterStop,
-    optimizer_ripup_costs,
+    AutorouteBatchLoop, BatchAutorouter, BatchOptimizer, DEFAULT_OPTIMIZER_SEARCH_STEPS,
+    NoopProgressSink, PORT_OPTIMIZER_ROUTE_WORK_BUDGET, ReadSortedRouteItems, RouterBudget,
+    RouterStop, optimizer_ripup_costs,
 };
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
@@ -695,6 +695,27 @@ fn an_exhausted_search_budget_restores_the_speculative_item() {
     assert!(!result.improved());
     assert!(optimizer.search_work_budget_spent());
     assert_eq!(board.structural_hash(), before);
+}
+
+#[test]
+fn optimizer_search_work_is_bounded_unless_explicitly_disabled() {
+    let board = empty_board();
+    let mut settings = build_settings(&board);
+    let default_budget = BatchOptimizer::new(&settings)
+        .search_work_budget
+        .expect("the optimizer has a default search budget");
+    assert_eq!(default_budget.spent(), 0);
+    assert_eq!(
+        default_budget.limit(),
+        u64::try_from(DEFAULT_OPTIMIZER_SEARCH_STEPS).expect("the default fits u64")
+    );
+
+    settings
+        .optimizer
+        .as_mut()
+        .expect("DefaultSettings fills the optimizer block")
+        .max_search_steps = Some(0);
+    assert!(BatchOptimizer::new(&settings).search_work_budget.is_none());
 }
 
 #[test]

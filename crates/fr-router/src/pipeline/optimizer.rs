@@ -20,6 +20,7 @@ use crate::pipeline::{NamedAlgorithmType, ProgressSink, RoutingEvent, TaskState}
 use crate::score::BoardStatistics;
 
 pub const PORT_OPTIMIZER_ROUTE_WORK_BUDGET: i64 = 1800;
+pub const DEFAULT_OPTIMIZER_SEARCH_STEPS: i64 = 8_000_000;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ReadSortedRouteItems {
@@ -168,7 +169,6 @@ pub struct BatchOptimizer<'a> {
     pub use_increased_ripup_costs: bool,
     pub min_cumulative_trace_length: f64,
     pub total_items_optimized: i32,
-    /// quantity [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`] bounds. A complete-board item adds 0, so
     pub total_route_work: i64,
     pub search_work_budget: Option<Rc<DeterministicWorkBudget>>,
     pub deadline: Option<std::time::Instant>,
@@ -178,11 +178,13 @@ pub struct BatchOptimizer<'a> {
 impl<'a> BatchOptimizer<'a> {
     #[must_use]
     pub fn new(settings: &'a RouterSettings) -> BatchOptimizer<'a> {
-        let search_work_budget = settings
+        let search_work_limit = settings
             .optimizer
             .as_ref()
             .and_then(|optimizer| optimizer.max_search_steps)
-            .and_then(|limit| u64::try_from(limit).ok())
+            .unwrap_or(DEFAULT_OPTIMIZER_SEARCH_STEPS);
+        let search_work_budget = u64::try_from(search_work_limit)
+            .ok()
             .filter(|limit| *limit > 0)
             .map(DeterministicWorkBudget::new)
             .map(Rc::new);

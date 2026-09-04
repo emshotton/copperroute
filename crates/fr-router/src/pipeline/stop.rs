@@ -70,6 +70,10 @@ impl DeterministicWorkBudget {
     pub fn spent(&self) -> u64 {
         self.spent.get()
     }
+
+    pub fn limit(&self) -> u64 {
+        self.limit
+    }
 }
 
 impl std::fmt::Debug for RouterStop {
