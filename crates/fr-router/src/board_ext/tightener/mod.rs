@@ -1315,7 +1315,7 @@ impl PolylineTraceExt for Board {
         // only caller demands `> 0` (`pullTight:842`) — so the `edgeToTurnDist == 0` band is dead
         // acceptance. Reproduced as written.
         let edge_to_turn_dist = board.rules.get_pin_edge_to_turn_dist();
-        if edge_to_turn_dist < 0.0 {
+        if edge_to_turn_dist <= 0.0 {
             return false;
         }
         // :1070.
@@ -1406,7 +1406,7 @@ impl PolylineTraceExt for Board {
         };
         // :1118-1121 — the same `< 0` as `checkConnectionToPin:1067`, quirk #205.
         let edge_to_turn_dist = board.rules.get_pin_edge_to_turn_dist();
-        if edge_to_turn_dist < 0.0 {
+        if edge_to_turn_dist <= 0.0 {
             return Ok(false);
         }
         // :1122-1125.

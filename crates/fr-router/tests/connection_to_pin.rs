@@ -685,7 +685,7 @@ fn the_pair_is_skipped_at_ninety_degrees() {
 }
 
 #[test]
-fn the_pair_is_skipped_when_pin_edge_to_turn_dist_is_not_positive() {
+fn a_zero_pin_edge_to_turn_distance_is_refused() {
     let case = &table()[4];
 
     fn shove_fixed_traces(board: &Board) -> usize {
@@ -700,16 +700,21 @@ fn the_pair_is_skipped_when_pin_edge_to_turn_dist_is_not_positive() {
     let mut board = probe_board(AngleRestriction::None, 0.0);
     let trace = insert(&mut board, case);
     assert!(
-        <Board as PolylineTraceExt>::correct_connection_to_pin(
+        !<Board as PolylineTraceExt>::check_connection_to_pin(&board, trace, true),
+        "the check refuses zero"
+    );
+    assert!(
+        !<Board as PolylineTraceExt>::correct_connection_to_pin(
             &mut board,
             None,
             trace,
             true,
             AngleRestriction::None
         )
-        .expect("cannot fail")
+        .expect("cannot fail"),
+        "the correction refuses zero"
     );
-    assert_eq!(shove_fixed_traces(&board), 1);
+    assert_eq!(shove_fixed_traces(&board), 0);
 
     for edge in [-1.0, 0.0] {
         let mut board = probe_board(AngleRestriction::None, edge);

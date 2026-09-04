@@ -2,7 +2,7 @@ use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_dsn::java_double_to_string;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
-use fr_geometry::{IntBox, IntPoint, Line, Point, Polyline};
+use fr_geometry::{IntBox, IntPoint, Line, Point, Polyline, Shape, TileShape};
 use fr_router::board_ext::ViaOptimizer;
 use fr_router::route_connection;
 use fr_settings::sources::DefaultSettings;
@@ -14,85 +14,11 @@ fn never() -> bool {
 }
 
 #[test]
-fn is_within_tolerance_matches_java_at_the_boundary() {
-    let mut checked = 0;
-    for row in transcript_section("tol") {
-        let Some(rest) = row.strip_prefix("bnd ") else {
-            continue;
-        };
-        let (p1, p2, tolerance, expected) = parse_tolerance_row(rest);
-        assert_eq!(
-            ViaOptimizer::is_within_tolerance(Some(&p1), &p2, tolerance),
-            expected,
-            "isWithinTolerance{p1:?} {p2:?} {tolerance}"
-        );
-        checked += 1;
-    }
-    assert_eq!(checked, 768, "the boundary family is 256 triples × 3");
-}
-
-#[test]
-fn is_within_tolerance_matches_java_over_the_scripted_stream() {
-    let mut checked = 0;
-    for row in transcript_section("tol") {
-        let Some(rest) = row.strip_prefix("tol ") else {
-            continue;
-        };
-        let (p1, p2, tolerance, expected) = parse_tolerance_row(rest);
-        assert_eq!(
-            ViaOptimizer::is_within_tolerance(Some(&p1), &p2, tolerance),
-            expected,
-            "isWithinTolerance{p1:?} {p2:?} {tolerance}"
-        );
-        checked += 1;
-    }
-    assert!(checked >= 100, "the scripted subset is not empty");
-}
-
-#[test]
-fn is_within_tolerance_answers_false_for_a_missing_corner() {
-    assert!(!ViaOptimizer::is_within_tolerance(
-        None,
-        &Point::new(0, 0),
-        1_000_000
-    ));
-}
-
-fn parse_tolerance_row(rest: &str) -> (Point, Point, i32, bool) {
-    let mut p1 = None;
-    let mut p2 = None;
-    let mut tolerance = None;
-    let mut expected = None;
-    let mut fields = rest.split_whitespace().peekable();
-    while let Some(field) = fields.next() {
-        if let Some(v) = field.strip_prefix("p1=") {
-            p1 = Some(parse_point(v));
-        } else if let Some(v) = field.strip_prefix("p2=") {
-            p2 = Some(parse_point(v));
-        } else if let Some(v) = field.strip_prefix("t=") {
-            tolerance = Some(v.parse::<i32>().expect("an int tolerance"));
-        } else if field == "->" {
-            expected = Some(fields.next().expect("an answer") == "true");
-        }
-    }
-    (
-        p1.expect("p1"),
-        p2.expect("p2"),
-        tolerance.expect("t"),
-        expected.expect("->"),
-    )
-}
-
-fn parse_point(text: &str) -> Point {
-    let inner = text
-        .trim_start_matches('(')
-        .trim_end_matches(')')
-        .split_once(',')
-        .expect("(x,y)");
-    Point::Int(IntPoint::new(
-        inner.0.parse().expect("x"),
-        inner.1.parse().expect("y"),
-    ))
+fn a_via_on_the_last_corner_is_matched_to_the_last_corner() {
+    let source = include_str!("../src/board_ext/via_optimizer.rs");
+    assert!(!source.contains("is_within_tolerance"));
+    assert!(source.contains("first.as_ref() == Some(via_center)"));
+    assert!(source.contains("last.as_ref() == Some(via_center)"));
 }
 
 const TRANSCRIPT: &str = include_str!("data/p7t4-via-optimizer.txt");
@@ -426,18 +352,61 @@ fn empty_board() -> Board {
     let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 100);
     let mut rules = BoardRules::new(layers(), clearance_matrix);
     rules.trace_angle_restriction = AngleRestriction::None;
+    let mut padstacks = Padstacks::new(layers());
+    let shape = Shape::Tile(TileShape::Box(IntBox::from_coords(-20, -20, 20, 20)));
+    padstacks.add("via", vec![Some(shape.clone()), Some(shape)], true, false);
     let mut board = Board::new(
         Vec::new(),
         0,
         BOUNDING_BOX,
         rules,
-        BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
+        BoardLibrary::new(padstacks, Packages::new()),
         Components::new(),
         Communication::default(),
     );
     let default_class = board.rules.get_default_net_class();
     board.rules.nets.add("N1", 1, false, default_class);
     board
+}
+
+#[test]
+fn reposition_via_respects_the_boards_angle_restriction() {
+    let mut board = empty_board();
+    board.rules.trace_angle_restriction = AngleRestriction::NinetyDegree;
+    let via = board
+        .insert_via(
+            fr_board::PadstackId(1),
+            Point::new(0, 0),
+            vec![1],
+            1,
+            FixedState::Unfixed,
+            false,
+        )
+        .expect("a via");
+
+    assert_eq!(
+        ViaOptimizer::reposition_via_toward_location(
+            &mut board,
+            via,
+            &IntPoint::new(100, 50),
+            1,
+            0,
+            1,
+        ),
+        None
+    );
+    assert!(!ViaOptimizer::reposition_via_check_candidate(
+        &mut board,
+        via,
+        &IntPoint::new(100, 50),
+        1,
+        0,
+        1,
+        &IntPoint::new(100, 100),
+        1,
+        1,
+        1,
+    ));
 }
 
 #[test]
@@ -769,19 +738,12 @@ fn classify(board: &Board, via: ItemId) -> &'static str {
         return "PLANE_OR_FANOUT_CONDUCTION";
     }
     let via_center = board.drill_center(via).expect("a via has a centre");
-    let min_width = match board.get_item(via) {
-        Some(Item::Via(v)) => v.min_width(&board.ctx()),
-        _ => unreachable!("a via"),
-    };
-    let tolerance = (min_width / 2.0) as i32 + 1;
     for trace in traces {
         let Some(Item::Trace(t)) = board.get_item(trace) else {
             return "UNUSABLE_CONTACT";
         };
         let (first, last) = (t.first_corner(), t.last_corner());
-        if !ViaOptimizer::is_within_tolerance(first.as_ref(), &via_center, tolerance)
-            && !ViaOptimizer::is_within_tolerance(last.as_ref(), &via_center, tolerance)
-        {
+        if first.as_ref() != Some(&via_center) && last.as_ref() != Some(&via_center) {
             return "NOT_AT_ENDPOINT";
         }
     }

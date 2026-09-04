@@ -1,7 +1,7 @@
 use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_board::{BoardError, ItemId};
-use fr_geometry::{FloatLine, FloatPoint, IntPoint, Point, Side, java_min};
+use fr_geometry::{FloatLine, FloatPoint, IntPoint, Point, Side, Vector, java_min};
 use fr_settings::ExpansionCostFactor;
 
 use crate::board_ext::drill_item_mover::DrillItemMover;
@@ -65,15 +65,11 @@ impl ViaOptimizer {
         let first_layer = Self::trace_layer(board, first_trace);
         let second_layer = Self::trace_layer(board, second_trace);
 
-        let tolerance = Self::via_tolerance(board, via);
-
-        let Some(first_trace_from_corner) =
-            Self::from_corner(board, first_trace, &via_center, tolerance)
+        let Some(first_trace_from_corner) = Self::from_corner(board, first_trace, &via_center)
         else {
             return Ok(false);
         };
-        let Some(second_trace_from_corner) =
-            Self::from_corner(board, second_trace, &via_center, tolerance)
+        let Some(second_trace_from_corner) = Self::from_corner(board, second_trace, &via_center)
         else {
             return Ok(false);
         };
@@ -186,14 +182,12 @@ impl ViaOptimizer {
             return Ok(false);
         };
 
-        let tolerance = Self::via_tolerance(board, via);
-
         let at_first_corner = {
             let first = Self::trace_corner(board, contact_trace, TraceEnd::First);
             let last = Self::trace_corner(board, contact_trace, TraceEnd::Last);
-            if Self::is_within_tolerance(first.as_ref(), &via_center, tolerance) {
+            if first.as_ref() == Some(&via_center) {
                 true
-            } else if Self::is_within_tolerance(last.as_ref(), &via_center, tolerance) {
+            } else if last.as_ref() == Some(&via_center) {
                 false
             } else {
                 return Ok(false);
@@ -319,17 +313,6 @@ impl ViaOptimizer {
         Ok(true)
     }
 
-    pub fn is_within_tolerance(p1: Option<&Point>, p2: &Point, tolerance: i32) -> bool {
-        let Some(p1) = p1 else {
-            return false;
-        };
-        let fp1 = p1.to_float();
-        let fp2 = p2.to_float();
-        let dx = (fp1.x - fp2.x).abs();
-        let dy = (fp1.y - fp2.y).abs();
-        (dx + dy) <= f64::from(tolerance)
-    }
-
     pub fn reposition_via_toward_location(
         board: &mut Board,
         via: ItemId,
@@ -365,6 +348,9 @@ impl ViaOptimizer {
         };
         let new_to_location = Point::Int(new_float_to_location.round());
         let delta = new_to_location.difference_by(&from_location);
+        if !Self::angle_allows_delta(board.rules.trace_angle_restriction, &delta) {
+            return None;
+        }
         let check_ok = DrillItemMover::check(board, via, &delta, 0, 0, None, None);
         if check_ok {
             return Some(new_to_location);
@@ -381,7 +367,9 @@ impl ViaOptimizer {
                     .round(),
             );
             let delta = check_point.difference_by(&from_location);
-            if DrillItemMover::check(board, via, &delta, 0, 0, None, None) {
+            if Self::angle_allows_delta(board.rules.trace_angle_restriction, &delta)
+                && DrillItemMover::check(board, via, &delta, 0, 0, None, None)
+            {
                 ok_length += current_length;
                 result = Some(check_point);
             }
@@ -411,8 +399,9 @@ impl ViaOptimizer {
             return false;
         }
         let delta = to_point.difference_by(&from_location);
-        if board.rules.trace_angle_restriction == AngleRestriction::None
-            && delta.length_approx() <= 1.5
+        if !Self::angle_allows_delta(board.rules.trace_angle_restriction, &delta)
+            || board.rules.trace_angle_restriction == AngleRestriction::None
+                && delta.length_approx() <= 1.5
         {
             return false;
         }
@@ -798,34 +787,27 @@ impl ViaOptimizer {
         }
     }
 
-    fn via_tolerance(board: &Board, via: ItemId) -> i32 {
-        let ctx = board.ctx();
-        let min_width = match board.get_item(via) {
-            Some(Item::Via(v)) => v.min_width(&ctx),
-            Some(Item::Pin(p)) => p.min_width(&ctx),
-            _ => return 1,
-        };
-        (min_width / 2.0) as i32 + 1
-    }
-
-    fn from_corner(
-        board: &Board,
-        trace: ItemId,
-        via_center: &Point,
-        tolerance: i32,
-    ) -> Option<Point> {
+    fn from_corner(board: &Board, trace: ItemId, via_center: &Point) -> Option<Point> {
         let first = Self::trace_corner(board, trace, TraceEnd::First);
         let last = Self::trace_corner(board, trace, TraceEnd::Last);
         let Some(Item::Trace(polyline_trace)) = board.get_item(trace) else {
             return None;
         };
         let polyline = polyline_trace.polyline();
-        if Self::is_within_tolerance(first.as_ref(), via_center, tolerance) {
+        if first.as_ref() == Some(via_center) {
             polyline.corner(1)
-        } else if Self::is_within_tolerance(last.as_ref(), via_center, tolerance) {
+        } else if last.as_ref() == Some(via_center) {
             polyline.corner(polyline.corner_count().wrapping_sub(2))
         } else {
             None
+        }
+    }
+
+    fn angle_allows_delta(angle_restriction: AngleRestriction, delta: &Vector) -> bool {
+        match angle_restriction {
+            AngleRestriction::None => true,
+            AngleRestriction::NinetyDegree => delta.is_orthogonal(),
+            AngleRestriction::FortyFiveDegree => delta.is_multiple_of_45_degree(),
         }
     }
 

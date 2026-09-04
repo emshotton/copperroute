@@ -87,14 +87,9 @@ fn rows_b(out: &mut Vec<String>, board: &mut Board, via_id: ItemId) {
     };
     let t2 = traces.get(1).copied().unwrap_or(t1);
     let via_center = center_of(board, via_id);
-    let tolerance = tolerance_of(board, via_id);
     let center = via_center.to_float().round();
-    let c1 = from_corner_of(board, t1, &via_center, tolerance)
-        .to_float()
-        .round();
-    let c2 = from_corner_of(board, t2, &via_center, tolerance)
-        .to_float()
-        .round();
+    let c1 = from_corner_of(board, t1, &via_center).to_float().round();
+    let c2 = from_corner_of(board, t2, &via_center).to_float().round();
     let params1 = trace_params(board, t1);
     let params2 = trace_params(board, t2);
     for (k, to) in targets_b(center, c1, c2).iter().enumerate() {
@@ -309,8 +304,7 @@ fn a_one_contact_via_takes_overload_a() {
         let mut scratch = board.clone();
         let trace = trace_contacts(&scratch, via_id)[0];
         let via_center = center_of(&scratch, via_id);
-        let tolerance = tolerance_of(&scratch, via_id);
-        let check_corner = from_corner_of(&scratch, trace, &via_center, tolerance);
+        let check_corner = from_corner_of(&scratch, trace, &via_center);
         let (hw, cl, layer) = trace_params(&scratch, trace);
         let before = scratch.structural_hash();
         let direct = ViaOptimizer::reposition_via_toward_location(
@@ -478,9 +472,8 @@ fn targets_b(center: IntPoint, c1: IntPoint, c2: IntPoint) -> Vec<IntPoint> {
 fn overload_c_arguments(board: &Board, via: ItemId) -> (ItemId, ItemId, Point, Point) {
     let traces = trace_contacts(board, via);
     let via_center = center_of(board, via);
-    let tolerance = tolerance_of(board, via);
-    let c1 = from_corner_of(board, traces[0], &via_center, tolerance);
-    let c2 = from_corner_of(board, traces[1], &via_center, tolerance);
+    let c1 = from_corner_of(board, traces[0], &via_center);
+    let c2 = from_corner_of(board, traces[1], &via_center);
     (traces[0], traces[1], c1, c2)
 }
 
@@ -533,24 +526,16 @@ fn center_of(board: &Board, via: ItemId) -> Point {
     board.drill_center(via).expect("a via has a centre")
 }
 
-fn tolerance_of(board: &Board, via: ItemId) -> i32 {
-    let min_width = match board.get_item(via) {
-        Some(Item::Via(v)) => v.min_width(&board.ctx()),
-        _ => panic!("a via"),
-    };
-    (min_width / 2.0) as i32 + 1
-}
-
-fn from_corner_of(board: &Board, trace: ItemId, via_center: &Point, tolerance: i32) -> Point {
+fn from_corner_of(board: &Board, trace: ItemId, via_center: &Point) -> Point {
     let polyline = polyline_of(board, trace);
     let (first, last) = match board.get_item(trace) {
         Some(Item::Trace(t)) => (t.first_corner(), t.last_corner()),
         _ => panic!("a trace contact"),
     };
-    if ViaOptimizer::is_within_tolerance(first.as_ref(), via_center, tolerance) {
+    if first.as_ref() == Some(via_center) {
         return polyline.corner(1).expect("two corners");
     }
-    if ViaOptimizer::is_within_tolerance(last.as_ref(), via_center, tolerance) {
+    if last.as_ref() == Some(via_center) {
         return polyline
             .corner(polyline.corner_count() - 2)
             .expect("two corners");
@@ -590,15 +575,12 @@ fn classify(board: &Board, via: ItemId) -> &'static str {
         return "PLANE_OR_FANOUT_CONDUCTION";
     }
     let via_center = center_of(board, via);
-    let tolerance = tolerance_of(board, via);
     for trace in traces {
         let Some(Item::Trace(t)) = board.get_item(trace) else {
             return "UNUSABLE_CONTACT";
         };
         let (first, last) = (t.first_corner(), t.last_corner());
-        if !ViaOptimizer::is_within_tolerance(first.as_ref(), &via_center, tolerance)
-            && !ViaOptimizer::is_within_tolerance(last.as_ref(), &via_center, tolerance)
-        {
+        if first.as_ref() != Some(&via_center) && last.as_ref() != Some(&via_center) {
             return "NOT_AT_ENDPOINT";
         }
     }
