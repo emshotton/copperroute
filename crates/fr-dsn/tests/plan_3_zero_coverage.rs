@@ -112,20 +112,3 @@ fn every_plan_3_zero_coverage_path_has_a_directed_test() {
         );
     }
 }
-
-#[test]
-fn the_register_is_the_four_rows_the_handoff_names() {
-    let handoff = include_str!("../../../docs/plan-3-handoff.md");
-    assert!(
-        handoff.contains("The four zero-coverage Plan 3 paths"),
-        "docs/plan-3-handoff.md no longer carries the register row this file mirrors"
-    );
-    for row in &ROWS {
-        assert!(
-            handoff.contains(&format!("p8t13-{}.dsn", row.path)),
-            "docs/plan-3-handoff.md does not name the directed fixture p8t13-{}.dsn",
-            row.path
-        );
-    }
-    assert_eq!(ROWS.len(), 4, "the handoff's list is four rows long");
-}

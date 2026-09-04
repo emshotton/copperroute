@@ -901,25 +901,26 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
         assert_eq!((free, fixed, on_pin), (ItemId(6), ItemId(7), ItemId(8)));
 
         let delta = Vector::from(IntVector::new(300, 0));
-        let mut ignore = Vec::new();
+        let ignore: Vec<ItemId> = Vec::new();
         assert!(
-            DrillItemMover::check(&mut board, free, &delta, 20, 5, Some(&mut ignore), None),
+            DrillItemMover::check(&mut board, free, &delta, 20, 5, Some(&ignore), None),
             "probe `check viaId=6 delta=(300,0) result=true`"
         );
-        assert_eq!(
-            ignore,
-            vec![free],
-            "quirk #175: `:63` appends the drill item to the caller's list"
-        );
+        // quirk #175 (fixed: T10): Java's `:63` appended the drill item to the **caller's** list,
+        // so the jar's probe prints `ignoreSize=1` after this successful check. The collection is
+        // copied unconditionally now, the way `shoveVias:220-223` already did, and the parameter
+        // is a shared slice — so the caller's list is untouched. The routing answer above, which
+        // is what the probe row actually measures, is unchanged.
+        assert!(ignore.is_empty());
         for via in [fixed, on_pin] {
-            let mut ignore = Vec::new();
+            let ignore: Vec<ItemId> = Vec::new();
             assert!(!DrillItemMover::check(
                 &mut board,
                 via,
                 &delta,
                 20,
                 5,
-                Some(&mut ignore),
+                Some(&ignore),
                 None
             ));
             assert!(ignore.is_empty());
@@ -929,7 +930,7 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
             (-2000, -1600, true),
             (-1500, -1900, false),
         ] {
-            let mut ignore = Vec::new();
+            let ignore: Vec<ItemId> = Vec::new();
             assert_eq!(
                 DrillItemMover::check(
                     &mut board,
@@ -937,17 +938,19 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
                     &Vector::from(IntVector::new(dx, dy)),
                     20,
                     5,
-                    Some(&mut ignore),
+                    Some(&ignore),
                     None,
                 ),
                 expected,
                 "probe `check viaId=6 delta=({dx},{dy}) result={expected}` ({angle:?})"
             );
-            assert_eq!(ignore, vec![free]);
+            // quirk #175 (fixed: T10), as above: the jar's `ignoreSize=1` is the caller's list
+            // being mutated by a check, and it no longer is.
+            assert!(ignore.is_empty());
         }
-        let mut ignore = Vec::new();
+        let ignore: Vec<ItemId> = Vec::new();
         assert!(
-            DrillItemMover::check(&mut board, free, &delta, 20, 0, Some(&mut ignore), None),
+            DrillItemMover::check(&mut board, free, &delta, 20, 0, Some(&ignore), None),
             "probe `check viaId=6 delta=(300,0) viaDepth=0 result=true`"
         );
     }
