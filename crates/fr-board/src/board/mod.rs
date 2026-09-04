@@ -298,6 +298,16 @@ pub struct Board {
 }
 
 impl Board {
+    pub fn set_flip_style_rotate_first(&mut self, value: bool) {
+        if self.components.get_flip_style_rotate_first() == value {
+            return;
+        }
+        self.components.set_flip_style_rotate_first(value);
+        for item in self.items.values_mut() {
+            item.clear_derived_data();
+        }
+    }
+
     // -- construction ---------------------------------------------------------------------------
 
     /// Port of the `BasicBoard(IntBox, LayerStructure, PolylineShape[], int, BoardRules,

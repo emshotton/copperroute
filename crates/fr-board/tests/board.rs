@@ -50,6 +50,31 @@ fn the_constructor_inserts_the_board_outline_as_item_one() {
 }
 
 #[test]
+fn setting_flip_style_clears_the_item_caches() {
+    let mut board = p2t11_board();
+    let tree_id = board.trees.get_default_tree().id();
+    let item_id = board
+        .get_items()
+        .find(|item| matches!(item, Item::Trace(_)))
+        .expect("the fixture has a trace")
+        .id();
+    board
+        .get_item_mut(item_id)
+        .expect("the trace still exists")
+        .set_precalculated_tree_shapes(tree_id, vec![Some(TileShape::Box(IntBox::EMPTY))]);
+
+    board.set_flip_style_rotate_first(true);
+
+    assert_eq!(
+        board
+            .get_item(item_id)
+            .expect("the trace still exists")
+            .tree_shape_count(tree_id),
+        0
+    );
+}
+
+#[test]
 fn every_insert_bumps_the_revision_once() {
     // BoardItemRepository.java:166: `board.incrementRevision()` is the last line of `insertItem`.
     // `P2T11.java` mode 0: `mode=0 revision=8` for the outline plus seven inserted items.

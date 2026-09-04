@@ -550,17 +550,14 @@ fn component_outline_rotate_approx_complements_the_angle_on_the_back() {
 }
 
 #[test]
-fn component_outline_clear_derived_data_does_not_clear_the_header() {
-    // Java quirk: `ComponentOutline.clearDerivedData` (ComponentOutline.java:218-221) does
-    // **not** call `super.clearDerivedData()`, unlike every other override, so the cached tree
-    // shapes and the autoroute scratch survive.
+fn clear_derived_data_chains_to_the_header() {
     let mut item = Item::ComponentOutline(component_outline(1, true, 0.0));
     item.set_precalculated_tree_shapes(TreeId(0), vec![Some(TileShape::Box(bx(0, 0, 1, 1)))]);
     item.get_autoroute_info();
 
     item.clear_derived_data();
-    assert_eq!(item.tree_shape_count(TreeId(0)), 1);
-    assert!(item.get_autoroute_info_pur().is_some());
+    assert_eq!(item.tree_shape_count(TreeId(0)), 0);
+    assert!(item.get_autoroute_info_pur().is_none());
 }
 
 #[test]

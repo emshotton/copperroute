@@ -3,7 +3,7 @@ mod board_builder;
 
 use board_builder::{BoardFixture, WIDE_CLEARANCE_CLASS};
 use fr_board::prelude::*;
-use fr_geometry::{IntBox, IntOctagon, Point, Polyline, TileShape};
+use fr_geometry::{Area, IntBox, IntOctagon, Point, Polyline, Shape, TileShape, Vector};
 
 fn bx(llx: i32, lly: i32, urx: i32, ury: i32) -> TileShape {
     TileShape::Box(IntBox::from_coords(llx, lly, urx, ury))
@@ -192,6 +192,44 @@ fn the_default_tree_stores_what_the_jvm_stores() {
     assert_eq!(
         shapes(&f, id, 5),
         trace5.into_iter().map(Some).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn a_zero_shape_insert_still_clears_the_entry_array() {
+    let mut f = BoardFixture::new();
+    f.insert_all();
+    let tree_id = f.manager.get_default_tree().id();
+    let stale_entries = f.items[&ItemId(4)]
+        .get_search_tree_entries(tree_id)
+        .expect("the trace was inserted")
+        .to_vec();
+    assert!(!stale_entries.is_empty());
+
+    let mut outline = Item::ComponentOutline(ComponentOutline::new(
+        ItemHeader::new(ItemId(99), Vec::new(), 0, 0, FixedState::Unfixed),
+        Area::Shape(Shape::Tile(bx(0, 0, 10, 10))),
+        true,
+        Vector::ZERO,
+        0.0,
+        false,
+        false,
+        true,
+    ));
+    outline.set_tree_entries(tree_id, stale_entries);
+    let ctx = ItemCtx {
+        library: &f.library,
+        components: &f.components,
+        rules: &f.rules,
+        bounding_box: &f.bounding_box,
+        max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
+    };
+
+    f.manager.insert(&mut outline, &ctx);
+
+    assert_eq!(
+        outline.get_search_tree_entries(tree_id),
+        Some([].as_slice())
     );
 }
 

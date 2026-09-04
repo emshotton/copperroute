@@ -199,7 +199,6 @@ pub fn read_structure_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnE
         p.board
             .as_mut()
             .expect("checked just above")
-            .components
             .set_flip_style_rotate_first(true);
     }
 

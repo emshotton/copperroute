@@ -936,6 +936,7 @@ impl ComponentOutline {
     // autoroute scratch of a component outline survive every transform. Reproduced — the header
     // is deliberately left alone. See docs/java-quirks.md.
     pub fn clear_derived_data(&mut self) {
+        self.hdr.clear_derived_data();
         self.absolute_area.take();
     }
 }

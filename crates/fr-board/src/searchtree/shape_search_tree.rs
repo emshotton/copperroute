@@ -475,6 +475,7 @@ impl ShapeSearchTree {
             .expect("fill_tree_shapes always leaves a shape array for this tree")
             .to_vec();
         if shapes.is_empty() {
+            item.set_tree_entries(self.id, Vec::new());
             return;
         }
         let entries = self

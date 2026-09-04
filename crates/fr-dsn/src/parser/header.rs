@@ -221,7 +221,7 @@ pub fn read_place_control_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, 
         prev_was_open = is_open;
     }
     if flip_style_rotate_first && let Some(board) = p.board.as_mut() {
-        board.components.set_flip_style_rotate_first(true);
+        board.set_flip_style_rotate_first(true);
     }
     Ok(true)
 }
