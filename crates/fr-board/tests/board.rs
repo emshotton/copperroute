@@ -1199,24 +1199,35 @@ fn remove_items_marking_changed_area_marks_what_it_removed() {
     assert_eq!(board.get_item(ItemId(5)), None);
 }
 
+/// `P2T11.java` mode 3, quirk #50 — **fixed at Plan 9 Task 10**, so this test is renamed from
+/// `change_conduction_is_obstacle_reproduces_the_java_latch` and inverted.
+///
+/// Java's guard at `RoutingBoard.java:1254` is `if (getIgnoreConduction() != value) return;`,
+/// which reads the board-level flag as a proxy for the per-item ones. On this fixture they are
+/// desynchronised from birth — `ignoreConduction = true` beside `isObstacle = true` — so `change`
+/// alternated between the two arguments instead of applying whichever it was given. The guard is
+/// gone; the store stays `!value`, which is what the field's name, `unfillConductionAreas` and the
+/// Java caller all mean by it. See `crates/fr-board/tests/conduction.rs` for the full story and
+/// the foreign-net measurement on a signal-layer pour.
 #[test]
-fn change_conduction_is_obstacle_reproduces_the_java_latch() {
-    // `P2T11.java` mode 3, quirk #50: the guard at RoutingBoard.java:1254 is `!=`, so a call only
-    // does anything when the flag already equals the argument, and :1273 then stores `!value`.
+fn change_conduction_is_obstacle_applies_what_it_is_asked() {
     let mut board = p2t11_board();
     assert!(board.rules.get_ignore_conduction());
     assert!(is_obstacle(&board, 8));
 
-    // `ignoreConduction` is true, so `change(false)` returns immediately.
+    // Java returns immediately here (`true != false`) and item 8 goes on obstructing. It does not.
     board.change_conduction_is_obstacle(false);
     assert!(board.rules.get_ignore_conduction());
-    assert!(is_obstacle(&board, 8));
+    assert!(!is_obstacle(&board, 8));
+    // Idempotent, where Java alternated.
     board.change_conduction_is_obstacle(false);
     assert!(board.rules.get_ignore_conduction());
-    assert!(is_obstacle(&board, 8));
+    assert!(!is_obstacle(&board, 8));
 
-    // `change(true)` passes the guard, writes `true` into every signal-layer conduction area
-    // (already true here) and then stores `ignoreConduction = !true`.
+    // And back: `true` into every signal-layer conduction area, and `ignoreConduction = !true`.
+    board.change_conduction_is_obstacle(true);
+    assert!(!board.rules.get_ignore_conduction());
+    assert!(is_obstacle(&board, 8));
     board.change_conduction_is_obstacle(true);
     assert!(!board.rules.get_ignore_conduction());
     assert!(is_obstacle(&board, 8));
