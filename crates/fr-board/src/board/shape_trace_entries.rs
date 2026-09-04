@@ -320,10 +320,22 @@ impl ShapeTraceEntries {
                             // line above. It compares an item with itself, so it is always false;
                             // the intent was plainly `trace.clearanceClassIndex()`, i.e. "the
                             // contact has a different clearance class from the trace being
-                            // stored". Reproduced; see docs/java-quirks.md.
+                            // stored". See docs/java-quirks.md #69.
+                            //
+                            // fixed: T10 (#69) — the third disjunct now reads
+                            // `trace.clearance_class() != contact_trace.clearance_class()`, the
+                            // symmetry the second disjunct
+                            // (`contactTrace.getHalfWidth() != trace.getHalfWidth()`) makes
+                            // obvious and the only reading under which the line says anything at
+                            // all. As Java wrote it **a contact whose clearance class differs
+                            // never blocked**, so the shove carried copper across a
+                            // clearance-class boundary — a live source of clearance violations.
+                            // Like #65 the fix is one-directional: a disjunct that could only be
+                            // `false` becomes one that can be `true`, so nothing that blocked
+                            // stops blocking.
                             if (contact_item.is_shove_fixed(&board.rules)
                                 || contact_trace.get_half_width() != trace.get_half_width()
-                                || contact_item.clearance_class()
+                                || trace.hdr.clearance_class()
                                     != contact_trace.hdr.clearance_class())
                                 && offset_shape.contains_inside(&end_corner)
                             {
