@@ -1093,13 +1093,25 @@ mod tests {
     fn assert_rows_match(mode: &str, actual: &[String]) {
         let expected = section(mode);
         let mut diffs = Vec::new();
+        let mut allowed = 0usize;
         for i in 0..expected.len().max(actual.len()) {
             let want = expected.get(i).copied().unwrap_or("<missing>");
             let got = actual.get(i).map(String::as_str).unwrap_or("<missing>");
-            if want != got {
+            if want != got && !differs_only_by_the_end_closing_line(want, got) {
                 diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
             }
+            if want != got {
+                allowed += 1;
+            }
         }
+        // The allowance is not a licence: on these two modes it has to keep firing, or #23 has
+        // been reverted and these transcripts would go green against a jar they no longer match
+        // for the stated reason. Measured: `micro` 16 rows of 118, `neck` 11 of 276.
+        assert!(
+            allowed > 0,
+            "mode `{mode}`: no row differs by #23's end closing line any more — if #23 was \
+             reverted, this transcript is no longer saying what it says"
+        );
         assert!(
             diffs.is_empty(),
             "mode `{mode}`: {} of {} rows differ\n{}",
@@ -1710,5 +1722,75 @@ mod tests {
              down with each insertion"
         );
         assert_eq!(board.get_items().count(), items_before);
+    }
+
+    /// Whether the only difference between a JVM row and the port's is the one **quirk #23** makes:
+    /// the *end closing line* of a two-point polyline, which Java built by repeating the start's
+    /// direction and the port now builds with `to -> from`.
+    ///
+    /// fixed: T11 (#23). The two lines describe the same infinite line through the same point running
+    /// opposite ways — `(3000,2000)->(3000,2001)` against `(3000,2000)->(3000,1999)` — so the trace is
+    /// the same copper, correctly handed, and the corner list is untouched.
+    ///
+    /// The check is deliberately narrow rather than a re-cut golden. It allows a row to differ **only**
+    /// in the `b` point of the last entry of `lines=[…]`, only when that point is the reflection of the
+    /// jar's in the line's own `a`, and only when `corners=[…]` and everything before `lines=[` are
+    /// byte-identical. A row that moved a corner, changed a width or an id, or flipped any line but the
+    /// last still fails — so these transcripts stay a parity gate for everything except the one thing
+    /// #23 is.
+    fn differs_only_by_the_end_closing_line(want: &str, got: &str) -> bool {
+        let Some((want_head, want_rest)) = want.split_once("lines=[") else {
+            return false;
+        };
+        let Some((got_head, got_rest)) = got.split_once("lines=[") else {
+            return false;
+        };
+        if want_head != got_head {
+            return false;
+        }
+        let split_tail = |rest: &str| -> Option<(Vec<String>, String)> {
+            let end = rest.find("] corners=[")?;
+            let lines: Vec<String> = rest[..end].split("),(").map(str::to_string).collect();
+            Some((lines, rest[end..].to_string()))
+        };
+        let (Some((want_lines, want_corners)), Some((got_lines, got_corners))) =
+            (split_tail(want_rest), split_tail(got_rest))
+        else {
+            return false;
+        };
+        // The corner list — the copper's actual shape — must be identical, and so must the line count.
+        if want_corners != got_corners
+            || want_lines.len() != got_lines.len()
+            || want_lines.is_empty()
+        {
+            return false;
+        }
+        // Every line but the last must be identical.
+        if want_lines[..want_lines.len() - 1] != got_lines[..got_lines.len() - 1] {
+            return false;
+        }
+        // And the last must be the same line through the same point, running the other way:
+        // `a->b` against `a->(2a - b)`.
+        let parse = |s: &str| -> Option<[i64; 4]> {
+            let s = s.trim_start_matches('(').trim_end_matches(')');
+            let (a, b) = s.split_once(")->(")?;
+            let (ax, ay) = a.split_once(',')?;
+            let (bx, by) = b.split_once(',')?;
+            Some([
+                ax.parse().ok()?,
+                ay.parse().ok()?,
+                bx.parse().ok()?,
+                by.parse().ok()?,
+            ])
+        };
+        match (
+            parse(&want_lines[want_lines.len() - 1]),
+            parse(&got_lines[got_lines.len() - 1]),
+        ) {
+            (Some(w), Some(g)) => {
+                w[0] == g[0] && w[1] == g[1] && g[2] == 2 * w[0] - w[2] && g[3] == 2 * w[1] - w[3]
+            }
+            _ => false,
+        }
     }
 }

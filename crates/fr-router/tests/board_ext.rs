@@ -1004,17 +1004,111 @@ fn t15b_section(mode: &str) -> Vec<&'static str> {
     rows
 }
 
+/// The port's own rows for the transcript section Plan 9 Task 11 moved off the jar in a form the
+/// structural allowance below cannot check.
+///
+/// Mode `rand`'s rows are compact whole-board **fingerprints** — `hash=` is a `String.hashCode` of
+/// the board dump — so a row that differs by quirk #23's end closing line differs only in that one
+/// opaque number, and [`differs_only_by_the_end_closing_line`] has nothing to read. The item-dump
+/// modes `seg` and `neck` run over the same code and *do* show their working: every one of their
+/// 126 differing rows is a closing line and nothing else, with corner lists byte-identical. That
+/// is the evidence for this file; the golden is the record.
+///
+/// [`T15B`] is untouched and stays the jar's stdout. Both sides are pinned:
+/// [`assert_rows_match`] replays this byte for byte, and
+/// [`the_rand_port_golden_still_differs_from_the_jar`] requires the divergence to persist.
+const T11_RAND: &str = include_str!("data/p9t11-board-ext-rand.txt");
+
+/// The transcript sections that are the **port's** rather than the jar's, with the register row
+/// that authorizes each.
+const PORT_LANE: &[(&str, &str, &str)] = &[(
+    "rand",
+    "#23",
+    "`Polyline(Point, Point)` repeated the start's closing direction, so the end closing line ran \
+     the same way instead of the opposite one. The row is a board fingerprint, so the difference \
+     shows only as a changed hash; modes `seg` and `neck` show the same change item by item.",
+)];
+
+/// The port-lane golden's rows, with its `#` provenance header stripped.
+fn port_lane_section(mode: &str) -> Vec<&'static str> {
+    let text = match mode {
+        "rand" => T11_RAND,
+        _ => panic!("no port-lane golden for mode `{mode}`"),
+    };
+    let rows: Vec<&str> = text
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .map(str::trim_end)
+        .collect();
+    assert!(!rows.is_empty(), "port-lane golden `{mode}` is empty");
+    rows
+}
+
+/// [`t15b_section`] for a jar-lane mode, [`port_lane_section`] for a port-lane one.
+fn section_for(mode: &str) -> Vec<&'static str> {
+    if PORT_LANE.iter().any(|(name, _, _)| *name == mode) {
+        port_lane_section(mode)
+    } else {
+        t15b_section(mode)
+    }
+}
+
+/// Every [`PORT_LANE`] mode must **still** differ from the jar, so a fix quietly reverted fails
+/// here rather than going green against its own re-cut golden.
+#[test]
+fn the_rand_port_golden_still_differs_from_the_jar() {
+    for (mode, row, reason) in PORT_LANE {
+        assert_ne!(
+            port_lane_section(mode),
+            t15b_section(mode),
+            "port-lane mode `{mode}` now MATCHES the jar — delete its PORT_LANE entry \
+             (register {row}: {reason})"
+        );
+    }
+}
+
+/// The **jar-lane** modes whose boards contain a trace built by `Polyline::from_two_points`, and
+/// so the modes on which quirk #23's end closing line is visible row by row. Measured: `seg` 84
+/// rows of 1342, `neck` 42 of 797.
+///
+/// `rand` is not here: it moved 76 of its 258 rows for the same reason, but its rows are board
+/// fingerprints rather than item dumps, so it is compared against a port-lane golden instead and
+/// its "still differs" guarantee is [`the_rand_port_golden_still_differs_from_the_jar`].
+const MODES_WITH_TWO_POINT_POLYLINES: &[&str] = &["seg", "neck"];
+
 /// Compares the rows this port produces with the JVM's, collecting **every** difference rather
 /// than stopping at the first.
 fn assert_rows_match(mode: &str, actual: &[String]) {
-    let expected = t15b_section(mode);
+    // Re-cuts a port-lane golden: `T11_DUMP_DIR=<dir>` writes each mode's rows for pasting under
+    // the `#` provenance header of `data/p9t11-board-ext-<mode>.txt`. The command is in that
+    // header. Writing rather than printing keeps hundreds of rows out of a captured stdout.
+    if let Ok(dir) = std::env::var("T11_DUMP_DIR") {
+        std::fs::write(format!("{dir}/{mode}.txt"), actual.join("\n"))
+            .expect("the dump path is writable");
+    }
+    let expected = section_for(mode);
     let mut diffs = Vec::new();
+    let mut allowed = 0usize;
     for i in 0..expected.len().max(actual.len()) {
         let want = expected.get(i).copied().unwrap_or("<missing>");
         let got = actual.get(i).map(String::as_str).unwrap_or("<missing>");
-        if want != got {
+        if want != got && !differs_only_by_the_end_closing_line(want, got) {
             diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
         }
+        if want != got {
+            allowed += 1;
+        }
+    }
+    // The allowance is not a licence: on the modes that do build two-point polylines it has to
+    // keep firing, or #23 has been reverted and these transcripts would go green against a jar
+    // they no longer match for the stated reason. The other modes never reach
+    // `Polyline::from_two_points` at all and are unaffected either way.
+    if MODES_WITH_TWO_POINT_POLYLINES.contains(&mode) {
+        assert!(
+            allowed > 0,
+            "mode `{mode}`: no row differs by #23's end closing line any more — if #23 was \
+             reverted, this transcript is no longer saying what it says"
+        );
     }
     assert!(
         diffs.is_empty(),
@@ -2124,4 +2218,71 @@ fn insert_stops_when_the_stop_check_trips() {
         "expected Err(Stopped), got {result:?}"
     );
     assert!(calls.get() > 0, "the stop check was never consulted");
+}
+
+/// Whether the only difference between a JVM row and the port's is the one **quirk #23** makes:
+/// the *end closing line* of a two-point polyline, which Java built by repeating the start's
+/// direction and the port now builds with `to -> from`.
+///
+/// fixed: T11 (#23). The two lines describe the same infinite line through the same point running
+/// opposite ways — `(3000,2000)->(3000,2001)` against `(3000,2000)->(3000,1999)` — so the trace is
+/// the same copper, correctly handed, and the corner list is untouched.
+///
+/// The check is deliberately narrow rather than a re-cut golden. It allows a row to differ **only**
+/// in the `b` point of the last entry of `lines=[…]`, only when that point is the reflection of the
+/// jar's in the line's own `a`, and only when `corners=[…]` and everything before `lines=[` are
+/// byte-identical. A row that moved a corner, changed a width or an id, or flipped any line but the
+/// last still fails — so these transcripts stay a parity gate for everything except the one thing
+/// #23 is.
+fn differs_only_by_the_end_closing_line(want: &str, got: &str) -> bool {
+    let Some((want_head, want_rest)) = want.split_once("lines=[") else {
+        return false;
+    };
+    let Some((got_head, got_rest)) = got.split_once("lines=[") else {
+        return false;
+    };
+    if want_head != got_head {
+        return false;
+    }
+    let split_tail = |rest: &str| -> Option<(Vec<String>, String)> {
+        let end = rest.find("] corners=[")?;
+        let lines: Vec<String> = rest[..end].split("),(").map(str::to_string).collect();
+        Some((lines, rest[end..].to_string()))
+    };
+    let (Some((want_lines, want_corners)), Some((got_lines, got_corners))) =
+        (split_tail(want_rest), split_tail(got_rest))
+    else {
+        return false;
+    };
+    // The corner list — the copper's actual shape — must be identical, and so must the line count.
+    if want_corners != got_corners || want_lines.len() != got_lines.len() || want_lines.is_empty() {
+        return false;
+    }
+    // Every line but the last must be identical.
+    if want_lines[..want_lines.len() - 1] != got_lines[..got_lines.len() - 1] {
+        return false;
+    }
+    // And the last must be the same line through the same point, running the other way:
+    // `a->b` against `a->(2a - b)`.
+    let parse = |s: &str| -> Option<[i64; 4]> {
+        let s = s.trim_start_matches('(').trim_end_matches(')');
+        let (a, b) = s.split_once(")->(")?;
+        let (ax, ay) = a.split_once(',')?;
+        let (bx, by) = b.split_once(',')?;
+        Some([
+            ax.parse().ok()?,
+            ay.parse().ok()?,
+            bx.parse().ok()?,
+            by.parse().ok()?,
+        ])
+    };
+    match (
+        parse(&want_lines[want_lines.len() - 1]),
+        parse(&got_lines[got_lines.len() - 1]),
+    ) {
+        (Some(w), Some(g)) => {
+            w[0] == g[0] && w[1] == g[1] && g[2] == 2 * w[0] - w[2] && g[3] == 2 * w[1] - w[3]
+        }
+        _ => false,
+    }
 }
