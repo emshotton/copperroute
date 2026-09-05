@@ -1151,15 +1151,12 @@ mod tests {
 
         let (polyline, normalised) = Polyline::from_lines_normalised(&arr).expect("normalises");
 
-        // The caller's array is untouched — the whole of #188.
-        assert_eq!(
-            arr, handed_in,
-            "fixed: T11 (#188) — the caller's Vec is unchanged"
-        );
+        // The caller's array is untouched.
+        assert_eq!(arr, handed_in, "the caller's Vec is unchanged");
         for (after, before) in arr.iter().zip(&handed_in) {
             assert!(
                 after.is_same_object(before),
-                "fixed: T11 (#188) — not even the identity tokens moved"
+                "not even the identity tokens moved"
             );
         }
 

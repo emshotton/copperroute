@@ -623,7 +623,7 @@ mod cross_representation_tests {
         assert_eq!(
             Point::Rational(RationalPoint::new(b(2), b(0), b(1))).perpendicular_projection(&line),
             Point::Rational(RationalPoint::new(b(1), b(3), b(2))),
-            "fixed: T11 (#5) — was (1, 1, 2), i.e. (0.5, 0.5), which is off the line"
+            "(1, 1, 2), i.e. (0.5, 0.5), would be off the line"
         );
     }
 }

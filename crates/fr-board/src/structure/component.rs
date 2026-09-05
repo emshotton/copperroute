@@ -473,7 +473,7 @@ mod tests {
         assert_eq!(
             c.get(1).get_location(),
             Some(&point(0, -10)),
-            "fixed: T11 (#48) — was (0, 10), the location moved by +90 while the field said 270"
+            "a +90 rotate-first flip moves the location, not just the rotation field"
         );
     }
 
