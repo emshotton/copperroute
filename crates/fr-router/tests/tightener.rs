@@ -1193,6 +1193,94 @@ fn the_ninety_degree_regime_never_smoothens_an_end_corner() {
     }
 }
 
+/// #210 — three traces share the corner being smoothed. Two of them (`far`, `near`) satisfy the
+/// acute-angle branch; the third (`middle`) points the wrong way and satisfies neither. `far`
+/// gets the smallest item id and `near` the largest, so an id-ordered walk that keeps whichever
+/// match it visits last would keep `far`. The winning contact is instead the one whose own far
+/// corner lands closest to the corner being smoothed — `near`, at distance 500 against `far`'s
+/// 5000 — regardless of id.
+#[test]
+fn the_start_corner_contact_is_chosen_by_geometry() {
+    let mut rules = rules_with_wide_class(AngleRestriction::FortyFiveDegree);
+    let default_class = rules.get_default_net_class();
+    rules.nets.add("N1", 1, false, default_class);
+    let mut board = Board::new(
+        Vec::new(),
+        0,
+        BOUNDING_BOX,
+        rules,
+        BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
+        Components::new(),
+        Communication::default(),
+    );
+
+    let main = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[p(0, 0), p(1000, 1000), p(2000, 1000)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insert");
+    let far = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[p(0, 0), p(5000, 0), p(5000, -500)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insert");
+    board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[p(0, 0), p(-500, 0), p(-500, -500)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insert");
+    let near = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[p(0, 0), p(500, 0), p(500, -500)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insert");
+    assert!(
+        far.0 < near.0,
+        "far must have the smaller id for this test to distinguish the two rules"
+    );
+
+    let near_first_line = polyline_of(&board, near).expect("near trace").lines()[1];
+    let far_first_line = polyline_of(&board, far).expect("far trace").lines()[1];
+
+    let main_polyline = polyline_of(&board, main).expect("main trace").clone();
+    let mut a = algo(&mut board, 500);
+    a.pull_tight_polyline(&mut board, &main_polyline, 0, 30, &[1], 1, None);
+    let smoothed = a
+        .smoothen_start_corner_at_trace(&mut board, main)
+        .expect("the acute branch matches");
+
+    assert_eq!(
+        smoothed.lines()[0],
+        near_first_line,
+        "the nearest contact's own line shapes the new corner"
+    );
+    assert_ne!(
+        smoothed.lines()[0],
+        far_first_line,
+        "not the farther contact, even though it has the smaller id"
+    );
+}
+
 // =================================================================================================
 // `PolylineTrace.pullTight:841-861` — probe mode `pinedge`
 // =================================================================================================

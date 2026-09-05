@@ -752,8 +752,10 @@ impl<'a> TraceTightener<'a> {
 /// (TraceTightener45.java:463-467 and `:481-520`, and the same four locals in the three sibling
 /// methods).
 ///
-/// Java writes these as method locals that the loop overwrites on every *matching* contact, so
-/// the **last** match wins; `acuteAngle` and `bend` are sticky and are never reset.
+/// `acute_angle` and `bend` are sticky and never reset: they answer whether *any* matching
+/// contact was of that kind. The other four fields belong to a single contact — the geometrically
+/// nearest matching one, [`scan_contacts`] below — since a corner can only be smoothed toward one
+/// neighbour at a time.
 pub(crate) struct ContactScan {
     pub(crate) acute_angle: bool,
     pub(crate) bend: bool,
@@ -779,24 +781,16 @@ pub(crate) struct ContactScan {
 /// `None` is Java's `return null` from the enclosing method, which the `else` arm at `:517-519`
 /// takes for any contact that is not a non-shove-fixed `PolylineTrace`.
 ///
-/// # The walk is `.rev()`ed, and that is load-bearing
+/// # The winning contact is the geometrically nearest, not the last one visited
 ///
-/// `trace.getStartContacts()` / `getEndContacts()` answer `Trace.getNormalContacts`'s
-/// `new TreeSet<>()` (Trace.java:179) under `Item.compareTo == item.id - id`
-/// (Item.java:95-102), so Java walks a contact set in **descending** item id — quirk #44's
-/// ordering, the same one `Board::change_trace`'s callers and `Item.isCycle`'s roots need. The
-/// port's [`BTreeSet<ItemId>`](std::collections::BTreeSet) is ascending, so this walk is
-/// `.rev()`ed like every other `TreeSet<Item>` walk in the workspace.
-///
-/// It is not cosmetic here: `TraceTightener45.java:511-515` **overwrites**
-/// `otherTraceCornerApprox`, `otherTraceLine`, `prevCornerSide` and `otherPrevTraceLine` on
-/// every contact that matches, so the *last* match wins, and with two or more matching contacts
-/// the direction of the walk picks a different one. That choice sets `newLineDir` (`:523-527`),
-/// the `translateLine` built from it (`:528`) and the `addLine` the smoothed polyline starts
-/// with (`:545`) — a different corner, a different `splitTraces` point, a different number of
-/// smoothing iterations. Quirk **#210** records the measurement: without the `.rev()`,
-/// `router-dac2020-bm01` at `ripupPassNo = 1` diverges from the jar at connection 175 of 294
-/// (Plan 7 Task 8b bisected it there); with it, all 294 MATCH at both passes.
+/// Two or more contacts can match at the same corner, and only one can shape it: whichever
+/// contact's `otherTraceCornerApprox`, `otherTraceLine`, `prevCornerSide` and
+/// `otherPrevTraceLine` (`TraceTightener45.java:511-515`) end up in [`ContactScan`] sets
+/// `newLineDir` (`:523-527`), the `translateLine` built from it (`:528`) and the `addLine` the
+/// smoothed polyline starts with (`:545`) — a different corner, a different `splitTraces` point,
+/// a different number of smoothing iterations. The port picks the contact whose
+/// `otherTraceCornerApprox` lands closest to `current_end_corner`, the corner being smoothed,
+/// breaking an exact tie on the smaller [`ItemId`] so the choice is stable across platforms.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn scan_contacts(
     board: &Board,
@@ -829,8 +823,12 @@ pub(crate) fn scan_contacts(
                 .join(",")
         );
     }
-    // :481 — **descending**, see this function's doc comment and quirk #210.
-    for current_contact in contacts.iter().rev() {
+    let end_corner_approx = current_end_corner.to_float();
+    let mut best_distance_square: Option<f64> = None;
+    let mut best_contact: Option<ItemId> = None;
+    // :481 — order is immaterial: the winning contact is chosen by geometry below, not by walk
+    // order, see this function's doc comment and quirk #210.
+    for current_contact in contacts.iter() {
         // :482 and :517-519.
         let item = board.items.get(current_contact)?;
         let Item::Trace(contact_trace) = item else {
@@ -901,12 +899,25 @@ pub(crate) fn scan_contacts(
                 scan.bend,
             );
         }
-        // :511-516.
+        // :511-516 — the nearest matching contact wins, ties broken on the smaller item id.
         if other_trace_found {
-            scan.other_trace_corner_approx = Some(current_other_trace_corner_approx);
-            scan.other_trace_line = Some(current_other_trace_line);
-            scan.prev_corner_side = Some(current_prev_corner_side);
-            scan.other_prev_trace_line = Some(current_other_prev_trace_line);
+            let distance_square =
+                end_corner_approx.distance_square(&current_other_trace_corner_approx);
+            let is_nearer = match (best_distance_square, best_contact) {
+                (Some(best), Some(best_id)) => {
+                    distance_square < best
+                        || (distance_square == best && current_contact.0 < best_id.0)
+                }
+                _ => true,
+            };
+            if is_nearer {
+                best_distance_square = Some(distance_square);
+                best_contact = Some(*current_contact);
+                scan.other_trace_corner_approx = Some(current_other_trace_corner_approx);
+                scan.other_trace_line = Some(current_other_trace_line);
+                scan.prev_corner_side = Some(current_prev_corner_side);
+                scan.other_prev_trace_line = Some(current_other_prev_trace_line);
+            }
         }
     }
     if p7t8b_oca_ledger() {
