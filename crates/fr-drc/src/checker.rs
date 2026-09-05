@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use fr_board::{Board, ClearanceViolation, Item, ItemId, ItemKind};
+use fr_board::{Board, Item, ItemId, ItemKind};
 
 use crate::DrcViolation;
 use crate::airline::AirLine;
@@ -26,29 +26,6 @@ impl<'a> DesignRulesChecker<'a> {
     pub fn get_all_violations(&mut self) -> Vec<DrcViolation> {
         let constraints = crate::constraints::resolve(self.board);
         crate::checks::run_all(self.board, &constraints)
-    }
-
-    pub fn get_all_clearance_violations(&mut self) -> Vec<ClearanceViolation> {
-        let mut all_violations: Vec<ClearanceViolation> = Vec::new();
-        let mut seen_violations: BTreeSet<(u32, u32, usize)> = BTreeSet::new();
-
-        for id in self.board.items_in_board_order() {
-            for violation in self.board.clearance_violations(id) {
-                let id1 = violation.first_item.0;
-                let id2 = violation.second_item.0;
-                let key = if id1 < id2 {
-                    (id1, id2, violation.layer)
-                } else {
-                    (id2, id1, violation.layer)
-                };
-
-                if seen_violations.insert(key) {
-                    all_violations.push(violation);
-                }
-            }
-        }
-
-        all_violations
     }
 
     pub fn get_all_unconnected_items(&mut self) -> Vec<UnconnectedItems> {

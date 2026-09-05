@@ -1,7 +1,11 @@
 use fr_board::prelude::*;
-use fr_drc::{BoardStatisticsClearanceViolations, DesignRulesChecker};
+use fr_drc::{
+    BoardStatisticsClearanceViolations, DesignRulesChecker, DrcViolation, DrcViolationKind,
+};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
-use fr_geometry::{Area, IntBox, IntPoint, IntVector, Point, Polyline, Shape, TileShape};
+use fr_geometry::{
+    Area, FloatPoint, IntBox, IntPoint, IntVector, Point, Polyline, Shape, TileShape,
+};
 
 fn fixture_board(name: &str) -> Board {
     let path = parity::fixture(name);
@@ -119,7 +123,7 @@ fn transcript(board: &mut Board) -> String {
         fr_dsn::java_double_to_string(board_unit_to_um_factor),
     ));
 
-    let violations = drc.get_all_clearance_violations();
+    let violations = drc.get_all_violations();
     let stats =
         BoardStatisticsClearanceViolations::from_violations(&violations, board_unit_to_um_factor);
     let d = |v: Option<f64>| fr_dsn::java_double_to_string(v.expect("the block is never partial"));
@@ -314,18 +318,19 @@ fn statistics_block() {
     if !parity::require_java_dir() {
         return;
     }
-    let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
+    let mut board =
+        fixture_board("Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn");
     let factor = Unit::scale(1.0, board.communication.unit, Unit::Um)
         / f64::from(board.communication.resolution);
     assert_eq!(factor, 0.1);
 
-    let violations = DesignRulesChecker::new(&mut board).get_all_clearance_violations();
-    assert_eq!(violations.len(), 2);
+    let violations = DesignRulesChecker::new(&mut board).get_all_violations();
+    assert_eq!(violations.len(), 9);
     let stats = BoardStatisticsClearanceViolations::from_violations(&violations, factor);
-    assert_eq!(stats.total_count, Some(2));
-    assert_eq!(stats.min_violation_um, Some(50.0));
-    assert_eq!(stats.max_violation_um, Some(50.0));
-    assert_eq!(stats.avg_violation_um, Some(50.0));
+    assert_eq!(stats.total_count, Some(9));
+    assert_eq!(stats.min_violation_um, Some(0.0579833984375));
+    assert_eq!(stats.max_violation_um, Some(0.244140625));
+    assert_eq!(stats.avg_violation_um, Some(0.1068115234375));
 }
 
 #[test]
@@ -343,13 +348,16 @@ fn an_empty_violation_list_is_four_zeroes_not_four_nulls() {
 
 #[test]
 fn a_negative_shortfall_is_clamped_but_still_averaged_over_every_violation() {
-    let violation = |expected: f64, actual: f64| ClearanceViolation {
+    let violation = |expected: f64, actual: f64| DrcViolation {
+        kind: DrcViolationKind::Clearance,
+        severity: DrcSeverity::Error,
         first_item: ItemId(2),
-        second_item: ItemId(3),
-        shape: TileShape::Box(IntBox::from_coords(0, 0, 10, 10)),
-        layer: 0,
-        expected_clearance: expected,
-        actual_clearance: actual,
+        second_item: Some(ItemId(3)),
+        layer: Some(0),
+        position: FloatPoint::new(0.0, 0.0),
+        expected,
+        actual,
+        estimated: false,
     };
     let synthetic = vec![violation(100.0, 0.0), violation(100.0, 400.0)];
     let stats = BoardStatisticsClearanceViolations::from_violations(&synthetic, 2.0);

@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use fr_board::ClearanceViolation;
+use crate::DrcViolation;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct BoardStatisticsClearanceViolations {
@@ -16,7 +16,7 @@ pub struct BoardStatisticsClearanceViolations {
 
 impl BoardStatisticsClearanceViolations {
     pub fn from_violations(
-        violations: &[ClearanceViolation],
+        violations: &[DrcViolation],
         board_unit_to_um_factor: f64,
     ) -> BoardStatisticsClearanceViolations {
         let total_count = violations.len() as i32;
@@ -43,11 +43,7 @@ impl BoardStatisticsClearanceViolations {
             let mut maximum = 0.0_f64;
             let mut sum = 0.0;
             for violation in violations {
-                let shortfall = java_max(
-                    0.0,
-                    violation.expected_clearance - violation.actual_clearance,
-                );
-                let shortfall_um = shortfall * board_unit_to_um_factor;
+                let shortfall_um = violation.shortfall() * board_unit_to_um_factor;
                 minimum = java_min(minimum, shortfall_um);
                 maximum = java_max(maximum, shortfall_um);
                 sum += shortfall_um;

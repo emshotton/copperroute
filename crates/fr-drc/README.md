@@ -1,13 +1,15 @@
 # fr-drc
 
 A behavioral Rust port of freerouting's design-rule checker (clone HEAD):
-`drc/{DesignRulesChecker,ClearanceViolation,NetIncompletes,AirLine,
-UnconnectedItems}.java`, the four `io/kicad/KiCadDrc*.java` report DTOs and
+`drc/{DesignRulesChecker,NetIncompletes,AirLine,UnconnectedItems}.java`, the
+four `io/kicad/KiCadDrc*.java` report DTOs and
 `core/scoring/BoardStatisticsClearanceViolations.java`. It answers the three
 questions Java's `-drc` mode answers — *which clearances are violated, which
-items are unconnected, and how many connections are still incomplete* — and
-answers them the way Java does, bug for bug. Use `fr_drc::prelude::*` to bring
-in every public type.
+items are unconnected, and how many connections are still incomplete* — but
+does so with KiCad's own routing-type checks: `get_all_violations()` returns
+`DrcViolation`s carrying KiCad's check-family kinds (`kind.kicad_type()`),
+not Java's `ClearanceViolation`. Use `fr_drc::prelude::*` to bring in every
+public type.
 
 The crate sits on `fr-board` (the boards it checks) and on `fr-dsn` (plan-5
 ruling 7: `CoordinateTransform` lives there, and so does the Gson-compatible
@@ -23,10 +25,11 @@ Deliberate Java bugs are reproduced rather than fixed; each carries a
 `// Java bug:` or `// totalized:` marker at the site and a row in
 `docs/java-quirks.md`. Rows **144-155** are this crate's.
 
-`ClearanceViolation` itself is defined in **`fr-board`**, in
+`ClearanceViolation` remains defined in **`fr-board`**, in
 `items/clearance_violation.rs` (ruling 9): `Item.clearanceViolations` returns
-it and `fr-board` cannot depend upward on `fr-drc`. It is re-exported here, so
-`fr_drc::ClearanceViolation` is the name callers use, and the five `Board`
+it and `fr-board` cannot depend upward on `fr-drc`. It is not this crate's
+violation type — this crate's checker produces `DrcViolation` — and stays
+`fr-board`'s own construct, for the router's own scoring; the five `Board`
 methods behind it (`clearance_violations`, `clearance_violation_count`,
 `calculate_clearance_between_two_shapes`,
 `aggregate_violations_sorted_by_severity`, `smallest_clearance`) are

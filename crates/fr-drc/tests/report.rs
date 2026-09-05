@@ -60,7 +60,7 @@ fn the_unconnected_entry_description_and_severity() {
     }
     let report = report_for(DEV_BOARD, "mm");
     for entry in &report.unconnected_items {
-        assert_eq!(entry.kind, "unconnectedItems");
+        assert_eq!(entry.kind, "unconnected_items");
         assert_eq!(entry.severity, "warning");
         assert!(
             entry.description.starts_with("Unconnected items: ")
@@ -127,20 +127,20 @@ fn unknown_coordinate_unit_falls_back_to_the_board_unit() {
     if !parity::require_java_dir() {
         return;
     }
-    let (mut board, transform) = fixture_board(DEV_BOARD);
+    let (mut board, transform) = fixture_board(BBD_MARS_64);
     assert_eq!(board.communication.unit, Unit::Um);
     let coords = DrcCoordinates {
         transform,
         board_unit: board.communication.unit,
     };
     let report = DesignRulesChecker::new(&mut board)
-        .generate_report(&coords, &options(DEV_BOARD, "furlong"));
+        .generate_report(&coords, &options(BBD_MARS_64, "furlong"));
     assert_eq!(report.coordinate_units, "furlong");
-    assert_eq!(report.violations[0].items[0].pos.x, 125_500.0);
+    assert_eq!(report.violations[0].items[0].pos.x, 87_805.55);
     assert!(
         report.violations[0]
             .description
-            .contains("expected: 50.0000 furlong")
+            .contains("expected: 200.0000 furlong")
     );
 }
 
@@ -149,15 +149,15 @@ fn mil_and_inch_scale() {
     if !parity::require_java_dir() {
         return;
     }
-    let mm = report_for(DEV_BOARD, "mm").violations[0].items[0].pos.x;
-    let mil = report_for(DEV_BOARD, "mil").violations[0].items[0].pos.x;
-    let inch = report_for(DEV_BOARD, "inch").violations[0].items[0].pos.x;
-    let um = report_for(DEV_BOARD, "um").violations[0].items[0].pos.x;
+    let mm = report_for(BBD_MARS_64, "mm").violations[0].items[0].pos.x;
+    let mil = report_for(BBD_MARS_64, "mil").violations[0].items[0].pos.x;
+    let inch = report_for(BBD_MARS_64, "inch").violations[0].items[0].pos.x;
+    let um = report_for(BBD_MARS_64, "um").violations[0].items[0].pos.x;
 
-    assert_eq!(mm, 125.5);
-    assert_eq!(um, 125_500.0);
-    assert_eq!(mil, 125_500.0 / 25.4);
-    assert_eq!(inch, 125_500.0 / 25_400.0);
+    assert_eq!(mm, 87.80555);
+    assert_eq!(um, 87_805.55);
+    assert_eq!(mil, 87_805.55 / 25.4);
+    assert_eq!(inch, 87_805.55 / 25_400.0);
 }
 
 #[test]

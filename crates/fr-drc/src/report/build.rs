@@ -1,5 +1,5 @@
 use fr_board::structure::Unit;
-use fr_board::{Board, ClearanceViolation, Item, ItemId, ItemKind};
+use fr_board::{Board, DrcSeverity, Item, ItemId, ItemKind};
 use fr_dsn::CoordinateTransform;
 use fr_dsn::format::double::java_format_fixed;
 use fr_geometry::TileShape;
@@ -7,6 +7,7 @@ use fr_geometry::TileShape;
 use crate::checker::DesignRulesChecker;
 use crate::report::{KiCadDrcPosition, KiCadDrcReport, KiCadDrcViolation, KiCadDrcViolationItem};
 use crate::unconnected::{UnconnectedItems, UnconnectedKind};
+use crate::{DrcViolation, DrcViolationKind};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DrcReportOptions {
@@ -56,10 +57,10 @@ impl DesignRulesChecker<'_> {
         );
         report.quality_score = options.quality_score.map(f64::from);
 
-        let violations = self.get_all_clearance_violations();
+        let violations = self.get_all_violations();
 
         for violation in &violations {
-            report.add_violation(convert_clearance_violation(
+            report.add_violation(convert_violation(
                 self.board,
                 violation,
                 coords,
@@ -88,50 +89,71 @@ impl DesignRulesChecker<'_> {
     }
 }
 
-fn convert_clearance_violation(
+fn severity_text(severity: DrcSeverity) -> &'static str {
+    match severity {
+        DrcSeverity::Warning => "warning",
+        DrcSeverity::Error | DrcSeverity::Ignore => "error",
+    }
+}
+
+fn convert_violation(
     board: &Board,
-    violation: &ClearanceViolation,
+    violation: &DrcViolation,
     coords: &DrcCoordinates,
     coordinate_unit: &str,
 ) -> KiCadDrcViolation {
-    let first_item_desc = item_description(board, violation.first_item);
-    let second_item_desc = item_description(board, violation.second_item);
+    let first_desc = item_description(board, violation.first_item);
+    let mut items = vec![KiCadDrcViolationItem::new(
+        &first_desc,
+        item_position(board, violation.first_item, coords, coordinate_unit),
+        violation.first_item.0.to_string(),
+    )];
+    let second_desc = violation.second_item.map(|id| {
+        items.push(KiCadDrcViolationItem::new(
+            item_description(board, id),
+            item_position(board, id, coords, coordinate_unit),
+            id.0.to_string(),
+        ));
+        item_description(board, id)
+    });
 
-    let first_item_pos = item_position(board, violation.first_item, coords, coordinate_unit);
-    let second_item_pos = item_position(board, violation.second_item, coords, coordinate_unit);
-
-    let items = vec![
-        KiCadDrcViolationItem::new(
-            &first_item_desc,
-            first_item_pos,
-            violation.first_item.0.to_string(),
-        ),
-        KiCadDrcViolationItem::new(
-            &second_item_desc,
-            second_item_pos,
-            violation.second_item.0.to_string(),
-        ),
-    ];
-
-    let kind = if is_hole(board, violation.first_item) || is_hole(board, violation.second_item) {
-        "holeClearance"
-    } else {
-        "clearance"
+    let expected = format_length(violation.expected, coords, coordinate_unit);
+    let actual = format_length(violation.actual, coords, coordinate_unit);
+    let values =
+        format!("(expected: {expected} {coordinate_unit}, actual: {actual} {coordinate_unit})");
+    let pair = |lead: &str| match &second_desc {
+        Some(second) => format!("{lead} between {first_desc} and {second} {values}"),
+        None => format!("{lead}: {first_desc} {values}"),
     };
-
-    let expected = format_length(violation.expected_clearance, coords, coordinate_unit);
-    let actual = format_length(violation.actual_clearance, coords, coordinate_unit);
-    let lead = if kind == "holeClearance" {
-        "Hole clearance violation"
-    } else {
-        "Clearance violation"
+    let mut description = match violation.kind {
+        DrcViolationKind::Clearance => pair("Clearance violation"),
+        DrcViolationKind::ShortingItems => match &second_desc {
+            Some(second) => format!("Items shorting two nets: {first_desc} and {second}"),
+            None => format!("Items shorting two nets: {first_desc}"),
+        },
+        DrcViolationKind::TracksCrossing => match &second_desc {
+            Some(second) => format!("Tracks crossing: {first_desc} and {second}"),
+            None => format!("Tracks crossing: {first_desc}"),
+        },
+        DrcViolationKind::HoleClearance => pair("Hole clearance violation"),
+        DrcViolationKind::HoleToHole => pair("Drilled holes too close together"),
+        DrcViolationKind::CopperEdgeClearance => pair("Copper to edge clearance violation"),
+        DrcViolationKind::TrackWidth => pair("Track width violation"),
+        DrcViolationKind::ViaDiameter => pair("Via diameter violation"),
+        DrcViolationKind::AnnularWidth => pair("Annular width violation"),
+        DrcViolationKind::DrillOutOfRange => pair("Drill out of range"),
+        DrcViolationKind::MicroviaDrillOutOfRange => pair("Micro via drill out of range"),
     };
-    let description = format!(
-        "{lead} between {first_item_desc} and {second_item_desc} \
-         (expected: {expected} {coordinate_unit}, actual: {actual} {coordinate_unit})"
-    );
+    if violation.estimated {
+        description.push_str(" (drill size estimated)");
+    }
 
-    KiCadDrcViolation::new(kind, description, "error", items)
+    KiCadDrcViolation::new(
+        violation.kind.kicad_type(),
+        description,
+        severity_text(violation.severity),
+        items,
+    )
 }
 
 fn convert_unconnected_items(
@@ -160,7 +182,7 @@ fn convert_unconnected_items(
             _ => "Track has unconnected end",
         };
         return KiCadDrcViolation::new(
-            head_kind_string(unconnected_items.kind),
+            kicad_kind_string(unconnected_items.kind),
             description,
             "warning",
             items,
@@ -190,26 +212,19 @@ fn convert_unconnected_items(
     };
 
     KiCadDrcViolation::new(
-        head_kind_string(unconnected_items.kind),
+        kicad_kind_string(unconnected_items.kind),
         description,
         "warning",
         items,
     )
 }
 
-fn head_kind_string(kind: UnconnectedKind) -> &'static str {
+fn kicad_kind_string(kind: UnconnectedKind) -> &'static str {
     match kind {
-        UnconnectedKind::UnconnectedItems => "unconnectedItems",
+        UnconnectedKind::UnconnectedItems => "unconnected_items",
         UnconnectedKind::TrackDangling => "track_dangling",
         UnconnectedKind::ViaDangling => "via_dangling",
     }
-}
-
-fn is_hole(board: &Board, id: ItemId) -> bool {
-    matches!(
-        board.get_item(id).map(Item::kind),
-        Some(ItemKind::Via | ItemKind::Pin),
-    )
 }
 
 pub fn item_description(board: &Board, id: ItemId) -> String {

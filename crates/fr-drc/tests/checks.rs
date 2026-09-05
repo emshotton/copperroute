@@ -1,11 +1,15 @@
 mod common;
 
 use common::synthetic::{PadSpec, SyntheticBoard};
-use fr_board::DrcConstraints;
+use fr_board::{DrcConstraints, ItemId};
 use fr_drc::checks::edge;
 use fr_drc::checks::geometry::{gap_below, hole_of, is_microvia, is_through_hole_pin, item_shapes};
 use fr_drc::checks::{copper, holes, single};
-use fr_drc::{DesignRulesChecker, DrcSeverity, DrcViolation, DrcViolationKind};
+use fr_drc::report::{DrcCoordinates, DrcJsonFlavor, DrcReportOptions};
+use fr_drc::{
+    BoardStatisticsClearanceViolations, DesignRulesChecker, DrcSeverity, DrcViolation,
+    DrcViolationKind,
+};
 use fr_geometry::{IntBox, IntVector, TileShape};
 
 fn boxes(gap: i32) -> (TileShape, TileShape) {
@@ -462,4 +466,122 @@ fn an_ignored_severity_drops_the_kind() {
             .get_all_violations()
             .is_empty()
     );
+}
+
+fn report_options() -> DrcReportOptions {
+    DrcReportOptions {
+        source: "synthetic.dsn".to_string(),
+        coordinate_unit: "mm".to_string(),
+        date: "2026-09-04T00:00Z".to_string(),
+        freerouting_version: "test".to_string(),
+        quality_score: None,
+    }
+}
+
+#[test]
+fn the_report_carries_kicad_types_and_severities() {
+    let mut synthetic = SyntheticBoard::new(&[], 2, 2000);
+    synthetic.trace(&[(0, 0), (10_000, 0)], 0, 300, 1);
+    synthetic.trace(&[(0, 1500), (10_000, 1500)], 0, 500, 2);
+    let mut constraints = DrcConstraints::default();
+    constraints
+        .netclass_clearance
+        .insert("Default".to_string(), 2000);
+    constraints
+        .netclass_track_width
+        .insert("Default".to_string(), 1000);
+    constraints
+        .severities
+        .insert("track_width".to_string(), DrcSeverity::Warning);
+    synthetic.board.rules.drc_constraints = Some(constraints);
+    let transform = fr_dsn::CoordinateTransform::new(10.0, 0.0, 0.0).expect("a scale");
+    let coords = DrcCoordinates {
+        board_unit: fr_board::Unit::Um,
+        transform,
+    };
+    let mut checker = DesignRulesChecker::new(&mut synthetic.board);
+    let report = checker.generate_report(&coords, &report_options());
+    let types: Vec<(&str, &str)> = report
+        .violations
+        .iter()
+        .map(|v| (v.kind.as_str(), v.severity))
+        .collect();
+    assert_eq!(
+        &types[..2],
+        [("clearance", "error"), ("track_width", "warning")]
+    );
+    assert!(
+        report.violations[0]
+            .description
+            .starts_with("Clearance violation between Trace [N1] and Trace [N2]")
+    );
+    assert_eq!(report.violations[0].items.len(), 2);
+    assert_eq!(report.violations[1].items.len(), 1);
+
+    let kicad = report.to_json(DrcJsonFlavor::KiCad).expect("serialises");
+    assert!(kicad.contains("\"type\": \"track_width\""));
+    let head = report
+        .to_json(DrcJsonFlavor::FreeroutingHead)
+        .expect("serialises");
+    assert!(head.contains("\"type\": \"track_width\""));
+}
+
+#[test]
+fn hole_clearance_keeps_its_camel_case_name_in_the_head_flavour_only() {
+    let mut synthetic = SyntheticBoard::new(&[], 2, 2000);
+    synthetic.via(0, 0, 1);
+    synthetic.trace(&[(-10_000, 4000), (10_000, 4000)], 0, 300, 2);
+    let mut constraints = DrcConstraints::default();
+    constraints
+        .netclass_clearance
+        .insert("Default".to_string(), 100);
+    constraints.hole_clearance = Some(2500);
+    synthetic.board.rules.drc_constraints = Some(constraints);
+    let transform = fr_dsn::CoordinateTransform::new(10.0, 0.0, 0.0).expect("a scale");
+    let coords = DrcCoordinates {
+        board_unit: fr_board::Unit::Um,
+        transform,
+    };
+    let report =
+        DesignRulesChecker::new(&mut synthetic.board).generate_report(&coords, &report_options());
+    assert_eq!(report.violations[0].kind, "hole_clearance");
+    let head = report
+        .to_json(DrcJsonFlavor::FreeroutingHead)
+        .expect("serialises");
+    assert!(head.contains("\"type\": \"holeClearance\""));
+    let kicad = report.to_json(DrcJsonFlavor::KiCad).expect("serialises");
+    assert!(kicad.contains("\"type\": \"hole_clearance\""));
+}
+
+#[test]
+fn statistics_sum_the_shortfall_in_micrometres() {
+    let violations = vec![
+        DrcViolation {
+            kind: DrcViolationKind::Clearance,
+            severity: DrcSeverity::Error,
+            first_item: ItemId(1),
+            second_item: Some(ItemId(2)),
+            layer: Some(0),
+            position: fr_geometry::FloatPoint::new(0.0, 0.0),
+            expected: 2000.0,
+            actual: 500.0,
+            estimated: false,
+        },
+        DrcViolation {
+            kind: DrcViolationKind::TrackWidth,
+            severity: DrcSeverity::Error,
+            first_item: ItemId(3),
+            second_item: None,
+            layer: Some(0),
+            position: fr_geometry::FloatPoint::new(0.0, 0.0),
+            expected: 1000.0,
+            actual: 600.0,
+            estimated: false,
+        },
+    ];
+    let stats = BoardStatisticsClearanceViolations::from_violations(&violations, 0.1);
+    assert_eq!(stats.total_count, Some(2));
+    assert_eq!(stats.min_violation_um, Some(40.0));
+    assert_eq!(stats.max_violation_um, Some(150.0));
+    assert_eq!(stats.avg_violation_um, Some(95.0));
 }
