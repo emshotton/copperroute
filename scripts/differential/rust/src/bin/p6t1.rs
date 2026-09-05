@@ -82,10 +82,14 @@ fn main() {
         .unwrap_or_else(|e| panic!("cannot resolve {}: {e}", args[0]));
     let max_items: usize = args.get(1).map_or(8, |a| a.parse().expect("maxItems"));
     let ripup_pass_no: i32 = args.get(2).map_or(1, |a| a.parse().expect("ripupPassNo"));
-    let rules = args.get(3).filter(|a| !a.is_empty() && *a != "-").map(|a| {
-        std::fs::canonicalize(a).unwrap_or_else(|e| panic!("cannot resolve {a}: {e}"))
-    });
-    let steps: &str = args.get(4).filter(|a| !a.is_empty()).map_or("1-5", String::as_str);
+    let rules = args
+        .get(3)
+        .filter(|a| !a.is_empty() && *a != "-")
+        .map(|a| std::fs::canonicalize(a).unwrap_or_else(|e| panic!("cannot resolve {a}: {e}")));
+    let steps: &str = args
+        .get(4)
+        .filter(|a| !a.is_empty())
+        .map_or("1-5", String::as_str);
     assert!(
         steps == "1-5" || steps == "1-8",
         "steps must be 1-5 or 1-8, not {steps}"
@@ -148,8 +152,8 @@ fn print_header<W: Write>(
     steps: &str,
     neck_width_um: f64,
 ) {
-    let jar = std::env::var("FREEROUTING_JAR")
-        .expect("environment variable FREEROUTING_JAR is not set");
+    let jar =
+        std::env::var("FREEROUTING_JAR").expect("environment variable FREEROUTING_JAR is not set");
     let jar = std::fs::canonicalize(jar).expect("jar exists");
     let meta = std::fs::metadata(&jar).expect("jar metadata");
     let mtime = meta
@@ -177,7 +181,11 @@ fn print_header<W: Write>(
         dsn.file_name().expect("a file name").to_string_lossy(),
         rules.map_or_else(
             || "-".to_string(),
-            |p| p.file_name().expect("a file name").to_string_lossy().into_owned()
+            |p| p
+                .file_name()
+                .expect("a file name")
+                .to_string_lossy()
+                .into_owned()
         ),
     )
     .expect("write");
@@ -219,8 +227,9 @@ fn load_board(dsn: &std::path::Path, rules: Option<&std::path::Path>) -> Board {
         // string. `None` for the settings: the file's `(autoroute_settings …)` never reaches the
         // board.
         let rules_design_name = design_name.strip_suffix(".dsn").unwrap_or(&design_name);
-        let read = fr_dsn::rules_reader::read(file, rules_design_name, &mut board, &transform, None)
-            .unwrap_or_else(|e| panic!("{rules:?} did not read: {e:?}"));
+        let read =
+            fr_dsn::rules_reader::read(file, rules_design_name, &mut board, &transform, None)
+                .unwrap_or_else(|e| panic!("{rules:?} did not read: {e:?}"));
         assert!(read, "{rules:?} was rejected by the rules reader");
     }
     board
@@ -271,11 +280,7 @@ fn pick_connections(board: &Board, max_items: usize) -> Vec<Connection> {
                 continue;
             }
             k += 1;
-            result.push(Connection {
-                k,
-                item_id,
-                net_no,
-            });
+            result.push(Connection { k, item_id, net_no });
             if result.len() >= max_items {
                 return result;
             }
@@ -310,9 +315,7 @@ fn route_one(
     let mut sb = String::new();
     sb.push_str(&format!(
         "{{\"k\":{},\"item\":{},\"net\":{}",
-        connection.k,
-        connection.item_id.0,
-        connection.net_no
+        connection.k, connection.item_id.0, connection.net_no
     ));
 
     if board.get_item(connection.item_id).is_none() {
@@ -487,9 +490,14 @@ fn append_inserted_geometry(sb: &mut String, board: &Board, max_id_before: ItemI
 fn append_metrics(sb: &mut String, board: &mut Board, net_no: i32) {
     let vias = board.net_via_count(net_no);
     let trace_length = board.cumulative_trace_length();
-    let mut drc = DesignRulesChecker::new(board);
-    let incompletes = drc.get_incomplete_count();
-    let violations = drc.get_all_clearance_violations().len();
+    let (incompletes, all_violations) = {
+        let mut drc = DesignRulesChecker::new(board);
+        (drc.get_incomplete_count(), drc.get_all_violations())
+    };
+    let violations = all_violations
+        .iter()
+        .filter(|violation| violation.involves_routing(board))
+        .count();
     sb.push_str(&format!(
         ",\"metrics\":{{\"incompletes\":{incompletes},\"vias\":{vias},\"traceLength\":\"{}\",\"violations\":{violations}}}",
         java_double_to_string(trace_length)
