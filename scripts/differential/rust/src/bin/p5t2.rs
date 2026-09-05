@@ -81,6 +81,7 @@ fn clearance_violations<W: Write>(out: &mut W, board: &mut Board) {
         )
         .expect("write");
     }
+    writeln!(out, "VCOUNT {}", violations.len()).expect("write");
 }
 
 /// Mode 1.
