@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-05T00:32:55.205345Z",
+  "generated_at": "2026-09-05T00:50:11.267570Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -53,15 +53,16 @@
       "unrouted_net_penalty": 5000000.0,
       "clearance_violation_penalty": 1000000.0,
       "bend_penalty": 10.0,
-      "default_bend_cost": 0.0
+      "default_bend_cost": 0.0,
+      "smd_via_cost_factor": 0.1
     },
     "max_threads": 7,
-    "result_json": "<OUT>/router-rpi-splitter.manifest.json"
+    "result_json": "/var/folders/w3/ts5st7dx3n9byscpknnt1fh00000gn/T/fr-cli-e2e/ref-router-rpi-splitter/manifest.json"
   },
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 0.054,
+      "duration_seconds": 0.532,
       "passes_completed": 2
     },
     "optimizer": {}
@@ -88,9 +89,9 @@
       "signal_count": 2
     },
     "items": {
-      "total_count": 58,
-      "trace_count": 16,
-      "via_count": 9,
+      "total_count": 48,
+      "trace_count": 13,
+      "via_count": 2,
       "conduction_area_count": 0,
       "drill_item_count": 0,
       "pin_count": 24,
@@ -112,15 +113,15 @@
       "incomplete_count": 0
     },
     "traces": {
-      "total_count": 16,
-      "total_segment_count": 27,
-      "total_length": 285427.3,
-      "total_length_mm": 112.37296,
-      "total_weighted_length": 1.4277343E10,
-      "average_length": 17839.207,
-      "total_vertical_length": 192763.67,
-      "total_horizontal_length": 12819.431,
-      "total_angled_length": 63576.664
+      "total_count": 13,
+      "total_segment_count": 24,
+      "total_length": 276258.34,
+      "total_length_mm": 108.76313,
+      "total_weighted_length": 1.3309148E10,
+      "average_length": 21250.643,
+      "total_vertical_length": 85851.01,
+      "total_horizontal_length": 1722.12,
+      "total_angled_length": 37955.88
     },
     "bends": {
       "total_count": 11,
@@ -129,8 +130,8 @@
       "other_angle_count": 0
     },
     "vias": {
-      "total_count": 9,
-      "through_hole_count": 9,
+      "total_count": 2,
+      "through_hole_count": 2,
       "blind_count": 0,
       "buried_count": 0
     },
@@ -146,7 +147,7 @@
       "escaped_count": 9
     }
   },
-  "normalized_score": 999.97314,
+  "normalized_score": 999.9873,
   "resource_usage": {
     "cpu_time": 0.0,
     "max_memory": 0.0,

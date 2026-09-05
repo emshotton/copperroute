@@ -23,10 +23,6 @@
         "description": "Run the auto-routing stage at all.",
         "type": "boolean"
       },
-      "failure_give_up_threshold": {
-        "description": "Skip an item on a later auto-routing pass once it has failed this many times. Absent (the default) retries every item on every pass.",
-        "type": "integer"
-      },
       "fanout": {
         "additionalProperties": false,
         "description": "The fanout pre-pass, which escapes SMD pins onto a routable layer before auto-routing starts.",
@@ -97,7 +93,7 @@
           "description": "One board layer's overrides.",
           "properties": {
             "bend_cost": {
-              "description": "This layer's bend cost, overriding scoring.default_bend_cost. 0.0 is no penalty; 9.9 strongly avoids bends.",
+              "description": "This layer's bend cost in millimetres of trace, overriding scoring.default_bend_cost. 0.0 is no penalty; 100.0 is the ceiling.",
               "type": "number"
             },
             "preferred_direction_horizontal": {
@@ -166,7 +162,7 @@
             "type": "integer"
           },
           "max_search_steps": {
-            "description": "A deterministic cap on the total search steps the optimizer may spend; 0 means unlimited. Bounds runaway routing on incomplete boards without a wall-clock.",
+            "description": "Deterministic bound on the maze-search work one optimizer stage may spend; 0 removes the bound.",
             "type": "integer"
           },
           "max_threads": {
@@ -201,7 +197,7 @@
             "type": "number"
           },
           "default_bend_cost": {
-            "description": "Cost added each time the maze search changes direction, where a layer names no bend_cost of its own.",
+            "description": "Millimetres of trace a bend is worth to the maze search, where a layer names no bend_cost of its own.",
             "type": "number"
           },
           "default_preferred_direction_trace_cost": {
@@ -215,6 +211,10 @@
           "plane_via_costs": {
             "description": "Cost of a via that lands on a plane (a poured net), usually lower than via_costs.",
             "type": "integer"
+          },
+          "smd_via_cost_factor": {
+            "description": "Multiplier on the via cost for nets whose pins are all surface-mount; 1.0 charges such nets the full via cost.",
+            "type": "number"
           },
           "start_ripup_costs": {
             "description": "Cost of ripping up an existing trace at the start of a pass.",
@@ -230,10 +230,6 @@
           }
         },
         "type": "object"
-      },
-      "smd_via_relaxation": {
-        "description": "On a pure-SMD net, allow a via to attach to an SMD pad and cut the via cost to a tenth, even where the via rule itself disallows SMD attach. Default true keeps that relaxation; false leaves the via rule's own attach permission and cost alone.",
-        "type": "boolean"
       },
       "strict_drc": {
         "description": "Refuse a route that would leave a clearance violation, rather than accepting it and scoring the penalty.",

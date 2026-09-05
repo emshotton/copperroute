@@ -312,6 +312,13 @@ which is why the default stays at zero: the knob is now meaningful, and the corp
 default. The run-time cost of F1 is what §2 predicted: j2 0.4 s → 4.4 s, bm11's optimizer stage
 62 s against 16 s without it.
 
+**One behaviour to know about.** The optimizer's per-item re-router runs `autoroute_pass` over
+every open connection on the board, not only the ripped item's. Now that the stage is awake and
+accepts on the penalty, a run with `router.enabled = false` and the optimizer on **routes the
+board anyway** (rpi-splitter: 0 incompletes, 2 vias, against 5 incompletes with the optimizer off).
+"Router off" therefore means "optimizer off" too when an unrouted output is wanted; the MCP
+composition test says so explicitly.
+
 **References.** Every routed reference moved: families B, C and R were re-cut from the port
 (`FR_REGOLDEN=<label>` on `batch_parity`, `reference_parity` and `cli_e2e` writes them; the metas
 are re-stamped by hand), and four JVM transcripts whose routes were priced by radius became port

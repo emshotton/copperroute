@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-05T00:41:16.855870Z",
+  "generated_at": "2026-09-05T00:57:29.522868Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -53,15 +53,16 @@
       "unrouted_net_penalty": 5000000.0,
       "clearance_violation_penalty": 1000000.0,
       "bend_penalty": 10.0,
-      "default_bend_cost": 0.0
+      "default_bend_cost": 0.0,
+      "smd_via_cost_factor": 0.1
     },
     "max_threads": 7,
-    "result_json": "<OUT>/large-outline.manifest.json"
+    "result_json": "/var/folders/w3/ts5st7dx3n9byscpknnt1fh00000gn/T/fr-cli-e2e/ref-large-outline/manifest.json"
   },
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 4.705,
+      "duration_seconds": 4.503,
       "passes_completed": 2
     },
     "optimizer": {}
@@ -88,9 +89,9 @@
       "signal_count": 2
     },
     "items": {
-      "total_count": 3744,
-      "trace_count": 493,
-      "via_count": 167,
+      "total_count": 3734,
+      "trace_count": 488,
+      "via_count": 162,
       "conduction_area_count": 0,
       "drill_item_count": 0,
       "pin_count": 346,
@@ -109,28 +110,28 @@
     },
     "connections": {
       "maximum_count": 240,
-      "incomplete_count": 10
+      "incomplete_count": 12
     },
     "traces": {
-      "total_count": 493,
-      "total_segment_count": 991,
-      "total_length": 45633.73,
-      "total_length_mm": 4563.373,
-      "total_weighted_length": 1.4817072E8,
-      "average_length": 92.563354,
-      "total_vertical_length": 8126.621,
-      "total_horizontal_length": 19825.256,
-      "total_angled_length": 9197.093
+      "total_count": 488,
+      "total_segment_count": 967,
+      "total_length": 43848.07,
+      "total_length_mm": 4384.807,
+      "total_weighted_length": 1.4226264E8,
+      "average_length": 89.85261,
+      "total_vertical_length": 7473.389,
+      "total_horizontal_length": 19043.016,
+      "total_angled_length": 9300.031
     },
     "bends": {
-      "total_count": 498,
+      "total_count": 479,
       "90_degree_count": 0,
-      "45_degree_count": 498,
+      "45_degree_count": 479,
       "other_angle_count": 0
     },
     "vias": {
-      "total_count": 167,
-      "through_hole_count": 167,
+      "total_count": 162,
+      "through_hole_count": 162,
       "blind_count": 0,
       "buried_count": 0
     },
@@ -142,11 +143,11 @@
     },
     "fanout": {
       "total_smd_pins": 201,
-      "pins_to_escape": 51,
+      "pins_to_escape": 47,
       "escaped_count": 193
     }
   },
-  "normalized_score": 831.65173,
+  "normalized_score": 823.319,
   "resource_usage": {
     "cpu_time": 0.0,
     "max_memory": 0.0,

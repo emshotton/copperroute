@@ -1215,7 +1215,12 @@ fn a_sparse_settings_payload_composes_at_priority_70() {
     };
 
     let bare = route(&mut pipes, 1, &board, Value::Null);
-    let router_off = route(&mut pipes, 2, &board, json!({"enabled": false}));
+    let router_off = route(
+        &mut pipes,
+        2,
+        &board,
+        json!({"enabled": false, "optimizer": {"enabled": false}}),
+    );
     let slow_bare = route(&mut pipes, 3, &slow_board, Value::Null);
     let one_pass = route(&mut pipes, 4, &slow_board, json!({"max_passes": 1}));
     let via_costs = route(
@@ -1239,16 +1244,16 @@ fn a_sparse_settings_payload_composes_at_priority_70() {
     };
     assert_eq!(bare["incompletes"], 0);
     assert!(
-        length(&bare) > length(&router_off),
-        "the auto-routing stage lays copper the fanout pre-pass did not: {} mm vs {} mm",
-        length(&bare),
-        length(&router_off)
+        router_off["incompletes"].as_u64().expect("a count") > 0,
+        "with the auto-router and the optimizer disabled the fanout pre-pass alone leaves \
+         connections open"
     );
     assert!(
-        vias(&bare) > vias(&router_off),
-        "…and places vias the pre-pass did not: {} vs {}",
-        vias(&bare),
-        vias(&router_off)
+        length(&bare) != length(&router_off) || vias(&bare) != vias(&router_off),
+        "the auto-routing stage changes the board the fanout pre-pass left: {} mm / {} vias on \
+         both",
+        length(&bare),
+        vias(&bare)
     );
     assert!(
         wires(&router_off) > 0,

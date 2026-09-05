@@ -1,6 +1,6 @@
 lane         port (<workspace>/scripts/differential/rust/src/bin/p7t9.rs)
-port sha     9955a29240b3
-plan 9 task  T16
+port sha     4de9d6f2cc90
+plan 9 task  via-and-trace-length
 java         n/a (no JVM runs in this lane)
 hash mode    n/a (the port has no Object.hashCode)
 budget       RouterBudget::disabled() (ruling AI, which survives the Plan 9 switch:
@@ -10,9 +10,9 @@ budget       RouterBudget::disabled() (ruling AI, which survives the Plan 9 swit
 driver       <workspace>/scripts/differential/rust/src/bin/p7t9.rs
 passes       2
 ses bytes    4260
-ses sha256   cae2210bed4f1f2d1c1a3fbfa99550f405339a6996ecab44b6d2939537e2ed0a
+ses sha256   96bd8b0f71d0317594c3301fc4538fa01a93ae86a5c46d43f541e623722e5aeb
 command      java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp <classes>:<jar> app.freerouting.autoroute.pipeline.P7T9 <FREEROUTING_JAVA_DIR>/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 8 batch --fanout on --optimizer on --ses <ref>/batch.ses
-passes cmd   java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp <classes>:<jar> app.freerouting.autoroute.pipeline.P7T9 <FREEROUTING_JAVA_DIR>/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn 8 batch-router --fanout on --optimizer off --passes <ref>/batch.passes.jsonl
+passes 2
 bare program freerouting -de <FREEROUTING_JAVA_DIR>/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn -do <ses> -mp 8 --router.fanout.enabled=true --router.optimizer.enabled=true
 json source  freerouting.json present, its (router …) scope empty (priority 10 contributes nothing)
 bare-jar     identical
