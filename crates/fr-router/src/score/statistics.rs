@@ -390,14 +390,33 @@ impl BoardStatistics {
     }
 
     pub fn is_pin_escaped(board: &mut Board, pin: ItemId) -> bool {
+        let net_count = match board.get_item(pin) {
+            Some(item) => item.net_count(),
+            None => return false,
+        };
+        (0..net_count).all(|net_index| {
+            let net_number = board
+                .get_item(pin)
+                .expect("the pin was just read")
+                .get_net_number(net_index);
+            BoardStatistics::is_pin_escaped_on_net(board, pin, net_number)
+        })
+    }
+
+    fn is_pin_escaped_on_net(board: &mut Board, pin: ItemId, net_number: i32) -> bool {
         let contacts: Vec<ItemId> = board.normal_contacts(pin).into_iter().rev().collect();
         for contact in contacts {
-            let kind = match board.get_item(contact) {
-                Some(Item::Trace(_)) => ContactKind::Trace,
-                Some(Item::Via(_)) => ContactKind::Via,
-                Some(Item::ConductionArea(_)) => ContactKind::ConductionArea,
-                _ => ContactKind::Other,
+            let (kind, shares_net) = match board.get_item(contact) {
+                Some(item @ Item::Trace(_)) => (ContactKind::Trace, item.contains_net(net_number)),
+                Some(item @ Item::Via(_)) => (ContactKind::Via, item.contains_net(net_number)),
+                Some(item @ Item::ConductionArea(_)) => {
+                    (ContactKind::ConductionArea, item.contains_net(net_number))
+                }
+                _ => (ContactKind::Other, false),
             };
+            if !shares_net {
+                continue;
+            }
             match kind {
                 ContactKind::Trace => {
                     if board.clearance_violations(contact).is_empty() {
@@ -409,10 +428,12 @@ impl BoardStatistics {
                         let via_contacts: Vec<ItemId> =
                             board.normal_contacts(contact).into_iter().rev().collect();
                         for via_contact in via_contacts {
-                            if matches!(
+                            let via_contact_shares_net = matches!(
                                 board.get_item(via_contact),
-                                Some(Item::Trace(_)) | Some(Item::ConductionArea(_))
-                            ) {
+                                Some(item @ (Item::Trace(_) | Item::ConductionArea(_)))
+                                    if item.contains_net(net_number)
+                            );
+                            if via_contact_shares_net {
                                 return true;
                             }
                         }

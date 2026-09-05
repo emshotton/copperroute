@@ -505,7 +505,10 @@ fn a_pin_unconnected_on_its_second_net_needs_an_escape() {
 
     assert_eq!(fanout.total_smd_pins, 4);
     assert_eq!(fanout.pins_to_escape, 3);
-    assert_eq!(fanout.escaped_count, 2);
+    assert_eq!(
+        fanout.escaped_count, 1,
+        "only U2 is escaped: U1's NFIRST trace does not escape NSECOND, and U3/U4 have no wiring at all"
+    );
 }
 
 #[test]
