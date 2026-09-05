@@ -8,7 +8,6 @@ use crate::error::RouterError;
 use crate::pipeline::batch_autorouter::BatchAutorouter;
 use crate::pipeline::failure_log::RoutingFailureLog;
 use crate::pipeline::{ProgressSink, RouterCounters, RouterStop, RoutingEvent};
-use crate::score::BoardStatistics;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct AutoroutePassRunner;
@@ -48,14 +47,13 @@ impl AutoroutePassRunner {
         stop: &RouterStop,
         progress: &mut dyn ProgressSink,
     ) -> Result<bool, RouterError> {
+        stop.poll_cancel();
+        stop.poll_deadline();
         let autoroute_item_list = router.autoroute_items(board);
 
         if autoroute_item_list.is_empty() {
             return Ok(false);
         }
-
-        router.progress_statistics = Some(BoardStatistics::with_options(board, None, false));
-        router.progress_items_since_statistics = 0;
 
         let mut items_to_go_count = i32::try_from(autoroute_item_list.len()).unwrap_or(i32::MAX);
         let mut counters = RouterCounters {
@@ -70,7 +68,7 @@ impl AutoroutePassRunner {
         };
 
         counters.incomplete_count =
-            i32::try_from(BatchAutorouter::calculate_incomplete_count(board)).ok();
+            AutoroutePassRunner::incomplete_count_for_progress(board, router);
 
         progress.on_event(&RoutingEvent::BoardUpdated {
             counters: counters.clone(),
@@ -126,7 +124,7 @@ impl AutoroutePassRunner {
                 let mut engine = None;
                 let optimizer_work_budget = router.optimizer_work_budget();
                 let stop_check = &|| {
-                    stop.is_stop_requested()
+                    stop.is_stopped_or_expired()
                         || optimizer_work_budget
                             .as_ref()
                             .is_some_and(|work| work.poll())
@@ -176,14 +174,16 @@ impl AutoroutePassRunner {
             }
         }
 
-        let tail_stop = &|| stop.is_stop_requested();
+        if ripped_item_count > 0 {
+            router.net_filter = None;
+        }
+
+        let tail_stop = &|| stop.is_stopped_or_expired();
         if router.is_remove_unconnected_vias() {
             router.remove_tails(board, None, StopConnectionOption::None, tail_stop)?;
         } else {
             router.remove_tails(board, None, StopConnectionOption::FanoutVia, tail_stop)?;
         }
-
-        let _board_statistics = BoardStatistics::new(board);
 
         counters.pass_count = Some(pass_no);
         counters.queued_to_be_routed_count = Some(items_to_go_count);
@@ -192,12 +192,22 @@ impl AutoroutePassRunner {
         counters.failed_to_be_routed_count = Some(not_routed);
         counters.routed_count = Some(routed);
         counters.incomplete_count =
-            i32::try_from(BatchAutorouter::calculate_incomplete_count(board)).ok();
+            AutoroutePassRunner::incomplete_count_for_progress(board, router);
         progress.on_event(&RoutingEvent::BoardUpdated {
             counters: counters.clone(),
         });
 
         Ok(routed > 0 || not_routed > 0)
+    }
+
+    fn incomplete_count_for_progress(
+        board: &mut Board,
+        router: &BatchAutorouter<'_>,
+    ) -> Option<i32> {
+        if router.is_optimizer_autorouter {
+            return None;
+        }
+        i32::try_from(BatchAutorouter::calculate_incomplete_count(board)).ok()
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -212,14 +222,6 @@ impl AutoroutePassRunner {
         routed: i32,
         skipped: i32,
     ) {
-        router.progress_items_since_statistics += 1;
-        if router.progress_items_since_statistics
-            >= BatchAutorouter::PROGRESS_STATISTICS_ITEM_INTERVAL
-        {
-            router.progress_statistics = Some(BoardStatistics::with_options(board, None, false));
-            router.progress_items_since_statistics = 0;
-        }
-
         if router.should_fire_board_update() {
             counters.queued_to_be_routed_count = Some(items_to_go_count);
             counters.skipped_count = Some(skipped);
@@ -227,7 +229,7 @@ impl AutoroutePassRunner {
             counters.failed_to_be_routed_count = Some(not_routed);
             counters.routed_count = Some(routed);
             counters.incomplete_count =
-                i32::try_from(BatchAutorouter::calculate_incomplete_count(board)).ok();
+                AutoroutePassRunner::incomplete_count_for_progress(board, router);
             progress.on_event(&RoutingEvent::BoardUpdated {
                 counters: counters.clone(),
             });

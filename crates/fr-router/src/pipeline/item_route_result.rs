@@ -17,9 +17,10 @@ pub struct ItemRouteResult {
 
 impl ItemRouteResult {
     pub fn unimproved(item_id: ItemId) -> ItemRouteResult {
-        ItemRouteResult::new(item_id, 0, 0, 0.0, 0.0, 0, 1)
+        ItemRouteResult::new(item_id, 0, 0, 0.0, 0.0, 0, 1, 0.0, 0.0)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         item_id: ItemId,
         via_count_before: i32,
@@ -28,20 +29,10 @@ impl ItemRouteResult {
         trace_length_after: f64,
         incomplete_count_before: i32,
         incomplete_count_after: i32,
+        penalty_before: f64,
+        penalty_after: f64,
     ) -> ItemRouteResult {
-        let improved = if incomplete_count_after < incomplete_count_before {
-            true
-        } else if incomplete_count_after > incomplete_count_before {
-            false
-        } else if via_count_after < via_count_before {
-            true
-        } else if via_count_after > via_count_before {
-            false
-        } else if trace_length_after < trace_length_before {
-            true
-        } else {
-            false
-        };
+        let improved = penalty_after < penalty_before;
 
         let improvement_percentage = if via_count_before != 0 && trace_length_before != 0.0 {
             let via_term = f64::from(via_count_after / via_count_before);

@@ -749,7 +749,7 @@ impl<'a> BatchFanout<'a> {
                     *current_pin,
                     self.settings,
                     effective_ripup_costs,
-                    &|| stop.is_stop_requested(),
+                    &|| stop.is_stopped_or_expired(),
                     Some(time_limit),
                     budget,
                 );

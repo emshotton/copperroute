@@ -247,6 +247,12 @@ impl ScoringSettings {
             "default_bend_cost",
             FieldKind::F64,
         ),
+        spec(
+            "smd_via_cost_factor",
+            "smdViaCostFactor",
+            "smd_via_cost_factor",
+            FieldKind::F64,
+        ),
     ];
 }
 
@@ -798,6 +804,9 @@ fn set_scoring_property(
         }
         "bend_penalty" => target.bend_penalty = Some(java_parse_f32(value, path)?),
         "default_bend_cost" => target.default_bend_cost = Some(java_parse_f64(value, path)?),
+        "smd_via_cost_factor" => {
+            target.smd_via_cost_factor = Some(java_parse_f64(value, path)?);
+        }
         _ => return Err(type_mismatch(path, value)),
     }
     Ok(())

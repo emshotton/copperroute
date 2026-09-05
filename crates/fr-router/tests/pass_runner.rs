@@ -325,10 +325,6 @@ fn an_empty_item_list_returns_false_without_touching_the_board() {
         router.total_items_routed, 0,
         ":222 is never reached, so the counter does not move"
     );
-    assert!(
-        router.progress_statistics.is_none(),
-        ":170's BoardStatistics is below the early return"
-    );
 }
 
 #[test]

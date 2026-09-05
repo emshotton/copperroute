@@ -1,8 +1,19 @@
 use fr_board::ids::{ItemId, NetClassId};
 use fr_board::rules::{PadstackLookup, ViaRule};
+use fr_board::structure::Unit;
 use fr_board::{Board, Item};
 use fr_geometry::{Point, java_max};
 use fr_settings::{ExpansionCostFactor, RouterSettings};
+
+/// How the maze prices a via. Routing prices it as Java does, by the largest via radius in
+/// board units, because the score's price is too dear for a search that must still complete the
+/// board; the optimizer's re-router prices it in the score's own currency, because a candidate
+/// it rejects costs nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViaPricing {
+    ByPadstackRadius,
+    PerMillimetre,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ViaMask {
@@ -54,6 +65,15 @@ pub struct AutorouteControl {
     pub start_ripup_costs: i32,
 
     pub smd_via_relaxation: bool,
+    pub units_per_mm: f64,
+    pub trace_cost_per_mm: f64,
+    pub smd_via_cost_factor: f64,
+    pub via_pricing: ViaPricing,
+}
+
+pub fn board_units_per_mm(board: &Board) -> f64 {
+    let resolution = board.communication.resolution.max(1);
+    f64::from(resolution) / Unit::scale(1.0, board.communication.unit, Unit::Mm)
 }
 
 impl AutorouteControl {
@@ -64,7 +84,26 @@ impl AutorouteControl {
         via_costs: i32,
         trace_costs: &[ExpansionCostFactor],
     ) -> AutorouteControl {
+        AutorouteControl::priced(
+            board,
+            net_no,
+            settings,
+            via_costs,
+            trace_costs,
+            ViaPricing::ByPadstackRadius,
+        )
+    }
+
+    pub fn priced(
+        board: &Board,
+        net_no: i32,
+        settings: &RouterSettings,
+        via_costs: i32,
+        trace_costs: &[ExpansionCostFactor],
+        via_pricing: ViaPricing,
+    ) -> AutorouteControl {
         let mut control = AutorouteControl::private(board, settings, trace_costs);
+        control.via_pricing = via_pricing;
         control.init_net(net_no, board, via_costs);
         control
     }
@@ -90,9 +129,15 @@ impl AutorouteControl {
         trace_costs: &[ExpansionCostFactor],
     ) -> AutorouteControl {
         let layer_count = board.get_layer_count();
+        let units_per_mm = board_units_per_mm(board);
+        let trace_cost_per_mm = settings
+            .scoring
+            .as_ref()
+            .and_then(|s| s.default_preferred_direction_trace_cost)
+            .unwrap_or(1.0);
         let mut bend_costs = Vec::with_capacity(layer_count);
         for i in 0..layer_count {
-            bend_costs.push(settings.get_bend_cost(i));
+            bend_costs.push(settings.get_bend_cost(i) * units_per_mm * trace_cost_per_mm);
         }
 
         let mut layer_active = Vec::with_capacity(layer_count);
@@ -154,6 +199,10 @@ impl AutorouteControl {
                 .map_or(500.0, |mm| mm * 1000.0),
             start_ripup_costs: settings.get_start_ripup_costs(),
             smd_via_relaxation: settings.get_smd_via_relaxation(),
+            units_per_mm,
+            trace_cost_per_mm,
+            smd_via_cost_factor: settings.get_smd_via_cost_factor(),
+            via_pricing: ViaPricing::ByPadstackRadius,
         }
     }
 
@@ -272,10 +321,12 @@ impl AutorouteControl {
             self.via_radii[j] = java_max(self.via_radii[j], f64::from(self.trace_half_width[j]));
             self.max_via_radius = java_max(self.max_via_radius, self.via_radii[j]);
         }
-        let mut via_cost_factor = self.max_via_radius;
-        via_cost_factor = java_max(via_cost_factor, 1.0);
+        let mut via_cost_factor = match self.via_pricing {
+            ViaPricing::ByPadstackRadius => java_max(self.max_via_radius, 1.0),
+            ViaPricing::PerMillimetre => self.units_per_mm * self.trace_cost_per_mm,
+        };
         if self.smd_via_relaxation && pure_smd_net {
-            via_cost_factor *= 0.1;
+            via_cost_factor *= self.smd_via_cost_factor;
         }
         self.min_normal_via_cost = f64::from(via_costs) * via_cost_factor;
         self.min_cheap_via_cost = 0.8 * self.min_normal_via_cost;

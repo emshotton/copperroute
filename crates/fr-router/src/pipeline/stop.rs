@@ -157,6 +157,14 @@ impl RouterStop {
         true
     }
 
+    /// The check a search runs between expansions: a stop already requested, or the job
+    /// deadline seen to have passed since the last poll. A connection that starts just before
+    /// the deadline would otherwise search for its whole per-connection time limit.
+    pub fn is_stopped_or_expired(&self) -> bool {
+        self.poll_deadline();
+        self.is_stop_requested()
+    }
+
     pub fn poll_cancel(&self) {
         if let Some(poll) = self.cancel_poll.as_ref() {
             poll(self);

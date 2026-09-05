@@ -1,6 +1,6 @@
 lane         port (<workspace>/scripts/differential/rust/src/bin/p7t9.rs)
-port sha     9955a29240b3
-plan 9 task  T16
+port sha     46e4a5704388
+plan 9 task  via-and-trace-length
 java         n/a (no JVM runs in this lane)
 hash mode    n/a (the port has no Object.hashCode)
 budget       RouterBudget::disabled() (ruling AI, which survives the Plan 9 switch:
@@ -12,7 +12,7 @@ passes       2
 ses bytes    48363
 ses sha256   39e44fcc7db4ee5e63020f4822ee6c1233f8422c65efbad17e5fa989f59bebc9
 command      java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp <classes>:<jar> app.freerouting.autoroute.pipeline.P7T9 <FREEROUTING_JAVA_DIR>/fixtures/Issue730-DAC2020_bm11.dsn 2 batch --fanout on --optimizer off --ses <ref>/batch.ses
-passes cmd   java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp <classes>:<jar> app.freerouting.autoroute.pipeline.P7T9 <FREEROUTING_JAVA_DIR>/fixtures/Issue730-DAC2020_bm11.dsn 2 batch-router --fanout on --optimizer off --passes <ref>/batch.passes.jsonl
+passes 2
 bare program freerouting -de <FREEROUTING_JAVA_DIR>/fixtures/Issue730-DAC2020_bm11.dsn -do <ses> -mp 2 --router.fanout.enabled=true --router.optimizer.enabled=false
 json source  freerouting.json present, its (router …) scope empty (priority 10 contributes nothing)
 bare-jar     identical

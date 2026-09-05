@@ -15,6 +15,7 @@ pub struct BoardHistoryEntry {
     pub board: Board,
     pub hash: u64,
     pub score: f32,
+    pub penalty: f64,
     pub restore_count: i32,
 }
 
@@ -22,11 +23,12 @@ impl BoardHistoryEntry {
     fn new(board: &mut Board, scoring: &ScoringSettings) -> BoardHistoryEntry {
         let snapshot = board.clone();
         let hash = board.structural_hash();
-        let score = BoardStatistics::new(board).normalized_score(scoring);
+        let statistics = BoardStatistics::new(board);
         BoardHistoryEntry {
             board: snapshot,
             hash,
-            score,
+            score: statistics.normalized_score(scoring),
+            penalty: statistics.routing_penalty(scoring),
             restore_count: 0,
         }
     }
@@ -53,18 +55,18 @@ impl BoardHistory {
         }
 
         if self.boards.len() >= self.max_history_size {
-            let new_score = BoardStatistics::new(board).normalized_score(&self.scoring);
+            let new_penalty = BoardStatistics::new(board).routing_penalty(&self.scoring);
 
             let mut worst_index = 0;
-            let mut worst_score = self.boards[0].score;
+            let mut worst_penalty = self.boards[0].penalty;
             for i in 1..self.boards.len() {
-                if self.boards[i].score < worst_score {
-                    worst_score = self.boards[i].score;
+                if self.boards[i].penalty > worst_penalty {
+                    worst_penalty = self.boards[i].penalty;
                     worst_index = i;
                 }
             }
 
-            if new_score <= worst_score {
+            if new_penalty >= worst_penalty {
                 return;
             }
             self.boards.remove(worst_index);
@@ -73,7 +75,7 @@ impl BoardHistory {
         let entry = BoardHistoryEntry::new(board, &self.scoring);
         self.boards.push(entry);
         self.boards
-            .sort_by(|left, right| java_float_compare(right.score, left.score));
+            .sort_by(|left, right| left.penalty.total_cmp(&right.penalty));
     }
 
     pub fn clear(&mut self) {
@@ -100,14 +102,11 @@ impl BoardHistory {
         }
     }
 
-    pub fn max_score(&self) -> f32 {
-        let mut max_score = f32::NEG_INFINITY;
-        for entry in &self.boards {
-            if entry.score > max_score {
-                max_score = entry.score;
-            }
-        }
-        max_score
+    pub fn best_penalty(&self) -> f64 {
+        self.boards
+            .iter()
+            .map(|entry| entry.penalty)
+            .fold(f64::INFINITY, f64::min)
     }
 
     pub fn restore_board(&mut self, max_allowed_restore_count: i32) -> Option<Board> {
@@ -147,24 +146,4 @@ impl BoardHistory {
     pub fn entries(&self) -> &[BoardHistoryEntry] {
         &self.boards
     }
-}
-
-pub fn java_float_compare(f1: f32, f2: f32) -> std::cmp::Ordering {
-    use std::cmp::Ordering;
-    if f1 < f2 {
-        return Ordering::Less;
-    }
-    if f1 > f2 {
-        return Ordering::Greater;
-    }
-    let this_bits = float_to_int_bits(f1);
-    let another_bits = float_to_int_bits(f2);
-    this_bits.cmp(&another_bits)
-}
-
-fn float_to_int_bits(value: f32) -> i32 {
-    if value.is_nan() {
-        return 0x7fc0_0000;
-    }
-    i32::from_ne_bytes(value.to_bits().to_ne_bytes())
 }

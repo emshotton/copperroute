@@ -1,6 +1,6 @@
 lane         port (<workspace>/scripts/differential/rust/src/bin/p7t9.rs)
-port sha     9955a29240b3
-plan 9 task  T16
+port sha     46e4a5704388
+plan 9 task  via-and-trace-length
 java         n/a (no JVM runs in this lane)
 hash mode    n/a (the port has no Object.hashCode)
 budget       RouterBudget::disabled() (ruling AI, which survives the Plan 9 switch:
@@ -9,10 +9,10 @@ budget       RouterBudget::disabled() (ruling AI, which survives the Plan 9 swit
              count in this lane because there is no limit to trip.
 driver       <workspace>/scripts/differential/rust/src/bin/p7t9.rs
 passes       2
-ses bytes    3574
-ses sha256   7ce6582c8bfd80068f785b0c877682b3cf1fe87f26cb458c9643b100ff09557a
+ses bytes    2855
+ses sha256   3adf6db2521521bc1149b76c51d6db6e91635d3ab1ccda9fa63d6ee50bc41df7
 command      java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp <classes>:<jar> app.freerouting.autoroute.pipeline.P7T9 <FREEROUTING_JAVA_DIR>/fixtures/Issue143-rpi_splitter.dsn 8 batch --fanout on --optimizer on --ses <ref>/batch.ses
-passes cmd   java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp <classes>:<jar> app.freerouting.autoroute.pipeline.P7T9 <FREEROUTING_JAVA_DIR>/fixtures/Issue143-rpi_splitter.dsn 8 batch-router --fanout on --optimizer off --passes <ref>/batch.passes.jsonl
+passes 2
 bare program freerouting -de <FREEROUTING_JAVA_DIR>/fixtures/Issue143-rpi_splitter.dsn -do <ses> -mp 8 --router.fanout.enabled=true --router.optimizer.enabled=true
 json source  freerouting.json present, its (router …) scope empty (priority 10 contributes nothing)
 bare-jar     identical

@@ -644,7 +644,7 @@ fn an_empty_history_never_swaps() {
     let scoring = scoring_of(&settings);
     let mut bh = BoardHistory::new(&scoring);
     let before = board.structural_hash();
-    assert_eq!(bh.max_score(), f32::NEG_INFINITY);
+    assert_eq!(bh.best_penalty(), f64::INFINITY);
     assert!(!final_best_board_swap(&mut board, &mut bh, &scoring));
     assert_eq!(board.structural_hash(), before);
 }

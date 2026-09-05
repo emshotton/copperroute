@@ -5,7 +5,7 @@ use fr_geometry::{FloatLine, FloatPoint};
 use fr_router::JavaTreeSet;
 use fr_router::arena::DoorId;
 use fr_router::autoroute::expansion::ExpandableRef;
-use fr_router::autoroute::maze::{MazeAdjustment, MazeListElement};
+use fr_router::autoroute::maze::{MazeAdjustment, MazeListElement, ViaPricing};
 
 fn test_doors(ids: &[i32]) -> impl Fn(ExpandableRef) -> i32 + use<> {
     let map: HashMap<ExpandableRef, i32> = ids
@@ -94,6 +94,10 @@ fn push_for_test(element: MazeListElement) -> bool {
         fanout_min_escape_length: 500.0,
         start_ripup_costs: 1,
         smd_via_relaxation: true,
+        units_per_mm: 1.0,
+        trace_cost_per_mm: 1.0,
+        smd_via_cost_factor: 0.1,
+        via_pricing: ViaPricing::ByPadstackRadius,
     };
     let mut engine = AutorouteEngine::new(&mut board, 1, false);
     let room = engine.rooms.new_complete_room(

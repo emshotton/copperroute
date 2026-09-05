@@ -250,6 +250,7 @@ fn default_settings_pins_every_java_value() {
     assert_eq!(scoring.clearance_violation_penalty, Some(1_000_000.0));
     assert_eq!(scoring.bend_penalty, Some(10.0));
     assert_eq!(scoring.default_bend_cost, Some(0.0));
+    assert_eq!(scoring.smd_via_cost_factor, Some(0.1));
 }
 
 #[test]

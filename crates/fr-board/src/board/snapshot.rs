@@ -18,6 +18,7 @@ pub struct UndoJournal {
     pub(crate) created: BTreeSet<ItemId>,
     pub(crate) saved: BTreeSet<ItemId>,
     pub(crate) deleted: Vec<ItemId>,
+    pub(crate) touched_nets: BTreeSet<i32>,
 }
 
 struct HashWriter<'a, H: Hasher>(&'a mut H);
@@ -147,19 +148,35 @@ impl Board {
     }
 
     pub(crate) fn journal_insert(&mut self, id: ItemId) {
-        if let Some(journal) = self.undo_journal.as_mut() {
-            journal.created.insert(id);
+        let Some(journal) = self.undo_journal.as_mut() else {
+            return;
+        };
+        journal.created.insert(id);
+        if let Some(item) = self.items.get(&id) {
+            journal.touched_nets.extend(item.net_nos().iter().copied());
         }
     }
 
-    pub(crate) fn journal_remove(&mut self, id: ItemId) {
-        if let Some(journal) = self.undo_journal.as_mut() {
-            if journal.created.remove(&id) {
-                return;
-            }
-            journal.saved.remove(&id);
-            journal.deleted.push(id);
+    pub(crate) fn journal_remove(&mut self, id: ItemId, removed: Option<&Item>) {
+        let Some(journal) = self.undo_journal.as_mut() else {
+            return;
+        };
+        if let Some(item) = removed {
+            journal.touched_nets.extend(item.net_nos().iter().copied());
         }
+        if journal.created.remove(&id) {
+            return;
+        }
+        journal.saved.remove(&id);
+        journal.deleted.push(id);
+    }
+
+    /// The nets of every item created, changed or removed since [`Board::begin_undo_journal`],
+    /// or `None` while no journal is open.
+    pub fn journaled_nets(&self) -> Option<BTreeSet<i32>> {
+        self.undo_journal
+            .as_ref()
+            .map(|journal| journal.touched_nets.clone())
     }
 
     pub fn undo_from_snapshot(&mut self, snapshot: Board) {
@@ -329,6 +346,27 @@ mod tests {
                 FixedState::Unfixed,
             )
             .expect("a straight two-corner trace")
+    }
+
+    #[test]
+    fn the_journal_records_the_nets_of_every_item_it_touches() {
+        let mut board = board();
+        let kept = insert_trace(&mut board, 4, 100, 500);
+        assert!(board.journaled_nets().is_none(), "no journal is open yet");
+
+        board.begin_undo_journal();
+        insert_trace(&mut board, 2, 600, 700);
+        let transient = insert_trace(&mut board, 3, 800, 900);
+        board.remove_item(transient);
+        board.remove_item(kept);
+
+        assert_eq!(
+            board.journaled_nets(),
+            Some([2, 3, 4].into_iter().collect()),
+            "created, created-then-removed and removed items all name their nets"
+        );
+        board.discard_undo_journal();
+        assert!(board.journaled_nets().is_none());
     }
 
     #[test]

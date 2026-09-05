@@ -16,7 +16,7 @@ pub mod unrouted_report;
 pub use airline::{calculate_airline, calculate_item_distance};
 pub use batch_autorouter::BatchAutorouter;
 pub use batch_loop::{AutorouteBatchLoop, BatchLoopExit, BatchLoopResult, StagnationStep};
-pub use board_history::{BoardHistory, BoardHistoryEntry, java_float_compare};
+pub use board_history::{BoardHistory, BoardHistoryEntry};
 pub use board_prep::prepare_board;
 pub use counters::RouterCounters;
 pub use failure_log::{ItemFailureInfo, RoutingFailureLog};
@@ -28,7 +28,7 @@ pub use fanout::{
 pub use item_route_result::ItemRouteResult;
 pub use optimizer::{
     BatchOptimizer, DEFAULT_OPTIMIZER_SEARCH_STEPS, OptimizerPassRecord, OptimizerResult,
-    PORT_OPTIMIZER_ROUTE_WORK_BUDGET, ReadSortedRouteItems, optimizer_near_perfect_exit,
+    PORT_OPTIMIZER_ROUTE_WORK_BUDGET, ReadSortedRouteItems, optimizer_nothing_to_improve,
     optimizer_ripup_costs, optimizer_route_improved,
 };
 pub use pass_runner::AutoroutePassRunner;

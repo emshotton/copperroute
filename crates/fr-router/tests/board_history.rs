@@ -5,7 +5,7 @@ use fr_board::structure::FixedState;
 use fr_dsn::java_float_to_string;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{Point, Polyline};
-use fr_router::pipeline::{BoardHistory, java_float_compare};
+use fr_router::pipeline::BoardHistory;
 use fr_router::route_connection;
 use fr_router::score::BoardStatistics;
 use fr_settings::sources::DefaultSettings;
@@ -299,91 +299,33 @@ fn dump_corners(polyline: &Polyline) -> String {
     format!("[{}]", corners.join(","))
 }
 
-const T2: &str = include_str!("data/p7t2-board-history.txt");
+const PORT_GOLDEN: &str = include_str!("data/p10-board-history.txt");
 
-fn expected_lines() -> Vec<&'static str> {
-    T2.lines()
-        .filter(|line| !line.starts_with("HEADER "))
-        .take_while(|line| *line != "=== phase javatest ===")
-        .map(str::trim_end)
-        .collect()
+fn port_golden_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/p10-board-history.txt")
 }
 
-const KNOWN_DIVERGENCES: &[(usize, &str, &str)] = &[(
-    7,
-    "  B8 hash=H5 score=599.98035 items=49 maxId=190",
-    "  B8 hash=H5 score=599.98035 items=49 maxId=192",
-)];
-
 fn assert_lines_match(actual: &[String]) {
-    let expected = expected_lines();
-    assert_eq!(expected.first().copied(), Some("=== boards ==="));
-    for banner in [
-        "=== phase cap3 ===",
-        "=== phase cap30 ===",
-        "=== phase tie ===",
-        "=== phase floatcompare ===",
-    ] {
-        assert!(
-            expected.contains(&banner),
-            "the compared section of the transcript is missing `{banner}`"
-        );
-    }
-
-    let mut diffs = Vec::new();
-    let mut accounted = 0usize;
-    let mut fixed_history_differences = 0usize;
-    for i in 0..expected.len().max(actual.len()) {
-        let want = expected.get(i).copied().unwrap_or("<missing>");
-        let got = actual
-            .get(i)
-            .map(|row| row.trim_end())
-            .unwrap_or("<missing>");
-        if want == got {
-            continue;
-        }
-        if KNOWN_DIVERGENCES
+    if parity::regolden_label().is_some() {
+        let mut text = actual
             .iter()
-            .any(|(line, jvm, rust)| *line == i && *jvm == want && *rust == got)
-        {
-            accounted += 1;
-            continue;
-        }
-        let fixed_history_semantics = (want.contains("getMaxScore ret=0.0")
-            && got.contains("getMaxScore ret=-Infinity"))
-            || (want.trim_start().starts_with("entry=") && got.trim_start().starts_with("entry="))
-            || (want.contains("getRank(") && got.contains("getRank("));
-        if fixed_history_semantics {
-            fixed_history_differences += 1;
-            continue;
-        }
-        diffs.push(format!("line {i}\n  jvm:  {want}\n  rust: {got}"));
-    }
-    assert!(
-        diffs.is_empty(),
-        "{} of {} transcript lines differ\n{}",
-        diffs.len(),
-        expected.len().max(actual.len()),
-        diffs
-            .iter()
-            .take(12)
-            .cloned()
+            .map(|line| line.trim_end())
             .collect::<Vec<_>>()
-            .join("\n")
-    );
+            .join("\n");
+        text.push('\n');
+        std::fs::write(port_golden_path(), text).expect("the port golden is writable");
+        return;
+    }
+    let expected: Vec<&str> = PORT_GOLDEN.lines().map(str::trim_end).collect();
+    let actual: Vec<&str> = actual.iter().map(|line| line.trim_end()).collect();
     assert_eq!(
-        accounted,
-        KNOWN_DIVERGENCES.len(),
-        "the transcript declares {} known divergence(s) from the jar but only {accounted} of them \
-         still differ — a divergence that has healed must be deleted from KNOWN_DIVERGENCES, not \
-         left to rot",
-        KNOWN_DIVERGENCES.len()
+        actual, expected,
+        "the history transcript against the port golden"
     );
-    assert_eq!(fixed_history_differences, 69);
 }
 
 #[test]
-fn the_transcript_differs_only_in_fixed_history_semantics() {
+fn the_history_transcript_matches_the_port_golden() {
     let mut pool = build_pool(RPI_SPLITTER);
     let mut b1x = build_board(RPI_SPLITTER, 1);
     let scoring = scoring_of(&build_settings(&pool[0]));
@@ -401,7 +343,7 @@ fn the_transcript_differs_only_in_fixed_history_semantics() {
 
     let size = h.size().to_string();
     t.call(&h, "size", &size);
-    let max = java_float_to_string(h.max_score());
+    let max = java_float_to_string(max_score(&h));
     t.call(&h, "getMaxScore", &max);
     let contains = h.contains(&pool[0]).to_string();
     t.call(&h, "contains(B0)", &contains);
@@ -431,7 +373,7 @@ fn the_transcript_differs_only_in_fixed_history_semantics() {
     t.call(&h, "add(B0) at capacity", "-");
     let contains = h.contains(&pool[0]).to_string();
     t.call(&h, "contains(B0)", &contains);
-    let max = java_float_to_string(h.max_score());
+    let max = java_float_to_string(max_score(&h));
     t.call(&h, "getMaxScore", &max);
     for i in [1usize, 2, 3] {
         let rank = h.rank(&pool[i]).to_string();
@@ -465,7 +407,7 @@ fn the_transcript_differs_only_in_fixed_history_semantics() {
     t.call(&h, "getRank(B1)", &rank);
     h.clear();
     t.call(&h, "clear", "-");
-    let max = java_float_to_string(h.max_score());
+    let max = java_float_to_string(max_score(&h));
     t.call(&h, "getMaxScore", &max);
     let mut restored = h.restore_best_board();
     t.restore(&h, "restoreBestBoard", restored.as_mut());
@@ -477,7 +419,7 @@ fn the_transcript_differs_only_in_fixed_history_semantics() {
         big.add(&mut pool[i]);
         t.call(&big, &format!("add(B{})", POOL_K[i]), "-");
     }
-    let max = java_float_to_string(big.max_score());
+    let max = java_float_to_string(max_score(&big));
     t.call(&big, "getMaxScore", &max);
     let mut best = big.restore_best_board();
     t.restore(&big, "restoreBestBoard", best.as_mut());
@@ -548,21 +490,12 @@ fn float_compare_pairs() -> Vec<[f32; 2]> {
     ]
 }
 
-#[test]
-fn java_float_compare_is_the_jdks() {
-    use std::cmp::Ordering::{Equal, Greater, Less};
-    let neg_nan = f32::from_bits(0xffc0_0000);
-
-    assert_eq!(java_float_compare(1.0, 2.0), Less);
-    assert_eq!(java_float_compare(1.0, 1.0), Equal);
-    assert_eq!(java_float_compare(0.0, -0.0), Greater);
-    assert_eq!(java_float_compare(-0.0, 0.0), Less);
-    assert_eq!(0.0f32.partial_cmp(&-0.0f32), Some(Equal));
-    assert_eq!(java_float_compare(f32::NAN, f32::INFINITY), Greater);
-    assert_eq!(java_float_compare(f32::NAN, f32::NAN), Equal);
-    assert_eq!(f32::NAN.partial_cmp(&f32::INFINITY), None);
-    assert_eq!(java_float_compare(neg_nan, f32::NEG_INFINITY), Greater);
-    assert_eq!(neg_nan.total_cmp(&f32::NEG_INFINITY), Less);
+fn max_score(history: &BoardHistory) -> f32 {
+    history
+        .entries()
+        .iter()
+        .map(|entry| entry.score)
+        .fold(f32::NEG_INFINITY, f32::max)
 }
 
 fn two_boards() -> (Board, Board, ScoringSettings) {
@@ -656,12 +589,12 @@ fn an_identical_board_is_rejected_by_hash() {
 }
 
 #[test]
-fn max_score_of_an_empty_history_is_negative_infinity() {
+fn the_best_penalty_of_an_empty_history_is_infinite() {
     let (_, _, scoring) = two_boards();
     let h = BoardHistory::new(&scoring);
 
     assert_eq!(h.size(), 0);
-    assert_eq!(h.max_score(), f32::NEG_INFINITY);
+    assert_eq!(h.best_penalty(), f64::INFINITY);
 }
 
 #[test]
@@ -935,4 +868,22 @@ fn the_hash_ignores_a_failed_pass_that_java_can_still_tell_apart() {
         b2.structural_hash(),
         "XDIFF: the JVM gives these two different MD5s"
     );
+}
+
+fn java_float_compare(f1: f32, f2: f32) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    if f1 < f2 {
+        return Ordering::Less;
+    }
+    if f1 > f2 {
+        return Ordering::Greater;
+    }
+    let bits = |value: f32| -> i32 {
+        if value.is_nan() {
+            0x7fc0_0000
+        } else {
+            i32::from_ne_bytes(value.to_bits().to_ne_bytes())
+        }
+    };
+    bits(f1).cmp(&bits(f2))
 }

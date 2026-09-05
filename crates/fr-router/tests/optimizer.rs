@@ -1,10 +1,11 @@
 //! The four tests that need a *routed* board carry `#[cfg_attr(debug_assertions, ignore)]` and
 use fr_board::prelude::*;
+use fr_board::structure::FixedState;
 use fr_geometry::{IntBox, IntOctagon, IntPoint, Shape, TileShape};
 use fr_router::pipeline::{
     AutorouteBatchLoop, BatchOptimizer, ItemRouteResult, NamedAlgorithmType, NoopProgressSink,
     PORT_OPTIMIZER_ROUTE_WORK_BUDGET, ProgressSink, RouterBudget, RouterStop, RoutingEvent,
-    StopRequestState, TaskState, optimizer_near_perfect_exit, optimizer_route_improved,
+    StopRequestState, TaskState, optimizer_route_improved,
 };
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
@@ -97,7 +98,8 @@ fn build_settings(board: &Board) -> RouterSettings {
 fn routed_rpi() -> (Board, RouterSettings) {
     let mut board = load_board(RPI);
     let mut settings = build_settings(&board);
-    settings.max_passes = Some(1);
+    settings.fanout.get_or_insert_with(Default::default).enabled = Some(true);
+    settings.max_passes = Some(8);
     let stop = RouterStop::new();
     let mut sink = NoopProgressSink;
     AutorouteBatchLoop::run(
@@ -129,32 +131,8 @@ impl ProgressSink for RecordingSink {
 }
 
 #[test]
-fn the_near_perfect_exit_is_computed_in_f32() {
-    let score = 999.999_94_f32;
-    let threshold = 6.0e-8_f32;
-
-    assert!(
-        optimizer_near_perfect_exit(score, threshold),
-        "the f32 product clears 1000 because `1 + 6e-8` rounds up to the next f32"
-    );
-
-    let in_f64 = f64::from(score) * (1.0 + f64::from(threshold));
-    assert!(
-        in_f64 < 1000.0,
-        "the f64 product is {in_f64}, which does not clear 1000 — the two really do disagree"
-    );
-}
-
-#[test]
-fn the_near_perfect_exit_is_false_at_the_default_threshold() {
-    assert!(!optimizer_near_perfect_exit(799.982_67, 0.01));
-    assert!(optimizer_near_perfect_exit(799.982_67, 0.26));
-    assert!(!optimizer_near_perfect_exit(0.0, 1.0e6));
-}
-
-#[test]
 fn the_improvement_recomputation_disagrees_with_the_scorecard_field() {
-    let result = ItemRouteResult::new(ItemId(1), 10, 3, 1000.0, 900.0, 0, 0);
+    let result = ItemRouteResult::new(ItemId(1), 10, 3, 1000.0, 900.0, 0, 0, 0.0, 0.0);
 
     assert!(
         (result.improvement_percentage() - 0.55).abs() < 1e-6,
@@ -176,7 +154,7 @@ fn the_improvement_recomputation_disagrees_with_the_scorecard_field() {
 
 #[test]
 fn the_recomputation_guard_answers_zero_and_so_reads_as_no_improvement() {
-    let result = ItemRouteResult::new(ItemId(1), 10, 3, 1000.0, 900.0, 0, 0);
+    let result = ItemRouteResult::new(ItemId(1), 10, 3, 1000.0, 900.0, 0, 0, 0.0, 0.0);
     assert_eq!(optimizer_route_improved(&result, 0, 1000.0), 0.0);
     assert_eq!(optimizer_route_improved(&result, 10, 0.0), 0.0);
 }
@@ -191,12 +169,14 @@ fn the_increased_ripup_costs_are_dropped_after_one_non_improving_pass() {
 
     optimizer.use_increased_ripup_costs = true;
 
-    let (pass_improvement, force_another_pass) = optimizer.apply_pass_improvement(800.0, 800.0);
+    let (pass_improvement, force_another_pass) =
+        optimizer.apply_pass_improvement(0, 800.0, 0, 800.0);
     assert_eq!(pass_improvement, 0.0, "(800 - 800) / 800 is 0");
     assert!(force_another_pass, ":215's sentinel, as its own bool");
     assert!(!optimizer.use_increased_ripup_costs, ":213 clears the flag");
 
-    let (pass_improvement, force_another_pass) = optimizer.apply_pass_improvement(800.0, 800.0);
+    let (pass_improvement, force_another_pass) =
+        optimizer.apply_pass_improvement(0, 800.0, 0, 800.0);
     assert_eq!(pass_improvement, 0.0);
     assert!(
         !force_another_pass,
@@ -205,7 +185,8 @@ fn the_increased_ripup_costs_are_dropped_after_one_non_improving_pass() {
 
     let mut optimizer = BatchOptimizer::new(&settings);
     optimizer.use_increased_ripup_costs = true;
-    let (pass_improvement, force_another_pass) = optimizer.apply_pass_improvement(800.0, 808.0);
+    let (pass_improvement, force_another_pass) =
+        optimizer.apply_pass_improvement(0, 800.0, 0, 792.0);
     assert!((pass_improvement - 0.01).abs() < 1e-6, "8 / 800 is 1 %");
     assert!(!force_another_pass);
     assert!(optimizer.use_increased_ripup_costs, "still up");
@@ -220,10 +201,11 @@ fn the_improvement_flag_is_a_bool() {
 
     let mut optimizer = BatchOptimizer::new(&settings);
     optimizer.use_increased_ripup_costs = false;
-    let (pass_improvement, force_another_pass) = optimizer.apply_pass_improvement(800.0, 0.0);
+    let (pass_improvement, force_another_pass) =
+        optimizer.apply_pass_improvement(0, 800.0, 0, 1600.0);
     assert_eq!(
         pass_improvement, -1.0,
-        ":209-210 — (0 - 800) / 800 is exactly Java's sentinel value"
+        ":209-210 — (800 - 1600) / 800 is exactly Java's sentinel value"
     );
     assert!(
         !force_another_pass,
@@ -238,18 +220,18 @@ fn the_improvement_flag_is_a_bool() {
 
     let mut optimizer = BatchOptimizer::new(&settings);
     optimizer.use_increased_ripup_costs = true;
-    assert!(optimizer.apply_pass_improvement(800.0, 800.0).1);
-    assert!(!optimizer.apply_pass_improvement(800.0, 800.0).1);
+    assert!(optimizer.apply_pass_improvement(0, 800.0, 0, 800.0).1);
+    assert!(!optimizer.apply_pass_improvement(0, 800.0, 0, 800.0).1);
 }
 
 #[test]
-fn the_pass_improvement_is_zero_when_the_score_before_is_not_positive() {
+fn the_pass_improvement_is_zero_when_the_cost_before_is_not_positive() {
     let settings = DefaultSettings::new(&HostEnvironment::detect())
         .get_settings()
         .expect("DefaultSettings always answers a table")
         .clone();
     let mut optimizer = BatchOptimizer::new(&settings);
-    let (pass_improvement, _) = optimizer.apply_pass_improvement(0.0, 500.0);
+    let (pass_improvement, _) = optimizer.apply_pass_improvement(0, 0.0, 0, 500.0);
     assert_eq!(
         pass_improvement, 0.0,
         "a division by zero would have been +inf; Java's ternary answers 0"
@@ -259,6 +241,24 @@ fn the_pass_improvement_is_zero_when_the_score_before_is_not_positive() {
 #[test]
 fn passes_alternate_preferred_directions() {
     let mut board = empty_board();
+    let padstack = fr_board::ids::PadstackId(
+        board
+            .library
+            .padstacks
+            .get_by_name("thru")
+            .expect("the thru padstack")
+            .no,
+    );
+    board
+        .insert_via(
+            padstack,
+            fr_geometry::Point::new(1_000, 1_000),
+            vec![1],
+            1,
+            FixedState::UserFixed,
+            false,
+        )
+        .expect("a user-fixed via costs 50 and is not an optimizable item");
     let mut settings = build_settings(&board);
     {
         let optimizer = optimizer_settings(&mut settings);
@@ -288,34 +288,24 @@ fn passes_alternate_preferred_directions() {
 }
 
 #[test]
-fn a_pass_that_improves_nothing_clears_the_increased_ripup_costs_and_ends_the_stage() {
+fn a_board_with_nothing_to_route_exits_before_the_first_pass() {
     let mut board = empty_board();
     let settings = build_settings(&board);
     let mut optimizer = BatchOptimizer::new(&settings);
     let stop = RouterStop::new();
     let mut sink = NoopProgressSink;
+    let before = board.structural_hash();
     let result = optimizer
         .run_batch_loop(&mut board, &stop, RouterBudget::disabled(), &mut sink)
         .expect("an item-less pass cannot fail");
 
-    assert_eq!(
-        result.passes_run, 1,
-        "one pass, then `:220`'s threshold exit — `maxPasses` is 100"
-    );
-    let pass = result.per_pass[0];
-    assert_eq!(
-        pass.route_improved, -1.0,
-        ":367's sentinel, which `:201` discards"
-    );
+    assert_eq!(result.passes_run, 1, "the pass is counted, then abandoned");
     assert!(
-        !pass.use_increased_ripup_costs,
-        ":366 cleared the flag inside the pass"
+        result.per_pass.is_empty(),
+        "a zero routing cost has nothing to improve"
     );
-    assert!(
-        !pass.force_another_pass,
-        ":217, not `:215` — `:212`'s first conjunct was already false"
-    );
-    assert!(!optimizer.use_increased_ripup_costs);
+    assert_eq!(result.items_optimized, 0);
+    assert_eq!(board.structural_hash(), before);
 }
 
 #[test]
@@ -403,12 +393,12 @@ fn the_stage_deadline_times_out_without_touching_the_stop_flag() {
 }
 
 #[test]
-fn the_stage_deadline_never_polls_the_jobs_own_deadline() {
+fn the_stage_clock_never_writes_the_jobs_state() {
     let mut board = empty_board();
     let mut settings = build_settings(&board);
     optimizer_settings(&mut settings).timeout_string = Some("0".to_string());
     let mut optimizer = BatchOptimizer::new(&settings);
-    let stop = RouterStop::with_deadline(-1);
+    let stop = RouterStop::new();
     let mut sink = NoopProgressSink;
     let result = optimizer
         .run_batch_loop(&mut board, &stop, RouterBudget::disabled(), &mut sink)
@@ -418,12 +408,33 @@ fn the_stage_deadline_never_polls_the_jobs_own_deadline() {
     assert_eq!(result.state, TaskState::TimedOut);
     assert!(
         !stop.is_stop_requested(),
-        "nothing in the optimizer polled the job's deadline, so the flag is still NONE"
+        "a stage timeout is not a job timeout: the flag is still NONE"
     );
     assert!(
         !stop.is_timed_out(),
-        "…and `job.state` was never written to TIMED_OUT either"
+        "…and `job.state` was never written to TIMED_OUT"
     );
+}
+
+#[test]
+fn the_jobs_deadline_ends_the_optimizer_stage() {
+    let mut board = empty_board();
+    let mut settings = build_settings(&board);
+    optimizer_settings(&mut settings).timeout_string = Some("0".to_string());
+    let mut optimizer = BatchOptimizer::new(&settings);
+    let stop = RouterStop::with_deadline(-1);
+    let mut sink = NoopProgressSink;
+    let result = optimizer
+        .run_batch_loop(&mut board, &stop, RouterBudget::disabled(), &mut sink)
+        .expect("the loop breaks at the job deadline");
+
+    assert!(
+        stop.is_timed_out(),
+        "the job's deadline was polled before the first pass"
+    );
+    assert!(stop.is_stop_requested(), "…and it stops everything");
+    assert_eq!(result.state, TaskState::Cancelled);
+    assert!(!result.timed_out, "the stage's own clock never got to fire");
 }
 
 #[test]
@@ -512,36 +523,6 @@ fn the_multithreaded_optimizer_remains_a_recorded_product_decision() {
 
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
-fn a_near_perfect_board_exits_before_the_first_pass() {
-    if !parity::require_java_dir() {
-        return;
-    }
-    let (mut board, mut settings) = routed_rpi();
-    optimizer_settings(&mut settings).optimization_improvement_threshold = Some(0.7);
-    let before = board.structural_hash();
-
-    let mut optimizer = BatchOptimizer::new(&settings);
-    let stop = RouterStop::new();
-    let mut sink = NoopProgressSink;
-    let result = optimizer
-        .run_batch_loop(&mut board, &stop, RouterBudget::disabled(), &mut sink)
-        .expect("the loop breaks at `:192`");
-
-    assert_eq!(
-        result.passes_run, 1,
-        ":177 counts the pass `:192` then abandons"
-    );
-    assert!(result.per_pass.is_empty(), "no pass completed");
-    assert_eq!(result.items_optimized, 0);
-    assert_eq!(
-        board.structural_hash(),
-        before,
-        "the board was never touched"
-    );
-}
-
-#[test]
-#[cfg_attr(debug_assertions, ignore)]
 fn consecutive_failures_break_the_pass() {
     if !parity::require_java_dir() {
         return;
@@ -568,8 +549,8 @@ fn consecutive_failures_break_the_pass() {
         .expect("the pass runs");
 
     assert_eq!(
-        optimizer.total_items_optimized, 2,
-        "`p7t8 item` improves item 0 and fails item 1; one failure is the limit"
+        optimizer.total_items_optimized, 3,
+        "items 0 and 1 improve and item 2 fails; one failure is the limit"
     );
 
     let (mut board, settings) = routed_rpi();
@@ -586,7 +567,7 @@ fn consecutive_failures_break_the_pass() {
             &mut sink,
         )
         .expect("the pass runs");
-    assert_eq!(optimizer.total_items_optimized, 5);
+    assert_eq!(optimizer.total_items_optimized, 9);
 }
 
 #[test]
@@ -613,7 +594,7 @@ fn an_auto_router_only_stop_still_runs_the_optimizer() {
         "the stage is not disabled — `:171` reads `ALL`"
     );
     assert_eq!(
-        result.items_optimized, 5,
+        result.items_optimized, 9,
         "it visits every item the reader offers, all of them `improved=false`"
     );
     assert_eq!(
@@ -646,12 +627,14 @@ fn an_auto_router_only_stop_still_runs_the_optimizer() {
         .run_batch_loop(&mut board, &stop, RouterBudget::disabled(), &mut sink)
         .expect("the stage runs");
 
-    assert_eq!(result.items_optimized, 5, "the same five items are visited");
+    assert_eq!(result.items_optimized, 9, "the same nine items are visited");
     assert!(
-        result.per_pass.iter().any(|pass| pass.route_improved > 0.0),
-        "at least one item improved: `optRoutePass:340-348` only writes a positive \
-         `routeImproved` inside `:333`'s `result.improved()` arm, and `:365-368` would have \
-         driven it to -1 had nothing improved — got {:?}",
+        result
+            .per_pass
+            .iter()
+            .any(|pass| pass.route_improved != -1.0),
+        "at least one item improved: `:365-368` drives `routeImproved` to -1 only when nothing \
+         did — got {:?}",
         result
             .per_pass
             .iter()
@@ -717,30 +700,46 @@ fn the_optimizer_stage_is_pinned_on_the_routed_rpi() {
 
     assert_eq!(result.state, TaskState::Finished);
     assert_eq!(
-        result.passes_run, 1,
-        "one pass ran and `:365-368`'s unimproved arm ended the loop"
+        result.passes_run, 2,
+        "pass 1 strips the fanout vias the router never needed; pass 2 finds nothing and ends \
+         the loop"
     );
-    assert_eq!(result.items_optimized, 5);
+    assert_eq!(
+        result.items_optimized, 15,
+        "nine items in pass 1, six in pass 2"
+    );
     assert!(!result.timed_out);
     assert!(
-        optimizer.use_increased_ripup_costs,
-        "pass 1 improved, so neither `:365-368` nor `:212-215` fired"
+        !optimizer.use_increased_ripup_costs,
+        "pass 2 improved nothing, so the increased ripup costs were dropped"
     );
 
-    assert_eq!(result.per_pass.len(), 1);
-    let pass = result.per_pass[0];
-    assert_eq!(pass.pass, 1);
-    assert!(pass.with_preferred_directions, ":200 — pass 1 is odd");
-    assert_eq!(pass.score_before, 599.985_4);
-    assert_eq!(pass.score_after, 599.995_85);
-    assert_eq!(pass.total_items_optimized, 5);
-    assert_eq!(pass.record.incomplete_count, 2);
-    assert_eq!(pass.record.clearance_violations, 0);
-    assert_eq!(pass.record.via_count, 0);
-    assert_eq!(pass.record.trace_count, 9);
-    assert_eq!(pass.pass_improvement, 1.739_544_245_511_34e-5);
-    assert!(!pass.force_another_pass);
-    assert_eq!(pass.route_improved, 0.412_747_17);
+    assert_eq!(result.per_pass.len(), 2);
+    let first = result.per_pass[0];
+    assert_eq!(first.pass, 1);
+    assert!(first.with_preferred_directions, ":200 — pass 1 is odd");
+    assert_eq!(first.record.incomplete_count, 0);
+    assert_eq!(first.record.clearance_violations, 0);
+    assert_eq!(first.record.via_count, 2, "nine fanout vias down to two");
+    assert_eq!(first.record.trace_count, 14);
+    assert!(
+        first.pass_improvement > 0.5,
+        "seven vias at 50 mm each are most of the board's cost: {}",
+        first.pass_improvement
+    );
+    assert!(!first.force_another_pass);
+    assert!(first.use_increased_ripup_costs);
+    assert!(first.route_improved > 0.0);
+
+    let second = result.per_pass[1];
+    assert_eq!(second.pass, 2);
+    assert!(!second.with_preferred_directions);
+    assert_eq!(second.pass_improvement, 0.0);
+    assert_eq!(second.route_improved, -1.0, ":365-368's sentinel");
+    assert!(!second.use_increased_ripup_costs);
+    assert_eq!(second.record.incomplete_count, 0);
+    assert_eq!(second.record.via_count, 2);
+    assert_eq!(second.record.trace_count, 14);
 }
 
 /// `sum of incompleteCount * passesRun` per item -- at [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`], and
@@ -771,4 +770,50 @@ fn the_route_work_budget_bounds_only_incomplete_board_routing() {
     );
     assert!(work(30, 6) * 9 < PORT_OPTIMIZER_ROUTE_WORK_BUDGET);
     assert!(work(30, 6) * 10 >= PORT_OPTIMIZER_ROUTE_WORK_BUDGET);
+}
+
+#[test]
+fn every_optimizer_item_polls_the_job_deadline() {
+    let mut board = empty_board();
+    let padstack = fr_board::ids::PadstackId(
+        board
+            .library
+            .padstacks
+            .get_by_name("thru")
+            .expect("the thru padstack")
+            .no,
+    );
+    board
+        .insert_via(
+            padstack,
+            fr_geometry::Point::new(1_000, 1_000),
+            vec![1],
+            1,
+            FixedState::Unfixed,
+            false,
+        )
+        .expect("a lone via on a net with nothing else to connect");
+    let settings = build_settings(&board);
+    let mut optimizer = BatchOptimizer::new(&settings);
+
+    let stop = RouterStop::with_deadline(1);
+    std::thread::sleep(std::time::Duration::from_millis(5));
+    let mut sink = NoopProgressSink;
+    optimizer
+        .opt_route_pass(
+            &mut board,
+            1,
+            true,
+            &stop,
+            RouterBudget::disabled(),
+            &mut sink,
+        )
+        .expect("the pass runs");
+
+    assert!(
+        stop.is_timed_out(),
+        "ripping the via leaves nothing to route, so no routing pass polls the deadline; the \
+         item loop must poll it itself"
+    );
+    assert!(stop.is_stop_requested());
 }

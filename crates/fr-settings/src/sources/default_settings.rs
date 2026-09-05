@@ -21,6 +21,8 @@ impl DefaultSettings {
 
     pub const DEFAULT_START_RIPUP_COSTS: i32 = 100;
 
+    pub const DEFAULT_SMD_VIA_COST_FACTOR: f64 = 0.1;
+
     pub const DEFAULT_PREFERRED_DIRECTION_TRACE_COST: f64 = 1.0;
 
     pub const DEFAULT_UNDESIRED_DIRECTION_TRACE_COST: f64 = 1.0;
@@ -101,6 +103,7 @@ impl DefaultSettings {
         scoring.clearance_violation_penalty = Some(Self::DEFAULT_CLEARANCE_VIOLATION_PENALTY);
         scoring.bend_penalty = Some(Self::DEFAULT_BEND_PENALTY);
         scoring.default_bend_cost = Some(0.0);
+        scoring.smd_via_cost_factor = Some(Self::DEFAULT_SMD_VIA_COST_FACTOR);
 
         Self { settings }
     }

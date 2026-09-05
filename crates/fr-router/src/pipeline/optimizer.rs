@@ -17,7 +17,7 @@ use crate::pipeline::stop::{
     DeterministicWorkBudget, PassRecord, ProgressThrottler, RouterBudget, RouterStop,
 };
 use crate::pipeline::{NamedAlgorithmType, ProgressSink, RoutingEvent, TaskState};
-use crate::score::BoardStatistics;
+use crate::score::{BoardStatistics, BoardStatisticsConnections};
 
 pub const PORT_OPTIMIZER_ROUTE_WORK_BUDGET: i64 = 1800;
 pub const DEFAULT_OPTIMIZER_SEARCH_STEPS: i64 = 8_000_000;
@@ -173,6 +173,8 @@ pub struct BatchOptimizer<'a> {
     pub search_work_budget: Option<Rc<DeterministicWorkBudget>>,
     pub deadline: Option<std::time::Instant>,
     pub is_timed_out: bool,
+    pub incomplete_nets: BTreeSet<i32>,
+    carried_connections: Option<BoardStatisticsConnections>,
 }
 
 impl<'a> BatchOptimizer<'a> {
@@ -198,7 +200,9 @@ impl<'a> BatchOptimizer<'a> {
             total_route_work: 0,
             search_work_budget,
             deadline: None,
+            incomplete_nets: BTreeSet::new(),
             is_timed_out: false,
+            carried_connections: None,
         }
     }
 
@@ -227,6 +231,20 @@ impl<'a> BatchOptimizer<'a> {
         temp_drc.get_incomplete_count()
     }
 
+    /// The nets the router's own work-list sweep finds something to route on: the only nets the
+    /// per-item re-router can route, so the only nets its own sweeps need to visit.
+    pub fn open_nets(
+        board: &Board,
+        settings: &RouterSettings,
+        budget: RouterBudget,
+    ) -> BTreeSet<i32> {
+        BatchAutorouter::for_routing_job(board, settings, budget)
+            .autoroute_items(board)
+            .into_iter()
+            .map(|(_, net_number)| net_number)
+            .collect()
+    }
+
     #[must_use]
     pub fn get_current_position(&self) -> Option<FloatPoint> {
         self.sorted_route_items
@@ -245,9 +263,16 @@ impl<'a> BatchOptimizer<'a> {
         budget: RouterBudget,
         progress: &mut dyn ProgressSink,
     ) -> Result<ItemRouteResult, RouterError> {
-        let board_statistics_before = BoardStatistics::with_options(board, None, false);
-        let incomplete_count_before =
-            count_as_i32(BatchOptimizer::calculate_incomplete_count(board));
+        let board_statistics_before = match self.carried_connections.clone() {
+            Some(connections) => {
+                BoardStatistics::for_routing_decisions_carrying(board, connections)
+            }
+            None => BoardStatistics::for_routing_decisions(board),
+        };
+        let incomplete_count_before = board_statistics_before
+            .connections
+            .incomplete_count
+            .unwrap_or(0);
         if self.progress_throttler.should_update() {
             progress.on_event(&RoutingEvent::BoardUpdated {
                 counters: RouterCounters {
@@ -310,6 +335,8 @@ impl<'a> BatchOptimizer<'a> {
             "BatchOptimizer.optRouteItem: settings.tracePullTightAccuracy is unboxed at :470 \
              with no null fallback — Java throws a NullPointerException here too",
         );
+        let mut routable_nets = self.incomplete_nets.clone();
+        routable_nets.extend(item_net_numbers.iter().copied());
         let passes_run = BatchAutorouter::autoroute_passes_for_optimizing_item(
             board,
             self.settings,
@@ -321,15 +348,46 @@ impl<'a> BatchOptimizer<'a> {
             budget,
             progress,
             self.search_work_budget.clone(),
+            Some(routable_nets),
         )?;
         // [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`].
         self.total_route_work = self.total_route_work.saturating_add(
             i64::from(incomplete_count_before.max(0)) * i64::from(passes_run.max(0)),
         );
 
-        let board_statistics_after = BoardStatistics::with_options(board, None, false);
-        let incomplete_count_after =
-            count_as_i32(BatchOptimizer::calculate_incomplete_count(board));
+        let board_statistics_after = match snapshot.as_ref() {
+            Some(snapshot) => {
+                let touched_nets = board.journaled_nets().unwrap_or_default();
+                let incomplete_count = i64::from(incomplete_count_before)
+                    - count_as_i64(DesignRulesChecker::incomplete_count_for_nets(
+                        snapshot,
+                        &touched_nets,
+                    ))
+                    + count_as_i64(DesignRulesChecker::incomplete_count_for_nets(
+                        board,
+                        &touched_nets,
+                    ));
+                BoardStatistics::for_routing_decisions_carrying(
+                    board,
+                    BoardStatisticsConnections {
+                        maximum_count: board_statistics_before.connections.maximum_count,
+                        incomplete_count: Some(i32::try_from(incomplete_count).unwrap_or(i32::MAX)),
+                    },
+                )
+            }
+            None => BoardStatistics::for_routing_decisions(board),
+        };
+        debug_assert_eq!(
+            board_statistics_after.connections.incomplete_count,
+            BoardStatistics::for_routing_decisions(board)
+                .connections
+                .incomplete_count,
+            "the undo journal names every net whose connectivity the re-route changed"
+        );
+        let incomplete_count_after = board_statistics_after
+            .connections
+            .incomplete_count
+            .unwrap_or(0);
         if self.progress_throttler.should_update() {
             progress.on_event(&RoutingEvent::BoardUpdated {
                 counters: RouterCounters {
@@ -339,6 +397,16 @@ impl<'a> BatchOptimizer<'a> {
             });
         }
 
+        let scoring = self
+            .settings
+            .scoring
+            .as_ref()
+            .expect("RouterSettings.scoring — BatchOptimizer.java:179 dereferences it");
+        let penalty_of = |statistics: &BoardStatistics, incomplete_count: i32| {
+            let mut counted = statistics.clone();
+            counted.connections.incomplete_count = Some(incomplete_count);
+            counted.routing_penalty(scoring)
+        };
         let mut result = ItemRouteResult::new(
             item,
             board_statistics_before.items.via_count.unwrap_or(0),
@@ -347,12 +415,15 @@ impl<'a> BatchOptimizer<'a> {
             f64::from(board_statistics_after.traces.total_length.unwrap_or(0.0)),
             incomplete_count_before,
             incomplete_count_after,
+            penalty_of(&board_statistics_before, incomplete_count_before),
+            penalty_of(&board_statistics_after, incomplete_count_after),
         );
         let route_improved =
             !stop.is_stop_requested() && !self.search_work_budget_spent() && result.improved();
         result.update_improved(route_improved);
 
         if route_improved {
+            self.incomplete_nets = BatchOptimizer::open_nets(board, self.settings, budget);
             self.min_cumulative_trace_length = java_min(
                 self.min_cumulative_trace_length,
                 f64::from(
@@ -362,14 +433,22 @@ impl<'a> BatchOptimizer<'a> {
                         .unwrap_or(0.0),
                 ),
             );
+            self.carried_connections = Some(board_statistics_after.connections.clone());
             board.discard_undo_journal();
             drop(snapshot);
         } else if let Some(restored) = snapshot {
             board.undo_from_snapshot(restored);
+            self.carried_connections = Some(board_statistics_before.connections.clone());
+        } else {
+            self.carried_connections = Some(board_statistics_after.connections.clone());
         }
 
         Ok(result)
     }
+}
+
+fn count_as_i64(count: usize) -> i64 {
+    i64::try_from(count).unwrap_or(i64::MAX)
 }
 
 #[must_use]
@@ -400,10 +479,6 @@ pub fn optimizer_ripup_costs(
     ripup_costs
 }
 
-fn count_as_i32(value: usize) -> i32 {
-    i32::try_from(value).unwrap_or(i32::MAX)
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct OptimizerResult {
     pub state: TaskState,
@@ -429,8 +504,8 @@ pub struct OptimizerPassRecord {
 }
 
 #[must_use]
-pub fn optimizer_near_perfect_exit(score_before_pass: f32, improvement_threshold: f32) -> bool {
-    score_before_pass * (1.0 + improvement_threshold) >= 1000.0
+pub fn optimizer_nothing_to_improve(routing_cost_before_pass: f64) -> bool {
+    routing_cost_before_pass <= 0.0
 }
 
 #[must_use]
@@ -506,8 +581,6 @@ impl BatchOptimizer<'_> {
 
         self.use_increased_ripup_costs = true;
 
-        let _initial_stats = BoardStatistics::new(board);
-
         let session_start = std::time::Instant::now();
         if let Some(timeout_string) = optimizer.timeout_string.as_deref() {
             if let Some(timeout_seconds) =
@@ -538,15 +611,22 @@ impl BatchOptimizer<'_> {
             && !stop.is_stop_requested()
         {
             stop.poll_cancel();
+            if stop.poll_deadline() {
+                break;
+            }
             if self.is_deadline_reached() {
                 self.is_timed_out = true;
                 break;
             }
             current_pass += 1;
 
-            let score_before_pass = BoardStatistics::new(board).normalized_score(scoring);
+            let statistics_before = BoardStatistics::new(board);
+            let score_before_pass = statistics_before.normalized_score(scoring);
+            let cost_before_pass = statistics_before.routing_cost(scoring);
+            let incomplete_before_pass =
+                statistics_before.connections.incomplete_count.unwrap_or(0);
 
-            if optimizer_near_perfect_exit(score_before_pass, improvement_threshold) {
+            if optimizer_nothing_to_improve(cost_before_pass) {
                 break;
             }
 
@@ -572,8 +652,12 @@ impl BatchOptimizer<'_> {
 
             let statistics_after = BoardStatistics::new(board);
             let score_after_pass = statistics_after.normalized_score(scoring);
-            let (pass_improvement, force_another_pass) =
-                self.apply_pass_improvement(score_before_pass, score_after_pass);
+            let (pass_improvement, force_another_pass) = self.apply_pass_improvement(
+                incomplete_before_pass,
+                cost_before_pass,
+                statistics_after.connections.incomplete_count.unwrap_or(0),
+                statistics_after.routing_cost(scoring),
+            );
 
             per_pass.push(OptimizerPassRecord {
                 pass: current_pass,
@@ -605,8 +689,6 @@ impl BatchOptimizer<'_> {
             state: TaskState::Finished,
         });
 
-        let _final_stats = BoardStatistics::new(board);
-
         let state = if self.is_timed_out {
             TaskState::TimedOut
         } else if stop.is_stop_requested() {
@@ -625,13 +707,21 @@ impl BatchOptimizer<'_> {
         })
     }
 
-    pub fn apply_pass_improvement(&mut self, score_before: f32, score_after: f32) -> (f64, bool) {
-        let pass_improvement = if score_before > 0.0 {
-            f64::from(score_after - score_before) / f64::from(score_before)
+    pub fn apply_pass_improvement(
+        &mut self,
+        incomplete_before: i32,
+        cost_before: f64,
+        incomplete_after: i32,
+        cost_after: f64,
+    ) -> (f64, bool) {
+        let pass_improvement = if incomplete_after < incomplete_before {
+            1.0
+        } else if cost_before > 0.0 {
+            (cost_before - cost_after) / cost_before
         } else {
             0.0
         };
-        let force_another_pass = if self.use_increased_ripup_costs && score_after <= score_before {
+        let force_another_pass = if self.use_increased_ripup_costs && pass_improvement <= 0.0 {
             self.use_increased_ripup_costs = false;
             true
         } else {
@@ -641,6 +731,14 @@ impl BatchOptimizer<'_> {
     }
 
     #[allow(clippy::too_many_arguments)]
+    /// Counts the board once for the pass; every item then carries the count forward, adjusting
+    /// it for the nets its re-route touched, instead of recounting the whole board twice.
+    pub fn begin_pass_bookkeeping(&mut self, board: &mut Board) -> BoardStatistics {
+        let statistics = BoardStatistics::for_routing_decisions(board);
+        self.carried_connections = Some(statistics.connections.clone());
+        statistics
+    }
+
     pub fn opt_route_pass(
         &mut self,
         board: &mut Board,
@@ -656,7 +754,7 @@ impl BatchOptimizer<'_> {
              null check — Java throws a NullPointerException here too",
         );
 
-        let board_statistics_before = BoardStatistics::new(board);
+        let board_statistics_before = self.begin_pass_bookkeeping(board);
         let router_counters = RouterCounters {
             pass_count: Some(pass_no),
             ..RouterCounters::default()
@@ -667,6 +765,7 @@ impl BatchOptimizer<'_> {
         });
 
         self.sorted_route_items = Some(ReadSortedRouteItems::new());
+        self.incomplete_nets = BatchOptimizer::open_nets(board, self.settings, budget);
         self.min_cumulative_trace_length = f64::from(
             board_statistics_before
                 .traces
@@ -679,6 +778,8 @@ impl BatchOptimizer<'_> {
 
         let mut route_improved: f32 = 0.0;
         loop {
+            stop.poll_cancel();
+            stop.poll_deadline();
             if self.is_deadline_reached() {
                 self.is_timed_out = true;
                 return Ok(route_improved);
@@ -716,7 +817,6 @@ impl BatchOptimizer<'_> {
             if result.improved() {
                 consecutive_failures = 0;
                 if self.progress_throttler.should_update() {
-                    let _board_statistics_after = BoardStatistics::new(board);
                     progress.on_event(&RoutingEvent::BoardUpdated {
                         counters: router_counters.clone(),
                     });
@@ -735,12 +835,12 @@ impl BatchOptimizer<'_> {
         }
 
         self.sorted_route_items = None;
+        self.carried_connections = None;
         if self.use_increased_ripup_costs && route_improved == 0.0 {
             self.use_increased_ripup_costs = false;
             route_improved = -1.0;
         }
 
-        let _board_statistics_after = BoardStatistics::new(board);
         progress.on_event(&RoutingEvent::BoardUpdated {
             counters: router_counters,
         });

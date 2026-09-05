@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-05T00:41:07.370019Z",
+  "generated_at": "2026-09-05T02:17:38.146196Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -53,15 +53,16 @@
       "unrouted_net_penalty": 5000000.0,
       "clearance_violation_penalty": 1000000.0,
       "bend_penalty": 10.0,
-      "default_bend_cost": 0.0
+      "default_bend_cost": 0.0,
+      "smd_via_cost_factor": 0.1
     },
     "max_threads": 7,
-    "result_json": "<OUT>/Issue026-J2_reference.manifest.json"
+    "result_json": "/var/folders/w3/ts5st7dx3n9byscpknnt1fh00000gn/T/fr-cli-e2e/ref-Issue026-J2_reference/manifest.json"
   },
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 0.27,
+      "duration_seconds": 3.945,
       "passes_completed": 2
     },
     "optimizer": {}
@@ -88,8 +89,8 @@
       "signal_count": 2
     },
     "items": {
-      "total_count": 183,
-      "trace_count": 84,
+      "total_count": 179,
+      "trace_count": 80,
       "via_count": 18,
       "conduction_area_count": 0,
       "drill_item_count": 0,
@@ -112,20 +113,20 @@
       "incomplete_count": 0
     },
     "traces": {
-      "total_count": 84,
-      "total_segment_count": 122,
-      "total_length": 3798.6497,
-      "total_length_mm": 379.865,
-      "total_weighted_length": 1.1838574E7,
-      "average_length": 45.22202,
-      "total_vertical_length": 160.264,
-      "total_horizontal_length": 2862.457,
-      "total_angled_length": 1052.0482
+      "total_count": 80,
+      "total_segment_count": 113,
+      "total_length": 3752.1074,
+      "total_length_mm": 375.21075,
+      "total_weighted_length": 1.1710162E7,
+      "average_length": 46.901344,
+      "total_vertical_length": 136.094,
+      "total_horizontal_length": 2438.698,
+      "total_angled_length": 1002.17883
     },
     "bends": {
-      "total_count": 38,
+      "total_count": 33,
       "90_degree_count": 0,
-      "45_degree_count": 38,
+      "45_degree_count": 33,
       "other_angle_count": 0
     },
     "vias": {
@@ -146,7 +147,7 @@
       "escaped_count": 39
     }
   },
-  "normalized_score": 999.9899,
+  "normalized_score": 999.99023,
   "resource_usage": {
     "cpu_time": 0.0,
     "max_memory": 0.0,

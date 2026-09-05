@@ -400,6 +400,7 @@ fn populated_scoring() -> ScoringSettings {
         clearance_violation_penalty: Some(11.5),
         bend_penalty: Some(12.5),
         default_bend_cost: Some(13.5),
+        smd_via_cost_factor: Some(14.5),
     }
 }
 

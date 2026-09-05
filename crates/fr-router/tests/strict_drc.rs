@@ -5,6 +5,7 @@ use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_board::structure::FixedState;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
+use fr_router::autoroute::maze::ViaPricing;
 use fr_router::pipeline::{BatchAutorouter, RouterBudget};
 use fr_router::{AutorouteAttemptState, AutorouteEngine, BoardStatistics, route_connection_full};
 use fr_settings::sources::DefaultSettings;
@@ -140,6 +141,7 @@ fn a_rejected_connection_restores_the_pre_route_board_exactly() {
             net_no,
             &settings,
             &trace_costs,
+            ViaPricing::ByPadstackRadius,
             &mut BTreeSet::new(),
             &mut BTreeMap::new(),
             1,

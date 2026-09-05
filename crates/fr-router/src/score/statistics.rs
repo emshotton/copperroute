@@ -55,6 +55,40 @@ impl BoardStatistics {
         include_clearance_violations: bool,
         include_connections: bool,
     ) -> BoardStatistics {
+        BoardStatistics::compute_with(
+            board,
+            unit,
+            include_clearance_violations,
+            include_connections,
+            true,
+        )
+    }
+
+    /// The counts the router and optimizer decide on: items, traces, vias, bends and open
+    /// connections. The fanout census walks every SMD pin's connected set and nothing on the
+    /// routing path reads it, so it is left at its default.
+    pub fn for_routing_decisions(board: &mut Board) -> BoardStatistics {
+        BoardStatistics::compute_with(board, None, false, true, false)
+    }
+
+    /// [`BoardStatistics::for_routing_decisions`] with `connections` supplied by the caller
+    /// instead of a whole-board incomplete pass.
+    pub fn for_routing_decisions_carrying(
+        board: &mut Board,
+        connections: BoardStatisticsConnections,
+    ) -> BoardStatistics {
+        let mut stats = BoardStatistics::compute_with(board, None, false, false, false);
+        stats.connections = connections;
+        stats
+    }
+
+    fn compute_with(
+        board: &mut Board,
+        unit: Option<Unit>,
+        include_clearance_violations: bool,
+        include_connections: bool,
+        include_fanout: bool,
+    ) -> BoardStatistics {
         let mut stats = BoardStatistics::default();
 
         let bb = board.get_bounding_box();
@@ -353,6 +387,14 @@ impl BoardStatistics {
                 .map(|v| scale_f32(v, from_unit, to_unit));
         }
 
+        if include_fanout {
+            stats.fanout = BoardStatistics::fanout_census(board);
+        }
+
+        stats
+    }
+
+    fn fanout_census(board: &mut Board) -> BoardStatisticsFanout {
         let smd_pins = board.get_smd_pins();
         let mut total_pins = 0_i32;
         let mut escaped = 0_i32;
@@ -380,13 +422,11 @@ impl BoardStatistics {
                 escaped += 1;
             }
         }
-        stats.fanout = BoardStatisticsFanout {
+        BoardStatisticsFanout {
             total_smd_pins: total_pins,
             pins_to_escape: total_pins - already_connected,
             escaped_count: escaped,
-        };
-
-        stats
+        }
     }
 
     pub fn is_pin_escaped(board: &mut Board, pin: ItemId) -> bool {

@@ -6,6 +6,7 @@ use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{IntBox, IntOctagon, IntPoint, Point, Polyline, Shape, TileShape};
+use fr_router::autoroute::maze::ViaPricing;
 use fr_router::board_ext::RoutingBoardExt;
 use fr_router::pipeline::{BatchAutorouter, NamedAlgorithmType, RouterBudget};
 use fr_router::{AutorouteAttemptState, AutorouteEngine, route_connection, route_connection_full};
@@ -195,6 +196,7 @@ fn route_prefix(
             net_no,
             &settings,
             &trace_costs,
+            ViaPricing::ByPadstackRadius,
             &mut ripped,
             &mut ripup_costs,
             1,
@@ -223,11 +225,6 @@ fn the_constants_are_javas_literals() {
     assert_eq!(4, BatchAutorouter::STOP_AT_PASS_MODULO, ":49");
     assert_eq!(10, BatchAutorouter::STAGNATION_PASS_LIMIT, ":52");
     assert_eq!(3, BatchAutorouter::FANOUT_RECOVERY_STAGNATION_PASSES, ":54");
-    assert_eq!(
-        10,
-        BatchAutorouter::PROGRESS_STATISTICS_ITEM_INTERVAL,
-        ":57"
-    );
     assert!(
         (BatchAutorouter::STAGNATION_SCORE_THRESHOLD - 0.5_f32).abs() < f32::EPSILON,
         ":60"
@@ -749,6 +746,7 @@ fn step_six_runs_only_on_routed() {
             net_no,
             &settings,
             &trace_costs,
+            ViaPricing::ByPadstackRadius,
             &mut BTreeSet::new(),
             &mut BTreeMap::new(),
             1,
@@ -950,5 +948,119 @@ fn equal_airline_distances_keep_the_descending_id_tie_order() {
         vec![(c3, 3), (c2, 2), (c1, 1)],
         "ties keep the descending-id walk order (quirk #63) — the order `getAutorouteItems` \
          built and the order Java's stable `List.sort` would have preserved"
+    );
+}
+
+#[test]
+fn a_net_filter_limits_the_work_list_to_its_nets() {
+    let mut board = empty_board(200, AngleRestriction::None);
+    add_net(&mut board, "N1", 0);
+    add_net(&mut board, "N2", 0);
+    add_net(&mut board, "N3", 0);
+    fixed_trace(&mut board, &[p(-9000, -9000), p(-9000, -8000)], 1);
+    insert_trace(&mut board, &[p(-9000, -6000), p(-9000, -5000)], 0, 30, 1);
+    let c2 = fixed_trace(&mut board, &[p(0, -9000), p(0, -8000)], 2);
+    insert_trace(&mut board, &[p(0, -6000), p(0, -5000)], 0, 30, 2);
+    fixed_trace(&mut board, &[p(9000, -9000), p(9000, -8000)], 3);
+    insert_trace(&mut board, &[p(9000, -6000), p(9000, -5000)], 0, 30, 3);
+
+    let settings = RouterSettings::new();
+    let mut router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+    assert_eq!(
+        router.autoroute_items(&board).len(),
+        3,
+        "unfiltered, every net is open"
+    );
+
+    router.net_filter = Some([2].into_iter().collect());
+    assert_eq!(
+        router.autoroute_items(&board),
+        vec![(c2, 2)],
+        "only the filtered net's open connection is offered"
+    );
+}
+
+#[test]
+fn an_empty_pass_still_polls_the_job_deadline() {
+    let mut board = empty_board(200, AngleRestriction::None);
+    let settings = RouterSettings::new();
+    let mut router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+    let stop = fr_router::pipeline::RouterStop::with_deadline(-1);
+    let mut failure_log = fr_router::pipeline::RoutingFailureLog::new();
+    let mut sink = fr_router::pipeline::NoopProgressSink;
+
+    let progressed = router
+        .autoroute_pass(&mut board, &mut failure_log, 1, &stop, &mut sink)
+        .expect("an item-less pass cannot fail");
+
+    assert!(!progressed);
+    assert!(
+        stop.is_timed_out(),
+        "a pass with nothing to route is where the optimizer's re-router spends its time on a \
+         complete board, and it must still see the job's deadline"
+    );
+}
+
+#[test]
+fn an_empty_pass_with_a_stop_pending_still_removes_tails() {
+    let mut board = empty_board(200, AngleRestriction::None);
+    let settings = RouterSettings::new();
+    let mut router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+    let stop = fr_router::pipeline::RouterStop::new();
+    stop.request_stop_auto_router();
+    let mut failure_log = fr_router::pipeline::RoutingFailureLog::new();
+    let mut sink = fr_router::pipeline::NoopProgressSink;
+    let progressed = router
+        .autoroute_pass(&mut board, &mut failure_log, 1, &stop, &mut sink)
+        .expect("an item-less pass cannot fail");
+    assert!(!progressed);
+}
+
+#[derive(Default)]
+struct IncompleteCountSink {
+    counts: Vec<Option<i32>>,
+}
+
+impl fr_router::pipeline::ProgressSink for IncompleteCountSink {
+    fn on_event(&mut self, event: &fr_router::pipeline::RoutingEvent) {
+        if let fr_router::pipeline::RoutingEvent::BoardUpdated { counters } = event {
+            self.counts.push(counters.incomplete_count);
+        }
+    }
+}
+
+fn pass_counter_incomplete_counts(is_optimizer_autorouter: bool) -> Vec<Option<i32>> {
+    let mut board = empty_board(200, AngleRestriction::None);
+    add_net(&mut board, "N1", 0);
+    fixed_trace(&mut board, &[p(-9000, -9000), p(-9000, -8000)], 1);
+    insert_trace(&mut board, &[p(-9000, -6000), p(-9000, -5000)], 0, 30, 1);
+    let settings = RouterSettings::new();
+    let mut router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+    router.is_optimizer_autorouter = is_optimizer_autorouter;
+    let stop = fr_router::pipeline::RouterStop::new();
+    stop.request_stop_auto_router();
+    let mut failure_log = fr_router::pipeline::RoutingFailureLog::new();
+    let mut sink = IncompleteCountSink::default();
+    router
+        .autoroute_pass(&mut board, &mut failure_log, 1, &stop, &mut sink)
+        .expect("a pass that stops before its first item cannot fail");
+    sink.counts
+}
+
+#[test]
+fn a_routing_job_pass_counts_incompletes_for_its_progress_counters() {
+    let counts = pass_counter_incomplete_counts(false);
+    assert!(!counts.is_empty(), "the pass fires BoardUpdated");
+    assert!(counts.iter().all(Option::is_some));
+}
+
+#[test]
+fn the_optimizers_re_router_reports_no_incomplete_count_in_its_pass_counters() {
+    let counts = pass_counter_incomplete_counts(true);
+    assert!(!counts.is_empty(), "the pass fires BoardUpdated");
+    assert!(
+        counts.iter().all(Option::is_none),
+        "the optimizer reports the incomplete count per item itself; its re-router's passes \
+         must not pay for a whole-board count nobody reads: {counts:?}"
     );
 }

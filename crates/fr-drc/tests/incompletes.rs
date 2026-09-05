@@ -489,3 +489,39 @@ fn insert_conduction_area(board: &mut Board) {
         FixedState::Unfixed,
     );
 }
+
+#[test]
+fn a_net_subset_count_matches_the_full_pass() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
+    let max_net_number = board.rules.nets.max_net_number();
+    let (full, per_net) = {
+        let mut drc = DesignRulesChecker::new(&mut board);
+        drc.calculate_all_incompletes();
+        let per_net: Vec<usize> = (1..=max_net_number)
+            .map(|n| drc.get_incomplete_count_for_net(n))
+            .collect();
+        (drc.get_incomplete_count(), per_net)
+    };
+    assert_eq!(full, 9);
+
+    let every_net: std::collections::BTreeSet<i32> = (1..=max_net_number).collect();
+    assert_eq!(
+        DesignRulesChecker::incomplete_count_for_nets(&board, &every_net),
+        full
+    );
+    for net_number in 1..=max_net_number {
+        let just_this: std::collections::BTreeSet<i32> = [net_number].into_iter().collect();
+        assert_eq!(
+            DesignRulesChecker::incomplete_count_for_nets(&board, &just_this),
+            per_net[net_number as usize - 1],
+            "net {net_number}"
+        );
+    }
+    assert_eq!(
+        DesignRulesChecker::incomplete_count_for_nets(&board, &std::collections::BTreeSet::new()),
+        0
+    );
+}

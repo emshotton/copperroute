@@ -540,10 +540,10 @@ impl Board {
             .expect("Board::remove_item: present, just checked");
         self.trees.remove(item);
         // BoardItemRepository.java:194.
-        self.items.remove(&id);
+        let removed = self.items.remove(&id);
         // `itemList.delete`'s undo half (UndoableObjects.java:76-125) — see
         // `Board::journal_remove`; a no-op outside `BatchOptimizer.optRouteItem`'s window.
-        self.journal_remove(id);
+        self.journal_remove(id, removed.as_ref());
         // BoardItemRepository.java:198.
         self.revision += 1;
         true
@@ -1232,10 +1232,10 @@ impl Board {
                 .get_mut(&id)
                 .expect("Board::delete_all_tracks_and_vias: present, just checked");
             self.trees.remove(item);
-            self.items.remove(&id);
+            let removed = self.items.remove(&id);
             // BasicBoard.java:1412/:1416 — `itemList.delete(currentItem)`, whose undo half is
             // `Board::journal_remove`.
-            self.journal_remove(id);
+            self.journal_remove(id, removed.as_ref());
         }
     }
 

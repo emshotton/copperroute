@@ -72,6 +72,13 @@ pub struct ScoringSettings {
         skip_serializing_if = "Option::is_none"
     )]
     pub default_bend_cost: Option<f64>,
+
+    #[serde(
+        rename = "smd_via_cost_factor",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub smd_via_cost_factor: Option<f64>,
 }
 
 impl ScoringSettings {
@@ -87,5 +94,6 @@ impl ScoringSettings {
         "clearance_violation_penalty",
         "bend_penalty",
         "default_bend_cost",
+        "smd_via_cost_factor",
     ];
 }

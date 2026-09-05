@@ -39,10 +39,10 @@ fn set_get_bend_cost() {
     settings.set_bend_cost(0, -1.0);
     assert_eq!(settings.get_bend_cost(0), RouterSettings::MIN_BEND_COST);
 
-    settings.set_bend_cost(1, 15.0);
+    settings.set_bend_cost(1, 150.0);
     assert_eq!(settings.get_bend_cost(1), RouterSettings::MAX_BEND_COST);
-    settings.set_bend_cost(1, 99.0);
-    assert_eq!(settings.get_bend_cost(1), 9.9);
+    settings.set_bend_cost(1, 999.0);
+    assert_eq!(settings.get_bend_cost(1), 100.0);
 }
 
 #[test]
@@ -53,8 +53,8 @@ fn bend_cost_falls_back_to_a_clamped_default_bend_cost() {
     settings.scoring.as_mut().unwrap().default_bend_cost = Some(3.0);
     assert_eq!(settings.get_bend_cost(0), 3.0);
 
-    settings.scoring.as_mut().unwrap().default_bend_cost = Some(15.0);
-    assert_eq!(settings.get_bend_cost(0), 9.9);
+    settings.scoring.as_mut().unwrap().default_bend_cost = Some(150.0);
+    assert_eq!(settings.get_bend_cost(0), 100.0);
 
     settings.scoring.as_mut().unwrap().default_bend_cost = Some(-3.0);
     assert_eq!(settings.get_bend_cost(0), 0.0);

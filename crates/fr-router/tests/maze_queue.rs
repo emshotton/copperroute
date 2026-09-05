@@ -4,7 +4,7 @@ use fr_geometry::{FloatLine, FloatPoint, IntBox, IntPoint, Point, TileShape};
 use fr_router::arena::DoorId;
 use fr_router::autoroute::expansion::{ExpandableRef, RoomRef};
 use fr_router::autoroute::maze::{
-    AutorouteControl, AutorouteEngine, MazeAdjustment, MazeListElement, MazeQueue,
+    AutorouteControl, AutorouteEngine, MazeAdjustment, MazeListElement, MazeQueue, ViaPricing,
 };
 use fr_router::{DrillId, ExpansionDrill};
 use fr_settings::RouterSettings;
@@ -90,6 +90,10 @@ fn fresh_control(settings: &RouterSettings) -> AutorouteControl {
         fanout_min_escape_length: 500.0,
         start_ripup_costs: 1,
         smd_via_relaxation: settings.get_smd_via_relaxation(),
+        units_per_mm: 1.0,
+        trace_cost_per_mm: 1.0,
+        smd_via_cost_factor: 0.1,
+        via_pricing: ViaPricing::ByPadstackRadius,
     }
 }
 

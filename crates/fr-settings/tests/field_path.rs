@@ -679,6 +679,7 @@ fn field_kinds_match_the_java_field_types() {
             ("clearance_violation_penalty", F32),
             ("bend_penalty", F32),
             ("default_bend_cost", F64),
+            ("smd_via_cost_factor", F64),
         ],
     );
     check(

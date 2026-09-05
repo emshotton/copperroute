@@ -247,6 +247,7 @@ fn field_names_pin_javas_declaration_order() {
             "clearance_violation_penalty",
             "bend_penalty",
             "default_bend_cost",
+            "smd_via_cost_factor",
         ]
     );
     assert_eq!(

@@ -74,4 +74,33 @@ impl BoardStatistics {
         }
         java_max_f32(0.0, self.calculate_score(scoring) / maximum_score) * 1000.0
     }
+
+    /// The score's cost term — trace length, vias and bends at the scoring weights — in `f64`,
+    /// so that one via on a large board is still a visible difference.
+    pub fn routing_cost(&self, scoring: &ScoringSettings) -> f64 {
+        let length_mm = self
+            .traces
+            .total_length_mm
+            .or(self.traces.total_length)
+            .unwrap_or(0.0);
+        let trace_cost = scoring
+            .default_preferred_direction_trace_cost
+            .unwrap_or(1.0);
+        let via_costs = scoring.via_costs.unwrap_or(0);
+        let bend_penalty = scoring.bend_penalty.unwrap_or(0.0);
+        f64::from(length_mm) * trace_cost
+            + f64::from(via_costs) * f64::from(self.vias.total_count.unwrap_or(0))
+            + f64::from(bend_penalty) * f64::from(self.bends.total_count.unwrap_or(0))
+    }
+
+    /// Everything the score subtracts from its maximum, in `f64`: the unrouted and violation
+    /// penalties plus [`routing_cost`](Self::routing_cost). Lower is better.
+    pub fn routing_penalty(&self, scoring: &ScoringSettings) -> f64 {
+        let unrouted_net_penalty = scoring.unrouted_net_penalty.unwrap_or(0.0);
+        let clearance_violation_penalty = scoring.clearance_violation_penalty.unwrap_or(0.0);
+        f64::from(unrouted_net_penalty) * f64::from(self.connections.incomplete_count.unwrap_or(0))
+            + f64::from(clearance_violation_penalty)
+                * f64::from(self.clearance_violations.total_count.unwrap_or(0))
+            + self.routing_cost(scoring)
+    }
 }

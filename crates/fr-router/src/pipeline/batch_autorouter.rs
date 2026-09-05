@@ -11,6 +11,7 @@ use fr_geometry::Point;
 use fr_settings::{ExpansionCostFactor, RouterSettings};
 
 use crate::autoroute::attempt::{AutorouteAttemptResult, AutorouteAttemptState};
+use crate::autoroute::maze::ViaPricing;
 use crate::autoroute::maze::engine::{AutorouteEngine, route_connection_full};
 use crate::board_ext::RoutingBoardExt;
 use crate::error::RouterError;
@@ -20,7 +21,6 @@ use crate::pipeline::failure_log::RoutingFailureLog;
 use crate::pipeline::pass_runner::AutoroutePassRunner;
 use crate::pipeline::stop::{DeterministicWorkBudget, ProgressThrottler, RouterBudget};
 use crate::pipeline::{NamedAlgorithmType, ProgressSink, RouterStop};
-use crate::score::BoardStatistics;
 
 #[derive(Debug)]
 pub struct BatchAutorouter<'a> {
@@ -37,10 +37,9 @@ pub struct BatchAutorouter<'a> {
     pub initial_unrouted_count: i32,
     pub session_start_time: Option<Instant>,
     pub is_optimizer_autorouter: bool,
+    pub net_filter: Option<BTreeSet<i32>>,
 
     board_update_gate: ProgressThrottler,
-    pub progress_statistics: Option<BoardStatistics>,
-    pub progress_items_since_statistics: i32,
 
     budget: RouterBudget,
     optimizer_work_budget: Option<Rc<DeterministicWorkBudget>>,
@@ -54,7 +53,6 @@ impl<'a> BatchAutorouter<'a> {
     pub const STOP_AT_PASS_MODULO: i32 = 4;
     pub const STAGNATION_PASS_LIMIT: i32 = 10;
     pub const FANOUT_RECOVERY_STAGNATION_PASSES: i32 = 3;
-    pub const PROGRESS_STATISTICS_ITEM_INTERVAL: i32 = 10;
     pub const STAGNATION_SCORE_THRESHOLD: f32 = 0.5;
 
     pub const BENCHMARK_PROFILE_ENABLED: bool = false;
@@ -103,11 +101,10 @@ impl<'a> BatchAutorouter<'a> {
             initial_unrouted_count: 0,
             session_start_time: None,
             is_optimizer_autorouter: false,
+            net_filter: None,
             board_update_gate: ProgressThrottler::board_update_gate(
                 budget.board_update_throttle_ms,
             ),
-            progress_statistics: None,
-            progress_items_since_statistics: 0,
             budget,
             optimizer_work_budget: None,
         }
@@ -271,6 +268,11 @@ impl<'a> BatchAutorouter<'a> {
         ripup_pass_no: i32,
         stop: StopCheck<'_>,
     ) -> AutorouteAttemptResult {
+        let via_pricing = if self.is_optimizer_autorouter {
+            ViaPricing::PerMillimetre
+        } else {
+            ViaPricing::ByPadstackRadius
+        };
         route_connection_full(
             board,
             engine,
@@ -278,6 +280,7 @@ impl<'a> BatchAutorouter<'a> {
             route_net_no,
             self.settings,
             &self.trace_costs,
+            via_pricing,
             ripped_item_list,
             ripup_costs,
             ripup_pass_no,
@@ -313,6 +316,13 @@ impl<'a> BatchAutorouter<'a> {
 
             for i in 0..item.net_count() {
                 let current_net_number = item.get_net_number(i);
+                if self
+                    .net_filter
+                    .as_ref()
+                    .is_some_and(|nets| !nets.contains(&current_net_number))
+                {
+                    continue;
+                }
                 let connected_set = board.connected_set(current_item, current_net_number, false);
                 for connected in &connected_set {
                     if board
@@ -382,6 +392,7 @@ impl<'a> BatchAutorouter<'a> {
         budget: RouterBudget,
         progress: &mut dyn ProgressSink,
         optimizer_work_budget: Option<Rc<DeterministicWorkBudget>>,
+        net_filter: Option<BTreeSet<i32>>,
     ) -> Result<i32, RouterError> {
         let mut router_instance = BatchAutorouter::new(
             board,
@@ -394,6 +405,7 @@ impl<'a> BatchAutorouter<'a> {
         );
         router_instance.is_optimizer_autorouter = true;
         router_instance.optimizer_work_budget = optimizer_work_budget.clone();
+        router_instance.net_filter = net_filter;
 
         let mut still_unrouted_items = true;
         let mut current_pass_no: i32 = 1;
@@ -417,7 +429,7 @@ impl<'a> BatchAutorouter<'a> {
         }
 
         router_instance.remove_tails(board, None, StopConnectionOption::None, &|| {
-            stop.is_stop_requested()
+            stop.is_stopped_or_expired()
         })?;
         if !still_unrouted_items {
             current_pass_no -= 1;
