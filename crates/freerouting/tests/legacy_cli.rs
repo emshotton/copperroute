@@ -392,7 +392,6 @@ fn p8t5_table_the_silent_no_ops_and_the_warn_and_continue() {
 
 #[test]
 fn p8t5_table_ll_twice_takes_the_last() {
-    // quirk #262. With `error` last, the DEBUG rewrite line is suppressed entirely.
     let output = Command::new(env!("CARGO_BIN_EXE_freerouting"))
         .args([
             "-ll", "debug", "-ll", "error", "-de", "a.dsn", "-do", "o.ses",

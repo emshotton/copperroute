@@ -22,7 +22,6 @@ pub fn run(raw: &[String]) -> ExitCode {
         }
     }
 
-    // Port only, at DEBUG: the native command line the legacy form was rewritten into. Java has
     tracing::debug!("rewritten command line: {argv:?}");
 
     if argv.is_empty() {
