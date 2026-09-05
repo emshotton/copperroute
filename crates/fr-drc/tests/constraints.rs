@@ -77,7 +77,7 @@ fn track_width_minimum_and_severity_default() {
         .next()
         .expect("the spike has nets")
         .net_number;
-    assert_eq!(track_width_min(&board, &constraints, net), Some(2000));
+    assert_eq!(track_width_min(&board, &constraints, net), None);
     constraints.min_track_width = Some(2200);
     assert_eq!(track_width_min(&board, &constraints, net), Some(2200));
     assert_eq!(

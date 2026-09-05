@@ -294,13 +294,12 @@ fn hole_to_hole_is_skipped_without_a_rule_and_for_far_holes() {
 }
 
 #[test]
+#[allow(clippy::field_reassign_with_default)]
 fn a_thin_trace_is_a_track_width_violation() {
     let mut synthetic = SyntheticBoard::new(&[], 1, 2000);
     synthetic.trace(&[(0, 0), (10_000, 0)], 0, 500, 1);
     let mut constraints = DrcConstraints::default();
-    constraints
-        .netclass_track_width
-        .insert("Default".to_string(), 2000);
+    constraints.min_track_width = Some(2000);
     let mut out = Vec::new();
     single::run(&mut synthetic.board, &constraints, &mut out);
     assert_eq!(kinds(&out), vec![DrcViolationKind::TrackWidth]);
@@ -309,19 +308,21 @@ fn a_thin_trace_is_a_track_width_violation() {
     assert_eq!(out[0].second_item, None);
 }
 
+/// `kicad-cli` never floors `track_width` at a net class's `track width` — only the board's own
+/// `min_track_width` is enforced — so a class value wider than the board minimum must not raise a
+/// violation the board minimum alone would not.
 #[test]
-fn the_board_minimum_floors_the_netclass_width() {
+fn a_netclass_width_wider_than_the_board_minimum_is_not_enforced() {
     let mut synthetic = SyntheticBoard::new(&[], 1, 2000);
-    synthetic.trace(&[(0, 0), (10_000, 0)], 0, 1000, 1);
+    synthetic.trace(&[(0, 0), (10_000, 0)], 0, 750, 1);
     let mut constraints = DrcConstraints::default();
     constraints
         .netclass_track_width
-        .insert("Default".to_string(), 1000);
-    constraints.min_track_width = Some(2500);
+        .insert("Default".to_string(), 5000);
+    constraints.min_track_width = Some(1000);
     let mut out = Vec::new();
     single::run(&mut synthetic.board, &constraints, &mut out);
-    assert_eq!(kinds(&out), vec![DrcViolationKind::TrackWidth]);
-    assert_eq!(out[0].expected, 2500.0);
+    assert!(out.is_empty(), "{out:?}");
 }
 
 #[test]
@@ -441,9 +442,7 @@ fn get_all_violations_runs_every_family_in_a_deterministic_order() {
     constraints
         .netclass_clearance
         .insert("Default".to_string(), 2000);
-    constraints
-        .netclass_track_width
-        .insert("Default".to_string(), 1000);
+    constraints.min_track_width = Some(1000);
     constraints.hole_to_hole = Some(2500);
     synthetic.board.rules.drc_constraints = Some(constraints);
 
@@ -503,9 +502,7 @@ fn the_report_carries_kicad_types_and_severities() {
     constraints
         .netclass_clearance
         .insert("Default".to_string(), 2000);
-    constraints
-        .netclass_track_width
-        .insert("Default".to_string(), 1000);
+    constraints.min_track_width = Some(1000);
     constraints
         .severities
         .insert("track_width".to_string(), DrcSeverity::Warning);

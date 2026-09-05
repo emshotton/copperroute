@@ -86,18 +86,18 @@ pub fn pair_clearance(
     .max()
 }
 
+/// Unlike clearance, KiCad's `track_width` DRC test never floors a net at its net class's `track
+/// width`: that field is only the default width the interactive router draws with. The one
+/// enforced minimum is the board's own `min_track_width` design rule — `kicad-cli` reports no
+/// violation for a 0.15 mm trace on a net whose class calls for 0.2 mm when the board's own
+/// minimum is unset.
 #[must_use]
 pub fn track_width_min(
-    board: &Board,
+    _board: &Board,
     constraints: &DrcConstraints,
-    net_number: i32,
+    _net_number: i32,
 ) -> Option<i32> {
-    let class_width = netclass_name(board, net_number)
-        .and_then(|name| constraints.netclass_track_width.get(&name).copied());
-    [class_width, constraints.min_track_width]
-        .into_iter()
-        .flatten()
-        .max()
+    constraints.min_track_width
 }
 
 #[must_use]
