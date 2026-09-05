@@ -7,6 +7,7 @@ pub mod net_incompletes;
 pub mod report;
 pub mod statistics;
 pub mod unconnected;
+pub mod violation;
 
 pub use airline::AirLine;
 pub use checker::DesignRulesChecker;
@@ -18,8 +19,10 @@ pub use report::{
 };
 pub use statistics::BoardStatisticsClearanceViolations;
 pub use unconnected::{UnconnectedItems, UnconnectedKind};
+pub use violation::{DrcViolation, DrcViolationKind};
 
 pub use fr_board::ClearanceViolation;
+pub use fr_board::DrcSeverity;
 
 pub mod prelude {
     pub use crate::airline::AirLine;
@@ -32,5 +35,7 @@ pub mod prelude {
     };
     pub use crate::statistics::BoardStatisticsClearanceViolations;
     pub use crate::unconnected::{UnconnectedItems, UnconnectedKind};
+    pub use crate::violation::{DrcViolation, DrcViolationKind};
     pub use fr_board::ClearanceViolation;
+    pub use fr_board::DrcSeverity;
 }
