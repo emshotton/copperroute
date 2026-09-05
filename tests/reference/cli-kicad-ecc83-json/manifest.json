@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-05T02:18:12.738664Z",
+  "generated_at": "2026-09-05T06:50:46.020888Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -62,7 +62,7 @@
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 5.817,
+      "duration_seconds": 40.15,
       "passes_completed": 3
     },
     "optimizer": {}
@@ -136,10 +136,10 @@
       "buried_count": 0
     },
     "clearance_violations": {
-      "total_count": 14,
-      "min_violation_um": 140.9027099609375,
-      "max_violation_um": 500.0,
-      "avg_violation_um": 405.84324428013394
+      "total_count": 0,
+      "min_violation_um": 0.0,
+      "max_violation_um": 0.0,
+      "avg_violation_um": 0.0
     },
     "fanout": {
       "total_smd_pins": 0,
@@ -147,7 +147,7 @@
       "escaped_count": 0
     }
   },
-  "normalized_score": 309.9979,
+  "normalized_score": 449.99786,
   "resource_usage": {
     "cpu_time": 0.0,
     "max_memory": 0.0,
