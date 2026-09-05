@@ -48,6 +48,11 @@ impl AutoroutePassRunner {
         stop: &RouterStop,
         progress: &mut dyn ProgressSink,
     ) -> Result<bool, RouterError> {
+        stop.poll_cancel();
+        stop.poll_deadline();
+        if stop.is_stop_auto_router_requested() {
+            return Ok(false);
+        }
         let autoroute_item_list = router.autoroute_items(board);
 
         if autoroute_item_list.is_empty() {
@@ -126,7 +131,7 @@ impl AutoroutePassRunner {
                 let mut engine = None;
                 let optimizer_work_budget = router.optimizer_work_budget();
                 let stop_check = &|| {
-                    stop.is_stop_requested()
+                    stop.is_stopped_or_expired()
                         || optimizer_work_budget
                             .as_ref()
                             .is_some_and(|work| work.poll())
@@ -176,7 +181,7 @@ impl AutoroutePassRunner {
             }
         }
 
-        let tail_stop = &|| stop.is_stop_requested();
+        let tail_stop = &|| stop.is_stopped_or_expired();
         if router.is_remove_unconnected_vias() {
             router.remove_tails(board, None, StopConnectionOption::None, tail_stop)?;
         } else {

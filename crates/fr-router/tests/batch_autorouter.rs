@@ -955,3 +955,53 @@ fn equal_airline_distances_keep_the_descending_id_tie_order() {
          built and the order Java's stable `List.sort` would have preserved"
     );
 }
+
+#[test]
+fn a_net_filter_limits_the_work_list_to_its_nets() {
+    let mut board = empty_board(200, AngleRestriction::None);
+    add_net(&mut board, "N1", 0);
+    add_net(&mut board, "N2", 0);
+    add_net(&mut board, "N3", 0);
+    fixed_trace(&mut board, &[p(-9000, -9000), p(-9000, -8000)], 1);
+    insert_trace(&mut board, &[p(-9000, -6000), p(-9000, -5000)], 0, 30, 1);
+    let c2 = fixed_trace(&mut board, &[p(0, -9000), p(0, -8000)], 2);
+    insert_trace(&mut board, &[p(0, -6000), p(0, -5000)], 0, 30, 2);
+    fixed_trace(&mut board, &[p(9000, -9000), p(9000, -8000)], 3);
+    insert_trace(&mut board, &[p(9000, -6000), p(9000, -5000)], 0, 30, 3);
+
+    let settings = RouterSettings::new();
+    let mut router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+    assert_eq!(
+        router.autoroute_items(&board).len(),
+        3,
+        "unfiltered, every net is open"
+    );
+
+    router.net_filter = Some([2].into_iter().collect());
+    assert_eq!(
+        router.autoroute_items(&board),
+        vec![(c2, 2)],
+        "only the filtered net's open connection is offered"
+    );
+}
+
+#[test]
+fn an_empty_pass_still_polls_the_job_deadline() {
+    let mut board = empty_board(200, AngleRestriction::None);
+    let settings = RouterSettings::new();
+    let mut router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+    let stop = fr_router::pipeline::RouterStop::with_deadline(-1);
+    let mut failure_log = fr_router::pipeline::RoutingFailureLog::new();
+    let mut sink = fr_router::pipeline::NoopProgressSink;
+
+    let progressed = router
+        .autoroute_pass(&mut board, &mut failure_log, 1, &stop, &mut sink)
+        .expect("an item-less pass cannot fail");
+
+    assert!(!progressed);
+    assert!(
+        stop.is_timed_out(),
+        "a pass with nothing to route is where the optimizer's re-router spends its time on a \
+         complete board, and it must still see the job's deadline"
+    );
+}

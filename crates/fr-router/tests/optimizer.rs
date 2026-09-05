@@ -393,12 +393,12 @@ fn the_stage_deadline_times_out_without_touching_the_stop_flag() {
 }
 
 #[test]
-fn the_stage_deadline_never_polls_the_jobs_own_deadline() {
+fn the_stage_clock_never_writes_the_jobs_state() {
     let mut board = empty_board();
     let mut settings = build_settings(&board);
     optimizer_settings(&mut settings).timeout_string = Some("0".to_string());
     let mut optimizer = BatchOptimizer::new(&settings);
-    let stop = RouterStop::with_deadline(-1);
+    let stop = RouterStop::new();
     let mut sink = NoopProgressSink;
     let result = optimizer
         .run_batch_loop(&mut board, &stop, RouterBudget::disabled(), &mut sink)
@@ -408,12 +408,33 @@ fn the_stage_deadline_never_polls_the_jobs_own_deadline() {
     assert_eq!(result.state, TaskState::TimedOut);
     assert!(
         !stop.is_stop_requested(),
-        "nothing in the optimizer polled the job's deadline, so the flag is still NONE"
+        "a stage timeout is not a job timeout: the flag is still NONE"
     );
     assert!(
         !stop.is_timed_out(),
-        "…and `job.state` was never written to TIMED_OUT either"
+        "…and `job.state` was never written to TIMED_OUT"
     );
+}
+
+#[test]
+fn the_jobs_deadline_ends_the_optimizer_stage() {
+    let mut board = empty_board();
+    let mut settings = build_settings(&board);
+    optimizer_settings(&mut settings).timeout_string = Some("0".to_string());
+    let mut optimizer = BatchOptimizer::new(&settings);
+    let stop = RouterStop::with_deadline(-1);
+    let mut sink = NoopProgressSink;
+    let result = optimizer
+        .run_batch_loop(&mut board, &stop, RouterBudget::disabled(), &mut sink)
+        .expect("the loop breaks at the job deadline");
+
+    assert!(
+        stop.is_timed_out(),
+        "the job's deadline was polled before the first pass"
+    );
+    assert!(stop.is_stop_requested(), "…and it stops everything");
+    assert_eq!(result.state, TaskState::Cancelled);
+    assert!(!result.timed_out, "the stage's own clock never got to fire");
 }
 
 #[test]
@@ -749,4 +770,50 @@ fn the_route_work_budget_bounds_only_incomplete_board_routing() {
     );
     assert!(work(30, 6) * 9 < PORT_OPTIMIZER_ROUTE_WORK_BUDGET);
     assert!(work(30, 6) * 10 >= PORT_OPTIMIZER_ROUTE_WORK_BUDGET);
+}
+
+#[test]
+fn every_optimizer_item_polls_the_job_deadline() {
+    let mut board = empty_board();
+    let padstack = fr_board::ids::PadstackId(
+        board
+            .library
+            .padstacks
+            .get_by_name("thru")
+            .expect("the thru padstack")
+            .no,
+    );
+    board
+        .insert_via(
+            padstack,
+            fr_geometry::Point::new(1_000, 1_000),
+            vec![1],
+            1,
+            FixedState::Unfixed,
+            false,
+        )
+        .expect("a lone via on a net with nothing else to connect");
+    let settings = build_settings(&board);
+    let mut optimizer = BatchOptimizer::new(&settings);
+
+    let stop = RouterStop::with_deadline(1);
+    std::thread::sleep(std::time::Duration::from_millis(5));
+    let mut sink = NoopProgressSink;
+    optimizer
+        .opt_route_pass(
+            &mut board,
+            1,
+            true,
+            &stop,
+            RouterBudget::disabled(),
+            &mut sink,
+        )
+        .expect("the pass runs");
+
+    assert!(
+        stop.is_timed_out(),
+        "ripping the via leaves nothing to route, so no routing pass polls the deadline; the \
+         item loop must poll it itself"
+    );
+    assert!(stop.is_stop_requested());
 }

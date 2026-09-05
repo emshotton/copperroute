@@ -173,6 +173,7 @@ pub struct BatchOptimizer<'a> {
     pub search_work_budget: Option<Rc<DeterministicWorkBudget>>,
     pub deadline: Option<std::time::Instant>,
     pub is_timed_out: bool,
+    pub incomplete_nets: BTreeSet<i32>,
 }
 
 impl<'a> BatchOptimizer<'a> {
@@ -198,6 +199,7 @@ impl<'a> BatchOptimizer<'a> {
             total_route_work: 0,
             search_work_budget,
             deadline: None,
+            incomplete_nets: BTreeSet::new(),
             is_timed_out: false,
         }
     }
@@ -227,6 +229,17 @@ impl<'a> BatchOptimizer<'a> {
         temp_drc.get_incomplete_count()
     }
 
+    /// The nets with an open connection: the only nets the per-item re-router can route, so the
+    /// only nets its work-list sweep needs to visit.
+    pub fn incomplete_nets(board: &mut Board) -> BTreeSet<i32> {
+        let max_net_number = board.rules.nets.max_net_number();
+        let mut drc = DesignRulesChecker::new(board);
+        drc.calculate_all_incompletes();
+        (1..=max_net_number)
+            .filter(|net_number| drc.get_incomplete_count_for_net(*net_number) > 0)
+            .collect()
+    }
+
     #[must_use]
     pub fn get_current_position(&self) -> Option<FloatPoint> {
         self.sorted_route_items
@@ -246,8 +259,10 @@ impl<'a> BatchOptimizer<'a> {
         progress: &mut dyn ProgressSink,
     ) -> Result<ItemRouteResult, RouterError> {
         let board_statistics_before = BoardStatistics::with_options(board, None, false);
-        let incomplete_count_before =
-            count_as_i32(BatchOptimizer::calculate_incomplete_count(board));
+        let incomplete_count_before = board_statistics_before
+            .connections
+            .incomplete_count
+            .unwrap_or(0);
         if self.progress_throttler.should_update() {
             progress.on_event(&RoutingEvent::BoardUpdated {
                 counters: RouterCounters {
@@ -310,6 +325,8 @@ impl<'a> BatchOptimizer<'a> {
             "BatchOptimizer.optRouteItem: settings.tracePullTightAccuracy is unboxed at :470 \
              with no null fallback — Java throws a NullPointerException here too",
         );
+        let mut routable_nets = self.incomplete_nets.clone();
+        routable_nets.extend(item_net_numbers.iter().copied());
         let passes_run = BatchAutorouter::autoroute_passes_for_optimizing_item(
             board,
             self.settings,
@@ -321,6 +338,7 @@ impl<'a> BatchOptimizer<'a> {
             budget,
             progress,
             self.search_work_budget.clone(),
+            Some(routable_nets),
         )?;
         // [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`].
         self.total_route_work = self.total_route_work.saturating_add(
@@ -328,8 +346,10 @@ impl<'a> BatchOptimizer<'a> {
         );
 
         let board_statistics_after = BoardStatistics::with_options(board, None, false);
-        let incomplete_count_after =
-            count_as_i32(BatchOptimizer::calculate_incomplete_count(board));
+        let incomplete_count_after = board_statistics_after
+            .connections
+            .incomplete_count
+            .unwrap_or(0);
         if self.progress_throttler.should_update() {
             progress.on_event(&RoutingEvent::BoardUpdated {
                 counters: RouterCounters {
@@ -365,6 +385,7 @@ impl<'a> BatchOptimizer<'a> {
         result.update_improved(route_improved);
 
         if route_improved {
+            self.incomplete_nets = BatchOptimizer::incomplete_nets(board);
             self.min_cumulative_trace_length = java_min(
                 self.min_cumulative_trace_length,
                 f64::from(
@@ -550,6 +571,9 @@ impl BatchOptimizer<'_> {
             && !stop.is_stop_requested()
         {
             stop.poll_cancel();
+            if stop.poll_deadline() {
+                break;
+            }
             if self.is_deadline_reached() {
                 self.is_timed_out = true;
                 break;
@@ -695,6 +719,7 @@ impl BatchOptimizer<'_> {
         });
 
         self.sorted_route_items = Some(ReadSortedRouteItems::new());
+        self.incomplete_nets = BatchOptimizer::incomplete_nets(board);
         self.min_cumulative_trace_length = f64::from(
             board_statistics_before
                 .traces
@@ -707,6 +732,8 @@ impl BatchOptimizer<'_> {
 
         let mut route_improved: f32 = 0.0;
         loop {
+            stop.poll_cancel();
+            stop.poll_deadline();
             if self.is_deadline_reached() {
                 self.is_timed_out = true;
                 return Ok(route_improved);

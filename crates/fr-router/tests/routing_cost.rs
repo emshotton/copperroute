@@ -293,3 +293,54 @@ fn the_job_deadline_ends_the_optimizer_stage_on_a_routed_board() {
         result.items_optimized
     );
 }
+
+#[test]
+#[cfg_attr(debug_assertions, ignore)]
+fn the_statistics_incomplete_count_is_the_drc_incomplete_count() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let mut board = load_rpi();
+    let settings = rpi_settings(&board);
+    AutorouteBatchLoop::run(
+        &mut board,
+        &settings,
+        &RouterStop::new(),
+        RouterBudget::disabled(),
+        &mut NoopProgressSink,
+    )
+    .expect("rpi_splitter routes");
+    let from_statistics = BoardStatistics::with_options(&mut board, None, false)
+        .connections
+        .incomplete_count
+        .expect("the statistics count connections");
+    let from_drc = BatchOptimizer::calculate_incomplete_count(&mut board);
+    assert!(
+        from_statistics > 0,
+        "a one-pass board still has open connections"
+    );
+    assert_eq!(
+        usize::try_from(from_statistics).expect("non-negative"),
+        from_drc
+    );
+}
+
+#[test]
+fn the_search_stop_check_sees_an_expired_job_deadline_without_a_poll() {
+    let stop = RouterStop::with_deadline(-1);
+    assert!(
+        !stop.is_stop_requested(),
+        "nothing has polled the deadline yet"
+    );
+    assert!(
+        stop.is_stopped_or_expired(),
+        "the check the maze search runs must notice the deadline itself: a connection that \
+         starts just before it can otherwise search for its whole per-connection time limit"
+    );
+    assert!(stop.is_timed_out());
+    assert!(stop.is_stop_requested());
+
+    let fresh = RouterStop::new();
+    assert!(!fresh.is_stopped_or_expired());
+    assert!(!fresh.is_timed_out());
+}

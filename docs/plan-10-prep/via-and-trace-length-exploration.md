@@ -377,7 +377,17 @@ nothing and most of the via gain measured on the fixtures came from that stage s
 vias. `ViaPricing` in `control.rs` carries the choice; `BatchAutorouter::autoroute_item` picks it
 from `is_optimizer_autorouter`.
 
-**Still open:** the optimizer's cost on big routed boards (W3's problem), and why a run can end
-more than 100 s past its job deadline with nothing written — the stage is stopped by the deadline
-in a unit test, and locally the same boards finish under the limit, so the overrun needs a stack
-sample on the slow host to explain.
+**The full run**, all 605 boards, base against branch at `8e7310b`: vias 15 223 → 11 234 (−26 %),
+violations 497 → 448, wirelength +0.2 %, unrouted 2 766 → 3 271 (+18 %; 74 boards better, 72
+worse, 4 with no output), cpu 34 432 s → 59 862 s. The 72 boards that lost completions are the
+fixture set for the two fixes below.
+
+**The overrun, found.** Sampled at 100 s and 200 s on `2d_conduction_sk9822-matrix` (routes fully
+in 31 s with the optimizer off), the stage sits in connectivity walks and shape-tree overlap
+queries: every item paid a whole-board deep copy, two `BoardStatistics` computations and two more
+full DRC incomplete counts. The job deadline was polled only inside the per-item re-router's pass
+loop, which never runs when the ripped item leaves no open connection behind — a redundant via on
+a matrix board — so a stage full of such items never saw the deadline and ran until the harness
+killed it. Fixed on the branch: the optimizer's pass and item loops poll the job deadline
+themselves, and the incomplete count comes from the statistics already computed rather than a
+second DRC pass. The per-item cost itself (W3) is still the stage's price on big boards.

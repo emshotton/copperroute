@@ -38,6 +38,7 @@ pub struct BatchAutorouter<'a> {
     pub initial_unrouted_count: i32,
     pub session_start_time: Option<Instant>,
     pub is_optimizer_autorouter: bool,
+    pub net_filter: Option<BTreeSet<i32>>,
 
     board_update_gate: ProgressThrottler,
     pub progress_statistics: Option<BoardStatistics>,
@@ -104,6 +105,7 @@ impl<'a> BatchAutorouter<'a> {
             initial_unrouted_count: 0,
             session_start_time: None,
             is_optimizer_autorouter: false,
+            net_filter: None,
             board_update_gate: ProgressThrottler::board_update_gate(
                 budget.board_update_throttle_ms,
             ),
@@ -320,6 +322,13 @@ impl<'a> BatchAutorouter<'a> {
 
             for i in 0..item.net_count() {
                 let current_net_number = item.get_net_number(i);
+                if self
+                    .net_filter
+                    .as_ref()
+                    .is_some_and(|nets| !nets.contains(&current_net_number))
+                {
+                    continue;
+                }
                 let connected_set = board.connected_set(current_item, current_net_number, false);
                 for connected in &connected_set {
                     if board
@@ -389,6 +398,7 @@ impl<'a> BatchAutorouter<'a> {
         budget: RouterBudget,
         progress: &mut dyn ProgressSink,
         optimizer_work_budget: Option<Rc<DeterministicWorkBudget>>,
+        net_filter: Option<BTreeSet<i32>>,
     ) -> Result<i32, RouterError> {
         let mut router_instance = BatchAutorouter::new(
             board,
@@ -401,6 +411,7 @@ impl<'a> BatchAutorouter<'a> {
         );
         router_instance.is_optimizer_autorouter = true;
         router_instance.optimizer_work_budget = optimizer_work_budget.clone();
+        router_instance.net_filter = net_filter;
 
         let mut still_unrouted_items = true;
         let mut current_pass_no: i32 = 1;
@@ -424,7 +435,7 @@ impl<'a> BatchAutorouter<'a> {
         }
 
         router_instance.remove_tails(board, None, StopConnectionOption::None, &|| {
-            stop.is_stop_requested()
+            stop.is_stopped_or_expired()
         })?;
         if !still_unrouted_items {
             current_pass_no -= 1;

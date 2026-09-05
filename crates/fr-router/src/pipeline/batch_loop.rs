@@ -230,7 +230,7 @@ impl AutorouteBatchLoop {
                                 board,
                                 None,
                                 StopConnectionOption::None,
-                                &|| stop.is_stop_requested(),
+                                &|| stop.is_stopped_or_expired(),
                             )?;
                             board_statistics_after = BoardStatistics::new(board);
                             board_score_after = board_statistics_after.normalized_score(scoring);
@@ -276,7 +276,7 @@ impl AutorouteBatchLoop {
                 || stop.is_stop_auto_router_requested())
         {
             router.remove_tails(board, None, StopConnectionOption::None, &|| {
-                stop.is_stop_requested()
+                stop.is_stopped_or_expired()
             })?;
         }
 
