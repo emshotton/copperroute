@@ -271,12 +271,19 @@ fn inserted_geometry(
 fn metrics(board: &mut Board, net_no: i32) -> RouterMetrics {
     let vias = board.net_via_count(net_no) as i64;
     let trace_length = java_double_to_string(board.cumulative_trace_length());
-    let mut drc = DesignRulesChecker::new(board);
+    let (incompletes, violations) = {
+        let mut drc = DesignRulesChecker::new(board);
+        (drc.get_incomplete_count(), drc.get_all_violations())
+    };
+    let violations = violations
+        .iter()
+        .filter(|violation| violation.involves_routing(board))
+        .count() as i64;
     RouterMetrics {
-        incompletes: drc.get_incomplete_count() as i64,
+        incompletes: incompletes as i64,
         vias,
         trace_length,
-        violations: drc.get_all_violations().len() as i64,
+        violations,
     }
 }
 
