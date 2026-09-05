@@ -450,8 +450,8 @@ impl RouterMetrics {
         }
     }
 
-    /// Ruling 1(c) for one connection: the two deltas equal, `violations == 0` on **both** sides,
-    /// and the cumulative trace length within ±10 %.
+    /// Ruling 1(c) for one connection: the two deltas equal, the violation count equal to the
+    /// reference's, and the cumulative trace length within ±10 %.
     ///
     /// `Ok(())` or the first failing rung, named — the caller turns it into the panic, so that a
     /// harness that only *reports* rung (c) (the README's table) can use the same check.
