@@ -1,7 +1,7 @@
 use fr_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
 use fr_geometry::TileShape;
 
-use crate::checks::geometry::{gap_below, is_copper, item_shapes};
+use crate::checks::geometry::{gap_below, is_copper, item_shapes, sub_epsilon};
 use crate::constraints::severity;
 use crate::{DrcViolation, DrcViolationKind};
 
@@ -42,7 +42,8 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
         for (layer, shape) in item_shapes(board, id) {
             let mut worst: Option<(f64, fr_geometry::FloatPoint)> = None;
             for piece in &pieces {
-                if let Some((actual, position)) = gap_below(&shape, piece, minimum)
+                if let Some((actual, position)) =
+                    gap_below(&shape, piece, sub_epsilon(minimum, constraints.epsilon))
                     && worst.is_none_or(|(best, _)| actual < best)
                 {
                     worst = Some((actual, position));

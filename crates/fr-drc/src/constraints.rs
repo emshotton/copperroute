@@ -5,6 +5,12 @@ use serde_json::Value;
 
 use crate::{DrcError, DrcViolationKind};
 
+/// KiCad's `ADVANCED_CFG::m_DRCEpsilon` default
+/// (`DRC_TEST_PROVIDER_COPPER_CLEARANCE::sub_e`), subtracted from a clearance requirement
+/// before the gap test so that a trace routed at exactly the clearance is not flagged by
+/// integer rounding.
+pub const DRC_EPSILON_MM: f64 = 0.0005;
+
 #[must_use]
 pub fn canonical_class_name(name: &str) -> &str {
     if name.eq_ignore_ascii_case("default") || name.eq_ignore_ascii_case("kicad_default") {
@@ -23,13 +29,19 @@ pub fn from_dsn(board: &Board) -> DrcConstraints {
         let clearance_class = class.get_trace_clearance_class();
         let clearance = matrix.get_value(clearance_class, clearance_class, 0, false);
         if clearance > 0 {
-            constraints.netclass_clearance.insert(name.clone(), clearance);
+            constraints
+                .netclass_clearance
+                .insert(name.clone(), clearance);
         }
         let width = 2 * class.get_trace_half_width(0);
         if width > 0 {
             constraints.netclass_track_width.insert(name, width);
         }
     }
+    constraints.epsilon = java_round(
+        Unit::scale(DRC_EPSILON_MM, Unit::Mm, board.communication.unit)
+            * f64::from(board.communication.resolution.max(1)),
+    ) as i32;
     constraints
 }
 
@@ -75,7 +87,11 @@ pub fn pair_clearance(
 }
 
 #[must_use]
-pub fn track_width_min(board: &Board, constraints: &DrcConstraints, net_number: i32) -> Option<i32> {
+pub fn track_width_min(
+    board: &Board,
+    constraints: &DrcConstraints,
+    net_number: i32,
+) -> Option<i32> {
     let class_width = netclass_name(board, net_number)
         .and_then(|name| constraints.netclass_track_width.get(&name).copied());
     [class_width, constraints.min_track_width]
@@ -145,12 +161,23 @@ pub fn from_kicad_project(
         min_track_width: positive(rule(&rules, "min_track_width", board, transform)),
         hole_clearance: rule(&rules, "min_hole_clearance", board, transform),
         hole_to_hole: positive(rule(&rules, "min_hole_to_hole", board, transform)),
-        copper_edge_clearance: positive(rule(&rules, "min_copper_edge_clearance", board, transform)),
+        copper_edge_clearance: positive(rule(
+            &rules,
+            "min_copper_edge_clearance",
+            board,
+            transform,
+        )),
         min_via_diameter: positive(rule(&rules, "min_via_diameter", board, transform)),
         min_via_annular_width: positive(rule(&rules, "min_via_annular_width", board, transform)),
-        min_through_hole_diameter: positive(rule(&rules, "min_through_hole_diameter", board, transform)),
+        min_through_hole_diameter: positive(rule(
+            &rules,
+            "min_through_hole_diameter",
+            board,
+            transform,
+        )),
         min_microvia_diameter: positive(rule(&rules, "min_microvia_diameter", board, transform)),
         min_microvia_drill: positive(rule(&rules, "min_microvia_drill", board, transform)),
+        epsilon: to_board_units(DRC_EPSILON_MM, board, transform),
         ..DrcConstraints::default()
     };
     if let Some(severities) = settings.get("rule_severities").and_then(Value::as_object) {
@@ -170,7 +197,9 @@ pub fn from_kicad_project(
             };
             let name = canonical_class_name(name).to_string();
             if let Some(clearance) = positive(rule(class, "clearance", board, transform)) {
-                constraints.netclass_clearance.insert(name.clone(), clearance);
+                constraints
+                    .netclass_clearance
+                    .insert(name.clone(), clearance);
             }
             if let Some(width) = positive(rule(class, "track_width", board, transform)) {
                 constraints.netclass_track_width.insert(name, width);

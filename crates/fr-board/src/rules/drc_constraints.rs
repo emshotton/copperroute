@@ -22,6 +22,7 @@ pub struct DrcConstraints {
     pub min_microvia_diameter: Option<i32>,
     pub min_microvia_drill: Option<i32>,
     pub severities: BTreeMap<String, DrcSeverity>,
+    pub epsilon: i32,
 }
 
 impl DrcConstraints {
@@ -49,6 +50,7 @@ impl DrcConstraints {
             min_microvia_diameter: project.min_microvia_diameter.or(dsn.min_microvia_diameter),
             min_microvia_drill: project.min_microvia_drill.or(dsn.min_microvia_drill),
             severities,
+            epsilon: project.epsilon.max(dsn.epsilon),
         }
     }
 }
@@ -65,6 +67,8 @@ mod tests {
         dsn.netclass_clearance.insert("Default".to_string(), 2000);
         dsn.netclass_clearance.insert("Power".to_string(), 3000);
 
+        dsn.epsilon = 5;
+
         let mut project = DrcConstraints::default();
         project.min_track_width = Some(1500);
         project.hole_to_hole = Some(2500);
@@ -74,6 +78,7 @@ mod tests {
         project
             .severities
             .insert("track_width".to_string(), DrcSeverity::Warning);
+        project.epsilon = 0;
 
         let merged = DrcConstraints::merge(dsn, project);
         assert_eq!(merged.min_track_width, Some(1500));
@@ -81,6 +86,7 @@ mod tests {
         assert_eq!(merged.netclass_clearance["Default"], 1800);
         assert_eq!(merged.netclass_clearance["Power"], 3000);
         assert_eq!(merged.severities["track_width"], DrcSeverity::Warning);
+        assert_eq!(merged.epsilon, 5);
     }
 
     #[test]

@@ -324,13 +324,16 @@ fn statistics_block() {
         / f64::from(board.communication.resolution);
     assert_eq!(factor, 0.1);
 
+    // All 9 of this fixture's clearance violations are trace-vs-trace at 0.1998-0.1999mm
+    // against a 0.2mm rule (KiCad's `DRC_EPSILON_MM`, subtracted from every gap test as
+    // `sub_epsilon`, absorbs exactly this rounding gap; see `constraints::DRC_EPSILON_MM`).
     let violations = DesignRulesChecker::new(&mut board).get_all_violations();
-    assert_eq!(violations.len(), 9);
+    assert_eq!(violations.len(), 0);
     let stats = BoardStatisticsClearanceViolations::from_violations(&violations, factor);
-    assert_eq!(stats.total_count, Some(9));
-    assert_eq!(stats.min_violation_um, Some(0.0579833984375));
-    assert_eq!(stats.max_violation_um, Some(0.244140625));
-    assert_eq!(stats.avg_violation_um, Some(0.1068115234375));
+    assert_eq!(stats.total_count, Some(0));
+    assert_eq!(stats.min_violation_um, Some(0.0));
+    assert_eq!(stats.max_violation_um, Some(0.0));
+    assert_eq!(stats.avg_violation_um, Some(0.0));
 }
 
 #[test]

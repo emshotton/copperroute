@@ -3,7 +3,9 @@ use std::collections::BTreeSet;
 use fr_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
 use fr_geometry::{FloatLine, FloatPoint, TileShape};
 
-use crate::checks::geometry::{candidates, gap_below, hole_of, is_copper, item_shapes};
+use crate::checks::geometry::{
+    candidates, gap_below, hole_of, is_copper, item_shapes, sub_epsilon,
+};
 use crate::constraints::{pair_clearance, search_radius, severity};
 use crate::{DrcViolation, DrcViolationKind};
 
@@ -179,7 +181,11 @@ fn check_pair(
         && clearance > 0
     {
         for other_shape in &other_shapes {
-            if let Some((actual, position)) = gap_below(shape, other_shape, clearance) {
+            if let Some((actual, position)) = gap_below(
+                shape,
+                other_shape,
+                sub_epsilon(clearance, constraints.epsilon),
+            ) {
                 let both_netted =
                     board.items[&id].net_count() > 0 && board.items[&other].net_count() > 0;
                 let kind = if actual == 0.0 && both_netted {
@@ -216,7 +222,11 @@ fn check_pair(
             continue;
         };
         for copper_shape in copper_shapes {
-            if let Some((actual, position)) = gap_below(copper_shape, &hole.shape, hole_clearance) {
+            if let Some((actual, position)) = gap_below(
+                copper_shape,
+                &hole.shape,
+                sub_epsilon(hole_clearance, constraints.epsilon),
+            ) {
                 emit.push(
                     DrcViolationKind::HoleClearance,
                     copper_id,

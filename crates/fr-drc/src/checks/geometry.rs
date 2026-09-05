@@ -8,6 +8,15 @@ pub struct Hole {
     pub center: FloatPoint,
 }
 
+/// KiCad's `DRC_TEST_PROVIDER_COPPER_CLEARANCE::sub_e` (and the hole-to-hole and
+/// edge-clearance providers' matching subtractions): the clearance requirement a gap test
+/// actually enforces, with `constraints.epsilon` removed so a gap exactly at the nominal
+/// clearance is not flagged by integer rounding.
+#[must_use]
+pub fn sub_epsilon(clearance: i32, epsilon: i32) -> i32 {
+    (clearance - epsilon).max(0)
+}
+
 #[must_use]
 pub fn gap_below(a: &TileShape, b: &TileShape, clearance: i32) -> Option<(f64, FloatPoint)> {
     let half = f64::from(clearance) / 2.0;

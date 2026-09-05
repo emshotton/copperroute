@@ -8,8 +8,8 @@ use fr_dsn::{BoardReadResult, DsnReadOptions};
 
 fn spike_board() -> Board {
     let path = parity::workspace_root().join("benchmark/tests/data/spike/spike.dsn");
-    let bytes = std::fs::read(&path)
-        .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
+    let bytes =
+        std::fs::read(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
     match fr_dsn::read_board(&bytes[..], None, Some("spike"), &DsnReadOptions::default()) {
         BoardReadResult::Success { board, .. } | BoardReadResult::OutlineMissing { board, .. } => {
             *board.expect("the spike DSN produces a board")
@@ -36,10 +36,26 @@ fn from_dsn_reads_the_kicad_default_class_clearance_and_width() {
 }
 
 #[test]
+fn from_dsn_sets_the_kicad_drc_epsilon() {
+    let board = spike_board();
+    let constraints = from_dsn(&board);
+    assert_eq!(constraints.epsilon, 5);
+}
+
+#[test]
+fn from_kicad_project_sets_the_kicad_drc_epsilon() {
+    let (board, transform) = spike_board_with_transform();
+    let constraints = from_kicad_project(&spike_project(), &board, &transform).expect("parses");
+    assert_eq!(constraints.epsilon, 5);
+}
+
+#[test]
 fn pair_clearance_is_the_larger_netclass_value_floored_by_the_board_minimum() {
     let board = spike_board();
     let mut constraints = from_dsn(&board);
-    constraints.netclass_clearance.insert("Power".to_string(), 3000);
+    constraints
+        .netclass_clearance
+        .insert("Power".to_string(), 3000);
     let items: Vec<&Item> = board.get_items().collect();
     let a = items
         .iter()
@@ -64,11 +80,17 @@ fn track_width_minimum_and_severity_default() {
     assert_eq!(track_width_min(&board, &constraints, net), Some(2000));
     constraints.min_track_width = Some(2200);
     assert_eq!(track_width_min(&board, &constraints, net), Some(2200));
-    assert_eq!(severity(&constraints, DrcViolationKind::Clearance), DrcSeverity::Error);
+    assert_eq!(
+        severity(&constraints, DrcViolationKind::Clearance),
+        DrcSeverity::Error
+    );
     constraints
         .severities
         .insert("clearance".to_string(), DrcSeverity::Ignore);
-    assert_eq!(severity(&constraints, DrcViolationKind::Clearance), DrcSeverity::Ignore);
+    assert_eq!(
+        severity(&constraints, DrcViolationKind::Clearance),
+        DrcSeverity::Ignore
+    );
     assert!(search_radius(&constraints) >= 2000);
 }
 
@@ -117,7 +139,10 @@ fn the_spike_project_rules_convert_to_board_units() {
     assert_eq!(constraints.netclass_clearance.get("Default"), Some(&2000));
     assert_eq!(constraints.netclass_clearance.get("Power"), Some(&2000));
     assert_eq!(constraints.netclass_track_width.get("Power"), Some(&4000));
-    assert_eq!(constraints.severities.get("clearance"), Some(&DrcSeverity::Error));
+    assert_eq!(
+        constraints.severities.get("clearance"),
+        Some(&DrcSeverity::Error)
+    );
 }
 
 #[test]

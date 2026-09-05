@@ -136,11 +136,13 @@ fn unknown_coordinate_unit_falls_back_to_the_board_unit() {
     let report = DesignRulesChecker::new(&mut board)
         .generate_report(&coords, &options(BBD_MARS_64, "furlong"));
     assert_eq!(report.coordinate_units, "furlong");
-    assert_eq!(report.violations[0].items[0].pos.x, 87_805.55);
+    // This fixture's trace-vs-trace clearance gaps are all within `DRC_EPSILON_MM` of the
+    // rule, so `checks::run_all` reports none of them and a dangling-track entry sorts first.
+    assert_eq!(report.violations[0].items[0].pos.x, 90_181.65);
     assert!(
         report.violations[0]
             .description
-            .contains("expected: 200.0000 furlong")
+            .contains("Track has unconnected end")
     );
 }
 
@@ -154,10 +156,10 @@ fn mil_and_inch_scale() {
     let inch = report_for(BBD_MARS_64, "inch").violations[0].items[0].pos.x;
     let um = report_for(BBD_MARS_64, "um").violations[0].items[0].pos.x;
 
-    assert_eq!(mm, 87.80555);
-    assert_eq!(um, 87_805.55);
-    assert_eq!(mil, 87_805.55 / 25.4);
-    assert_eq!(inch, 87_805.55 / 25_400.0);
+    assert_eq!(mm, 90.18164999999999);
+    assert_eq!(um, 90_181.65);
+    assert_eq!(mil, 90_181.65 / 25.4);
+    assert_eq!(inch, 90_181.65 / 25_400.0);
 }
 
 #[test]

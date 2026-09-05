@@ -127,6 +127,21 @@ fn two_traces_on_different_nets_closer_than_the_clearance_are_a_clearance_violat
 }
 
 #[test]
+fn a_gap_within_the_epsilon_of_the_clearance_is_not_a_violation() {
+    let mut synthetic = SyntheticBoard::new(&[], 2, 2000);
+    synthetic.trace(&[(0, 0), (10_000, 0)], 0, 500, 1);
+    synthetic.trace(&[(0, 2998), (10_000, 2998)], 0, 500, 2);
+    let mut constraints = constraints_with(2000);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints, &mut out);
+    assert_eq!(kinds(&out), vec![DrcViolationKind::Clearance]);
+    constraints.epsilon = 5;
+    out.clear();
+    copper::run(&mut synthetic.board, &constraints, &mut out);
+    assert!(out.is_empty(), "{out:?}");
+}
+
+#[test]
 fn the_same_pair_is_reported_once() {
     let mut synthetic = SyntheticBoard::new(&[], 2, 2000);
     synthetic.trace(&[(0, 0), (10_000, 0)], 0, 500, 1);
