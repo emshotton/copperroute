@@ -1,0 +1,2 @@
+ INFO Loading DSN file for DRC: /Users/em/Development/freerouting/freerouting/fixtures/Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn
+ INFO DRC report written to: /Users/em/Development/freerouting/freerouting-rs/.claude/worktrees/kicad-drc-exploration/tests/reference/drc-bbd-mars-64/drc.json.tmp

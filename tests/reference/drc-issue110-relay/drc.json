@@ -1,11 +1,11 @@
 {
   "$schema": "https://schemas.kicad.org/drc.v1.json",
-  "coordinateUnits": "mm",
-  "date": "2026-08-29T05:28:34.184681-07:00",
-  "kicadVersion": "N/A",
-  "freeroutingVersion": "Freerouting 2.3.1-SNAPSHOT",
+  "coordinate_units": "mm",
+  "date": "2026-09-05T04:36:17.133046Z",
+  "kicad_version": "N/A",
+  "freerouting_version": "Freerouting 2.3.1-SNAPSHOT",
   "source": "Issue110-RelayModule.dsn",
-  "unconnectedItems": [
+  "unconnected_items": [
     {
       "description": "Unconnected items: Pin [/LED] and Pin [/LED] (2 total items in net)",
       "items": [
@@ -27,7 +27,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [GND] and Pin [GND] (2 total items in net)",
@@ -50,7 +50,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [+5V] and Pin [+5V] (2 total items in net)",
@@ -73,7 +73,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [+3V3] and Via [+3V3] (2 total items in net)",
@@ -96,7 +96,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [/Система питания/Питание_12В] and Pin [/Система питания/Питание_12В] (2 total items in net)",
@@ -119,7 +119,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/KN1] and Via [/KN1] (2 total items in net)",
@@ -142,7 +142,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [/KN6] and Pin [/KN6] (2 total items in net)",
@@ -165,7 +165,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/KN2] and Pin [/KN2] (2 total items in net)",
@@ -188,7 +188,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/KN3] and Pin [/KN3] (2 total items in net)",
@@ -211,7 +211,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [/KN4] and Pin [/KN4] (2 total items in net)",
@@ -234,7 +234,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [/KN5] and Pin [/KN5] (2 total items in net)",
@@ -257,7 +257,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(R2-Pad2)] and Pin [Net-(R2-Pad2)] (2 total items in net)",
@@ -280,7 +280,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [/OSC_IN] and Pin [/OSC_IN] (2 total items in net)",
@@ -303,7 +303,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [/OSC_OUT] and Pin [/OSC_OUT] (2 total items in net)",
@@ -326,7 +326,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/SWDIO] and Pin [/SWDIO] (2 total items in net)",
@@ -349,7 +349,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/SWCLK] and Pin [/SWCLK] (2 total items in net)",
@@ -372,7 +372,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/NRST] and Pin [/NRST] (2 total items in net)",
@@ -395,7 +395,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [/ESP_TX] and Pin [/ESP_TX] (2 total items in net)",
@@ -418,7 +418,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [/ESP_RX] and Pin [/ESP_RX] (2 total items in net)",
@@ -441,7 +441,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [/ESP_RST] and Pin [/ESP_RST] (2 total items in net)",
@@ -464,7 +464,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [/ESP_CH_PD] and Pin [/ESP_CH_PD] (2 total items in net)",
@@ -487,7 +487,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/ESP_GPIO0] and Via [/ESP_GPIO0] (2 total items in net)",
@@ -510,7 +510,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/USART_RX] and Via [/USART_RX] (2 total items in net)",
@@ -533,7 +533,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [/USART_TX] and Pin [/USART_TX] (2 total items in net)",
@@ -556,7 +556,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/COMP_DTR] and Pin [/COMP_DTR] (2 total items in net)",
@@ -579,7 +579,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(FU1-Pad1)] and Pin [Net-(FU1-Pad1)] (2 total items in net)",
@@ -602,7 +602,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(K1-Pad2)] and Pin [Net-(K1-Pad2)] (2 total items in net)",
@@ -625,7 +625,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(FU2-Pad1)] and Pin [Net-(FU2-Pad1)] (2 total items in net)",
@@ -648,7 +648,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/CAN_TX] and Pin [/CAN_TX] (2 total items in net)",
@@ -671,7 +671,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(K2-Pad2)] and Pin [Net-(K2-Pad2)] (2 total items in net)",
@@ -694,7 +694,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(Q1-Pad2)] and Pin [Net-(Q1-Pad2)] (2 total items in net)",
@@ -717,7 +717,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(Q2-Pad2)] and Pin [Net-(Q2-Pad2)] (2 total items in net)",
@@ -740,7 +740,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/REL_CH1] and Pin [/REL_CH1] (2 total items in net)",
@@ -763,7 +763,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/REL_CH2] and Pin [/REL_CH2] (2 total items in net)",
@@ -786,7 +786,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(FU1-Pad2)] and Pin [Net-(FU1-Pad2)] (2 total items in net)",
@@ -809,7 +809,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(FU2-Pad2)] and Pin [Net-(FU2-Pad2)] (2 total items in net)",
@@ -832,7 +832,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/CAN_RX] and Pin [/CAN_RX] (2 total items in net)",
@@ -855,7 +855,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(K1-Pad1)] and Pin [Net-(K1-Pad1)] (2 total items in net)",
@@ -878,7 +878,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(K2-Pad1)] and Pin [Net-(K2-Pad1)] (2 total items in net)",
@@ -901,7 +901,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(R1-Pad1)] and Pin [Net-(R1-Pad1)] (2 total items in net)",
@@ -924,7 +924,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(VD4-Pad2)] and Pin [Net-(VD4-Pad2)] (2 total items in net)",
@@ -947,7 +947,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(D1-Pad6)] and Pin [Net-(D1-Pad6)] (2 total items in net)",
@@ -970,7 +970,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Pin [Net-(D1-Pad7)] and Pin [Net-(D1-Pad7)] (2 total items in net)",
@@ -993,7 +993,7 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     },
     {
       "description": "Unconnected items: Via [/ESP_GPIO2] and Via [/ESP_GPIO2] (2 total items in net)",
@@ -1016,101 +1016,1021 @@
         }
       ],
       "severity": "warning",
-      "type": "unconnectedItems"
+      "type": "unconnected_items"
     }
   ],
   "violations": [
     {
-      "description": "Hole clearance violation between Via [/KN2] and Via [/KN1] (expected: 0.2002 mm, actual: 0.2001 mm)",
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad1)] and Pin [unconnected-(U1-Pad2)] (expected: 0.2002 mm, actual: 0.1993 mm)",
       "items": [
         {
-          "description": "Via [/KN2]",
+          "description": "Pin [unconnected-(U1-Pad1)]",
           "pos": {
-            "x": 169.302,
-            "y": -206.95
+            "x": 168.40120000000002,
+            "y": -199.61214999999999
           },
-          "uuid": "890"
+          "uuid": "574"
         },
         {
-          "description": "Via [/KN1]",
+          "description": "Pin [unconnected-(U1-Pad2)]",
           "pos": {
-            "x": 169.122,
-            "y": -205.95
+            "x": 168.04765,
+            "y": -199.9657
           },
-          "uuid": "889"
+          "uuid": "575"
         }
       ],
       "severity": "error",
-      "type": "holeClearance"
+      "type": "clearance"
     },
     {
-      "description": "Hole clearance violation between Via [/KN2] and Via [/KN1] (expected: 0.2002 mm, actual: 0.2001 mm)",
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad2)] and Pin [unconnected-(U1-Pad3)] (expected: 0.2002 mm, actual: 0.1995 mm)",
       "items": [
         {
-          "description": "Via [/KN2]",
+          "description": "Pin [unconnected-(U1-Pad2)]",
           "pos": {
-            "x": 169.302,
-            "y": -206.95
+            "x": 168.04765,
+            "y": -199.9657
           },
-          "uuid": "890"
+          "uuid": "575"
         },
         {
-          "description": "Via [/KN1]",
+          "description": "Pin [unconnected-(U1-Pad3)]",
           "pos": {
-            "x": 169.122,
-            "y": -205.95
+            "x": 167.6941,
+            "y": -200.31925
           },
-          "uuid": "889"
+          "uuid": "576"
         }
       ],
       "severity": "error",
-      "type": "holeClearance"
+      "type": "clearance"
     },
     {
-      "description": "Hole clearance violation between Pin [Net-(FU1-Pad1)] and BoardOutline (expected: 2.0002 mm, actual: 1.9901 mm)",
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad3)] and Pin [unconnected-(U1-Pad4)] (expected: 0.2002 mm, actual: 0.1993 mm)",
       "items": [
         {
-          "description": "Pin [Net-(FU1-Pad1)]",
+          "description": "Pin [unconnected-(U1-Pad3)]",
           "pos": {
-            "x": 113.25,
-            "y": -221.75
+            "x": 167.6941,
+            "y": -200.31925
           },
-          "uuid": "10"
+          "uuid": "576"
         },
         {
-          "description": "BoardOutline",
+          "description": "Pin [unconnected-(U1-Pad4)]",
           "pos": {
-            "x": 142.25,
-            "y": -202.5
+            "x": 167.34054999999998,
+            "y": -200.6728
           },
-          "uuid": "1"
+          "uuid": "577"
         }
       ],
       "severity": "error",
-      "type": "holeClearance"
+      "type": "clearance"
     },
     {
-      "description": "Hole clearance violation between Pin [Net-(FU1-Pad1)] and BoardOutline (expected: 2.0002 mm, actual: 1.9901 mm)",
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad4)] and Pin [/OSC_IN] (expected: 0.2002 mm, actual: 0.1995 mm)",
       "items": [
         {
-          "description": "Pin [Net-(FU1-Pad1)]",
+          "description": "Pin [unconnected-(U1-Pad4)]",
           "pos": {
-            "x": 113.25,
-            "y": -221.75
+            "x": 167.34054999999998,
+            "y": -200.6728
           },
-          "uuid": "10"
+          "uuid": "577"
         },
         {
-          "description": "BoardOutline",
+          "description": "Pin [/OSC_IN]",
           "pos": {
-            "x": 142.25,
-            "y": -202.5
+            "x": 166.987,
+            "y": -201.02635
           },
-          "uuid": "1"
+          "uuid": "578"
         }
       ],
       "severity": "error",
-      "type": "holeClearance"
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/OSC_IN] and Pin [/OSC_OUT] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/OSC_IN]",
+          "pos": {
+            "x": 166.987,
+            "y": -201.02635
+          },
+          "uuid": "578"
+        },
+        {
+          "description": "Pin [/OSC_OUT]",
+          "pos": {
+            "x": 166.63345,
+            "y": -201.3799
+          },
+          "uuid": "579"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/OSC_OUT] and Pin [/NRST] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/OSC_OUT]",
+          "pos": {
+            "x": 166.63345,
+            "y": -201.3799
+          },
+          "uuid": "579"
+        },
+        {
+          "description": "Pin [/NRST]",
+          "pos": {
+            "x": 166.2799,
+            "y": -201.73345
+          },
+          "uuid": "580"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/NRST] and Pin [GND] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/NRST]",
+          "pos": {
+            "x": 166.2799,
+            "y": -201.73345
+          },
+          "uuid": "580"
+        },
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 165.92635,
+            "y": -202.087
+          },
+          "uuid": "581"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [GND] and Pin [+3V3] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 165.92635,
+            "y": -202.087
+          },
+          "uuid": "581"
+        },
+        {
+          "description": "Pin [+3V3]",
+          "pos": {
+            "x": 165.5728,
+            "y": -202.44055
+          },
+          "uuid": "582"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [+3V3] and Pin [unconnected-(U1-Pad10)] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [+3V3]",
+          "pos": {
+            "x": 165.5728,
+            "y": -202.44055
+          },
+          "uuid": "582"
+        },
+        {
+          "description": "Pin [unconnected-(U1-Pad10)]",
+          "pos": {
+            "x": 165.21925,
+            "y": -202.79410000000001
+          },
+          "uuid": "583"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad10)] and Pin [/COMP_DTR] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [unconnected-(U1-Pad10)]",
+          "pos": {
+            "x": 165.21925,
+            "y": -202.79410000000001
+          },
+          "uuid": "583"
+        },
+        {
+          "description": "Pin [/COMP_DTR]",
+          "pos": {
+            "x": 164.8657,
+            "y": -203.14765
+          },
+          "uuid": "584"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/COMP_DTR] and Pin [/USART_TX] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [/COMP_DTR]",
+          "pos": {
+            "x": 164.8657,
+            "y": -203.14765
+          },
+          "uuid": "584"
+        },
+        {
+          "description": "Pin [/USART_TX]",
+          "pos": {
+            "x": 164.51215,
+            "y": -203.5012
+          },
+          "uuid": "585"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/USART_RX] and Pin [unconnected-(U1-Pad14)] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [/USART_RX]",
+          "pos": {
+            "x": 164.51215,
+            "y": -205.4988
+          },
+          "uuid": "586"
+        },
+        {
+          "description": "Pin [unconnected-(U1-Pad14)]",
+          "pos": {
+            "x": 164.8657,
+            "y": -205.85235
+          },
+          "uuid": "587"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad14)] and Pin [unconnected-(U1-Pad15)] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [unconnected-(U1-Pad14)]",
+          "pos": {
+            "x": 164.8657,
+            "y": -205.85235
+          },
+          "uuid": "587"
+        },
+        {
+          "description": "Pin [unconnected-(U1-Pad15)]",
+          "pos": {
+            "x": 165.21925,
+            "y": -206.20589999999999
+          },
+          "uuid": "588"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad15)] and Pin [unconnected-(U1-Pad16)] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [unconnected-(U1-Pad15)]",
+          "pos": {
+            "x": 165.21925,
+            "y": -206.20589999999999
+          },
+          "uuid": "588"
+        },
+        {
+          "description": "Pin [unconnected-(U1-Pad16)]",
+          "pos": {
+            "x": 165.5728,
+            "y": -206.55945
+          },
+          "uuid": "589"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad16)] and Pin [/REL_CH1] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [unconnected-(U1-Pad16)]",
+          "pos": {
+            "x": 165.5728,
+            "y": -206.55945
+          },
+          "uuid": "589"
+        },
+        {
+          "description": "Pin [/REL_CH1]",
+          "pos": {
+            "x": 165.92635,
+            "y": -206.913
+          },
+          "uuid": "590"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/REL_CH1] and Pin [/KN1] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/REL_CH1]",
+          "pos": {
+            "x": 165.92635,
+            "y": -206.913
+          },
+          "uuid": "590"
+        },
+        {
+          "description": "Pin [/KN1]",
+          "pos": {
+            "x": 166.2799,
+            "y": -207.26655
+          },
+          "uuid": "591"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/KN1] and Pin [/KN2] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/KN1]",
+          "pos": {
+            "x": 166.2799,
+            "y": -207.26655
+          },
+          "uuid": "591"
+        },
+        {
+          "description": "Pin [/KN2]",
+          "pos": {
+            "x": 166.63345,
+            "y": -207.6201
+          },
+          "uuid": "592"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/KN2] and Pin [/KN3] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/KN2]",
+          "pos": {
+            "x": 166.63345,
+            "y": -207.6201
+          },
+          "uuid": "592"
+        },
+        {
+          "description": "Pin [/KN3]",
+          "pos": {
+            "x": 166.987,
+            "y": -207.97365
+          },
+          "uuid": "593"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/KN3] and Pin [/ESP_RST] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/KN3]",
+          "pos": {
+            "x": 166.987,
+            "y": -207.97365
+          },
+          "uuid": "593"
+        },
+        {
+          "description": "Pin [/ESP_RST]",
+          "pos": {
+            "x": 167.34054999999998,
+            "y": -208.3272
+          },
+          "uuid": "594"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/ESP_RST] and Pin [unconnected-(U1-Pad22)] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [/ESP_RST]",
+          "pos": {
+            "x": 167.34054999999998,
+            "y": -208.3272
+          },
+          "uuid": "594"
+        },
+        {
+          "description": "Pin [unconnected-(U1-Pad22)]",
+          "pos": {
+            "x": 167.6941,
+            "y": -208.68075
+          },
+          "uuid": "595"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad22)] and Pin [GND] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [unconnected-(U1-Pad22)]",
+          "pos": {
+            "x": 167.6941,
+            "y": -208.68075
+          },
+          "uuid": "595"
+        },
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 168.04765,
+            "y": -209.0343
+          },
+          "uuid": "596"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [GND] and Pin [+3V3] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 168.04765,
+            "y": -209.0343
+          },
+          "uuid": "596"
+        },
+        {
+          "description": "Pin [+3V3]",
+          "pos": {
+            "x": 168.40120000000002,
+            "y": -209.38785000000001
+          },
+          "uuid": "597"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad25)] and Pin [unconnected-(U1-Pad26)] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [unconnected-(U1-Pad25)]",
+          "pos": {
+            "x": 170.3988,
+            "y": -209.38785000000001
+          },
+          "uuid": "598"
+        },
+        {
+          "description": "Pin [unconnected-(U1-Pad26)]",
+          "pos": {
+            "x": 170.75235,
+            "y": -209.0343
+          },
+          "uuid": "599"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad26)] and Pin [unconnected-(U1-Pad27)] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [unconnected-(U1-Pad26)]",
+          "pos": {
+            "x": 170.75235,
+            "y": -209.0343
+          },
+          "uuid": "599"
+        },
+        {
+          "description": "Pin [unconnected-(U1-Pad27)]",
+          "pos": {
+            "x": 171.1059,
+            "y": -208.68075
+          },
+          "uuid": "600"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad27)] and Pin [unconnected-(U1-Pad28)] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [unconnected-(U1-Pad27)]",
+          "pos": {
+            "x": 171.1059,
+            "y": -208.68075
+          },
+          "uuid": "600"
+        },
+        {
+          "description": "Pin [unconnected-(U1-Pad28)]",
+          "pos": {
+            "x": 171.45945,
+            "y": -208.3272
+          },
+          "uuid": "601"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad28)] and Pin [/REL_CH2] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [unconnected-(U1-Pad28)]",
+          "pos": {
+            "x": 171.45945,
+            "y": -208.3272
+          },
+          "uuid": "601"
+        },
+        {
+          "description": "Pin [/REL_CH2]",
+          "pos": {
+            "x": 171.813,
+            "y": -207.97365
+          },
+          "uuid": "602"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/REL_CH2] and Pin [/ESP_RX] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/REL_CH2]",
+          "pos": {
+            "x": 171.813,
+            "y": -207.97365
+          },
+          "uuid": "602"
+        },
+        {
+          "description": "Pin [/ESP_RX]",
+          "pos": {
+            "x": 172.16655,
+            "y": -207.6201
+          },
+          "uuid": "603"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/ESP_RX] and Pin [/ESP_TX] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/ESP_RX]",
+          "pos": {
+            "x": 172.16655,
+            "y": -207.6201
+          },
+          "uuid": "603"
+        },
+        {
+          "description": "Pin [/ESP_TX]",
+          "pos": {
+            "x": 172.5201,
+            "y": -207.26655
+          },
+          "uuid": "604"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/ESP_TX] and Pin [/CAN_RX] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/ESP_TX]",
+          "pos": {
+            "x": 172.5201,
+            "y": -207.26655
+          },
+          "uuid": "604"
+        },
+        {
+          "description": "Pin [/CAN_RX]",
+          "pos": {
+            "x": 172.87365,
+            "y": -206.913
+          },
+          "uuid": "605"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/CAN_RX] and Pin [/CAN_TX] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/CAN_RX]",
+          "pos": {
+            "x": 172.87365,
+            "y": -206.913
+          },
+          "uuid": "605"
+        },
+        {
+          "description": "Pin [/CAN_TX]",
+          "pos": {
+            "x": 173.2272,
+            "y": -206.55945
+          },
+          "uuid": "606"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/CAN_TX] and Pin [/SWDIO] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [/CAN_TX]",
+          "pos": {
+            "x": 173.2272,
+            "y": -206.55945
+          },
+          "uuid": "606"
+        },
+        {
+          "description": "Pin [/SWDIO]",
+          "pos": {
+            "x": 173.58075,
+            "y": -206.20589999999999
+          },
+          "uuid": "607"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/SWDIO] and Pin [GND] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/SWDIO]",
+          "pos": {
+            "x": 173.58075,
+            "y": -206.20589999999999
+          },
+          "uuid": "607"
+        },
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 173.93429999999998,
+            "y": -205.85235
+          },
+          "uuid": "608"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [GND] and Pin [+3V3] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 173.93429999999998,
+            "y": -205.85235
+          },
+          "uuid": "608"
+        },
+        {
+          "description": "Pin [+3V3]",
+          "pos": {
+            "x": 174.28785,
+            "y": -205.4988
+          },
+          "uuid": "609"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/SWCLK] and Pin [unconnected-(U1-Pad38)] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [/SWCLK]",
+          "pos": {
+            "x": 174.28785,
+            "y": -203.5012
+          },
+          "uuid": "610"
+        },
+        {
+          "description": "Pin [unconnected-(U1-Pad38)]",
+          "pos": {
+            "x": 173.93429999999998,
+            "y": -203.14765
+          },
+          "uuid": "611"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad38)] and Pin [/KN4] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [unconnected-(U1-Pad38)]",
+          "pos": {
+            "x": 173.93429999999998,
+            "y": -203.14765
+          },
+          "uuid": "611"
+        },
+        {
+          "description": "Pin [/KN4]",
+          "pos": {
+            "x": 173.58075,
+            "y": -202.79410000000001
+          },
+          "uuid": "612"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/KN4] and Pin [/KN5] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [/KN4]",
+          "pos": {
+            "x": 173.58075,
+            "y": -202.79410000000001
+          },
+          "uuid": "612"
+        },
+        {
+          "description": "Pin [/KN5]",
+          "pos": {
+            "x": 173.2272,
+            "y": -202.44055
+          },
+          "uuid": "613"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/KN5] and Pin [/KN6] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/KN5]",
+          "pos": {
+            "x": 173.2272,
+            "y": -202.44055
+          },
+          "uuid": "613"
+        },
+        {
+          "description": "Pin [/KN6]",
+          "pos": {
+            "x": 172.87365,
+            "y": -202.087
+          },
+          "uuid": "614"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/KN6] and Pin [/LED] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/KN6]",
+          "pos": {
+            "x": 172.87365,
+            "y": -202.087
+          },
+          "uuid": "614"
+        },
+        {
+          "description": "Pin [/LED]",
+          "pos": {
+            "x": 172.5201,
+            "y": -201.73345
+          },
+          "uuid": "615"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/LED] and Pin [/ESP_GPIO0] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/LED]",
+          "pos": {
+            "x": 172.5201,
+            "y": -201.73345
+          },
+          "uuid": "615"
+        },
+        {
+          "description": "Pin [/ESP_GPIO0]",
+          "pos": {
+            "x": 172.16655,
+            "y": -201.3799
+          },
+          "uuid": "616"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/ESP_GPIO0] and Pin [unconnected-(U1-Pad44)] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/ESP_GPIO0]",
+          "pos": {
+            "x": 172.16655,
+            "y": -201.3799
+          },
+          "uuid": "616"
+        },
+        {
+          "description": "Pin [unconnected-(U1-Pad44)]",
+          "pos": {
+            "x": 171.813,
+            "y": -201.02635
+          },
+          "uuid": "617"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [unconnected-(U1-Pad44)] and Pin [/ESP_GPIO2] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [unconnected-(U1-Pad44)]",
+          "pos": {
+            "x": 171.813,
+            "y": -201.02635
+          },
+          "uuid": "617"
+        },
+        {
+          "description": "Pin [/ESP_GPIO2]",
+          "pos": {
+            "x": 171.45945,
+            "y": -200.6728
+          },
+          "uuid": "618"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/ESP_GPIO2] and Pin [/ESP_CH_PD] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [/ESP_GPIO2]",
+          "pos": {
+            "x": 171.45945,
+            "y": -200.6728
+          },
+          "uuid": "618"
+        },
+        {
+          "description": "Pin [/ESP_CH_PD]",
+          "pos": {
+            "x": 171.1059,
+            "y": -200.31925
+          },
+          "uuid": "619"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [/ESP_CH_PD] and Pin [GND] (expected: 0.2002 mm, actual: 0.1995 mm)",
+      "items": [
+        {
+          "description": "Pin [/ESP_CH_PD]",
+          "pos": {
+            "x": 171.1059,
+            "y": -200.31925
+          },
+          "uuid": "619"
+        },
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 170.75235,
+            "y": -199.9657
+          },
+          "uuid": "620"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Pin [GND] and Pin [+3V3] (expected: 0.2002 mm, actual: 0.1993 mm)",
+      "items": [
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 170.75235,
+            "y": -199.9657
+          },
+          "uuid": "620"
+        },
+        {
+          "description": "Pin [+3V3]",
+          "pos": {
+            "x": 170.3988,
+            "y": -199.61214999999999
+          },
+          "uuid": "621"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
     },
     {
       "description": "Via is not connected or connected on only one layer",
@@ -1443,6 +2363,6 @@
       "type": "via_dangling"
     }
   ],
-  "schematicParity": [],
-  "qualityScore": 0.0
+  "schematic_parity": [],
+  "quality_score": 0.0
 }

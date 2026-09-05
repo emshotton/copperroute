@@ -1,7 +1,7 @@
-jar          <FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar
-jar size     63288650 bytes
-jar mtime    2026-08-27 20:03:08 -0700
-jar version  Freerouting 2.3.1-SNAPSHOT
-java         openjdk version "25.0.4.1" 2026-08-18
-hash mode    -XX:hashCode=2
-command      java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -jar <jar> -de <FREEROUTING_JAVA_DIR>/fixtures/Issue575-drc_dev-board_4_hole_clearance_violations.dsn -drc <workspace>/tests/reference/drc-dev-board/drc.json
+lane         port
+port sha     0f30c92a85aa
+plan 9 task  KICAD-DRC-T13b
+budget       n/a — the -drc path checks a board and never enters the router, so no
+             RouterBudget is constructed on this path.
+version      Freerouting 2.3.1-SNAPSHOT
+command      target/release/freerouting -de <FREEROUTING_JAVA_DIR>/fixtures/Issue575-drc_dev-board_4_hole_clearance_violations.dsn -drc <FREEROUTING_JAVA_DIR>-rs/.claude/worktrees/kicad-drc-exploration/tests/reference/drc-dev-board/drc.json
