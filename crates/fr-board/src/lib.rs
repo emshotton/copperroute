@@ -36,9 +36,9 @@ pub use library::{
 };
 pub use rules::{
     BoardRules, CLEARANCE_SAFETY_MARGIN, ClearanceClassIndexed, ClearanceMatrix,
-    DefaultItemClearanceClasses, ItemClass, Net, NetClass, NetClasses, Nets, PadstackLookup,
-    ViaInfo, ViaInfos, ViaRule, compare_to_ignore_case, equals_ignore_case, java_to_lower,
-    java_to_upper,
+    DefaultItemClearanceClasses, DrcConstraints, DrcSeverity, ItemClass, Net, NetClass, NetClasses,
+    Nets, PadstackLookup, ViaInfo, ViaInfos, ViaRule, compare_to_ignore_case, equals_ignore_case,
+    java_to_lower, java_to_upper,
 };
 pub use searchtree::{ItemLookup, NoRooms, RoomLookup, SearchTreeManager, ShapeSearchTree};
 pub use structure::{
@@ -53,14 +53,14 @@ pub mod prelude {
         ClearanceViolation, Communication, Component, ComponentObstacleArea, ComponentOutline,
         Components, ConductionArea, Connectable, ConnectableRef, ConnectionId,
         DEFAULT_MAX_TREE_SHAPE_WIDTH, DefaultItemClearanceClasses, DelaunayCorner, DelaunayEdge,
-        DrillItemData, DrillItemPadstackLookup, FixedState, Item, ItemClass, ItemCtx, ItemHeader,
-        ItemId, ItemIdGenerator, ItemKind, ItemLookup, Keepout, Layer, LayerStructure, LeafId,
-        LogicalPart, LogicalParts, MAX_NORMALIZATION_DEPTH, MAX_NORMALIZE_ITERATIONS, Net,
-        NetClass, NetClassId, NetClasses, Nets, NoRooms, Node, NodeId, ObstacleArea,
-        ObstacleAreaData, ObstacleRoomId, Package, PackagePin, Packages, Padstack, PadstackId,
-        PadstackLookup, Padstacks, PartPin, Pin, PlanarDelaunayTriangulation, PolylineTrace,
-        RoomId, RoomLookup, SearchTreeManager, ShapeAndEntrySide, ShapeEntrySide, ShapeSearchTree,
-        ShapeTraceEntries, ShapeTree, StopCheck, StopConnectionOption, TimeLimit,
+        DrcConstraints, DrcSeverity, DrillItemData, DrillItemPadstackLookup, FixedState, Item,
+        ItemClass, ItemCtx, ItemHeader, ItemId, ItemIdGenerator, ItemKind, ItemLookup, Keepout,
+        Layer, LayerStructure, LeafId, LogicalPart, LogicalParts, MAX_NORMALIZATION_DEPTH,
+        MAX_NORMALIZE_ITERATIONS, Net, NetClass, NetClassId, NetClasses, Nets, NoRooms, Node,
+        NodeId, ObstacleArea, ObstacleAreaData, ObstacleRoomId, Package, PackagePin, Packages,
+        Padstack, PadstackId, PadstackLookup, Padstacks, PartPin, Pin, PlanarDelaunayTriangulation,
+        PolylineTrace, RoomId, RoomLookup, SearchTreeManager, ShapeAndEntrySide, ShapeEntrySide,
+        ShapeSearchTree, ShapeTraceEntries, ShapeTree, StopCheck, StopConnectionOption, TimeLimit,
         TraceExitRestriction, TreeEntries, TreeEntry, TreeId, TreeObject, Unit, Via, ViaInfo,
         ViaInfoId, ViaInfos, ViaObstacleArea, ViaRule, ViaRuleId, WriteResolution,
         compare_to_ignore_case, equals_ignore_case, free_trace_tree_shapes, java_to_lower,
