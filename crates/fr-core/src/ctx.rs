@@ -37,7 +37,7 @@ impl<'a> Ctx<'a> {
 pub struct RoutingResult {
     pub stats: fr_router::score::BoardStatistics,
     pub unrouted_report: String,
-    pub drc_violations: Vec<fr_board::ClearanceViolation>,
+    pub drc_violations: Vec<fr_drc::DrcViolation>,
     pub timed_out: bool,
     pub pipeline: fr_router::pipeline::PipelineResult,
 }

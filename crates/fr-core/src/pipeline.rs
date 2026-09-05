@@ -16,7 +16,7 @@ impl RoutingPipeline {
 
         let unrouted_report = fr_router::pipeline::build_unrouted_report(board);
 
-        let drc_violations = fr_drc::DesignRulesChecker::new(board).get_all_clearance_violations();
+        let drc_violations = fr_drc::DesignRulesChecker::new(board).get_all_violations();
 
         let timed_out = pipeline.timed_out || stop.is_timed_out() || ctx.cancel.is_timed_out();
 

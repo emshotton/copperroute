@@ -106,10 +106,15 @@ fn routing_result_carries_the_drc_violations_and_the_incompletes() {
     );
 
     assert_eq!(result.violation_count(), result.drc_violations.len());
+    let routing_involved = result
+        .drc_violations
+        .iter()
+        .filter(|violation| violation.involves_routing(&run.board))
+        .count();
     assert_eq!(
         result.stats.clearance_violations.total_count,
-        Some(result.violation_count() as i32),
-        "the DRC pass and BoardStatistics disagree about the same board"
+        Some(routing_involved as i32),
+        "BoardStatistics counts the routing-involved subset of the DRC pass"
     );
 
     assert!(!result.timed_out);
@@ -130,6 +135,7 @@ fn routing_result_carries_the_drc_violations_and_the_incompletes() {
 
 struct Run {
     result: RoutingResult,
+    board: fr_board::Board,
     ses: String,
 }
 
@@ -181,7 +187,7 @@ fn route(sink: &SyncProgressSink) -> Run {
         .expect("the SES writer never fails on a board it just routed");
     let ses = String::from_utf8(ses).expect("the SES writer emits UTF-8");
 
-    Run { result, ses }
+    Run { result, board, ses }
 }
 
 fn read_board(dsn: &std::path::Path, design_name: &str) -> (fr_board::Board, CoordinateTransform) {

@@ -276,7 +276,7 @@ fn metrics(board: &mut Board, net_no: i32) -> RouterMetrics {
         incompletes: drc.get_incomplete_count() as i64,
         vias,
         trace_length,
-        violations: drc.get_all_clearance_violations().len() as i64,
+        violations: drc.get_all_violations().len() as i64,
     }
 }
 

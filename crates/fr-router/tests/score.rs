@@ -1,6 +1,6 @@
 use fr_board::prelude::*;
 use fr_board::structure::{FixedState, Unit};
-use fr_drc::DesignRulesChecker;
+use fr_drc::{DesignRulesChecker, DrcViolation};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_router::route_connection;
 use fr_router::score::{BoardStatistics, java_double_stream_sum};
@@ -669,9 +669,14 @@ fn the_connection_counters_are_fr_drcs_own() {
         stats.connections.incomplete_count,
         Some(drc.get_incomplete_count() as i32)
     );
+    let violations = drc.get_all_violations();
+    let routing_involved: Vec<DrcViolation> = violations
+        .into_iter()
+        .filter(|violation| violation.involves_routing(&board))
+        .collect();
     assert_eq!(
         stats.clearance_violations.total_count,
-        Some(drc.get_all_clearance_violations().len() as i32)
+        Some(routing_involved.len() as i32)
     );
 }
 

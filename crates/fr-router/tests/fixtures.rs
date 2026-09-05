@@ -89,7 +89,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::prelude::*;
-use fr_drc::DesignRulesChecker;
+use fr_drc::{DesignRulesChecker, DrcViolation};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_router::pipeline::{
     NoopProgressSink, RouterBudget, RouterStop, prepare_board, run_pipeline,
@@ -213,10 +213,16 @@ fn route_one_pass(dsn: &str, k: usize) -> PassResult {
     }
 
     let mut drc = DesignRulesChecker::new(&mut board);
+    let incomplete_connections = drc.get_incomplete_count();
+    let violations = drc.get_all_violations();
+    let clearance_violations: Vec<DrcViolation> = violations
+        .into_iter()
+        .filter(|violation| violation.involves_routing(&board))
+        .collect();
     PassResult {
         routed,
-        incomplete_connections: drc.get_incomplete_count(),
-        clearance_violations: drc.get_all_clearance_violations().len(),
+        incomplete_connections,
+        clearance_violations: clearance_violations.len(),
     }
 }
 
