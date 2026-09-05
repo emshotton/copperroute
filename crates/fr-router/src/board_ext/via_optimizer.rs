@@ -433,6 +433,9 @@ impl ViaOptimizer {
         DrillItemMover::check(board, via, &delta, 0, 0, None, None)
     }
 
+    // Every `Some` this returns comes from `reposition_via_toward_location` or
+    // `reposition_via_check_candidate`, both of which already refuse an angle-restricted
+    // delta; this function never applies a delta of its own.
     #[allow(clippy::too_many_arguments)]
     pub fn reposition_via_general(
         board: &mut Board,

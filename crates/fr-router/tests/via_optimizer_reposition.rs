@@ -430,6 +430,65 @@ fn the_general_case_leaves_the_board_untouched_when_no_candidate_improves() {
     assert!(successes > 0, "and so is the success path");
 }
 
+#[test]
+fn the_general_case_never_returns_a_diagonal_move_under_ninety_degree_restriction() {
+    let mut board = routed("Issue026-J2_reference.dsn");
+    board.rules.trace_angle_restriction = AngleRestriction::NinetyDegree;
+    let via_ids: Vec<ItemId> = board
+        .get_items()
+        .filter(|item| matches!(item, Item::Via(_)))
+        .map(Item::id)
+        .collect();
+    let mut checked = 0;
+    for via_id in via_ids {
+        if classify(&board, via_id) != "TWO_TRACES" {
+            continue;
+        }
+        let (t1, t2, c1, c2) = overload_c_arguments(&board, via_id);
+        let (hw1, cl1, layer1) = trace_params(&board, t1);
+        let (hw2, cl2, layer2) = trace_params(&board, t2);
+        let Some(via_center) = board.drill_center(via_id) else {
+            continue;
+        };
+        for pair in &COST_PAIRS {
+            let answer = ViaOptimizer::reposition_via_general(
+                &mut board,
+                via_id,
+                hw1,
+                cl1,
+                layer1,
+                ExpansionCostFactor {
+                    horizontal: pair[0],
+                    vertical: pair[1],
+                },
+                &c1,
+                hw2,
+                cl2,
+                layer2,
+                ExpansionCostFactor {
+                    horizontal: pair[2],
+                    vertical: pair[3],
+                },
+                &c2,
+            );
+            checked += 1;
+            if let Some(new_location) = answer {
+                let delta = new_location.difference_by(&via_center);
+                assert!(
+                    delta.is_orthogonal(),
+                    "via {} moved to {new_location:?} (delta {delta:?}), which is not \
+                     orthogonal, under a NinetyDegree restriction",
+                    via_id.0
+                );
+            }
+        }
+    }
+    assert!(
+        checked > 0,
+        "the fixture has no two-trace via to exercise overload C"
+    );
+}
+
 const COST_PAIRS: [[f64; 4]; 5] = [
     [1.0, 1.0, 1.0, 1.0],
     [1.0, 2.0, 2.0, 1.0],
