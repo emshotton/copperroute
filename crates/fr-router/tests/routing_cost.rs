@@ -344,3 +344,92 @@ fn the_search_stop_check_sees_an_expired_job_deadline_without_a_poll() {
     assert!(!fresh.is_stopped_or_expired());
     assert!(!fresh.is_timed_out());
 }
+
+#[test]
+fn the_routing_decision_statistics_skip_the_fanout_census() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let mut board = load_rpi();
+    let full = BoardStatistics::with_options(&mut board, None, false);
+    let slim = BoardStatistics::for_routing_decisions(&mut board);
+
+    assert_eq!(slim.items, full.items);
+    assert_eq!(slim.traces, full.traces);
+    assert_eq!(slim.connections, full.connections);
+    assert_eq!(slim.vias, full.vias);
+    assert_eq!(slim.bends, full.bends);
+    assert_eq!(slim.clearance_violations, full.clearance_violations);
+    assert!(
+        full.fanout.total_smd_pins > 0,
+        "rpi_splitter has SMD pins, so the full census counts them"
+    );
+    assert_eq!(
+        slim.fanout,
+        fr_router::score::BoardStatisticsFanout::default()
+    );
+}
+
+#[test]
+#[cfg_attr(debug_assertions, ignore = "routes rpi_splitter; run with --release")]
+fn the_optimizers_carried_incomplete_counts_match_a_full_count() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let mut board = load_rpi();
+    let settings = rpi_settings(&board);
+    let stop = RouterStop::new();
+    AutorouteBatchLoop::run(
+        &mut board,
+        &settings,
+        &stop,
+        RouterBudget::disabled(),
+        &mut NoopProgressSink,
+    )
+    .expect("rpi_splitter routes");
+
+    let mut optimizer = BatchOptimizer::new(&settings);
+    optimizer.begin_pass_bookkeeping(&mut board);
+    let mut cursor = fr_router::pipeline::ReadSortedRouteItems::new();
+    let mut accepted = 0;
+    let mut undone = 0;
+    while let Some(item) = cursor.next(&board) {
+        if accepted + undone == 12 {
+            break;
+        }
+        let full_before = BatchOptimizer::calculate_incomplete_count(&mut board);
+        let result = optimizer
+            .opt_route_item(
+                &mut board,
+                item,
+                true,
+                false,
+                &stop,
+                RouterBudget::disabled(),
+                &mut NoopProgressSink,
+            )
+            .expect("the item routes");
+        assert_eq!(
+            usize::try_from(result.incomplete_count_before()).expect("non-negative"),
+            full_before,
+            "the carried before-count is the board's count"
+        );
+        let expected_after = if result.improved() {
+            accepted += 1;
+            result.incomplete_count()
+        } else {
+            undone += 1;
+            result.incomplete_count_before()
+        };
+        assert_eq!(
+            BatchOptimizer::calculate_incomplete_count(&mut board),
+            usize::try_from(expected_after).expect("non-negative"),
+            "after item {item:?} (improved = {})",
+            result.improved()
+        );
+    }
+    assert!(
+        accepted + undone > 0,
+        "the routed board offers vias to optimise"
+    );
+}

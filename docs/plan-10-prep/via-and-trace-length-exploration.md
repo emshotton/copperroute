@@ -398,3 +398,44 @@ under two seconds on the worst boards, and sk9822 routes fully inside a 60 s job
 item pays a whole-board deep copy, a rip, a re-route and two statistics passes: 28 s per item on
 sk9822 before the work-list filter. That is W3's problem and the reason the corpus cpu roughly
 doubled; the job deadline is the bound.
+
+## 8. The optimizer's own cost, profiled and cut
+
+Sampling the optimizer stage on Hardware_Playground and sk9822 (release binary, `sample` on the
+main thread, attributed to the phases of `opt_route_item`) put about 85 % of the stage in board
+statistics and 13 % in the maze search on both boards. The snapshot, undo, rip and combine steps
+were under 3 %. Two things were behind the 85 %:
+
+- **Statistics nobody read.** The re-router's pass runner computed a whole-board statistics pass
+  at the start of every pass, another (with clearance violations) at the end, refreshed it every
+  ten items, and counted incompletes twice more for the progress counters. The field they landed
+  in was never read. An optimizer item runs up to six such passes, and the optimizer's own pass
+  loop added three more unused computations. All of it is gone; the optimizer's re-router now
+  reports no incomplete count in its pass counters (the optimizer reports it per item itself).
+- **The fanout census inside the two counts the item needs.** `BoardStatistics` walked every SMD
+  pin's connected set (`unconnected_set`, a full item scan per pin) to report escape counts the
+  optimizer never looks at: 55 % of a statistics pass on Hardware_Playground, 93 % on sk9822.
+  `BoardStatistics::for_routing_decisions` skips that block.
+
+With those gone the two incomplete counts were 45 % of an item, all of it the DRC rebuilding
+every net's item list, connected sets and Delaunay triangulation twice per item. The count is now
+carried: the pass counts the board once, and each item adjusts the carried count for the nets its
+re-route touched, which the undo journal names (`Board::journaled_nets`, the nets of every item
+created, changed or removed in the journal's window). The adjustment recounts only those nets, on
+the snapshot and on the re-routed board, with the same per-net item lists the full pass builds
+(`DesignRulesChecker::incomplete_count_for_nets`), so the number is the full pass's number; a
+debug assertion checks that on every item, and
+`the_optimizers_carried_incomplete_counts_match_a_full_count` checks it on the routed rpi board.
+
+| board | before | statistics cut | count carried |
+|---|---|---|---|
+| Hardware_Playground, optimizer done | 69.1 s | 20.3 s | 13.7 s |
+| sk9822, vias at the 5 min job deadline | 82 | 50 | 48 |
+
+Both boards route to the same wires, vias and length as before on Hardware_Playground; sk9822
+gets further inside the same deadline. Every output the goldens pin is unchanged: the removed
+work fed nothing, and the carried count equals the recomputed one.
+
+What is left per item is the maze search (38 %, of which almost half is inserting the found
+path: shove and pull-tight), the recount of the touched nets, tail removal (4 %) and the
+connectivity queries under all of them (`normal_contacts`, a shape-tree query per trace end).

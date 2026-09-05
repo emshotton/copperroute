@@ -21,7 +21,6 @@ use crate::pipeline::failure_log::RoutingFailureLog;
 use crate::pipeline::pass_runner::AutoroutePassRunner;
 use crate::pipeline::stop::{DeterministicWorkBudget, ProgressThrottler, RouterBudget};
 use crate::pipeline::{NamedAlgorithmType, ProgressSink, RouterStop};
-use crate::score::BoardStatistics;
 
 #[derive(Debug)]
 pub struct BatchAutorouter<'a> {
@@ -41,8 +40,6 @@ pub struct BatchAutorouter<'a> {
     pub net_filter: Option<BTreeSet<i32>>,
 
     board_update_gate: ProgressThrottler,
-    pub progress_statistics: Option<BoardStatistics>,
-    pub progress_items_since_statistics: i32,
 
     budget: RouterBudget,
     optimizer_work_budget: Option<Rc<DeterministicWorkBudget>>,
@@ -56,7 +53,6 @@ impl<'a> BatchAutorouter<'a> {
     pub const STOP_AT_PASS_MODULO: i32 = 4;
     pub const STAGNATION_PASS_LIMIT: i32 = 10;
     pub const FANOUT_RECOVERY_STAGNATION_PASSES: i32 = 3;
-    pub const PROGRESS_STATISTICS_ITEM_INTERVAL: i32 = 10;
     pub const STAGNATION_SCORE_THRESHOLD: f32 = 0.5;
 
     pub const BENCHMARK_PROFILE_ENABLED: bool = false;
@@ -109,8 +105,6 @@ impl<'a> BatchAutorouter<'a> {
             board_update_gate: ProgressThrottler::board_update_gate(
                 budget.board_update_throttle_ms,
             ),
-            progress_statistics: None,
-            progress_items_since_statistics: 0,
             budget,
             optimizer_work_budget: None,
         }

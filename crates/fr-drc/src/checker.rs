@@ -204,6 +204,33 @@ impl<'a> DesignRulesChecker<'a> {
         );
     }
 
+    /// The incomplete count of just `nets`, built from the same per-net item lists
+    /// [`DesignRulesChecker::calculate_all_incompletes`] builds, so it equals that pass's count
+    /// for those nets.
+    pub fn incomplete_count_for_nets(board: &Board, nets: &BTreeSet<i32>) -> usize {
+        let mut net_item_lists: BTreeMap<i32, Vec<ItemId>> = nets
+            .iter()
+            .map(|net_number| (*net_number, Vec::new()))
+            .collect();
+        for id in board.items_in_board_order() {
+            let Some(item) = board.get_item(id) else {
+                continue;
+            };
+            if !item.is_connectable() {
+                continue;
+            }
+            for i in 0..item.net_count() {
+                if let Some(list) = net_item_lists.get_mut(&item.get_net_number(i)) {
+                    list.push(id);
+                }
+            }
+        }
+        net_item_lists
+            .iter()
+            .map(|(net_number, items)| NetIncompletes::new(*net_number, items, board).count())
+            .sum()
+    }
+
     pub fn recalculate_net_incompletes(&mut self, net_number: i32) {
         if self.net_incompletes.is_none() {
             self.calculate_all_incompletes();

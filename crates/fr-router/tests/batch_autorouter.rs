@@ -225,11 +225,6 @@ fn the_constants_are_javas_literals() {
     assert_eq!(4, BatchAutorouter::STOP_AT_PASS_MODULO, ":49");
     assert_eq!(10, BatchAutorouter::STAGNATION_PASS_LIMIT, ":52");
     assert_eq!(3, BatchAutorouter::FANOUT_RECOVERY_STAGNATION_PASSES, ":54");
-    assert_eq!(
-        10,
-        BatchAutorouter::PROGRESS_STATISTICS_ITEM_INTERVAL,
-        ":57"
-    );
     assert!(
         (BatchAutorouter::STAGNATION_SCORE_THRESHOLD - 0.5_f32).abs() < f32::EPSILON,
         ":60"
@@ -1019,4 +1014,53 @@ fn an_empty_pass_with_a_stop_pending_still_removes_tails() {
         .autoroute_pass(&mut board, &mut failure_log, 1, &stop, &mut sink)
         .expect("an item-less pass cannot fail");
     assert!(!progressed);
+}
+
+#[derive(Default)]
+struct IncompleteCountSink {
+    counts: Vec<Option<i32>>,
+}
+
+impl fr_router::pipeline::ProgressSink for IncompleteCountSink {
+    fn on_event(&mut self, event: &fr_router::pipeline::RoutingEvent) {
+        if let fr_router::pipeline::RoutingEvent::BoardUpdated { counters } = event {
+            self.counts.push(counters.incomplete_count);
+        }
+    }
+}
+
+fn pass_counter_incomplete_counts(is_optimizer_autorouter: bool) -> Vec<Option<i32>> {
+    let mut board = empty_board(200, AngleRestriction::None);
+    add_net(&mut board, "N1", 0);
+    fixed_trace(&mut board, &[p(-9000, -9000), p(-9000, -8000)], 1);
+    insert_trace(&mut board, &[p(-9000, -6000), p(-9000, -5000)], 0, 30, 1);
+    let settings = RouterSettings::new();
+    let mut router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+    router.is_optimizer_autorouter = is_optimizer_autorouter;
+    let stop = fr_router::pipeline::RouterStop::new();
+    stop.request_stop_auto_router();
+    let mut failure_log = fr_router::pipeline::RoutingFailureLog::new();
+    let mut sink = IncompleteCountSink::default();
+    router
+        .autoroute_pass(&mut board, &mut failure_log, 1, &stop, &mut sink)
+        .expect("a pass that stops before its first item cannot fail");
+    sink.counts
+}
+
+#[test]
+fn a_routing_job_pass_counts_incompletes_for_its_progress_counters() {
+    let counts = pass_counter_incomplete_counts(false);
+    assert!(!counts.is_empty(), "the pass fires BoardUpdated");
+    assert!(counts.iter().all(Option::is_some));
+}
+
+#[test]
+fn the_optimizers_re_router_reports_no_incomplete_count_in_its_pass_counters() {
+    let counts = pass_counter_incomplete_counts(true);
+    assert!(!counts.is_empty(), "the pass fires BoardUpdated");
+    assert!(
+        counts.iter().all(Option::is_none),
+        "the optimizer reports the incomplete count per item itself; its re-router's passes \
+         must not pay for a whole-board count nobody reads: {counts:?}"
+    );
 }
