@@ -1119,7 +1119,12 @@ pub fn insert_net_class(
                 .create_default_via_rule(board_net_class, name, &board.library.padstacks);
         }
     } else {
-        create_via_rule(&net_class.use_via, board_net_class, board);
+        create_via_rule(
+            &net_class.use_via,
+            board_net_class,
+            board,
+            via_at_smd_allowed,
+        );
     }
     if !net_class.use_layer.is_empty() {
         create_active_trace_layers(
@@ -1321,7 +1326,12 @@ fn create_default_clearance_classes(board: &mut Board, net_class: NetClassId) {
     get_clearance_class(board, net_class, "area");
 }
 
-fn create_via_rule(use_via: &[String], net_class: NetClassId, board: &mut Board) {
+fn create_via_rule(
+    use_via: &[String],
+    net_class: NetClassId,
+    board: &mut Board,
+    attach_allowed: bool,
+) {
     let net_class_name = board
         .rules
         .net_classes
@@ -1346,7 +1356,9 @@ fn create_via_rule(use_via: &[String], net_class: NetClassId, board: &mut Board)
                 .get_padstack(info.get_padstack())
                 .map(|p| p.name.as_str());
             if padstack_name == Some(current_via_name.as_str()) {
-                new_via_rule.append_via(info.clone());
+                let mut via = info.clone();
+                via.set_attach_smd_allowed(attach_allowed && via.attach_smd_allowed());
+                new_via_rule.append_via(via);
             }
         }
     }
