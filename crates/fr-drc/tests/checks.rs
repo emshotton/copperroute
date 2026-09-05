@@ -2,6 +2,7 @@ mod common;
 
 use common::synthetic::{PadSpec, SyntheticBoard};
 use fr_board::DrcConstraints;
+use fr_drc::checks::edge;
 use fr_drc::checks::geometry::{gap_below, hole_of, is_microvia, is_through_hole_pin, item_shapes};
 use fr_drc::checks::{copper, holes, single};
 use fr_drc::{DrcViolation, DrcViolationKind};
@@ -374,4 +375,37 @@ fn a_through_hole_pad_annular_violation_is_marked_estimated() {
     single::run(&mut synthetic.board, &constraints, &mut out);
     assert_eq!(kinds(&out), vec![DrcViolationKind::AnnularWidth]);
     assert!(out[0].estimated);
+}
+
+#[test]
+#[allow(clippy::field_reassign_with_default)]
+fn a_trace_near_the_board_edge_is_a_copper_edge_clearance_violation() {
+    let mut synthetic = SyntheticBoard::new(&[], 1, 2000);
+    synthetic.trace(&[(-40_000, 48_000), (40_000, 48_000)], 0, 500, 1);
+    let mut constraints = DrcConstraints::default();
+    constraints.copper_edge_clearance = Some(5000);
+    let mut out = Vec::new();
+    edge::run(&mut synthetic.board, &constraints, &mut out);
+    assert_eq!(kinds(&out), vec![DrcViolationKind::CopperEdgeClearance]);
+    assert_eq!(out[0].expected, 5000.0);
+    assert!(
+        (out[0].actual - 1500.0).abs() < 2.0,
+        "actual {}",
+        out[0].actual
+    );
+    assert_eq!(out[0].second_item, synthetic.board.get_outline());
+}
+
+#[test]
+#[allow(clippy::field_reassign_with_default)]
+fn edge_clearance_is_silent_without_a_rule_or_away_from_the_edge() {
+    let mut synthetic = SyntheticBoard::new(&[], 1, 2000);
+    synthetic.trace(&[(-10_000, 0), (10_000, 0)], 0, 500, 1);
+    let mut out = Vec::new();
+    edge::run(&mut synthetic.board, &DrcConstraints::default(), &mut out);
+    assert!(out.is_empty());
+    let mut constraints = DrcConstraints::default();
+    constraints.copper_edge_clearance = Some(5000);
+    edge::run(&mut synthetic.board, &constraints, &mut out);
+    assert!(out.is_empty(), "{out:?}");
 }
