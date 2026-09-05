@@ -1,7 +1,3 @@
-//! [`TightenerBase`]: the state and the shared algorithms of `board/optimize/TraceTightener.java`
-//! — Java's `abstract class TraceTightener`, minus the three abstract methods and minus the two
-//! entry points that dispatch to them, which live on [`TraceTightener`](super::TraceTightener).
-
 use std::collections::BTreeSet;
 
 use fr_board::datastructures::StopCheck;
@@ -9,43 +5,16 @@ use fr_board::prelude::*;
 use fr_board::{BoardError, ItemId, TimeLimit};
 use fr_geometry::{FloatPoint, IntOctagon, IntPoint, Line, Point, Polyline, Side, Signum};
 
-/// `TraceTightener.c_max_cos_angle` (TraceTightener.java:33): "with angles too close to 180
-/// degree the algorithm becomes numerically unstable".
 pub(crate) const C_MAX_COS_ANGLE: f64 = 0.999;
 
-/// `TraceTightener.c_min_corner_dist_square` (TraceTightener.java:36).
 pub(crate) const C_MIN_CORNER_DIST_SQUARE: f64 = 0.9;
 
-/// Java's `new Polyline(Line[])`, the normalising constructor every tightening step funnels
-/// through (Polyline.java:73-102).
-///
-/// [`Polyline::from_lines`] answers `Err` on the one input class where Java throws — the
-/// `tmpArr[-1]` read of `Polyline.removeOverlaps` (Polyline.java:148, quirk #22). No `catch`
-/// stands between any tightener and `AutorouteConnectionRouter.route:155-158`, so the port
-/// panics there and the caller's `catch_unwind` boundary turns it into that method's bare
-/// `FAILED`, exactly as Task 14 ruled for `FoundConnectionLocator`'s latent NPEs.
-// totalized: Java's ArrayIndexOutOfBoundsException out of `new Polyline(Line[])` becomes a panic.
 pub(crate) fn new_polyline(lines: Vec<Line>) -> Polyline {
     Polyline::from_lines(lines).unwrap_or_else(|e| {
         panic!("new Polyline(Line[]) threw (Polyline.java:148, quirk #22): {e}")
     })
 }
 
-/// [`new_polyline`] for the tighteners' six `new Polyline(<local array>)` sites that **re-read
-/// that array afterwards**, returning the polyline **and** the array those sites should read.
-///
-/// Java's constructor normalises the caller's array in place — see
-/// [`Polyline::from_lines_normalised`], which carries the Java line numbers — so
-/// `TraceTightener.java:311`'s `newLine = checkLines[1]` and its five siblings read the
-/// *normalised* line, whose direction may have been flipped and which is therefore a different
-/// `Line` object. That matters since quirk #74: a flipped line is a new identity token, and
-/// `PolylineTrace.change` compares tokens.
-///
-/// fixed: T11 (#188) — this was `new_polyline_in_place(&mut Vec<Line>)` and mutated its caller's
-/// vector. The normalised array is now a **return value**, so no local array is written behind its
-/// owner's back and the six sites read what they built. The answer is unchanged: the second
-/// element is the polyline's own lines exactly when Java's write-back would have fired, and the
-/// untouched input otherwise.
 pub(crate) fn new_polyline_normalised(lines: &[Line]) -> (Polyline, Vec<Line>) {
     Polyline::from_lines_normalised(lines).unwrap_or_else(|e| {
         panic!("new Polyline(Line[]) threw (Polyline.java:148, quirk #22): {e}")
@@ -56,23 +25,10 @@ pub(crate) fn new_polyline_normalised(lines: &[Line]) -> (Polyline, Vec<Line>) {
 /// `fr-board` uses for the same purpose.
 static NEVER_STOP: fn() -> bool = || false;
 
-/// The state Java keeps on `abstract class TraceTightener` (TraceTightener.java:31-61) plus the
-/// algorithms that are neither abstract nor dispatch to something abstract.
-///
-/// # What is not a field here
-///
-/// Java's `protected final RoutingBoard board` (`:37`) is a **parameter** of every method below.
-/// `fr-router` cannot hold a `&mut fr_board::Board` across the tightener's lifetime — the maze
-/// hands the same board to `Board::check_trace_shape` on the next line — and plan-6 ruling 3
-/// already passes the board into every `board_ext` algorithm for the same reason.
-///
-/// Java's `private final Stoppable stoppableThread` (`:43`) is plan-6 ruling 6's
-/// [`StopCheck`] instead, which is why this type carries a lifetime.
 pub(crate) struct TightenerBase<'a> {
     /// `TraceTightener.onlyNetNoArr` (`:40`): "if only_net_no > 0, only nets with this net
     /// numbers are optimized".
     pub(crate) only_net_no_arr: Vec<i32>,
-    /// `TraceTightener.stoppableThread` (`:43`), as plan-6 ruling 6's borrowed predicate.
     stoppable_thread: Option<StopCheck<'a>>,
     /// `TraceTightener.timeLimit` (`:45`) — `null` unless the constructor was given a positive
     /// millisecond budget (`:73-77`).
@@ -80,28 +36,16 @@ pub(crate) struct TightenerBase<'a> {
     /// `TraceTightener.keepPoint` (`:51`): "traces containing the keepPoint must also contain
     /// the keepPoint after optimizing".
     keep_point: Option<Point>,
-    /// `TraceTightener.keepPointLayer` (`:53`). Java's `int`, `-1` when there is no keep point.
     keep_point_layer: i32,
     /// `TraceTightener.currentLayer` (`:54`).
     pub(crate) current_layer: usize,
     /// `TraceTightener.currentHalfWidth` (`:55`) — already clearance-compensated by `:184-185`.
     pub(crate) current_half_width: i32,
-    /// `TraceTightener.currentNetNumbers` (`:56`). Java leaves it `null` until
-    /// `pullTight:186` or `smoothenEndCornersAtTrace:408` writes it, and
-    /// `BasicBoard.checkTraceShape:1017` dereferences it; the port's empty `Vec` checks against
-    /// no nets instead. Unreachable from any Java caller — both `smoothen*CornerAtTrace`
-    /// overrides are only reached through `smoothenEndCornersAtTrace`, which writes the field
-    /// first — so it is recorded here rather than in `docs/java-quirks.md`, and
-    /// `TraceTightener::smoothen_start_corner_at_trace` repeats the warning where a caller will
-    /// read it.
     pub(crate) current_net_numbers: Vec<i32>,
     /// `TraceTightener.currentClearanceClassIndex` (`:57`).
     pub(crate) current_clearance_class_index: usize,
     /// `TraceTightener.currentClipShape` (`:58`), written by `getInstance:111`.
     pub(crate) current_clip_shape: Option<IntOctagon>,
-    /// `TraceTightener.contactPins` (`:59`): "the pins at the end corners of polyline. Other pins
-    /// are regarded as obstacles, even if they are of the own net" (`:172-173`). `null` in Java
-    /// means "no pin is exempt", which [`Board::check_trace_shape`] spells `None`.
     pub(crate) contact_pins: Option<BTreeSet<ItemId>>,
     /// `TraceTightener.minTranslateDist` (`:60`), written by `getInstance:112` as
     /// `Math.max(minTranslateDist, 100)`.
@@ -109,12 +53,6 @@ pub(crate) struct TightenerBase<'a> {
 }
 
 impl<'a> TightenerBase<'a> {
-    /// Port of the constructor `TraceTightener(RoutingBoard, int[], Stoppable, int, Point, int)`
-    /// (TraceTightener.java:63-80).
-    ///
-    /// `currentClipShape` and `minTranslateDist` are **not** constructor arguments in Java
-    /// either: `getInstance` writes them onto the finished object (`:111-112`), and
-    /// [`TraceTightener::get_instance`](super::TraceTightener::get_instance) does the same.
     pub(crate) fn new(
         only_net_no_arr: Vec<i32>,
         stoppable_thread: Option<StopCheck<'a>>,
@@ -125,7 +63,6 @@ impl<'a> TightenerBase<'a> {
         TightenerBase {
             only_net_no_arr,
             stoppable_thread,
-            // TraceTightener.java:73-77.
             time_limit: if time_limit > 0 {
                 Some(TimeLimit::new(time_limit))
             } else {
@@ -133,8 +70,6 @@ impl<'a> TightenerBase<'a> {
             },
             keep_point,
             keep_point_layer,
-            // Java's fields default to 0 / null until `pullTight`'s six-argument entry writes
-            // them (`:182-188`).
             current_layer: 0,
             current_half_width: 0,
             current_net_numbers: Vec::new(),
@@ -145,11 +80,6 @@ impl<'a> TightenerBase<'a> {
         }
     }
 
-    /// Port of `isStopRequested()` (TraceTightener.java:195-212): "terminates the pull tight
-    /// algorithm, if the user has made a stop request".
-    // not ported: the two `FRLogger` calls of the time-limit branch (`:205-209`); the first of
-    // them tests `this.board == null`, which cannot happen — `board` is a `final` field written
-    // from a non-null constructor argument.
     pub(crate) fn is_stop_requested(&self) -> bool {
         // :196-198.
         if let Some(stop) = self.stoppable_thread
@@ -165,10 +95,6 @@ impl<'a> TightenerBase<'a> {
         time_limit.is_exceeded()
     }
 
-    /// The tightener's own `Stoppable` as a [`StopCheck`], for the `fr-board` walks Java calls
-    /// without one — `splitTraces` and `normalizeTraces` under
-    /// `smoothenEndCornersAtTrace1:448-452`. `null` becomes a never-tripping check, so a
-    /// tightener built without a `Stoppable` behaves exactly as Java's does.
     pub(crate) fn stop_check(&self) -> StopCheck<'a> {
         self.stoppable_thread.unwrap_or(&NEVER_STOP)
     }
@@ -186,8 +112,6 @@ impl<'a> TightenerBase<'a> {
         )
     }
 
-    /// `currentClipShape.isOutside(point)` — Java calls `TileShape.isOutside` (TileShape.java:143)
-    /// through the `IntOctagon` the clip shape always is.
     pub(crate) fn clip_is_outside(&self, point: &Point) -> bool {
         match &self.current_clip_shape {
             Some(clip) => fr_geometry::TileShape::Octagon(*clip).is_outside(point),
@@ -195,8 +119,6 @@ impl<'a> TightenerBase<'a> {
         }
     }
 
-    /// `currentClipShape == null || currentClipShape.contains(floatPoint)` — the `FloatPoint`
-    /// overload (`IntOctagon.contains(FloatPoint)`, quirk #17: inclusive on the border).
     pub(crate) fn clip_contains(&self, point: &FloatPoint) -> bool {
         match &self.current_clip_shape {
             Some(clip) => clip.contains_float(point),
@@ -204,14 +126,6 @@ impl<'a> TightenerBase<'a> {
         }
     }
 
-    /// Port of `repositionLines(Polyline)` (TraceTightener.java:215-230): "tries to shorten
-    /// polyline by relocating its lines".
-    ///
-    /// `None` is Java's "returns the argument object" — the identity the three `pullTight` loops
-    /// compare with `!=`.
-    ///
-    /// `TraceTightenerAnyAngle` overrides this (`TraceTightenerAnyAngle.java:250-274`), so this
-    /// body is the 90- and 45-degree regimes' only.
     pub(crate) fn reposition_lines(
         &mut self,
         board: &mut Board,
@@ -239,19 +153,6 @@ impl<'a> TightenerBase<'a> {
         None
     }
 
-    /// The base `repositionLine(Line[], int)` (TraceTightener.java:235-331): "tries to reposition
-    /// the line with index `no` to make the polyline consisting of `lines` shorter".
-    ///
-    /// `TraceTightenerAnyAngle` overrides it (`TraceTightenerAnyAngle.java:496-657`) with a
-    /// method whose `startNo` counts from a different end, so the two are never interchangeable.
-    ///
-    /// The `checkLines[1].equals(translateLine)` guard at `:281` is **quirk #34's** site: Java's
-    /// `Line.equals` is the *geometric* test, and `Line.translate` with `|dist| < 1` answers a
-    /// line with different end points that denotes the same line of the plane. Comparing with
-    /// the port's derived structural `==` would let the loop run on with a line that never
-    /// moves, so this uses [`Line::equals_geometric`].
-    // `maxTranslateDist` is written at `:292` and never read again — Java's own dead store; the
-    // value the algorithm uses is `sign`, taken from it at `:269` before the loop.
     #[allow(unused_assignments)]
     pub(crate) fn reposition_line(
         &mut self,
@@ -305,7 +206,6 @@ impl<'a> TightenerBase<'a> {
                 (true, Point::Int(p)) => Line::from_direction(*p, &translate_line.direction()),
                 _ => translate_line.translate(-translate_dist),
             };
-            // :281-284 — quirk #34.
             if check_line_1.equals_geometric(&translate_line) {
                 return None;
             }
@@ -360,11 +260,6 @@ impl<'a> TightenerBase<'a> {
         new_line
     }
 
-    /// Port of `skipSegmentsOfLength0(Polyline)` (TraceTightener.java:338-399): "tries to skip
-    /// line segments of length 0. A check is necessary before skipping because new dog ears may
-    /// occur."
-    ///
-    /// `None` is Java's `return polyline` at `:396`, the identity the callers compare with `!=`.
     pub(crate) fn skip_segments_of_length_0(
         &mut self,
         board: &mut Board,
@@ -435,17 +330,6 @@ impl<'a> TightenerBase<'a> {
         Some(current_polyline)
     }
 
-    /// Port of `splitTracesAtKeepPoint()` (TraceTightener.java:476-491): "splits the traces
-    /// containing this.keepPoint if this.keepPoint != null. Returns true, if something was
-    /// split."
-    ///
-    /// Java's `ItemSelectionFilter(TRACES)` is the `Item::Trace` test below —
-    /// [`Board::pick_items`] has no filter argument (see `fr-board`'s `not ported:` note on
-    /// `ItemSelectionFilter`).
-    ///
-    /// `Trace.split(Point)` is [`Board::split_trace_at_point`], whose `Err` is
-    /// [`BoardError::Stopped`] out of quirk #76's ladder walk; Java has no cancellation here at
-    /// all, so the error propagates rather than being read as "nothing was split".
     pub(crate) fn split_traces_at_keep_point(
         &mut self,
         board: &mut Board,

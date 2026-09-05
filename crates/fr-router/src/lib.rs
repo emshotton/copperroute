@@ -1,7 +1,5 @@
 #![forbid(unsafe_code)]
 
-//! HEAD is the authority for both the sources and the parity jar: HEAD's `autoroute/**` has been
-//! * **`#![forbid(unsafe_code)]`** in this crate root and in every other workspace crate. The only
 pub mod arena;
 pub mod autoroute;
 pub mod board_ext;
@@ -65,7 +63,3 @@ pub mod prelude {
         route_connection_full, run_pipeline,
     };
 }
-
-// not ported: `BoardHistoryEntry.compareTo` — `autoroute/BoardHistoryEntry.java:29-32`, the shadowed and unreachable top-level twin (quirk #199).
-
-// a javadoc `@see`, an import, or the one `instanceof` in `gui/workspace/progress/GuiRoutingJobWorker.java:305`

@@ -302,7 +302,6 @@ fn normalized_score_matches_the_jvm_on_the_unrouted_stems() {
     }
 }
 
-/// `#[cfg_attr(debug_assertions, ignore)]` is Plan 3's convention: run them with
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn normalized_score_matches_the_jvm_on_the_routed_stems() {

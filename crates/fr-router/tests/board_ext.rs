@@ -1,28 +1,3 @@
-//! Plan 6 Task 9: `RoutingBoardExt`, the check-only half of `board.optimize.TraceShover` and
-//! `board.actions.DrillItemMover.check` / `.tryShoveViaPoints`.
-//!
-//! # Where the numbers come from
-//!
-//! Every literal below — the room counts and ids `initConnection` leaves behind, every
-//! `checkForcedTracePolyline` answer, every `TraceShover.check` answer at every recursion depth,
-//! every `tryShoveViaPoints` centre and every tie-pin contact id — is **read off the HEAD jar**,
-//! not off this port. The probe is `scripts/differential/java/probes/P6T9Probe.java`, committed
-//! with the exact `javac`/`java` invocation in its header, and its stdout is committed verbatim
-//! as `tests/data/p6t9-board-ext.txt`. Each test names its probe mode.
-//!
-//! # One deliberate divergence: quirk #174's `failing=` column
-//!
-//! Plan 9 Task 10 made `TraceShover::check` clear `shove_failing_obstacle` on entry, so the port
-//! answers `failing=null` exactly where the jar transcripts carry a value left behind by an
-//! earlier, unrelated call — including on rows where the operation *succeeded*, which is the
-//! defect stated in the jar's own output. The transcripts are **not** re-cut: they are jar
-//! references. [`is_the_stale_failing_obstacle`] defines the one shape of difference that is
-//! accepted (the rows must be identical apart from that field, and the direction must be
-//! jar-has-a-value / port-has-`null`); every other difference still fails, and each mode's count
-//! is asserted so that neither the fix shrinking nor a transcript moving can pass unnoticed.
-//! [`the_failing_obstacle_column_no_longer_carries_leftovers`] tells the same story directly, on
-//! `P6T9Probe` mode `inst`.
-
 use fr_board::BoardError;
 use fr_board::ids::{ItemId, PadstackId};
 use fr_board::items::Item;
@@ -72,13 +47,6 @@ fn bare_board_with_a_net_two_trace() -> Board {
     bare_board_bounded(BOUNDING_BOX)
 }
 
-/// [`bare_board_with_a_net_two_trace`] on a caller-chosen bounding box.
-///
-/// Nothing passes anything but [`BOUNDING_BOX`] any more: the one caller that did —
-/// [`additional_update_after_change_invalidates_the_drill_pages_of_every_tree_shape`] — took a
-/// +/-5 000 box to stay clear of quirk #162, which Plan 9 Task 8 fixed. Kept parameterised
-/// because the +/-5 000 / +/-6 000 boundary is what the 1x1-against-2x2 page grid turns on, and a
-/// future bisection of that boundary should not have to reintroduce the seam.
 fn bare_board_bounded(bounds: IntBox) -> Board {
     let mut board = Board::new(
         Vec::new(),
@@ -229,10 +197,6 @@ fn probe_lines() -> Vec<(&'static str, Polyline)> {
     ]
 }
 
-// =================================================================================================
-// `RoutingBoard.initAutoroute` / `finishAutoroute` (RoutingBoard.java:882-905)
-// =================================================================================================
-
 /// Probe mode `upd`:
 ///
 /// ```text
@@ -303,11 +267,6 @@ fn finish_autoroute_clears_the_room_database_before_dropping_the_engine() {
     );
 }
 
-// =================================================================================================
-// `RoutingBoard.additionalUpdateAfterChange` (RoutingBoard.java:96-118) and the
-// `initConnection:111-117` loop it is reached from
-// =================================================================================================
-
 /// Probe mode `upd` — the re-run `task-6-report.md` §8.1 asks for, with an item on the new net:
 ///
 /// ```text
@@ -364,38 +323,6 @@ fn additional_update_after_change_removes_the_overlapping_rooms() {
     );
 }
 
-/// The other half of `additionalUpdateAfterChange`: `:107`'s `invalidateDrillPages(currentShape)`
-/// for every tree shape of the item. Task 7 pinned what a page does when it is invalidated (it
-/// frees its drills); this pins that the method reaches it.
-///
-/// It is a separate test from the one above because populating the pages **completes more rooms**
-/// — `DrillPage.getDrills` completes one per layer per drill — so the probe's room counts only
-/// hold on an engine whose pages have never been asked for drills.
-///
-/// # This board was smaller than `P6T9Probe`'s until Plan 9 Task 8
-///
-/// Plan 9 Task 6 changed what this test measures, and the change was an improvement that came
-/// with a constraint. Before quirk #169 was fixed, *every* drill on this engine was dropped: the
-/// engine is virgin here (`init_autoroute` leaves `incompleteExpansionRooms` null — measured), so
-/// `removeIncompleteExpansionRoom` threw, `completeExpansionRoom`'s own catch swallowed it, and
-/// each page ended up memoising the **empty** list `DrillPage.getDrills:65-66` installs before the
-/// work. So `pages_holding_drills` counted pages holding `Some([])` and the assertions below were
-/// vacuously true — the test never held a single drill.
-///
-/// With #169 fixed the drills are computed for real, and on `P6T9Probe`'s +/-10 000 box that ran
-/// away: measured at 99 % CPU with RSS climbing ~1.3 MB/s, no termination in 240 s, the whole time
-/// inside one `complete_expansion_room` -> `calculate_doors` ->
-/// `SortedRoomNeighbours::calculate_new_incomplete_rooms` -> `TileShape::intersection` on
-/// ever-growing rational coordinates. That runaway was **quirk #162** reached through a second
-/// producer — a drill page that is a *sub* rectangle of the board, so a 2x2 page grid and not a
-/// 1x1 one — and it was not #169's doing: it reproduces on the unfixed tree by seeding the
-/// incomplete-room list, which is the same engine state. Task 6 recorded it and moved this test
-/// down to +/-5 000, the largest box whose page grid is 1x1 and therefore still terminated.
-///
-/// **Task 8 fixed #162 and the box is restored to `BOUNDING_BOX`.** The loop derives its simplex
-/// once, in `SortedRoomNeighbours`' constructor, so every `touchingSideNoOfRoom` indexes the
-/// shape the walk actually walks and the walk's exit is reachable by construction. The 2x2 page
-/// grid this box produces is #162's second acceptance producer, beside `p6t3` mode 5's.
 #[test]
 fn additional_update_after_change_invalidates_the_drill_pages_of_every_tree_shape() {
     let mut board = bare_board_with_a_net_two_trace();
@@ -418,9 +345,6 @@ fn additional_update_after_change_invalidates_the_drill_pages_of_every_tree_shap
         populated > 0,
         "the fixture needs at least one page holding drills"
     );
-    // Not `is_some()`: `DrillPage.getDrills:65-66` installs an empty list *before* the work, so
-    // `Some([])` is what a page that computed nothing also looks like — which is exactly how this
-    // assertion stayed green through quirk #169 without ever holding a drill. Count them.
     let held: usize = overlapping
         .iter()
         .map(|page| {
@@ -446,10 +370,6 @@ fn additional_update_after_change_invalidates_the_drill_pages_of_every_tree_shap
         "`:107` should have invalidated every page the trace's tree shape overlaps"
     );
 }
-
-// =================================================================================================
-// `RoutingBoard.checkForcedTracePolyline` (RoutingBoard.java:408-448)
-// =================================================================================================
 
 /// Probe mode `poly`, both angle regimes — fourteen rows each, identical in the two regimes on
 /// this board (the 90-degree arm replaces every offset shape by its bounding box before building
@@ -487,10 +407,6 @@ fn check_forced_trace_polyline_uses_the_default_tree_and_the_bounding_box_in_nin
         assert_eq!(actual, expected, "angle regime {angle:?}");
     }
 }
-
-// =================================================================================================
-// `TraceShover.check`, the instance form (TraceShover.java:231-411)
-// =================================================================================================
 
 /// Probe mode `inst`, the `twoSegments shape=0` rows:
 ///
@@ -587,30 +503,6 @@ fn trace_shover_check_agrees_with_the_jvm_on_every_probe_row() {
     assert_eq!(instance_check_rows(&mut board), expected);
 }
 
-/// Probe mode `inst`'s **`failing=` column**, which is quirk #174's before/after evidence.
-///
-/// The committed jar transcript is the row this fix is measured against, and it says the quirk
-/// out loud on the rows where `check=true`:
-///
-/// ```text
-///   acrossNet2  shape=0 maxRecursionDepth=0  check=true  failing=2
-///   freeSpace   shape=0 maxRecursionDepth=0  check=true  failing=3
-///   twoSegments shape=0 maxRecursionDepth=1  check=true  failing=4
-/// ```
-///
-/// A check that **succeeded** is reporting a failing obstacle. There is no such thing: those are
-/// leftovers, written by an earlier row's refusal and never cleared, and `MazeRipupResolver`
-/// reads that field to decide what copper to tear up. `failing=2` on `acrossNet2` names item 2 —
-/// which belongs to a **different net** from the one that call was checking.
-///
-/// **Fixed at Plan 9 Task 10** (`// fixed: T10 (#174)` in
-/// `crates/fr-router/src/board_ext/trace_shover.rs`): `check` clears the field on entry, so a
-/// successful check answers `null` and a refusal answers its own culprit. This is therefore a
-/// deliberate divergence from the committed jar transcript, and the shape of the divergence is
-/// asserted rather than merely permitted — on every `check=false` row the port must still agree
-/// with the jar, and on every `check=true` row the jar must have been non-null where the port is
-/// null. A fix that cleared too much would fail the first half; one that cleared nothing would
-/// fail the second.
 #[test]
 fn the_failing_obstacle_column_no_longer_carries_leftovers() {
     let jar = parse_inst_failing_rows();
@@ -660,10 +552,6 @@ fn the_failing_obstacle_column_no_longer_carries_leftovers() {
     );
 }
 
-/// The property that makes the check-only split safe: `check` never changes the board's item
-/// set. It *does* write `shoveFailingObstacle` (`:251`, `:263`, `:306`, `:318`, `:357`) and it
-/// does burn item ids on the substitute trace pieces it builds — neither of which
-/// [`Board::structural_hash`] observes, and neither of which Java's `check` avoids either.
 #[test]
 fn trace_shover_check_does_not_mutate_the_board() {
     let mut board = probe_board(AngleRestriction::None);
@@ -676,10 +564,6 @@ fn trace_shover_check_does_not_mutate_the_board() {
     assert_eq!(board.structural_hash(), before);
     assert_eq!(board2.structural_hash(), before);
 }
-
-// =================================================================================================
-// `TraceShover.check`, the static form (TraceShover.java:57-229)
-// =================================================================================================
 
 /// Probe mode `seg`: the maximum shovable length from the start of the segment, or
 /// `Integer.MAX_VALUE` when the algorithm succeeds completely.
@@ -739,10 +623,6 @@ fn trace_shover_check_segment_agrees_with_the_jvm() {
     assert_eq!(actual, expected);
 }
 
-// =================================================================================================
-// `TraceShover.getIgnoreItemsAtTiePins` (TraceShover.java:592-603)
-// =================================================================================================
-
 /// Probe mode `tie`: only the first shape — the one over the SMD pin at (-500, 0) — answers
 /// anything, and only for the pin's own net, where the answer is the pin's single trace contact.
 #[test]
@@ -776,23 +656,6 @@ fn ignore_items_at_tie_pins_answers_the_contacts_of_the_own_net_pins() {
     );
 }
 
-// =================================================================================================
-// `DrillItemMover` (DrillItemMover.java:34-103, :256-325)
-// =================================================================================================
-
-/// Probe mode `drill`, the two arms `check` answers before it reaches
-/// `ForcedPadRouter.checkForcedPad`:
-///
-/// ```text
-///   fixedViaId=7 isShoveFixed=true
-///   onPinViaId=8 contacts=1 kinds=Pin#3
-///   check viaId=7 delta=(300,0) result=false ignoreSize=0
-///   check viaId=8 delta=(300,0) result=false ignoreSize=0
-/// ```
-///
-/// The third row (`check viaId=6 result=true`) runs the full `checkForcedPad`, which Task 10
-/// landed; it is pinned by `drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented`
-/// in `tests/forced_via.rs`, together with three further deltas and the `viaDepth=0` budget row.
 #[test]
 fn drill_item_mover_check_agrees_with_the_jvm() {
     for angle in [AngleRestriction::None, AngleRestriction::NinetyDegree] {
@@ -811,11 +674,6 @@ fn drill_item_mover_check_agrees_with_the_jvm() {
 
         let delta = Vector::from(IntVector::new(300, 0));
         for via in [fixed, on_pin] {
-            // quirk #175 (fixed: T10): the parameter is a shared slice now, so "a check does not
-            // mutate its caller" is a type-level fact rather than a promise; the probe's
-            // `ignoreSize` column is asserted by
-            // `crates/fr-router/tests/board_ext.rs::drill_item_mover_check_does_not_mutate_its_caller`
-            // below, which covers the arm the jar's `ignoreSize=1` came from as well.
             let ignore: Vec<ItemId> = Vec::new();
             let ok = DrillItemMover::check(&mut board, via, &delta, 20, 5, Some(&ignore), None);
             assert!(
@@ -831,26 +689,11 @@ fn drill_item_mover_check_agrees_with_the_jvm() {
     }
 }
 
-/// Quirk #175, fixed at Plan 9 Task 10: `DrillItemMover.check` is a **check**, and it no longer
-/// changes anything its caller can see.
-///
-/// Java's `:57-62` replaces a `null` `ignoreItems` with a fresh `LinkedList` but uses a non-null
-/// one as is, and `:63` then appends `drillItem` to it — so the caller's collection grows by one
-/// element per call, and by more when the recursion through `ForcedPadRouter.checkForcedPad`
-/// re-enters. `P6T9Probe` mode `drill` prints exactly that: `ignoreSize=1` after a **successful**
-/// check and `ignoreSize=0` after one that refuses before `:63`. Every live Java call site happens
-/// to pass a freshly allocated list, so nothing observed it — but the asymmetry between the two
-/// paths was real, and `shoveVias` (`:220-223`) copies its list specifically to avoid it.
-///
-/// The collection is now copied unconditionally, the way `shoveVias` does. This test drives the
-/// arm that used to append — a check that gets past `:63` — and asserts the caller's list is
-/// untouched, on both the `Some` and `None` paths.
 #[test]
 fn drill_item_mover_check_does_not_mutate_its_caller() {
     let mut board = probe_board(AngleRestriction::None);
     let (free, _fixed, _on_pin) = insert_probe_vias(&mut board);
 
-    // A zero translation of the free via: reaches `:63` and beyond, which is where Java appended.
     let delta = Vector::from(IntVector::new(0, 0));
 
     let caller_list: Vec<ItemId> = vec![ItemId(1), ItemId(2)];
@@ -866,7 +709,6 @@ fn drill_item_mover_check_does_not_mutate_its_caller() {
         "a check must not grow its caller's ignore list — quirk #175"
     );
 
-    // And the `None` path, which Java already copied, still answers the same thing.
     assert!(DrillItemMover::check(
         &mut board, free, &delta, 20, 5, None, None
     ));
@@ -1185,18 +1027,6 @@ fn pages_holding_drills(engine: &AutorouteEngine) -> usize {
         .count()
 }
 
-// =================================================================================================
-// Plan 6 Task 15b (controller ruling AB): `RoutingBoard.insertForcedTracePolyline` (:456-876),
-// `insertForcedTraceSegment` (:361-402) and `TraceShover.springOverObstacles` (:827-874)
-// =================================================================================================
-//
-// Every expectation below is **read off the HEAD jar**, not off this port. The probe is
-// `scripts/differential/java/probes/P6T15bProbe.java`, committed with the exact `javac`/`java`
-// invocation in its header, and its stdout is committed verbatim as
-// `tests/data/p6t15b-insert-forced.txt`. Each test regenerates its mode's rows and compares them
-// against the transcript line by line, so a board that differs by one item, one id or one corner
-// fails.
-
 const T15B: &str = include_str!("data/p6t15b-insert-forced.txt");
 
 /// The rows of one `######## <mode>` section of the Task 15b transcript.
@@ -1217,23 +1047,8 @@ fn t15b_section(mode: &str) -> Vec<&'static str> {
     rows
 }
 
-/// The port's own rows for the transcript section Plan 9 Task 11 moved off the jar in a form the
-/// structural allowance below cannot check.
-///
-/// Mode `rand`'s rows are compact whole-board **fingerprints** — `hash=` is a `String.hashCode` of
-/// the board dump — so a row that differs by quirk #23's end closing line differs only in that one
-/// opaque number, and [`differs_only_by_the_end_closing_line`] has nothing to read. The item-dump
-/// modes `seg` and `neck` run over the same code and *do* show their working: every one of their
-/// 126 differing rows is a closing line and nothing else, with corner lists byte-identical. That
-/// is the evidence for this file; the golden is the record.
-///
-/// [`T15B`] is untouched and stays the jar's stdout. Both sides are pinned:
-/// [`assert_rows_match`] replays this byte for byte, and
-/// [`the_rand_port_golden_still_differs_from_the_jar`] requires the divergence to persist.
 const T11_RAND: &str = include_str!("data/p9t11-board-ext-rand.txt");
 
-/// The transcript sections that are the **port's** rather than the jar's, with the register row
-/// that authorizes each.
 const PORT_LANE: &[(&str, &str, &str)] = &[(
     "rand",
     "#23",
@@ -1280,13 +1095,6 @@ fn the_rand_port_golden_still_differs_from_the_jar() {
     }
 }
 
-/// The **jar-lane** modes whose boards contain a trace built by `Polyline::from_two_points`, and
-/// so the modes on which quirk #23's end closing line is visible row by row. Measured: `seg` 84
-/// rows of 1342, `neck` 42 of 797.
-///
-/// `rand` is not here: it moved 76 of its 258 rows for the same reason, but its rows are board
-/// fingerprints rather than item dumps, so it is compared against a port-lane golden instead and
-/// its "still differs" guarantee is [`the_rand_port_golden_still_differs_from_the_jar`].
 const MODES_WITH_TWO_POINT_POLYLINES: &[&str] = &["seg", "neck"];
 
 /// Compares the rows this port produces with the JVM's, collecting **every** difference rather
@@ -1306,18 +1114,6 @@ fn without_the_failing_field(row: &str) -> String {
         .join(" ")
 }
 
-/// **Quirk #174's known divergence from the Task 15b jar transcript**, fixed at Plan 9 Task 10.
-///
-/// Java never clears `RoutingBoard.shoveFailingObstacle` on entry to `TraceShover.check`, so the
-/// probe's `failing=` column carries values left behind by *earlier, unrelated* calls — including
-/// on rows where the operation succeeded, and including items belonging to other nets. The port
-/// clears the field on entry (`// fixed: T10 (#174)` in
-/// `crates/fr-router/src/board_ext/trace_shover.rs`), so it answers `failing=null` exactly where
-/// the jar answers a leftover.
-///
-/// A row is an accepted divergence only when it is **identical apart from that one field** and
-/// the direction is jar-has-a-value / port-has-`null`. Anything else — a moved corner, a moved
-/// flag, or the port inventing a culprit the jar did not have — is a real difference and fails.
 fn is_the_stale_failing_obstacle(want: &str, got: &str) -> bool {
     without_the_failing_field(want) == without_the_failing_field(got)
         && want.contains("failing=")
@@ -1325,12 +1121,6 @@ fn is_the_stale_failing_obstacle(want: &str, got: &str) -> bool {
         && got.contains("failing=null")
 }
 
-/// Compares the rows this port produces with the JVM's, collecting **every** difference rather
-/// than stopping at the first.
-///
-/// Rows that differ *only* in the stale `failing=` column are quirk #174's deliberate divergence
-/// (see [`is_the_stale_failing_obstacle`]); they are counted and returned rather than failed, and
-/// the caller asserts the count so that neither direction can drift silently.
 fn assert_rows_match_returning_stale_failing(mode: &str, actual: &[String]) -> usize {
     if let Ok(dir) = std::env::var("T11_DUMP_DIR") {
         std::fs::write(format!("{dir}/{mode}.txt"), actual.join("\n"))
@@ -1374,8 +1164,6 @@ fn assert_rows_match_returning_stale_failing(mode: &str, actual: &[String]) -> u
     stale_failing
 }
 
-/// [`assert_rows_match_returning_stale_failing`] for a mode that must agree with the jar
-/// **exactly**, quirk #174's column included.
 fn assert_rows_match(mode: &str, actual: &[String]) {
     assert_eq!(
         assert_rows_match_returning_stale_failing(mode, actual),
@@ -1471,8 +1259,6 @@ fn t15b_failing(board: &Board) -> String {
         None => "null".to_string(),
         Some(id) => match board.get_item(id) {
             Some(item) => format!("{}#{}", t15b_type_name(item), id.0),
-            // An obstacle the board has since dropped still answers its class in Java, which
-            // holds the object; the probe never reaches this.
             None => format!("removed#{}", id.0),
         },
     };
@@ -1835,14 +1621,6 @@ fn spring_over_obstacles_agrees_with_the_jvm_on_every_probe_row() {
 
 // --- mode `ladder` ------------------------------------------------------------------------------
 
-/// Probe mode `ladder`, second and third blocks: the public `springOverObstacles` over a row of
-/// user-fixed vias, where `:834`'s hard-coded budget of 20 runs out at **21** vias, and the pair
-/// of overlapping vias that reaches `springOver:679-681`'s bare `return null` — the one refusal
-/// that leaves `shoveFailingObstacle` untouched.
-///
-/// The first block of the mode — `springOver` itself at recursion depth 0/1/2/3/20 — is Java's
-/// **private** method and this port's `pub(crate)` one, so it is not replayed here; the ladder is
-/// the same limit reached through the public entry point.
 #[test]
 fn spring_over_obstacles_stops_at_the_recursion_limit() {
     let mut rows = Vec::new();
@@ -1909,8 +1687,6 @@ fn spring_over_obstacles_stops_at_the_recursion_limit() {
     );
 }
 
-/// `Math.round(double)` — Java rounds half **up**, towards positive infinity, where Rust's
-/// `f64::round` rounds half away from zero.
 fn java_round_half_up(value: f64) -> i64 {
     (value + 0.5).floor() as i64
 }
@@ -1972,12 +1748,6 @@ fn insert_forced_trace_polyline_agrees_with_the_jvm_on_every_probe_row() {
             }
         }
     }
-    // Quirk #174 (fixed: T10): the port clears `shoveFailingObstacle` on entry to
-    // `TraceShover::check`, so it answers `failing=null` where the jar carries a leftover from
-    // an earlier, unrelated call. Every one of these rows is identical to the jar apart from
-    // that one field — `assert_rows_match_returning_stale_failing` fails anything else — and the
-    // count is asserted so that neither the fix shrinking nor the transcript moving can pass
-    // unnoticed. See `is_the_stale_failing_obstacle`.
     assert_eq!(
         assert_rows_match_returning_stale_failing("poly", &rows),
         50,
@@ -1987,9 +1757,6 @@ fn insert_forced_trace_polyline_agrees_with_the_jvm_on_every_probe_row() {
 
 // --- mode `tail` --------------------------------------------------------------------------------
 
-/// Probe mode `tail`: the `tidyWidth > 0` pull-tight tail at `RoutingBoard.java:860-862`, over
-/// four `tidyWidth`s x four `pullTightAccuracy`s, plus the `maxRecursionDepth <= 0` arm of
-/// `:777-782` — the only one that hands `TraceTightener.getInstance` a non-empty `onlyNetNoArr`.
 #[test]
 fn insert_forced_trace_polyline_pull_tightens_its_tail() {
     let mut rows = Vec::new();
@@ -2066,12 +1833,6 @@ fn insert_forced_trace_polyline_pull_tightens_its_tail() {
             }
         }
     }
-    // Quirk #174 (fixed: T10): the port clears `shoveFailingObstacle` on entry to
-    // `TraceShover::check`, so it answers `failing=null` where the jar carries a leftover from
-    // an earlier, unrelated call. Every one of these rows is identical to the jar apart from
-    // that one field — `assert_rows_match_returning_stale_failing` fails anything else — and the
-    // count is asserted so that neither the fix shrinking nor the transcript moving can pass
-    // unnoticed. See `is_the_stale_failing_obstacle`.
     assert_eq!(
         assert_rows_match_returning_stale_failing("tail", &rows),
         134,
@@ -2112,10 +1873,6 @@ fn insert_forced_trace_polyline_pull_tightens_its_tail() {
 
 // --- mode `seg` ---------------------------------------------------------------------------------
 
-/// Probe mode `seg`: `insertForcedTraceSegment` over the same fourteen endpoint pairs, which is where
-/// `:393-400`'s three-way test on the returned corner shows. The probe prints Java's **reference**
-/// identity (`isFrom` / `isTo`) beside the answer; this port compares by value, and the transcript
-/// is the proof that the two agree on every row.
 #[test]
 fn insert_forced_trace_segment_agrees_with_the_jvm_on_every_probe_row() {
     let mut rows = Vec::new();
@@ -2145,9 +1902,6 @@ fn insert_forced_trace_segment_agrees_with_the_jvm_on_every_probe_row() {
                             &never_stop,
                         )
                         .expect("no stop check trips here");
-                    // Java's `result == from` is reference identity against the **argument**
-                    // object; `from` and `to` are equal for the `degenerate` case, where Java
-                    // hands back `toCorner`, so the `from` test has to lose that tie.
                     let is_to = result.as_ref() == Some(&to);
                     let is_from = !is_to && result.as_ref() == Some(&from);
                     rows.push(format!(
@@ -2170,12 +1924,6 @@ fn insert_forced_trace_segment_agrees_with_the_jvm_on_every_probe_row() {
             }
         }
     }
-    // Quirk #174 (fixed: T10): the port clears `shoveFailingObstacle` on entry to
-    // `TraceShover::check`, so it answers `failing=null` where the jar carries a leftover from
-    // an earlier, unrelated call. Every one of these rows is identical to the jar apart from
-    // that one field — `assert_rows_match_returning_stale_failing` fails anything else — and the
-    // count is asserted so that neither the fix shrinking nor the transcript moving can pass
-    // unnoticed. See `is_the_stale_failing_obstacle`.
     assert_eq!(
         assert_rows_match_returning_stale_failing("seg", &rows),
         52,
@@ -2238,12 +1986,6 @@ fn insert_forced_trace_segment_necks_down_like_the_jvm() {
             }
         }
     }
-    // Quirk #174 (fixed: T10): the port clears `shoveFailingObstacle` on entry to
-    // `TraceShover::check`, so it answers `failing=null` where the jar carries a leftover from
-    // an earlier, unrelated call. Every one of these rows is identical to the jar apart from
-    // that one field — `assert_rows_match_returning_stale_failing` fails anything else — and the
-    // count is asserted so that neither the fix shrinking nor the transcript moving can pass
-    // unnoticed. See `is_the_stale_failing_obstacle`.
     assert_eq!(
         assert_rows_match_returning_stale_failing("neck", &rows),
         2,
@@ -2402,12 +2144,6 @@ fn the_two_random_blocks_agree_with_the_jvm() {
             t15b_failing(&board),
         ));
     }
-    // Quirk #174 (fixed: T10): the port clears `shoveFailingObstacle` on entry to
-    // `TraceShover::check`, so it answers `failing=null` where the jar carries a leftover from
-    // an earlier, unrelated call. Every one of these rows is identical to the jar apart from
-    // that one field — `assert_rows_match_returning_stale_failing` fails anything else — and the
-    // count is asserted so that neither the fix shrinking nor the transcript moving can pass
-    // unnoticed. See `is_the_stale_failing_obstacle`.
     assert_eq!(
         assert_rows_match_returning_stale_failing("rand", &rows),
         26,
@@ -2487,17 +2223,6 @@ fn the_shove_loop_entry_side_index_is_one_below_the_check_loops() {
     );
 }
 
-// --- plan-6 ruling 6: the stop check ------------------------------------------------------------
-
-/// Plan-6 ruling 6: the `StopCheck` threaded through `insert_forced_trace_polyline` reaches
-/// `TraceShover::insert`'s and `Board::normalize_trace_checked`'s `fr-board` calls, so a trip
-/// answers `Err(BoardError::Stopped)`.
-///
-/// This is ruling 6's **contract** — the check is consulted and the error propagates out of the
-/// entry point. Ruling 6's **motivation**, termination on quirk #76's four-rung ladder board, is
-/// pinned for the same `fr-board` chain by `forced_via.rs`'s
-/// `insert_stops_when_the_stop_check_trips` and for the tightener half by `tightener.rs`'s
-/// `pull_tight_stops_when_the_stop_check_trips`; this test does not rebuild that ladder.
 #[test]
 fn insert_stops_when_the_stop_check_trips() {
     let mut board = probe_board(AngleRestriction::None);
@@ -2530,20 +2255,6 @@ fn insert_stops_when_the_stop_check_trips() {
     assert!(calls.get() > 0, "the stop check was never consulted");
 }
 
-/// Whether the only difference between a JVM row and the port's is the one **quirk #23** makes:
-/// the *end closing line* of a two-point polyline, which Java built by repeating the start's
-/// direction and the port now builds with `to -> from`.
-///
-/// fixed: T11 (#23). The two lines describe the same infinite line through the same point running
-/// opposite ways — `(3000,2000)->(3000,2001)` against `(3000,2000)->(3000,1999)` — so the trace is
-/// the same copper, correctly handed, and the corner list is untouched.
-///
-/// The check is deliberately narrow rather than a re-cut golden. It allows a row to differ **only**
-/// in the `b` point of the last entry of `lines=[…]`, only when that point is the reflection of the
-/// jar's in the line's own `a`, and only when `corners=[…]` and everything before `lines=[` are
-/// byte-identical. A row that moved a corner, changed a width or an id, or flipped any line but the
-/// last still fails — so these transcripts stay a parity gate for everything except the one thing
-/// #23 is.
 fn differs_only_by_the_end_closing_line(want: &str, got: &str) -> bool {
     let Some((want_head, want_rest)) = want.split_once("lines=[") else {
         return false;

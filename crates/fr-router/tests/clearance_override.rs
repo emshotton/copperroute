@@ -1,49 +1,3 @@
-//! Plan 7 Task 15b: the corpus replay of `probes/P7T15bProbe.java`.
-//!
-//! The probe loads each of the sixteen parity-corpus DSNs through the **real**
-//! `HeadlessBoardManager.loadFromSpecctraDsn`, nine times per board, with
-//! `router.copper_to_edge_clearance_um` / `router.hole_clearance_um` forced to a different pair
-//! each time, and prints the resulting clearance-matrix, outline-class, `holeClearance` and
-//! hole-keepout state. Its stdout is committed verbatim as
-//! `tests/data/p7t15b-clearance-overrides.txt`.
-//!
-//! This test re-derives every one of those blocks from the port: it loads the same DSN once
-//! through `fr_dsn::read_board` (which answers the pristine board, i.e. the probe's variant A),
-//! clones it per variant, runs [`fr_router::pipeline::prepare_board`] with the variant's two
-//! settings values, and renders the probe's own line format from the resulting `Board`. A
-//! mismatch prints the two blocks side by side.
-//!
-//! # What each variant proves
-//!
-//! * **A** — the port's loader and Java's agree on the pristine board, so every later diff is
-//!   the override's and not the reader's.
-//! * **B** / **D** — `applyCopperToEdgeClearanceOverride` at the real merged 500 µm: the
-//!   `board_edge` class, its row *and* column on every layer, and the re-pointed outline. On the
-//!   jar it fires on 15 of the 16 boards; `router-rpi-splitter` early-returns through the
-//!   `:501-507` guard because its outline carries an explicit `boundary` class (quirk #231).
-//!   **The port fires on 16 of 16** — see [`KNOWN_DIVERGENCES`].
-//! * **C** — `applyHoleClearanceOverride` at the real merged 0 µm: fires on all 16 and changes
-//!   nothing, which is why the gap went unnoticed for six plans.
-//! * **E** / **F** — the non-default hole path at 100 µm and 500 µm, i.e. the µm → board-unit
-//!   conversion (board-resolution dependent: 100 µm is 1 000 units on five boards and 10 000 on
-//!   `router-rpi-splitter`), the `hole_edge` class, the `Math.max` floor, and the reclassified
-//!   circular component keepouts.
-//! * **G** / **H** — the two negative early returns.
-//! * **I** — a copper value of 0.0, which Java's `:501-507` guard could not stop either: it
-//!   mutates even `router-rpi-splitter` on both sides. On the jar this was the arm that showed
-//!   the guard keying on the *value* rather than on the board; on the port it is now
-//!   indistinguishable from B/D, which is precisely what quirk #231's fix means.
-//!
-//! # The transcript is a jar reference, and the port has left it on one board
-//!
-//! This file is a **parity** replay: the committed transcript is the HEAD jar's own output and
-//! nothing here re-cuts it. Plan 9 Task 10 fixed quirk #231, so the port now deliberately
-//! disagrees with the jar on the arms the `:501-507` guard used to stop. [`KNOWN_DIVERGENCES`]
-//! names every such `(stem, variant)` pair with its register row and its reason, and the replay
-//! checks **both** directions: a pair that differs without an entry fails, and an entry whose
-//! pair no longer differs fails. That keeps the other 15 boards × 9 variants live parity coverage
-//! rather than turning the whole file into a port golden.
-
 use std::collections::BTreeMap;
 
 use fr_board::{Board, Item, ItemClass};
@@ -56,17 +10,6 @@ use fr_settings::{HostEnvironment, SettingsSource};
 
 const TRANSCRIPT: &str = include_str!("data/p7t15b-clearance-overrides.txt");
 
-/// The stems this test replays in CI. The other seven are heavy enough in a debug build to
-/// dominate `cargo test`, so they run under `FR_SLOW_PARITY=1` like the rest of the corpus-wide
-/// parity tests (ruling AM).
-///
-/// The five are chosen for coverage, not for size: `router-rpi-splitter` is the one board the
-/// copper override early-returns on *and* the one imperial-resolution board (100 µm = 10 000
-/// units), `router-dac2020-bm01` is the 13 000 → 63 000 matrix-sum row from the banked evidence,
-/// `router-j2-reference` is the board the 15 254 B / 14 644 B SES measurement was taken on,
-/// `drc-dev-board` has both a named non-default clearance class (`Power`) and four circular
-/// keepouts, and `batch-empty-board` is the all-zero matrix that becomes a pure 500 µm edge
-/// keep-out.
 const CI_STEMS: &[&str] = &[
     "router-rpi-splitter",
     "router-dac2020-bm01",
@@ -94,7 +37,6 @@ struct BoardBlock {
     variants: Vec<Variant>,
 }
 
-/// `-` is the probe's spelling of Java's `null`.
 fn parse_optional(field: &str) -> Option<f64> {
     if field == "-" {
         None
@@ -142,8 +84,6 @@ fn parse_transcript() -> Vec<BoardBlock> {
 // The port's side of the same block
 // =================================================================================================
 
-/// The headless ladder's priority-0 source, the same one `P6T1.java` and
-/// `crates/fr-router/tests/fixtures.rs` use.
 fn default_settings() -> RouterSettings {
     DefaultSettings::new(&HostEnvironment::detect())
         .get_settings()
@@ -208,7 +148,6 @@ fn render(board: &mut Board, name: &str, copper: Option<f64>, hole: Option<f64>)
         .get(default_net_class)
         .default_item_clearance_classes
         .get(ItemClass::Area);
-    // The probe prints `-1` for a board with no outline (Java's `null`).
     let outline_class = board
         .get_outline()
         .and_then(|id| board.get_item(id))
@@ -221,9 +160,6 @@ fn render(board: &mut Board, name: &str, copper: Option<f64>, hole: Option<f64>)
         board.rules.get_hole_clearance()
     ));
 
-    // HeadlessBoardManager.java:411-423, transcribed: the exact `ObstacleArea` class, a component
-    // id above zero and a circular area. `BTreeMap` is Java's `TreeMap`, i.e. ordered by class
-    // index.
     let mut keepout_classes: BTreeMap<usize, usize> = BTreeMap::new();
     let mut keepout_count = 0usize;
     {
@@ -281,8 +217,6 @@ fn render(board: &mut Board, name: &str, copper: Option<f64>, hole: Option<f64>)
     out
 }
 
-/// `Double.toString` for the two values the probe prints back — both are whole numbers here, so
-/// Java's shortest round-tripping form is `<n>.0`.
 fn format_optional(value: Option<f64>) -> String {
     match value {
         None => "-".to_string(),
@@ -428,9 +362,6 @@ fn the_two_copies_of_the_default_copper_to_edge_clearance_agree() {
     );
 }
 
-/// The headless ladder's priority-0 source fills both knobs, so a real CLI run reaches both
-/// overrides — `DefaultSettings.java:78, :81`. Without this, `prepare_board` would be a
-/// no-op-by-omission rather than by design.
 #[test]
 fn the_default_settings_ladder_fills_both_override_knobs() {
     let settings: RouterSettings = default_settings();
@@ -438,10 +369,6 @@ fn the_default_settings_ladder_fills_both_override_knobs() {
     assert_eq!(settings.hole_clearance_um, Some(0.0));
 }
 
-/// `prepare_board` skips an override whose setting is `None`, which is Java's
-/// `routerSettings.copperToEdgeClearanceUm == null` guard (HeadlessBoardManager.java:470-471,
-/// :350-351) — and it applies copper **before** hole, which is what makes `board_edge` take the
-/// lower class index when both fire.
 #[test]
 fn prepare_board_skips_a_none_setting_and_orders_copper_before_hole() {
     if !parity::require_java_dir() {

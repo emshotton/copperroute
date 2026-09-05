@@ -484,7 +484,6 @@ fn router_rpi_splitter() {
     assert_eq!(ladder.connections, 8);
 }
 
-/// `#[cfg_attr(debug_assertions, ignore)]` per Plan 3's convention: the board is minutes of work
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn router_dac2020_bm01() {

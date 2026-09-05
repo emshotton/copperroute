@@ -943,7 +943,6 @@ fn extra_vias(board: &Board, vias_before_pass: usize) -> i32 {
     i32::try_from(vias_now.saturating_sub(vias_before_pass)).unwrap_or(i32::MAX)
 }
 
-/// * a positive offset too large to represent answers `None`, i.e. *no* deadline. NOTE (Task 12
 pub(crate) fn instant_offset_ms(start: Instant, offset_ms: i64) -> Option<Instant> {
     let magnitude = Duration::from_millis(offset_ms.unsigned_abs());
     if offset_ms >= 0 {

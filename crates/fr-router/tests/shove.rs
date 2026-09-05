@@ -1,40 +1,3 @@
-//! Plan 9 Task 10: quirk #174 — `TraceShover.check`'s via arm and the stale
-//! `shoveFailingObstacle`.
-//!
-//! `shoveFailingObstacle` (`RoutingBoard.java:72`) is not a diagnostic. `MazeRipupResolver` reads
-//! it to decide **what copper to tear up**, so a wrong value there is a wrong ripup — the router
-//! removing a trace that had nothing to do with the failure. Java left it wrong in two ways at
-//! once:
-//!
-//! * `TraceShover.check`'s via arm (`TraceShover.java:348-350`) — every candidate centre from
-//!   `tryShoveViaPoints` failed `DrillItemMover.check` — is a bare `return false` that sets
-//!   nothing, where every other refusal in the method records its culprit (`:251` the outline,
-//!   `:263`/`:306`/`:357` `shapeEntries.getFoundObstacle()`, `:318` the via itself one branch up);
-//! * the field is **never cleared on entry**, so whatever it held from an earlier call survives —
-//!   possibly an item from a different `check` on a different net — and on a fresh board it is
-//!   simply null.
-//!
-//! Both are fixed at Plan 9 Task 10, and the two tests below are one per half. Each pre-loads the
-//! field with a sentinel that no `check` on this board could ever legitimately answer, so
-//! "unchanged" and "correct" cannot be confused.
-//!
-//! # The fixture
-//!
-//! `boxed_in_via_board()`: a two-layer board holding one **foreign-net** through via at the
-//! origin, penned in by four **shove-fixed** net-2 traces at +/-700. The pen is sized against the
-//! numbers rather than by eye:
-//!
-//! * the check window is the 300x300 box at the origin. Expanded by the 200-unit clearance it
-//!   reaches +/-350, which clears the pen's inner edge at 600 — so `storeItems` does **not**
-//!   refuse first with one of the fixed traces as the obstacle, and the via arm is genuinely the
-//!   arm under test;
-//! * `tryShoveViaPoints` answers the four centres `(+/-468, 0)` and `(0, +/-468)`. A via moved to
-//!   any of them spans 368..568, and with clearance 168..768, which overlaps the pen at 600..800.
-//!   The pen is `ShoveFixed`, so it cannot yield: all four candidates fail and the arm is reached.
-//!
-//! Both facts are asserted in the tests rather than trusted, so a change to `tryShoveViaPoints`
-//! that emptied the candidate list would not quietly turn these into vacuous passes.
-
 use fr_board::ids::ItemId;
 use fr_board::prelude::*;
 use fr_geometry::{IntBox, IntPoint, Point, Polyline, Shape, TileShape};
@@ -51,8 +14,6 @@ const BOUNDING_BOX: IntBox = IntBox {
     },
 };
 
-/// An id no item on this board has. Pre-loaded into `shove_failing_obstacle` so that a test can
-/// tell "the fix wrote the culprit" from "Java's leftover happened to look right".
 const SENTINEL: ItemId = ItemId(999);
 
 /// The window `check` is asked to clear: the 300x300 box at the origin, which contains the via
@@ -126,27 +87,10 @@ fn boxed_in_via_board(pen: bool) -> (Board, ItemId) {
     (board, via)
 }
 
-/// `TraceShover::check` over [`WINDOW`] on net 1 — a net neither the via nor the pen carries, so
-/// the via is a foreign-net obstacle and reaches the via arm.
-///
-/// `max_via_recursion_depth` is **5**, deliberately: at `0` the refusal would come from `:317-320`,
-/// which already named the via in Java, and the test would prove nothing.
 fn check_the_window(board: &mut Board) -> bool {
     TraceShover::check(board, &WINDOW, None, None, 0, &[1], 1, 20, 5, 20, None)
 }
 
-/// Quirk #174, first half, fixed at Plan 9 Task 10: the via arm records its culprit.
-///
-/// The refusal is `TraceShover.java:348-350` — every candidate centre failed
-/// `DrillItemMover.check` — and Java returned `false` from it without touching
-/// `shoveFailingObstacle`, so `MazeRipupResolver` was handed whatever the field already held. It
-/// now holds `currentShoveVia`, exactly as `:318` already writes it one branch up.
-///
-/// **Recorded before the fix, and the answer is the row's claim demonstrated rather than argued:**
-/// this test answered `Some(ItemId(4))` — a **shove-fixed net-2 trace of the pen**, written by an
-/// inner `DrillItemMover::check` on its way to refusing, and belonging to neither the net being
-/// checked nor the via that actually blocked. Not the sentinel, and not the via. That is the item
-/// `MazeRipupResolver` would have torn up.
 #[test]
 fn a_failed_via_shove_names_its_own_obstacle() {
     let (mut board, via) = boxed_in_via_board(true);
@@ -172,14 +116,6 @@ fn a_failed_via_shove_names_its_own_obstacle() {
     );
 }
 
-/// Quirk #174, second half, fixed at Plan 9 Task 10: the field is cleared on entry.
-///
-/// Java writes `shoveFailingObstacle` only at a refusal and never clears it, so a `check` that
-/// **succeeds** leaves the previous call's culprit in place — and a caller that reads the field
-/// without first checking the return value tears up an item belonging to another net, or
-/// dereferences a null on a fresh board.
-///
-/// Same fixture without the pen, so the via has somewhere to go and the check succeeds.
 #[test]
 fn the_failing_obstacle_is_cleared_on_entry() {
     let (mut board, via) = boxed_in_via_board(false);

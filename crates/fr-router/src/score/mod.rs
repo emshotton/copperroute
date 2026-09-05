@@ -12,5 +12,3 @@ pub use statistics::{
 };
 
 pub use fr_drc::{BoardStatisticsClearanceViolations, DrcViolation};
-
-// NOTE for whoever edits the three `renamed:` lines below: `scripts/audit-port.sh` matches

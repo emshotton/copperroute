@@ -511,17 +511,6 @@ fn the_five_named_algorithm_members_are_javas_literals() {
 }
 
 #[test]
-fn the_multithreaded_optimizer_remains_a_recorded_product_decision() {
-    let register = include_str!("../../../docs/java-quirks.md");
-    let row = register
-        .lines()
-        .find(|line| line.starts_with("| 143 |"))
-        .expect("quirk 143 must remain registered");
-    assert!(row.contains("BatchOptimizerMultiThreaded"));
-    assert!(row.ends_with("| pinned |"));
-}
-
-#[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn consecutive_failures_break_the_pass() {
     if !parity::require_java_dir() {

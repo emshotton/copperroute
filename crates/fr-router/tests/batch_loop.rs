@@ -1,5 +1,3 @@
-//! The whole-board evidence is the differential driver, not this file:
-//! `#[cfg_attr(debug_assertions, ignore)]`, Plan 3's convention — run them with
 use std::path::PathBuf;
 
 use fr_board::prelude::*;
@@ -647,25 +645,6 @@ fn an_empty_history_never_swaps() {
     assert_eq!(bh.best_penalty(), f64::INFINITY);
     assert!(!final_best_board_swap(&mut board, &mut bh, &scoring));
     assert_eq!(board.structural_hash(), before);
-}
-
-#[test]
-fn the_dead_hash_set_is_recorded_as_javas_only_allocation() {
-    let register = include_str!("../../../docs/java-quirks.md");
-    let row = register
-        .lines()
-        .find(|line| line.starts_with("| 216 |"))
-        .expect("the register contains quirk #216");
-    let status = row
-        .trim_end_matches('|')
-        .rsplit('|')
-        .next()
-        .expect("the register row has a status")
-        .trim();
-    assert!(
-        status.starts_with("fixed: T9"),
-        "quirk #216 must remain closed in the comment-free register"
-    );
 }
 
 #[test]

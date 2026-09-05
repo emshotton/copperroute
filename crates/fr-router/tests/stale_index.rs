@@ -1,43 +1,3 @@
-//! Plan 9 Task 17: the #193 stale tree-index discovery.
-//!
-//! Quirk #193 is three HEAD-only guards that each silently `continue` when an item's tree-shape
-//! indices have gone stale under a running maze search. The register row's improvement column
-//! says *"find out why the indices go stale and fix **that**"*, and the plan makes that a
-//! **discovery workstream, not a fix**: nothing here changes a routing decision, and the guards
-//! stay exactly as they were transcribed.
-//!
-//! This file is the measurement. It drives the port's own whole-board pipeline over the eight
-//! batch stems with [`fr_router::autoroute::instrument`] on, and asserts two things:
-//!
-//! * [`the_three_guards_are_counted_on_every_router_stem`] — the survey's claim that *the corpus
-//!   reaches all three* is **verified rather than assumed**. It asserts what was measured, per
-//!   guard, so a later change that starts or stops tripping a guard breaks the test rather than
-//!   silently rewriting the report.
-//! * [`instrumentation_changes_no_board_byte`] — the Plan 7 ruling 11 shape: with the counters on
-//!   and off the SES is byte-identical. **This is the gate that makes the task safe to land**,
-//!   and it is the reason the instrumentation is a plain module behind an environment variable
-//!   rather than anything the guards read.
-//!
-//! # T17: these are characterisation pins, not fix markers — and T8 flipped them
-//!
-//! Task 17 fixes nothing. [`MEASURED`] recorded the behaviour at that task. A Task 8 row that
-//! changes a guard's count is expected to update the table and say which row moved it; that is
-//! the flip, and the `// T17:` breadcrumbs at the guard sites point back here.
-//!
-//! **Plan 9 Tasks 8 and 9 performed that flip.** No **fire** count has ever moved — every one is
-//! still zero, which is #193's whole finding — but the **visit** counts moved at both tasks, and
-//! the `// T8:` / `// T9:` comments on each row of [`MEASURED`] name what moved them. The
-//! denominator went 1 101 064 -> 1 160 973 at Task 8 and **1 160 973 -> 32 351 977 at Task 9**,
-//! a 27.9x rise on three stems and no change at all on the other five.
-//!
-//! # Why the counts are asserted exactly, and per stem
-//!
-//! Four of the eight stems are `FR_SLOW_PARITY` stems, so the CI lane and the full lane run
-//! different subsets and a whole-corpus total would mean two different things. The assertion is
-//! therefore per stem and an exact equality against [`MEASURED`], which is affordable because the
-//! pipeline is deterministic — `batch_parity.rs` gets a byte-identical SES out of these same runs.
-//! A moved count is a real change in what the router does, not measurement noise.
-
 use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::prelude::*;
@@ -144,11 +104,6 @@ const STEMS: &[Stem] = &[
 // The measurement — filled in from the run, and asserted from then on
 // =================================================================================================
 
-/// What one stem's instrumented run produced: the five guard fire counts, in [`Guard::ALL`] order.
-///
-/// **T17: this is the characterisation, not a specification.** The numbers are what the port does
-/// today with #193's guards in place. Task 8 may move them; when it does, the row moves with the
-/// fix that moved it and the report's paragraph is quoted in the commit message.
 struct Expected {
     stem: &'static str,
     /// `[G1a, G1b, G2-resized, G2-out-of-range, G3]`.
@@ -163,76 +118,10 @@ struct Expected {
     visits: [u64; 5],
 }
 
-/// The measured table. Originally the release run recorded in
-/// `.superpowers/sdd/2026-09-03-plan-9-post-parity/task-17-report.md`; **flipped at Plan 9 Task
-/// 8**, which is the flip that report's "these are characterisation pins, not fix markers" note
-/// anticipated.
-///
-/// **Every fire count is still zero — now across 32 351 977 guard evaluations on eight boards.**
-/// #193's finding is untouched by Tasks 8 and 9: what moved is the *denominator*, i.e. how many
-/// times the router walks the guard sites, which is a routing change and exactly what a fix task
-/// is expected to produce. No guard started or stopped tripping.
-///
-/// # T9: one fix moved three rows, and the same fix is the task's cpu escalation
-///
-/// **#227** — the optimizer stage's stage-scoped stop — is the whole of it, and no bisection is
-/// needed to say so: the three stems that moved (`dac2020`, `j2-reference`, `strict-drc-cnh`) are
-/// exactly the three whose optimizer stage does real work now, and `router-fanout-bm11` — which
-/// runs with `optimizer=off` — did not move by one count. The other four stems route nothing or
-/// finish near-perfect, so their optimizer stage exits at `BatchOptimizer.java:182-193` before it
-/// touches an item.
-///
-/// The size of the move is the same fact the task's A/B reports as `cpu_s`: `dac2020` walks the
-/// G2 room-slot site **13 355 651** times against 353 444, a 37.8x rise beside a measured 48.4x
-/// cpu rise. This table is therefore an independent corroboration of the ruling BP4 escalation
-/// rather than a separate finding — the router really is doing tens of times more work, and it is
-/// doing it inside the optimizer's per-item autoroute passes.
-///
-/// | stem | optimizer | visits T8 -> T9 (G2 slot) |
-/// |---|---|---|
-/// | `router-dac2020-bm01` | on | 353 444 -> 13 355 651 |
-/// | `router-j2-reference` | on | 17 854 -> 296 273 |
-/// | `router-strict-drc-cnh` | on | 60 180 -> 939 226 |
-/// | `router-fanout-bm11` | **off** | 80 853 -> 80 853 (unmoved) |
-/// | the other four | on | unmoved — they route nothing or exit near-perfect |
-///
-/// # T8: which fix moved which row — bisected, not inferred
-///
-/// Every commit of Task 8 was checked out in turn and the probe re-run, on the CI stems for all
-/// ten and on the `FR_SLOW_PARITY` stems at the six commits that bracket a move. Three rows moved
-/// the counts and the other seven moved nothing:
-///
-/// | commit | fix | what moved |
-/// |---|---|---|
-/// | `cc6c210` | **#163** | the eighth door of an obstacle room. `dac2020` G1a 13210 -> 13161, G2 336 796 -> 343 469, G3 39 896 -> 41 377; `fanout-bm11` G2 73 088 -> 73 080, G3 5 461 -> 5 455; `strict-drc-cnh` G1a 3 665 -> 3 667, G2 60 219 -> 60 206, G3 7 353 -> 7 333 |
-/// | `e860a26` | **#171 + #170** | the maze queue keeps both paths at a tie, so `expandToTargetDoors` runs more rounds — this is the **G1a/G1b** mover and the largest: `j2` 2 587 -> 3 177, `dac2020` 13 161 -> 13 631, `fanout-bm11` 14 952 -> 17 445, `strict-drc-cnh` 3 667 -> 3 669 |
-/// | `c39d844` | **#156 + #167 + #158** | the expandable ids become one counter, which reorders `MazeListElement`'s third key and moves the **G2/G3** room-slot walk: `j2` G2 17 843 -> 17 854, `dac2020` G2 353 561 -> 353 444, `fanout-bm11` G2 80 849 -> 80 853, `strict-drc-cnh` G2 60 206 -> 60 180 and G3 7 333 -> 7 356 |
-///
-/// `router-rpi-splitter`, `router-ecc83-input`, `router-tutorial-board` and `router-empty-board`
-/// are **unchanged by every one of the ten commits** — and by all seven of Task 9's. #159 (`9fea49e`) cannot move any of these:
-/// it is a 90-degree-only defect and every corpus board declares `fortyfive_degree`. #160/#161,
-/// #162, #164, #165/#166 and #178 moved no count on any stem.
-///
-/// # T10: one row moved, and it is a board-shape change rather than a search change
-///
-/// **#231** — the copper-to-edge override becomes continuous — moves **`router-rpi-splitter`
-/// alone**, because it is the only corpus board Java's `:501-507` guard could stop: its outline
-/// carries an explicit `boundary` clearance class, so the default 500 µm board-edge keep-out used
-/// to be refused there and is now applied like everywhere else. The maze therefore walks a
-/// differently shaped free space. Still zero fires on every guard.
 const MEASURED: &[Expected] = &[
     Expected {
         stem: "router-rpi-splitter",
         fires: [0, 0, 0, 0, 0],
-        // T8: unchanged by all ten commits. T9: unchanged — the routed board is near-perfect, so
-        // `BatchOptimizer.java:182-193` exits before the first optimizer pass touches an item.
-        // T10 #231 (the copper-to-edge override becomes continuous) -> below. This is the one
-        // corpus board whose outline carries an explicit DSN clearance class, so it is the only
-        // one whose board Java's `:501-507` guard used to leave alone; it now carries the same
-        // 500 µm board-edge keep-out as the other fifteen, and the maze walks a differently
-        // shaped free space. Was T9's [76, 76, 1042, 1042, 111]. No guard started or stopped
-        // tripping, and the routed SES is byte-identical either way — the traces here are
-        // nowhere near the edge.
         visits: [75, 75, 1059, 1059, 114],
     },
     Expected {
@@ -294,7 +183,6 @@ const MEASURED: &[Expected] = &[
         visits: [90961, 90961, 939_226, 939_226, 61424],
     },
     Expected {
-        // Nothing to route (plan-7 ruling 7's `NoRoutableLayer` board).
         stem: "router-empty-board",
         fires: [0, 0, 0, 0, 0],
         // T8, T9: unchanged — this board has no routable signal layer.
@@ -490,10 +378,6 @@ fn the_three_guards_are_counted_on_every_router_stem() {
     );
 }
 
-/// Plan 7 ruling 11's shape: the instrumentation is invisible to the board.
-///
-/// **The gate that makes Task 17 safe to land.** Every recorder is a read behind
-/// [`instrument::on`], so this can only fail if a recorder is given a side effect.
 #[test]
 #[cfg_attr(
     debug_assertions,
@@ -531,27 +415,6 @@ fn instrumentation_changes_no_board_byte() {
 // The directed case — the staleness itself, and the mechanism that stops it reaching the guards
 // =================================================================================================
 
-/// T17: #193's staleness, reproduced on purpose, and the reason it never reaches the guards.
-///
-/// The eight-stem run says the guards never fire. That alone would be consistent with the
-/// staleness being impossible *or* with the measurement missing it, so this drives the mechanism
-/// by hand on a routed board:
-///
-/// 1. take a real trace and the tree-shape count a room or door would have recorded;
-/// 2. seed the item's `expansionRoomArr` at the last valid index, which is what
-///    `getExpansionRoom` does on every neighbour walk;
-/// 3. shorten the trace through [`fr_board::Board::replace_trace_geometry`] — the port of
-///    `PolylineTraceSearchTreeAdapter.replaceGeometry`, i.e. **the** path every pull-tight, shove
-///    and split takes;
-/// 4. read the count back.
-///
-/// The recorded index **is** now out of range — the staleness is real and the guards are not
-/// defending against nothing. But the same call cleared the item's autoroute scratch on the way
-/// through (`clearDerivedData` at `PolylineTraceSearchTreeAdapter.java:38`, ported at
-/// `board/mod.rs`'s `replace_trace_geometry`), so the array a stale index would have indexed no
-/// longer exists. That is the whole answer to the register row's *"find out why the indices go
-/// stale"*: **on this code path they do, and Java's own `clearDerivedData` throws away the thing
-/// that would have noticed.**
 #[test]
 #[cfg_attr(
     debug_assertions,
@@ -587,9 +450,6 @@ fn a_shortened_trace_makes_a_recorded_index_stale_and_clears_the_array_that_held
     assert!(before > 0, "the trace has tree shapes to begin with");
     let recorded_index = before - 1;
 
-    // What every `Sorted*RoomNeighbours` walk does: allocate the item's room array and take the
-    // slot for one shape index. `ObstacleRoomId(0)` stands in for the room Task 2's arena builds;
-    // the directed case is about the array, not its contents.
     let seeded = fr_router::autoroute::item_info::get_expansion_room(
         &mut board,
         trace_id,
@@ -672,19 +532,6 @@ fn the_stem_table_matches_the_fixture_file() {
     }
 }
 
-// =================================================================================================
-// Quirk #297: does `reduceTraceShapesAtTiePins` ever fire? (Plan 9 Task 10's investigation)
-// =================================================================================================
-
-/// A board carrying a genuine **tie pin** — a pin declared on two nets — with a trace of one of
-/// those nets ending exactly at its centre.
-///
-/// Returns `(board, tie_pin, foreign_trace, own_net_trace)`. The pin is on nets `{1, 2}`;
-/// `foreign_trace` is on net **2** and `own_net_trace` on net **1**, and both end at the pin's
-/// centre, so both are `getNormalContacts()` of it (`DrillItem.java:283-291` matches end points
-/// exactly). Searching for net 1 therefore makes the net-2 trace the "foreign net trace already
-/// connected to a tie pin" that `MazeSearchEngine.reduceTraceShapesAtTiePins` exists to shorten,
-/// and the net-1 trace the control that must be left alone.
 fn tie_pin_board() -> (Board, ItemId, ItemId, ItemId) {
     let ls = LayerStructure::new(vec![
         Layer::new("front".to_string(), true),
@@ -786,35 +633,6 @@ fn tree_shapes(board: &mut Board, id: ItemId, tree: TreeId) -> Vec<Option<TileSh
         .collect()
 }
 
-/// **Quirk #297, resolved: reading (a).** The predicate is not mis-ported; the corpus is sparse.
-///
-/// Plan 9 Task 17's read-only instrumentation counted **0** `TiePinReduction` mutations on all
-/// eight batch stems, including `router-dac2020-bm01`, whose search ripped 131 items and removed
-/// 150 trace tails in the same connection. Two readings were left open and that measurement could
-/// not separate them: **(a)** no corpus board presents a multi-net tie pin with a foreign-net
-/// trace touching it, or **(b)** the port's `is_tie_pin` / `is_foreign_trace` are mis-ported
-/// against `MazeSearchEngine.java:157-162` and the guard is dead by defect.
-///
-/// This test settles it. On a board built to present exactly that configuration — a pin declared
-/// on nets `{1, 2}` with a net-2 trace ending at its centre, searched for net 1 — the predicate
-/// **fires**, and it fires on the foreign trace only. Reading (a) holds: the corpus is simply too
-/// sparse in this configuration, and the row closes as documented rather than as a defect.
-///
-/// The line-by-line re-derivation the row also asks for was done and agrees, which is the second
-/// half of the answer:
-///
-/// ```text
-/// :157  (currentItem instanceof Pin currentTiePin) && currentItem.netCount() > 1
-///       matches!(item, Item::Pin(_)) && item.net_count() > 1
-/// :160  if (!(currentContact instanceof PolylineTrace) || currentContact.containsNet(ownNetNo))
-///         continue;
-///       let is_foreign_trace = matches!(item, Item::Trace(_)) && !item.contains_net(own_net_no);
-///       if !is_foreign_trace { continue; }
-/// ```
-///
-/// De Morgan, and nothing else. The iteration order differs deliberately (`.rev()`, for Java's
-/// descending-id `TreeSet` — quirk #44) and cannot change *whether* the body runs, only in what
-/// order; the body is idempotent per `(pin, trace)` pair.
 #[test]
 fn the_tie_pin_reduction_fires_on_a_genuine_tie_pin() {
     let (mut board, tie_pin, foreign, own) = tie_pin_board();

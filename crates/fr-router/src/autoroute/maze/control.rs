@@ -5,10 +5,6 @@ use fr_board::{Board, Item};
 use fr_geometry::{Point, java_max};
 use fr_settings::{ExpansionCostFactor, RouterSettings};
 
-/// How the maze prices a via. Routing prices it as Java does, by the largest via radius in
-/// board units, because the score's price is too dear for a search that must still complete the
-/// board; the optimizer's re-router prices it in the score's own currency, because a candidate
-/// it rejects costs nothing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViaPricing {
     ByPadstackRadius,
@@ -143,7 +139,6 @@ impl AutorouteControl {
         let mut layer_active = Vec::with_capacity(layer_count);
         for i in 0..layer_count {
             let active_setting = settings.get_layer_active(i);
-            // :152-161. Java logs `FRLogger.warn("Layer '…' is a dedicated power plane and cannot
             let layer = &board.layer_structure().layers[i];
             layer_active.push(if !layer.is_signal && active_setting {
                 false
