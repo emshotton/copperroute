@@ -887,16 +887,3 @@ fn java_float_compare(f1: f32, f2: f32) -> std::cmp::Ordering {
     };
     bits(f1).cmp(&bits(f2))
 }
-
-fn probe_boards() {
-    for k in 5..=8 {
-        let b = build_board(RPI_SPLITTER, k);
-        let ids: Vec<u32> = b.get_items().map(|i| i.id().0).collect();
-        eprintln!(
-            "PROBE k={k} items={} maxId={} hash={} ids={ids:?}",
-            b.get_items().count(),
-            b.communication.id_gen.max_generated_id().0,
-            b.structural_hash()
-        );
-    }
-}
