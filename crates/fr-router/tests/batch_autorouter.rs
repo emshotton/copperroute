@@ -1005,3 +1005,18 @@ fn an_empty_pass_still_polls_the_job_deadline() {
          complete board, and it must still see the job's deadline"
     );
 }
+
+#[test]
+fn an_empty_pass_with_a_stop_pending_still_removes_tails() {
+    let mut board = empty_board(200, AngleRestriction::None);
+    let settings = RouterSettings::new();
+    let mut router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+    let stop = fr_router::pipeline::RouterStop::new();
+    stop.request_stop_auto_router();
+    let mut failure_log = fr_router::pipeline::RoutingFailureLog::new();
+    let mut sink = fr_router::pipeline::NoopProgressSink;
+    let progressed = router
+        .autoroute_pass(&mut board, &mut failure_log, 1, &stop, &mut sink)
+        .expect("an item-less pass cannot fail");
+    assert!(!progressed);
+}

@@ -50,9 +50,6 @@ impl AutoroutePassRunner {
     ) -> Result<bool, RouterError> {
         stop.poll_cancel();
         stop.poll_deadline();
-        if stop.is_stop_auto_router_requested() {
-            return Ok(false);
-        }
         let autoroute_item_list = router.autoroute_items(board);
 
         if autoroute_item_list.is_empty() {
@@ -179,6 +176,10 @@ impl AutoroutePassRunner {
                     skipped,
                 );
             }
+        }
+
+        if ripped_item_count > 0 {
+            router.net_filter = None;
         }
 
         let tail_stop = &|| stop.is_stopped_or_expired();

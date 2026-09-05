@@ -229,14 +229,17 @@ impl<'a> BatchOptimizer<'a> {
         temp_drc.get_incomplete_count()
     }
 
-    /// The nets with an open connection: the only nets the per-item re-router can route, so the
-    /// only nets its work-list sweep needs to visit.
-    pub fn incomplete_nets(board: &mut Board) -> BTreeSet<i32> {
-        let max_net_number = board.rules.nets.max_net_number();
-        let mut drc = DesignRulesChecker::new(board);
-        drc.calculate_all_incompletes();
-        (1..=max_net_number)
-            .filter(|net_number| drc.get_incomplete_count_for_net(*net_number) > 0)
+    /// The nets the router's own work-list sweep finds something to route on: the only nets the
+    /// per-item re-router can route, so the only nets its own sweeps need to visit.
+    pub fn open_nets(
+        board: &Board,
+        settings: &RouterSettings,
+        budget: RouterBudget,
+    ) -> BTreeSet<i32> {
+        BatchAutorouter::for_routing_job(board, settings, budget)
+            .autoroute_items(board)
+            .into_iter()
+            .map(|(_, net_number)| net_number)
             .collect()
     }
 
@@ -385,7 +388,7 @@ impl<'a> BatchOptimizer<'a> {
         result.update_improved(route_improved);
 
         if route_improved {
-            self.incomplete_nets = BatchOptimizer::incomplete_nets(board);
+            self.incomplete_nets = BatchOptimizer::open_nets(board, self.settings, budget);
             self.min_cumulative_trace_length = java_min(
                 self.min_cumulative_trace_length,
                 f64::from(
@@ -719,7 +722,7 @@ impl BatchOptimizer<'_> {
         });
 
         self.sorted_route_items = Some(ReadSortedRouteItems::new());
-        self.incomplete_nets = BatchOptimizer::incomplete_nets(board);
+        self.incomplete_nets = BatchOptimizer::open_nets(board, self.settings, budget);
         self.min_cumulative_trace_length = f64::from(
             board_statistics_before
                 .traces
