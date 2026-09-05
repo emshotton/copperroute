@@ -1,7 +1,10 @@
 mod common;
 
 use common::synthetic::{PadSpec, SyntheticBoard};
+use fr_board::DrcConstraints;
+use fr_drc::checks::copper;
 use fr_drc::checks::geometry::{gap_below, hole_of, is_microvia, is_through_hole_pin, item_shapes};
+use fr_drc::{DrcViolation, DrcViolationKind};
 use fr_geometry::{IntBox, IntVector, TileShape};
 
 fn boxes(gap: i32) -> (TileShape, TileShape) {
@@ -85,4 +88,152 @@ fn item_shapes_lists_one_shape_per_layer_for_a_via_and_one_for_a_trace() {
     let trace_shapes = item_shapes(&mut synthetic.board, trace);
     assert_eq!(trace_shapes.len(), 1);
     assert_eq!(trace_shapes[0].0, 1);
+}
+
+fn kinds(violations: &[DrcViolation]) -> Vec<DrcViolationKind> {
+    let mut kinds: Vec<DrcViolationKind> = violations.iter().map(|v| v.kind).collect();
+    kinds.sort();
+    kinds
+}
+
+fn constraints_with(clearance: i32) -> DrcConstraints {
+    let mut constraints = DrcConstraints::default();
+    constraints
+        .netclass_clearance
+        .insert("Default".to_string(), clearance);
+    constraints
+}
+
+#[test]
+fn two_traces_on_different_nets_closer_than_the_clearance_are_a_clearance_violation() {
+    let mut synthetic = SyntheticBoard::new(&[], 2, 2000);
+    synthetic.trace(&[(0, 0), (10_000, 0)], 0, 500, 1);
+    synthetic.trace(&[(0, 1500), (10_000, 1500)], 0, 500, 2);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
+    assert_eq!(kinds(&out), vec![DrcViolationKind::Clearance]);
+    assert_eq!(out[0].expected, 2000.0);
+    assert!(
+        (out[0].actual - 500.0).abs() < 2.0,
+        "actual {}",
+        out[0].actual
+    );
+    assert_eq!(out[0].layer, Some(0));
+}
+
+#[test]
+fn the_same_pair_is_reported_once() {
+    let mut synthetic = SyntheticBoard::new(&[], 2, 2000);
+    synthetic.trace(&[(0, 0), (10_000, 0)], 0, 500, 1);
+    synthetic.trace(&[(0, 1500), (10_000, 1500)], 0, 500, 2);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
+    assert_eq!(out.len(), 1);
+}
+
+#[test]
+fn same_net_items_are_never_clearance_violations() {
+    let mut synthetic = SyntheticBoard::new(&[], 1, 2000);
+    synthetic.trace(&[(0, 0), (10_000, 0)], 0, 500, 1);
+    synthetic.trace(&[(0, 1500), (10_000, 1500)], 0, 500, 1);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
+    assert!(out.is_empty(), "{out:?}");
+}
+
+#[test]
+fn overlapping_items_on_different_nets_are_shorting_items() {
+    let mut synthetic = SyntheticBoard::new(&[], 2, 2000);
+    synthetic.trace(&[(0, 0), (10_000, 0)], 0, 500, 1);
+    synthetic.trace(&[(0, 200), (10_000, 200)], 0, 500, 2);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
+    assert_eq!(kinds(&out), vec![DrcViolationKind::ShortingItems]);
+    assert_eq!(out[0].actual, 0.0);
+}
+
+#[test]
+fn crossing_traces_are_tracks_crossing_and_nothing_else() {
+    let mut synthetic = SyntheticBoard::new(&[], 2, 2000);
+    synthetic.trace(&[(-5000, 0), (5000, 0)], 0, 500, 1);
+    synthetic.trace(&[(0, -5000), (0, 5000)], 0, 500, 2);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
+    assert_eq!(kinds(&out), vec![DrcViolationKind::TracksCrossing]);
+    assert!(
+        out[0]
+            .position
+            .distance(&fr_geometry::FloatPoint::new(0.0, 0.0))
+            < 1.0
+    );
+}
+
+#[test]
+fn a_trace_near_a_via_hole_on_another_net_is_a_hole_clearance_violation() {
+    let mut synthetic = SyntheticBoard::new(&[], 2, 2000);
+    synthetic.via(0, 0, 1);
+    synthetic.trace(&[(-10_000, 4000), (10_000, 4000)], 0, 300, 2);
+    let mut constraints = constraints_with(100);
+    constraints.hole_clearance = Some(2500);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints, &mut out);
+    assert_eq!(kinds(&out), vec![DrcViolationKind::HoleClearance]);
+    assert_eq!(out[0].expected, 2500.0);
+    assert!(!out[0].estimated);
+}
+
+#[test]
+fn stacked_same_net_sub_pads_report_nothing() {
+    let mut synthetic = SyntheticBoard::new(
+        &[
+            PadSpec {
+                name: "41@1",
+                half: 900,
+                offset: IntVector::new(0, 0),
+                through_hole: true,
+            },
+            PadSpec {
+                name: "41@2",
+                half: 900,
+                offset: IntVector::new(0, 1400),
+                through_hole: true,
+            },
+        ],
+        1,
+        2000,
+    );
+    synthetic.pin(0, 1);
+    synthetic.pin(1, 1);
+    let mut constraints = constraints_with(2000);
+    constraints.hole_clearance = Some(500);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints, &mut out);
+    assert!(out.is_empty(), "{out:?}");
+}
+
+#[test]
+fn different_net_pads_of_one_footprint_still_get_clearance_checked() {
+    let mut synthetic = SyntheticBoard::new(
+        &[
+            PadSpec {
+                name: "1",
+                half: 900,
+                offset: IntVector::new(0, 0),
+                through_hole: false,
+            },
+            PadSpec {
+                name: "2",
+                half: 900,
+                offset: IntVector::new(2500, 0),
+                through_hole: false,
+            },
+        ],
+        2,
+        2000,
+    );
+    synthetic.pin(0, 1);
+    synthetic.pin(1, 2);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
+    assert_eq!(kinds(&out), vec![DrcViolationKind::Clearance]);
 }
