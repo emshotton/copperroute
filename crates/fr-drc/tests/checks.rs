@@ -2,8 +2,8 @@ mod common;
 
 use common::synthetic::{PadSpec, SyntheticBoard};
 use fr_board::DrcConstraints;
-use fr_drc::checks::copper;
 use fr_drc::checks::geometry::{gap_below, hole_of, is_microvia, is_through_hole_pin, item_shapes};
+use fr_drc::checks::{copper, holes};
 use fr_drc::{DrcViolation, DrcViolationKind};
 use fr_geometry::{IntBox, IntVector, TileShape};
 
@@ -236,4 +236,38 @@ fn different_net_pads_of_one_footprint_still_get_clearance_checked() {
     let mut out = Vec::new();
     copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
     assert_eq!(kinds(&out), vec![DrcViolationKind::Clearance]);
+}
+
+#[test]
+#[allow(clippy::field_reassign_with_default)]
+fn two_via_holes_closer_than_the_minimum_are_hole_to_hole_regardless_of_net() {
+    let mut synthetic = SyntheticBoard::new(&[], 1, 2000);
+    synthetic.via(0, 0, 1);
+    synthetic.via(4500, 0, 1);
+    let mut constraints = DrcConstraints::default();
+    constraints.hole_to_hole = Some(2500);
+    let mut out = Vec::new();
+    holes::run(&mut synthetic.board, &constraints, &mut out);
+    assert_eq!(kinds(&out), vec![DrcViolationKind::HoleToHole]);
+    assert_eq!(out[0].layer, None);
+    assert!(
+        (out[0].actual - 1500.0).abs() < 60.0,
+        "actual {}",
+        out[0].actual
+    );
+}
+
+#[test]
+#[allow(clippy::field_reassign_with_default)]
+fn hole_to_hole_is_skipped_without_a_rule_and_for_far_holes() {
+    let mut synthetic = SyntheticBoard::new(&[], 1, 2000);
+    synthetic.via(0, 0, 1);
+    synthetic.via(4500, 0, 1);
+    let mut out = Vec::new();
+    holes::run(&mut synthetic.board, &DrcConstraints::default(), &mut out);
+    assert!(out.is_empty());
+    let mut constraints = DrcConstraints::default();
+    constraints.hole_to_hole = Some(1000);
+    holes::run(&mut synthetic.board, &constraints, &mut out);
+    assert!(out.is_empty());
 }
