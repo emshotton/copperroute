@@ -523,11 +523,13 @@ fn a_user_fixed_contact_never_reaches_the_ripped_connections() {
     );
 }
 
-const RPI_SEQUENCE: [(u32, &str, f64, f64, usize); 4] = [
-    (47, "PolylineTrace", 666_000.0, 1_003_017.0, 0),
-    (91, "PolylineTrace", 856_000.0, 2_978_225.0, 0),
-    (90, "PolylineTrace", 856_000.0, 3_130_183.0, 0),
-    (92, "PolylineTrace", 1_366_000.0, 1_003_017.0, 0),
+const RPI_SEQUENCE: [(u32, &str, f64, f64, usize); 6] = [
+    (86, "Via", 531_001.0, 2_354_323.0, 0),
+    (41, "Via", 552_083.0, 1_806_420.0, 0),
+    (92, "Via", 552_083.0, 2_259_130.0, 0),
+    (46, "Via", 666_000.0, 1_432_720.0, 0),
+    (429, "PolylineTrace", 1_116_000.0, 802_200.0, 0),
+    (123, "Via", 1_366_000.0, 1_007_139.0, 0),
 ];
 
 #[test]
@@ -601,11 +603,9 @@ fn an_unimproved_item_restores_the_clone_byte_for_byte() {
     let optimizer_stop = RouterStop::new();
     let mut reader = ReadSortedRouteItems::new();
 
-    let before = board.structural_hash();
-    let id_before = board.communication.id_gen.max_generated_id();
     let first = reader.next(&board).expect("item 0");
-    assert_eq!(first.0, 47);
-    let unimproved = optimizer
+    assert_eq!(first.0, 86);
+    let improved = optimizer
         .opt_route_item(
             &mut board,
             first,
@@ -616,15 +616,41 @@ fn an_unimproved_item_restores_the_clone_byte_for_byte() {
             &mut sink,
         )
         .expect("optRouteItem answers Ok");
-    assert!(!unimproved.improved(), "item 0 is improved=false");
-    assert_eq!(
-        board.structural_hash(),
-        before,
-        "the clone restores the board the failed item started from"
-    );
+    assert!(improved.improved(), "item 0 is improved=true");
+
+    let mut unimproved = None;
+    while let Some(item) = reader.next(&board) {
+        let hash_before = board.structural_hash();
+        let id_before = board.communication.id_gen.max_generated_id();
+        let result = optimizer
+            .opt_route_item(
+                &mut board,
+                item,
+                true,
+                false,
+                &optimizer_stop,
+                RouterBudget::disabled(),
+                &mut sink,
+            )
+            .expect("optRouteItem answers Ok");
+        if result.improved() {
+            continue;
+        }
+        assert_eq!(
+            board.structural_hash(),
+            hash_before,
+            "the clone restores the board the failed item started from"
+        );
+        assert!(
+            board.communication.id_gen.max_generated_id() > id_before,
+            "…but the ids the failed attempt burned stay burned (BasicBoard.undo:1233-1240)"
+        );
+        unimproved = Some(item);
+        break;
+    }
     assert!(
-        board.communication.id_gen.max_generated_id() > id_before,
-        "…but the ids the failed attempt burned stay burned (BasicBoard.undo:1233-1240)"
+        unimproved.is_some(),
+        "the routed rpi offers an item the optimizer rejects"
     );
 }
 
@@ -770,8 +796,8 @@ fn the_real_route_work_accumulator_charges_incomplete_count_times_passes() {
 
     let incomplete_before = BatchAutorouter::calculate_incomplete_count(&mut board);
     assert!(
-        incomplete_before >= 2,
-        "the routed rpi is incomplete (R2's stubborn connections); got {incomplete_before}"
+        incomplete_before >= 1,
+        "the routed rpi is incomplete (R2's stubborn connection); got {incomplete_before}"
     );
 
     let mut optimizer = BatchOptimizer::new(&settings);

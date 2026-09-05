@@ -1,5 +1,5 @@
 lane         port (<workspace>/scripts/differential/rust/src/bin/p7t9.rs)
-port sha     4de9d6f2cc90
+port sha     46e4a5704388
 plan 9 task  via-and-trace-length
 java         n/a (no JVM runs in this lane)
 hash mode    n/a (the port has no Object.hashCode)

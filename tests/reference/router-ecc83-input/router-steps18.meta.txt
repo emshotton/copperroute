@@ -1,5 +1,5 @@
 lane         port (<workspace>/scripts/differential/rust/src/bin/p6t1.rs)
-port sha     4de9d6f2cc90
+port sha     46e4a5704388
 plan 9 task  via-and-trace-length
 budget       RouterBudget::disabled() (ruling AI — scripts/differential/rust/src/bin/p6t1.rs)
 jar          <FREEROUTING_JAVA_DIR>/build/libs/freerouting-current-executable.jar
