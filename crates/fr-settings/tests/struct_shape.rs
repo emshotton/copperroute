@@ -225,6 +225,7 @@ fn field_names_pin_javas_declaration_order() {
             "result_json_path",
             "board_specific_trace_costs_applied",
             "opt_changed_area_ms",
+            "smd_via_relaxation",
         ]
     );
     assert_eq!(

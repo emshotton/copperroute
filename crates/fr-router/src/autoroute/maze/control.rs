@@ -52,6 +52,8 @@ pub struct AutorouteControl {
     pub fanout_min_escape_length: f64,
 
     pub start_ripup_costs: i32,
+
+    pub smd_via_relaxation: bool,
 }
 
 impl AutorouteControl {
@@ -151,6 +153,7 @@ impl AutorouteControl {
                 .and_then(|f| f.min_escape_length_mm)
                 .map_or(500.0, |mm| mm * 1000.0),
             start_ripup_costs: settings.get_start_ripup_costs(),
+            smd_via_relaxation: settings.get_smd_via_relaxation(),
         }
     }
 
@@ -257,7 +260,11 @@ impl AutorouteControl {
         }
 
         let pure_smd_net = AutorouteControl::is_pure_smd_net(board, net_number);
-        if !self.attach_smd_allowed && self.layer_count > 1 && pure_smd_net {
+        if self.smd_via_relaxation
+            && !self.attach_smd_allowed
+            && self.layer_count > 1
+            && pure_smd_net
+        {
             self.attach_smd_allowed = true;
         }
 
@@ -267,7 +274,7 @@ impl AutorouteControl {
         }
         let mut via_cost_factor = self.max_via_radius;
         via_cost_factor = java_max(via_cost_factor, 1.0);
-        if pure_smd_net {
+        if self.smd_via_relaxation && pure_smd_net {
             via_cost_factor *= 0.1;
         }
         self.min_normal_via_cost = f64::from(via_costs) * via_cost_factor;

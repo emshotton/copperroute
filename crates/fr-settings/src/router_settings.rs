@@ -133,6 +133,17 @@ pub struct RouterSettings {
         skip_serializing_if = "Option::is_none"
     )]
     pub opt_changed_area_ms: Option<i32>,
+
+    /// The port's own field: no Java counterpart. `AutorouteControl.rebuildViaInfo` forces
+    /// `attachSmdAllowed` true on a pure-SMD net even where every via's own mask says false, and
+    /// scales `viaCostFactor` by 0.1. Default `true` keeps that behaviour; `false` leaves both
+    /// values exactly what the via rule says.
+    #[serde(
+        rename = "smd_via_relaxation",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub smd_via_relaxation: Option<bool>,
 }
 
 impl RouterSettings {
@@ -159,6 +170,7 @@ impl RouterSettings {
         "result_json_path",
         "board_specific_trace_costs_applied",
         "opt_changed_area_ms",
+        "smd_via_relaxation",
     ];
 
     pub fn new() -> Self {
@@ -260,6 +272,14 @@ impl RouterSettings {
 
     pub fn set_vias_allowed(&mut self, value: Option<bool>) {
         self.vias_allowed = value;
+    }
+
+    pub fn get_smd_via_relaxation(&self) -> bool {
+        self.smd_via_relaxation.unwrap_or(true)
+    }
+
+    pub fn set_smd_via_relaxation(&mut self, value: Option<bool>) {
+        self.smd_via_relaxation = value;
     }
 
     pub fn get_via_costs(&self) -> i32 {

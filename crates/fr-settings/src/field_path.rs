@@ -149,6 +149,12 @@ impl RouterSettings {
             "opt_changed_area_ms",
             FieldKind::I32,
         ),
+        spec(
+            "smd_via_relaxation",
+            "smd_via_relaxation",
+            "smd_via_relaxation",
+            FieldKind::Bool,
+        ),
     ];
 }
 
@@ -720,6 +726,7 @@ fn set_router_leaf(
             target.board_specific_trace_costs_applied = Some(java_parse_bool(value));
         }
         "opt_changed_area_ms" => target.opt_changed_area_ms = Some(java_parse_i32(value, path)?),
+        "smd_via_relaxation" => target.smd_via_relaxation = Some(java_parse_bool(value)),
         _ => return Err(type_mismatch(path, value)),
     }
     Ok(())

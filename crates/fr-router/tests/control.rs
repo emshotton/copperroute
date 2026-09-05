@@ -284,6 +284,35 @@ fn pure_smd_relaxes_attach_and_scales_the_via_cost() {
 }
 
 #[test]
+fn the_smd_relaxation_is_a_setting() {
+    let board = fixture_board("Issue593-BBD_Mars-64.dsn");
+    let pure_net = 1;
+    assert!(AutorouteControl::is_pure_smd_net(&board, pure_net));
+
+    let mut settings = board_settings(&board);
+    settings.set_smd_via_relaxation(Some(false));
+    let off = control(&board, pure_net, &settings);
+    assert_eq!(off.min_normal_via_cost, 4000.0, "no 0.1 discount when off");
+    assert_eq!(
+        off.attach_smd_allowed,
+        off.via_infos.iter().any(|via| via.attach_smd_allowed),
+        "off: attachSmdAllowed agrees with the via masks, no override"
+    );
+
+    settings.set_smd_via_relaxation(Some(true));
+    let on = control(&board, pure_net, &settings);
+    assert_eq!(on.min_normal_via_cost, 400.0, "the 0.1 discount when on");
+    assert!(
+        on.attach_smd_allowed,
+        "on: forced true even though every via mask says false"
+    );
+    assert!(
+        !on.via_infos.iter().any(|via| via.attach_smd_allowed),
+        "on: the padstacks themselves still say attach=false"
+    );
+}
+
+#[test]
 fn an_empty_net_is_not_pure_smd() {
     let board = fixture_board("Issue593-BBD_Mars-64.dsn");
     assert!(board.get_connectable_items(0).is_empty());

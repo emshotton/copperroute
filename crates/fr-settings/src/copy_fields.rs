@@ -491,6 +491,12 @@ impl CopyFields for RouterSettings {
             mode,
             report,
         );
+        scalar_copy(
+            &self.smd_via_relaxation,
+            &mut target.smd_via_relaxation,
+            mode,
+            report,
+        );
     }
 }
 

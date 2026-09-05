@@ -93,6 +93,7 @@ fn push_for_test(element: MazeListElement) -> bool {
         fanout_max_escape_length: 3000.0,
         fanout_min_escape_length: 500.0,
         start_ripup_costs: 1,
+        smd_via_relaxation: true,
     };
     let mut engine = AutorouteEngine::new(&mut board, 1, false);
     let room = engine.rooms.new_complete_room(

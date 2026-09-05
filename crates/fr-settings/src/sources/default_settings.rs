@@ -50,6 +50,7 @@ impl DefaultSettings {
         settings.hole_clearance_um = Some(Self::DEFAULT_HOLE_CLEARANCE_UM);
         settings.neck_width_um = Some(0.0);
         settings.strict_drc = Some(false);
+        settings.smd_via_relaxation = Some(true);
 
         let fanout = settings
             .fanout

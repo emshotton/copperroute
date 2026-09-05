@@ -117,7 +117,8 @@ pub fn router_settings_schema() -> Value {
             "scoring": scoring_schema(),
             "max_threads": { "type": "integer", "description": "Worker threads for the stages that are parallel. Defaults to a share of the host's processor count." },
             "result_json": { "type": "string", "description": "Where a run writes its result manifest. Read by the CLI; this tool answers its result directly and does not write one." },
-            "opt_changed_area_ms": { "type": "integer", "description": "Wall-clock budget, in milliseconds, for the pull-tight pass over a changed area. 0 or absent (the default) means no budget and the pull-tight always runs to completion, which is deterministic. The Java program hard-codes 1000 here and cannot switch it off, which makes its own output depend on how fast the machine is; set 1000 to reproduce that." }
+            "opt_changed_area_ms": { "type": "integer", "description": "Wall-clock budget, in milliseconds, for the pull-tight pass over a changed area. 0 or absent (the default) means no budget and the pull-tight always runs to completion, which is deterministic. The Java program hard-codes 1000 here and cannot switch it off, which makes its own output depend on how fast the machine is; set 1000 to reproduce that." },
+            "smd_via_relaxation": { "type": "boolean", "description": "On a pure-SMD net, allow a via to attach to an SMD pad and cut the via cost to a tenth, even where the via rule itself disallows SMD attach. Default true keeps that relaxation; false leaves the via rule's own attach permission and cost alone." }
         }
     })
 }

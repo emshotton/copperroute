@@ -89,6 +89,7 @@ fn fresh_control(settings: &RouterSettings) -> AutorouteControl {
         fanout_max_escape_length: 3000.0,
         fanout_min_escape_length: 500.0,
         start_ripup_costs: 1,
+        smd_via_relaxation: settings.get_smd_via_relaxation(),
     }
 }
 
