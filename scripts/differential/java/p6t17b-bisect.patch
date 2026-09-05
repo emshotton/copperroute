@@ -1,0 +1,1281 @@
+# Plan 6 Task 17b / Plan 7 Task 8b / Plan 7 Task 14b — the bisect markers, as a patch against
+# the Java clone's read-only sources.
+#
+# WHAT THIS IS
+#   The `router-dac2020-bm01` `ripupPassNo >= 2` divergence (quirk #74) was bisected in six
+#   levels; Plan 7 Task 8b added a **seventh** for the `--steps=1-8` `ripupPassNo = 1` divergence
+#   at connection 175 (quirk #210). See "LEVEL 7" at the bottom of this header. Level 1 needs no patching: `scripts/differential/java/P6T17bProbe.java` decorates
+#   `board.communication.idGenerator` and labels every allocation by a `StackWalker` frame.
+#   Levels 2-6 need markers *inside* freerouting, and this patch is them. It is the artefact that
+#   makes the task's load-bearing measurement — 2358 `PolylineTrace.change` calls, of which 1403
+#   disagree between Java's reference comparison and a value one — re-runnable.
+#
+# THE JAVA TREE STAYS READ-ONLY.
+#   Apply into a scratch copy and put the compiled classes *in front of* the jar; never into the
+#   clone.
+#
+#     JDIR=../freerouting/src/main/java          # the clone, untouched
+#     JAR=../freerouting/build/libs/freerouting-current-executable.jar
+#     J25=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+#     SCRATCH=$(mktemp -d)
+#     ( cd "$JDIR" && git ls-files \
+#         app/freerouting/autoroute/maze/MazeSearchEngine.java \
+#         app/freerouting/autoroute/maze/AutorouteEngine.java \
+#         app/freerouting/board/searchtree/ShapeSearchTree45Degree.java \
+#         app/freerouting/board/searchtree/SearchTreeManager.java \
+#         app/freerouting/board/trace/PolylineTrace.java \
+#         app/freerouting/board/optimize/TraceTightener.java \
+#         app/freerouting/board/optimize/TraceTightener45.java \
+#         app/freerouting/datastructures/MinAreaTree.java \
+#         app/freerouting/autoroute/maze/MazeTraceShover.java \
+#       | cpio -pdm "$SCRATCH" )
+#     ( cd "$SCRATCH" && patch -p1 < <abs path>/scripts/differential/java/p6t17b-bisect.patch )
+#     "$J25/bin/javac" -nowarn -cp "$JAR" -d "$SCRATCH/classes" $(find "$SCRATCH" -name '*.java')
+#
+# VALIDATE BEFORE TRUSTING ANY MARKER — this is not optional.
+#   Compile the *unpatched* copies the same way and run `P6T1` with them ahead of the jar; the
+#   output must be byte-identical to the plain-jar run, which is what proves the clone's sources
+#   and the jar are the same code. With the patch applied and the markers switched off (the
+#   default), the same comparison must still hold; it did, on 20 connections of
+#   `Issue508-DAC2020_bm01` at `ripupPassNo = 2`.
+#
+# RUN
+#   The markers are gated on two `public static` fields the patch adds to `MazeSearchEngine`, and
+#   `P6T17bProbe` sets them from the environment:
+#
+#     P6T17B_DEEP=1  — OCCUPY / OTHERLAYERS / ROOMDOORS / PUSH / DOORSEC (the maze queue),
+#                      CROOM_IN / CROOM_CAND / ROOM (room completion),
+#                      NODE / LEAF / LEAFROOM / RESTRAIN (the 45-degree completeShape walk),
+#                      TINS / TREM (+ a stack signature) and SMINS / SMREM (tree mutations),
+#                      CHANGE (PolylineTrace.change's two index pairs, identity *and* value)
+#                      — all for the one connection `P6T17bProbe`'s `k` names.
+#     P6T17B_DEEP=all — the same markers for *every* connection. Use it on a handful of
+#                      connections only: over a whole board its stderr runs to gigabytes.
+#     P6T17B_CHANGE=1 — CHANGE alone, for every connection. This is the task's **pinning
+#                      measurement**, and it is cheap enough to run over a whole board:
+#
+#                        P6T17B_CHANGE=1 "$J25/bin/java" ... P6T17bProbe \
+#                            ../freerouting/fixtures/Issue508-DAC2020_bm01.dsn 267 2 2>c.txt
+#                        grep -c '^CHANGE' c.txt                                  # 2358
+#                        grep '^CHANGE' c.txt | awk '{split($4,a,"="); split($6,b,"=");
+#                          split($5,c,"="); split($7,d,"=");
+#                          if (a[2] != b[2] || c[2] != d[2]) n++} END {print n}'  # 1403
+#
+#                      `idFirst`/`idLast` are Java's reference comparison, `vFirst`/`vLast` the
+#                      same two indices computed with `Line.equals`. The port agrees with the
+#                      first pair on all 2358 and would disagree on 1403 with the second.
+#     P6T17B_TREE=1  — TREENODE: a pre-order dump of the whole autoroute tree (leaf/inner flag
+#                      plus each node's bounding octagon) once per connection, at its first
+#                      `completeShape`. This is the level that put the first structural
+#                      divergence at connection 92, node 414 of 5063.
+#
+#     P6T17B_DEEP=1 "$J25/bin/java" -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
+#         -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 \
+#         -cp <probe-classes>:"$SCRATCH/classes":"$JAR" \
+#         app.freerouting.autoroute.maze.P6T17bProbe \
+#         ../freerouting/fixtures/Issue508-DAC2020_bm01.dsn 267 2 2>markers.txt
+#
+#   Every marker goes to **stderr**, so the driver's own stdout stays diffable. The port side was
+#   instrumented to match with env-gated `eprintln!`s at the mirrored statements; none of that is
+#   committed (it would be production-path tracing), and the report's §3 names each pair.
+#
+#
+# LEVEL 7 — Plan 7 Task 8b: the `--steps=1-8` connection-175 ledger.
+#
+#   Levels 2-6 are gated on `MazeSearchEngine`'s two `public static` fields, which only
+#   `P6T17bProbe` can set. Level 7 reads its own switches straight from the **environment**, in
+#   `static final boolean` initialisers, so it needs no probe and no reflection: putting
+#   `P7T8B_OCA=1` (or `P7T8B_CHANGE=1`) on a plain `P6T1` command line is the whole setup, and
+#   `javac`'s constant folding keeps an unset marker off the hot path.
+#
+#     P7T8B_CHANGE=1 — `CHG`, one line per `PolylineTrace.change` call that reaches the identity
+#                      comparison, **including** the two calls that early-return at `:966` and
+#                      `:978`. Level 6's `CHANGE` marker sits below both and cannot see them.
+#                      Carries the trace id, both line counts, `indexOfFirst/LastDifferentLine`,
+#                      `keepAtStart/EndCount`, which early return fired, and the per-index
+#                      identity relation as a `.`/`X` bit string. `P7T8B_LINES=1` adds both
+#                      polylines' line end points.
+#     P7T8B_OCA=1    — the `TraceTightener.optChangedArea` sweep: `OCA` (the enlarged changed
+#                      region and the ordered `overlappingObjects` answer, per layer visit),
+#                      `OCAPT` / `OCASM` / `OCAVIA` (each object's outcome), `SM1` and `SMSPL`
+#                      (`smoothenEndCornersAtTrace1`'s loop iterations and its two `splitTraces`
+#                      calls), and `SSC` / `SSCC` / `SSCF` / `SSCA` / `SSCB`
+#                      (`TraceTightener45.smoothenStartCornerAtTrace`: the contact list **in
+#                      iteration order**, each contact's verdict, the contact the loop kept, and
+#                      the `translateLine` / `addLine` arithmetic).
+#     P7T8B_IDS=1    — not in this patch: `scripts/differential/java/P6T1.java`'s `IdTracer`, a
+#                      decorating `IdGenerator` under the same convention. `P7T8B_IDS_FROM` and
+#                      `P7T8B_IDS_BT` are the port's two extra knobs (`Board::new_item_id`).
+#
+#   The port's half of every level-7 marker **is** committed, unlike levels 2-6's: `CHG` in
+#   `fr_board`'s `Board::change_trace`, `ID` in `Board::new_item_id`, and `OCA*` / `SM1` /
+#   `SMSPL` / `SSC*` in `fr_router`'s `tightener` module. All are `eprintln!`s behind a
+#   `LazyLock<bool>` read of the same variable, all write to stderr, and a run without the
+#   variables is byte-identical to one from before they existed.
+#
+#   `scripts/differential/java/P6T1.java` prints a `CONN k=<k> item=<id> net=<no>` separator to
+#   stderr under `P7T8B_CHANGE` or `P7T8B_OCA` — the ledgers say nothing about which connection
+#   they belong to, and the port's `p6t1.rs` prints the same line.
+#
+#   What it found (Task 8b): `Trace.getNormalContacts` answers a `TreeSet<Item>` and
+#   `Item.compareTo` is `item.id - id`, so `TraceTightener45.java:481` walks the contact list in
+#   **descending** id; the port's `scan_contacts` walked the same set **ascending**. `:511-514`
+#   keeps the *last* matching contact, so with two matches the two sides pick different ones.
+#   Quirk #210.
+#
+#
+# LEVEL 8 — Plan 7 Task 14b: the failed-attempt id-burn ledger (quirk #229).
+#
+#   Level 8 follows level 7's convention exactly — `static final boolean` initialisers that read
+#   the **environment**, one per file, so no probe and no reflection is needed and the driver is
+#   the plain `P7T8`. Every marker goes to **stderr**, and every one of them has a committed
+#   port-side twin behind a `LazyLock<bool>` read of the same variable, so the two ledgers diff
+#   line for line.
+#
+#     P7T14B_MAT=1  — `MAT ins|rem cls=<n> n=<leafCount before> bb=(...)`, one line per
+#                     `MinAreaTree` leaf insertion or removal, on every tree. **This is the
+#                     ledger that names the statement.** Port twin: `ShapeTree::insert_leaf` /
+#                     `ShapeTree::remove_leaf` in `crates/fr-board/src/datastructures/shape_tree.rs`
+#                     (which prints no `cls=`; strip it from the Java lines before diffing).
+#     P7T14B_FP=1   — `TREEFP n=<nodes> h=<fnv1a>`: a structural fingerprint of the whole
+#                     autoroute tree, taken once per `ShapeSearchTree45Degree.completeShape`,
+#                     plus `TINS8 id=<n>` for every item a freshly built compensated tree is
+#                     filled with. Port twins: `complete_shape_45` and
+#                     `SearchTreeManager::get_autoroute_tree`.
+#     P7T14B_CS=1   — `CSHAPE` (one `completeShape` call: its inputs corner by corner and every
+#                     candidate it answers), `CROOM8` (each completed free-space room) and `CSO`
+#                     (each obstacle the 45-degree walk restrains against, in traversal order,
+#                     with the current result rooms). Port twins:
+#                     `AutorouteEngine::complete_expansion_room` / `add_complete_room` and
+#                     `complete_shape_45`.
+#     P7T14B_MAZE=1 — `ADD` / `POPQ` / `OCC` (the maze expansion list), `EXPROOM` (a room's door
+#                     list in iteration order), `SHOVEROOM` and `CSTL` (the shove entries). Port
+#                     twins: `MazeQueue::push`, `MazeSearchEngine::occupy_next_element`,
+#                     `MazeExpansionEngine::expand_to_room_doors` / `shove_trace_room` and
+#                     `MazeTraceShover::check_shove_trace_line`.
+#     P7T8B_IDS=1   — reused from level 7. `scripts/differential/java/P7T8.java` carries its own
+#                     copy of `P6T1.IdTracer` (`P6T1` is in a different package and is not on
+#                     `p7t8`'s compile path) and prints an `ITEMSEP n=<n> id=<id>` separator
+#                     before every `optRouteItem`; `p7t8.rs` prints the same separator.
+#                     `P7T8B_IDS_STACK` sets how many `app.freerouting.*` frames each `ID` line
+#                     carries (default 6; `1` lines the Java ledger up with the port's, which
+#                     prints the immediate caller only).
+#
+#   Reproducing the whole chain (`Issue558-dev-board`, the 188-vs-187 row):
+#
+#     P7T8B_IDS=1 P7T14B_MAT=1 P7T14B_FP=1 "$J25/bin/java" -Djava.awt.headless=true \
+#         -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 \
+#         -cp scripts/differential/build/classes-p7t8:"$SCRATCH/classes":"$JAR" \
+#         app.freerouting.autoroute.pipeline.P7T8 \
+#         ../freerouting/fixtures/Issue558-dev-board.dsn item 1 7 >/dev/null 2>j.err
+#
+#     FREEROUTING_JAR=$JAR P7T8B_IDS=1 P7T14B_MAT=1 P7T14B_FP=1 \
+#         ./scripts/differential/rust/target/release/p7t8 \
+#         ../freerouting/fixtures/Issue558-dev-board.dsn item 1 7 >/dev/null 2>r.err
+#
+#     # strip `cls=` from the Java lines, then diff the two `MAT`/`TREEFP`/`ITEMSEP` streams:
+#     # the first difference is 55 Java-only `MAT` ops at the tail of item n=1 — Java's
+#     # `BasicBoard.undo` — followed by the same tree with a different `TREEFP` hash.
+#
+#   What it found (Task 14b): `BatchOptimizer.optRouteItem:509`'s `routingBoard.undo(null)`
+#   replays the failed attempt's item changes through `SearchTreeManager`, so Java's search trees
+#   come back with the same leaves in a **different topology**; the port restores a clone, which
+#   puts the topology back exactly. `ShapeSearchTree45Degree.completeShape`'s traversal prune
+#   shrinks as obstacles are consumed, so topology decides which obstacles restrain a room —
+#   and one differently-shaped room later costs one substitute-trace-piece id. Quirk #229.
+#
+--- a/app/freerouting/autoroute/maze/AutorouteEngine.java
++++ b/app/freerouting/autoroute/maze/AutorouteEngine.java
+@@ -446,8 +446,41 @@
+               + describeShapeBounds(fromDoorShape)
+               + ", ignoreObject="
+               + (ignoreObject == null ? "null" : ignoreObject.getClass().getSimpleName()));
++      if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++        System.err.println(
++            "CROOM_IN layer=" + room.getLayer()
++                + " room=" + p6t17bShape(room.getShape())
++                + " contained=" + p6t17bShape(room.getContainedShape())
++                + " fromDoor=" + p6t17bShape(fromDoorShape)
++                + " ignore=" + (ignoreObject == null ? "null" : "obj"));
++      }
+       Collection<IncompleteFreeSpaceExpansionRoom> completedShapes =
+           this.autorouteSearchTree.completeShape(room, this.netNumber, ignoreObject, fromDoorShape);
++      if (P7T14B_CS) {
++        StringBuilder shapeLine = new StringBuilder("CSHAPE in=");
++        shapeLine
++            .append(p7t14bShape(room.getShape()))
++            .append(" contained=")
++            .append(p7t14bShape(room.getContainedShape()))
++            .append(" fromDoor=")
++            .append(p7t14bShape(fromDoorShape))
++            .append(" ignore=")
++            .append(ignoreObject == null ? "null" : ignoreObject.getClass().getSimpleName())
++            .append(" out=")
++            .append(completedShapes.size());
++        for (IncompleteFreeSpaceExpansionRoom candidate : completedShapes) {
++          shapeLine.append(' ').append(p7t14bShape(candidate.getShape()));
++        }
++        System.err.println(shapeLine);
++      }
++      if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++        for (IncompleteFreeSpaceExpansionRoom c : completedShapes) {
++          System.err.println(
++              "CROOM_CAND dim=" + c.getShape().dimension()
++                  + " shape=" + p6t17bShape(c.getShape())
++                  + " contained=" + p6t17bShape(c.getContainedShape()));
++        }
++      }
+       int initialCandidateIndex = 0;
+       for (IncompleteFreeSpaceExpansionRoom initialCandidate : completedShapes) {
+         FRLogger.trace(
+@@ -532,6 +565,21 @@
+       completeExpansionRooms = new ArrayList<>();
+     }
+     completeExpansionRooms.add(completedRoom);
++    if (P7T14B_CS) {
++      System.err.println(
++          "CROOM8 layer="
++              + completedRoom.getLayer()
++              + " bb="
++              + describeShapeBounds(completedRoom.getShape())
++              + " doors="
++              + (completedRoom.getDoors() == null ? -1 : completedRoom.getDoors().size()));
++    }
++    if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++      System.err.println(
++          "ROOM layer=" + completedRoom.getLayer()
++              + " bounds=" + describeShapeBounds(completedRoom.getShape())
++              + " doors=" + completedRoom.getDoors().size());
++    }
+     this.autorouteSearchTree.insert(completedRoom);
+     FRLogger.trace(
+         "COMPLETE_ROOM added"
+@@ -544,6 +592,41 @@
+     return completedRoom;
+   }
+ 
++  // ---- P6T17b bisect markers -----------------------------------------------------------------
++  static String p6t17bShape(TileShape shape) {
++    if (shape == null) return "null";
++    StringBuilder sb = new StringBuilder("{");
++    for (int i = 0; i < shape.borderLineCount(); i++) {
++      if (i > 0) sb.append(';');
++      sb.append(shape.corner(i));
++    }
++    return sb.append('}').toString();
++  }
++  // ---- end P6T17b ------------------------------------------------------------------------------
++
++  /**
++   * Plan 7 Task 14b, level 8: `CSHAPE` (one line per `completeShape` call — its inputs, corner
++   * by corner, and every completed candidate it answers) and `CROOM8` (one line per completed
++   * free-space room that reaches the tree). Off unless `P7T14B_CS` is set. This is the level at
++   * which quirk #229 first becomes *observable*: identical inputs, different output shape.
++   */
++  static final boolean P7T14B_CS = System.getenv("P7T14B_CS") != null;
++
++  static String p7t14bShape(TileShape shape) {
++    if (shape == null) {
++      return "null";
++    }
++    StringBuilder rendered = new StringBuilder("{");
++    for (int i = 0; i < shape.borderLineCount(); i++) {
++      if (i > 0) {
++        rendered.append(';');
++      }
++      app.freerouting.geometry.planar.FloatPoint corner = shape.cornerApprox(i);
++      rendered.append(String.format(java.util.Locale.ROOT, "%.3f,%.3f", corner.x, corner.y));
++    }
++    return rendered.append('}').toString();
++  }
++
+   private static String describeShapeBounds(TileShape shape) {
+     if (shape == null) {
+       return "null";
+--- a/app/freerouting/autoroute/maze/MazeSearchEngine.java
++++ b/app/freerouting/autoroute/maze/MazeSearchEngine.java
+@@ -85,6 +85,7 @@
+         new TreeSet<>() {
+           @Override
+           public boolean add(MazeListElement element) {
++            p6t17bPush(element);
+             if (ctrl.isFanout && ctrl.fanoutStartPinCenter != null) {
+               app.freerouting.geometry.planar.FloatPoint pinCenterFloat =
+                   ctrl.fanoutStartPinCenter.toFloat();
+@@ -120,7 +121,25 @@
+                 }
+               }
+             }
+-            return super.add(element);
++            boolean added = super.add(element);
++            if (P7T14B_MAZE) {
++              System.err.println(
++                  "ADD ok="
++                      + added
++                      + " sec="
++                      + element.sectionNoOfDoor
++                      + " sort="
++                      + String.format(java.util.Locale.ROOT, "%.6f", element.sortingValue)
++                      + " exp="
++                      + String.format(java.util.Locale.ROOT, "%.6f", element.expansionValue)
++                      + " door="
++                      + element.door.getId()
++                      + " adj="
++                      + element.adjustment
++                      + " size="
++                      + size());
++            }
++            return added;
+           }
+         };
+     destinationDistance =
+@@ -311,6 +330,47 @@
+    * Expands the next element in the maze expansion list. Returns false, if the expansion list is
+    * exhausted or the destination is reached.
+    */
++  // ---- P6T17b bisect markers (scripts/differential/java/p6t17b-bisect.patch) ----------------
++  /** Set by P6T17bProbe for the connection under study; every marker below is gated on it. */
++  public static boolean P6T17B = false;
++
++  /** The 1-based index of the connection being routed, for the per-connection tree dump. */
++  public static int P6T17B_K = 0;
++
++  /**
++   * `PolylineTrace.change`'s CHANGE marker alone, for every connection — the task's pinning
++   * measurement. Set separately because the other markers cost gigabytes over a whole board.
++   */
++  public static boolean P6T17B_CHANGE = false;
++
++  static String p6t17bBits(double v) {
++    return Long.toHexString(Double.doubleToLongBits(v));
++  }
++
++  static String p6t17bDoor(ExpandableObject door) {
++    return door.getClass().getSimpleName();
++  }
++
++  static void p6t17bPush(MazeListElement e) {
++    if (!P6T17B) return;
++    System.err.println(
++        "PUSH sort=" + p6t17bBits(e.sortingValue)
++            + " exp=" + p6t17bBits(e.expansionValue)
++            + " door=" + p6t17bDoor(e.door)
++            + " sec=" + e.sectionNoOfDoor
++            + " ripped=" + e.roomRipped
++            + " adj=" + e.adjustment
++            + " cost=" + e.ripupCost
++            + " nextRoom=" + (e.nextRoom == null ? "null" : e.nextRoom.getClass().getSimpleName()));
++  }
++
++  static String p6t17bLine(app.freerouting.geometry.planar.FloatLine l) {
++    if (l == null) return "null";
++    return p6t17bBits(l.a.x) + "," + p6t17bBits(l.a.y)
++        + "/" + p6t17bBits(l.b.x) + "," + p6t17bBits(l.b.y);
++  }
++  // ---- end P6T17b -------------------------------------------------------------------------
++
+   public boolean occupyNextElement() {
+     if (this.destinationDoor != null) {
+       return false; // destination already reached
+@@ -331,14 +391,43 @@
+       int currentSectionNo = listElement.sectionNoOfDoor;
+       currentDoorSection = listElement.door.getMazeSearchElement(currentSectionNo);
+ 
++      if (P7T14B_MAZE) {
++        System.err.println(
++            "POPQ occ="
++                + currentDoorSection.isOccupied
++                + " sec="
++                + listElement.sectionNoOfDoor
++                + " sort="
++                + String.format(java.util.Locale.ROOT, "%.6f", listElement.sortingValue)
++                + " exp="
++                + String.format(java.util.Locale.ROOT, "%.6f", listElement.expansionValue)
++                + " adj="
++                + listElement.adjustment);
++      }
+       if (!currentDoorSection.isOccupied) {
+         nextElementFound = true;
+         break;
+       }
+     }
++    if (P7T14B_MAZE) {
++      System.err.println("OCC found=" + nextElementFound + p7t14bElement(listElement));
++    }
+     if (!nextElementFound) {
+       return false;
+     }
++    if (P6T17B) {
++      System.err.println(
++          "OCCUPY sort=" + p6t17bBits(listElement.sortingValue)
++              + " exp=" + p6t17bBits(listElement.expansionValue)
++              + " door=" + p6t17bDoor(listElement.door)
++              + " sec=" + listElement.sectionNoOfDoor
++              + " ripped=" + listElement.roomRipped
++              + " adj=" + listElement.adjustment
++              + " nextRoom="
++              + (listElement.nextRoom == null
++                  ? "null"
++                  : listElement.nextRoom.getClass().getSimpleName()));
++    }
+     currentDoorSection.backtrackDoor = listElement.backtrackDoor;
+     currentDoorSection.sectionNoOfBacktrackDoor = listElement.sectionNoOfBacktrackDoor;
+     currentDoorSection.roomRipped = listElement.roomRipped;
+@@ -369,10 +458,12 @@
+     if (ctrl.viasAllowed
+         && listElement.door instanceof ExpansionDrill
+         && !(listElement.backtrackDoor instanceof ExpansionDrill)) {
++      if (P6T17B) System.err.println("  OTHERLAYERS");
+       expansionEngine.expandToOtherLayers(listElement);
+     }
+ 
+     if (listElement.nextRoom != null) {
++      if (P6T17B) System.err.println("  ROOMDOORS");
+       if (!expandToRoomDoors(listElement)) {
+         return true; // occupation by ripup is delayed or nothing was expanded
+         // In case nothing was expanded allow the section to be occupied from
+@@ -587,6 +678,29 @@
+               + ctrl.netNumber);
+     }
+ 
++    if (P7T14B_MAZE) {
++      StringBuilder roomLine = new StringBuilder("EXPROOM room=");
++      roomLine.append(p7t14bRoom(listElement.nextRoom)).append(" n=").append(roomDoorsSnapshot.size());
++      for (ExpansionDoor ledgerDoor : roomDoorsSnapshot) {
++        TileShape doorShape = ledgerDoor.getShape();
++        roomLine.append(" [dim=").append(ledgerDoor.dimension).append(" bb=");
++        if (doorShape == null) {
++          roomLine.append("null");
++        } else {
++          IntBox doorBox = doorShape.boundingBox();
++          roomLine
++              .append(doorBox.ll.x)
++              .append(',')
++              .append(doorBox.ll.y)
++              .append(',')
++              .append(doorBox.ur.x)
++              .append(',')
++              .append(doorBox.ur.y);
++        }
++        roomLine.append(']');
++      }
++      System.err.println(roomLine);
++    }
+     for (ExpansionDoor toDoor : roomDoorsSnapshot) {
+       if (toDoor == listElement.door) {
+         continue;
+@@ -752,6 +866,15 @@
+         }
+       }
+ 
++      if (P6T17B) {
++        System.err.println(
++            "  DOORSEC i=" + i
++                + " thick=" + nextRoomIsThick
++                + " add=" + addCosts
++                + " dim=" + toDoor.dimension
++                + " ls=" + p6t17bLine(lineSections[i])
++                + " entry=" + p6t17bLine(newShapeEntry));
++      }
+       if (expandToDoorSection(toDoor, i, newShapeEntry, listElement, addCosts, adjustment)) {
+         somethingExpanded = true;
+       }
+@@ -1126,8 +1249,56 @@
+    * Shoves a trace room and expands the corresponding doors. Return false, if no door was expanded.
+    * In this case occupation of the door_section by ripup can be delayed to allow shoving the room
+    * from a different door section
++   */
++  /**
++   * Plan 7 Task 14b, level 8: `ADD` / `POPQ` / `OCC` (the maze expansion list), `EXPROOM` (a
++   * room's door list in iteration order) and `SHOVEROOM` (each `shoveTraceRoom` entry). Off
++   * unless `P7T14B_MAZE` is set. These are the levels between quirk #229's completed-room
++   * divergence and the extra item id it costs.
+    */
++  static final boolean P7T14B_MAZE = System.getenv("P7T14B_MAZE") != null;
++
++  private static String p7t14bRoom(CompleteExpansionRoom room) {
++    if (room instanceof ObstacleExpansionRoom obstacleRoom) {
++      return "obst" + obstacleRoom.getItem().getId() + ":" + obstacleRoom.getIndexInItem();
++    }
++    return "free";
++  }
++
++  private static String p7t14bElement(MazeListElement element) {
++    if (element == null) {
++      return "";
++    }
++    return " sec="
++        + element.sectionNoOfDoor
++        + " exp="
++        + String.format(java.util.Locale.ROOT, "%.6f", element.expansionValue)
++        + " sort="
++        + String.format(java.util.Locale.ROOT, "%.6f", element.sortingValue)
++        + " adj="
++        + element.adjustment
++        + " chk="
++        + element.alreadyChecked
++        + " rip="
++        + element.roomRipped
++        + " cost="
++        + element.ripupCost
++        + " room="
++        + (element.nextRoom == null ? "null" : p7t14bRoom(element.nextRoom));
++  }
++
+   private boolean shoveTraceRoom(MazeListElement listElement, ObstacleExpansionRoom obstacleRoom) {
++    if (P7T14B_MAZE) {
++      System.err.println(
++          "SHOVEROOM item="
++              + obstacleRoom.getItem().getId()
++              + " sec="
++              + listElement.sectionNoOfDoor
++              + " cnt="
++              + listElement.door.mazeSearchElementCount()
++              + " adj="
++              + listElement.adjustment);
++    }
+     if (listElement.sectionNoOfDoor != 0
+         && listElement.sectionNoOfDoor != listElement.door.mazeSearchElementCount() - 1) {
+       // No delay of occupation necessary because inner sections of a door are
+--- a/app/freerouting/autoroute/maze/MazeTraceShover.java
++++ b/app/freerouting/autoroute/maze/MazeTraceShover.java
+@@ -29,6 +29,12 @@
+    * Returns false, if the algorithm did not succeed and trying to shove from another door section
+    * may be more successful.
+    */
++  /**
++   * Plan 7 Task 14b, level 8: `CSTL` — one line per `checkShoveTraceLine` entry. Off unless
++   * `P7T14B_MAZE` is set.
++   */
++  static final boolean P7T14B_MAZE = System.getenv("P7T14B_MAZE") != null;
++
+   public static boolean checkShoveTraceLine(
+       MazeListElement listElement,
+       ObstacleExpansionRoom obstacleRoom,
+@@ -36,6 +42,19 @@
+       AutorouteControl ctrl,
+       boolean shoveToTheLeft,
+       Collection<DoorSection> toDoorList) {
++    if (P7T14B_MAZE) {
++      System.err.println(
++          "CSTL left="
++              + shoveToTheLeft
++              + " item="
++              + obstacleRoom.getItem().getId()
++              + " idx="
++              + obstacleRoom.getIndexInItem()
++              + " sec="
++              + listElement.sectionNoOfDoor
++              + " adj="
++              + listElement.adjustment);
++    }
+     if (!(listElement.door instanceof ExpansionDoor fromDoor)) {
+       return true;
+     }
+--- a/app/freerouting/board/optimize/TraceTightener.java
++++ b/app/freerouting/board/optimize/TraceTightener.java
+@@ -30,6 +30,14 @@
+ /** Class with functionality for optimising traces and vias. */
+ public abstract class TraceTightener {
+ 
++  // ---- Plan 7 Task 8b, level 7: the `optChangedArea` sweep ledger -----------------------------
++  // `P7T8B_OCA=1` prints one line per layer visit (the enlarged changed region and the ordered
++  // `overlappingObjects` answer) and one per object outcome. Read from the environment for the
++  // same reason `PolylineTrace.P7T8B_CHANGE` is: no probe, no reflection, and a `static final`
++  // the JIT folds away when it is unset.
++  public static final boolean P7T8B_OCA = System.getenv("P7T8B_OCA") != null;
++  // ---- end Plan 7 Task 8b ---------------------------------------------------------------------
++
+   protected static final double c_max_cos_angle = 0.999;
+   // with angles to close to 180 degree the algorithm becomes numerically
+   // unstable
+@@ -143,23 +151,59 @@
+         // search in the ShapeSearchTree for all overlapping traces
+         // with clipShape on layer i
+         Collection<SearchTreeObject> items = board.overlappingObjects(changedRegion, i);
++        if (P7T8B_OCA) {
++          StringBuilder sb = new StringBuilder();
++          sb.append("OCA layer=").append(i).append(" region=(")
++              .append(changedRegion.leftX).append(',').append(changedRegion.bottomY).append(',')
++              .append(changedRegion.rightX).append(',').append(changedRegion.topY).append(',')
++              .append(changedRegion.upperLeftDiagonalX).append(',')
++              .append(changedRegion.lowerRightDiagonalX).append(',')
++              .append(changedRegion.lowerLeftDiagonalX).append(',')
++              .append(changedRegion.upperRightDiagonalX).append(") n=").append(items.size())
++              .append(" objs=[");
++          boolean firstObj = true;
++          for (SearchTreeObject o : items) {
++            if (!firstObj) sb.append(',');
++            firstObj = false;
++            if (o instanceof Item it) {
++              sb.append(it.getId());
++            } else {
++              sb.append('R');
++            }
++          }
++          System.err.println(sb.append(']'));
++        }
+         for (SearchTreeObject currentObject : items) {
+           if (this.isStopRequested()) {
+             return;
+           }
+           if (currentObject instanceof PolylineTrace currentTrace) {
+-            if (currentTrace.pullTight(this)) {
++            boolean p7Pt = currentTrace.pullTight(this);
++            if (P7T8B_OCA) {
++              System.err.println("OCAPT id=" + currentTrace.getId() + " res=" + p7Pt);
++            }
++            if (p7Pt) {
+               somethingChanged = true;
+               if (this.splitTracesAtKeepPoint()) {
+                 break;
+               }
+-            } else if (smoothenEndCornersAtTrace(currentTrace)) {
+-              somethingChanged = true;
+-              break; // because items may be removed
++            } else {
++              boolean p7Sm = smoothenEndCornersAtTrace(currentTrace);
++              if (P7T8B_OCA) {
++                System.err.println("OCASM id=" + currentTrace.getId() + " res=" + p7Sm);
++              }
++              if (p7Sm) {
++                somethingChanged = true;
++                break; // because items may be removed
++              }
+             }
+           } else if (currentObject instanceof Via via && traceCosts != null) {
+-            if (ViaOptimizer.optViaLocation(
+-                this.board, via, traceCosts, this.minTranslateDist, 10)) {
++            boolean p7Via =
++                ViaOptimizer.optViaLocation(this.board, via, traceCosts, this.minTranslateDist, 10);
++            if (P7T8B_OCA) {
++              System.err.println("OCAVIA id=" + via.getId() + " res=" + p7Via);
++            }
++            if (p7Via) {
+               somethingChanged = true;
+             }
+           }
+@@ -423,9 +467,15 @@
+     boolean result = false;
+     boolean connectionToTraceImproved = true;
+     PolylineTrace currentTrace = trace;
++    int p7Iter = 0;
+     while (connectionToTraceImproved) {
+       connectionToTraceImproved = false;
+       Polyline adjustedPolyline = smoothenEndCornersAtTrace2(currentTrace);
++      if (P7T8B_OCA) {
++        System.err.println(
++            "SM1 iter=" + (++p7Iter) + " trace=" + currentTrace.getId()
++                + " adj=" + (adjustedPolyline == null ? "none" : adjustedPolyline.corners().length));
++      }
+       if (adjustedPolyline != null) {
+         int traceLayer = currentTrace.getLayer();
+         int currentClClass = currentTrace.clearanceClassIndex();
+@@ -445,7 +495,17 @@
+           board.removeItem(currentTrace);
+           currentTrace = adjInsTrace;
+           for (int currentNetNumber : currentTrace.netNumbers) {
++            if (P7T8B_OCA) {
++              System.err.println(
++                  "SMSPL which=first pt=" + adjustedPolyline.firstCorner() + " layer=" + traceLayer
++                      + " net=" + currentNetNumber);
++            }
+             board.splitTraces(adjustedPolyline.firstCorner(), traceLayer, currentNetNumber);
++            if (P7T8B_OCA) {
++              System.err.println(
++                  "SMSPL which=last pt=" + adjustedPolyline.lastCorner() + " layer=" + traceLayer
++                      + " net=" + currentNetNumber);
++            }
+             board.splitTraces(adjustedPolyline.lastCorner(), traceLayer, currentNetNumber);
+ 
+             try {
+--- a/app/freerouting/board/optimize/TraceTightener45.java
++++ b/app/freerouting/board/optimize/TraceTightener45.java
+@@ -19,7 +19,16 @@
+ import java.util.Collection;
+ 
+ class TraceTightener45 extends TraceTightener {
++
++  // ---- Plan 7 Task 8b, level 7: the `smoothenStartCornerAtTrace` ledger -----------------------
++  static final boolean P7T8B_OCA = TraceTightener.P7T8B_OCA;
++
++  static String p7pts(Line l) {
++    return l == null ? "null" : (l.a + "-" + l.b);
++  }
++  // ---- end Plan 7 Task 8b ---------------------------------------------------------------------
+ 
++
+   /** Creates a new instance of PullTight90. */
+   public TraceTightener45(
+       RoutingBoard board,
+@@ -478,6 +487,22 @@
+     Direction prevLineDirection = tracePolyline.lines[2].direction();
+ 
+     Collection<Item> contactList = trace.getStartContacts();
++    if (P7T8B_OCA) {
++      StringBuilder sb = new StringBuilder();
++      sb.append("SSC trace=").append(trace.getId())
++          .append(" c0=").append(currentEndCorner)
++          .append(" c1=").append(currentPrevEndCorner)
++          .append(" ldir=").append(lineDirection)
++          .append(" pldir=").append(prevLineDirection)
++          .append(" contacts=[");
++      boolean f = true;
++      for (Item c : contactList) {
++        if (!f) sb.append(',');
++        f = false;
++        sb.append(c.getId());
++      }
++      System.err.println(sb.append(']'));
++    }
+     for (Item currentContact : contactList) {
+       if (currentContact instanceof PolylineTrace contactTrace && !currentContact.isShoveFixed()) {
+         Polyline contactTracePolyline = contactTrace.polyline();
+@@ -508,6 +533,17 @@
+             otherTraceFound = true;
+           }
+         }
++        if (P7T8B_OCA) {
++          System.err.println(
++              "SSCC id=" + currentContact.getId()
++                  + " otl=" + p7pts(currentOtherTraceLine)
++                  + " optl=" + p7pts(currentOtherPrevTraceLine)
++                  + " approx=" + currentOtherTraceCornerApprox
++                  + " side=" + currentPrevCornerSide
++                  + " proj=" + currentProjection
++                  + " orth=" + currentOtherTraceLine.direction().isOrthogonal()
++                  + " acute=" + acuteAngle + " bend=" + bend + " found=" + otherTraceFound);
++        }
+         if (otherTraceFound) {
+           otherTraceCornerApprox = currentOtherTraceCornerApprox;
+           otherTraceLine = currentOtherTraceLine;
+@@ -515,10 +551,18 @@
+           otherPrevTraceLine = currentOtherPrevTraceLine;
+         }
+       } else {
++        if (P7T8B_OCA) {
++          System.err.println("SSCC id=" + currentContact.getId() + " abort");
++        }
+         return null;
+       }
+     }
+ 
++    if (P7T8B_OCA) {
++      System.err.println(
++          "SSCF acute=" + acuteAngle + " bend=" + bend + " otl=" + p7pts(otherTraceLine)
++              + " side=" + prevCornerSide + " approx=" + otherTraceCornerApprox);
++    }
+     if (acuteAngle) {
+       Direction newLineDir;
+       if (prevCornerSide == Side.ON_THE_LEFT) {
+@@ -533,6 +577,14 @@
+       double otherDist = Math.abs(translateLine.signedDistance(otherTraceCornerApprox));
+       translateDist = Math.min(translateDist, prevCornerDist);
+       translateDist = Math.min(translateDist, otherDist);
++      if (P7T8B_OCA) {
++        System.err.println(
++            "SSCA newDir=" + newLineDir + " tline=" + p7pts(translateLine)
++                + " hw=" + this.currentHalfWidth
++                + " prevDist=" + prevCornerDist + " otherDist=" + otherDist
++                + " tdist=" + translateDist
++                + " sideOfPrev=" + translateLine.sideOf(currentPrevEndCorner));
++      }
+       if (translateDist >= 0.99) {
+ 
+         translateDist = Math.max(translateDist - 1, 1);
+@@ -540,6 +592,11 @@
+           translateDist = -translateDist;
+         }
+         Line addLine = translateLine.translate(translateDist);
++        if (P7T8B_OCA) {
++          System.err.println(
++              "SSCB tdist=" + translateDist + " addLine=" + p7pts(addLine)
++                  + " otl=" + p7pts(otherTraceLine));
++        }
+         // construct the new trace polyline.
+         Line[] newLines = new Line[tracePolyline.lines.length + 1];
+         newLines[0] = otherTraceLine;
+--- a/app/freerouting/board/searchtree/SearchTreeManager.java
++++ b/app/freerouting/board/searchtree/SearchTreeManager.java
+@@ -37,6 +37,11 @@
+ 
+   /** Inserts the tree shapes of item into all active search trees. */
+   public void insert(Item item) {
++    if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++      System.err.println(
++          "SMINS id=" + item.getId() + " cls=" + item.getClass().getSimpleName()
++              + " shapes=" + item.treeShapeCount(defaultTree));
++    }
+     for (ShapeSearchTree currentTree : compensatedSearchTrees) {
+       currentTree.insert(item);
+     }
+@@ -48,9 +53,23 @@
+     if (!item.isOnTheBoard()) {
+       return;
+     }
++    int p6t17bTreeNo = 0;
+     for (ShapeSearchTree currentTree : compensatedSearchTrees) {
+ 
+       ShapeTree.Leaf[] currentTreeEntries = item.getSearchTreeEntries(currentTree);
++      if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++        int nulls = 0;
++        if (currentTreeEntries != null) {
++          for (ShapeTree.Leaf l : currentTreeEntries) {
++            if (l == null) ++nulls;
++          }
++        }
++        System.err.println(
++            "SMREM id=" + item.getId() + " cls=" + item.getClass().getSimpleName()
++                + " tree=" + (p6t17bTreeNo++)
++                + " entries=" + (currentTreeEntries == null ? -1 : currentTreeEntries.length)
++                + " nulls=" + nulls);
++      }
+       {
+         if (currentTreeEntries != null) {
+           currentTree.remove(currentTreeEntries);
+@@ -137,6 +156,14 @@
+    * Returns the tree compensated for the clearance class with number clearanceClassIndex.
+    * Initialized the tree, if it is not yet allocated.
+    */
++  /**
++   * Plan 7 Task 14b, level 8: `TINS8` — the id of every item the freshly built compensated tree
++   * is filled with, in `board.itemList` order. Off unless `P7T14B_FP` is set. It is what shows
++   * that the two sides fill a *new* autoroute tree identically, so a later topology difference
++   * cannot be blamed on the build.
++   */
++  static final boolean P7T14B_FP = System.getenv("P7T14B_FP") != null;
++
+   public ShapeSearchTree getAutorouteTree(int clearanceClassIndex) {
+     for (ShapeSearchTree currentTree : compensatedSearchTrees) {
+       if (currentTree.compensatedClearanceClassNo == clearanceClassIndex) {
+@@ -166,6 +193,9 @@
+       if (currentItem == null) {
+         break;
+       }
++      if (P7T14B_FP) {
++        System.err.println("TINS8 id=" + currentItem.getId());
++      }
+       currentAutorouteTree.insert(currentItem);
+     }
+     return currentAutorouteTree;
+--- a/app/freerouting/board/searchtree/ShapeSearchTree45Degree.java
++++ b/app/freerouting/board/searchtree/ShapeSearchTree45Degree.java
+@@ -139,7 +139,37 @@
+       startShape = room.getShape().boundingOctagon().intersection(startShape);
+     }
+ 
++    if (P7T14B_FP) {
++      long hash = 1469598103934665603L;
++      int nodeCount = 0;
++      ArrayStack<TreeNode> fingerprintStack = new ArrayStack<>(10000);
++      fingerprintStack.push(this.root);
++      for (; ; ) {
++        TreeNode fingerprintNode = fingerprintStack.pop();
++        if (fingerprintNode == null) {
++          break;
++        }
++        ++nodeCount;
++        IntBox nodeBox = fingerprintNode.boundingShape.boundingBox();
++        long[] fields = {
++          nodeBox.ll.x, nodeBox.ll.y, nodeBox.ur.x, nodeBox.ur.y,
++          (fingerprintNode instanceof Leaf) ? 1 : 0
++        };
++        for (long field : fields) {
++          hash = (hash ^ field) * 1099511628211L;
++        }
++        if (!(fingerprintNode instanceof Leaf)) {
++          fingerprintStack.push(((InnerNode) fingerprintNode).firstChild);
++          fingerprintStack.push(((InnerNode) fingerprintNode).secondChild);
++        }
++      }
++      System.err.println("TREEFP n=" + nodeCount + " h=" + Long.toHexString(hash));
++    }
+     IntOctagon boundingShape = startShape;
++    if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B_K != p6t17bLastDump) {
++      p6t17bLastDump = app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B_K;
++      p6t17bDumpTree();
++    }
+     int roomLayer = room.getLayer();
+     boolean debugAnchor = isCompleteShapeDebugAnchor(netNumber, roomLayer, startShape);
+     int debugStep = 0;
+@@ -154,6 +184,12 @@
+       if (currentNode == null) {
+         break;
+       }
++      if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++        System.err.println(
++            "NODE leaf=" + (currentNode instanceof Leaf)
++                + " isect=" + currentNode.boundingShape.intersects(boundingShape)
++                + " bound=" + p6t17bOct(boundingShape.boundingOctagon()));
++      }
+       if (currentNode.boundingShape.intersects(boundingShape)) {
+         if (currentNode instanceof Leaf currentLeaf) {
+           SearchTreeObject currentObject = (SearchTreeObject) currentLeaf.object;
+@@ -175,10 +211,34 @@
+                 ignoredObject,
+                 currentObject);
+           }
++          if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++            TileShape treeShape = currentObject.getTreeShape(this, shapeIndex);
++            System.err.println(
++                "LEAF obs=" + isObstacle + " same=" + sameLayer + " ign=" + ignoredObject
++                    + " cls=" + currentObject.getClass().getSimpleName()
++                    + " idx=" + shapeIndex
++                    + " shape="
++                    + p6t17bOct(treeShape == null ? null : treeShape.boundingOctagon()));
++          }
+           if (isObstacle && sameLayer && !ignoredObject) {
+ 
+             IntOctagon currentObjectShape =
+                 currentObject.getTreeShape(this, shapeIndex).boundingOctagon();
++            if (P7T14B_CS) {
++              StringBuilder csoLine = new StringBuilder("CSO obj=");
++              csoLine
++                  .append(currentObject.getClass().getSimpleName())
++                  .append(" idx=")
++                  .append(shapeIndex)
++                  .append(" oct=")
++                  .append(p7t14bOct(currentObjectShape))
++                  .append(" rooms=")
++                  .append(result.size());
++              for (IncompleteFreeSpaceExpansionRoom currentResultRoom : result) {
++                csoLine.append(' ').append(p7t14bOct(currentResultRoom.getShape().boundingOctagon()));
++              }
++              System.err.println(csoLine);
++            }
+             if (debugAnchor) {
+               traceCompleteShapeCandidate(
+                   debugStep, netNumber, roomLayer, currentObject, currentObjectShape);
+@@ -189,6 +249,10 @@
+             for (IncompleteFreeSpaceExpansionRoom currentRoom : result) {
+               IntOctagon currentShape = (IntOctagon) currentRoom.getShape();
+               boolean overlaps = currentShape.overlaps(currentObjectShape);
++              if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++                System.err.println(
++                    "  LEAFROOM overlaps=" + overlaps + " room=" + p6t17bOct(currentShape));
++              }
+               if (overlaps) {
+                 if (currentObject instanceof CompleteFreeSpaceExpansionRoom
+                     && ignoreShape != null) {
+@@ -301,7 +365,75 @@
+    * Restrains the shape of incompleteRoom to an octagon shape, which does not intersect with the
+    * interior of obstacleShape. incompleteRoom.getContainedShape() must be contained in the shape of
+    * the result room.
++   */
++  // ---- P6T17b bisect markers -----------------------------------------------------------------
++  static String p6t17bOct(IntOctagon o) {
++    if (o == null) return "null";
++    return "(" + o.leftX + "," + o.bottomY + "," + o.rightX + "," + o.topY + ","
++        + o.upperLeftDiagonalX + "," + o.lowerRightDiagonalX + ","
++        + o.lowerLeftDiagonalX + "," + o.upperRightDiagonalX + ")";
++  }
++
++  /** The connection whose tree was last dumped, so each connection dumps exactly once. */
++  static int p6t17bLastDump = -1;
++
++  static boolean p6t17bDumping = false;
++
++  /** Pre-order walk of the whole tree: leaf/inner flag plus each node's bounding octagon. */
++  void p6t17bDumpTree() {
++    if (this.root == null) return;
++    java.util.ArrayDeque<TreeNode> stack = new java.util.ArrayDeque<>();
++    stack.push(this.root);
++    while (!stack.isEmpty()) {
++      TreeNode n = stack.pop();
++      boolean leaf = n instanceof Leaf;
++      System.err.println(
++          "TREENODE k=" + app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B_K
++              + " " + (leaf ? "L" : "I")
++              + " " + p6t17bOct(n.boundingShape.boundingOctagon()));
++      if (!leaf) {
++        stack.push(((InnerNode) n).secondChild);
++        stack.push(((InnerNode) n).firstChild);
++      }
++    }
++  }
++  // ---- end P6T17b ------------------------------------------------------------------------------
++
++  /**
++   * Plan 7 Task 14b, level 8. `P7T14B_FP` prints `TREEFP`, a structural fingerprint of the whole
++   * tree (pre-order, node bounding box + leaf flag) once per `completeShape`; `P7T14B_CS` prints
++   * `CSO`, one line per obstacle this walk actually restrains against, in traversal order,
++   * together with the current result rooms. The pair is what makes quirk #229 visible: the two
++   * sides reach a `completeShape` with the same leaf **count** and a different fingerprint, and
++   * the walk then restrains against a different obstacle set in a different order.
+    */
++  static final boolean P7T14B_FP = System.getenv("P7T14B_FP") != null;
++
++  static final boolean P7T14B_CS = System.getenv("P7T14B_CS") != null;
++
++  static String p7t14bOct(IntOctagon octagon) {
++    if (octagon == null) {
++      return "null";
++    }
++    return "("
++        + octagon.leftX
++        + ","
++        + octagon.bottomY
++        + ","
++        + octagon.rightX
++        + ","
++        + octagon.topY
++        + ","
++        + octagon.upperLeftDiagonalX
++        + ","
++        + octagon.lowerRightDiagonalX
++        + ","
++        + octagon.lowerLeftDiagonalX
++        + ","
++        + octagon.upperRightDiagonalX
++        + ")";
++  }
++
+   private Collection<IncompleteFreeSpaceExpansionRoom> restrainShape(
+       IncompleteFreeSpaceExpansionRoom incompleteRoom, IntOctagon obstacleShape) {
+     // Search the edge line of obstacleShape, so that shapeToBeContained
+@@ -350,15 +482,33 @@
+     double cutLineDistance = -1;
+     int restrainingLineNo = -1;
+ 
++    StringBuilder p6t17bSb = null;
++    if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B) {
++      p6t17bSb = new StringBuilder();
++      p6t17bSb.append("RESTRAIN obst=").append(p6t17bOct(obstacleShape))
++          .append(" room=").append(p6t17bOct(roomShape))
++          .append(" cont=").append(p6t17bOct(shapeToBeContained))
++          .append(" d=");
++    }
+     for (int obstacleLineNo = 0; obstacleLineNo < 8; obstacleLineNo++) {
+       double currentDistance =
+           signedLineDistance(obstacleShape, obstacleLineNo, shapeToBeContained);
++      if (p6t17bSb != null) {
++        p6t17bSb.append(Long.toHexString(Double.doubleToLongBits(currentDistance)))
++            .append(obstacleSegmentTouchesInside(obstacleShape, obstacleLineNo, roomShape)
++                ? "T" : "F")
++            .append(',');
++      }
+       if (currentDistance > cutLineDistance) {
+         if (obstacleSegmentTouchesInside(obstacleShape, obstacleLineNo, roomShape)) {
+           cutLineDistance = currentDistance;
+           restrainingLineNo = obstacleLineNo;
+         }
+       }
++    }
++    if (p6t17bSb != null) {
++      p6t17bSb.append(" pick=").append(restrainingLineNo);
++      System.err.println(p6t17bSb);
+     }
+     if (cutLineDistance >= 0) {
+       IntOctagon restrainedShape =
+--- a/app/freerouting/board/trace/PolylineTrace.java
++++ b/app/freerouting/board/trace/PolylineTrace.java
+@@ -37,6 +37,17 @@
+ 
+ /** Objects of class Trace, whose geometry is described by a Polyline. */
+ public class PolylineTrace extends Trace implements Serializable {
++  // ---- Plan 7 Task 8b, level 7: the `change` identity ledger ----------------------------------
++  // Read straight from the environment rather than from a `MazeSearchEngine` static, so this
++  // level needs no probe and no reflection: `P7T8B_CHANGE=1` on the `P6T1` command line is the
++  // whole switch. `static final` + a `getenv` initialiser keeps the marker off the hot path when
++  // it is unset (the JIT folds the constant-`false` branch away), which is what makes the
++  // markers-off byte-parity check meaningful.
++  static final boolean P7T8B_CHANGE = System.getenv("P7T8B_CHANGE") != null;
++  /** Adds both polylines' line end points to every `CHG` line. Large; off unless asked for. */
++  static final boolean P7T8B_LINES = System.getenv("P7T8B_LINES") != null;
++  // ---- end Plan 7 Task 8b --------------------------------------------------------------------
++
+ 
+   // primary data
+   private Polyline lines;
+@@ -963,6 +974,61 @@
+         break;
+       }
+     }
++    if (P7T8B_CHANGE) {
++      // ---- Plan 7 Task 8b, level 7 -------------------------------------------------------
++      // One line per `change` call that reaches the identity comparison, *including* the two
++      // calls that early-return at `:966` and `:978` — level 6's CHANGE marker sits below both
++      // and cannot see them, so a divergence that is "one side early-returns and the other does
++      // not" is invisible to it. Everything here is read-only: the two loops are re-run on the
++      // same arrays and nothing is assigned back.
++      int p7Last = -1;
++      for (int i = 1; i <= lastIndex; i++) {
++        if (newPolyline.lines[newPolyline.lines.length - i]
++            != lines.lines[lines.lines.length - i]) {
++          p7Last = newPolyline.lines.length - i;
++          break;
++        }
++      }
++      String p7Ret = indexOfFirstDifferentLine == lastIndex ? "early960" : (p7Last < 0 ? "early972" : "change");
++      int p7KeepS = Math.max(indexOfFirstDifferentLine - 2, 0);
++      int p7KeepE = Math.max(newPolyline.lines.length - p7Last - 3, 0);
++      StringBuilder p7 = new StringBuilder();
++      p7.append("CHG id=").append(this.getId())
++          .append(" layer=").append(this.getLayer())
++          .append(" old=").append(lines.lines.length)
++          .append(" new=").append(newPolyline.lines.length)
++          .append(" first=").append(indexOfFirstDifferentLine)
++          .append(" last=").append(p7Last)
++          .append(" keepS=").append(p7KeepS)
++          .append(" keepE=").append(p7KeepE)
++          .append(" ret=").append(p7Ret);
++      // The per-index identity relation, as a bit string: `.` = same object, `X` = not.
++      p7.append(" idrel=");
++      for (int i = 0; i < lastIndex; i++) {
++        p7.append(newPolyline.lines[i] != lines.lines[i] ? 'X' : '.');
++      }
++      // The same relation computed by value, so a disagreeing index is visible without a
++      // second run.
++      p7.append(" vrel=");
++      for (int i = 0; i < lastIndex; i++) {
++        p7.append(!newPolyline.lines[i].equals(lines.lines[i]) ? 'X' : '.');
++      }
++      if (P7T8B_LINES) {
++        p7.append(" old=[");
++        for (int i = 0; i < lines.lines.length; i++) {
++          if (i > 0) p7.append(',');
++          p7.append(lines.lines[i].a).append('/').append(lines.lines[i].b);
++        }
++        p7.append("] new=[");
++        for (int i = 0; i < newPolyline.lines.length; i++) {
++          if (i > 0) p7.append(',');
++          p7.append(newPolyline.lines[i].a).append('/').append(newPolyline.lines[i].b);
++        }
++        p7.append(']');
++      }
++      System.err.println(p7);
++      // ---- end Plan 7 Task 8b ------------------------------------------------------------
++    }
+     if (indexOfFirstDifferentLine == lastIndex) {
+       return; // both polylines are equal, no change necessary
+     }
+@@ -980,6 +1046,31 @@
+     }
+     int keepAtStartCount = Math.max(indexOfFirstDifferentLine - 2, 0);
+     int keepAtEndCount = Math.max(newPolyline.lines.length - indexOfLastDifferentLine - 3, 0);
++    if (app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B
++        || app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B_CHANGE) {
++      // The pinning measurement of Plan 6 Task 17b: the same two indices computed by *value*
++      // next to the ones Java computes by *reference*. Quirk #74.
++      int valueFirst = lastIndex;
++      for (int i = 0; i < lastIndex; i++) {
++        if (!newPolyline.lines[i].equals(lines.lines[i])) {
++          valueFirst = i;
++          break;
++        }
++      }
++      int valueLast = -1;
++      for (int i = 1; i <= lastIndex; i++) {
++        if (!newPolyline.lines[newPolyline.lines.length - i].equals(
++            lines.lines[lines.lines.length - i])) {
++          valueLast = newPolyline.lines.length - i;
++          break;
++        }
++      }
++      System.err.println(
++          "CHANGE oldLines=" + lines.lines.length + " newLines=" + newPolyline.lines.length
++              + " idFirst=" + indexOfFirstDifferentLine + " idLast=" + indexOfLastDifferentLine
++              + " vFirst=" + valueFirst + " vLast=" + valueLast
++              + " keepS=" + keepAtStartCount + " keepE=" + keepAtEndCount);
++    }
+     PolylineTraceSearchTreeAdapter.changeEntries(
+         this, newPolyline, keepAtStartCount, keepAtEndCount);
+     lines = newPolyline;
+--- a/app/freerouting/datastructures/MinAreaTree.java
++++ b/app/freerouting/datastructures/MinAreaTree.java
+@@ -47,8 +47,80 @@
+     return foundOverlaps;
+   }
+ 
++  // ---- P6T17b bisect markers -----------------------------------------------------------------
++  static boolean p6t17bOn() {
++    return app.freerouting.autoroute.maze.MazeSearchEngine.P6T17B;
++  }
++
++  static String p6t17bBounds(RegularTileShape s) {
++    if (s == null) return "null";
++    app.freerouting.geometry.planar.IntOctagon o = s.boundingOctagon();
++    if (o == null) return "nulloct";
++    return "(" + o.leftX + "," + o.bottomY + "," + o.rightX + "," + o.topY + ","
++        + o.upperLeftDiagonalX + "," + o.lowerRightDiagonalX + ","
++        + o.lowerLeftDiagonalX + "," + o.upperRightDiagonalX + ")";
++  }
++
++  static String p6t17bStack() {
++    StringBuilder sb = new StringBuilder();
++    StackWalker.getInstance()
++        .walk(st -> st.filter(f -> f.getClassName().startsWith("app.freerouting."))
++            .limit(8).toList())
++        .forEach(f -> {
++          if (sb.length() > 0) sb.append('|');
++          String c = f.getClassName();
++          sb.append(c.substring(c.lastIndexOf('.') + 1)).append('.').append(f.getMethodName())
++              .append(':').append(f.getLineNumber());
++        });
++    return sb.toString();
++  }
++  // ---- end P6T17b ------------------------------------------------------------------------------
++
++  /**
++   * Plan 7 Task 14b, level 8: `MAT` — one line per leaf insertion or removal, with the tree's
++   * compensated clearance class, the leaf count *before* the change and the leaf's bounding box.
++   * This is the ledger that names the statement: after a failed `optRouteItem`, Java's
++   * `BasicBoard.undo` replays these ops onto the live trees and the port's clone restore does
++   * not, so the two trees end up with the same leaves in a different topology (quirk #229).
++   */
++  static final boolean P7T14B_MAT = System.getenv("P7T14B_MAT") != null;
++
++  private String p7t14bTag() {
++    int cls = -1;
++    if (this instanceof app.freerouting.board.searchtree.ShapeSearchTree searchTree) {
++      cls = searchTree.compensatedClearanceClassNo;
++    }
++    return "cls=" + cls;
++  }
++
++  private void p7t14bMat(String op, Leaf leaf) {
++    app.freerouting.geometry.planar.IntBox b = leaf.boundingShape.boundingBox();
++    System.err.println(
++        "MAT "
++            + op
++            + " "
++            + p7t14bTag()
++            + " n="
++            + this.leafCount
++            + " bb=("
++            + b.ll.x
++            + ","
++            + b.ll.y
++            + ","
++            + b.ur.x
++            + ","
++            + b.ur.y
++            + ")");
++  }
++
+   @Override
+   void insert(Leaf leaf) {
++    if (P7T14B_MAT) {
++      p7t14bMat("ins", leaf);
++    }
++    if (p6t17bOn()) {
++      System.err.println("TINS n=" + this.leafCount + " " + p6t17bBounds(leaf.boundingShape));
++    }
+     ++this.leafCount;
+ 
+     // Tree is empty - just insert the new leaf
+@@ -121,7 +193,14 @@
+     if (leaf == null) {
+       return;
+     }
++    if (P7T14B_MAT) {
++      p7t14bMat("rem", leaf);
++    }
+     // remove the leaf node
++    if (p6t17bOn()) {
++      System.err.println("TREM n=" + this.leafCount + " " + p6t17bBounds(leaf.boundingShape)
++          + " " + p6t17bStack());
++    }
+     InnerNode parent = leaf.parent;
+     leaf.boundingShape = null;
+     leaf.parent = null;
