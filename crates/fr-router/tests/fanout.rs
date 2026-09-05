@@ -153,27 +153,18 @@ fn zero_routed_pins_ends_the_loop() {
 }
 
 #[test]
-fn two_passes_escaping_different_pins_are_not_oscillation() {
+fn two_passes_with_different_hashes_do_not_stop_the_loop() {
     let mut state = FanoutLoopState::new(1);
     assert_eq!(state.after_pass(1, false, || 2), None);
     assert_eq!(state.after_pass(1, false, || 3), None);
-    assert_eq!(state.identical_repeats, 0);
 }
 
 #[test]
-fn the_oscillation_break_fires_on_the_named_repeat_count() {
+fn an_unchanged_hash_stops_the_loop_on_the_first_repeat() {
     let mut state = FanoutLoopState::new(1);
-    for repeat in 1..FanoutLoopState::STAGNATION_REPEAT_LIMIT {
-        assert_eq!(state.after_pass(2, false, || 1), None);
-        assert_eq!(state.identical_repeats, repeat);
-    }
     assert_eq!(
         state.after_pass(2, false, || 1),
-        Some(FanoutStop::Stagnated)
-    );
-    assert_eq!(
-        state.identical_repeats,
-        FanoutLoopState::STAGNATION_REPEAT_LIMIT
+        Some(FanoutStop::UnchangedHash)
     );
 }
 
@@ -183,10 +174,6 @@ fn the_stops_are_tested_in_order() {
     assert_eq!(
         state.after_pass(0, true, || 1),
         Some(FanoutStop::NothingRouted)
-    );
-    assert_eq!(
-        state.identical_repeats, 0,
-        "the detector is not even consulted"
     );
 
     let mut state = FanoutLoopState::new(7);

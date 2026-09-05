@@ -364,23 +364,19 @@ impl<'a> BatchFanout<'a> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FanoutStop {
     NothingRouted,
-    Stagnated,
+    UnchangedHash,
     TimedOut,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FanoutLoopState {
-    pub identical_repeats: i32,
     pub last_board_hash: u64,
 }
 
 impl FanoutLoopState {
-    pub const STAGNATION_REPEAT_LIMIT: i32 = 3;
-
     #[must_use]
     pub fn new(initial_board_hash: u64) -> FanoutLoopState {
         FanoutLoopState {
-            identical_repeats: 0,
             last_board_hash: initial_board_hash,
         }
     }
@@ -399,12 +395,7 @@ impl FanoutLoopState {
         }
         let current_board_hash = board_hash();
         if current_board_hash == self.last_board_hash {
-            self.identical_repeats += 1;
-            if self.identical_repeats >= FanoutLoopState::STAGNATION_REPEAT_LIMIT {
-                return Some(FanoutStop::Stagnated);
-            }
-        } else {
-            self.identical_repeats = 0;
+            return Some(FanoutStop::UnchangedHash);
         }
         self.last_board_hash = current_board_hash;
         None
