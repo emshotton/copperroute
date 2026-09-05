@@ -1211,6 +1211,8 @@ pub fn write_router_jsonl(path: &Path, docs: &[RouterConnectionDoc]) {
         .map(|doc| serde_json::to_string(doc).expect("a connection document serialises") + "\n")
         .collect();
     std::fs::write(path, text).unwrap_or_else(|e| panic!("cannot write {}: {e}", path.display()));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
