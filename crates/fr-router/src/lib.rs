@@ -66,4 +66,6 @@ pub mod prelude {
     };
 }
 
+// not ported: `BoardHistoryEntry.compareTo` — `autoroute/BoardHistoryEntry.java:29-32`, the shadowed and unreachable top-level twin (quirk #199).
+
 // a javadoc `@see`, an import, or the one `instanceof` in `gui/workspace/progress/GuiRoutingJobWorker.java:305`

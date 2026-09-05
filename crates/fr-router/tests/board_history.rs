@@ -730,6 +730,22 @@ fn restore_board_zero_means_unlimited() {
     assert!(h.restore_board(4).is_some(), "4 <= 4 still qualifies");
 }
 
+#[test]
+fn the_top_level_board_history_entry_class_is_unreachable() {
+    let lib_rs = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/lib.rs");
+    let text = std::fs::read_to_string(&lib_rs)
+        .unwrap_or_else(|e| panic!("cannot read {}: {e}", lib_rs.display()));
+    assert!(
+        text.contains("// not ported: `BoardHistoryEntry.compareTo`"),
+        "the roster line for the shadowed top-level BoardHistoryEntry is missing from {}",
+        lib_rs.display()
+    );
+    assert!(
+        text.contains("quirk #199"),
+        "the roster line must cite the quirk that explains why the class is dead"
+    );
+}
+
 fn set_up() -> (Board, Board, ScoringSettings) {
     let board1 = load_board(EMPTY_BOARD);
     let board2 = load_board(SETONIX);
