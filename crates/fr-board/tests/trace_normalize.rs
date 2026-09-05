@@ -1375,7 +1375,6 @@ fn ladder(rungs: i32) -> (Board, ItemId) {
     (board, ItemId(3 + rungs as u32))
 }
 
-/// This was `a_four_rung_ladder_never_finishes_normalizing`, `#[ignore]`d with "reproduces quirk
 #[test]
 fn a_two_rail_four_rung_ladder_normalizes_and_terminates() {
     let (mut board, last_rung) = ladder(4);
@@ -1491,19 +1490,6 @@ fn the_checked_and_unchecked_normalisation_entry_points_agree() {
     );
 }
 
-// ---------------------------------------------------------------------------------------------
-// Quirk #72 (fixed: T10) — `splitInsideDrillPadProhibited`'s precedence
-// ---------------------------------------------------------------------------------------------
-
-/// `trace_board`'s single layer plus one same-net **pin** whose pad covers `(10000, 0)` while its
-/// centre sits at `(12000, 0)`, i.e. a point inside a pin pad that is *not* the pin's centre —
-/// which is the exact condition `splitInsideDrillPadProhibited` exists to refuse
-/// (`PolylineTrace.java:780-785` returns `false`, "split allowed", only at the centre).
-///
-/// The trace doubles back so that its **last corner is `(10000, 0)`**, lying on its own first
-/// segment. That is what makes the quirk reachable: Java's `lastCorner` half is tested for *this*
-/// trace as well, so the trace's own end point at the split point answered "split allowed" even
-/// though the pad had already been found.
 fn pin_pad_board() -> (Board, ItemId, ItemId) {
     let ls = LayerStructure::new(vec![Layer::new("l0".to_string(), true)]);
     let cm = ClearanceMatrix::get_default_instance(&ls, 10);
@@ -1570,27 +1556,6 @@ fn pin_pad_board() -> (Board, ItemId, ItemId) {
     (board, trace, pin)
 }
 
-/// Quirk #72, fixed at Plan 9 Task 10.
-///
-/// `PolylineTrace.java:786-787` is
-///
-/// ```java
-/// if (currentTrace != this && currentTrace.firstCorner().equals(intersection)
-///     || currentTrace.lastCorner().equals(intersection))
-/// ```
-///
-/// which parses as `((currentTrace != this && first) || last)`. The `lastCorner` half is
-/// therefore tested for **this** trace too, and for a foreign trace whose first corner did not
-/// match — and its body is `return false`, i.e. *split allowed*, taken **even though a pad was
-/// already found** two arms above. So a trace could be cut inside a pin pad.
-///
-/// Parenthesised as `currentTrace != this && (first || last)`, which the `currentTrace != this`
-/// guard makes the only coherent reading: the arm means "another trace already ends here, so this
-/// split is redundant", and a trace is never *another* trace.
-///
-/// The board is `pin_pad_board`: a pin pad containing `(10000, 0)` with its centre at
-/// `(12000, 0)`, and a trace that doubles back so its own last corner is `(10000, 0)`. Splitting
-/// there is exactly a cut inside a pin pad, and it must be refused.
 #[test]
 fn a_trace_is_not_cut_inside_a_pin_pad() {
     let (mut board, trace, pin) = pin_pad_board();

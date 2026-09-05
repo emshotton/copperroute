@@ -93,7 +93,6 @@ impl Nets {
             .collect()
     }
 
-    /// Java's `FRLogger.warn("Nets.get: inconsistent netNumber")` guard becomes a `debug_assert!`
     pub fn get(&self, net_number: i32) -> Option<&Net> {
         if net_number < 1 || net_number > self.nets.len() as i32 {
             return None;

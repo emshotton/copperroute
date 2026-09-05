@@ -1,16 +1,3 @@
-//! Plan 2 Task 7: the `ObstacleArea` family, `ConductionArea`, `ComponentOutline` and
-//! `BoardOutline`.
-//!
-//! Java: `board/model/items/{ObstacleArea,ConductionArea,ViaObstacleArea,ComponentObstacleArea,
-//! ComponentOutline}.java` and `board/model/structure/BoardOutline.java`.
-//!
-//! Every expectation below was derived from the Java source and confirmed against
-//! `scripts/differential/java/historical/{T7,T7b}.java`, which inline `ObstacleArea.getArea`,
-//! `ObstacleArea.splitToConvex`, the three transform bodies and
-//! `BoardOutline.getKeepoutArea` over the **real** `app.freerouting.geometry.planar` classes on
-//! JDK 23 and print the values asserted here. `ObstacleArea` itself cannot be compiled
-//! standalone — it drags in `BasicBoard` and the whole board stack.
-
 use fr_board::prelude::*;
 use fr_geometry::{
     Area, FloatPoint, IntBox, IntPoint, Point, PolygonShape, PolylineShapeRef, Shape, TileShape,
@@ -21,10 +8,6 @@ use fr_geometry::{
 // Fixture
 // ---------------------------------------------------------------------------------------------
 
-/// The board state the area bodies read through [`ItemCtx`] — Java reaches it through
-/// `Item.board`. Three layers, so `changePlacementSide`'s `layerCount - layer - 1`
-/// (ObstacleArea.java:250) and `ComponentOutline.getLayer`'s back-side answer
-/// (ComponentOutline.java:99) are both distinguishable from 0.
 struct Fixture {
     library: BoardLibrary,
     components: Components,
@@ -58,9 +41,6 @@ impl Fixture {
         }
     }
 
-    /// `Components.setFlipStyleRotateFirst` (Components.java:196-202), which
-    /// `ObstacleArea.getArea` (ObstacleArea.java:127,138) and `rotateApprox`
-    /// (ObstacleArea.java:230) branch on.
     fn set_flip_style_rotate_first(&mut self, value: bool) {
         self.components.set_flip_style_rotate_first(value);
     }
@@ -82,8 +62,6 @@ fn hdr_with_nets(id: u32, net_nos: Vec<i32>) -> ItemHeader {
     ItemHeader::new(ItemId(id), net_nos, 1, 0, FixedState::Unfixed)
 }
 
-/// A one-segment trace polyline, for the two tests that need a `Item::Trace` to dispatch on
-/// (Task 8 gave `PolylineTrace` its geometry; `tests/polyline_trace.rs` pins that geometry).
 fn unit_polyline() -> fr_geometry::Polyline {
     fr_geometry::Polyline::from_two_points(&Point::new(0, 0), &Point::new(100, 0))
 }
@@ -144,10 +122,6 @@ fn bx(llx: i32, lly: i32, urx: i32, ury: i32) -> IntBox {
 
 #[test]
 fn an_l_shaped_obstacle_area_splits_into_two_tiles_and_carries_the_translation() {
-    // ObstacleArea.getArea (ObstacleArea.java:119-144) with rotation 0 and sideChanged false is
-    // just `relativeArea.translateBy(translation)`; splitToConvex (:320-326) then splits the
-    // absolute area. Driver T7: `splitToConvex: count=2`, boxes `[100,210 .. 110,220]` and
-    // `[100,200 .. 120,210]`.
     let f = Fixture::new();
     let area = obstacle_area(1, 0.0, false);
 
@@ -172,15 +146,11 @@ fn an_l_shaped_obstacle_area_splits_into_two_tiles_and_carries_the_translation()
 
     // ObstacleArea.boundingBox (:169-172) is `getArea().boundingBox()`.
     assert_eq!(area.bounding_box(&f.ctx()), bx(100, 200, 120, 220));
-    // The relative area is untouched by the translation (ObstacleArea.java:146-148).
     assert_eq!(area.get_relative_area().bounding_box(), bx(0, 0, 20, 20));
 }
 
 #[test]
 fn a_rotation_that_is_a_multiple_of_90_degrees_uses_turn_90_degree() {
-    // ObstacleArea.java:132-133: `rotation % 90 == 0` takes `turn90Degree(rotation / 90, ZERO)`,
-    // i.e. the exact integer turn, and only then translates. Driver T7 (rot=90):
-    // boxes `[80,200 .. 90,210]`, `[90,200 .. 100,220]`.
     let f = Fixture::new();
     let area = obstacle_area(1, 90.0, false);
     let tiles = area.split_to_convex(&f.ctx()).expect("splits");
@@ -193,9 +163,6 @@ fn a_rotation_that_is_a_multiple_of_90_degrees_uses_turn_90_degree() {
 
 #[test]
 fn a_rotation_that_is_not_a_multiple_of_90_degrees_uses_rotate_approx() {
-    // ObstacleArea.java:134-136: the `else` arm is `rotateApprox(toRadians(rotation),
-    // FloatPoint.ZERO)`, which produces octagons rather than boxes. Driver T7 (rot=45):
-    // `count=3`, all `IntOctagon`.
     let f = Fixture::new();
     let area = obstacle_area(1, 45.0, false);
     let tiles = area.split_to_convex(&f.ctx()).expect("splits");
@@ -212,11 +179,6 @@ fn a_rotation_that_is_not_a_multiple_of_90_degrees_uses_rotate_approx() {
 
 #[test]
 fn flip_style_rotate_first_decides_whether_the_mirror_runs_before_or_after_the_rotation() {
-    // ObstacleArea.java:127-140: `sideChanged && !flipStyleRotateFirst` mirrors *before* the
-    // rotation, `sideChanged && flipStyleRotateFirst` mirrors *after* it. Driver T7 (rot=90,
-    // sideChanged=true): rotateFirst=false gives `[90,180 .. 100,190]`, `[80,190 .. 100,200]`;
-    // rotateFirst=true gives `[100,210 .. 110,220]`, `[100,200 .. 120,210]` — which is the
-    // *unrotated* answer, because this particular L is symmetric about its diagonal.
     let mut f = Fixture::new();
     let area = obstacle_area(1, 90.0, true);
 
@@ -227,8 +189,6 @@ fn flip_style_rotate_first_decides_whether_the_mirror_runs_before_or_after_the_r
     );
 
     f.set_flip_style_rotate_first(true);
-    // A fresh area: `getArea` memoises, and Java does not invalidate on a flip-style change
-    // either.
     let area = obstacle_area(1, 90.0, true);
     let tiles = area.split_to_convex(&f.ctx()).expect("splits");
     assert_eq!(
@@ -239,9 +199,6 @@ fn flip_style_rotate_first_decides_whether_the_mirror_runs_before_or_after_the_r
 
 #[test]
 fn the_mirror_is_a_vertical_mirror_through_the_origin() {
-    // ObstacleArea.java:128/139: `turnedArea.mirrorVertical(Point.ZERO)`. Driver T7b on the
-    // asymmetric F shape: bbox `[0,0 .. 30,20]` mirrors to `[-30,0 .. 0,20]`, split into
-    // `[-30,0 .. -10,10]` and `[-10,0 .. 0,20]`.
     let f = Fixture::new();
     let area = ObstacleArea::new(
         hdr(1),
@@ -257,7 +214,6 @@ fn the_mirror_is_a_vertical_mirror_through_the_origin() {
 
 #[test]
 fn translate_by_adds_to_the_translation_and_drops_the_absolute_area_cache() {
-    // ObstacleArea.translateBy (ObstacleArea.java:207-211).
     let f = Fixture::new();
     let mut area = obstacle_area(1, 0.0, false);
     assert_eq!(area.bounding_box(&f.ctx()), bx(100, 200, 120, 220));
@@ -268,9 +224,6 @@ fn translate_by_adds_to_the_translation_and_drops_the_absolute_area_cache() {
 
 #[test]
 fn turn_90_degree_wraps_the_rotation_and_turns_the_translation_around_the_pole() {
-    // ObstacleArea.turn90Degree (ObstacleArea.java:213-225). Driver T7b:
-    // `turn90(1, pole(50,50)) -> (-100,100)`, `300 + 2*90 wrapped = 120`,
-    // `30 + (-2)*90 wrapped = 210`.
     let mut area = obstacle_area(1, 300.0, false);
     area.turn_90_degree(2, &IntPoint::new(50, 50));
     assert_eq!(area.get_rotation_in_degree(), 120.0);
@@ -287,14 +240,6 @@ fn turn_90_degree_wraps_the_rotation_and_turns_the_translation_around_the_pole()
 
 #[test]
 fn rotate_approx_rounds_the_new_translation_and_complements_the_angle_when_flipped() {
-    // ObstacleArea.rotateApprox (ObstacleArea.java:227-244). Driver T7b:
-    // `rotateApprox(30, pole(50,50)) float=(18.3013, 204.9038) -> (18,205)`, and
-    // `turnAngle when sideChanged && rotateFirst = 330`.
-    //
-    // Java bug: only the *stored rotation* took the complement; the translation was rotated by the
-    // original `angleInDegree` (ObstacleArea.java:240-241) — the same split Java's
-    // `Component.rotate` has (quirk #48). fixed: T11 (#57): the flipped case below asserted
-    // `(18, 205)`, the unflipped answer, and now asserts the 330-degree one.
     let mut f = Fixture::new();
     let mut area = obstacle_area(1, 0.0, false);
     area.rotate_approx(30.0, &FloatPoint::new(50.0, 50.0), &f.ctx());
@@ -318,9 +263,6 @@ fn rotate_approx_rounds_the_new_translation_and_complements_the_angle_when_flipp
 
 #[test]
 fn change_placement_side_flips_the_layer_and_mirrors_the_translation() {
-    // ObstacleArea.changePlacementSide (ObstacleArea.java:246-255): `layer = layerCount - layer
-    // - 1` and the translation is mirrored vertically at the pole. Driver T7b:
-    // `mirrorVertical(pole(50,50)) -> (0,200)`.
     let f = Fixture::new();
     let mut area = obstacle_area(1, 0.0, false);
     assert_eq!(area.get_layer(), 1);
@@ -347,7 +289,6 @@ fn change_placement_side_flips_the_layer_and_mirrors_the_translation() {
 
 #[test]
 fn copy_carries_the_whole_geometry_and_the_name() {
-    // ObstacleArea.copy (ObstacleArea.java:100-118) forwards every geometry field plus `name`.
     let f = Fixture::new();
     let original = obstacle_area(1, 90.0, true);
     let copy = original.copy(ItemId(2));
@@ -362,9 +303,6 @@ fn copy_carries_the_whole_geometry_and_the_name() {
 
 #[test]
 fn the_three_subclasses_share_the_obstacle_area_geometry() {
-    // ViaObstacleArea (ViaObstacleArea.java:16-42), ComponentObstacleArea
-    // (ComponentObstacleArea.java:20-45) and ConductionArea (ConductionArea.java:46-74) all
-    // reach `getArea`/`splitToConvex` through `ObstacleArea`.
     let f = Fixture::new();
     let via_keepout = ViaObstacleArea::new(hdr(1), area_data(0.0, false));
     let component_keepout = ComponentObstacleArea::new(hdr(2), area_data(0.0, false));
@@ -387,10 +325,6 @@ fn the_three_subclasses_share_the_obstacle_area_geometry() {
 
 #[test]
 fn conduction_area_is_obstacle_toggles_with_its_own_flag() {
-    // ConductionArea.isObstacle (ConductionArea.java:379-385) delegates to the `ObstacleArea`
-    // body only when the area's own `isObstacle` flag is set; `isTraceObstacle` (:397-400) and
-    // `isDrillable` (:402-405) read the same flag. Java bug/quirk #50 records why this flag,
-    // and not `BoardRules.ignoreConduction`, is what `isObstacle` reads.
     let f = Fixture::new();
     let trace = Item::Trace(PolylineTrace::new(
         hdr_with_nets(9, vec![7]),
@@ -415,8 +349,6 @@ fn conduction_area_is_obstacle_toggles_with_its_own_flag() {
 
 #[test]
 fn conduction_area_trace_connection_shape_is_the_tree_shape() {
-    // ConductionArea.getTraceConnectionShape (ConductionArea.java:358-365): range-check against
-    // `treeShapeCount(searchTree)`, then `getTreeShape(searchTree, index)`.
     let tree = TreeId(0);
     let mut area = ConductionArea::new(hdr_with_nets(1, vec![5]), area_data(0.0, false), true);
     let f = Fixture::new();
@@ -438,9 +370,6 @@ fn conduction_area_trace_connection_shape_is_the_tree_shape() {
 
 #[test]
 fn conduction_area_clear_derived_data_drops_the_absolute_area() {
-    // ConductionArea.clearDerivedData (ConductionArea.java:76-81) calls
-    // `ObstacleArea.clearDerivedData` (:328-332), which drops `precalculatedAbsoluteArea` and
-    // then `Item.clearDerivedData` (Item.java:1060-1065).
     let f = Fixture::new();
     let mut item = Item::ConductionArea(ConductionArea::new(
         hdr_with_nets(1, vec![5]),
@@ -477,7 +406,6 @@ fn component_outline(id: u32, is_front: bool, rotation_in_degree: f64) -> Compon
 
 #[test]
 fn component_outline_layer_is_zero_on_the_front_and_the_last_layer_on_the_back() {
-    // ComponentOutline.getLayer (ComponentOutline.java:93-102).
     let f = Fixture::new();
     assert_eq!(component_outline(1, true, 0.0).get_layer(&f.ctx()), 0);
     assert_eq!(component_outline(2, false, 0.0).get_layer(&f.ctx()), 2);
@@ -492,7 +420,6 @@ fn component_outline_layer_is_zero_on_the_front_and_the_last_layer_on_the_back()
 
 #[test]
 fn component_outline_flags_and_area_come_from_the_constructor() {
-    // ComponentOutline.java:34-54, 72-86, 139-142.
     let f = Fixture::new();
     let outline = component_outline(1, true, 0.0);
     assert!(outline.is_front());
@@ -505,10 +432,6 @@ fn component_outline_flags_and_area_come_from_the_constructor() {
 
 #[test]
 fn component_outline_mirrors_when_it_is_on_the_back_not_when_side_changed() {
-    // ComponentOutline.getArea (ComponentOutline.java:191-216) is `ObstacleArea.getArea` with
-    // `!this.isFront` where the obstacle area has `this.sideChanged`
-    // (ComponentOutline.java:199,210). A back-side outline with rotation 90 therefore matches
-    // driver T7's `sideChanged=true, rotateFirst=false` row.
     let f = Fixture::new();
     let outline = component_outline(1, false, 90.0);
     assert_eq!(outline.bounding_box(&f.ctx()), bx(80, 180, 100, 200));
@@ -516,7 +439,6 @@ fn component_outline_mirrors_when_it_is_on_the_back_not_when_side_changed() {
 
 #[test]
 fn component_outline_change_placement_side_flips_is_front_and_mirrors_the_translation() {
-    // ComponentOutline.changePlacementSide (ComponentOutline.java:150-156).
     let f = Fixture::new();
     let mut outline = component_outline(1, true, 0.0);
     outline.change_placement_side(&IntPoint::new(50, 50));
@@ -527,15 +449,6 @@ fn component_outline_change_placement_side_flips_is_front_and_mirrors_the_transl
 
 #[test]
 fn component_outline_rotate_approx_complements_the_angle_on_the_back() {
-    // ComponentOutline.rotateApprox (ComponentOutline.java:158-175): `!this.isFront &&
-    // flipStyleRotateFirst` takes `360 - angleInDegree`, the mirror image of
-    // ObstacleArea.java:230-232.
-    //
-    // Java bug: the identical split as quirk #48 — the rotation field took the complement and the
-    // translation did not.
-    // fixed: T11 (#57, #48) — this site is named by both rows. The translation below asserted
-    // `(18, 205)` and now asserts `(168, 155)`, the same arithmetic as the `ObstacleArea` sibling
-    // above.
     let mut f = Fixture::new();
     f.set_flip_style_rotate_first(true);
     let mut outline = component_outline(1, false, 0.0);
@@ -562,8 +475,6 @@ fn clear_derived_data_chains_to_the_header() {
 
 #[test]
 fn component_outline_copy_carries_the_geometry_but_drops_the_nets() {
-    // ComponentOutline.copy (ComponentOutline.java:56-70) forwards the geometry; the
-    // constructor hard-codes `new int[0], 0` (ComponentOutline.java:46).
     let f = Fixture::new();
     let original = component_outline(1, false, 90.0);
     let copy = original.copy(ItemId(2));
@@ -590,8 +501,6 @@ fn outline_square() -> PolylineShapeRef {
     ]))
 }
 
-/// Two disjoint outline squares — `lineCount` 8 but only 7 keepout tiles, so the two
-/// `tileShapeCount` branches (BoardOutline.java:51-66) are distinguishable.
 fn two_outline_squares() -> Vec<PolylineShapeRef> {
     vec![
         PolylineShapeRef::Polygon(PolygonShape::from_points(&[
@@ -611,10 +520,6 @@ fn two_outline_squares() -> Vec<PolylineShapeRef> {
 
 #[test]
 fn board_outline_keepout_area_is_the_board_box_with_the_outlines_as_holes() {
-    // BoardOutline.getKeepoutArea (BoardOutline.java:183-189):
-    // `new PolylineArea(board.boundingBox, shapes.clone())`. Driver T7:
-    // `keepout splitToConvex: count=4`, boxes `[0,0 .. 900,100]`, `[0,100 .. 100,1000]`,
-    // `[900,0 .. 1000,900]`, `[100,900 .. 1000,1000]`.
     let f = Fixture::new();
     let outline = BoardOutline::new(hdr(1), vec![outline_square()]);
 
@@ -634,9 +539,6 @@ fn board_outline_keepout_area_is_the_board_box_with_the_outlines_as_holes() {
 
 #[test]
 fn board_outline_tile_shape_count_switches_between_keepout_tiles_and_outline_lines() {
-    // BoardOutline.tileShapeCount (BoardOutline.java:51-66): keepout tiles × layers when
-    // `keepoutOutsideOutline`, else `lineCount() × layers`. Driver T7: the two-square keepout
-    // splits into 7 tiles, and the two squares have 8 border lines between them.
     let f = Fixture::new();
     let mut outline = BoardOutline::new(hdr(1), two_outline_squares());
 
@@ -659,8 +561,6 @@ fn board_outline_tile_shape_count_switches_between_keepout_tiles_and_outline_lin
 
 #[test]
 fn board_outline_shape_layer_spreads_the_index_over_the_layers() {
-    // BoardOutline.shapeLayer (BoardOutline.java:68-81):
-    // `index * layerCount / tileShapeCount()`, 0 when there are no shapes.
     let f = Fixture::new();
     let outline = BoardOutline::new(hdr(1), vec![outline_square()]);
     // 4 border lines × 3 layers = 12 tile shapes.
@@ -670,7 +570,6 @@ fn board_outline_shape_layer_spreads_the_index_over_the_layers() {
     assert_eq!(outline.shape_layer(4, &f.ctx()), 1);
     assert_eq!(outline.shape_layer(11, &f.ctx()), 2);
 
-    // No shapes: `shapeCount == 0`, so Java's `else` arm answers 0.
     let empty = BoardOutline::new(hdr(2), Vec::new());
     assert_eq!(empty.tile_shape_count(&f.ctx()), 0);
     assert_eq!(empty.shape_layer(5, &f.ctx()), 0);
@@ -678,7 +577,6 @@ fn board_outline_shape_layer_spreads_the_index_over_the_layers() {
 
 #[test]
 fn board_outline_bounding_box_is_the_union_of_its_shapes() {
-    // BoardOutline.boundingBox (BoardOutline.java:88-95) starts from `IntBox.EMPTY`.
     let f = Fixture::new();
     let outline = BoardOutline::new(hdr(1), two_outline_squares());
     assert_eq!(outline.bounding_box(), bx(100, 100, 900, 900));
@@ -687,7 +585,6 @@ fn board_outline_bounding_box_is_the_union_of_its_shapes() {
         IntBox::EMPTY
     );
 
-    // Item-level layer dispatch: BoardOutline.java:97-110.
     let item = Item::BoardOutline(outline);
     assert_eq!(item.first_layer(&f.ctx()), 0);
     assert_eq!(item.last_layer(&f.ctx()), 2);
@@ -697,7 +594,6 @@ fn board_outline_bounding_box_is_the_union_of_its_shapes() {
 
 #[test]
 fn board_outline_shape_accessors_match_java() {
-    // BoardOutline.shapeCount / getShape (BoardOutline.java:157-169).
     let outline = BoardOutline::new(hdr(1), two_outline_squares());
     assert_eq!(outline.shape_count(), 2);
     assert_eq!(
@@ -708,26 +604,10 @@ fn board_outline_shape_accessors_match_java() {
         outline.get_shape(1).map(|s| s.as_ops().bounding_box()),
         Some(bx(600, 600, 900, 900))
     );
-    // Java warns and returns null out of range.
     assert!(outline.get_shape(2).is_none());
     assert_eq!(outline.get_half_width(), 100);
 }
 
-// Java bug: `BoardOutline.translateBy` (BoardOutline.java:112-121) — and its three siblings —
-// assign the transformed shape back to the **loop variable** of an enhanced `for`
-// (`for (PolylineShape currentShape : this.shapes) currentShape = currentShape.translateBy(v);`),
-// which binds a copy of the reference, so `this.shapes` is never written and the outline does not
-// move, turn, rotate or mirror. fixed: T11 (#55).
-/// This test was `board_outline_transforms_leave_the_outline_shapes_where_they_were` and pinned
-/// the bug above: the outline's bounding box stayed at `(100,100 .. 900,900)` through a translate
-/// of 10 000, a quarter turn, a 30-degree rotation and a mirror.
-///
-/// Only the lazily built `keepoutArea` followed the transform, because that one *is* a field
-/// assignment — and that is what made the fourth assertion below the interesting one. The keepout
-/// is rebuilt from the shapes if it has **not** been built yet, so before the fix an outline's
-/// curves and its outside-keepout ended up in different places or the same place depending purely
-/// on whether anyone had touched the keepout first. The two halves are now transformed together
-/// and agree either way.
 #[test]
 fn the_outline_moves_turns_rotates_and_mirrors() {
     let f = Fixture::new();
@@ -821,9 +701,6 @@ fn the_outline_moves_turns_rotates_and_mirrors() {
 
 #[test]
 fn board_outline_is_an_obstacle_to_everything_but_outlines_and_areas() {
-    // BoardOutline.isObstacle (BoardOutline.java:83-86): `!(other instanceof BoardOutline ||
-    // other instanceof ObstacleArea)` — and `instanceof ObstacleArea` covers all four area
-    // variants.
     let f = Fixture::new();
     let outline = Item::BoardOutline(BoardOutline::new(hdr(1), vec![outline_square()]));
     let trace = Item::Trace(PolylineTrace::new(
@@ -845,7 +722,6 @@ fn board_outline_is_an_obstacle_to_everything_but_outlines_and_areas() {
 
 #[test]
 fn board_outline_copy_carries_the_shapes() {
-    // BoardOutline.copy (BoardOutline.java:198-201).
     let original = BoardOutline::new(hdr(1), two_outline_squares());
     let copy = original.copy(ItemId(2));
     assert_eq!(copy.shape_count(), 2);
@@ -855,8 +731,6 @@ fn board_outline_copy_carries_the_shapes() {
 
 #[test]
 fn generate_keepout_outside_is_a_no_op_when_the_value_does_not_change() {
-    // BoardOutline.generateKeepoutOutside (BoardOutline.java:233-244) returns early when the
-    // flag already has the requested value.
     let mut outline = BoardOutline::new(hdr(1), vec![outline_square()]);
     assert!(!outline.keepout_outside_outline_generated());
     outline.generate_keepout_outside(false);
@@ -899,7 +773,6 @@ fn item_dispatch_reaches_every_area_body() {
 
     // The whole enum stays transform-dispatchable.
     for mut item in items {
-        // The three `Result`s are `PolylineTrace`'s (Task 8): every area override is infallible.
         item.translate_by(&Vector::new(1, 1)).unwrap();
         item.turn_90_degree(1, &IntPoint::new(0, 0)).unwrap();
         item.rotate_approx(10.0, &FloatPoint::new(0.0, 0.0), &f.ctx());
@@ -909,16 +782,8 @@ fn item_dispatch_reaches_every_area_body() {
     }
 }
 
-// ---------------------------------------------------------------------------------------------
-// The convex-pieces memo (Task 10; Plan-1 obligation "memo cache for convex pieces")
-// ---------------------------------------------------------------------------------------------
-
 #[test]
 fn split_to_convex_is_memoised_and_hands_back_the_same_slice() {
-    // Java memoises one level down, in `PolylineArea.precalculatedConvexPieces`
-    // (PolylineArea.java:31) / `PolygonShape.precalculatedConvexPieces` (PolygonShape.java:17),
-    // so `ObstacleArea.splitToConvex` (ObstacleArea.java:320-326) divides once per `Area`
-    // object. `fr-geometry` does not memoise there (quirk #30), so `ObstacleAreaData` does.
     let f = Fixture::new();
     let area = obstacle_area(1, 0.0, false);
     let first = area.split_to_convex(&f.ctx()).expect("splits").as_ptr();
@@ -928,10 +793,6 @@ fn split_to_convex_is_memoised_and_hands_back_the_same_slice() {
 
 #[test]
 fn every_obstacle_area_invalidation_point_drops_the_convex_pieces_memo() {
-    // The memo must be emptied wherever `precalculatedAbsoluteArea` is: `translateBy`
-    // (ObstacleArea.java:207-211), `turn90Degree` (:213-225), `rotateApprox` (:227-244),
-    // `changePlacementSide` (:246-255) and `clearDerivedData` (:328-332). A stale memo would
-    // outlive the area it was cut from, which is a correctness bug, not a performance one.
     let f = Fixture::new();
 
     let mut area = obstacle_area(1, 0.0, false);
@@ -969,11 +830,6 @@ fn every_obstacle_area_invalidation_point_drops_the_convex_pieces_memo() {
         bx(-120, 200, -100, 220)
     );
 
-    // `clearDerivedData` alone must empty it too, even though nothing about the area changed:
-    // that is the path `SearchTreeManager.reinsertTreeItems` (SearchTreeManager.java:186-200)
-    // takes before re-inserting every item. Observed through `translate_by`, whose own memo
-    // reset is the one under test above: here the *header* clear must not leave the area's
-    // pieces behind either.
     let mut area = obstacle_area(5, 0.0, false);
     area.split_to_convex(&f.ctx()).expect("splits");
     area.clear_derived_data();
@@ -985,11 +841,6 @@ fn every_obstacle_area_invalidation_point_drops_the_convex_pieces_memo() {
 
 #[test]
 fn the_board_outline_keepout_pieces_are_memoised_and_dropped_by_every_transform() {
-    // `BoardOutline.tileShapeCount` (BoardOutline.java:51-66) and
-    // `ShapeSearchTree.calculateTreeShapes(BoardOutline)` (ShapeSearchTree.java:946) both split
-    // the keepout area, the latter once per layer, so the division must not repeat. The four
-    // transforms rewrite `keepoutArea` in place (BoardOutline.java:112-155), so the pieces cut
-    // from it have to go.
     let f = Fixture::new();
     let mut outline = BoardOutline::new(
         ItemHeader::new(ItemId(1), Vec::new(), 1, 0, FixedState::SystemFixed),

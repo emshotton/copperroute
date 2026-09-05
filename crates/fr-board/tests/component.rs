@@ -1,45 +1,3 @@
-//! Plan 9 Task 11, quirks #48 and #57: a back-side rotation used to split a component from its
-//! outline.
-//!
-//! # The mechanism, in three identical places
-//!
-//! For a back-side item under `flipStyleRotateFirst`, all three of `Component.rotate`
-//! (Component.java:127-148), `ObstacleArea.rotateApprox` (ObstacleArea.java:227-244) and
-//! `ComponentOutline.rotateApprox` (ComponentOutline.java:158-175) do this:
-//!
-//! ```text
-//! turnAngle = 360 - angleInDegree        // and this comment in Java: "to take care of the
-//! rotationInDegree += turnAngle          //  order of mirroring and rotating on the back side"
-//! location/translation rotated by angleInDegree     // <- not turnAngle
-//! ```
-//!
-//! so the recorded rotation and the moved geometry disagreed by `360 - 2·angle`.
-//!
-//! `Component.rotate` moves the component; the other two move its keepouts and its outline. They
-//! shared the error, so they stayed consistent *with each other* — which is why nothing caught it,
-//! and why fixing one alone would have been strictly worse than leaving all three wrong.
-//!
-//! # Why 90 degrees
-//!
-//! The disagreement is `360 - 2a`:
-//!
-//! ```text
-//! a =  90  ->  180 degrees      the largest, cleanest disagreement
-//! a =  45  ->  270 degrees
-//! a = 180  ->    0 degrees      <- the bug is invisible
-//! a =   0  ->  360 = 0          <- and here
-//! ```
-//!
-//! A test at 180 or 0 proves nothing at all. This one uses 90.
-//!
-//! # The decision
-//!
-//! The **complement** is the intended angle, and the geometry now follows it rather than the other
-//! way round. Java computes `turnAngle` under an explanatory comment about back-side mirroring
-//! order — a deliberate statement about what a back-side rotation means — and then fails to use it
-//! three lines later. A local computed on purpose and applied to only half of a transform is the
-//! shape of the bug, not of the intent. Recorded at the site on `Component::rotate`.
-
 use fr_board::prelude::*;
 use fr_geometry::{Area, FloatPoint, IntPoint, Point, PolygonShape, Shape, Vector};
 
@@ -100,17 +58,6 @@ fn l_shape() -> Area {
     ])))
 }
 
-/// **fixed: T11 (#48 and #57), all three sites in one assertion.**
-///
-/// The invariant is the answer key's: for a back-side component with pads and an outline, a
-/// rotation leaves the outline's geometry in the same relation to the pads' as before — the two
-/// are turned by the *same* rotation. Before the fix they differed by `R(360 - 2a)`.
-///
-/// It is asserted structurally rather than through three literals: all three sites are given the
-/// same starting offset, the same pole and the same angle, and must answer the same point. That is
-/// a statement no single-site fix can satisfy, which is exactly the property this row needs — the
-/// register's own note is that fixing one would make them disagree with each other rather than
-/// with the truth.
 #[test]
 fn a_back_side_rotation_keeps_the_outline_and_the_pads_together() {
     let f = Fixture::new();
@@ -126,8 +73,6 @@ fn a_back_side_rotation_keeps_the_outline_and_the_pads_together() {
     let offset = Vector::new(150, 250);
     let angle = 90.0;
 
-    // 1. `Component.rotate` — the component itself. Back side (`on_front = false`), which with
-    //    the fixture's `flipStyleRotateFirst` is the regime the quirk lives in.
     let mut components = Components::new();
     components.set_flip_style_rotate_first(true);
     components.add("B1", Some(placement), 0.0, false, 1, 1, false, None);

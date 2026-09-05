@@ -1,26 +1,3 @@
-//! Plan 7 Task 15b: the arms of `HeadlessBoardManager`'s three clearance overrides that the
-//! sixteen-board corpus does **not** reach.
-//!
-//! The corpus replay lives in `crates/fr-router/tests/clearance_override.rs`, where the
-//! committed `P7T15bProbe` transcript pins every board's before/after state against the HEAD
-//! jar. This file covers what no corpus board has:
-//!
-//! * a board that already declares a `board_edge` clearance class, so the
-//!   `matrix.getNo(...) < 0` guard reuses it instead of appending (HeadlessBoardManager.java:519);
-//! * an outline carrying an explicit, non-fallback clearance class — where Java's `:501-507`
-//!   guard early-returned, which only `router-rpi-splitter` reaches on the corpus. Plan 9 Task 10
-//!   removed that guard (quirk #231), so the case this file covers is now the *absence* of the
-//!   1e-9 discontinuity that used to sit beside it;
-//! * `ClearanceMatrix.setValue`'s odd → even rounding meeting an odd board-unit value;
-//! * re-applying the same hole clearance twice, i.e. `changed == false` with no keepouts.
-//!
-//! The `Math.max` floor of `assignHoleKeepoutClearanceClass` and the interleaved read/write on
-//! its last column are pinned against the jar instead, by the corpus replay's E and F variants
-//! (100 µm, where the existing AREA clearance always wins, and 500 µm, where the floor bites).
-//!
-//! The board is `tests/board_builder.rs`'s `p2t11_board()` — the two-pin, two-trace, two-layer
-//! fixture whose every number comes from `scripts/differential/java/P2T10.java`.
-
 mod board_builder;
 
 use board_builder::p2t11_board;
@@ -29,10 +6,6 @@ use fr_board::{
     HOLE_EDGE_CLEARANCE_CLASS_NAME, ItemClass,
 };
 
-/// The µm value that converts to exactly `board_units` on this fixture, i.e. the inverse of
-/// `HeadlessBoardManager.java:365-372`'s expression. `p2t11_board`'s [`fr_board::Communication`]
-/// is `Unit::Mil` at resolution 1 (`Communication::default`), so one board unit is 25.4 µm — the
-/// helper spells that out rather than hard-coding a magic literal per test.
 fn um_for(board: &Board, board_units: i32) -> f64 {
     let um = f64::from(board_units) * 25.4 / f64::from(board.communication.resolution.max(1));
     assert_eq!(
@@ -64,7 +37,6 @@ fn outline_and_default_area_class(board: &mut Board) -> (usize, usize) {
 // applyCopperToEdgeClearanceOverride
 // -------------------------------------------------------------------------------------------------
 
-/// HeadlessBoardManager.java:474-480 — a negative value warns and returns, touching nothing.
 #[test]
 fn a_negative_copper_clearance_changes_nothing() {
     let mut board = p2t11_board();
@@ -73,32 +45,14 @@ fn a_negative_copper_clearance_changes_nothing() {
     assert_eq!(board.rules.clearance_matrix, before);
 }
 
-/// Quirk #231's inversion, fixed at Plan 9 Task 10: Java's `:501-507` guard made the **default**
-/// the one value that could be ignored, so a value the user typed to mean exactly what the
-/// default means was the one thing the option refused to do.
-///
-/// Named for the property that replaces it: an explicitly supplied value is applied, and the
-/// number it happens to be does not enter into it. The board here is the `router-rpi-splitter`
-/// shape — an outline carrying an explicit, non-fallback DSN clearance class — which is the only
-/// one of the sixteen corpus boards Java's guard could ever stop. All three of `=500`,
-/// `=500.000001` and `=0` now land the same class on it, differing only in the number they write.
-///
-/// The size of the change, re-measured at this task on `Issue026-J2_reference.dsn` at `-mp 3`
-/// through the real CLI (`freerouting route -de … -do …`, `FR_ROUTER_BUDGET=disabled`):
-/// **15 254 B** at 500 µm against **14 644 B** at 0 µm, first differing at char 741. That is the
-/// scale of the board this option silently decides, on every run, and Java logged it at `debug`.
 #[test]
 fn an_explicitly_supplied_default_is_applied() {
     let mut board = p2t11_board();
-    // The fixture's outline uses the fallback AREA class, i.e. the 15-of-16 corpus shape. Give
-    // it the explicit `wide` class and it becomes the `router-rpi-splitter` shape — the one board
-    // Java's guard could stop.
     let outline = board.get_outline().expect("p2t11_board has an outline");
     assert!(board.change_clearance_class_index(outline, board_builder::WIDE_CLEARANCE_CLASS));
     let (outline_class, default_area_class) = outline_and_default_area_class(&mut board);
     assert_ne!(outline_class, default_area_class);
 
-    // The default value, explicitly supplied: Java's one early return, now applied.
     let mut at_default = board.clone();
     let before = at_default.rules.clearance_matrix.clone();
     assert!(
@@ -219,9 +173,6 @@ fn the_copper_override_writes_the_whole_row_and_column_on_every_layer() {
     }
 }
 
-/// `ClearanceMatrix.setValue` rounds an odd value **up** to an even one
-/// (ClearanceMatrix.java:106-113), so an odd board-unit conversion is not what lands in the
-/// matrix. Java has the same gap and the port must not "fix" it.
 #[test]
 fn an_odd_board_unit_value_lands_in_the_matrix_rounded_up() {
     let mut board = p2t11_board();

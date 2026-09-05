@@ -1,16 +1,3 @@
-//! The search half of [`Board`]: `BasicBoard`'s overlap and check queries
-//! (BasicBoard.java:918-1099) plus `RoutingBoardSearchFacade`
-//! (`board/facade/RoutingBoardSearchFacade.java`).
-//!
-//! # Why several of these take `&mut self`
-//!
-//! Java's clearance queries bump `ShapeSearchTree.lastGeneratedEntryId`, a **static** counter
-//! used as a tie-break (ShapeSearchTree.java:55,1144-1148). The port makes it a field of
-//! [`SearchTreeManager`](crate::searchtree::SearchTreeManager) (global-constraints.md), so every
-//! query that reaches `overlappingTreeEntriesWithClearance` mutates the board. The queries that
-//! do not — [`Board::overlapping_objects`], [`Board::overlapping_items`], [`Board::pick_items`] —
-//! stay `&self`.
-
 use std::collections::BTreeSet;
 
 use fr_geometry::{Area, LineSegment, Point, Polyline, ShapeOps, TileShape, Vector};
@@ -27,9 +14,6 @@ use super::{Board, item_ctx};
 impl Board {
     // -- the plain overlap queries ---------------------------------------------------------------
 
-    /// Port of `BasicBoard.overlappingObjects(ConvexShape, int)` (BasicBoard.java:918-920).
-    ///
-    /// `layer` is `Option<usize>`; `None` is Java's "if layer < 0, the layer is ignored".
     pub fn overlapping_objects(
         &self,
         shape: &TileShape,
@@ -41,12 +25,8 @@ impl Board {
             .overlapping_objects(shape, layer, &[], &self.items, &ctx)
     }
 
-    /// Port of `BasicBoard.overlappingItems(Area, int)` (BasicBoard.java:938-950): the items
-    /// overlapping any convex piece of `area`.
     pub fn overlapping_items(&self, area: &Area, layer: Option<usize>) -> BTreeSet<ItemId> {
         let mut result = BTreeSet::new();
-        // Java dereferences `area.splitToConvex()` without a null check
-        // (BasicBoard.java:940-941); the `expect` reproduces that NullPointerException.
         let tiles = area.split_to_convex().expect(
             "BasicBoard.overlappingItems: area.splitToConvex() is null — Java throws a \
              NullPointerException here too (BasicBoard.java:941)",
@@ -61,11 +41,6 @@ impl Board {
         result
     }
 
-    /// Port of `BasicBoard.overlappingItemsWithClearance`
-    /// (BasicBoard.java:928-932).
-    ///
-    /// The result is a `Vec<ItemId>` in Java's `TreeSet<Item>` order — **descending** id — for
-    /// the reason `ShapeSearchTree::overlapping_items_with_clearance` gives.
     pub fn overlapping_items_with_clearance(
         &mut self,
         shape: &TileShape,
@@ -95,9 +70,6 @@ impl Board {
         result
     }
 
-    /// Port of `BasicBoard.pickItems(Point, int, ItemSelectionFilter)`
-    /// (BasicBoard.java:1086-1099), without the filter — see [`Board`]'s `not ported:` note on
-    /// `ItemSelectionFilter`.
     pub fn pick_items(&self, location: &Point, layer: Option<usize>) -> BTreeSet<ItemId> {
         let point_shape = TileShape::Box(TileShape::get_instance_from_point(location));
         self.overlapping_objects(&point_shape, layer)
@@ -109,12 +81,6 @@ impl Board {
             .collect()
     }
 
-    /// [`Board::pick_items`] restricted to traces — Java's
-    /// `new ItemSelectionFilter(SelectableChoices.TRACES)`, which is what
-    /// `BasicBoard.splitTraces` (:892-894) and `RoutingBoard.insertForcedTracePolyline` (:492-494)
-    /// both build.
-    ///
-    /// Not a Java method; it stands in for the one `ItemSelectionFilter` use the model needs.
     pub fn pick_traces(&self, location: &Point, layer: Option<usize>) -> BTreeSet<ItemId> {
         self.pick_items(location, layer)
             .into_iter()
@@ -124,8 +90,6 @@ impl Board {
 
     // -- the check queries -------------------------------------------------------------------------
 
-    /// Port of `BasicBoard.checkShape` (BasicBoard.java:956-980): can an object of this shape,
-    /// nets and clearance class be inserted on `layer` without a clearance violation?
     pub fn check_shape(
         &mut self,
         shape: &Area,
@@ -134,13 +98,11 @@ impl Board {
         clearance_class: usize,
     ) -> bool {
         let bounding_box = self.bounding_box;
-        // BasicBoard.java:957: `shape.splitToConvex()` is dereferenced with no null check.
         let tiles = shape.split_to_convex().expect(
             "BasicBoard.checkShape: shape.splitToConvex() is null — Java throws a \
              NullPointerException here too (BasicBoard.java:957)",
         );
         for tile in tiles {
-            // BasicBoard.java:961-963.
             if !tile.is_contained_in(&bounding_box) {
                 return false;
             }
@@ -153,7 +115,6 @@ impl Board {
                 let Some(other) = self.items.get(&other_id) else {
                     continue;
                 };
-                // BasicBoard.java:968-976: an obstacle only if it obstructs **every** net.
                 let is_obstacle = net_nos
                     .iter()
                     .all(|net_no| other.is_obstacle_for_net(*net_no));
@@ -165,12 +126,6 @@ impl Board {
         true
     }
 
-    /// Port of `BasicBoard.checkTraceShape` (BasicBoard.java:988-1047): can a trace line of this
-    /// shape be inserted on `layer` without a clearance violation?
-    ///
-    /// `contact_pins` is Java's `Set<Pin> contactPins`: when it is `Some`, every pin *not* in it
-    /// counts as an obstacle even on the trace's own net, so only the listed same-net pins are
-    /// passable (BasicBoard.java:1010-1014).
     pub fn check_trace_shape(
         &mut self,
         shape: &TileShape,
@@ -179,7 +134,6 @@ impl Board {
         clearance_class: usize,
         contact_pins: Option<&BTreeSet<ItemId>>,
     ) -> bool {
-        // BasicBoard.java:990-992.
         if !shape.is_contained_in(&self.bounding_box) {
             return false;
         }
@@ -187,7 +141,6 @@ impl Board {
             .trees
             .get_default_tree()
             .is_clearance_compensation_used();
-        // BasicBoard.java:996-1001.
         let tree_entries = if compensation_used {
             let ctx = self.ctx();
             self.trees.get_default_tree().overlapping_tree_entries(
@@ -208,7 +161,6 @@ impl Board {
                 continue;
             };
             if let Some(contact_pins) = contact_pins {
-                // BasicBoard.java:1006-1015.
                 if contact_pins.contains(&other_id) {
                     continue;
                 }
@@ -216,19 +168,14 @@ impl Board {
                     return false;
                 }
             }
-            // BasicBoard.java:1016-1021.
             let mut is_obstacle = net_nos
                 .iter()
                 .all(|net_no| other.is_trace_obstacle(*net_no));
             let other_is_trace = other.is_trace();
-            // BasicBoard.java:1022-1041: a foreign-net trace inside a tie pin's shape is not an
-            // obstacle. The qualifying pins are collected first so the shape lookups below can
-            // take `&mut self` (they fill the tree-shape cache, Item.java:227-238).
             if is_obstacle
                 && other_is_trace
                 && let Some(contact_pins) = contact_pins
             {
-                // BasicBoard.java:1027-1029.
                 let tie_pins: Vec<ItemId> = contact_pins
                     .iter()
                     .copied()
@@ -242,7 +189,6 @@ impl Board {
                 let mut intersection: Option<TileShape> = None;
                 for pin_id in tie_pins {
                     if intersection.is_none() {
-                        // BasicBoard.java:1030-1034.
                         let Some(obstacle_trace_shape) =
                             self.item_tile_shape(other_id, entry.shape_index)
                         else {
@@ -266,7 +212,6 @@ impl Board {
         true
     }
 
-    /// Port of `BasicBoard.checkPolylineTrace` (BasicBoard.java:1053-1074).
     pub fn check_polyline_trace(
         &mut self,
         polyline: &Polyline,
@@ -275,18 +220,7 @@ impl Board {
         net_nos: &[i32],
         clearance_class: usize,
     ) -> bool {
-        // BasicBoard.java:1055-1069: Java builds a temporary `PolylineTrace` that is never
-        // inserted, purely to reach `tileShapeCount()`, `getTileShape(i)` and
-        // `touchingPinsAtEndCorners()`. The port computes the same three things directly — but
-        // the temporary still runs `Item`'s constructor, whose `id <= 0` branch draws from
-        // `board.communication.idGenerator` (Item.java:85-90), so the id sequence advances by one
-        // per call and every later insert on the board is numbered accordingly.
         self.new_item_id();
-        //
-        // `getTileShape(i)` on that temporary goes through the default tree
-        // (Item.java:194-201 -> ShapeSearchTree.java:992-1004), so the shapes carry the
-        // **compensated** half width and come from the tree's own `offsetShape` — which a
-        // 90-degree tree overrides to `offsetBox` (ShapeSearchTree90Degree.java:486-490).
         let default_tree = self.trees.get_default_tree();
         let compensated_half_width = pen_half_width
             + default_tree.clearance_compensation_value(clearance_class, layer, &self.rules);
@@ -311,8 +245,6 @@ impl Board {
         true
     }
 
-    /// Port of `Trace.touchingPinsAtEndCorners` (Trace.java:390-410) for an item already on the
-    /// board.
     pub fn touching_pins_at_end_corners(&mut self, id: ItemId) -> BTreeSet<ItemId> {
         let Some(Item::Trace(trace)) = self.items.get(&id) else {
             return BTreeSet::new();
@@ -331,9 +263,6 @@ impl Board {
         )
     }
 
-    /// The body of `Trace.touchingPinsAtEndCorners` (Trace.java:390-410) expressed over a bare
-    /// polyline, so that `checkPolylineTrace`'s temporary trace (BasicBoard.java:1055-1066) does
-    /// not have to exist.
     fn touching_pins_at_end_corners_of(
         &mut self,
         polyline: &Polyline,
@@ -345,7 +274,6 @@ impl Board {
         let mut result = BTreeSet::new();
         let end_points = [polyline.first_corner(), polyline.last_corner()];
         for end_point in end_points.into_iter().flatten() {
-            // Trace.java:397-398.
             let octagon = end_point
                 .surrounding_octagon()
                 .enlarge(f64::from(half_width));
@@ -356,7 +284,6 @@ impl Board {
                 clearance_class,
             );
             for other_id in overlaps {
-                // Trace.java:403.
                 let Some(other) = self.items.get(&other_id) else {
                     continue;
                 };
@@ -368,9 +295,6 @@ impl Board {
         result
     }
 
-    /// The `overlappingObjectsWithClearance` wrapper (ShapeSearchTree.java:530-549) reached
-    /// through the board — Java writes `defaultTree.overlappingObjectsWithClearance(...)` inline
-    /// at BasicBoard.java:965.
     fn overlapping_objects_with_clearance(
         &mut self,
         shape: &TileShape,
@@ -396,8 +320,6 @@ impl Board {
         result
     }
 
-    /// The five-argument `overlappingTreeEntriesWithClearance`
-    /// (ShapeSearchTree.java:443-507) reached through the board.
     fn overlapping_tree_entries_with_clearance(
         &mut self,
         shape: &TileShape,
@@ -425,17 +347,7 @@ impl Board {
 
     // -- RoutingBoardSearchFacade ------------------------------------------------------------------
 
-    /// Port of `RoutingBoardSearchFacade.checkTraceSegment(Point, Point, …)`
-    /// (RoutingBoardSearchFacade.java:29-44), which `RoutingBoard.checkTraceSegment`
-    /// (RoutingBoard.java:198-215) delegates to.
-    ///
-    /// Returns the length of the segment from `from_point` that can be inserted without a
-    /// clearance violation. `0` means "blocked at the start"; `i32::MAX as f64` means "no
-    /// conflict at all" (RoutingBoardSearchFacade.java:61).
-    ///
-    /// Java's `new Polyline(fromPoint, toPoint)` followed by `new LineSegment(polyline, 1)`
-    /// (:40-41) is the two-point polyline's middle segment.
-    #[allow(clippy::too_many_arguments)] // Java's parameter list, kept.
+    #[allow(clippy::too_many_arguments)]
     pub fn check_trace_segment(
         &mut self,
         from_point: &Point,
@@ -446,14 +358,11 @@ impl Board {
         clearance_class: usize,
         only_not_shovable_obstacles: bool,
     ) -> f64 {
-        // RoutingBoardSearchFacade.java:37-39.
         if from_point == to_point {
             return 0.0;
         }
         let polyline = Polyline::from_two_points(from_point, to_point);
         let Some(line_segment) = LineSegment::from_polyline(&polyline, 1) else {
-            // Java's `new LineSegment(polyline, 1)` would throw on a polyline with fewer than
-            // three lines; `from_polyline` answers `None` for the same input.
             return 0.0;
         };
         self.check_trace_segment_of_line_segment(
@@ -466,11 +375,7 @@ impl Board {
         )
     }
 
-    /// Port of `RoutingBoardSearchFacade.checkTraceSegment(LineSegment, …)`
-    /// (RoutingBoardSearchFacade.java:46-109).
-    // renamed: the `LineSegment` overload -> check_trace_segment_of_line_segment (Rust has no
-    // overloading).
-    #[allow(clippy::too_many_arguments)] // Java's parameter list, kept.
+    #[allow(clippy::too_many_arguments)]
     pub fn check_trace_segment_of_line_segment(
         &mut self,
         line_segment: &LineSegment,
@@ -480,7 +385,6 @@ impl Board {
         clearance_class: usize,
         only_not_shovable_obstacles: bool,
     ) -> f64 {
-        // RoutingBoardSearchFacade.java:53-56.
         let Ok(check_polyline) = line_segment.to_polyline() else {
             return 0.0;
         };
@@ -493,7 +397,6 @@ impl Board {
         let from_point = line_segment.start_point_approx();
         let to_point = line_segment.end_point_approx();
         let line_length = to_point.distance(&from_point);
-        // RoutingBoardSearchFacade.java:61.
         let mut ok_length = f64::from(i32::MAX);
         let compensation_used = self
             .trees
@@ -515,15 +418,12 @@ impl Board {
             let Some(obstacle) = self.items.get(&obstacle_id) else {
                 continue;
             };
-            // RoutingBoardSearchFacade.java:71-75.
             if only_not_shovable_obstacles
                 && obstacle.is_routable()
                 && !obstacle.is_shove_fixed(&self.rules)
             {
                 continue;
             }
-            // RoutingBoardSearchFacade.java:76-78: `getTreeShape(defaultTree, index)`, which
-            // recomputes if the item's cache was dropped since insertion (Item.java:212-226).
             let Some(obstacle_shape) =
                 self.item_tree_shape_ref(obstacle_id, default_tree, entry.shape_index)
             else {
@@ -531,7 +431,6 @@ impl Board {
             };
             let obstacle_shape = obstacle_shape.into_owned();
             let obstacle = &self.items[&obstacle_id];
-            // RoutingBoardSearchFacade.java:82-93.
             let (current_offset_shape, shorten_value) = if compensation_used {
                 let compensation = self
                     .rules
@@ -549,7 +448,6 @@ impl Board {
                     f64::from(trace_half_width + clearance_value),
                 )
             };
-            // RoutingBoardSearchFacade.java:94-97.
             let intersection = obstacle_shape.intersection(&current_offset_shape);
             if intersection.is_empty() {
                 continue;
@@ -558,7 +456,6 @@ impl Board {
             else {
                 continue;
             };
-            // RoutingBoardSearchFacade.java:99-105.
             let projection =
                 from_point.scalar_product(&to_point, &nearest_obstacle_point) / line_length;
             let projection = 0.0_f64.max(projection - shorten_value - 1.0);
@@ -572,12 +469,6 @@ impl Board {
         ok_length
     }
 
-    /// Port of `RoutingBoardSearchFacade.checkMoveItem`
-    /// (RoutingBoardSearchFacade.java:111-145): can `id` be translated by `vector` without
-    /// overlaps or clearance violations?
-    ///
-    /// Java's `ignoreItems` is an in/out parameter — it adds `item` to it (:123-125) — so the
-    /// port takes `&mut Option<BTreeSet<ItemId>>`.
     pub fn check_move_item(
         &mut self,
         id: ItemId,
@@ -588,11 +479,9 @@ impl Board {
         let Some(item) = self.items.get(&id) else {
             return false;
         };
-        // RoutingBoardSearchFacade.java:112-115.
         if item.net_count() > 1 {
             return false;
         }
-        // RoutingBoardSearchFacade.java:116-122.
         let contact_count = if item.as_connectable().is_some() {
             self.all_contacts(id).len()
         } else {
@@ -602,7 +491,6 @@ impl Board {
         if item.is_trace() && contact_count > 0 {
             return false;
         }
-        // RoutingBoardSearchFacade.java:123-125.
         if let Some(ignore_items) = ignore_items {
             ignore_items.insert(id);
         }
@@ -621,7 +509,6 @@ impl Board {
             .collect();
         let bounding_box = self.bounding_box;
         for (moved_shape, shape_layer) in moved {
-            // RoutingBoardSearchFacade.java:128-130.
             if !moved_shape.is_contained_in(&bounding_box) {
                 return false;
             }
@@ -636,7 +523,6 @@ impl Board {
                 let Some(other) = self.items.get(&other_id) else {
                     continue;
                 };
-                // RoutingBoardSearchFacade.java:134-141.
                 match ignore_items.as_ref() {
                     Some(ignore_items) => {
                         if !ignore_items.contains(&other_id) && other.is_obstacle(item, &self.ctx())
@@ -655,8 +541,6 @@ impl Board {
         true
     }
 
-    /// Port of `RoutingBoardSearchFacade.checkChangeNet`
-    /// (RoutingBoardSearchFacade.java:147-163).
     pub fn check_change_net(&mut self, id: ItemId, new_net_no: i32) -> bool {
         let ctx = self.ctx();
         let Some(item) = self.items.get(&id) else {
@@ -685,7 +569,6 @@ impl Board {
                 let Some(other) = self.items.get(&other_id) else {
                     continue;
                 };
-                // RoutingBoardSearchFacade.java:155-159.
                 if other.as_connectable().is_some() && !other.contains_net(new_net_no) {
                     return false;
                 }
@@ -694,9 +577,6 @@ impl Board {
         true
     }
 
-    /// Port of `RoutingBoardSearchFacade.pickNearestRoutingItem`
-    /// (RoutingBoardSearchFacade.java:165-217): the connectable item nearest `location` that a
-    /// route may start from or connect to.
     pub fn pick_nearest_routing_item(
         &self,
         location: &Point,
@@ -705,9 +585,6 @@ impl Board {
     ) -> Option<ItemId> {
         let ctx = self.ctx();
         let point_shape = TileShape::Box(TileShape::get_instance_from_point(location));
-        // `BasicBoard.overlappingItems` answers a `TreeSet<Item>`, i.e. **descending id**
-        // (quirk #44), and the order decides which of two equidistant candidates wins the
-        // `currentDistance < minDist` test (RoutingBoardSearchFacade.java:185,193).
         let found_items: Vec<ItemId> = self
             .overlapping_items(&Area::Shape(point_shape.into()), layer)
             .into_iter()
@@ -721,7 +598,6 @@ impl Board {
             let Some(current) = self.items.get(&current_id) else {
                 continue;
             };
-            // RoutingBoardSearchFacade.java:173-175.
             if !current.is_connectable() {
                 continue;
             }
@@ -734,7 +610,6 @@ impl Board {
             let mut candidate_found = false;
             let mut current_distance = 0.0;
             match current {
-                // RoutingBoardSearchFacade.java:178-188.
                 Item::Trace(trace) => {
                     if layer.is_none_or(|layer| trace.get_layer() == layer) {
                         if nearest_is_drill {
@@ -747,7 +622,6 @@ impl Board {
                         }
                     }
                 }
-                // RoutingBoardSearchFacade.java:189-196.
                 Item::Via(_) | Item::Pin(_) => {
                     if layer.is_none_or(|layer| current.is_on_layer(layer, &ctx)) {
                         let center = self
@@ -759,7 +633,6 @@ impl Board {
                         }
                     }
                 }
-                // RoutingBoardSearchFacade.java:197-202.
                 Item::ConductionArea(area) => {
                     if layer.is_none_or(|layer| area.get_layer() == layer) && nearest_item.is_none()
                     {
@@ -770,7 +643,6 @@ impl Board {
                 _ => {}
             }
             if candidate_found {
-                // RoutingBoardSearchFacade.java:203-211.
                 if let Some(from_item) = from_item {
                     let ignore_set =
                         ignore_set.get_or_insert_with(|| self.connected_set(from_item, -1, false));
@@ -787,8 +659,6 @@ impl Board {
 
     // -- BasicBoard / RoutingBoard queries built on the above ---------------------------------------
 
-    /// Port of `BasicBoard.getTraceTail` (BasicBoard.java:1306-1329): a trace of exactly these
-    /// nets that ends at `location` with no contact there.
     pub fn get_trace_tail(
         &self,
         location: &Point,
@@ -803,17 +673,14 @@ impl Board {
             let Some(item @ Item::Trace(trace)) = self.items.get(&id) else {
                 continue;
             };
-            // BasicBoard.java:1311-1313.
             if !item.nets_equal_to(net_nos) {
                 continue;
             }
-            // BasicBoard.java:1314-1319.
             if trace.first_corner().as_ref() == Some(location)
                 && self.trace_start_contacts(id).is_empty()
             {
                 return Some(id);
             }
-            // BasicBoard.java:1320-1325.
             if trace.last_corner().as_ref() == Some(location)
                 && self.trace_end_contacts(id).is_empty()
             {
@@ -823,17 +690,11 @@ impl Board {
         None
     }
 
-    /// Port of `BasicBoard.removeIfCycle` (BasicBoard.java:1335-1365): if this trace is part of a
-    /// cycle, remove its whole connection, then remove the tails that removal exposed.
     pub fn remove_if_cycle(&mut self, id: ItemId) -> bool {
         self.remove_if_cycle_checked(id, &|| false)
             .expect("a `|| false` stop check never trips")
     }
 
-    /// [`Board::remove_if_cycle`] under a [`StopCheck`] (Plan 3 ruling 4), threaded into the two
-    /// [`Board::connection_items_checked`] calls below — the walk that does not terminate on the
-    /// cycle this method has just confirmed exists.
-    // added in Plan 3: BasicBoard.removeIfCycle (plan ruling 4)
     pub fn remove_if_cycle_checked(
         &mut self,
         id: ItemId,
@@ -842,14 +703,12 @@ impl Board {
         let Some(item @ Item::Trace(trace)) = self.items.get(&id) else {
             return Ok(false);
         };
-        // BasicBoard.java:1336-1341.
         if !item.is_on_the_board() || !self.is_trace_cycle(id) {
             return Ok(false);
         }
         let current_layer = trace.get_layer();
         let net_nos = item.net_nos().to_vec();
         let end_corners = [trace.first_corner(), trace.last_corner()];
-        // BasicBoard.java:1349-1353.
         let tail_before: Vec<bool> = end_corners
             .iter()
             .map(|corner| {
@@ -859,11 +718,9 @@ impl Board {
                 })
             })
             .collect();
-        // BasicBoard.java:1354-1355.
         let connection_items =
             self.connection_items_checked(id, StopConnectionOption::None, stop)?;
         self.remove_items(connection_items);
-        // BasicBoard.java:1356-1363.
         for (index, corner) in end_corners.iter().enumerate() {
             if tail_before[index] {
                 continue;
@@ -878,7 +735,6 @@ impl Board {
         Ok(true)
     }
 
-    /// Port of `RoutingBoard.containsTraceTails` (RoutingBoard.java:1176-1187).
     pub fn contains_trace_tails(
         &self,
         ids: impl IntoIterator<Item = ItemId>,
@@ -898,15 +754,12 @@ impl Board {
         false
     }
 
-    /// Port of `RoutingBoard.removeTraceTails` (RoutingBoard.java:1193-1238): removes every
-    /// trace/via stub of `net_number` (or of all nets when `net_number <= 0`).
     pub fn remove_trace_tails(
         &mut self,
         net_number: i32,
         stop_connection_option: StopConnectionOption,
     ) -> Result<bool, crate::BoardError> {
         let mut stub_set: BTreeSet<ItemId> = BTreeSet::new();
-        // RoutingBoard.java:1195-1219, over the item list in board order.
         for id in self.items_in_board_order() {
             let Some(item) = self.items.get(&id) else {
                 continue;
@@ -921,7 +774,6 @@ impl Board {
                 continue;
             }
             if matches!(self.items.get(&id), Some(Item::Via(_))) {
-                // RoutingBoard.java:1207-1216.
                 if stop_connection_option == StopConnectionOption::Via {
                     continue;
                 }
@@ -933,7 +785,6 @@ impl Board {
             }
             stub_set.insert(id);
         }
-        // RoutingBoard.java:1220-1231.
         let mut stub_connections: BTreeSet<ItemId> = BTreeSet::new();
         for id in stub_set {
             if self.normal_contacts(id).len() == 1 {
@@ -946,19 +797,10 @@ impl Board {
             return Ok(false);
         }
         self.remove_items(stub_connections);
-        // RoutingBoard.java:1236.
         self.combine_traces(net_number)?;
         Ok(true)
     }
 
-    /// Port of `RoutingBoard.connectToTrace` (RoutingBoard.java:1116-1170): insert a stub from
-    /// `from_point` to the nearest point on `to_trace`.
-    ///
-    /// Java's second parameter is a `Trace` **object reference**, not an id, and the method reads
-    /// only its polyline, layer and net numbers — all of which a caller can hold across a board
-    /// mutation that removes the item. [`Self::connect_to_trace_of`] is that caller's entry
-    /// point; this one looks the trace up first, which is what every caller whose reference is
-    /// still in the board does.
     pub fn connect_to_trace(
         &mut self,
         from_point: &Point,
@@ -967,7 +809,6 @@ impl Board {
         clearance_class: usize,
     ) -> bool {
         let Some(item @ Item::Trace(trace)) = self.items.get(&to_trace) else {
-            // RoutingBoard.java:1119-1121: not a `PolylineTrace`.
             return false;
         };
         let polyline = trace.polyline().clone();
@@ -983,30 +824,6 @@ impl Board {
         )
     }
 
-    /// [`Self::connect_to_trace`] sized from **the layer the stub lands on**, which this method
-    /// computes and the caller cannot.
-    ///
-    /// **Java bug:** `RoutingBoard.connectToTrace` takes a scalar `penHalfWidth` and its two live
-    /// callers (`FoundConnectionInserter.getInstance:79-83` and `:94-98`) pass the *other* end's
-    /// layer's width — `ctrl.traceHalfWidth[connection.startLayer]` for the stub onto the target
-    /// item, `[connection.targetLayer]` for the stub onto the start item. But `:1135` is
-    /// `int traceLayer = toTrace.getLayer()` and `:1140-1152` insert the connection trace on
-    /// **that** layer, so each stub was inserted on one layer and sized from the other's width.
-    /// The two indices are simply crossed; there is no reading under which the width belongs to a
-    /// layer the copper does not land on. See docs/java-quirks.md #187.
-    ///
-    /// **fixed: T11 (#187).** The register's own preferred remedy is "let `connectToTrace` take
-    /// the width for the layer it has just computed", and that is what this is: the caller hands
-    /// over `AutorouteControl.traceHalfWidth` whole — `AutorouteControl.java:219` fills it per
-    /// layer from `board.rules.getTraceHalfWidth(netNumber, i)` — and the index is chosen here,
-    /// beside the `to_trace.get_layer()` that decides where the copper goes.
-    ///
-    /// Latent on every board in the corpus, because all of them share one width across layers; a
-    /// DSN `(layer_rule … (rule (width …)))` per layer makes the two differ.
-    /// `crates/fr-router/tests/data/p9t11-per-layer-width.dsn` is such a board, at an 8:1 ratio.
-    ///
-    /// An out-of-range layer falls back to the last entry rather than panicking, matching the
-    /// scalar overload's tolerance of any width the caller chose.
     pub fn connect_to_trace_sized_by_layer(
         &mut self,
         from_point: &Point,
@@ -1026,16 +843,6 @@ impl Board {
         self.connect_to_trace(from_point, to_trace, pen_half_width, clearance_class)
     }
 
-    /// [`Self::connect_to_trace`] on a trace the board may no longer hold — the whole of
-    /// `RoutingBoard.connectToTrace:1123-1169` below its three reads of `toTrace`.
-    ///
-    /// Not a Java method: it is Java's *object reference* made explicit. `toTrace` is a live
-    /// `Trace` object, so `FoundConnectionInserter:79`/`:94` — which pass
-    /// `connection.targetItem` and `connection.startItem`, references taken before the whole
-    /// insert ran — still see the **original, undivided** polyline and its two end corners even
-    /// after the insert has split that trace in two or removed it. An id lookup answers nothing
-    /// there, and the stub and the two tail removals of `:1157-1168` never happen. See
-    /// `docs/java-quirks.md` #186.
     #[allow(clippy::too_many_arguments)]
     pub fn connect_to_trace_of(
         &mut self,
@@ -1049,11 +856,9 @@ impl Board {
         let first_corner = polyline.first_corner();
         let last_corner = polyline.last_corner();
         let net_nos = net_nos.to_vec();
-        // RoutingBoard.java:1123-1126.
         if polyline.contains(from_point) {
             return true;
         }
-        // RoutingBoard.java:1127-1134.
         let Some(projection_line) = polyline.projection_line(from_point) else {
             return false;
         };
@@ -1063,7 +868,6 @@ impl Board {
         if connection_line.lines().len() != 3 {
             return false;
         }
-        // RoutingBoard.java:1136-1139.
         if !self.check_polyline_trace(
             &connection_line,
             trace_layer,
@@ -1073,7 +877,6 @@ impl Board {
         ) {
             return false;
         }
-        // RoutingBoard.java:1140-1144.
         if self.changed_area.is_some() {
             for i in 0..connection_line.corner_count() {
                 if let Some(corner) = connection_line.corner_approx(i) {
@@ -1081,7 +884,6 @@ impl Board {
                 }
             }
         }
-        // RoutingBoard.java:1146-1152.
         self.insert_trace(
             connection_line,
             trace_layer,
@@ -1090,7 +892,6 @@ impl Board {
             clearance_class,
             FixedState::Unfixed,
         );
-        // RoutingBoard.java:1157-1168.
         for corner in [first_corner, last_corner].into_iter().flatten() {
             if *from_point == corner {
                 continue;
@@ -1104,52 +905,6 @@ impl Board {
         true
     }
 
-    /// Port of `RoutingBoard.reduceNetsOfRouteItems` (RoutingBoard.java:1284-1356): drop net
-    /// numbers from multi-net traces and vias that their contacts do not carry.
-    ///
-    /// # The three contact walks are deliberately **not** `.rev()`ed
-    ///
-    /// Java's `getNormalContacts()` / `getStartContacts()` answer a `TreeSet<Item>`, so Java
-    /// walks them in descending item id (quirk #44) and most walks in this port are `.rev()`ed
-    /// to match. These three (`:1303`, `:1320` and `:1331` in Java) are the exception, because
-    /// each computes an **existential** and the action it triggers does not name the contact
-    /// that triggered it: the body is "does *any* contact lack `currentNetNumber`?", and the
-    /// consequence is `currentItem.removeFromNet(currentNetNumber)`, which depends only on the
-    /// net. The `break` is an early exit, not a selection, so the answer is the same in either
-    /// direction. `pinFound` is likewise order-free: it is true iff the set contains a `Pin` at
-    /// all, and when the pin loop breaks early it has already seen one.
-    ///
-    /// Audited under Plan 7 Task 8b / ruling AY, alongside quirk **#210** — the one contact walk
-    /// in the workspace where the direction *did* matter, because
-    /// `TraceTightener45.java:511-515` keeps the last match rather than the first.
-    ///
-    /// # The two arms broke in different places, and Task 5 made them agree
-    ///
-    /// The via arm's `if (somethingChanged) break;` is at **`:1310`, inside** the
-    /// `for (int currentNetNumber : currentItem.netNumbers)` loop at `:1302`, so one visit to a
-    /// via removes at most **one** net. The trace arm's is at **`:1341`, outside** its net loop
-    /// at `:1318`, so in Java one visit to a trace removes **as many nets as the loop finds** — a
-    /// two-net trace whose contacts support neither net ends the visit with *zero* nets, and
-    /// `:1296`'s `netNumbers.length <= 1` guard is never re-consulted within the visit. Quirk
-    /// **#211**.
-    ///
-    /// **fixed: T5 (#211).** The trace arm now breaks where the via arm breaks. A route item can
-    /// no longer be driven to zero nets, which is what `:1296`'s guard exists to prevent, and the
-    /// `while something_changed` restart re-consults that guard between removals on both arms.
-    ///
-    /// Plan 7 Task 8b's review (S4, ruling AY) is the reason the port ever had Java's placement
-    /// here: it found the port breaking the net loop on the first removal — leaving **one** net
-    /// where Java leaves none — and repaired it *to* Java, pinned by `run.sh p2t11 6`'s
-    /// `reduceNetsOfRouteItems` datum (`result=false nets(4)=[] nets(5)=[2]`). That repair was
-    /// correct parity and is not being undone as a mistake; Plan 9 Task 5 is the post-parity step
-    /// the quirk row always named, so the marker is **re-pointed** rather than deleted: the
-    /// audited fact — that the two arms differ in Java, and that `p2t11` mode 6 is where it is
-    /// visible — is what makes the fix checkable. `p2t11` mode 6's second datum is the golden
-    /// that moves with it, and `nets(4)` now reads `[2]`.
-    //
-    // Java bug: the method computes `result` but never assigns it (RoutingBoard.java:1285,1355),
-    // so it always returns `false` even when it changed something — its doc comment promises
-    // "true, if the nets of some items were reduced". Reproduced. See docs/java-quirks.md.
     pub fn reduce_nets_of_route_items(&mut self) -> bool {
         let result = false;
         let mut something_changed = true;
@@ -1159,13 +914,11 @@ impl Board {
                 let Some(item) = self.items.get(&id) else {
                     continue;
                 };
-                // RoutingBoard.java:1296-1299.
                 if item.net_nos().len() <= 1 || item.get_fixed_state() == FixedState::SystemFixed {
                     continue;
                 }
                 let net_nos = item.net_nos().to_vec();
                 if matches!(item, Item::Via(_)) {
-                    // RoutingBoard.java:1300-1314.
                     let contacts = self.normal_contacts(id);
                     let mut to_remove = None;
                     'outer: for current_net_number in &net_nos {
@@ -1188,31 +941,10 @@ impl Board {
                         break;
                     }
                 } else if item.is_trace() {
-                    // RoutingBoard.java:1315-1349.
-                    //
-                    // fixed: T5 (#211) — `removed` is an `Option`, not a list, because the break
-                    // below now sits **inside** the net loop, where the via arm's is
-                    // (`:1310-1312`). Java's is at `:1341`, after the net loop closes, so Java
-                    // calls `removeFromNet` once per unsupported net and a two-net trace whose
-                    // contacts support neither ends the visit on **zero** nets — a state
-                    // `:1296`'s `netNumbers.length <= 1` guard exists to prevent and is never
-                    // re-consulted within the visit. With the break inside, a visit removes at
-                    // most one net and the `while something_changed` restart re-tests `:1296`
-                    // between removals, exactly as it does for a via.
-                    //
-                    // Collecting and applying after the loops is exact rather than a
-                    // convenience: nothing the loops read depends on this item's own nets — the
-                    // tests are `currentContact.containsNet(..)` and
-                    // `currentContact instanceof Pin`, both about the *contact* — and `contacts`
-                    // is only recomputed at `:1344`, which is reached only when nothing was
-                    // removed.
                     let mut removed: Option<i32> = None;
                     let mut contacts = self.trace_start_contacts(id);
                     // :1317.
                     'ends: for end in 0..2 {
-                        // :1318. Java re-reads `currentItem.netNumbers` here; a removal leaves
-                        // the `end` loop immediately either way, so the second pass only ever
-                        // sees the original list.
                         for current_net_number in &net_nos {
                             let mut pin_found = false;
                             // :1320-1329.
@@ -1228,8 +960,6 @@ impl Board {
                                 }
                             }
                             if !pin_found {
-                                // RoutingBoard.java:1330-1339: at tie pins, traces may carry
-                                // different nets, so only non-pin contacts are consulted.
                                 for contact_id in &contacts {
                                     let Some(contact) = self.items.get(contact_id) else {
                                         continue;
@@ -1242,9 +972,6 @@ impl Board {
                                     }
                                 }
                             }
-                            // fixed: T5 (#211) — the via arm's placement, `:1310-1312`, rather
-                            // than Java's `:1341-1343`. Leaving both loops at once is what
-                            // `:1341`'s `break` plus the `end` loop's exit did.
                             if removed.is_some() {
                                 break 'ends;
                             }

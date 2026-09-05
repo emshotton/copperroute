@@ -1,23 +1,3 @@
-//! Plan 9 Task 10: the two `ShapeTraceEntries` precedence/self-comparison defects, #65 and #69.
-//!
-//! Both are decisions about **what blocks a shove**, and both failed open: Java's version of each
-//! test could only ever answer "not an obstacle", so the router shoved copper past an obstacle it
-//! had been asked to respect. They are the survey's two named live sources of clearance
-//! violations in this group, which is why G2's "violations stay 0" line is the acceptance for
-//! both.
-//!
-//! * **#65** — `storeItems`' first `continue` (`ShapeTraceEntries.java:180-183`) reads
-//!   `!isPadCheck && a || b`, and Java's `&&` binds tighter than `||`, so a
-//!   `ComponentObstacleArea` was skipped **unconditionally**. During a pad check — the arm that
-//!   decides whether a via may be placed — a component keepout therefore never blocked anything.
-//! * **#69** — `storeTrace`'s three-way block test (`:379-382`) compares
-//!   `contactItem.clearanceClassIndex() != contactTrace.clearanceClassIndex()`, where
-//!   `contactItem` **is** `contactTrace` (the pattern variable bound at `:377`). The disjunct
-//!   compares an item with itself, so a contact whose clearance class differs never blocked.
-//!
-//! The board is `tests/board_builder.rs`'s `shove_board()` — the three-trace, two-net fixture
-//! `P2T11.java` mode 5 builds, whose every number comes from the JVM driver.
-
 mod board_builder;
 
 use fr_board::prelude::*;
@@ -36,17 +16,6 @@ fn window_and_overlaps(board: &mut Board) -> (TileShape, Vec<ItemId>) {
 // #65
 // -------------------------------------------------------------------------------------------------
 
-/// Quirk #65, fixed at Plan 9 Task 10.
-///
-/// `ShapeTraceEntries.java:180-183` parses as `((!isPadCheck && a) || b)`, so the second arm — a
-/// `ComponentObstacleArea` — short-circuits the `continue` for **every** call, pad check or not.
-/// A component keepout is exactly a footprint's courtyard: the region a KiCad user has declared
-/// nothing may be placed in. Java could not honour it, because the one arm that would have made
-/// it an obstacle was unreachable.
-///
-/// The two halves are asserted against each other on one board, so the test cannot pass by the
-/// keepout being invisible for some unrelated reason: **not** a pad check, the keepout is skipped
-/// and the traces still sort; a pad check, and it blocks and names itself.
 #[test]
 fn a_component_keepout_blocks_a_via() {
     let mut board = board_builder::shove_board();
@@ -72,17 +41,12 @@ fn a_component_keepout_blocks_a_via() {
         "the keepout must reach store_items at all"
     );
 
-    // Not a pad check: the keepout is skipped, exactly as Java intended and as Java also did.
-    // (`get_found_obstacle` is **not** asserted here: `ShapeTraceEntries.java:440` leaves the
-    // last trace stored in that field even on success, so it is only meaningful beside a
-    // `false` return.)
     let mut entries = ShapeTraceEntries::new(shape.clone(), 0, vec![1], 1, None);
     assert!(
         entries.store_items(&board, &overlaps, false, false),
         "outside a pad check a component keepout is not an obstacle"
     );
 
-    // A pad check: it blocks. This is the arm Java's precedence made unreachable.
     let mut entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
     assert!(
         !entries.store_items(&board, &overlaps, true, false),
@@ -95,11 +59,6 @@ fn a_component_keepout_blocks_a_via() {
     );
 }
 
-/// The `ViaObstacleArea` half of the same expression, unchanged by the fix.
-///
-/// It was already `!isPadCheck`-gated in Java — it is the arm the `&&` bound to — so the
-/// parenthesisation moves it not at all. Asserted here so that a future edit to the same line
-/// cannot quietly change one arm while the other's test looks green.
 #[test]
 fn a_via_keepout_still_blocks_only_during_a_pad_check() {
     let mut board = board_builder::shove_board();
@@ -166,23 +125,6 @@ fn contacting_traces_in_two_classes(contact_class: usize) -> (Board, ItemId, Ite
     )
 }
 
-/// Quirk #69, fixed at Plan 9 Task 10.
-///
-/// The third disjunct now reads `trace.clearanceClassIndex() != contactTrace
-/// .clearanceClassIndex()` — the symmetry the second disjunct
-/// (`contactTrace.getHalfWidth() != trace.getHalfWidth()`) makes obvious, and the only reading
-/// under which the line says anything at all.
-///
-/// Both directions are asserted on the same geometry, at the same half width, so the clearance
-/// class is the *only* variable: same class, the shove proceeds; different class, it is refused
-/// and the trace on the other side of the boundary is named. Java answered "proceed" in both,
-/// which is how the router came to shove copper across a clearance-class boundary.
-///
-/// Which of the pair ends up in `foundObstacle` is decided by `getItems()` order (descending id,
-/// quirk #63): the *later-inserted* trace is stored first, so the trace named is the one it found
-/// as its contact — the `wide`-class trace's contact, i.e. the default-class one. That is a fact
-/// about the walk, not about the predicate, and it is asserted so the test says which item the
-/// ripup resolver would be handed rather than merely that something blocked.
 #[test]
 fn a_contact_in_another_clearance_class_blocks_the_shove() {
     let wide = board_builder::WIDE_CLEARANCE_CLASS;

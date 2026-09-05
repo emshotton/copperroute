@@ -1,17 +1,3 @@
-//! `Board`: the insert/remove protocol, the item-list and search queries, connectivity,
-//! `check_trace_segment` and the changed area.
-//!
-//! # Provenance
-//!
-//! Every expectation below is a line of `scripts/differential/java/P2T11.java`'s output. That
-//! driver builds the *same* board through the real `app.freerouting.board.facade.RoutingBoard`
-//! on JDK 25 and prints it; `./scripts/differential/run.sh p2t11 {0,1,2,3}` diffs the two and all
-//! twelve modes are byte-identical (mode 11 differs only by the two quirk-#77 lines). The mode each test transcribes is named in its first comment.
-//!
-//! The handful of tests with no `P2T11` line behind them cite the Java source instead; those are
-//! the paths the driver cannot reach (a refused removal that Java's driver would have to
-//! construct, the `BoardServiceCharacterizationTest` port, `Board: Send + Sync`).
-
 mod board_builder;
 
 use std::collections::BTreeSet;
@@ -23,7 +9,6 @@ use fr_geometry::{
     Vector,
 };
 
-/// The probe box around the via at the origin that `P2T11.java` mode 0 uses.
 fn probe() -> TileShape {
     TileShape::Box(IntBox::from_coords(-100, -100, 100, 100))
 }
@@ -34,14 +19,10 @@ fn probe() -> TileShape {
 
 #[test]
 fn the_constructor_inserts_the_board_outline_as_item_one() {
-    // BasicBoard.java:135: `insertOutline(outlineShapes, outlineClClassNo)` is the last thing the
-    // constructor does, so the outline takes the first id the generator hands out.
-    // `P2T11.java` mode 0: `outline=1` and `item id=1 class=BoardOutline ... cl=1`.
     let board = p2t11_board();
     assert_eq!(board.get_outline(), Some(ItemId(1)));
     let outline = board.get_item(ItemId(1)).expect("the outline");
     assert!(matches!(outline, Item::BoardOutline(_)));
-    // BoardOutline.java:46-49: no nets, component 0, SYSTEM_FIXED; the clearance class survives.
     assert!(outline.net_nos().is_empty());
     assert_eq!(outline.clearance_class(), 1);
     assert_eq!(outline.component_id(), 0);
@@ -76,8 +57,6 @@ fn setting_flip_style_clears_the_item_caches() {
 
 #[test]
 fn every_insert_bumps_the_revision_once() {
-    // BoardItemRepository.java:166: `board.incrementRevision()` is the last line of `insertItem`.
-    // `P2T11.java` mode 0: `mode=0 revision=8` for the outline plus seven inserted items.
     let board = p2t11_board();
     assert_eq!(board.revision(), 8);
     assert_eq!(board.items.len(), 8);
@@ -85,7 +64,6 @@ fn every_insert_bumps_the_revision_once() {
 
 #[test]
 fn the_ids_the_typed_inserters_hand_out_match_the_jvm() {
-    // `P2T11.java` mode 0's `item ...` lines, in `board.itemList` order (descending id).
     let board = p2t11_board();
     let ctx = board.ctx();
     let describe = |id: u32| {
@@ -168,8 +146,6 @@ fn the_ids_the_typed_inserters_hand_out_match_the_jvm() {
 
 #[test]
 fn the_item_list_iterates_in_descending_id_like_java() {
-    // quirk #63: `board.itemList` is a `ConcurrentSkipListMap` keyed by the reversed
-    // `Item.compareTo`. `P2T11.java` mode 0 prints the items 8 7 6 5 4 3 2 1.
     let board = p2t11_board();
     assert_eq!(
         board.get_items().map(Item::id).collect::<Vec<_>>(),
@@ -183,7 +159,6 @@ fn the_item_list_iterates_in_descending_id_like_java() {
 
 #[test]
 fn the_typed_query_sets_come_back_in_java_order() {
-    // `P2T11.java` mode 0.
     let board = p2t11_board();
     assert_eq!(nums(board.get_pins()), vec![3, 2]);
     assert_eq!(nums(board.get_smd_pins()), vec![2]);
@@ -200,18 +175,6 @@ fn the_typed_query_sets_come_back_in_java_order() {
     assert_eq!(board.get_pin(1, 7), None);
 }
 
-/// `BasicBoard.cumulativeTraceLength` (BasicBoard.java:675-677 ->
-/// BoardItemRepository.java:124-133) and `Net.getCumulativeTraceLength` (Net.java:131) are
-/// accumulator loops that start at `double result = 0`, i.e. **positive** zero. Rust's
-/// `impl Sum for f64` folds from **`-0.0`**, so `.sum()` over an empty iterator answers `-0.0`,
-/// which `Double.toString` renders `"-0.0"` where Java renders `"0.0"`.
-///
-/// Found by `scripts/differential/run.sh p7t2` on
-/// `examples/tutorial_board/tutorial_board.dsn` — a board whose 438 nets are all empty, so a
-/// whole autoroute pass leaves the trace list untouched and the sum is taken over nothing.
-/// Fixed in Plan 7 Task 9 by folding from `0.0` at both sites; this test is the pin, and
-/// `is_sign_negative()` is the assertion because `-0.0 == 0.0` is true and an `assert_eq!`
-/// against `0.0` would pass either way.
 #[test]
 fn an_empty_trace_sum_is_positive_zero_like_javas_accumulator() {
     let board = p2t11_board();
@@ -255,11 +218,8 @@ fn an_empty_trace_sum_is_positive_zero_like_javas_accumulator() {
 
 #[test]
 fn the_scalar_queries_match_the_jvm() {
-    // `P2T11.java` mode 0.
     let board = p2t11_board();
     assert_eq!(board.get_layer_count(), 2);
-    // BasicBoard.java:106,109: the two half widths start at 1000 and 10000, and
-    // `insertTraceWithoutCleaning` only ever narrows the gap (:197-200).
     assert_eq!(board.get_min_trace_half_width(), 30);
     assert_eq!(board.get_max_trace_half_width(), 1000);
     assert_eq!(
@@ -275,8 +235,6 @@ fn the_scalar_queries_match_the_jvm() {
     assert!(!board.contains(&Point::new(99999, 0)));
     assert_eq!(board.item_component_name(ItemId(2)), Some("Component#1"));
     assert_eq!(board.item_component_name(ItemId(4)), None);
-    // Item.getAllNetNames (Item.java:1283-1288) joins `Net::toString`, which is
-    // `"Net #<n> (<name>)"` (Net.java:54-56), not the bare name.
     assert_eq!(board.all_net_names(ItemId(4)), "Net #1 (N1)");
     assert_eq!(board.all_net_names(ItemId(7)), "no nets");
     assert_eq!(
@@ -291,8 +249,6 @@ fn the_scalar_queries_match_the_jvm() {
 
 #[test]
 fn insert_and_remove_keep_the_default_tree_in_sync() {
-    // `P2T11.java` mode 0's three `overlappingObjects(probe, ...)` blocks, before and after
-    // `removeItem(6)`.
     let mut board = p2t11_board();
     let objects = |board: &Board, layer: Option<usize>| {
         board
@@ -306,7 +262,6 @@ fn insert_and_remove_keep_the_default_tree_in_sync() {
     };
     assert_eq!(objects(&board, Some(0)), vec![6, 4]);
     assert_eq!(objects(&board, Some(1)), vec![6, 5]);
-    // Java's "if layer < 0, the layer is ignored".
     assert_eq!(objects(&board, None), vec![6, 5, 4]);
 
     assert!(board.remove_item(ItemId(6)));
@@ -322,10 +277,6 @@ fn insert_and_remove_keep_the_default_tree_in_sync() {
 
 #[test]
 fn remove_refuses_a_system_fixed_item() {
-    // BoardItemRepository.java:189-191 returns without touching anything when
-    // `isDeletionForbidden()`; the board outline is `SYSTEM_FIXED` (BoardOutline.java:48), which
-    // `Item.isUserFixed` (Item.java:816-819) reports true for.
-    // `P2T11.java` mode 0: `isDeletionForbidden(outline)=true`, then `revision=8 outline=1`.
     let mut board = p2t11_board();
     let outline = board.get_outline().expect("an outline");
     assert!(
@@ -348,8 +299,6 @@ fn remove_refuses_a_system_fixed_item() {
 
 #[test]
 fn remove_items_reports_whether_everything_went() {
-    // BasicBoard.java:636-647. `P2T11.java` mode 0: `removeItems=true`, then
-    // `items=[8 5 3 2 1] revision=11` (the via was already gone).
     let mut board = p2t11_board();
     board.remove_item(ItemId(6));
     assert!(board.remove_items([ItemId(4), ItemId(7)]));
@@ -369,7 +318,6 @@ fn remove_items_reports_whether_everything_went() {
 
 #[test]
 fn increment_revision_is_the_only_way_to_bump_it_by_hand() {
-    // BasicBoard.java:148-150. `P2T11.java` mode 0's last two lines.
     let mut board = p2t11_board();
     let before = board.revision();
     board.increment_revision();
@@ -378,8 +326,6 @@ fn increment_revision_is_the_only_way_to_bump_it_by_hand() {
 
 #[test]
 fn insert_clamps_an_out_of_range_clearance_class_to_zero() {
-    // BoardItemRepository.java:152-158: `item.setClearanceClassIndex(0)` when the class is not a
-    // row of the clearance matrix. The fixture's matrix has 3 classes (0, 1 and "wide").
     let mut board = p2t11_board();
     let id = board.insert_obstacle(
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
@@ -394,8 +340,6 @@ fn insert_clamps_an_out_of_range_clearance_class_to_zero() {
 
 #[test]
 fn insert_trace_without_cleaning_refuses_a_degenerate_or_closed_trace() {
-    // BasicBoard.java:185-187 (fewer than two corners) and :191-195 (a closed trace below
-    // USER_FIXED).
     let mut board = p2t11_board();
     let before = board.revision();
     assert_eq!(
@@ -426,7 +370,6 @@ fn insert_trace_without_cleaning_refuses_a_degenerate_or_closed_trace() {
         None
     );
     assert_eq!(board.revision(), before);
-    // USER_FIXED and above are allowed to close (BasicBoard.java:192).
     assert!(
         board
             .insert_trace_without_cleaning(
@@ -452,7 +395,6 @@ fn insert_trace_without_cleaning_refuses_a_degenerate_or_closed_trace() {
 
 #[test]
 fn the_clearance_queries_match_the_jvm() {
-    // `P2T11.java` mode 0's `overlappingItemsWithClearance` and `overlappingItems` lines.
     let mut board = p2t11_board();
     assert_eq!(
         nums(board.overlapping_items_with_clearance(&probe(), Some(0), &[], 1)),
@@ -479,7 +421,6 @@ fn the_clearance_queries_match_the_jvm() {
 
 #[test]
 fn check_trace_segment_is_free_where_nothing_is_and_blocked_where_something_is() {
-    // `P2T11.java` mode 2's seven `checkTraceSegment` lines.
     let mut board = p2t11_board();
     let seg = |board: &mut Board,
                from: (i32, i32),
@@ -497,8 +438,6 @@ fn check_trace_segment_is_free_where_nothing_is_and_blocked_where_something_is()
             only_not_shovable,
         )
     };
-    // Nothing in the way: Java's "no conflict" answer is `Integer.MAX_VALUE`
-    // (RoutingBoardSearchFacade.java:61).
     assert_eq!(
         seg(&mut board, (-4000, 4000), (-3000, 4000), &[1], 1, false),
         f64::from(i32::MAX)
@@ -518,10 +457,7 @@ fn check_trace_segment_is_free_where_nothing_is_and_blocked_where_something_is()
         seg(&mut board, (-2000, 0), (-500, 0), &[9], 1, false),
         703.0
     );
-    // RoutingBoardSearchFacade.java:37-39: a zero-length segment is 0, not MAX_VALUE.
     assert_eq!(seg(&mut board, (0, 0), (0, 0), &[1], 1, false), 0.0);
-    // The pin is not routable, so `onlyNotShovableObstacles` does not excuse it
-    // (RoutingBoardSearchFacade.java:71-75).
     assert_eq!(seg(&mut board, (-2000, 0), (-500, 0), &[9], 1, true), 703.0);
     // The wider clearance class shortens nothing extra here — the obstacle area is class 1, and
     // `clearanceValue(1, 2, 0)` is what the walk uses.
@@ -533,7 +469,6 @@ fn check_trace_segment_is_free_where_nothing_is_and_blocked_where_something_is()
 
 #[test]
 fn the_check_queries_match_the_jvm() {
-    // `P2T11.java` mode 2.
     let mut board = p2t11_board();
     let area = |x1, y1, x2, y2| {
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
@@ -542,14 +477,11 @@ fn the_check_queries_match_the_jvm() {
     };
     assert!(board.check_shape(&area(-4500, 4000, -4000, 4500), Some(0), &[1], 1));
     assert!(!board.check_shape(&area(2200, 2200, 2400, 2400), Some(0), &[1], 1));
-    // BasicBoard.java:961-963: outside the board's bounding box is always false.
     assert!(!board.check_shape(&area(-20000, 0, -19000, 100), Some(0), &[1], 1));
 
     let tile = |x1, y1, x2, y2| TileShape::Box(IntBox::from_coords(x1, y1, x2, y2));
     assert!(board.check_trace_shape(&tile(-4500, 4000, -4000, 4500), 0, &[1], 1, None));
     assert!(!board.check_trace_shape(&tile(2200, 2200, 2400, 2400), 0, &[1], 1, None));
-    // BasicBoard.java:1006-1015: with a `contactPins` set, a pin outside it is an obstacle even
-    // on the trace's own net; the SMD pin at (-1000, 0) is item 2.
     let contact_pins = BTreeSet::from([ItemId(2)]);
     assert!(board.check_trace_shape(&tile(-1050, -50, -950, 50), 0, &[1], 1, Some(&contact_pins)));
     assert!(!board.check_trace_shape(
@@ -577,7 +509,6 @@ fn the_check_queries_match_the_jvm() {
 
     let by = Vector::from(IntVector::new(10, 10));
     assert!(board.check_move_item(ItemId(7), &by, &mut None));
-    // RoutingBoardSearchFacade.java:120-122: a trace with contacts may not be moved.
     assert!(!board.check_move_item(ItemId(4), &by, &mut None));
     assert!(board.check_change_net(ItemId(7), 3));
     assert!(!board.check_change_net(ItemId(4), 3));
@@ -609,7 +540,6 @@ fn the_check_queries_match_the_jvm() {
 
 #[test]
 fn normal_contacts_walk_the_pin_trace_via_trace_pin_chain() {
-    // `P2T11.java` mode 1's first block: pin 2 - trace 4 - via 6 - trace 5 - pin 3.
     let board = p2t11_board();
     assert_eq!(descending(board.normal_contacts(ItemId(2))), vec![4]);
     assert_eq!(descending(board.normal_contacts(ItemId(4))), vec![6, 2]);
@@ -624,8 +554,6 @@ fn normal_contacts_walk_the_pin_trace_via_trace_pin_chain() {
 
 #[test]
 fn all_contacts_and_is_connected_agree_with_the_jvm() {
-    // `P2T11.java` mode 1: `allContacts` equals `normalContacts` on this board, and the three
-    // non-connectable items report `connected=false`.
     let board = p2t11_board();
     for id in [2u32, 3, 4, 5, 6] {
         assert_eq!(
@@ -642,8 +570,6 @@ fn all_contacts_and_is_connected_agree_with_the_jvm() {
 
 #[test]
 fn all_contacts_on_layer_splits_the_via_by_layer() {
-    // `P2T11.java` mode 1's per-layer block: the via contacts trace 4 on layer 0 and trace 5 on
-    // layer 1, and each trace only sees the contacts on its own layer.
     let board = p2t11_board();
     assert_eq!(
         descending(board.all_contacts_on_layer(ItemId(6), 0)),
@@ -669,8 +595,6 @@ fn all_contacts_on_layer_splits_the_via_by_layer() {
 
 #[test]
 fn connected_set_crosses_layers_through_the_via() {
-    // `P2T11.java` mode 1: from either pin the whole five-item chain comes back, which it can
-    // only do by walking through the via from layer 0 to layer 1.
     let board = p2t11_board();
     assert_eq!(
         descending(board.connected_set(ItemId(2), 1, false)),
@@ -680,12 +604,10 @@ fn connected_set_crosses_layers_through_the_via() {
         descending(board.connected_set(ItemId(3), 1, false)),
         vec![6, 5, 4, 3, 2]
     );
-    // Item.java:601: `netNumber <= 0` ignores the net filter.
     assert_eq!(
         descending(board.connected_set(ItemId(2), -1, false)),
         vec![6, 5, 4, 3, 2]
     );
-    // Item.java:602-604: an item that is not on the net answers the empty set.
     assert!(board.connected_set(ItemId(2), 2, false).is_empty());
     assert_eq!(
         descending(board.connected_set(ItemId(8), 2, false)),
@@ -700,11 +622,9 @@ fn connected_set_crosses_layers_through_the_via() {
 
 #[test]
 fn unconnected_set_is_empty_when_the_net_is_fully_connected() {
-    // `P2T11.java` mode 1: net 1 is one connected set, so nothing is left over.
     let board = p2t11_board();
     assert!(board.unconnected_set(ItemId(2), 1).is_empty());
     assert!(board.unconnected_set(ItemId(8), 2).is_empty());
-    // Item.java:679-682: `netNumber <= 0` uses the item's own nets.
     assert!(board.unconnected_set(ItemId(2), 0).is_empty());
 
     // Add a second, unconnected pad on net 1 and it shows up.
@@ -727,8 +647,6 @@ fn unconnected_set_is_empty_when_the_net_is_fully_connected() {
 
 #[test]
 fn connection_items_stop_at_the_terminal_pins_and_at_a_via_when_asked() {
-    // `P2T11.java` mode 1: the connection from trace 4 runs 4 - 6 - 5 and stops at the pins,
-    // which are not routable (Item.java:723-726).
     let board = p2t11_board();
     assert_eq!(
         descending(board.connection_items(ItemId(4), StopConnectionOption::None)),
@@ -738,13 +656,10 @@ fn connection_items_stop_at_the_terminal_pins_and_at_a_via_when_asked() {
         descending(board.connection_items(ItemId(5), StopConnectionOption::None)),
         vec![6, 5, 4]
     );
-    // Item.java:728-730: `VIA` stops before the via, leaving only the start trace.
     assert_eq!(
         descending(board.connection_items(ItemId(4), StopConnectionOption::Via)),
         vec![4]
     );
-    // Item.java:731-735: the via *is* a fanout via here (it touches an SMD pin through a short
-    // trace), but `isFanoutVia` is consulted only after `result.add`, so the walk still crosses.
     assert_eq!(
         descending(board.connection_items(ItemId(4), StopConnectionOption::FanoutVia)),
         vec![6, 5, 4]
@@ -753,7 +668,6 @@ fn connection_items_stop_at_the_terminal_pins_and_at_a_via_when_asked() {
 
 #[test]
 fn normal_contact_point_answers_the_shared_corner_and_null_otherwise() {
-    // `P2T11.java` mode 1's 4x4 `normalContactPoint` block.
     let board = p2t11_board();
     let p = |a: u32, b: u32| board.normal_contact_point(ItemId(a), ItemId(b));
     assert_eq!(p(2, 4), Some(Point::new(-1000, 0)));
@@ -762,11 +676,8 @@ fn normal_contact_point_answers_the_shared_corner_and_null_otherwise() {
     assert_eq!(p(6, 4), Some(Point::new(0, 0)));
     assert_eq!(p(5, 6), Some(Point::new(0, 0)));
     assert_eq!(p(6, 5), Some(Point::new(0, 0)));
-    // A drill item against itself answers its own centre (DrillItem.java:331-337).
     assert_eq!(p(2, 2), Some(Point::new(-1000, 0)));
     assert_eq!(p(6, 6), Some(Point::new(0, 0)));
-    // Trace.java:142-145: a trace against itself touches at both ends, which is "more than one
-    // contact point", i.e. null.
     assert_eq!(p(4, 4), None);
     // No shared layer, or no shared corner.
     assert_eq!(p(2, 5), None);
@@ -776,7 +687,6 @@ fn normal_contact_point_answers_the_shared_corner_and_null_otherwise() {
 
 #[test]
 fn first_common_layer_is_none_where_java_returns_minus_one() {
-    // `P2T11.java` mode 1's `firstCommonLayer`/`lastCommonLayer` columns.
     let board = p2t11_board();
     let common = |a: u32, b: u32| {
         let ctx = board.ctx();
@@ -789,7 +699,6 @@ fn first_common_layer_is_none_where_java_returns_minus_one() {
     assert_eq!(common(2, 4), (Some(0), Some(0)));
     assert_eq!(common(5, 6), (Some(1), Some(1)));
     assert_eq!(common(6, 6), (Some(0), Some(1)));
-    // Java's -1.
     assert_eq!(common(2, 5), (None, None));
     assert_eq!(board.first_common_layer(ItemId(4), ItemId(6)), Some(0));
     assert_eq!(board.first_common_layer(ItemId(2), ItemId(5)), None);
@@ -797,10 +706,6 @@ fn first_common_layer_is_none_where_java_returns_minus_one() {
 
 #[test]
 fn ratsnest_corners_are_the_uncontacted_ends_only() {
-    // `P2T11.java` mode 1's `ratsnest=` column. Both traces are contacted at both ends, so they
-    // contribute nothing (Trace.java:342-352); the drill items contribute their centre
-    // (DrillItem.java:352-356); the conduction area its rounded corners
-    // (ConductionArea.java:368-377).
     let board = p2t11_board();
     assert!(board.ratsnest_corners(ItemId(4)).is_empty());
     assert!(board.ratsnest_corners(ItemId(5)).is_empty());
@@ -829,7 +734,6 @@ fn ratsnest_corners_are_the_uncontacted_ends_only() {
 
 #[test]
 fn tails_overlaps_and_cycles_are_all_absent_on_a_well_formed_chain() {
-    // `P2T11.java` mode 1.
     let board = p2t11_board();
     for id in 1u32..=8 {
         assert!(!board.is_tail(ItemId(id)), "item {id}");
@@ -844,23 +748,9 @@ fn tails_overlaps_and_cycles_are_all_absent_on_a_well_formed_chain() {
 
 #[test]
 fn is_cycle_recu_walks_a_vias_contacts_in_descending_id_order() {
-    // Item.java:651-655 iterates `getNormalContacts()`, a `TreeSet<Item>` — descending id
-    // (quirk #44) — and shares one `visitedItems` set across the whole depth-first search, so
-    // the order the contacts of a via are entered decides how much of the board is walked.
-    //
-    // `cycle_order_board`'s via 2 has three contacts, one per layer: trace 4 (the trace under
-    // test), the dead-end stub 5, and the return path 6. Descending enters 6 first, reaches via
-    // 3, sees trace 4 among its contacts and returns before 5 is ever touched; ascending would
-    // enter the stub 5 first and leave it behind in `visited_items`.
-    //
-    // The *answer* is `true` under either order — [`Board::is_cycle_recu`]'s doc comment proves
-    // the boolean cannot depend on it — so the guard is the out-parameter, which is where the
-    // early `return true` makes the order observable.
     let board = cycle_order_board();
     assert_eq!(descending(board.normal_contacts(ItemId(2))), vec![6, 5, 4]);
 
-    // Trace.java:301: `is_trace_cycle` seeds `visitedItems` with the start contacts, which here
-    // is via 2 alone; Trace.java:310 then calls in with `searchItem == comeFromItem == 4`.
     let mut visited = BTreeSet::from([ItemId(2)]);
     assert!(board.is_cycle_recu(ItemId(2), &mut visited, ItemId(4), ItemId(4), false));
     assert_eq!(
@@ -879,20 +769,10 @@ fn is_cycle_recu_walks_a_vias_contacts_in_descending_id_order() {
 
 #[test]
 fn connection_items_walks_the_contacts_of_a_fork_in_descending_id_order() {
-    // Item.java:702-708 iterates `getNormalContacts()` descending (quirk #44), and under
-    // `StopConnectionOption.FANOUT_VIA` the order is load-bearing: `isFanoutVia(result)`
-    // (Item.java:735) reads the partially built result as its `ignoreItems`, so a chain walked
-    // earlier can remove the very evidence that would otherwise stop the walk at a via.
-    //
-    // `fanout_order_board`: via 2 is the start, via 3 is a fanout via *only* through the short
-    // trace 5, whose own contacts include the shove-fixed two-corner trace 4
-    // (Item.java:1227-1234). Via 2's contacts are {7, 8}.
     let board = fanout_order_board();
     assert_eq!(descending(board.normal_contacts(ItemId(2))), vec![8, 7]);
     assert_eq!(descending(board.normal_contacts(ItemId(3))), vec![7, 6, 5]);
     assert!(board.is_fanout_via(ItemId(3), None));
-    // Item.java:1214-1216: with trace 5 ignored there is no evidence left — traces 6 and 7 are
-    // short too, but neither touches an SMD pin or a shove-fixed two-corner trace.
     assert!(!board.is_fanout_via(ItemId(3), Some(&BTreeSet::from([ItemId(5)]))));
 
     // Descending: branch 8 runs first (8, 4, then 5, where the walk forks because via 3 and
@@ -915,36 +795,6 @@ fn connection_items_walks_the_contacts_of_a_fork_in_descending_id_order() {
     );
 }
 
-/// **fixed: T5 (#106).** `Item.getConnectionItems`' walk along the contacts (Item.java:721-777)
-/// had no visited set: `result.add(currentItem)` on a `Set` does not stop it, so a closed
-/// connection with no fork and no non-routable item was circled for ever. Its caller
-/// `BasicBoard.removeIfCycle` (BasicBoard.java:1354) reaches it only *after* `Trace.isCycle` has
-/// confirmed a cycle exists, so this was the main path, not a corner case — and Plan 3 Task 10
-/// found it to be where the four-rung ladder (quirk #76) actually hangs.
-///
-/// # The fixture
-///
-/// Four traces on net 2, layer 0, meeting end to end at the corners of a 2000x2000 square:
-/// `(2000,2000) -> (4000,2000) -> (4000,4000) -> (2000,4000) -> (2000,2000)`. Every corner has
-/// exactly two traces on it, so the walk never sees a fork, and every item is routable, so it
-/// never sees a terminal. That is precisely the shape Java cannot leave.
-///
-/// # The literal answer
-///
-/// The connection is the ring itself: all four traces, under every stop option (none of them is a
-/// via, so `Via` and `FanoutVia` cannot differ from `None` here).
-///
-/// # Why this changes nothing that terminated
-///
-/// The guard breaks only on a repeat of the walk's **whole state** — `(current item, previous
-/// contact point, previous contact layer)` — that added nothing to `result` since the last time
-/// the walk stood there. The step is a function of that triple and of `result`, so a
-/// no-progress repeat is a genuine closed loop; a repeat that *did* make progress is allowed to
-/// continue, which is what keeps `StopConnectionOption::FanoutVia`'s feedback through
-/// `is_fanout_via(current, Some(&result))` intact. Measured on the terminating ladders: rungs
-/// 1/2/3 cost 12/22/22 stop-check steps and answer `[4]`, `[5]` and `[6, 5]` **with the guard and
-/// without it** (`tests/trace_normalize.rs`), i.e. the guard fires zero times on a walk that
-/// already ended.
 #[test]
 fn a_cyclic_contact_graph_terminates_with_a_visited_set() {
     let mut board = p2t11_board();
@@ -975,8 +825,6 @@ fn a_cyclic_contact_graph_terminates_with_a_visited_set() {
         );
     }
 
-    // Java walks this for ever. It now answers the ring, from any member and under every stop
-    // option.
     for id in [t9, t10, t11, t12] {
         for option in [
             StopConnectionOption::None,
@@ -991,8 +839,6 @@ fn a_cyclic_contact_graph_terminates_with_a_visited_set() {
         }
     }
 
-    // And it returns without the `StopCheck` Plan 3 ruling 4 added as the escape hatch: the
-    // budget below is never touched, where before the fix any budget was exhausted.
     let steps = std::cell::Cell::new(0u64);
     let stop = || {
         steps.set(steps.get() + 1);
@@ -1013,7 +859,6 @@ fn a_cyclic_contact_graph_terminates_with_a_visited_set() {
 
 #[test]
 fn a_trace_with_a_free_end_is_a_tail() {
-    // Trace.java:212-219: no contacts at one end is enough.
     let mut board = p2t11_board();
     let stray = board
         .insert_trace_without_cleaning(
@@ -1033,18 +878,14 @@ fn a_trace_with_a_free_end_is_a_tail() {
 
 #[test]
 fn the_via_is_a_fanout_via_because_a_short_trace_reaches_an_smd_pin() {
-    // `P2T11.java` mode 1: `isFanoutVia(6)=true`. Item.java:1217-1226: trace 4 is shorter than
-    // `400 * halfWidth` and its other contact is a one-layer pin with a single contact.
     let board = p2t11_board();
     assert!(board.is_fanout_via(ItemId(6), None));
-    // Item.java:1214-1216: ignoring the trace removes the only route to the pin.
     let ignore = BTreeSet::from([ItemId(4)]);
     assert!(!board.is_fanout_via(ItemId(6), Some(&ignore)));
 }
 
 #[test]
 fn get_connected_sets_partitions_the_net() {
-    // `P2T11.java` mode 1: `connectedSets(1)=[[6 5 4 3 2]]`.
     let board = p2t11_board();
     let sets: Vec<Vec<u32>> = board
         .get_connected_sets(1)
@@ -1052,7 +893,6 @@ fn get_connected_sets_partitions_the_net() {
         .map(descending)
         .collect();
     assert_eq!(sets, vec![vec![6, 5, 4, 3, 2]]);
-    // BoardConnectivityQueries.java:101-103: a non-positive net number answers nothing.
     assert!(board.get_connected_sets(0).is_empty());
 
     // A second, disconnected piece of net 1 becomes a second set, seeded by the highest id
@@ -1078,8 +918,6 @@ fn get_connected_sets_partitions_the_net() {
 
 #[test]
 fn touching_pins_at_end_corners_finds_the_pad_under_the_trace_end() {
-    // `P2T11.java` mode 1: `touchingPins(4)=[2]`. Trace.java:397-405 enlarges each end corner's
-    // surrounding octagon by the half width and keeps the same-net pins it overlaps.
     let mut board = p2t11_board();
     assert_eq!(
         descending(board.touching_pins_at_end_corners(ItemId(4))),
@@ -1094,7 +932,6 @@ fn touching_pins_at_end_corners_finds_the_pad_under_the_trace_end() {
 
 #[test]
 fn validate_accepts_a_well_formed_board() {
-    // `P2T11.java` mode 1: `validate(4)=true`, `validate(6)=true`.
     let mut board = p2t11_board();
     for id in 1u32..=8 {
         assert!(board.validate_item(ItemId(id)), "item {id}");
@@ -1103,8 +940,6 @@ fn validate_accepts_a_well_formed_board() {
 
 #[test]
 fn swappable_pins_is_empty_without_a_logical_part() {
-    // `P2T11.java` mode 1: `swappablePins(2)=[]`. Pin.java:398-400 returns early when the
-    // component has no `LogicalPart`.
     let board = p2t11_board();
     assert!(board.swappable_pins(ItemId(2)).is_empty());
     // A non-pin answers nothing at all.
@@ -1117,7 +952,6 @@ fn swappable_pins_is_empty_without_a_logical_part() {
 
 #[test]
 fn the_changed_area_accumulates_points_and_shapes_per_layer() {
-    // `P2T11.java` mode 3's first block.
     let mut board = p2t11_board();
     assert!(board.changed_area.is_none());
     board.start_marking_changed_area();
@@ -1180,7 +1014,6 @@ fn the_changed_area_accumulates_points_and_shapes_per_layer() {
 
 #[test]
 fn start_marking_changed_area_is_idempotent() {
-    // RoutingBoardOperations.java:27-29: the second call finds a non-null area and leaves it.
     let mut board = p2t11_board();
     board.start_marking_changed_area();
     board.join_changed_area(&Point::new(100, 100).to_float(), 0);
@@ -1199,7 +1032,6 @@ fn start_marking_changed_area_is_idempotent() {
 
 #[test]
 fn remove_items_marking_changed_area_marks_what_it_removed() {
-    // RoutingBoardOperations.java:92-110, the removal half.
     let mut board = p2t11_board();
     let (all_removed, changed_nets) = board.remove_items_marking_changed_area([ItemId(7)]);
     assert!(all_removed);
@@ -1224,27 +1056,15 @@ fn remove_items_marking_changed_area_marks_what_it_removed() {
     assert_eq!(board.get_item(ItemId(5)), None);
 }
 
-/// `P2T11.java` mode 3, quirk #50 — **fixed at Plan 9 Task 10**, so this test is renamed from
-/// `change_conduction_is_obstacle_reproduces_the_java_latch` and inverted.
-///
-/// Java's guard at `RoutingBoard.java:1254` is `if (getIgnoreConduction() != value) return;`,
-/// which reads the board-level flag as a proxy for the per-item ones. On this fixture they are
-/// desynchronised from birth — `ignoreConduction = true` beside `isObstacle = true` — so `change`
-/// alternated between the two arguments instead of applying whichever it was given. The guard is
-/// gone; the store stays `!value`, which is what the field's name, `unfillConductionAreas` and the
-/// Java caller all mean by it. See `crates/fr-board/tests/conduction.rs` for the full story and
-/// the foreign-net measurement on a signal-layer pour.
 #[test]
 fn change_conduction_is_obstacle_applies_what_it_is_asked() {
     let mut board = p2t11_board();
     assert!(board.rules.get_ignore_conduction());
     assert!(is_obstacle(&board, 8));
 
-    // Java returns immediately here (`true != false`) and item 8 goes on obstructing. It does not.
     board.change_conduction_is_obstacle(false);
     assert!(board.rules.get_ignore_conduction());
     assert!(!is_obstacle(&board, 8));
-    // Idempotent, where Java alternated.
     board.change_conduction_is_obstacle(false);
     assert!(board.rules.get_ignore_conduction());
     assert!(!is_obstacle(&board, 8));
@@ -1260,7 +1080,6 @@ fn change_conduction_is_obstacle_applies_what_it_is_asked() {
 
 #[test]
 fn unfill_conduction_areas_clears_both_flags_and_reinserts() {
-    // `P2T11.java` mode 3: BasicBoard.java:1426-1440.
     let mut board = p2t11_board();
     board.change_conduction_is_obstacle(true);
     board.unfill_conduction_areas();
@@ -1277,7 +1096,6 @@ fn unfill_conduction_areas_clears_both_flags_and_reinserts() {
 
 #[test]
 fn remove_trace_tails_finds_nothing_on_a_fully_contacted_net() {
-    // `P2T11.java` mode 3: `removed=false`, and the item list is untouched.
     let mut board = p2t11_board();
     assert!(
         !board
@@ -1292,8 +1110,6 @@ fn remove_trace_tails_finds_nothing_on_a_fully_contacted_net() {
 
 #[test]
 fn move_item_by_moves_the_item_and_its_tree_entries() {
-    // `P2T11.java` mode 3: an obstacle area takes the base `Item.moveBy` (Item.java:300-311),
-    // whose whole body is remove-from-trees / translate / insert.
     let mut board = p2t11_board();
     board
         .move_item_by(ItemId(7), &Vector::from(IntVector::new(10, 20)))
@@ -1319,12 +1135,6 @@ fn move_item_by_moves_the_item_and_its_tree_entries() {
 
 #[test]
 fn a_query_after_change_clearance_class_index_recomputes_the_cold_shape_cache() {
-    // `P2T11.java` mode 3, the two `after change` lines. `Item.changeClearanceClassIndex`
-    // (Item.java:944-949) clears the derived data and, with clearance compensation off, does
-    // **not** re-insert — so the trace keeps its tree leaves with an empty shape cache. Java's
-    // `getTreeShape` recomputes on that miss (Item.java:212-238); the port used to panic.
-    //
-    // No `validate` (or anything else that would warm the cache) runs in between.
     let mut board = p2t11_board();
     assert!(!board.trees.is_clearance_compensation_used());
     assert!(board.change_clearance_class_index(ItemId(4), 0));
@@ -1349,16 +1159,11 @@ fn a_query_after_change_clearance_class_index_recomputes_the_cold_shape_cache() 
     // ... and so do the `&self` board wrappers the connectivity family uses.
     assert!(board.item_tile_shape_ref(ItemId(4), 0).is_some());
     assert_eq!(descending(board.all_contacts(ItemId(4))), vec![6, 2]);
-    // Index past the end is still `None` (Item.java:222-224).
     assert!(board.item_tile_shape_ref(ItemId(4), 9).is_none());
 }
 
 #[test]
 fn check_polyline_trace_consumes_an_item_id_like_javas_temporary_trace() {
-    // `P2T11.java` mode 2's `idBefore` / `idAfterOneCheck` / `insertedId` lines.
-    // `BasicBoard.checkPolylineTrace` builds a `PolylineTrace` it never inserts
-    // (BasicBoard.java:1055-1065), and `Item`'s constructor draws an id for it
-    // (Item.java:85-90) — so the id sequence advances even though the board does not.
     let mut board = p2t11_board();
     assert_eq!(board.communication.id_gen.max_generated_id(), ItemId(8));
     let free = Polyline::from_points(&[Point::new(-4000, 4000), Point::new(-3000, 4000)]);
@@ -1383,13 +1188,6 @@ fn check_polyline_trace_consumes_an_item_id_like_javas_temporary_trace() {
 
 #[test]
 fn connection_items_walks_its_start_contacts_in_descending_id() {
-    // Item.java:700: `getNormalContacts()` is a `TreeSet<Item>`, i.e. descending id (quirk #44),
-    // and under `FANOUT_VIA` the walk reads the partially built `result`
-    // (`isFanoutVia(result)`, Item.java:735), so the order decides membership.
-    //
-    // On the fixture board every option answers the same set, which is what
-    // `P2T11.java` mode 1 pins; this test pins the *order* the outer loop runs in by checking
-    // that the first chain walked is the one seeded by the highest-id contact.
     let board = p2t11_board();
     let contacts = board.normal_contacts(ItemId(4));
     assert_eq!(descending(contacts.clone()), vec![6, 2]);
@@ -1405,8 +1203,6 @@ fn connection_items_walks_its_start_contacts_in_descending_id() {
 
 #[test]
 fn change_clearance_class_index_writes_the_class_and_keeps_validate_happy() {
-    // `P2T11.java` mode 3: `cl(4)=2`, `validate(4)=true`. Item.java:944-949 clears the derived
-    // data, which is what makes `validate` need the lazy tree-shape fill (Item.java:227-238).
     let mut board = p2t11_board();
     assert!(board.change_clearance_class_index(ItemId(4), 2));
     assert_eq!(
@@ -1422,7 +1218,6 @@ fn change_clearance_class_index_writes_the_class_and_keeps_validate_happy() {
 
 #[test]
 fn make_conductive_replaces_the_area_with_a_conduction_area_on_the_net() {
-    // `P2T11.java` mode 3: `newId=9 nets=[3] items=[9 8 6 5 4 3 2 1]`.
     let mut board = p2t11_board();
     let new_id = board
         .make_conductive(ItemId(7), 3)
@@ -1430,22 +1225,17 @@ fn make_conductive_replaces_the_area_with_a_conduction_area_on_the_net() {
     assert_eq!(new_id, ItemId(9));
     let new_item = board.get_item(new_id).expect("the conduction area");
     assert_eq!(new_item.net_nos(), &[3]);
-    // BasicBoard.java:1210 hard-codes `isObstacle = true`.
     assert!(is_obstacle(&board, 9));
     assert_eq!(board.get_item(ItemId(7)), None);
     assert_eq!(
         nums(board.items_in_board_order()),
         vec![9, 8, 6, 5, 4, 3, 2, 1]
     );
-    // A non-`ObstacleArea` is refused (Java's parameter is typed).
     assert_eq!(board.make_conductive(ItemId(4), 3), None);
 }
 
 #[test]
 fn generate_keepout_outside_swaps_the_outlines_tree_shapes() {
-    // `P2T11.java` mode 3: BoardOutline.java:229-243. Both branches happen to produce 8 shapes
-    // for this board (4 border lines x 2 layers, and 4 keepout pieces x 2 layers), so the test
-    // pins the flag and the fact that the trees were rebuilt rather than a count change.
     let mut board = p2t11_board();
     let outline = board.get_outline().expect("an outline");
     let tree = board.default_tree_id();
@@ -1465,13 +1255,11 @@ fn generate_keepout_outside_swaps_the_outlines_tree_shapes() {
     assert_eq!(after.len(), 8);
     assert_ne!(before, after);
 
-    // BoardOutline.java:231-233: setting the same value again is a no-op.
     assert!(!board.generate_keepout_outside(outline, true));
 }
 
 #[test]
 fn the_net_queries_walk_the_item_list() {
-    // `P2T11.java` mode 3's last block (Net.java:75-152).
     let board = p2t11_board();
     // Terminal items are the connectable ones that are *not* routable: the two pins.
     assert_eq!(nums(board.net_terminal_items(1)), vec![3, 2]);
@@ -1483,15 +1271,8 @@ fn the_net_queries_walk_the_item_list() {
     assert_eq!(board.net_via_count(2), 0);
 }
 
-// ---------------------------------------------------------------------------------------------
-// The host-CAD / clearance-compensated board (`P2T11.java` mode 4)
-// ---------------------------------------------------------------------------------------------
-
 #[test]
 fn a_host_cad_communication_lowers_the_obstacle_area_section_width() {
-    // `P2T11.java` mode 4: `hostCadExists=true resolution(MIL)=10.0`, and the 18000-wide
-    // obstacle area comes back as four 4500-wide sections instead of one shape —
-    // ShapeSearchTree.java:916-920 lowers `maxTreeShapeWidth` to `min(500 * 10, 50000) = 5000`.
     let mut board = board_builder::p2t11_host_cad_board();
     assert!(board.communication.host_cad_exists());
     assert!((board.communication.get_resolution(Unit::Mil) - 10.0).abs() < 1e-9);
@@ -1520,10 +1301,6 @@ fn a_host_cad_communication_lowers_the_obstacle_area_section_width() {
 
 #[test]
 fn a_host_cad_at_a_coarse_resolution_keeps_the_fifty_thousand_default() {
-    // ShapeSearchTree.java:918-919 is a `Math.min`, so a resolution big enough to make
-    // `500 * getResolution(MIL)` exceed 50000 leaves the default in place — and the same
-    // 18000-wide area is then a single section. No `P2T11` line: Java's driver would need a
-    // third board; the `Math.min` is the citation.
     let mut board = board_builder::p2t11_host_cad_board();
     // Rebuild with resolution 1000: `500 * 1000 = 500000 > 50000`.
     let coarse = Board::new(
@@ -1559,8 +1336,6 @@ fn a_host_cad_at_a_coarse_resolution_keeps_the_fifty_thousand_default() {
 
 #[test]
 fn set_clearance_compensation_used_rebuilds_the_board_tree() {
-    // `P2T11.java` mode 4's `--- setClearanceCompensationUsed(true)` block
-    // (SearchTreeManager.java:89-108 over `board.itemList`).
     let mut board = board_builder::p2t11_host_cad_board();
     assert!(
         !board
@@ -1599,10 +1374,6 @@ fn set_clearance_compensation_used_rebuilds_the_board_tree() {
 
 #[test]
 fn check_polyline_trace_uses_the_compensated_tree_shapes() {
-    // `P2T11.java` mode 4: with compensation on, a run 200 units clear of the wide obstacle area
-    // is blocked, because `checkPolylineTrace`'s temporary trace takes its tile shapes from the
-    // default tree (BasicBoard.java:1067-1071 -> Item.java:194-201 ->
-    // ShapeSearchTree.java:992-1004), which adds the compensation to the half width.
     let mut board = board_builder::p2t11_host_cad_board();
     board.set_clearance_compensation_used(true);
     let near_area = Polyline::from_points(&[Point::new(-4000, -7800), Point::new(-3000, -7800)]);
@@ -1615,8 +1386,6 @@ fn check_polyline_trace_uses_the_compensated_tree_shapes() {
         &[1],
         1
     ));
-    // `checkTraceSegment` on the compensated tree shortens by the compensation instead of the
-    // clearance (RoutingBoardSearchFacade.java:82-87): 269, not mode 2's 253.
     assert_eq!(
         board.check_trace_segment(
             &Point::new(1500, 2500),
@@ -1631,14 +1400,8 @@ fn check_polyline_trace_uses_the_compensated_tree_shapes() {
     );
 }
 
-// ---------------------------------------------------------------------------------------------
-// ShapeTraceEntries, ShapeEntrySide and ShapeAndEntrySide (`P2T11.java` mode 5)
-// ---------------------------------------------------------------------------------------------
-
 #[test]
 fn shape_entry_side_finds_the_border_a_polyline_enters_through() {
-    // `P2T11.java` mode 5's `--- ShapeEntrySide` block. The square is
-    // (-500,-500)..(500,500) and the crossing trace runs (0,-3000) -> (0,3000).
     let board = board_builder::shove_board();
     let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
     let polyline = match board.get_item(ItemId(3)).expect("the crossing trace") {
@@ -1652,16 +1415,12 @@ fn shape_entry_side_finds_the_border_a_polyline_enters_through() {
         from_polyline.border_intersection,
         Some(fr_geometry::FloatPoint::new(0.0, -500.0))
     );
-    // ShapeEntrySide.java:68-75: the nearest border side to a point outside the shape.
     let from_point = ShapeEntrySide::from_point(&Point::new(-2000, 0), &shape);
     assert_eq!(from_point.no, 3);
     assert_eq!(
         from_point.border_intersection,
         Some(fr_geometry::FloatPoint::new(-500.0, 0.0))
     );
-    // ShapeEntrySide.java:81-154: `frontSideNo` is 0 (the bottom edge is nearer the segment's
-    // start), and both shove directions land on side 2 for a four-sided shape — `(0 + 2) % 4`
-    // and `(0 + 4 - 2) % 4` are the same.
     let segment = fr_geometry::LineSegment::from_polyline(&polyline, 1).expect("a segment");
     for to_the_left in [true, false] {
         let side = ShapeEntrySide::from_line_segment(&segment, &shape, to_the_left);
@@ -1671,23 +1430,17 @@ fn shape_entry_side_finds_the_border_a_polyline_enters_through() {
             Some(fr_geometry::FloatPoint::new(0.0, 500.0))
         );
     }
-    // ShapeEntrySide.java:16.
     assert_eq!(ShapeEntrySide::NOT_CALCULATED.no, -1);
     assert_eq!(ShapeEntrySide::NOT_CALCULATED.border_intersection, None);
 }
 
 #[test]
 fn shape_and_entry_side_takes_the_bounding_box_in_orthogonal_mode() {
-    // `P2T11.java` mode 5's `--- ShapeAndEntrySide` block, all four flag combinations.
     let board = board_builder::shove_board();
     let sae = |orthogonal, in_shove_check| {
         ShapeAndEntrySide::new(&board, ItemId(3), 0, orthogonal, in_shove_check)
             .expect("the crossing trace has a tree shape at index 0")
     };
-    // ShapeAndEntrySide.java:35-36: the non-orthogonal branch converts to a `Simplex` and tries
-    // to cut the dog ears off. The cut lines *are* found, but `borderLineIndex` on a box or an
-    // octagon is a Java stub that returns -1 (quirk #7), so `fromSide` stays null there and the
-    // `!inShoveCheck` fallback (:71-75) computes it from the polyline instead.
     for in_shove_check in [false, true] {
         let s = sae(false, in_shove_check);
         assert!(matches!(s.shape, TileShape::Simplex(_)));
@@ -1695,8 +1448,6 @@ fn shape_and_entry_side_takes_the_bounding_box_in_orthogonal_mode() {
             s.shape.bounding_box(),
             IntBox::from_coords(-30, -3000, 30, 3000)
         );
-        // The polyline's own line 0 is parallel to the shape's side, so `intersectionApprox`
-        // answers Java's parallel sentinel — reproduced by `fr-geometry`.
         let side = s.from_side.expect("the fallback always produces one");
         assert_eq!(side.no, 0);
         assert_eq!(
@@ -1707,8 +1458,6 @@ fn shape_and_entry_side_takes_the_bounding_box_in_orthogonal_mode() {
             ))
         );
     }
-    // ShapeAndEntrySide.java:32-33: orthogonal mode takes the bounding box and skips the cutting
-    // entirely, so `fromSide` comes only from the `!inShoveCheck` fallback.
     let s = sae(true, false);
     assert!(matches!(s.shape, TileShape::Box(_)));
     assert_eq!(
@@ -1721,13 +1470,11 @@ fn shape_and_entry_side_takes_the_bounding_box_in_orthogonal_mode() {
         side.border_intersection,
         Some(fr_geometry::FloatPoint::new(0.0, -3030.0))
     );
-    // ShapeAndEntrySide.java:71-72: in a shove *check* the fallback is deliberately skipped.
     assert_eq!(sae(true, true).from_side, None);
 }
 
 #[test]
 fn store_items_sorts_the_crossing_traces_and_builds_a_substitute_piece() {
-    // `P2T11.java` mode 5's `--- storeItems` block.
     let mut board = board_builder::shove_board();
     let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
     let overlaps = board.overlapping_items_with_clearance(&shape, Some(0), &[1], 1);
@@ -1738,8 +1485,6 @@ fn store_items_sorts_the_crossing_traces_and_builds_a_substitute_piece() {
     assert_eq!(entries.stack_depth(), 1);
     assert_eq!(entries.substitute_trace_count(), 1);
     assert!(!entries.trace_tails_in_shape());
-    // ShapeTraceEntries.java:440: the last trace stored becomes the "found obstacle" even on
-    // success.
     assert_eq!(entries.get_found_obstacle(), Some(ItemId(3)));
     assert!(entries.shove_via_list.is_empty());
 
@@ -1767,8 +1512,6 @@ fn store_items_sorts_the_crossing_traces_and_builds_a_substitute_piece() {
 
 #[test]
 fn cutout_trace_replaces_the_trace_with_the_two_pieces_outside_the_shape() {
-    // `P2T11.java` mode 5's `--- cutoutTrace` block: the fast path
-    // (ShapeTraceEntries.java:91-94) hands the old leaves to the two new pieces.
     let mut board = board_builder::shove_board();
     let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
     ShapeTraceEntries::cutout_trace(&mut board, ItemId(3), &shape, 1);
@@ -1802,9 +1545,6 @@ fn cutout_trace_replaces_the_trace_with_the_two_pieces_outside_the_shape() {
 
 #[test]
 fn cutout_traces_skips_the_own_net_and_cuts_the_rest_in_board_order() {
-    // `P2T11.java` mode 5's `--- cutoutTraces` block: trace 2 is on the own net and survives
-    // untouched (ShapeTraceEntries.java:308), traces 4 then 3 are cut, in `board.itemList`
-    // order.
     let mut board = board_builder::shove_board();
     let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
     let entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
@@ -1840,15 +1580,8 @@ fn cutout_traces_skips_the_own_net_and_cuts_the_rest_in_board_order() {
     );
 }
 
-// ---------------------------------------------------------------------------------------------
-// Cycles, overlaps and the remaining inserters (`P2T11.java` mode 6)
-// ---------------------------------------------------------------------------------------------
-
 #[test]
 fn a_trace_reachable_from_itself_by_two_paths_is_a_cycle() {
-    // `P2T11.java` mode 6: two traces between the same pair of vias, so both are cycles, and a
-    // trace whose two ends both land inside one conduction area, which makes it an *overlap*
-    // (Trace.java:227-232) and therefore a cycle at Trace.java:275.
     let (board, _) = board_builder::cycle_board();
     assert_eq!(
         nums(board.items_in_board_order()),
@@ -1866,8 +1599,6 @@ fn a_trace_reachable_from_itself_by_two_paths_is_a_cycle() {
     assert_eq!(descending(board.trace_end_contacts(ItemId(7))), vec![6]);
     assert!(board.is_overlap(ItemId(7)));
     assert!(board.is_trace_cycle(ItemId(7)));
-    // Item.java:711-719: the direct trace has two contacts at each end, so its connection stops
-    // at itself.
     assert_eq!(
         descending(board.connection_items(ItemId(4), StopConnectionOption::None)),
         vec![4]
@@ -1876,11 +1607,9 @@ fn a_trace_reachable_from_itself_by_two_paths_is_a_cycle() {
 
 #[test]
 fn remove_if_cycle_removes_the_connection_of_a_cycling_trace() {
-    // `P2T11.java` mode 6: `removed=true`, `items=[7 6 5 3 2 1]`.
     let (mut board, _) = board_builder::cycle_board();
     assert!(board.remove_if_cycle(ItemId(4)));
     assert_eq!(nums(board.items_in_board_order()), vec![7, 6, 5, 3, 2, 1]);
-    // A trace that is not a cycle is left alone (BasicBoard.java:1339-1341).
     let mut board = p2t11_board();
     assert!(!board.remove_if_cycle(ItemId(4)));
     assert!(board.get_item(ItemId(4)).is_some());
@@ -1888,9 +1617,6 @@ fn remove_if_cycle_removes_the_connection_of_a_cycling_trace() {
 
 #[test]
 fn reduce_nets_of_route_items_reduces_but_always_reports_false() {
-    // `P2T11.java` mode 6: `result=false`, `nets(4)=[1]` — quirk #66. The trace is put on nets
-    // 1 and 2; net 2 is dropped because its contacts do not carry it, and the method still
-    // reports that nothing happened (RoutingBoard.java:1285,1355).
     let (mut board, _) = board_builder::cycle_board();
     board
         .get_item_mut(ItemId(4))
@@ -1905,33 +1631,6 @@ fn reduce_nets_of_route_items_reduces_but_always_reports_false() {
     );
 }
 
-/// **fixed: T5 (#211).** Was `one_visit_reduces_two_nets_because_the_trace_arm_breaks_outside_its_net_loop`,
-/// which asserted `nets(4)=[]` — `P2T11.java` mode 6's second `reduceNetsOfRouteItems` datum, the
-/// jar's own answer.
-///
-/// The via arm's `if (somethingChanged) break;` is at RoutingBoard.java:1310, *inside* the net
-/// loop at `:1302`, so a via loses at most one net per visit. The trace arm's is at `:1341`,
-/// **outside** its net loop at `:1318`, so Java's loop runs to completion and calls
-/// `removeFromNet` once per unsupported net — driving a two-net trace to **zero** nets, a state
-/// `:1296`'s `netNumbers.length <= 1` guard exists to prevent and never gets to re-consult within
-/// a visit.
-///
-/// The trace arm now breaks where the via arm breaks, so the visit removes **one** net, the
-/// `while somethingChanged` restart re-tests `:1296`, and `:1296` then skips the item because it
-/// is down to one net. `nets(4)` is `[2]`.
-///
-/// # The fixture, and why `[2]` and not `[1]`
-///
-/// Trace 4 is put on nets `{1, 2}` and its two start contacts are via 2 (net 1) and the detour
-/// trace 5 (net 2), so each contact carries exactly one of trace 4's nets and lacks the other.
-/// Neither contact is a `Pin`, so `:1330`'s `!pinFound` arm is the one that fires. The net loop
-/// walks `net_nos` in order — `1` first — and via 2's contact does carry net 1 while trace 5's
-/// does not, so net 1 is the first net the loop finds unsupported and the one that goes.
-/// Net 2 stands.
-///
-/// **This is the golden `p2t11` mode 6 moves with.** It is the second of that mode's two
-/// `reduceNetsOfRouteItems` data: `result=false nets(4)=[] nets(5)=[2]` becomes
-/// `result=false nets(4)=[2] nets(5)=[2]`.
 #[test]
 fn one_visit_reduces_only_the_visited_net() {
     let (mut board, _) = board_builder::cycle_board();
@@ -1963,9 +1662,6 @@ fn one_visit_reduces_only_the_visited_net() {
 
 #[test]
 fn delete_all_tracks_and_vias_leaves_only_the_areas_and_the_outline() {
-    // `P2T11.java` mode 6: `items=[6 1]`. Java deletes straight from `itemList` and leaves the
-    // search trees holding leaves for the removed items; the port removes them from the trees
-    // too (`totalized`, docs/java-quirks.md), so the item list matches and the trees stay sane.
     let (mut board, _) = board_builder::cycle_board();
     board.delete_all_tracks_and_vias();
     assert_eq!(nums(board.items_in_board_order()), vec![6, 1]);
@@ -1975,7 +1671,6 @@ fn delete_all_tracks_and_vias_leaves_only_the_areas_and_the_outline() {
 
 #[test]
 fn the_remaining_typed_inserters_match_the_jvm() {
-    // `P2T11.java` mode 6's `--- the remaining inserters` block.
     let (mut board, thru_pad) = board_builder::cycle_board();
     let escape = board
         .insert_escape_via(
@@ -1990,7 +1685,6 @@ fn the_remaining_typed_inserters_match_the_jvm() {
     assert_eq!(escape, ItemId(8));
     match board.get_item(escape).expect("the escape via") {
         Item::Via(via) => {
-            // BasicBoard.java:318-320: an escape via always allows attachment.
             assert!(via.is_escape_via);
             assert_eq!(via.escape_via_smd_layer, 0);
             assert!(via.attach_allowed);
@@ -2011,8 +1705,6 @@ fn the_remaining_typed_inserters_match_the_jvm() {
         Some(Item::ViaObstacleArea(_))
     ));
 
-    // ComponentObstacleArea.isFront (ComponentObstacleArea.java:83-87) reads the *board's*
-    // component list: component 1 is on the front, component 2 on the back.
     for (component_id, is_front) in [(1i32, true), (2, false)] {
         let keepout = board.insert_component_obstacle_of_component(
             Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
@@ -2039,7 +1731,6 @@ fn the_remaining_typed_inserters_match_the_jvm() {
             board.item_component_name(keepout),
             Some(format!("Component#{component_id}").as_str())
         );
-        // ComponentObstacleArea.java:38: the constructor drops the net numbers.
         assert!(
             board
                 .get_item(keepout)
@@ -2087,7 +1778,6 @@ fn the_remaining_typed_inserters_match_the_jvm() {
             FixedState::Unfixed,
         )
         .expect("a bounded area");
-    // ComponentOutline.tileShapeCount (ComponentOutline.java:129-132) is literally 0.
     let ctx = board.ctx();
     assert_eq!(
         board
@@ -2105,11 +1795,6 @@ fn the_remaining_typed_inserters_match_the_jvm() {
 
 #[test]
 fn component_obstacle_area_is_front_answers_true_for_an_item_of_no_component() {
-    // `totalized` (docs/java-quirks.md): with `componentId == 0`,
-    // `board.components.get(0)` is `Vector.elementAt(-1)` and Java throws
-    // `ArrayIndexOutOfBoundsException` (quirk #49) — verified on the JVM while writing
-    // `P2T11.java` mode 6. The port bounds-checks and answers the `component == null` value the
-    // method's own expression would have produced.
     let (mut board, _) = board_builder::cycle_board();
     let keepout = board.insert_component_obstacle(
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
@@ -2126,21 +1811,12 @@ fn component_obstacle_area_is_front_answers_true_for_an_item_of_no_component() {
     assert!(board.component_obstacle_area_is_front(keepout));
 }
 
-// ---------------------------------------------------------------------------------------------
-// The trace-geometry adapter (`PolylineTraceSearchTreeAdapter`, package-private in Java)
-// ---------------------------------------------------------------------------------------------
-
 #[test]
 fn the_trace_geometry_adapter_wrappers_keep_the_tree_in_step() {
-    // `PolylineTraceSearchTreeAdapter` is package-private, so `P2T11.java` cannot reach it; the
-    // `SearchTreeManager` bodies these five forward to are pinned by `p2t10` modes 3, 5 and 8.
     let mut board = p2t11_board();
-    // PolylineTraceSearchTreeAdapter.java:22-26.
     assert!(board.trace_has_default_entries(ItemId(4), ItemId(5)));
     assert!(!board.trace_has_default_entries(ItemId(4), ItemId(99)));
 
-    // PolylineTraceSearchTreeAdapter.java:34-40: remove, swap the polyline, drop the derived
-    // data, insert again.
     let moved = Polyline::from_points(&[Point::new(-1000, 3000), Point::new(0, 3000)]);
     assert!(board.replace_trace_geometry(ItemId(4), moved));
     let ctx = board.ctx();
@@ -2156,7 +1832,6 @@ fn the_trace_geometry_adapter_wrappers_keep_the_tree_in_step() {
     assert!(descending(board.pick_items(&Point::new(-500, 3000), Some(0))).contains(&4));
     assert!(!board.replace_trace_geometry(ItemId(7), Polyline::from_points(&[])));
 
-    // PolylineTraceSearchTreeAdapter.java:62-66.
     let mut board = p2t11_board();
     let new_polyline = Polyline::from_points(&[
         Point::new(0, 0),
@@ -2174,24 +1849,6 @@ fn the_trace_geometry_adapter_wrappers_keep_the_tree_in_step() {
     assert!(!board.merge_trace_entries_at_end(ItemId(4), ItemId(7), &joined, 1, 1));
 }
 
-// ---------------------------------------------------------------------------------------------
-// The ported Java tests
-// ---------------------------------------------------------------------------------------------
-
-/// Port of `BoardServiceCharacterizationTest.itemQueriesAndSerializationRemainStable`
-/// (`src/test/java/app/freerouting/board/BoardServiceCharacterizationTest.java:34-51`).
-///
-/// Java builds a one-layer board with a `TileShape` outline and inserts one trace, then checks
-/// `getOutline`, `getItem`, `getItems` and `getTraces`. The observer count (`observer.newItems`)
-/// is not ported — `global-constraints.md` drops board observers. Java's `serialize(false)` +
-/// `BasicBoard.deserialize` round trip (:45-46) is exactly what `BasicBoard.clone` is, whose port
-/// is [`Board::deep_copy`] minus the autoroute-clearing tail (`board/snapshot.rs`'s module doc) —
-/// **not** `board.clone()`: the derived `Clone` copies every field as-is, including the
-/// `transient` ones Java's round trip resets, and is Task 12's substitute for
-/// `generateSnapshot`/`popSnapshot` instead (which clear nothing, being an in-place undo
-/// snapshot of the *same* board rather than a copy standing in for a fresh one). `getHash()` ->
-/// [`Board::structural_hash`]. Java's `assertNotNull(restored.searchTreeManager)` (:50) has no
-/// port — the port's search trees are never `null`.
 #[test]
 fn item_queries_remain_stable() {
     let mut board = characterization_board();
@@ -2206,13 +1863,6 @@ fn item_queries_remain_stable() {
     assert_eq!(board.get_traces().len(), restored.get_traces().len());
 }
 
-/// Port of `BoardServiceCharacterizationTest.changedAreaFacadeRetainsLifecycleAndGraphicsTracking`
-/// (BoardServiceCharacterizationTest.java:72-82).
-///
-/// Java's last two lines call `optChangedArea` (which clears the area and joins the graphics
-/// update box) and then check `getGraphicsUpdateBox()`. `optChangedArea` runs the `TraceTightener`
-/// and arrives in Plan 7, and the graphics update box is not ported at all (GUI), so the port
-/// stops at the marking half and checks the area it produced instead.
 #[test]
 fn changed_area_lifecycle_matches_the_characterization_test() {
     let mut board = characterization_board();
@@ -2229,21 +1879,7 @@ fn changed_area_lifecycle_matches_the_characterization_test() {
             .surrounding_box(),
         IntBox::from_coords(0, 0, 1000, 1000)
     );
-    // The Java test's next line is `board.optChangedArea(...)`
-    // (BoardServiceCharacterizationTest.java:78), which clears `changedArea` afterwards. That
-    // method **landed in Plan 7 Task 5** as `fr_router::board_ext::RoutingBoardExt::opt_changed_area`
-    // and cannot be called from here — it needs a `TraceTightener`, which is `fr-router`'s type,
-    // and `fr-board` must not depend on `fr-router`. The clearing half is asserted on the other
-    // side of the seam instead, by `crates/fr-router/tests/opt_changed_area.rs`'s
-    // `the_changed_area_is_cleared_after_the_sweep` and
-    // `an_empty_clip_shape_skips_the_tightener_but_still_clears_the_area`.
 }
-
-// not ported: `BoardServiceCharacterizationTest.snapshotUndoRedoPreservesItemsAndObserverNotifications`
-// (:53-69) — `generateSnapshot`/`undo`/`redo` are the `UndoableObjects` stack (Task 12 replaces
-// it with `Board::clone`/`Board::deep_copy`, `board/snapshot.rs`), and the assertions this test
-// makes once undo/redo run are all observer counts (`global-constraints.md` drops board
-// observers), so nothing here survives the port.
 
 /// `BoardServiceCharacterizationTest.createBoard` (:94-112).
 fn characterization_board() -> Board {
@@ -2251,8 +1887,6 @@ fn characterization_board() -> Board {
     let clearance_matrix = ClearanceMatrix::get_default_instance(&layers, 10);
     let mut rules = BoardRules::new(layers.clone(), clearance_matrix);
     rules.create_default_net_class();
-    // BoardServiceCharacterizationTest.java:101: `TileShape.getInstance(0, 0, 1000, 1000)`, an
-    // `IntBox`, not a polygon.
     let outline = vec![PolylineShapeRef::Tile(TileShape::Box(IntBox::from_coords(
         0, 0, 1000, 1000,
     )))];
@@ -2281,14 +1915,6 @@ fn insert_characterization_trace(board: &mut Board, net_number: i32, x1: i32, x2
         .expect("a straight two-corner trace")
 }
 
-/// Port of `PinObstacleTest.sameNetViaWithAttachDisallowedIsNotObstacleForSmdPin`
-/// (`src/test/java/app/freerouting/board/PinObstacleTest.java:15-24`).
-///
-/// The Java test mocks `Pin.drillAllowed()` and `Via.sharesNet()`; the port builds the real
-/// items instead — the fixture's pin 2 is an SMD pad (`drillAllowed`, Pin.java:344-350) and the
-/// via is on the same net. `Item::is_obstacle` is already covered by
-/// `pin_is_obstacle_to_a_same_net_via_only_when_it_is_not_an_smd_pad` in `src/items/mod.rs`;
-/// this repeats it against a real board so the fixture's `drillAllowed` is exercised.
 #[test]
 fn a_same_net_via_is_not_an_obstacle_for_an_smd_pin() {
     let board = p2t11_board();
@@ -2297,19 +1923,12 @@ fn a_same_net_via_is_not_an_obstacle_for_an_smd_pin() {
     let via = board.get_item(ItemId(6)).expect("the via");
     assert!(pin.shares_net(via));
     assert!(!pin.is_obstacle(via, &ctx));
-    // The through pin is not drillable, so it *is* an obstacle to the same-net via
-    // (Pin.java:364).
     let through_pin = board.get_item(ItemId(3)).expect("the through pin");
     assert!(through_pin.is_obstacle(via, &ctx));
 }
 
-// ---------------------------------------------------------------------------------------------
-// The paths `P2T11.java` cannot reach — each cites the Java source instead
-// ---------------------------------------------------------------------------------------------
-
 #[test]
 fn has_ignored_nets_reads_the_net_class_flag() {
-    // Item.java:1241-1255. The driver's board has no ignored net class, so this is Rust-only.
     let mut board = p2t11_board();
     let layers = board.rules.layer_structure().clone();
     let ignored = board.rules.net_classes.append("ignored", &layers, false);
@@ -2329,7 +1948,6 @@ fn has_ignored_nets_reads_the_net_class_flag() {
 #[test]
 #[should_panic(expected = "NullPointerException")]
 fn has_ignored_nets_panics_on_a_net_the_net_list_does_not_know() {
-    // Item.java:1244: `nets.get(netNumber).getNetClass()` with no null check.
     let mut board = p2t11_board();
     board
         .get_item_mut(ItemId(4))
@@ -2341,7 +1959,6 @@ fn has_ignored_nets_panics_on_a_net_the_net_list_does_not_know() {
 
 #[test]
 fn all_nets_skips_a_net_the_net_list_does_not_know() {
-    // Item.java:1276: unlike `hasIgnoredNets`, `getAllNets` *does* null-check.
     let mut board = p2t11_board();
     board
         .get_item_mut(ItemId(4))
@@ -2354,7 +1971,6 @@ fn all_nets_skips_a_net_the_net_list_does_not_know() {
 
 #[test]
 fn get_trace_tail_finds_an_uncontacted_end_of_exactly_these_nets() {
-    // BasicBoard.java:1306-1329. The driver's board has no tails, so this adds one.
     let mut board = p2t11_board();
     let stray = board
         .insert_trace_without_cleaning(
@@ -2370,7 +1986,6 @@ fn get_trace_tail_finds_an_uncontacted_end_of_exactly_these_nets() {
         board.get_trace_tail(&Point::new(-1000, 900), Some(0), &[1]),
         Some(stray)
     );
-    // BasicBoard.java:1311-1313: `netsEqual`, not `sharesNet`.
     assert_eq!(
         board.get_trace_tail(&Point::new(-1000, 900), Some(0), &[2]),
         None
@@ -2380,16 +1995,12 @@ fn get_trace_tail_finds_an_uncontacted_end_of_exactly_these_nets() {
         board.get_trace_tail(&Point::new(-1000, 0), Some(0), &[1]),
         None
     );
-    // RoutingBoard.java:1176-1187.
     assert!(board.contains_trace_tails([stray], &[]));
     assert!(!board.contains_trace_tails([stray], &[1]));
 }
 
 #[test]
 fn remove_trace_tails_removes_a_stub() {
-    // RoutingBoard.java:1193-1238. Java's tail calls `combineTraces` after the removal
-    // (:1236), which is Task 9's; on this board there is nothing left to combine, so the item
-    // list is the whole observable result.
     let mut board = p2t11_board();
     let stray = board
         .insert_trace_without_cleaning(
@@ -2417,8 +2028,6 @@ fn remove_trace_tails_removes_a_stub() {
 
 #[test]
 fn check_move_item_consults_the_ignore_set() {
-    // RoutingBoardSearchFacade.java:123-141: the item under test is added to `ignoreItems`, and
-    // anything else in it stops being an obstacle.
     let mut board = p2t11_board();
     let mut ignore = Some(BTreeSet::new());
     assert!(board.check_move_item(
@@ -2431,8 +2040,6 @@ fn check_move_item_consults_the_ignore_set() {
 
 #[test]
 fn item_tree_shape_answers_none_past_the_end_after_one_retry() {
-    // Item.java:218-224: an out-of-range index triggers `clearDerivedData()` and one recompute,
-    // and then gives up.
     let mut board = p2t11_board();
     let tree = board.default_tree_id();
     assert_eq!(board.item_tree_shape_count(ItemId(4), tree), 1);
@@ -2445,7 +2052,6 @@ fn item_tree_shape_answers_none_past_the_end_after_one_retry() {
 
 #[test]
 fn the_shove_failure_fields_round_trip() {
-    // RoutingBoard.java:72-73,1359-1378.
     let mut board = p2t11_board();
     assert_eq!(board.get_shove_failing_obstacle(), None);
     assert_eq!(board.get_shove_failing_layer(), -1);
@@ -2460,7 +2066,6 @@ fn the_shove_failure_fields_round_trip() {
 
 #[test]
 fn clear_all_item_temporary_autoroute_data_drops_every_scratch_record() {
-    // RoutingBoard.java:1241-1250.
     let mut board = p2t11_board();
     for id in board.items_in_board_order() {
         board
@@ -2490,7 +2095,6 @@ fn clear_all_item_temporary_autoroute_data_drops_every_scratch_record() {
 
 #[test]
 fn store_items_refuses_a_shove_fixed_obstacle_of_a_foreign_net() {
-    // ShapeTraceEntries.java:188-191.
     let mut board = board_builder::shove_board();
     board
         .get_item_mut(ItemId(3))
@@ -2505,8 +2109,6 @@ fn store_items_refuses_a_shove_fixed_obstacle_of_a_foreign_net() {
 
 #[test]
 fn store_items_refuses_a_non_shovable_item_of_a_foreign_net() {
-    // ShapeTraceEntries.java:211-214: anything that is not a via, a trace or an excused area is
-    // an obstacle outright when it is not on the own net.
     let mut board = board_builder::shove_board();
     let area = board.insert_obstacle(
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
@@ -2524,17 +2126,8 @@ fn store_items_refuses_a_non_shovable_item_of_a_foreign_net() {
     assert_eq!(entries.get_found_obstacle(), Some(area));
 }
 
-/// Quirk #65's *other* arm. **Renamed at Plan 9 Task 10**, because its old name
-/// (`a_component_keepout_is_skipped_by_store_items_whatever_the_pad_check_says`) described the
-/// defect while the body only ever built a `ViaObstacleArea` — the arm the `&&` legitimately
-/// bound to, and the one the fix leaves exactly where it was. The component-keepout half the old
-/// name claimed is `crates/fr-board/tests/shape_trace_entries.rs::a_component_keepout_blocks_a_via`,
-/// which now asserts the opposite of what the old name said.
 #[test]
 fn a_via_keepout_is_skipped_by_store_items_outside_a_pad_check() {
-    // `ShapeTraceEntries.java:180-183`, post-#65: `!isPadCheck && (viaObstacle ||
-    // componentObstacle)`. A `ViaObstacleArea` is skipped outside a pad check and blocks inside
-    // one, which is what Java's `&&` already did for this arm.
     let mut board = board_builder::shove_board();
     let via_keepout = board.insert_via_obstacle(
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
@@ -2558,15 +2151,10 @@ fn a_via_keepout_is_skipped_by_store_items_outside_a_pad_check() {
 
 #[test]
 fn a_changed_area_knows_how_many_layers_it_was_made_for() {
-    // ChangedArea.java:11,63.
     let area = ChangedArea::new(4);
     assert_eq!(area.layer_count(), 4);
 }
 
-/// Quirk #67, inverted. Communication.java:79's `Integer.parseInt` was unguarded, so a
-/// `host_version` whose first digit run overflows an int threw `NumberFormatException` out of a
-/// predicate every board load calls — and this one is reached only for KiCad, where a long digit
-/// run in a version string is exactly the input to expect.
 #[test]
 fn host_is_old_kicad_is_guarded_on_a_version_that_overflows_an_int() {
     let of = |version: &str| {
@@ -2584,7 +2172,6 @@ fn host_is_old_kicad_is_guarded_on_a_version_that_overflows_an_int() {
     // Past `i64` too, where the parse genuinely fails — "catch and answer false". An overflowing
     // version number is emphatically not an old KiCad.
     assert!(!of("999999999999999999999999999999"));
-    // And the widening did not move the answers that already worked (Communication.java:75-82).
     assert!(of("5.1.9"));
     assert!(of("0"));
     assert!(!of("6.0.0"));
@@ -2597,9 +2184,6 @@ fn host_is_old_kicad_is_guarded_on_a_version_that_overflows_an_int() {
 
 #[test]
 fn board_is_send_and_sync_and_clones_independently() {
-    // `global-constraints.md`: `Board: Clone` must compile, and Plan 6 runs board copies in
-    // parallel. `board/snapshot.rs`'s `deep_copy_is_independent` covers the same independence
-    // for `Board::deep_copy`.
     fn assert_send_sync<T: Send + Sync + Clone>() {}
     assert_send_sync::<Board>();
 
@@ -2638,33 +2222,6 @@ fn is_filled(board: &Board, id: u32) -> bool {
     }
 }
 
-/// **plan-6 §10.3's second coverage obligation, as a standing assertion** (Plan 7 Task 17 fix
-/// round, review SF5).
-///
-/// Plan 6 filed `AutorouteEngine.autorouteConnection`'s `StopConnectionOption` choice
-/// (`:241-245`) as a coverage obligation it could discharge only halfway: 311 of its 369
-/// connections took the `FANOUT_VIA` arm, but no corpus board could show the two options
-/// **answering differently**, because that needs a real fanout via and `BatchFanout` was
-/// Plan 7's. Plan 7 Task 17 measured the difference firing with a temporary counter — once, in
-/// `crates/fr-router/tests/reference_parity.rs`'s `steps_one_to_eight_matches_the_jar` — and
-/// then removed the counter.
-///
-/// This is that statement without an instrument, and **directed rather than corpus-derived**.
-/// Directed is the more durable form here for a measured reason: Task 17 also ran the corpus
-/// version and found that a fanned-out `Issue143-rpi_splitter` produces **zero** disagreeing
-/// items, so "some board reaches it" is a property of one stem at one connection and a corpus
-/// assertion on it would be as brittle as the count. The standing guard that a *corpus* board
-/// still reaches the arm and gets the jar's answer there is the SES byte-parity ladder
-/// (`crates/fr-router/tests/batch_parity.rs`); what this test adds is that the arm cannot be
-/// deleted or made unreachable in the port without a red test.
-///
-/// **Why it is exact.** `Board::connection_items` branches on `stop_option` in exactly two
-/// places — the `Via` arm and the `FanoutVia` arm (Item.java:731-736) — and neither call below
-/// passes `Via`. So a difference between `None` and `FanoutVia` *is* the
-/// `isFanoutVia(result)` break at Item.java:735 and can be nothing else.
-///
-/// The fixture is `p2t11_board()`, whose via 6 is already established as a fanout via by
-/// [`the_via_is_a_fanout_via_because_a_short_trace_reaches_an_smd_pin`].
 #[test]
 fn the_fanout_via_break_changes_the_connection_set() {
     let board = p2t11_board();

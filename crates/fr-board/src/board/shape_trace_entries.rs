@@ -1,20 +1,3 @@
-//! Port of `board/searchtree/ShapeTraceEntries.java`: the auxiliary structure the shove
-//! algorithm uses to find where traces cross the border of a shape it wants to clear, and to
-//! build the substitute traces that go around it.
-//!
-//! Nothing in Plan 2 calls this — its callers are `TraceShover`, `ForcedViaInserter` and
-//! `DrillItemMover`, all Plan 7. It is ported here because Plan 2's task list places it with the
-//! board, and because `cutoutTrace` is the one method of the class the *model* owns: it removes
-//! and re-inserts board items.
-//!
-//! # The linked list
-//!
-//! Java threads its `EntryPoint`s on a hand-rolled singly linked list (`listAnchor` plus a `next`
-//! field, ShapeTraceEntries.java:36,796) and splices it in four different places. The port keeps
-//! the nodes in a `Vec` arena and makes `next` an `Option<usize>` index into it, which reproduces
-//! the splices exactly — including `popPiece`'s detached sub-list, whose nodes stay alive in the
-//! arena the way Java's stay alive through the returned references.
-
 use std::collections::BTreeMap;
 
 use fr_geometry::{FloatPoint, Polyline, TileShape};
@@ -25,81 +8,37 @@ use crate::structure::{FixedState, ShapeEntrySide};
 
 use super::{Board, item_ctx};
 
-/// Java `ShapeTraceEntries.c_offset_add` (ShapeTraceEntries.java:28).
 const C_OFFSET_ADD: f64 = 1.0;
 
-/// Port of the private `ShapeTraceEntries.EntryPoint` (ShapeTraceEntries.java:789-805): where one
-/// trace crosses the border of the offset shape.
 #[derive(Debug, Clone, PartialEq)]
 struct EntryPoint {
-    /// Java `final PolylineTrace trace` (:791), as its board id.
     trace: ItemId,
-    /// `entry.trace.netNumbers`, which Java reads straight off the trace reference (e.g.
-    /// :525,532,540,580,611). Cached on the node so the list surgery needs no board lookup.
     net_nos: Vec<i32>,
-    /// Java `final int traceLineNo` (:792).
     trace_line_no: usize,
-    /// Java `final FloatPoint entryApprox` (:793).
     entry_approx: FloatPoint,
-    /// Java `int edgeIndex` (:794). Signed and unbounded because
-    /// `rotateEntryListAroundAnchor` adds the border-line count to it (:777).
     edge_index: i32,
-    /// Java `int stackLevel` (:795), `-1` until calculated (:803).
     stack_level: i32,
-    /// Java `EntryPoint next` (:796), as an arena index.
     next: Option<usize>,
 }
 
-/// Port of `ShapeTraceEntries` (`board/searchtree/ShapeTraceEntries.java`).
-///
-/// not ported: `ShapeTraceEntries.board` (ShapeTraceEntries.java:34) — the board back-pointer.
-/// Every method that read it takes a `&Board` (or `&mut Board`) instead.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShapeTraceEntries {
-    /// Java `public final Collection<Via> shoveViaList` (ShapeTraceEntries.java:29).
     pub shove_via_list: Vec<ItemId>,
-    /// Java `private final TileShape shape` (:30).
     shape: TileShape,
-    /// Java `private final int layer` (:31).
     layer: usize,
-    /// Java `private final int[] ownNetNos` (:32).
     own_net_nos: Vec<i32>,
-    /// Java `private final int clearanceClassIndex` (:33).
     clearance_class_index: usize,
-    /// Java `private ShapeEntrySide fromSide` (:35); `null` is `None`.
     from_side: Option<ShapeEntrySide>,
-    /// The `EntryPoint` arena; Java allocates each node on the heap.
     entries: Vec<EntryPoint>,
-    /// Java `private EntryPoint listAnchor` (:36).
     list_anchor: Option<usize>,
-    /// Java `private int tracePieceCount` (:37).
     trace_piece_count: i32,
-    /// Java `private int maxStackLevel` (:38).
     max_stack_level: i32,
-    /// Java `private boolean shapeContainsTraceTails` (:39).
     shape_contains_trace_tails: bool,
-    /// Java `private Item foundObstacle` (:40).
     found_obstacle: Option<ItemId>,
-    /// The traces this structure has stored an entry point for, as they stood at
-    /// [`Self::store_items`] time.
-    ///
-    /// Not a Java field: Java's `EntryPoint.trace` (:791) is a **live `PolylineTrace`
-    /// reference**, and `nextSubstituteTracePiece` (:236-280) reads the trace's polyline, half
-    /// width, nets and clearance class through it. A Java reference survives the trace being
-    /// taken off the board — which is exactly what happens in the shove path, where
-    /// `cutoutTraces` runs *before* the `nextSubstituteTracePiece` loop
-    /// (`ForcedPadRouter.forcedPad:405-408`, `TraceShover.insert:511-514`) and removes every
-    /// obstacle trace it is about to build substitutes for. Keying by [`ItemId`] alone loses
-    /// that: the board lookup answers `None` and the substitute piece is silently never built.
-    /// The snapshot is the port's form of the reference, and it is taken where Java takes it —
-    /// when the entry point is created.
-    // renamed: `ShapeTraceEntries.EntryPoint.trace`'s live reference -> this id-keyed snapshot.
     traces: BTreeMap<ItemId, PolylineTrace>,
 }
 
 impl ShapeTraceEntries {
-    /// Port of the `ShapeTraceEntries(TileShape, int, int[], int, ShapeEntrySide, RoutingBoard)`
-    /// constructor (ShapeTraceEntries.java:46-63).
     pub fn new(
         shape: TileShape,
         layer: usize,
@@ -124,44 +63,22 @@ impl ShapeTraceEntries {
         }
     }
 
-    /// Port of `ShapeTraceEntries.stackDepth` (ShapeTraceEntries.java:285-287).
     pub fn stack_depth(&self) -> i32 {
         self.max_stack_level
     }
 
-    /// Port of `ShapeTraceEntries.substituteTraceCount` (ShapeTraceEntries.java:290-292).
     pub fn substitute_trace_count(&self) -> i32 {
         self.trace_piece_count
     }
 
-    /// Port of `ShapeTraceEntries.traceTailsInShape` (ShapeTraceEntries.java:298-300).
     pub fn trace_tails_in_shape(&self) -> bool {
         self.shape_contains_trace_tails
     }
 
-    /// Port of `ShapeTraceEntries.getFoundObstacle` (ShapeTraceEntries.java:315-317).
     pub fn get_found_obstacle(&self) -> Option<ItemId> {
         self.found_obstacle
     }
 
-    /// Port of `ShapeTraceEntries.storeItems` (ShapeTraceEntries.java:177-220): sort the traces
-    /// and vias of `item_ids` into this structure, and report whether they can all be shoved.
-    //
-    // Java bug: the first `continue` reads
-    // `if (!isPadCheck && currentItem instanceof ViaObstacleArea || currentItem instanceof
-    // ComponentObstacleArea)` (ShapeTraceEntries.java:180-183). `&&` binds tighter than `||`, so
-    // a `ComponentObstacleArea` is skipped **unconditionally**, while a `ViaObstacleArea` is only
-    // skipped when this is not a pad check — almost certainly not what the author meant
-    // (`!isPadCheck && (a || b)`). See docs/java-quirks.md #65.
-    //
-    // fixed: T10 (#65) — parenthesised as `!is_pad_check && (a || b)`, which is what the
-    // comment, the sibling call sites and every reading of the intent all say. The consequence
-    // of the precedence was that a `ComponentObstacleArea` was skipped even during a **pad
-    // check**, so **a component keepout could never block a via placement**: on a KiCad board
-    // that is the difference between a via landing inside a footprint's courtyard keepout and
-    // not. The `ViaObstacleArea` half is unchanged — it was already `!isPadCheck`-gated — so
-    // this fix strictly *adds* obstacles during a pad check and can only refuse placements
-    // Java accepted, never the reverse.
     pub fn store_items(
         &mut self,
         board: &Board,
@@ -174,8 +91,6 @@ impl ShapeTraceEntries {
             let Some(item) = board.get_item(*id) else {
                 continue;
             };
-            // ShapeTraceEntries.java:180-183, parenthesised — see the `// fixed: T10 (#65)`
-            // note on this method.
             if !is_pad_check
                 && matches!(
                     item,
@@ -185,19 +100,16 @@ impl ShapeTraceEntries {
                 continue;
             }
             let contains_own_net = item.shares_net_no(&self.own_net_nos);
-            // ShapeTraceEntries.java:185-187.
             if let Item::ConductionArea(area) = item
                 && (contains_own_net || !area.get_is_obstacle())
             {
                 continue;
             }
-            // ShapeTraceEntries.java:188-191.
             if item.is_shove_fixed(&board.rules) && !contains_own_net {
                 self.found_obstacle = Some(*id);
                 return false;
             }
             match item {
-                // ShapeTraceEntries.java:192-196.
                 Item::Via(_) => {
                     if is_pad_check || !contains_own_net {
                         self.shove_via_list.push(*id);
@@ -208,7 +120,6 @@ impl ShapeTraceEntries {
                         return false;
                     }
                 }
-                // ShapeTraceEntries.java:201-215.
                 _ => {
                     if contains_own_net {
                         if !copper_sharing_allowed {
@@ -230,30 +141,22 @@ impl ShapeTraceEntries {
                 }
             }
         }
-        // ShapeTraceEntries.java:217-219.
         self.search_from_side();
         self.resort();
         self.calculate_stack_levels()
     }
 
-    /// Port of the private `ShapeTraceEntries.storeTrace` (ShapeTraceEntries.java:323-442).
     fn store_trace(&mut self, board: &Board, trace_id: ItemId) -> bool {
         let search_tree = board.trees.get_default_tree();
         let Some(item @ Item::Trace(trace)) = board.get_item(trace_id) else {
             return true;
         };
-        // The snapshot that stands in for Java's live `EntryPoint.trace` reference; see the
-        // field's doc. Taken before any entry point is inserted, so a trace this method then
-        // refuses still has one — harmless, and it keeps the snapshot's contents independent of
-        // which of the method's many exits was taken.
         self.traces.insert(trace_id, trace.clone());
         let offset_shape = if search_tree.is_clearance_compensation_used() {
-            // ShapeTraceEntries.java:326-329.
             let current_offset =
                 f64::from(search_tree.compensated_half_width(trace, &board.rules)) + C_OFFSET_ADD;
             self.shape.offset(current_offset)
         } else {
-            // ShapeTraceEntries.java:330-337: two steps, "for symmetry reasons".
             let cl_offset = f64::from(board.clearance_value(
                 trace.hdr.clearance_class(),
                 self.clearance_class_index,
@@ -264,7 +167,6 @@ impl ShapeTraceEntries {
                 .offset(cl_offset)
         };
 
-        // ShapeTraceEntries.java:341-350.
         for entry_tuple in offset_shape.entrance_points(trace.polyline()) {
             let Some(border_line) = offset_shape.border_line(entry_tuple[1]) else {
                 continue;
@@ -280,7 +182,6 @@ impl ShapeTraceEntries {
             );
         }
 
-        // ShapeTraceEntries.java:355-439: an end point of the trace inside the shape.
         if !item.shares_net_no(&self.own_net_nos) {
             if !item.nets_normal() {
                 return false;
@@ -300,7 +201,6 @@ impl ShapeTraceEntries {
                 };
                 let mut contact_count = 0;
                 let mut store_end_corner = true;
-                // ShapeTraceEntries.java:372-415.
                 for contact_id in &contact_list {
                     let Some(contact_item) = board.get_item(*contact_id) else {
                         continue;
@@ -311,28 +211,6 @@ impl ShapeTraceEntries {
                     }
                     match contact_item {
                         Item::Trace(contact_trace) => {
-                            // ShapeTraceEntries.java:379-386.
-                            //
-                            // Java bug: the third disjunct is
-                            // `contactItem.clearanceClassIndex() != contactTrace
-                            // .clearanceClassIndex()` (ShapeTraceEntries.java:381), and
-                            // `contactItem` *is* `contactTrace` — the pattern variable bound one
-                            // line above. It compares an item with itself, so it is always false;
-                            // the intent was plainly `trace.clearanceClassIndex()`, i.e. "the
-                            // contact has a different clearance class from the trace being
-                            // stored". See docs/java-quirks.md #69.
-                            //
-                            // fixed: T10 (#69) — the third disjunct now reads
-                            // `trace.clearance_class() != contact_trace.clearance_class()`, the
-                            // symmetry the second disjunct
-                            // (`contactTrace.getHalfWidth() != trace.getHalfWidth()`) makes
-                            // obvious and the only reading under which the line says anything at
-                            // all. As Java wrote it **a contact whose clearance class differs
-                            // never blocked**, so the shove carried copper across a
-                            // clearance-class boundary — a live source of clearance violations.
-                            // Like #65 the fix is one-directional: a disjunct that could only be
-                            // `false` becomes one that can be `true`, so nothing that blocked
-                            // stops blocking.
                             if (contact_item.is_shove_fixed(&board.rules)
                                 || contact_trace.get_half_width() != trace.get_half_width()
                                 || trace.hdr.clearance_class()
@@ -344,12 +222,6 @@ impl ShapeTraceEntries {
                             }
                         }
                         Item::Via(_) => {
-                            // ShapeTraceEntries.java:387-412.
-                            // ShapeTraceEntries.java:388: `via.getTileShapeOnLayer(layer)`,
-                            // which recomputes on a cold cache (Item.java:212-226). Java has no
-                            // `continue` here — a `null` shape NPEs at `.smallestRadius()` — so
-                            // the `expect` reproduces that rather than silently skipping the
-                            // `++contactCount` below.
                             let via_shape = board
                                 .drill_item_tile_shape_on_layer_ref(*contact_id, self.layer)
                                 .unwrap_or_else(|| {
@@ -391,7 +263,6 @@ impl ShapeTraceEntries {
                     }
                     contact_count += 1;
                 }
-                // ShapeTraceEntries.java:416-435.
                 if contact_count == 1 && store_end_corner {
                     if let Some(projection) = offset_shape.nearest_border_point(&end_corner)
                         && let Some(projection_side) =
@@ -415,15 +286,11 @@ impl ShapeTraceEntries {
                 }
             }
         }
-        // ShapeTraceEntries.java:440-441: the trace becomes the "found obstacle" even on success.
         self.found_obstacle = Some(trace_id);
         true
     }
 
-    /// Port of the private `ShapeTraceEntries.searchFromSide`
-    /// (ShapeTraceEntries.java:444-460).
     fn search_from_side(&mut self) {
-        // ShapeTraceEntries.java:445-447.
         if let Some(from_side) = self.from_side
             && from_side.no >= 0
         {
@@ -434,7 +301,6 @@ impl ShapeTraceEntries {
         let mut current_entry_approx = None;
         while let Some(index) = current {
             let entry = &self.entries[index];
-            // `Item.sharesNetNo(int[])` (Item.java:179-189) is the raw array intersection.
             if entry.net_nos.iter().any(|n| self.own_net_nos.contains(n)) {
                 current_fromside_no = entry.edge_index;
                 current_entry_approx = Some(entry.entry_approx);
@@ -448,15 +314,11 @@ impl ShapeTraceEntries {
         ));
     }
 
-    /// Port of the private `ShapeTraceEntries.resort` (ShapeTraceEntries.java:463-573): rotate
-    /// the entry list so it starts in the middle of `fromSide`, then drop the redundant middle
-    /// entries of each connected set.
     fn resort(&mut self) {
         let edge_count = self.shape.border_line_count() as i32;
         let Some(mut from_side) = self.from_side else {
             return;
         };
-        // ShapeTraceEntries.java:465-468.
         if from_side.no < 0 || from_side.no >= edge_count {
             return;
         }
@@ -474,7 +336,6 @@ impl ShapeTraceEntries {
         let Some(from_side_border_line) = self.shape.border_line(from_side.no as usize) else {
             return;
         };
-        // ShapeTraceEntries.java:478-487.
         let mut from_point_dist = 0.0;
         let mut from_point_projection = None;
         if let Some(border_intersection) = from_side.border_intersection {
@@ -488,7 +349,6 @@ impl ShapeTraceEntries {
         }
         self.from_side = Some(from_side);
 
-        // ShapeTraceEntries.java:490-515.
         let mut current = self.list_anchor;
         while let Some(index) = current {
             let entry = &self.entries[index];
@@ -518,15 +378,12 @@ impl ShapeTraceEntries {
             }
             current = entry.next;
         }
-        // ShapeTraceEntries.java:516-518.
         if let Some(index) = current
             && Some(index) != self.list_anchor
         {
             self.rotate_entry_list_around_anchor(index, edge_count);
         }
 
-        // ShapeTraceEntries.java:521-552: keep only the first and the last entry of each run of
-        // entries belonging to the same connected set.
         let Some(anchor) = self.list_anchor else {
             return;
         };
@@ -554,7 +411,6 @@ impl ShapeTraceEntries {
             next = self.entries[next_index].next;
         }
 
-        // ShapeTraceEntries.java:554-564.
         if current.is_some() && nets_equal(&current_net_nos, &self.own_net_nos) {
             self.entries[prev].next = None;
             if nets_equal(&prev_net_nos, &self.own_net_nos) {
@@ -565,7 +421,6 @@ impl ShapeTraceEntries {
             }
         }
 
-        // ShapeTraceEntries.java:566-572.
         for _ in 0..2 {
             let Some(anchor) = self.list_anchor else {
                 break;
@@ -577,20 +432,15 @@ impl ShapeTraceEntries {
         }
     }
 
-    /// Port of the private `ShapeTraceEntries.calculateStackLevels`
-    /// (ShapeTraceEntries.java:575-665): assign a shove nesting level to every entry, and report
-    /// whether the entries really nest.
     fn calculate_stack_levels(&mut self) -> bool {
         let Some(anchor) = self.list_anchor else {
             return true;
         };
         let mut current_entry = Some(anchor);
         let mut current_net_numbers = self.trace_net_nos(anchor);
-        // ShapeTraceEntries.java:581-587.
         let mut current_level = i32::from(!nets_equal(&current_net_numbers, &self.own_net_nos));
 
         while let Some(entry_index) = current_entry {
-            // ShapeTraceEntries.java:590-599.
             if self.entries[entry_index].stack_level < 0 {
                 self.trace_piece_count += 1;
                 self.entries[entry_index].stack_level = current_level;
@@ -602,7 +452,6 @@ impl ShapeTraceEntries {
                 }
             }
 
-            // ShapeTraceEntries.java:602-622.
             let mut check_entry = self.entries[entry_index].next;
             let mut index_of_next_foreign_set = 0;
             let mut index_of_last_occurrence_of_set = 0;
@@ -623,7 +472,6 @@ impl ShapeTraceEntries {
                 check_entry = self.entries[check_index].next;
             }
 
-            // ShapeTraceEntries.java:625-658.
             if next_index != 0 {
                 let next_entry;
                 if index_of_next_foreign_set != 0
@@ -634,7 +482,6 @@ impl ShapeTraceEntries {
                     };
                     next_entry = first_foreign;
                     if self.entries[next_entry].stack_level >= 0 {
-                        // ShapeTraceEntries.java:629-632: the stack property fails.
                         return false;
                     }
                     current_level += 1;
@@ -653,24 +500,19 @@ impl ShapeTraceEntries {
                     }
                 }
                 current_net_numbers = self.trace_net_nos(next_entry);
-                // ShapeTraceEntries.java:648-655: drop the entries in between.
                 self.entries[entry_index].next = Some(next_entry);
                 current_entry = Some(next_entry);
             } else {
                 current_entry = None;
             }
         }
-        // ShapeTraceEntries.java:660-663.
         current_level == 1
     }
 
-    /// Port of the private `ShapeTraceEntries.popPiece` (ShapeTraceEntries.java:672-726): the
-    /// first and last entry of the next piece at the maximal stack level.
     fn pop_piece(&mut self) -> Option<(usize, usize)> {
         let anchor = self.list_anchor?;
         let mut first = Some(anchor);
         let mut prev_first = None;
-        // ShapeTraceEntries.java:682-689.
         while let Some(index) = first {
             if self.entries[index].stack_level == self.max_stack_level {
                 break;
@@ -681,7 +523,6 @@ impl ShapeTraceEntries {
         let first = first?;
         let first_trace = self.entries[first].trace;
         let first_net_nos = self.trace_net_nos(first);
-        // ShapeTraceEntries.java:692-701.
         let mut last = first;
         let mut after_last = self.entries[first].next;
         while let Some(index) = after_last {
@@ -693,12 +534,10 @@ impl ShapeTraceEntries {
             last = index;
             after_last = self.entries[index].next;
         }
-        // ShapeTraceEntries.java:705-709.
         match prev_first {
             Some(prev) => self.entries[prev].next = after_last,
             None => self.list_anchor = after_last,
         }
-        // ShapeTraceEntries.java:712-719.
         self.max_stack_level = 0;
         let mut current = self.list_anchor;
         while let Some(index) = current {
@@ -708,7 +547,6 @@ impl ShapeTraceEntries {
             current = self.entries[index].next;
         }
         self.trace_piece_count -= 1;
-        // ShapeTraceEntries.java:721-724: an own-net piece is ignored and popped again.
         let _ = first_trace;
         if nets_equal_exact(&first_net_nos, &self.own_net_nos) {
             return self.pop_piece();
@@ -716,21 +554,12 @@ impl ShapeTraceEntries {
         Some((first, last))
     }
 
-    /// Port of `ShapeTraceEntries.nextSubstituteTracePiece`
-    /// (ShapeTraceEntries.java:226-282): the next trace that goes around the shape instead of
-    /// through it, or `None` at the end of the list.
-    ///
-    /// The returned trace is **not** inserted into the board; Java's caller does that. It carries
-    /// a fresh id from the board's generator, which is why this takes `&mut Board`.
     pub fn next_substitute_trace_piece(&mut self, board: &mut Board) -> Option<PolylineTrace> {
         let (first, last) = self.pop_piece()?;
         let current_trace_id = self.entries[first].trace;
-        // Java reads `entries[first].trace` — a live reference that outlives `cutoutTraces`
-        // removing the trace from the board — so the port reads its snapshot, not the board.
         let current_trace = self.traces.get(&current_trace_id).cloned()?;
         let current_trace = &current_trace;
         let search_tree = board.trees.get_default_tree();
-        // ShapeTraceEntries.java:235-245.
         let offset_shape = if search_tree.is_clearance_compensation_used() {
             let current_offset =
                 f64::from(search_tree.compensated_half_width(current_trace, &board.rules))
@@ -752,7 +581,6 @@ impl ShapeTraceEntries {
             return None;
         }
 
-        // ShapeTraceEntries.java:251-266.
         let piece_line_count = (edge_diff + 3) as usize;
         let mut piece_lines = Vec::with_capacity(piece_line_count);
         let start_line = current_trace.polyline().lines()[self.entries[first].trace_line_no];
@@ -769,14 +597,12 @@ impl ShapeTraceEntries {
             }
         }
         piece_lines.push(end_line);
-        // ShapeTraceEntries.java:267-271.
         let Ok(piece_polyline) = Polyline::from_lines(piece_lines) else {
             return self.next_substitute_trace_piece(board);
         };
         if piece_polyline.is_empty() {
             return self.next_substitute_trace_piece(board);
         }
-        // ShapeTraceEntries.java:272-281.
         let half_width = current_trace.get_half_width();
         let net_nos = current_trace.hdr.net_nos.clone();
         let clearance_class = current_trace.hdr.clearance_class();
@@ -792,7 +618,6 @@ impl ShapeTraceEntries {
         ))
     }
 
-    /// Port of `ShapeTraceEntries.cutoutTraces` (ShapeTraceEntries.java:306-312).
     pub fn cutout_traces(&self, board: &mut Board, item_ids: &[ItemId]) {
         for id in item_ids {
             let is_foreign_trace = board
@@ -804,11 +629,6 @@ impl ShapeTraceEntries {
         }
     }
 
-    /// Port of the static `ShapeTraceEntries.cutoutTrace`
-    /// (ShapeTraceEntries.java:66-107): cut `shape` (enlarged by the trace's half width and
-    /// clearance) out of the trace, replacing it with the pieces that survive.
-    ///
-    /// Java's `trace.isOnTheBoard()` warning path (:67-70) returns without doing anything.
     pub fn cutout_trace(
         board: &mut Board,
         trace_id: ItemId,
@@ -818,18 +638,15 @@ impl ShapeTraceEntries {
         let Some(item @ Item::Trace(trace)) = board.get_item(trace_id) else {
             return;
         };
-        // ShapeTraceEntries.java:67-70.
         if !item.is_on_the_board() {
             return;
         }
         let search_tree = board.trees.get_default_tree();
         let offset_shape = if search_tree.is_clearance_compensation_used() {
-            // ShapeTraceEntries.java:74-77.
             let current_offset =
                 f64::from(search_tree.compensated_half_width(trace, &board.rules)) + C_OFFSET_ADD;
             shape.offset(current_offset)
         } else {
-            // ShapeTraceEntries.java:78-84.
             let cl_offset = f64::from(board.clearance_value(
                 trace.hdr.clearance_class(),
                 clearance_class_index,
@@ -843,11 +660,9 @@ impl ShapeTraceEntries {
         let Ok(pieces) = offset_shape.cutout_polyline(&trace_lines) else {
             return;
         };
-        // ShapeTraceEntries.java:87-90: nothing was cut off.
         if pieces.len() == 1 && pieces[0] == trace_lines {
             return;
         }
-        // ShapeTraceEntries.java:91-94.
         let fast_path = pieces.len() == 2
             && pieces[0]
                 .first_corner()
@@ -860,7 +675,6 @@ impl ShapeTraceEntries {
             let end_piece = pieces[1].clone();
             Self::fast_cutout_trace(board, trace_id, start_piece, end_piece);
         } else {
-            // ShapeTraceEntries.java:96-105.
             let layer = trace.get_layer();
             let half_width = trace.get_half_width();
             let net_nos = trace.hdr.net_nos.clone();
@@ -879,16 +693,6 @@ impl ShapeTraceEntries {
         }
     }
 
-    /// Port of the private `ShapeTraceEntries.fastCutoutTrace`
-    /// (ShapeTraceEntries.java:110-151): the performance path, which hands the old trace's tree
-    /// leaves to the two new pieces instead of recomputing them.
-    ///
-    /// Java's `board.itemList.saveForUndo(trace)` (:113) is [`Board::save_for_undo`] (Plan 7
-    /// Task 14c); its two observer notifications (:147-150) are dropped. Note the two new traces
-    /// go into `itemList` **directly** (:126,141), not through `insertItem`, so no revision bump
-    /// and no tree insert — the tree entries arrive from `reuseEntriesAfterCutout` instead — but
-    /// their undo nodes are stamped exactly as `insertItem`'s are, so `Board::journal_insert`
-    /// still runs for both.
     fn fast_cutout_trace(
         board: &mut Board,
         trace_id: ItemId,
@@ -904,12 +708,6 @@ impl ShapeTraceEntries {
         let clearance_class = trace.hdr.clearance_class();
         let layer_count = board.get_layer_count();
 
-        // not reachable: RoutingBoard.additionalUpdateAfterChange (retainAutorouteDatabase is a Java benchmark-only system property)
-        // (ShapeTraceEntries.java:112) — see `Board::insert_item`'s marker for why controller
-        // ruling AJ makes the whole family dead rather than deferred.
-        // ShapeTraceEntries.java:113 — `board.itemList.saveForUndo(trace)`. It is followed by a
-        // `board.removeItem(trace)` at `:145`, so what `undo` gets from it is the delete-list
-        // entry, not a cancel/restore pair; see `Board::journal_remove`'s second case.
         board.save_for_undo(trace_id);
         let start_id = board.new_item_id();
         let mut start_trace = PolylineTrace::new(
@@ -936,7 +734,6 @@ impl ShapeTraceEntries {
         );
         end_trace.hdr.set_on_the_board(true);
 
-        // ShapeTraceEntries.java:144.
         let mut from_item = board
             .items
             .remove(&trace_id)
@@ -956,17 +753,11 @@ impl ShapeTraceEntries {
         board.items.insert(trace_id, from_item);
         board.items.insert(start_id, Item::Trace(start_trace));
         board.items.insert(end_id, Item::Trace(end_trace));
-        // ShapeTraceEntries.java:126 and :141 — the two pieces go into `itemList` **directly**,
-        // so their undo nodes are stamped with the current level exactly as `insertItem`'s are.
         board.journal_insert(start_id);
         board.journal_insert(end_id);
-        // ShapeTraceEntries.java:145.
         board.remove_item(trace_id);
     }
 
-    /// Port of the private `ShapeTraceEntries.insertEntryPoint`
-    /// (ShapeTraceEntries.java:728-762): insert into the list, sorted by edge index and then by
-    /// the projection along that edge.
     fn insert_entry_point(
         &mut self,
         trace: ItemId,
@@ -993,7 +784,6 @@ impl ShapeTraceEntries {
                 break;
             }
             if next_edge_index == edge_index {
-                // ShapeTraceEntries.java:739-751.
                 let border_line_count = self.shape.border_line_count();
                 let prev_corner = self.shape.corner_approx(edge_index as usize);
                 let next_corner = if edge_index as usize == border_line_count.saturating_sub(1) {
@@ -1019,8 +809,6 @@ impl ShapeTraceEntries {
         }
     }
 
-    /// Port of the private `ShapeTraceEntries.rotateEntryListAroundAnchor`
-    /// (ShapeTraceEntries.java:765-783).
     fn rotate_entry_list_around_anchor(&mut self, new_anchor: usize, edge_count: i32) {
         // Walk to the tail of the list starting at `new_anchor`.
         let mut current = Some(new_anchor);
@@ -1030,8 +818,6 @@ impl ShapeTraceEntries {
             current = self.entries[index].next;
         }
         self.entries[prev].next = self.list_anchor;
-        // ShapeTraceEntries.java:773-780: everything before the new anchor gets `edgeCount`
-        // added, so it sorts after the middle of `fromSide`.
         let mut current = self.list_anchor;
         while let Some(index) = current {
             if index == new_anchor {
@@ -1045,15 +831,11 @@ impl ShapeTraceEntries {
         self.list_anchor = Some(new_anchor);
     }
 
-    /// The net numbers of the trace an entry belongs to — Java's `entry.trace.netNumbers`.
     fn trace_net_nos(&self, entry_index: usize) -> Vec<i32> {
         self.entries[entry_index].net_nos.clone()
     }
 }
 
-/// Port of the private static `ShapeTraceEntries.netNosEqual`
-/// (ShapeTraceEntries.java:153-170): same length, and every element of the first array occurs in
-/// the second.
 fn nets_equal(net_nos1: &[i32], net_nos2: &[i32]) -> bool {
     if net_nos1.len() != net_nos2.len() {
         return false;
@@ -1061,11 +843,6 @@ fn nets_equal(net_nos1: &[i32], net_nos2: &[i32]) -> bool {
     net_nos1.iter().all(|a| net_nos2.contains(a))
 }
 
-/// `Item.netsEqual(int[])` (Item.java:1189-1200), which `popPiece` and `resort` use where
-/// `netNosEqual` is not what Java calls (ShapeTraceEntries.java:566,569,697,721).
-///
-/// It differs from [`nets_equal`] in one place: `Item.containsNet` rejects a net number `<= 0`
-/// (Item.java:150-152), so two items on net 0 are *not* `netsEqual`.
 fn nets_equal_exact(net_nos1: &[i32], net_nos2: &[i32]) -> bool {
     if net_nos1.len() != net_nos2.len() {
         return false;
