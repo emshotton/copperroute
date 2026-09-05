@@ -3,7 +3,9 @@ use std::collections::BTreeSet;
 use fr_geometry::int_point::IntPoint;
 use fr_geometry::limits::CRIT_INT;
 use fr_geometry::point::Point;
+use fr_geometry::rational_point::RationalPoint;
 use fr_geometry::side::Side;
+use num_bigint::BigInt;
 
 use crate::ids::ItemId;
 
@@ -161,7 +163,17 @@ impl PlanarDelaunayTriangulation {
                 None,
                 Point::Int(IntPoint::new(bounding_coor, -bounding_coor / 2)),
             ),
-            this.new_corner(None, Point::Int(IntPoint::new(1, bounding_coor))),
+            // The third corner's x is a half-integer, not `CRIT_INT`-scaled like the other two,
+            // so it can never coincide with a real (always-integer) design coordinate the way an
+            // on-grid corner could.
+            this.new_corner(
+                None,
+                Point::Rational(RationalPoint::new(
+                    BigInt::from(1),
+                    BigInt::from(bounding_coor) * 2,
+                    BigInt::from(2),
+                )),
+            ),
         ];
 
         let edge_lines = [
@@ -1081,6 +1093,14 @@ mod tests {
             assert_eq!(triangulation.get_edge_lines().len(), expected);
             assert!(deep_validate(&triangulation));
         }
+    }
+
+    #[test]
+    fn a_column_of_points_at_x_equals_one_keeps_every_edge() {
+        let points: Vec<(i32, i32)> = (0..6).map(|y| (1, y * 1000)).collect();
+        let triangulation = triangulate(&points);
+        assert_eq!(triangulation.get_edge_lines().len(), 5);
+        assert!(deep_validate(&triangulation));
     }
 
     #[test]
