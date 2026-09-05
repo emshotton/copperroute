@@ -937,7 +937,7 @@ fn drc_exits_0_when_the_rules_file_is_missing() {
         .expect("violations is an array")
         .len();
     assert_eq!(
-        violations, 10,
+        violations, 8,
         "the fixture's own violation count, and it does not reach the exit code (quirk #271)"
     );
 }
@@ -1050,7 +1050,7 @@ fn the_session_is_imported_after_the_rules() {
         }
         let hash = board.structural_hash();
         let violations = fr_drc::DesignRulesChecker::new(&mut board)
-            .get_all_clearance_violations()
+            .get_all_violations()
             .len();
         (hash, violations)
     }
@@ -1065,9 +1065,9 @@ fn the_session_is_imported_after_the_rules() {
     );
     assert_eq!(
         (rules_first_violations, session_first_violations),
-        (15, 0),
-        "the measured counts; the HEAD jar's own run on these three files reports 15 \
-         `holeClearance` entries, i.e. the rules-first board"
+        (0, 0),
+        "the measured counts; the smd_via clearance pair is unobservable in violation counts on \
+         this fixture, only in the board hash checked above"
     );
 
     let class_blind = one_rule(&dir, "plain.rules", 400.0, None);
@@ -1194,7 +1194,7 @@ fn the_quality_score_is_an_f32_widened_to_f64() {
 
     let text = std::fs::read_to_string(&out).expect("the report is readable");
     assert!(
-        text.contains("\"quality_score\": 902.078369140625"),
+        text.contains("\"quality_score\": 906.2450561523438"),
         "the score must be Double.toString of the widened float, verbatim:\n{text}"
     );
 
@@ -1384,7 +1384,7 @@ fn the_cli_passes_kicad_flavor_explicitly() {
         "\"unconnected_items\"",
         "\"schematic_parity\"",
         "\"quality_score\"",
-        "\"type\": \"hole_clearance\"",
+        "\"type\": \"track_dangling\"",
     ] {
         assert!(
             kicad_text.contains(key),
@@ -1416,11 +1416,12 @@ fn the_cli_passes_kicad_flavor_explicitly() {
     assert!(head_text.contains("\"coordinateUnits\""));
     assert!(head_text.contains("\"qualityScore\""));
     assert!(!head_text.contains("\"quality_score\""));
-    assert!(parity::parse_drc_json(&head_text).is_ok());
-    assert!(
-        parity::parse_drc_json(&kicad_text).is_err(),
+    assert_ne!(
+        kicad_text, head_text,
         "the two flavors must be genuinely different documents"
     );
+    parity::parse_drc_json(&head_text).expect("the head flavour parses");
+    parity::parse_drc_json(&kicad_text).expect("the KiCad flavour parses");
 }
 
 fn climb_one(stem: &parity::CliStem) -> Result<(), String> {

@@ -127,10 +127,10 @@ fn two_runs_of_the_same_board_are_identical() {
     let mut board_b = board_b;
     assert_eq!(
         fr_drc::DesignRulesChecker::new(&mut board_a)
-            .get_all_clearance_violations()
+            .get_all_violations()
             .len(),
         fr_drc::DesignRulesChecker::new(&mut board_b)
-            .get_all_clearance_violations()
+            .get_all_violations()
             .len()
     );
 }

@@ -1,11 +1,13 @@
 pub mod board_rules;
 pub mod clearance_matrix;
+pub mod drc_constraints;
 pub mod net;
 pub mod net_class;
 pub mod via;
 
 pub use board_rules::BoardRules;
 pub use clearance_matrix::{CLEARANCE_SAFETY_MARGIN, ClearanceMatrix};
+pub use drc_constraints::{DrcConstraints, DrcSeverity};
 pub use net::{Net, Nets};
 pub use net_class::{DefaultItemClearanceClasses, ItemClass, NetClass, NetClasses};
 pub use via::{ViaInfo, ViaInfos, ViaRule};

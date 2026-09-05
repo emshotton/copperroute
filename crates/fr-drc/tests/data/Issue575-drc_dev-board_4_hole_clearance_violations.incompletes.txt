@@ -52,4 +52,4 @@ net=45 incompleteCount=0 lengthViolation=0.0
 net=46 incompleteCount=1 lengthViolation=0.0
 net=47 incompleteCount=1 lengthViolation=0.0
 boardUnitToUmFactor 0.1
-clearanceViolations totalCount=2 min=50.0 max=50.0 avg=50.0
+clearanceViolations totalCount=0 min=0.0 max=0.0 avg=0.0

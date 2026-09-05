@@ -1,3 +1,4 @@
 bare-jar     identical
-             P7T9 mode batch and `java -jar <jar> -de … -do …` produced the same
-             SES byte for byte (212 B), so the driver is the jar.
+             mode batch and the bare `-de … -do …` program produced the same SES
+             byte for byte (212 B), so the driver is the program
+             (port lane).

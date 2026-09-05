@@ -42,6 +42,8 @@ pub fn run(args: &DrcArgs, settings_argv: &[String]) -> ExitCode {
 
     load_session_file(args.ses.as_deref(), &mut board, &transform);
 
+    load_kicad_project_file(args.kicad_project.as_deref(), &mut board, &transform);
+
     let coords = DrcCoordinates {
         board_unit: board.communication.unit,
         transform,
@@ -184,6 +186,32 @@ pub fn load_session_file(
     }
 }
 
+pub fn load_kicad_project_file(
+    project: Option<&Path>,
+    board: &mut fr_board::Board,
+    transform: &fr_dsn::CoordinateTransform,
+) {
+    let Some(project) = project else {
+        return;
+    };
+    if !project.exists() {
+        tracing::warn!("KiCad project file not found: {}", project.display());
+        return;
+    }
+    tracing::info!("Loading KiCad project design rules: {}", project.display());
+    let text = match std::fs::read_to_string(project) {
+        Ok(text) => text,
+        Err(error) => {
+            tracing::error!("Failed to read KiCad project file: {error}");
+            return;
+        }
+    };
+    match fr_drc::apply_kicad_project(&text, board, transform) {
+        Ok(()) => tracing::info!("KiCad project design rules loaded"),
+        Err(error) => tracing::error!("Failed to apply KiCad project design rules: {error}"),
+    }
+}
+
 pub fn quality_score(
     board: &mut fr_board::Board,
     input: &BoardFileDetails,
@@ -314,5 +342,52 @@ mod tests {
             report_file_details(Path::new("/a/b/r.json")).format,
             FileFormat::DrcJson
         );
+    }
+
+    #[test]
+    fn a_missing_project_file_leaves_the_board_without_constraints() {
+        let path = parity_free_spike_dsn();
+        let bytes = std::fs::read(&path).expect("the spike DSN is in the repo");
+        let (mut board, transform) = match fr_dsn::read_board(
+            &bytes[..],
+            None,
+            Some("spike"),
+            &fr_dsn::DsnReadOptions::default(),
+        ) {
+            fr_dsn::BoardReadResult::Success {
+                board,
+                coordinate_transform,
+                ..
+            }
+            | fr_dsn::BoardReadResult::OutlineMissing {
+                board,
+                coordinate_transform,
+                ..
+            } => (
+                *board.expect("a board"),
+                coordinate_transform.expect("a transform"),
+            ),
+            other => panic!("{other:?}"),
+        };
+        load_kicad_project_file(
+            Some(Path::new("/nonexistent/x.kicad_pro")),
+            &mut board,
+            &transform,
+        );
+        assert!(board.rules.drc_constraints.is_none());
+        let project = path.with_file_name("stripped.kicad_pro");
+        load_kicad_project_file(Some(&project), &mut board, &transform);
+        assert_eq!(
+            board
+                .rules
+                .drc_constraints
+                .as_ref()
+                .and_then(|c| c.hole_to_hole),
+            Some(2500)
+        );
+    }
+
+    fn parity_free_spike_dsn() -> std::path::PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../benchmark/tests/data/spike/spike.dsn")
     }
 }

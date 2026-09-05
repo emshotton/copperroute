@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use fr_board::Board;
 use fr_drc::report::{DrcCoordinates, DrcReportOptions};
-use fr_drc::{DesignRulesChecker, DrcJsonFlavor};
+use fr_drc::{DesignRulesChecker, DrcJsonFlavor, DrcViolationKind};
 use fr_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
 
 fn corpus() -> Vec<PathBuf> {
@@ -84,34 +84,34 @@ fn every_fixture_reports_without_panicking_and_the_two_sources_add_up() {
         };
 
         let clearance = DesignRulesChecker::new(&mut board)
-            .get_all_clearance_violations()
+            .get_all_violations()
             .len();
 
         let mut drc = DesignRulesChecker::new(&mut board);
         let report = drc.generate_report(&coords, &options);
 
         let of = |kind: &str| report.violations.iter().filter(|v| v.kind == kind).count();
-        let hole_clearance = of("holeClearance");
-        let plain_clearance = of("clearance");
+        let checked_kinds: usize = DrcViolationKind::ALL
+            .iter()
+            .map(|kind| of(kind.kicad_type()))
+            .sum();
         let track_dangling = of("track_dangling");
         let via_dangling = of("via_dangling");
         assert_eq!(
-            hole_clearance + plain_clearance + track_dangling + via_dangling,
+            checked_kinds + track_dangling + via_dangling,
             report.violations.len(),
-            "{name}: violations carries a `type` that is neither a clearance nor a dangling kind \
-             — generateReport's two-source loop mis-routed an entry"
+            "{name}: violations carries a type that is neither a checked kind nor a dangling kind"
         );
         assert_eq!(
-            hole_clearance + plain_clearance,
-            clearance,
-            "{name}: the report's clearance entries do not match getAllClearanceViolations()"
+            checked_kinds, clearance,
+            "{name}: the report's checked entries do not match get_all_violations()"
         );
         assert!(
             report
                 .unconnected_items
                 .iter()
-                .all(|entry| entry.kind == "unconnectedItems"),
-            "{name}: a dangling entry reached unconnectedItems"
+                .all(|entry| entry.kind == "unconnected_items"),
+            "{name}: a dangling entry reached unconnected_items"
         );
 
         let text = drc

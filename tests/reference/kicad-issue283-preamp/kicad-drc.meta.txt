@@ -1,0 +1,9 @@
+kicad-cli    10.0.3
+generated    2026-09-05T05:48:01Z
+dsn          java:fixtures/Issue283-UnconnectedTracesUnderPads/Natural_Tone_Preamp.dsn
+ses          java:fixtures/Issue283-UnconnectedTracesUnderPads/Natural_Tone_Preamp.ses
+kicad_pcb    java:fixtures/Issue283-UnconnectedTracesUnderPads/Natural_Tone_Preamp.kicad_pcb
+kicad_pro    java:fixtures/Issue283-UnconnectedTracesUnderPads/Natural_Tone_Preamp.kicad_pro
+import       {"wires": 1286, "vias": 94, "skipped": []}
+refill       {"zones": 0}
+command      kicad-cli pcb drc --format json --all-track-errors --units mm

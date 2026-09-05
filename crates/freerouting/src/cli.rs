@@ -39,6 +39,8 @@ pub struct RouteArgs {
     #[arg(long)]
     pub kicad_json: Option<PathBuf>,
     #[arg(long)]
+    pub kicad_project: Option<PathBuf>,
+    #[arg(long)]
     pub max_passes: Option<u32>,
     #[arg(long)]
     pub timeout: Option<u64>,
@@ -69,6 +71,8 @@ pub struct DrcArgs {
     pub rules: Option<PathBuf>,
     #[arg(long)]
     pub kicad_json: Option<PathBuf>,
+    #[arg(long)]
+    pub kicad_project: Option<PathBuf>,
     #[arg(short, long)]
     pub output: Option<PathBuf>,
     #[arg(long, value_enum, default_value_t = DrcSchema::Kicad)]

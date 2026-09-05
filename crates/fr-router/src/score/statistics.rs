@@ -2,7 +2,7 @@ use fr_board::items::Item;
 use fr_board::rules::BoardRules;
 use fr_board::structure::{FixedState, Unit};
 use fr_board::{Board, ItemId};
-use fr_drc::{BoardStatisticsClearanceViolations, DesignRulesChecker};
+use fr_drc::{BoardStatisticsClearanceViolations, DesignRulesChecker, DrcViolation};
 use fr_geometry::java_min;
 
 use super::dtos::{
@@ -325,10 +325,14 @@ impl BoardStatistics {
         stats.clearance_violations = if include_clearance_violations {
             let violations = {
                 let mut clearance_drc = DesignRulesChecker::new(board);
-                clearance_drc.get_all_clearance_violations()
+                clearance_drc.get_all_violations()
             };
+            let routing_involved: Vec<DrcViolation> = violations
+                .into_iter()
+                .filter(|violation| violation.involves_routing(board))
+                .collect();
             BoardStatisticsClearanceViolations::from_violations(
-                &violations,
+                &routing_involved,
                 board_unit_to_um_factor,
             )
         } else {

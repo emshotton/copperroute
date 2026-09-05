@@ -24,7 +24,7 @@ pub fn read(
     board: &mut Board,
     ct: &CoordinateTransform,
 ) -> Result<SesImportSummary, DsnError> {
-    let text = read_to_string(input)?;
+    let text = quote_brace_identifiers(&read_to_string(input)?);
     let scanner = DsnScanner::new(&text);
 
     let scale_factor = ct.dsn_to_board(1.0) / f64::from(board.communication.resolution);
@@ -323,4 +323,88 @@ fn read_to_string(mut input: impl Read) -> Result<String, std::io::Error> {
     let mut bytes = Vec::new();
     input.read_to_end(&mut bytes)?;
     Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+/// Quotes an unquoted run that contains `{` or `}`.
+///
+/// `SesWriter` quotes a net name containing `~`, `{` or `}` (KiCad's `~{SIGNAL}` convention for an
+/// active-low net), but the Specctra scanner's identifier character class never included `{`/`}` —
+/// only `~` — so a session written before that quoting rule existed reads back as a lone `~`
+/// followed by characters no keyword or identifier rule matches
+/// (`fixtures/Issue191-processor.Z80/processor.ses`, a real bug-report attachment, has exactly
+/// this for 44 nets). Quoting such a run before scanning makes it one token, the same as the
+/// quoted spelling the current writer already produces for the identical name.
+fn quote_brace_identifiers(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut run = String::new();
+    let mut run_has_brace = false;
+    let mut quote: Option<char> = None;
+    for ch in text.chars() {
+        if let Some(q) = quote {
+            out.push(ch);
+            if ch == q {
+                quote = None;
+            }
+            continue;
+        }
+        match ch {
+            '"' | '\'' => {
+                flush_identifier_run(&mut out, &mut run, &mut run_has_brace);
+                quote = Some(ch);
+                out.push(ch);
+            }
+            '(' | ')' | ' ' | '\t' | '\r' | '\n' => {
+                flush_identifier_run(&mut out, &mut run, &mut run_has_brace);
+                out.push(ch);
+            }
+            '{' | '}' => {
+                run_has_brace = true;
+                run.push(ch);
+            }
+            _ => run.push(ch),
+        }
+    }
+    flush_identifier_run(&mut out, &mut run, &mut run_has_brace);
+    out
+}
+
+fn flush_identifier_run(out: &mut String, run: &mut String, run_has_brace: &mut bool) {
+    if !run.is_empty() {
+        if *run_has_brace {
+            out.push('"');
+            out.push_str(run);
+            out.push('"');
+        } else {
+            out.push_str(run);
+        }
+        run.clear();
+    }
+    *run_has_brace = false;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::quote_brace_identifiers;
+
+    #[test]
+    fn an_unquoted_brace_identifier_is_quoted() {
+        assert_eq!(
+            quote_brace_identifiers("(net ~{WAIT}\n"),
+            "(net \"~{WAIT}\"\n"
+        );
+    }
+
+    #[test]
+    fn an_already_quoted_brace_identifier_is_left_alone() {
+        assert_eq!(
+            quote_brace_identifiers("(net \"~{IM2-EN}\"\n"),
+            "(net \"~{IM2-EN}\"\n"
+        );
+    }
+
+    #[test]
+    fn text_without_braces_is_unchanged() {
+        let text = "(net GND\n  (wire\n    (path F.Cu 250 0 0 1 1)\n  )\n)\n";
+        assert_eq!(quote_brace_identifiers(text), text);
+    }
 }

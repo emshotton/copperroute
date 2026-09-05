@@ -61,9 +61,9 @@ impl DrcJsonFlavor {
 
 impl FlavorKeys {
     fn violation_type<'a>(&'static self, stored: &'a str) -> &'a str {
-        if stored == HEAD.hole_clearance_type {
+        if stored == KICAD.hole_clearance_type {
             self.hole_clearance_type
-        } else if stored == HEAD.unconnected_items_type {
+        } else if stored == KICAD.unconnected_items_type {
             self.unconnected_items_type
         } else {
             stored

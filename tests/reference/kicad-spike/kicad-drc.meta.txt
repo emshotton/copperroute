@@ -1,0 +1,9 @@
+kicad-cli    10.0.3
+generated    2026-09-05T05:47:49Z
+dsn          benchmark/tests/data/spike/spike.dsn
+ses          benchmark/tests/data/spike/routed.ses
+kicad_pcb    benchmark/tests/data/spike/stripped.kicad_pcb
+kicad_pro    benchmark/tests/data/spike/stripped.kicad_pro
+import       {"wires": 381, "vias": 35, "skipped": []}
+refill       {"zones": 0}
+command      kicad-cli pcb drc --format json --all-track-errors --units mm

@@ -11,6 +11,6 @@ pub use statistics::{
     BoardStatistics, BoardStatisticsFanout, java_double_stream_sum, unescape_unicode,
 };
 
-pub use fr_drc::BoardStatisticsClearanceViolations;
+pub use fr_drc::{BoardStatisticsClearanceViolations, DrcViolation};
 
 // NOTE for whoever edits the three `renamed:` lines below: `scripts/audit-port.sh` matches

@@ -61,6 +61,10 @@ pub fn check_drc_schema() -> Value {
         "type": "string",
         "description": "A Specctra .rules file, applied to the board before checking. The CLI spelling is --rules."
     }));
+    object.insert("kicad_project_path".into(), json!({
+        "type": "string",
+        "description": "A KiCad .kicad_pro project whose board design rules (hole-to-hole, edge clearance, via minimums, netclass clearances, rule severities) are applied before checking. The CLI spelling is --kicad-project."
+    }));
     json!({
         "type": "object",
         "properties": properties,

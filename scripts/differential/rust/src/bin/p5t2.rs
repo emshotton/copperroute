@@ -68,16 +68,16 @@ fn main() {
 
 /// Mode 0.
 fn clearance_violations<W: Write>(out: &mut W, board: &mut Board) {
-    let violations = DesignRulesChecker::new(board).get_all_clearance_violations();
+    let violations = DesignRulesChecker::new(board).get_all_violations();
     for violation in &violations {
         writeln!(
             out,
             "V {} {} {} {} {}",
             violation.first_item.0,
-            violation.second_item.0,
-            violation.layer,
-            java_double_to_string(violation.expected_clearance),
-            java_double_to_string(violation.actual_clearance),
+            violation.second_item.map_or(0, |id| id.0),
+            violation.layer.map_or(-1, |layer| layer as i64),
+            java_double_to_string(violation.expected),
+            java_double_to_string(violation.actual),
         )
         .expect("write");
     }
