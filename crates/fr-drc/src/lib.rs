@@ -2,6 +2,7 @@
 
 pub mod airline;
 pub mod checker;
+pub mod checks;
 pub mod constraints;
 pub mod error;
 pub mod net_incompletes;
