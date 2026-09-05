@@ -442,6 +442,38 @@ fn board_dump(board: &Board) -> Vec<String> {
 }
 
 const T16: &str = include_str!("data/p6t16-autoroute-connection.txt");
+const PORT_GOLDEN: &str = include_str!("data/p10-autoroute-connection.txt");
+
+fn port_golden_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/p10-autoroute-connection.txt")
+}
+
+fn port_golden_section(mode: &str) -> Vec<&'static str> {
+    let header = format!("=== mode {mode} ===");
+    let mut rows = Vec::new();
+    let mut inside = false;
+    for line in PORT_GOLDEN.lines() {
+        if line.starts_with("=== mode ") {
+            inside = line == header;
+            continue;
+        }
+        if inside {
+            rows.push(line.trim_end());
+        }
+    }
+    assert!(!rows.is_empty(), "port golden section `{mode}` is empty");
+    rows
+}
+
+fn assert_port_rows_match(mode: &str, actual: &[String]) {
+    if parity::regolden_label().is_some() {
+        parity::regolden_sections(&port_golden_path(), "=== mode ", " ===", &[(mode, actual)]);
+        return;
+    }
+    let expected = port_golden_section(mode);
+    let actual: Vec<&str> = actual.iter().map(|row| row.trim_end()).collect();
+    assert_eq!(actual, expected, "port golden mode `{mode}`");
+}
 
 fn t16_section(mode: &str) -> Vec<&'static str> {
     let header = format!("=== mode {mode} ===");
@@ -1106,7 +1138,7 @@ fn route_steps_one_to_five_match_java_including_the_fifth_boundary() {
 }
 
 #[test]
-fn route_connection_rips_through_javas_cost_model() {
+fn route_connection_rips_through_the_ports_cost_model() {
     let mut rows = Vec::new();
     for regime in REGIMES {
         rows.push(format!("=== {}", regime_name(regime)));
@@ -1140,7 +1172,7 @@ fn route_connection_rips_through_javas_cost_model() {
             rows.extend(board_dump(&board));
         }
     }
-    assert_rows_match("routeripup", &rows);
+    assert_port_rows_match("routeripup", &rows);
 }
 
 #[test]

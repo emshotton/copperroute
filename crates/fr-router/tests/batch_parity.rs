@@ -284,6 +284,15 @@ fn climb(stem: &Stem) {
         return;
     };
     let run = route_stem(stem);
+    if parity::regolden_label().is_some() {
+        std::fs::write(parity::reference(stem.name, "batch.ses"), &run.ses)
+            .expect("the batch.ses reference is writable");
+        parity::write_batch_passes(
+            &parity::reference(stem.name, "batch.passes.jsonl"),
+            &run.passes,
+        );
+        return;
+    }
     rung_a_pass_records(stem, &run, &reference_passes);
     rung_b_item_sets(stem, &run, &reference_passes, &reference_ses);
     rung_c_ses_bytes(stem, &run, &reference_ses);

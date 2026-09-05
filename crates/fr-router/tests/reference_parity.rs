@@ -321,6 +321,10 @@ fn check(stem: &str) -> Option<Ladder> {
     let row = row(stem);
     let expected = read_reference(stem);
     let actual = route_stem(&row);
+    if parity::regolden_label().is_some() {
+        parity::write_router_jsonl(&reference_path(stem), &actual);
+        return None;
+    }
 
     assert_eq!(
         actual.len(),
@@ -611,6 +615,10 @@ fn steps18_pair(stem: &str) -> Option<(Vec<RouterConnectionDoc>, Vec<RouterConne
     }
     let expected = read_steps18_reference(stem);
     let actual = route_stem_with(&row(stem), Steps::OneToEight);
+    if parity::regolden_label().is_some() {
+        parity::write_router_jsonl(&steps18_reference_path(stem), &actual);
+        return None;
+    }
     assert_eq!(
         actual.len(),
         expected.len(),

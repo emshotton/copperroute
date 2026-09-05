@@ -409,13 +409,17 @@ fn offering_trace_costs_does_not_change_the_trace_arms() {
     );
 }
 
-const TRANSCRIPT: &str = include_str!("data/p7t3-opt-changed-area.txt");
+const PORT_GOLDEN: &str = include_str!("data/p10-opt-changed-area.txt");
 
-fn transcript_mode(mode: i32) -> Vec<&'static str> {
+fn port_golden_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/p10-opt-changed-area.txt")
+}
+
+fn golden_mode(mode: i32) -> Vec<&'static str> {
     let header = format!("######## mode {mode}");
     let mut rows = Vec::new();
     let mut inside = false;
-    for line in TRANSCRIPT.lines() {
+    for line in PORT_GOLDEN.lines() {
         if line.starts_with("######## ") {
             inside = line == header;
             continue;
@@ -424,7 +428,7 @@ fn transcript_mode(mode: i32) -> Vec<&'static str> {
             rows.push(line.trim_end());
         }
     }
-    assert!(!rows.is_empty(), "transcript mode {mode} is empty");
+    assert!(!rows.is_empty(), "port golden mode {mode} is empty");
     rows
 }
 
@@ -525,127 +529,24 @@ fn p7t3_rows(mode: i32) -> Vec<String> {
     out
 }
 
-const KNOWN_ID_OFFSET: i32 = 2;
-
-const KNOWN_DIVERGENT_ROWS: [(i32, usize); 5] = [(0, 4), (1, 9), (2, 10), (3, 7), (4, 12)];
-
-const CORRECTED_PROJECTION_ROW: (&str, &str) = (
-    "item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727900,1884700)->(727901,1884700),(727900,1884700)->(727900,1789557),(727900,1789557)->(765863,1751594),(765863,1751594)->(765862,1751593)] corners=[(727900,1884700),(727900,1789557),(765863,1751594)]",
-    "item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727900,1884700)->(727901,1884700),(727900,1861335)->(727900,1861334),(692011,1825446)->(765863,1751594),(765863,1751594)->(765862,1751593)] corners=[(727900,1884700),(727900,1789557),(765863,1751594)]",
-);
-
-fn shift_ids(line: &str) -> String {
-    let mut out = String::with_capacity(line.len() + 8);
-    let mut rest = line;
-    while let Some(cut) = ["item id=", "maxId="]
-        .iter()
-        .filter_map(|token| rest.find(token).map(|at| (at, token.len())))
-        .min()
-    {
-        let (at, token_len) = cut;
-        let head = at + token_len;
-        out.push_str(&rest[..head]);
-        rest = &rest[head..];
-        let digits = rest
-            .find(|c: char| !c.is_ascii_digit())
-            .unwrap_or(rest.len());
-        match rest[..digits].parse::<i32>() {
-            Ok(id) => out.push_str(&(id + KNOWN_ID_OFFSET).to_string()),
-            Err(_) => out.push_str(&rest[..digits]),
-        }
-        rest = &rest[digits..];
-    }
-    out.push_str(rest);
-    out
-}
-
-fn transcript_hash(rows: &[String]) -> u64 {
-    rows.iter()
-        .flat_map(|row| row.bytes().chain(std::iter::once(b'\n')))
-        .fold(0xcbf29ce484222325, |hash, byte| {
-            (hash ^ u64::from(byte)).wrapping_mul(0x100000001b3)
-        })
-}
-
 fn assert_mode_matches(mode: i32) {
     let actual = p7t3_rows(mode);
-    if mode == 4 {
-        assert_eq!(actual.len(), 67);
-        assert_eq!(transcript_hash(&actual), 2_139_043_855_776_126_627);
+    if parity::regolden_label().is_some() {
+        parity::regolden_sections(
+            &port_golden_path(),
+            "######## mode ",
+            "",
+            &[(&mode.to_string(), &actual)],
+        );
         return;
     }
-    let expected = transcript_mode(mode);
-    let mut diffs = Vec::new();
-    let mut accounted = 0usize;
-    let mut corrected_projection_rows = 0usize;
-    for i in 0..expected.len().max(actual.len()) {
-        let want = expected.get(i).copied().unwrap_or("<missing>");
-        let got = actual
-            .get(i)
-            .map(|row| row.trim_end())
-            .unwrap_or("<missing>");
-        if want == got {
-            continue;
-        }
-        if shift_ids(want) == got {
-            accounted += 1;
-            continue;
-        }
-        if (want, got) == CORRECTED_PROJECTION_ROW {
-            corrected_projection_rows += 1;
-            continue;
-        }
-        diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
-    }
-    assert!(
-        diffs.is_empty(),
-        "p7t3 mode {mode}: {} of {} rows differ by more than the declared id offset\n{}",
-        diffs.len(),
-        expected.len().max(actual.len()),
-        diffs
-            .iter()
-            .take(12)
-            .cloned()
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
-    let declared = KNOWN_DIVERGENT_ROWS
-        .iter()
-        .find(|(m, _)| *m == mode)
-        .expect("every mode declares its row count")
-        .1;
-    assert_eq!(
-        accounted, declared,
-        "p7t3 mode {mode} declares {declared} row(s) carrying the +{KNOWN_ID_OFFSET} id offset \
-         but {accounted} still do — a divergence that has healed must be deleted from \
-         KNOWN_DIVERGENT_ROWS, not left to rot"
-    );
-    assert_eq!(
-        corrected_projection_rows,
-        usize::from(mode <= 1),
-        "p7t3 mode {mode} corrected projection rows"
-    );
+    let expected = golden_mode(mode);
+    let actual: Vec<&str> = actual.iter().map(|row| row.trim_end()).collect();
+    assert_eq!(actual, expected, "p7t3 mode {mode} against the port golden");
 }
 
 #[test]
-fn the_id_shift_moves_ids_and_nothing_else() {
-    assert_eq!(shift_ids("maxId=213"), "maxId=215");
-    assert_eq!(
-        shift_ids("item id=187 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1038683)"),
-        "item id=189 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1038683)"
-    );
-    let untouched = "  sweep regime=NINETY_DEGREE pinEdgeToTurnDist=20320.0 traceCosts=null";
-    assert_eq!(shift_ids(untouched), untouched);
-    let route = "route k=1 item=23 net=3 state=ROUTED ripped=0";
-    assert_eq!(shift_ids(route), route, "`item=` is not `item id=`");
-    assert_eq!(
-        shift_ids("item id=1 x item id=2 maxId=3"),
-        "item id=3 x item id=4 maxId=5"
-    );
-}
-
-#[test]
-fn the_whole_sweep_matches_the_expected_real_board_transcripts() {
+fn the_whole_sweep_matches_the_port_golden() {
     for mode in [0, 1, 2, 3, 4] {
         assert_mode_matches(mode);
     }

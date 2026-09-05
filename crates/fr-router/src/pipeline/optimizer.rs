@@ -339,6 +339,16 @@ impl<'a> BatchOptimizer<'a> {
             });
         }
 
+        let scoring = self
+            .settings
+            .scoring
+            .as_ref()
+            .expect("RouterSettings.scoring — BatchOptimizer.java:179 dereferences it");
+        let penalty_of = |statistics: &BoardStatistics, incomplete_count: i32| {
+            let mut counted = statistics.clone();
+            counted.connections.incomplete_count = Some(incomplete_count);
+            counted.routing_penalty(scoring)
+        };
         let mut result = ItemRouteResult::new(
             item,
             board_statistics_before.items.via_count.unwrap_or(0),
@@ -347,6 +357,8 @@ impl<'a> BatchOptimizer<'a> {
             f64::from(board_statistics_after.traces.total_length.unwrap_or(0.0)),
             incomplete_count_before,
             incomplete_count_after,
+            penalty_of(&board_statistics_before, incomplete_count_before),
+            penalty_of(&board_statistics_after, incomplete_count_after),
         );
         let route_improved =
             !stop.is_stop_requested() && !self.search_work_budget_spent() && result.improved();
@@ -429,8 +441,8 @@ pub struct OptimizerPassRecord {
 }
 
 #[must_use]
-pub fn optimizer_near_perfect_exit(score_before_pass: f32, improvement_threshold: f32) -> bool {
-    score_before_pass * (1.0 + improvement_threshold) >= 1000.0
+pub fn optimizer_nothing_to_improve(routing_cost_before_pass: f64) -> bool {
+    routing_cost_before_pass <= 0.0
 }
 
 #[must_use]
@@ -544,9 +556,13 @@ impl BatchOptimizer<'_> {
             }
             current_pass += 1;
 
-            let score_before_pass = BoardStatistics::new(board).normalized_score(scoring);
+            let statistics_before = BoardStatistics::new(board);
+            let score_before_pass = statistics_before.normalized_score(scoring);
+            let cost_before_pass = statistics_before.routing_cost(scoring);
+            let incomplete_before_pass =
+                statistics_before.connections.incomplete_count.unwrap_or(0);
 
-            if optimizer_near_perfect_exit(score_before_pass, improvement_threshold) {
+            if optimizer_nothing_to_improve(cost_before_pass) {
                 break;
             }
 
@@ -572,8 +588,12 @@ impl BatchOptimizer<'_> {
 
             let statistics_after = BoardStatistics::new(board);
             let score_after_pass = statistics_after.normalized_score(scoring);
-            let (pass_improvement, force_another_pass) =
-                self.apply_pass_improvement(score_before_pass, score_after_pass);
+            let (pass_improvement, force_another_pass) = self.apply_pass_improvement(
+                incomplete_before_pass,
+                cost_before_pass,
+                statistics_after.connections.incomplete_count.unwrap_or(0),
+                statistics_after.routing_cost(scoring),
+            );
 
             per_pass.push(OptimizerPassRecord {
                 pass: current_pass,
@@ -625,13 +645,21 @@ impl BatchOptimizer<'_> {
         })
     }
 
-    pub fn apply_pass_improvement(&mut self, score_before: f32, score_after: f32) -> (f64, bool) {
-        let pass_improvement = if score_before > 0.0 {
-            f64::from(score_after - score_before) / f64::from(score_before)
+    pub fn apply_pass_improvement(
+        &mut self,
+        incomplete_before: i32,
+        cost_before: f64,
+        incomplete_after: i32,
+        cost_after: f64,
+    ) -> (f64, bool) {
+        let pass_improvement = if incomplete_after < incomplete_before {
+            1.0
+        } else if cost_before > 0.0 {
+            (cost_before - cost_after) / cost_before
         } else {
             0.0
         };
-        let force_another_pass = if self.use_increased_ripup_costs && score_after <= score_before {
+        let force_another_pass = if self.use_increased_ripup_costs && pass_improvement <= 0.0 {
             self.use_increased_ripup_costs = false;
             true
         } else {

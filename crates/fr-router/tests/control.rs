@@ -3,6 +3,7 @@ use std::path::Path;
 use fr_board::ids::{NetClassId, ViaInfoId};
 use fr_board::prelude::*;
 use fr_board::rules::{ViaInfo, ViaRule};
+use fr_board::structure::Unit;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{IntBox, Shape, TileShape};
 use fr_router::ExpansionCostFactor;
@@ -127,6 +128,20 @@ fn dump_control(board: &Board, net_no: i32, settings: &RouterSettings) -> String
     s
 }
 
+fn without_via_price(row: &str) -> String {
+    row.split(' ')
+        .filter(|field| {
+            !field.starts_with("minNormalViaCost=") && !field.starts_with("minCheapViaCost=")
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn units_per_mm(board: &Board) -> f64 {
+    let resolution = board.communication.resolution.max(1);
+    f64::from(resolution) / Unit::scale(1.0, board.communication.unit, Unit::Mm)
+}
+
 fn transcript() -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/p6t8-autoroute-control.txt");
     std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()))
@@ -218,7 +233,10 @@ fn every_field_of_the_jvm_transcript_is_reproduced() {
                 .and_then(|r| r.split(' ').next())
                 .and_then(|n| n.parse().ok())
                 .expect("a net number");
-            assert_eq!(dump_control(b, net, s), line);
+            assert_eq!(
+                without_via_price(&dump_control(b, net, s)),
+                without_via_price(line)
+            );
             ctrl_rows += 1;
         } else {
             panic!("unparsed transcript row: {line}");
@@ -268,7 +286,13 @@ fn pure_smd_relaxes_attach_and_scales_the_via_cost() {
             pure.attach_smd_allowed,
             "{name}: :263-269 relaxes the routing gate anyway"
         );
-        assert_eq!(pure.min_normal_via_cost, pure_cost, "{name}: :277-281");
+        let _ = (pure_cost, normal_cost);
+        let pure_cost = 0.1 * f64::from(settings.get_via_costs()) * units_per_mm(&board);
+        let normal_cost = f64::from(settings.get_via_costs()) * units_per_mm(&board);
+        assert_eq!(
+            pure.min_normal_via_cost, pure_cost,
+            "{name}: one tenth of a via"
+        );
         assert_eq!(pure.min_cheap_via_cost, 0.8 * pure_cost, "{name}: :283");
 
         assert!(!AutorouteControl::is_pure_smd_net(&board, mixed_net));
@@ -538,7 +562,16 @@ fn the_per_layer_and_flag_copies_track_the_settings() {
     settings.set_bend_cost(2, 0.25);
     let c = control(&board, 0, &settings);
 
-    assert_eq!(c.bend_costs, vec![7.5, settings.get_bend_cost(1), 0.25]);
+    let per_mm = units_per_mm(&board);
+    assert_eq!(
+        c.bend_costs,
+        vec![
+            7.5 * per_mm,
+            settings.get_bend_cost(1) * per_mm,
+            0.25 * per_mm
+        ],
+        "a bend costs its setting in millimetres of trace"
+    );
     assert_eq!(c.vias_allowed, settings.get_vias_allowed());
     assert_eq!(c.with_neckdown, settings.get_automatic_neckdown());
     assert_eq!(c.layer_count, board.get_layer_count());
@@ -561,12 +594,13 @@ fn rebuild_via_info_accumulates_the_radii_it_is_run_over() {
 
     assert_eq!(c.via_radii, radii, "the max is already at its fixed point");
     assert_eq!(c.max_via_radius, max);
-    assert_eq!(
-        c.min_normal_via_cost,
-        3.0 * 400.0,
-        "but the cost tracks the new viaCosts"
+    let expected = 3.0 * f64::from(settings.get_via_costs()) * 0.1 * units_per_mm(&board);
+    assert!(
+        (c.min_normal_via_cost - expected).abs() < 1e-9,
+        "but the cost tracks the new viaCosts: {} vs {expected}",
+        c.min_normal_via_cost
     );
-    assert_eq!(c.min_cheap_via_cost, 0.8 * (3.0 * 400.0));
+    assert!((c.min_cheap_via_cost - 0.8 * expected).abs() < 1e-9);
 }
 
 #[test]
@@ -576,4 +610,92 @@ fn the_trace_costs_are_the_re_exported_settings_type() {
     let costs: Vec<ExpansionCostFactor> = settings.get_trace_costs();
     let c = AutorouteControl::new(&board, 0, &settings, 1, &costs);
     assert_eq!(c.trace_costs, costs);
+}
+
+#[test]
+fn a_via_is_priced_at_via_costs_millimetres_of_trace() {
+    let board = fixture_board("Issue593-BBD_Mars-64.dsn");
+    let mut settings = board_settings(&board);
+    assert!(!AutorouteControl::is_pure_smd_net(&board, 0));
+
+    settings.set_via_costs(50);
+    let mixed = control(&board, 0, &settings);
+    assert_eq!(mixed.min_normal_via_cost, 50.0 * units_per_mm(&board));
+    assert_eq!(mixed.min_cheap_via_cost, 0.8 * 50.0 * units_per_mm(&board));
+
+    settings.set_via_costs(7);
+    assert_eq!(
+        control(&board, 0, &settings).min_normal_via_cost,
+        7.0 * units_per_mm(&board)
+    );
+}
+
+#[test]
+fn the_via_price_does_not_depend_on_the_padstack_radius() {
+    let mars = fixture_board("Issue593-BBD_Mars-64.dsn");
+    let dac = fixture_board("Issue508-DAC2020_bm01.dsn");
+    let mut mars_settings = board_settings(&mars);
+    let mut dac_settings = board_settings(&dac);
+    mars_settings.set_via_costs(50);
+    dac_settings.set_via_costs(50);
+    let mars_ctrl = control(&mars, 0, &mars_settings);
+    let dac_ctrl = control(&dac, 1, &dac_settings);
+    assert_ne!(mars_ctrl.max_via_radius, dac_ctrl.max_via_radius);
+    assert_eq!(units_per_mm(&mars), units_per_mm(&dac));
+    assert_eq!(mars_ctrl.min_normal_via_cost, dac_ctrl.min_normal_via_cost);
+}
+
+#[test]
+fn the_via_price_follows_the_scores_trace_cost() {
+    let board = fixture_board("Issue593-BBD_Mars-64.dsn");
+    let mut settings = board_settings(&board);
+    settings.set_via_costs(50);
+    settings
+        .scoring
+        .as_mut()
+        .expect("RouterSettings::new allocates scoring")
+        .default_preferred_direction_trace_cost = Some(2.0);
+    assert_eq!(
+        control(&board, 0, &settings).min_normal_via_cost,
+        2.0 * 50.0 * units_per_mm(&board)
+    );
+}
+
+#[test]
+fn the_pure_smd_discount_is_a_setting() {
+    let board = fixture_board("Issue593-BBD_Mars-64.dsn");
+    let mut settings = board_settings(&board);
+    settings.set_via_costs(50);
+    assert!(AutorouteControl::is_pure_smd_net(&board, 1));
+    let full_price = 50.0 * units_per_mm(&board);
+
+    assert_eq!(
+        control(&board, 1, &settings).min_normal_via_cost,
+        0.1 * full_price,
+        "unset, the discount is Java's tenth"
+    );
+
+    let scoring = settings
+        .scoring
+        .as_mut()
+        .expect("RouterSettings::new allocates scoring");
+    scoring.smd_via_cost_factor = Some(1.0);
+    assert_eq!(
+        control(&board, 1, &settings).min_normal_via_cost,
+        full_price
+    );
+
+    settings
+        .scoring
+        .as_mut()
+        .expect("RouterSettings::new allocates scoring")
+        .smd_via_cost_factor = Some(0.25);
+    assert_eq!(
+        control(&board, 1, &settings).min_normal_via_cost,
+        0.25 * full_price
+    );
+    assert_eq!(
+        control(&board, 0, &settings).min_normal_via_cost,
+        full_price
+    );
 }

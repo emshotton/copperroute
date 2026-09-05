@@ -72,7 +72,11 @@ fn route(dsn: &std::path::Path) -> String {
         other => panic!("{STEM} did not read: {other:?}"),
     };
 
-    let argv = vec!["-de".to_string(), dsn.display().to_string()];
+    let argv = vec![
+        "-de".to_string(),
+        dsn.display().to_string(),
+        "--router.scoring.via_costs=150".to_string(),
+    ];
     let dsn_source = DsnFileSettings::new(&bytes[..], &file_name);
     let env_map: std::collections::BTreeMap<String, String> = std::env::vars().collect();
     let env_source = EnvironmentVariablesSource::new(&env_map);

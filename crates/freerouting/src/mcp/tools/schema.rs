@@ -205,7 +205,8 @@ fn scoring_schema() -> Value {
             "unrouted_net_penalty": { "type": "number", "description": "Score penalty per connection still in the ratsnest." },
             "clearance_violation_penalty": { "type": "number", "description": "Score penalty per clearance violation left on the board." },
             "bend_penalty": { "type": "number", "description": "Score penalty per bend in a finished trace." },
-            "default_bend_cost": { "type": "number", "description": "Cost added each time the maze search changes direction, where a layer names no bend_cost of its own." }
+            "default_bend_cost": { "type": "number", "description": "Millimetres of trace a bend is worth to the maze search, where a layer names no bend_cost of its own." },
+            "smd_via_cost_factor": { "type": "number", "description": "Multiplier on the via cost for nets whose pins are all surface-mount; 1.0 charges such nets the full via cost." }
         }
     })
 }
@@ -218,7 +219,7 @@ fn layer_schema() -> Value {
         "properties": {
             "routable": { "type": "boolean", "description": "Whether the auto-router may use this layer." },
             "preferred_direction_horizontal": { "type": "boolean", "description": "Whether this layer's preferred trace direction is horizontal." },
-            "bend_cost": { "type": "number", "description": "This layer's bend cost, overriding scoring.default_bend_cost. 0.0 is no penalty; 9.9 strongly avoids bends." }
+            "bend_cost": { "type": "number", "description": "This layer's bend cost in millimetres of trace, overriding scoring.default_bend_cost. 0.0 is no penalty; 100.0 is the ceiling." }
         }
     })
 }

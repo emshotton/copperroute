@@ -287,6 +287,38 @@ old test says "stop" or "reject" and the new one says "go", plus the G2 A/B
 `bend_count` and `cpu_s`. The run-time cost of 1 is the price of an optimizer that works, and W3
 already has the design for paying it in parallel.
 
+## 6. What landed on `via-and-trace-length`
+
+Steps 1–4 of §5 are implemented on the branch that carries this document; 5 and 6 are not.
+
+| finding | change | where |
+|---|---|---|
+| F1 | the optimizer stage exits before a pass only when the routing cost is zero, and its pass-improvement test is the relative reduction of that cost (a completed connection counts as full improvement) | `optimizer.rs` `optimizer_nothing_to_improve`, `apply_pass_improvement` |
+| F2 | a via costs `via_costs` millimetres of trace in the maze, whatever the padstack radius; the pure-SMD tenth is `router.scoring.smd_via_cost_factor` (default `0.1`) | `control.rs` `rebuild_via_info`, `scoring_settings.rs` |
+| F3 | an optimizer item is accepted when the board's routing penalty falls — unrouted and violation penalties plus the cost term, in `f64` | `item_route_result.rs`, `normalized.rs` `routing_penalty` |
+| F4 | `default_bend_cost` and a layer's `bend_cost` mean millimetres of trace per bend; the clamp ceiling is 100. The default stays `0.0` | `control.rs`, `router_settings.rs` |
+| F5 | the board history ranks and restores by the `f64` penalty; the `f32` score stays the manifest's number | `board_history.rs`, `batch_loop.rs` |
+
+**Measured after the change**, defaults only, same three stems and the same cost column as §2:
+
+| stem | before (vias / mm / bends / cost) | after | via 25 | via 100 | bend 10 | bend 25 |
+|---|---|---|---|---|---|---|
+| rpi-splitter | 9 / 112.4 / 11 / 672 | **2 / 108.8 / 11 / 319** | 2 / 108.8 / 12 / 329 | 4 / 115.3 / 12 / 435 | 0 / 128.7 / 19 / 319 | 6 / 109.8 / 7 / 480 |
+| j2-reference | 18 / 379.9 / 38 / 1660 | **18 / 375.2 / 33 / 1605** | same | 18 / 375.1 / 33 / 1605 | 18 / 380.3 / 24 / 1520 | 14 / 376.7 / 28 / 1357 |
+| bm11 (`-mp 2`, 13 incompl.) | 57 / 1613 / 255 / 7013 | **38 / 1653 / 252 / 6073** | 47 / 1609 / 245 / 6409 | 36 / 1691 / 230 / 5791 | 41 / 1623 / 200 / 5673, **14 incompl.** | 56 / 1620 / 210 / 6520, **14 incompl.** |
+
+A scaled bend cost of 10 mm buys 5–7 % of cost on j2 and bm11 but costs bm11 a completion at two passes,
+which is why the default stays at zero: the knob is now meaningful, and the corpus A/B decides the
+default. The run-time cost of F1 is what §2 predicted: j2 0.4 s → 4.4 s, bm11's optimizer stage
+62 s against 16 s without it.
+
+**References.** Every routed reference moved: families B, C and R were re-cut from the port
+(`FR_REGOLDEN=<label>` on `batch_parity`, `reference_parity` and `cli_e2e` writes them; the metas
+are re-stamped by hand), and four JVM transcripts whose routes were priced by radius became port
+goldens (`p10-autoroute-connection.txt`, `p10-opt-changed-area.txt`, `p10-board-history.txt`, and
+the `p9t16-via-optimizer.txt` sections). The maze unit transcripts keep Java's price by setting it
+explicitly in their probe controls, because the mechanics they pin do not depend on it.
+
 ### Reproduction
 
 Release binary from this worktree, `FR_ROUTER_BUDGET=disabled` (the quality lane, ruling AI), one

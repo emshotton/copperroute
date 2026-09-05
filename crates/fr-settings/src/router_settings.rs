@@ -215,7 +215,7 @@ impl RouterSettings {
 
     pub const MIN_BEND_COST: f64 = 0.0;
 
-    pub const MAX_BEND_COST: f64 = 9.9;
+    pub const MAX_BEND_COST: f64 = 100.0;
 
     pub const ALGORITHM_CURRENT: &'static str = "freerouting-router";
 
@@ -310,6 +310,13 @@ impl RouterSettings {
         self.scoring
             .get_or_insert_with(ScoringSettings::default)
             .via_costs = Some(value.max(1));
+    }
+
+    pub fn get_smd_via_cost_factor(&self) -> f64 {
+        self.scoring
+            .as_ref()
+            .and_then(|s| s.smd_via_cost_factor)
+            .unwrap_or(0.1)
     }
 
     pub fn get_plane_via_costs(&self) -> i32 {

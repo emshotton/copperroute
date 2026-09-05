@@ -70,6 +70,7 @@ fn fully_populated() -> RouterSettings {
     sc.clearance_violation_penalty = Some(45.5);
     sc.bend_penalty = Some(46.5);
     sc.default_bend_cost = Some(3.5);
+    sc.smd_via_cost_factor = Some(0.2);
     sc.preferred_direction_trace_cost = Some(vec![7.0, 8.0]);
     sc.undesired_direction_trace_cost = Some(vec![9.0, 10.0]);
 
@@ -125,7 +126,8 @@ const FULLY_POPULATED_JSON: &str = r#"{
     "unrouted_net_penalty": 44.5,
     "clearance_violation_penalty": 45.5,
     "bend_penalty": 46.5,
-    "default_bend_cost": 3.5
+    "default_bend_cost": 3.5,
+    "smd_via_cost_factor": 0.2
   },
   "max_threads": 13,
   "result_json": "/tmp/result.json"
@@ -265,6 +267,7 @@ fn scoring_and_optimizer_key_sets() {
             "clearance_violation_penalty",
             "bend_penalty",
             "default_bend_cost",
+            "smd_via_cost_factor",
         ]
     );
     assert_eq!(

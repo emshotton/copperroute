@@ -263,6 +263,12 @@ impl CopyFields for ScoringSettings {
             mode,
             report,
         );
+        scalar_copy(
+            &self.smd_via_cost_factor,
+            &mut target.smd_via_cost_factor,
+            mode,
+            report,
+        );
     }
 }
 

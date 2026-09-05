@@ -1427,6 +1427,10 @@ fn climb_one(stem: &parity::CliStem) -> Result<(), String> {
     let argv_refs: Vec<&str> = argv.iter().map(String::as_str).collect();
     let (stdout, stderr, code) = parity::run_port_binary(Path::new(PORT), &argv_refs);
 
+    if parity::regolden_label().is_some() {
+        return regolden_one(stem, &dir, &argv, &stdout, &stderr, code);
+    }
+
     let expected_code: i32 =
         std::fs::read_to_string(parity::cli_reference(&stem.name, "route.exit"))
             .map_err(|e| format!("route.exit: {e}"))?
@@ -1496,6 +1500,37 @@ fn climb_one(stem: &parity::CliStem) -> Result<(), String> {
             expected_manifest.to_pretty()
         ));
     }
+    Ok(())
+}
+
+fn regolden_one(
+    stem: &parity::CliStem,
+    dir: &Path,
+    argv: &[String],
+    stdout: &[u8],
+    stderr: &[u8],
+    code: i32,
+) -> Result<(), String> {
+    let reference = |file: &str| parity::cli_reference(&stem.name, file);
+    std::fs::write(reference("route.exit"), format!("{code}\n")).map_err(|e| e.to_string())?;
+    let ses = std::fs::read(dir.join("route.ses")).map_err(|e| format!("route.ses: {e}"))?;
+    std::fs::write(reference("route.ses"), ses).map_err(|e| e.to_string())?;
+    let mut log = stdout.to_vec();
+    log.extend_from_slice(stderr);
+    std::fs::write(reference("route.log"), log).map_err(|e| e.to_string())?;
+
+    let manifest = dir.join("manifest.json");
+    let mut manifest_argv = argv.to_vec();
+    manifest_argv.push(format!("--router.result_json={}", manifest.display()));
+    let manifest_refs: Vec<&str> = manifest_argv.iter().map(String::as_str).collect();
+    let (_, _, manifest_code) = parity::run_port_binary(Path::new(PORT), &manifest_refs);
+    if manifest_code != code {
+        return Err(format!(
+            "exit code {manifest_code} != {code} on the manifest run"
+        ));
+    }
+    let written = std::fs::read(&manifest).map_err(|e| format!("manifest.json: {e}"))?;
+    std::fs::write(reference("manifest.json"), written).map_err(|e| e.to_string())?;
     Ok(())
 }
 

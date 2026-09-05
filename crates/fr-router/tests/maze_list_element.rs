@@ -94,6 +94,9 @@ fn push_for_test(element: MazeListElement) -> bool {
         fanout_min_escape_length: 500.0,
         start_ripup_costs: 1,
         smd_via_relaxation: true,
+        units_per_mm: 1.0,
+        trace_cost_per_mm: 1.0,
+        smd_via_cost_factor: 0.1,
     };
     let mut engine = AutorouteEngine::new(&mut board, 1, false);
     let room = engine.rooms.new_complete_room(

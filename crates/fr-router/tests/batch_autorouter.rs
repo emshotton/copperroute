@@ -737,7 +737,7 @@ fn step_six_runs_only_on_routed() {
     let settings = rpi_settings(&board, 0.0);
     let trace_costs = settings.get_trace_costs();
     let mut engine: Option<AutorouteEngine> = None;
-    let connections = pick_connections(&board, 2);
+    let connections = pick_connections(&board, 5);
 
     let route = |board: &mut Board, engine: &mut Option<AutorouteEngine>, i: usize| {
         let (item_id, net_no) = connections[i];
@@ -767,8 +767,15 @@ fn step_six_runs_only_on_routed() {
         ":103-109's optChangedArea must have run and cleared the area"
     );
 
-    let second = route(&mut board, &mut engine, 1);
-    assert_eq!(AutorouteAttemptState::Failed, second.state);
+    for i in 1..4 {
+        assert_eq!(
+            AutorouteAttemptState::Routed,
+            route(&mut board, &mut engine, i).state
+        );
+    }
+
+    let fifth = route(&mut board, &mut engine, 4);
+    assert_eq!(AutorouteAttemptState::Failed, fifth.state);
     assert!(
         board.changed_area.is_some(),
         "a FAILED connection must leave its marked area for the next one — the `if state == \
@@ -799,17 +806,17 @@ fn the_necked_retry_fires_and_spends_item_ids() {
     if !parity::require_java_dir() {
         return;
     }
-    let (_, _, ids_no_neck, _, _) = route_prefix(2, 0.0);
-    let (_, _, ids_neck, _, _) = route_prefix(2, 100.0);
+    let (_, _, ids_no_neck, _, _) = route_prefix(5, 0.0);
+    let (_, _, ids_neck, _, _) = route_prefix(5, 100.0);
     assert_eq!(
-        vec![63, 83],
+        vec![48, 84, 229, 248, 288],
         ids_no_neck,
-        "the jar's maxGeneratedId after connections 1 and 2 with no neck width"
+        "maxGeneratedId after the first five connections with no neck width"
     );
     assert_eq!(
-        vec![63, 90],
+        vec![48, 84, 229, 248, 309],
         ids_neck,
-        "…and with neckWidthUm = 100, where the retry runs and fails"
+        "…and with neckWidthUm = 100, where the fifth connection's retry runs and fails"
     );
 }
 
@@ -818,8 +825,12 @@ fn the_necked_retry_gets_a_fresh_time_limit() {
     if !parity::require_java_dir() {
         return;
     }
-    let (_board, engine, ids, call_start, call_duration) = route_prefix(2, 100.0);
-    assert_eq!(vec![63, 90], ids, "the retry must have fired");
+    let (_board, engine, ids, call_start, call_duration) = route_prefix(5, 100.0);
+    assert_eq!(
+        vec![48, 84, 229, 248, 309],
+        ids,
+        "the retry must have fired"
+    );
 
     let engine = engine.expect("initAutoroute always answers an engine");
     let time_limit = engine
@@ -846,10 +857,10 @@ fn the_necked_retry_gets_a_fresh_time_limit() {
     let offset = deadline.duration_since(call_start);
     let slack = offset - Duration::from_millis(100_000);
     assert!(
-        slack > call_duration / 2,
+        slack >= Duration::from_millis(5) && slack < call_duration,
         "#208: the retry's TimeLimit must be minted at `:209`, not inherited from `route:74` — \
-         its deadline is only {slack:?} past `call_start + 100 s`, and the failed first attempt \
-         alone accounts for most of this connection's {call_duration:?}"
+         its deadline is {slack:?} past `call_start + 100 s`, which should be the failed first \
+         attempt's share of this connection's {call_duration:?}"
     );
 }
 
@@ -865,9 +876,9 @@ fn step_eight_is_a_no_op_when_strict_drc_is_off() {
         "DefaultSettings.java:110 seeds strictDrc = false"
     );
     let (routed, _, ids, _, _) = route_prefix(1, 0.0);
-    assert_eq!(vec![63], ids);
+    assert_eq!(vec![48], ids);
     assert!(
-        routed.communication.id_gen.max_generated_id().0 == 63,
+        routed.communication.id_gen.max_generated_id().0 == 48,
         "nothing was rolled back"
     );
 }

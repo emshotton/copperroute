@@ -1120,7 +1120,94 @@ pub fn assert_port_lane_provenance(meta: &str, what: &str) {
         .map(str::trim)
         .unwrap_or_else(|| panic!("{what}: a port-lane meta with no `plan 9 task` line:\n{meta}"));
     assert!(
-        task.starts_with('T') && task[1..].chars().all(|c| c.is_ascii_digit()),
-        "{what}: `plan 9 task` is not a task id: {task}"
+        !task.is_empty() && task.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'),
+        "{what}: `plan 9 task` is not a task id or branch label: {task}"
     );
+}
+
+/// The label `FR_REGOLDEN` carries when a test run is asked to rewrite the port goldens it
+/// would otherwise compare against.
+#[must_use]
+pub fn regolden_label() -> Option<String> {
+    std::env::var("FR_REGOLDEN")
+        .ok()
+        .map(|label| label.trim().to_string())
+        .filter(|label| !label.is_empty())
+}
+
+/// Rewrites the named sections of a transcript file, keeping every other section in place and
+/// appending the ones the file does not have yet. A section header is `prefix + name + suffix`.
+///
+/// # Panics
+///
+/// If the file cannot be written.
+pub fn regolden_sections(path: &Path, prefix: &str, suffix: &str, sections: &[(&str, &[String])]) {
+    let existing = std::fs::read_to_string(path).unwrap_or_default();
+    let mut order: Vec<String> = Vec::new();
+    let mut bodies: std::collections::BTreeMap<String, Vec<String>> = Default::default();
+    let mut current: Option<String> = None;
+    for line in existing.lines() {
+        if let Some(name) = line
+            .strip_prefix(prefix)
+            .and_then(|rest| rest.strip_suffix(suffix))
+        {
+            current = Some(name.to_string());
+            order.push(name.to_string());
+            bodies.entry(name.to_string()).or_default();
+            continue;
+        }
+        if let Some(name) = &current {
+            bodies
+                .get_mut(name)
+                .expect("the header inserted it")
+                .push(line.trim_end().to_string());
+        }
+    }
+    for (name, rows) in sections {
+        if !bodies.contains_key(*name) {
+            order.push((*name).to_string());
+        }
+        bodies.insert(
+            (*name).to_string(),
+            rows.iter().map(|row| row.trim_end().to_string()).collect(),
+        );
+    }
+    let mut out = String::new();
+    for name in order {
+        out.push_str(prefix);
+        out.push_str(&name);
+        out.push_str(suffix);
+        out.push('\n');
+        for row in &bodies[&name] {
+            out.push_str(row);
+            out.push('\n');
+        }
+    }
+    std::fs::write(path, out).unwrap_or_else(|e| panic!("cannot write {}: {e}", path.display()));
+}
+
+/// Writes a `batch.passes.jsonl` reference, one document per line.
+///
+/// # Panics
+///
+/// If the file cannot be written.
+pub fn write_batch_passes(path: &Path, passes: &[BatchPassDoc]) {
+    let text: String = passes
+        .iter()
+        .map(|pass| serde_json::to_string(pass).expect("a pass document serialises") + "\n")
+        .collect();
+    std::fs::write(path, text).unwrap_or_else(|e| panic!("cannot write {}: {e}", path.display()));
+}
+
+/// Writes a `router.jsonl` reference, one connection document per line.
+///
+/// # Panics
+///
+/// If the file cannot be written.
+pub fn write_router_jsonl(path: &Path, docs: &[RouterConnectionDoc]) {
+    let text: String = docs
+        .iter()
+        .map(|doc| serde_json::to_string(doc).expect("a connection document serialises") + "\n")
+        .collect();
+    std::fs::write(path, text).unwrap_or_else(|e| panic!("cannot write {}: {e}", path.display()));
 }

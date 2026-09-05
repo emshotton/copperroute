@@ -173,7 +173,7 @@ impl AutorouteBatchLoop {
                 current_pass,
                 stop.is_stop_auto_router_requested(),
             ) {
-                if bh.max_score() > board_score_after {
+                if bh.best_penalty() < board_statistics_after.routing_penalty(scoring) {
                     let Some(board_to_restore) = bh.restore_board(MAXIMUM_TRIES_ON_THE_SAME_BOARD)
                     else {
                         stop.request_stop_auto_router();
@@ -365,9 +365,8 @@ pub fn final_best_board_swap(
     bh: &mut BoardHistory,
     scoring: &ScoringSettings,
 ) -> bool {
-    let current_final_score = BoardStatistics::new(board).normalized_score(scoring);
-    let best_history_score = bh.max_score();
-    if best_history_score > current_final_score {
+    let current_final_penalty = BoardStatistics::new(board).routing_penalty(scoring);
+    if bh.best_penalty() < current_final_penalty {
         if let Some(best_board) = bh.restore_best_board() {
             *board = best_board;
             return true;

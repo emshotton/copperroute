@@ -90,6 +90,9 @@ fn fresh_control(settings: &RouterSettings) -> AutorouteControl {
         fanout_min_escape_length: 500.0,
         start_ripup_costs: 1,
         smd_via_relaxation: settings.get_smd_via_relaxation(),
+        units_per_mm: 1.0,
+        trace_cost_per_mm: 1.0,
+        smd_via_cost_factor: 0.1,
     }
 }
 
