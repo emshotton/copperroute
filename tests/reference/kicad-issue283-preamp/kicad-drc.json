@@ -1,0 +1,902 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-04T22:48:01",
+    "ignored_checks": [
+        {
+            "description": "Courtyards overlap",
+            "key": "courtyards_overlap"
+        },
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "key": "silk_over_copper"
+        },
+        {
+            "description": "Text height out of range",
+            "key": "text_height"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "key": "pth_inside_courtyard"
+        },
+        {
+            "description": "NPTH inside courtyard",
+            "key": "npth_inside_courtyard"
+        },
+        {
+            "description": "Footprint not found in libraries",
+            "key": "lib_footprint_issues"
+        },
+        {
+            "description": "Footprint doesn't match copy in library",
+            "key": "lib_footprint_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning"
+    ],
+    "kicad_version": "10.0.3",
+    "schematic_parity": [],
+    "source": "routed.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [GND] on Top, length 0.7425 mm",
+                    "pos": {
+                        "x": 117.8625,
+                        "y": 102.953
+                    },
+                    "uuid": "2766de93-d7aa-40c8-924e-3cebec2b4fd0"
+                },
+                {
+                    "description": "Track [GND] on Top, length 0.0170 mm",
+                    "pos": {
+                        "x": 117.337,
+                        "y": 101.969
+                    },
+                    "uuid": "38f8a993-f17a-4800-97e6-919227c48f27"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [GND] on Top, length 0.0005 mm",
+                    "pos": {
+                        "x": 127.9125,
+                        "y": 103.478
+                    },
+                    "uuid": "59ad5f71-1143-4031-a534-84f53de079fc"
+                },
+                {
+                    "description": "Pad 4 [GND] of U6 on Top",
+                    "pos": {
+                        "x": 126.862,
+                        "y": 101.51
+                    },
+                    "uuid": "887682fb-0c6e-42dd-a984-ac7519e7e7fe"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 4 [GND] of U7 on Top",
+                    "pos": {
+                        "x": 136.387,
+                        "y": 101.51
+                    },
+                    "uuid": "45a0eed1-5b9c-43cb-9728-1574ec806630"
+                },
+                {
+                    "description": "Track [GND] on Top, length 0.0006 mm",
+                    "pos": {
+                        "x": 137.4374,
+                        "y": 103.478
+                    },
+                    "uuid": "01768aec-0e32-4b36-8427-5e4b9b6ff1ff"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [GND] of C3 on Top",
+                    "pos": {
+                        "x": 152.175,
+                        "y": 97.3139
+                    },
+                    "uuid": "40f7a21f-da45-4e59-ba59-433d798911c1"
+                },
+                {
+                    "description": "Pad 2 [GND] of C4 on Bottom",
+                    "pos": {
+                        "x": 152.175,
+                        "y": 97.3278
+                    },
+                    "uuid": "b79d26af-625a-4c30-8436-2ecbad6c532a"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Via [GND] on Top - Bottom",
+                    "pos": {
+                        "x": 152.175,
+                        "y": 103.3208
+                    },
+                    "uuid": "fb22a3be-c31b-4b68-b107-a52300d31a3d"
+                },
+                {
+                    "description": "Track [GND] on Bottom, length 0.0003 mm",
+                    "pos": {
+                        "x": 154.376,
+                        "y": 103.238
+                    },
+                    "uuid": "1f58dc51-5a26-4f08-9205-373454525d5c"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [GND] on Bottom, length 0.0003 mm",
+                    "pos": {
+                        "x": 154.376,
+                        "y": 109.588
+                    },
+                    "uuid": "9a727da5-a1ed-4bcd-ac5c-ecf6741f9173"
+                },
+                {
+                    "description": "Track [GND] on Top, length 0.0003 mm",
+                    "pos": {
+                        "x": 154.376,
+                        "y": 109.588
+                    },
+                    "uuid": "2724afb8-9ace-407c-aeaf-62ece60a8e2a"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [GND] on Top, length 0.0003 mm",
+                    "pos": {
+                        "x": 154.376,
+                        "y": 109.588
+                    },
+                    "uuid": "2724afb8-9ace-407c-aeaf-62ece60a8e2a"
+                },
+                {
+                    "description": "Track [GND] on Top, length 0.0003 mm",
+                    "pos": {
+                        "x": 145.0764,
+                        "y": 109.588
+                    },
+                    "uuid": "60e37aa8-0ba6-4389-95c8-cec796eb50ea"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 4 [GND] of U4 on Bottom",
+                    "pos": {
+                        "x": 154.3762,
+                        "y": 103.2378
+                    },
+                    "uuid": "cc65c4a9-ba6e-4af9-97a9-8335c996c73e"
+                },
+                {
+                    "description": "Pad 21 [GND] of U1 on Bottom",
+                    "pos": {
+                        "x": 159.0087,
+                        "y": 103.2239
+                    },
+                    "uuid": "58888d95-82b6-4da4-9fb7-8a296ddd7f23"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 4 [GND] of U3 on Top",
+                    "pos": {
+                        "x": 154.3762,
+                        "y": 109.5878
+                    },
+                    "uuid": "66a9fbbc-e9df-4274-b675-03252b0b28bb"
+                },
+                {
+                    "description": "Track [GND] on Bottom, length 0.0003 mm",
+                    "pos": {
+                        "x": 154.376,
+                        "y": 103.238
+                    },
+                    "uuid": "1f58dc51-5a26-4f08-9205-373454525d5c"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 21 [GND] of U2 on Top",
+                    "pos": {
+                        "x": 159.0377,
+                        "y": 109.5739
+                    },
+                    "uuid": "655f44b7-2b9e-4dad-8447-f5ac190e9edb"
+                },
+                {
+                    "description": "Pad 4 [GND] of U3 on Top",
+                    "pos": {
+                        "x": 154.3762,
+                        "y": 109.5878
+                    },
+                    "uuid": "66a9fbbc-e9df-4274-b675-03252b0b28bb"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [GND] on Bottom, length 0.0003 mm",
+                    "pos": {
+                        "x": 169.2625,
+                        "y": 97.3139
+                    },
+                    "uuid": "958ee609-cfff-4f3b-9ccd-99fc55528b25"
+                },
+                {
+                    "description": "Track [GND] on Top, length 0.0005 mm",
+                    "pos": {
+                        "x": 166.1375,
+                        "y": 97.3
+                    },
+                    "uuid": "e037d853-a134-4695-b1d8-bcf623b8ef93"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [GND] on Bottom, length 1.7292 mm",
+                    "pos": {
+                        "x": 170.5127,
+                        "y": 104.4467
+                    },
+                    "uuid": "47e3f799-5a91-4bdc-a22e-4c8cee38f967"
+                },
+                {
+                    "description": "Track [GND] on Bottom, length 1.5478 mm",
+                    "pos": {
+                        "x": 170.2,
+                        "y": 101.9731
+                    },
+                    "uuid": "ded8f4ef-b853-4222-a5b6-3c9ca80f820f"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [GND] on Bottom, length 2.3697 mm",
+                    "pos": {
+                        "x": 169.8942,
+                        "y": 113.8531
+                    },
+                    "uuid": "97543cd1-7192-4dc5-ad0f-ab622efacf1d"
+                },
+                {
+                    "description": "Track [GND] on Top, length 0.0004 mm",
+                    "pos": {
+                        "x": 168.3377,
+                        "y": 109.5743
+                    },
+                    "uuid": "aedd593b-503e-4cb8-9a26-ed1dfaea95f8"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [GND] on Top, length 0.8269 mm",
+                    "pos": {
+                        "x": 173.9014,
+                        "y": 96.8787
+                    },
+                    "uuid": "4ddacc50-b9cf-4931-a5b8-6b0746fe63f0"
+                },
+                {
+                    "description": "Pad 2 [GND] of C1 on Bottom",
+                    "pos": {
+                        "x": 169.2625,
+                        "y": 97.3139
+                    },
+                    "uuid": "7d8060e2-326b-40b1-8ffe-bfb3a37bd12c"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [+5V] of C5 on Top",
+                    "pos": {
+                        "x": 121.5125,
+                        "y": 103.478
+                    },
+                    "uuid": "9cba758b-3e01-40c9-9011-a790a65ba57f"
+                },
+                {
+                    "description": "Pad 8 [+5V] of U5 on Top",
+                    "pos": {
+                        "x": 122.275,
+                        "y": 97.7
+                    },
+                    "uuid": "95e728b7-6d34-4001-9ec4-45822c532201"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [+5V] on Top, length 1.3009 mm",
+                    "pos": {
+                        "x": 129.824,
+                        "y": 98.049
+                    },
+                    "uuid": "fa2d33e5-b46d-48f3-a480-b45139037675"
+                },
+                {
+                    "description": "Pad 8 [+5V] of U6 on Top",
+                    "pos": {
+                        "x": 131.812,
+                        "y": 97.7
+                    },
+                    "uuid": "495b4ad6-625b-45bb-b8c5-638bb7e53482"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [+5V] on Top, length 1.3009 mm",
+                    "pos": {
+                        "x": 129.824,
+                        "y": 98.049
+                    },
+                    "uuid": "fa2d33e5-b46d-48f3-a480-b45139037675"
+                },
+                {
+                    "description": "Track [+5V] on Top, length 0.0003 mm",
+                    "pos": {
+                        "x": 131.0375,
+                        "y": 103.478
+                    },
+                    "uuid": "9ce1e4f3-f6e7-4fcb-82ea-497641e7bc1a"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [+5V] on Top, length 1.8151 mm",
+                    "pos": {
+                        "x": 137.7925,
+                        "y": 97.1145
+                    },
+                    "uuid": "239bafd4-24a0-4a19-9d13-9985a25a8d66"
+                },
+                {
+                    "description": "Track [+5V] on Top, length 3.6680 mm",
+                    "pos": {
+                        "x": 143.9307,
+                        "y": 95.1063
+                    },
+                    "uuid": "5971ebed-d262-439b-a61d-e59d81806cfc"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [+5V] on Top, length 1.8151 mm",
+                    "pos": {
+                        "x": 137.7925,
+                        "y": 97.1145
+                    },
+                    "uuid": "239bafd4-24a0-4a19-9d13-9985a25a8d66"
+                },
+                {
+                    "description": "Track [+5V] on Top, length 0.0005 mm",
+                    "pos": {
+                        "x": 140.562,
+                        "y": 103.478
+                    },
+                    "uuid": "8117b529-78fc-438d-be28-945c03191c3e"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [+5V] of U3 on Top",
+                    "pos": {
+                        "x": 154.3762,
+                        "y": 112.1278
+                    },
+                    "uuid": "bd5afc8d-eb82-4040-87ab-5868bd5626bf"
+                },
+                {
+                    "description": "Track [+5V] on Top, length 1.2451 mm",
+                    "pos": {
+                        "x": 157.1129,
+                        "y": 112.1139
+                    },
+                    "uuid": "b7c24bb9-0229-44e1-a841-c15c4a31e7b1"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [+5V] of C3 on Top",
+                    "pos": {
+                        "x": 155.3,
+                        "y": 97.3139
+                    },
+                    "uuid": "3c0b939f-58d2-4ab9-ad2e-071ee2319d50"
+                },
+                {
+                    "description": "Pad 1 [+5V] of C4 on Bottom",
+                    "pos": {
+                        "x": 155.3,
+                        "y": 97.3278
+                    },
+                    "uuid": "fd55c5cf-cdae-4ee3-97f6-7f02506dcbc6"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [+5V] of C4 on Bottom",
+                    "pos": {
+                        "x": 155.3,
+                        "y": 97.3278
+                    },
+                    "uuid": "fd55c5cf-cdae-4ee3-97f6-7f02506dcbc6"
+                },
+                {
+                    "description": "Track [+5V] on Bottom, length 2.4145 mm",
+                    "pos": {
+                        "x": 156.438,
+                        "y": 100.8401
+                    },
+                    "uuid": "254ab9c1-31f6-433b-b99c-06e6d05131db"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [+5V] on Top, length 1.2451 mm",
+                    "pos": {
+                        "x": 157.1129,
+                        "y": 112.1139
+                    },
+                    "uuid": "b7c24bb9-0229-44e1-a841-c15c4a31e7b1"
+                },
+                {
+                    "description": "Track [+5V] on Bottom, length 0.0003 mm",
+                    "pos": {
+                        "x": 154.3764,
+                        "y": 105.778
+                    },
+                    "uuid": "813a4ba8-1673-4c63-ad15-9b0769fb9e27"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [+5V] on Bottom, length 2.4145 mm",
+                    "pos": {
+                        "x": 156.438,
+                        "y": 100.8401
+                    },
+                    "uuid": "254ab9c1-31f6-433b-b99c-06e6d05131db"
+                },
+                {
+                    "description": "Track [+5V] on Bottom, length 0.0016 mm",
+                    "pos": {
+                        "x": 156.438,
+                        "y": 101.33
+                    },
+                    "uuid": "9abd261c-2657-47b7-a68a-bcc7b55cd8ce"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [+5V] on Bottom, length 0.0016 mm",
+                    "pos": {
+                        "x": 156.438,
+                        "y": 101.33
+                    },
+                    "uuid": "9abd261c-2657-47b7-a68a-bcc7b55cd8ce"
+                },
+                {
+                    "description": "Pad 6 [+5V] of U4 on Bottom",
+                    "pos": {
+                        "x": 154.3762,
+                        "y": 105.7778
+                    },
+                    "uuid": "c062467c-8310-423a-9d5d-a63c69f924e0"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [+5V] on Bottom, length 0.0002 mm",
+                    "pos": {
+                        "x": 159.009,
+                        "y": 100.684
+                    },
+                    "uuid": "68cb1fc7-5afe-4afe-9fac-6300f0c2f0b5"
+                },
+                {
+                    "description": "Track [+5V] on Bottom, length 0.1414 mm",
+                    "pos": {
+                        "x": 162.568,
+                        "y": 100.684
+                    },
+                    "uuid": "31e50c40-7d17-4e71-a5c0-2f1071383430"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [+5V] on Bottom, length 0.0003 mm",
+                    "pos": {
+                        "x": 166.1375,
+                        "y": 97.3139
+                    },
+                    "uuid": "4f4b2adc-c164-4576-a3ae-7fc2a854e640"
+                },
+                {
+                    "description": "Track [+5V] on Bottom, length 0.1414 mm",
+                    "pos": {
+                        "x": 162.568,
+                        "y": 100.684
+                    },
+                    "uuid": "31e50c40-7d17-4e71-a5c0-2f1071383430"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [+5V] on Top, length 3.0519 mm",
+                    "pos": {
+                        "x": 169.262,
+                        "y": 97.2643
+                    },
+                    "uuid": "1515007a-abe5-41e6-b2b9-1575149c2683"
+                },
+                {
+                    "description": "Pad 1 [+5V] of C1 on Bottom",
+                    "pos": {
+                        "x": 166.1375,
+                        "y": 97.3139
+                    },
+                    "uuid": "ae987227-fb6b-4567-a918-8c6c73e2213e"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [+5V] on Top, length 0.0003 mm",
+                    "pos": {
+                        "x": 169.2625,
+                        "y": 97.3
+                    },
+                    "uuid": "2ceb2210-44e8-48a7-984d-955411c1cf80"
+                },
+                {
+                    "description": "Pad 2 [+5V] of U1 on Bottom",
+                    "pos": {
+                        "x": 168.3087,
+                        "y": 100.6839
+                    },
+                    "uuid": "56242055-62bf-4545-a7eb-d40a7131e897"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [+5V] on Top, length 1.3144 mm",
+                    "pos": {
+                        "x": 169.368,
+                        "y": 112.046
+                    },
+                    "uuid": "53919ca1-7e45-4ace-9b8b-cb1d90b29988"
+                },
+                {
+                    "description": "Track [+5V] on Top, length 0.0882 mm",
+                    "pos": {
+                        "x": 170.2624,
+                        "y": 107.173
+                    },
+                    "uuid": "0f08c615-496a-40dc-bc9f-28bc6438ba1b"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [GND] on Top, length 0.0170 mm",
+                    "pos": {
+                        "x": 117.337,
+                        "y": 101.969
+                    },
+                    "uuid": "38f8a993-f17a-4800-97e6-919227c48f27"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [GND] on Top - Bottom",
+                    "pos": {
+                        "x": 166.138,
+                        "y": 102.2978
+                    },
+                    "uuid": "77915586-c0bb-4245-afc3-d53278ef8334"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        },
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [GND] on Top - Bottom",
+                    "pos": {
+                        "x": 152.175,
+                        "y": 103.3208
+                    },
+                    "uuid": "fb22a3be-c31b-4b68-b107-a52300d31a3d"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [GND] on Bottom, length 1.5478 mm",
+                    "pos": {
+                        "x": 170.2,
+                        "y": 101.9731
+                    },
+                    "uuid": "ded8f4ef-b853-4222-a5b6-3c9ca80f820f"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [+5V] on Top, length 0.0882 mm",
+                    "pos": {
+                        "x": 170.2624,
+                        "y": 107.173
+                    },
+                    "uuid": "0f08c615-496a-40dc-bc9f-28bc6438ba1b"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [+5V] on Top, length 1.8151 mm",
+                    "pos": {
+                        "x": 137.7925,
+                        "y": 97.1145
+                    },
+                    "uuid": "239bafd4-24a0-4a19-9d13-9985a25a8d66"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [+5V] on Top, length 1.2451 mm",
+                    "pos": {
+                        "x": 157.1129,
+                        "y": 112.1139
+                    },
+                    "uuid": "b7c24bb9-0229-44e1-a841-c15c4a31e7b1"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [+5V] on Top, length 1.3009 mm",
+                    "pos": {
+                        "x": 129.824,
+                        "y": 98.049
+                    },
+                    "uuid": "fa2d33e5-b46d-48f3-a480-b45139037675"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [+5V] on Bottom, length 2.4145 mm",
+                    "pos": {
+                        "x": 156.438,
+                        "y": 100.8401
+                    },
+                    "uuid": "254ab9c1-31f6-433b-b99c-06e6d05131db"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [+5V] on Bottom, length 0.1414 mm",
+                    "pos": {
+                        "x": 162.568,
+                        "y": 100.684
+                    },
+                    "uuid": "31e50c40-7d17-4e71-a5c0-2f1071383430"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        }
+    ]
+}

@@ -1,0 +1,9 @@
+kicad-cli    10.0.3
+generated    2026-09-05T05:47:53Z
+dsn          java:fixtures/Issue191-processor.Z80/processor.Z80.dsn
+ses          java:fixtures/Issue191-processor.Z80/processor.ses
+kicad_pcb    java:fixtures/Issue191-processor.Z80/processor.Z80.kicad_pcb
+kicad_pro    java:fixtures/Issue191-processor.Z80/processor.Z80.kicad_pro
+import       {"wires": 6273, "vias": 221, "skipped": ["net not found: Net-(U33-Pad2)", "net not found: Net-(U33-Pad5)", "net not found: Net-(U33-Pad6)", "net not found: Net-(U33-Pad9)", "net not found: Net-(U33-Pad12)"]}
+refill       {"zones": 2}
+command      kicad-cli pcb drc --format json --all-track-errors --units mm

@@ -107,7 +107,10 @@ mod tests {
     #[test]
     fn every_kind_round_trips_through_its_kicad_type_string() {
         for kind in DrcViolationKind::ALL {
-            assert_eq!(DrcViolationKind::from_kicad_type(kind.kicad_type()), Some(kind));
+            assert_eq!(
+                DrcViolationKind::from_kicad_type(kind.kicad_type()),
+                Some(kind)
+            );
         }
         assert_eq!(DrcViolationKind::Clearance.kicad_type(), "clearance");
         assert_eq!(DrcViolationKind::HoleToHole.kicad_type(), "hole_to_hole");

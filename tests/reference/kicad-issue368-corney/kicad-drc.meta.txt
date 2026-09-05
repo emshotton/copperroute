@@ -1,0 +1,9 @@
+kicad-cli    10.0.3
+generated    2026-09-05T05:48:04Z
+dsn          java:fixtures/Issue368-CorneyIslandWireless/corney_island_wireless.dsn
+ses          java:fixtures/Issue368-CorneyIslandWireless/corney_island_wireless (no-GUI).ses
+kicad_pcb    java:fixtures/Issue368-CorneyIslandWireless/corney_island_wireless.kicad_pcb
+kicad_pro    java:fixtures/Issue368-CorneyIslandWireless/corney_island_wireless.kicad_pro
+import       {"wires": 0, "vias": 0, "skipped": []}
+refill       {"zones": 0}
+command      kicad-cli pcb drc --format json --all-track-errors --units mm
