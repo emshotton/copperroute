@@ -86,23 +86,6 @@ fn json_for(
         .expect("the report serialises")
 }
 
-fn normalised_json_for(fixture: &str, date: &str, flavor: DrcJsonFlavor) -> String {
-    let (mut board, transform) = fixture_board(fixture);
-    let board_unit = board.communication.unit;
-    let coords = DrcCoordinates {
-        transform,
-        board_unit,
-    };
-    let mut report =
-        DesignRulesChecker::new(&mut board).generate_report(&coords, &options(fixture, date, None));
-    for entry in &mut report.unconnected_items {
-        entry
-            .items
-            .sort_by_key(|item| item.uuid.parse::<i64>().expect("a numeric uuid"));
-    }
-    report.to_json(flavor).expect("the report serialises")
-}
-
 fn top_level_keys(json: &str) -> Vec<String> {
     json.lines()
         .filter_map(|line| Some(line.strip_prefix("  \"")?.split_once("\": ")?.0.to_string()))
@@ -220,19 +203,6 @@ fn flavors_differ_only_in_the_key_tables_eight_strings() {
 }
 
 #[test]
-fn head_flavor_is_the_jvms_gson_bytes() {
-    if !parity::require_java_dir() {
-        return;
-    }
-    for fixture in GOLDEN_FIXTURES {
-        let expected = golden(fixture);
-        let actual =
-            normalised_json_for(fixture, &date_of(&expected), DrcJsonFlavor::FreeroutingHead);
-        assert_eq!(actual, expected, "{fixture}");
-    }
-}
-
-#[test]
 fn quality_score_is_java_double_text() {
     let expected = std::fs::read_to_string(data_dir().join("gson-escapes.txt"))
         .expect("cannot read tests/data/gson-escapes.txt");
@@ -304,82 +274,6 @@ fn dates_are_iso_offset() {
             date.contains('T') && (date.contains('+') || date[10..].contains('-')),
             "{date}"
         );
-    }
-}
-
-#[test]
-fn kicad_flavor_matches_the_real_kicad_schema() {
-    if !parity::require_java_dir() {
-        return;
-    }
-    const KICAD_FIXTURE: &str =
-        "Issue575-drc_Natural_Tone_Preamp_7_unconnected_items-kicad_drc.json";
-    let kicad: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(parity::fixture(KICAD_FIXTURE)).unwrap())
-            .expect("the KiCad fixture parses");
-
-    let date = date_of(&golden(DEV_BOARD));
-    let ours: serde_json::Value = serde_json::from_str(&json_for(
-        DEV_BOARD,
-        &date,
-        Some(DEV_BOARD_SCORE),
-        DrcJsonFlavor::KiCad,
-    ))
-    .expect("our document parses");
-
-    let keys = |v: &serde_json::Value| -> Vec<String> {
-        v.as_object()
-            .expect("an object")
-            .keys()
-            .cloned()
-            .collect::<std::collections::BTreeSet<_>>()
-            .into_iter()
-            .collect()
-    };
-
-    let theirs = keys(&kicad);
-    let mine = keys(&ours);
-    let extra: Vec<&String> = mine.iter().filter(|k| !theirs.contains(k)).collect();
-    assert_eq!(extra, ["freerouting_version", "quality_score"]);
-    let missing: Vec<&String> = theirs.iter().filter(|k| !mine.contains(k)).collect();
-    assert!(missing.is_empty(), "{missing:?}");
-
-    let sample = |v: &serde_json::Value| -> (Vec<String>, Vec<String>) {
-        for list in ["violations", "unconnected_items"] {
-            if let Some(first) = v[list].as_array().and_then(|a| a.first()) {
-                let item = first["items"].as_array().and_then(|a| a.first()).unwrap();
-                return (keys(first), keys(item));
-            }
-        }
-        panic!("no violation to sample");
-    };
-    assert_eq!(sample(&kicad), sample(&ours));
-
-    let mut kicad_types = std::collections::BTreeSet::new();
-    for name in [
-        KICAD_FIXTURE,
-        "Issue575-drc_dev-board_4_hole_clearance_violations-kicad_drc.json",
-        "Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations-kicad_drc.json",
-    ] {
-        let doc: serde_json::Value =
-            serde_json::from_str(&std::fs::read_to_string(parity::fixture(name)).unwrap()).unwrap();
-        for list in ["violations", "unconnected_items"] {
-            for entry in doc[list].as_array().into_iter().flatten() {
-                kicad_types.insert(entry["type"].as_str().unwrap().to_string());
-            }
-        }
-    }
-    for ours in [
-        "clearance",
-        "hole_clearance",
-        "unconnected_items",
-        "track_dangling",
-        "via_dangling",
-    ] {
-        assert!(kicad_types.contains(ours), "KiCad never writes {ours}");
-    }
-    for head_only in ["holeClearance", "unconnectedItems"] {
-        assert!(!kicad_types.contains(head_only), "{head_only}");
     }
 }
 

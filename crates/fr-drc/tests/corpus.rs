@@ -84,7 +84,7 @@ fn every_fixture_reports_without_panicking_and_the_two_sources_add_up() {
         };
 
         let clearance = DesignRulesChecker::new(&mut board)
-            .get_all_clearance_violations()
+            .get_all_violations()
             .len();
 
         let mut drc = DesignRulesChecker::new(&mut board);

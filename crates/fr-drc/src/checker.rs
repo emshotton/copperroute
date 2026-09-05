@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::{Board, ClearanceViolation, Item, ItemId, ItemKind};
 
+use crate::DrcViolation;
 use crate::airline::AirLine;
 use crate::net_incompletes::NetIncompletes;
 use crate::unconnected::{UnconnectedItems, UnconnectedKind};
@@ -20,6 +21,11 @@ impl<'a> DesignRulesChecker<'a> {
             max_connections: 0,
             net_incompletes: None,
         }
+    }
+
+    pub fn get_all_violations(&mut self) -> Vec<DrcViolation> {
+        let constraints = crate::constraints::resolve(self.board);
+        crate::checks::run_all(self.board, &constraints)
     }
 
     pub fn get_all_clearance_violations(&mut self) -> Vec<ClearanceViolation> {

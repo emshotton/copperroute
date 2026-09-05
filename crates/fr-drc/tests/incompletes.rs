@@ -66,7 +66,7 @@ fn empty_board_has_no_incompletes() {
     let mut board = fixture_board("empty_board.dsn");
     assert_eq!(counters(&mut board), (0, 0, 0, 0));
     let mut drc = DesignRulesChecker::new(&mut board);
-    assert!(drc.get_all_clearance_violations().is_empty());
+    assert!(drc.get_all_violations().is_empty());
 }
 
 const FIXTURES: [&str; 4] = [

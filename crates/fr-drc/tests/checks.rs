@@ -5,7 +5,7 @@ use fr_board::DrcConstraints;
 use fr_drc::checks::edge;
 use fr_drc::checks::geometry::{gap_below, hole_of, is_microvia, is_through_hole_pin, item_shapes};
 use fr_drc::checks::{copper, holes, single};
-use fr_drc::{DrcViolation, DrcViolationKind};
+use fr_drc::{DesignRulesChecker, DrcSeverity, DrcViolation, DrcViolationKind};
 use fr_geometry::{IntBox, IntVector, TileShape};
 
 fn boxes(gap: i32) -> (TileShape, TileShape) {
@@ -408,4 +408,58 @@ fn edge_clearance_is_silent_without_a_rule_or_away_from_the_edge() {
     constraints.copper_edge_clearance = Some(5000);
     edge::run(&mut synthetic.board, &constraints, &mut out);
     assert!(out.is_empty(), "{out:?}");
+}
+
+#[test]
+fn get_all_violations_runs_every_family_in_a_deterministic_order() {
+    let mut synthetic = SyntheticBoard::new(&[], 2, 2000);
+    synthetic.trace(&[(0, 0), (10_000, 0)], 0, 300, 1);
+    synthetic.trace(&[(0, 1500), (10_000, 1500)], 0, 500, 2);
+    synthetic.via(30_000, 30_000, 1);
+    synthetic.via(30_000, 34_500, 1);
+    let mut constraints = DrcConstraints::default();
+    constraints
+        .netclass_clearance
+        .insert("Default".to_string(), 2000);
+    constraints
+        .netclass_track_width
+        .insert("Default".to_string(), 1000);
+    constraints.hole_to_hole = Some(2500);
+    synthetic.board.rules.drc_constraints = Some(constraints);
+
+    let first = DesignRulesChecker::new(&mut synthetic.board).get_all_violations();
+    let second = DesignRulesChecker::new(&mut synthetic.board).get_all_violations();
+    assert_eq!(first, second);
+    assert_eq!(
+        kinds(&first),
+        vec![
+            DrcViolationKind::Clearance,
+            DrcViolationKind::HoleToHole,
+            DrcViolationKind::TrackWidth,
+        ]
+    );
+    let ids: Vec<u32> = first.iter().map(|v| v.first_item.0).collect();
+    let mut sorted = ids.clone();
+    sorted.sort_unstable();
+    assert_eq!(ids, sorted, "ordered by first item");
+}
+
+#[test]
+fn an_ignored_severity_drops_the_kind() {
+    let mut synthetic = SyntheticBoard::new(&[], 2, 2000);
+    synthetic.trace(&[(0, 0), (10_000, 0)], 0, 500, 1);
+    synthetic.trace(&[(0, 1500), (10_000, 1500)], 0, 500, 2);
+    let mut constraints = DrcConstraints::default();
+    constraints
+        .netclass_clearance
+        .insert("Default".to_string(), 2000);
+    constraints
+        .severities
+        .insert("clearance".to_string(), DrcSeverity::Ignore);
+    synthetic.board.rules.drc_constraints = Some(constraints);
+    assert!(
+        DesignRulesChecker::new(&mut synthetic.board)
+            .get_all_violations()
+            .is_empty()
+    );
 }
