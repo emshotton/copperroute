@@ -1050,7 +1050,7 @@ fn the_session_is_imported_after_the_rules() {
         }
         let hash = board.structural_hash();
         let violations = fr_drc::DesignRulesChecker::new(&mut board)
-            .get_all_clearance_violations()
+            .get_all_violations()
             .len();
         (hash, violations)
     }

@@ -320,6 +320,10 @@
         "description": "The Specctra DSN document itself, as text. Exactly one of dsn_path and dsn_text is required.",
         "type": "string"
       },
+      "kicad_project_path": {
+        "description": "A KiCad .kicad_pro project whose board design rules (hole-to-hole, edge clearance, via minimums, netclass clearances, rule severities) are applied before checking. The CLI spelling is --kicad-project.",
+        "type": "string"
+      },
       "rules_path": {
         "description": "A Specctra .rules file, applied to the board before checking. The CLI spelling is --rules.",
         "type": "string"

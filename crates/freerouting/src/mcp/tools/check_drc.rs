@@ -1,6 +1,8 @@
 use super::super::jsonrpc::RpcError;
 use super::super::server::{ProgressWriter, State};
-use crate::commands::drc::{load_rules_file, load_session_file, quality_score, report_date};
+use crate::commands::drc::{
+    load_kicad_project_file, load_rules_file, load_session_file, quality_score, report_date,
+};
 use fr_core::CancelToken;
 use fr_drc::DesignRulesChecker;
 use fr_drc::report::{DrcCoordinates, DrcJsonFlavor, DrcReportOptions};
@@ -15,6 +17,7 @@ pub fn run(
 ) -> Result<Value, RpcError> {
     let ses = super::optional_string(&args, "ses_path")?.map(PathBuf::from);
     let rules = super::optional_string(&args, "rules_path")?.map(PathBuf::from);
+    let project = super::optional_string(&args, "kicad_project_path")?.map(PathBuf::from);
     let mut job = super::board_input(&args)?;
 
     let loaded = fr_core::load_board_if_needed(&mut job)
@@ -24,6 +27,7 @@ pub fn run(
 
     load_rules_file(rules.as_deref(), &job, &mut board, &transform);
     load_session_file(ses.as_deref(), &mut board, &transform);
+    load_kicad_project_file(project.as_deref(), &mut board, &transform);
 
     let coords = DrcCoordinates {
         board_unit: board.communication.unit,

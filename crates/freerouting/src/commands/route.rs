@@ -380,6 +380,8 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
 
     job.router_settings = settings.clone();
 
+    super::drc::load_kicad_project_file(args.kicad_project.as_deref(), &mut board, &transform);
+
     // ── 11. the optional session import (`:189-234`) ──────────────────────────────────────────
     import_session_file(args.ses.as_deref(), &mut board, &transform);
 
