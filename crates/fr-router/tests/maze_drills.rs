@@ -243,22 +243,13 @@ fn probe_settings(board: &Board) -> RouterSettings {
 fn probe_control(board: &Board, net_no: i32) -> AutorouteControl {
     let settings = probe_settings(board);
     let trace_costs = settings.get_trace_costs();
-    let mut control = AutorouteControl::new(
+    AutorouteControl::new(
         board,
         net_no,
         &settings,
         settings.get_via_costs(),
         &trace_costs,
-    );
-    price_vias_by_radius(&mut control, settings.get_via_costs());
-    control
-}
-
-/// The JVM transcripts these tests replay were cut with Java's via price, `viaCosts` times the
-/// largest via radius in board units; the maze mechanics under test do not depend on the price.
-fn price_vias_by_radius(control: &mut AutorouteControl, via_costs: i32) {
-    control.min_normal_via_cost = f64::from(via_costs) * control.max_via_radius.max(1.0);
-    control.min_cheap_via_cost = 0.8 * control.min_normal_via_cost;
+    )
 }
 
 fn probe_engine(board: &mut Board, net_no: i32) -> AutorouteEngine {

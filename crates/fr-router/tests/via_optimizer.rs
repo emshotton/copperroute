@@ -251,38 +251,8 @@ fn the_id_split_finds_ids_and_nothing_else() {
     );
 }
 
-fn task_16_golden_path() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/p9t16-via-optimizer.txt")
-}
-
-fn regolden_via_optimizer_sections() -> bool {
-    if parity::regolden_label().is_none() {
-        return false;
-    }
-    let sections: Vec<(String, Vec<String>)> = [
-        ("rpi", 0),
-        ("rpi", 1),
-        ("rpi", 6),
-        ("ecc83", 0),
-        ("ecc83", 1),
-        ("ecc83", 6),
-    ]
-    .into_iter()
-    .map(|(tag, mode)| (format!("{tag} mode {mode}"), p7t4_rows(tag, mode)))
-    .collect();
-    let refs: Vec<(&str, &[String])> = sections
-        .iter()
-        .map(|(name, rows)| (name.as_str(), rows.as_slice()))
-        .collect();
-    parity::regolden_sections(&task_16_golden_path(), "######## ", "", &refs);
-    true
-}
-
 #[test]
 fn the_corrected_runs_match_the_task_16_golden_row_for_row() {
-    if regolden_via_optimizer_sections() {
-        return;
-    }
     for (tag, mode) in [("ecc83", 0), ("ecc83", 1), ("ecc83", 6)] {
         assert_eq!(
             p7t4_rows(tag, mode),
@@ -299,11 +269,15 @@ fn the_corrected_runs_match_the_task_16_golden_row_for_row() {
     }
 }
 
+fn formerly_divergent_vias(tag: &str, mode: i32) -> &'static [u32] {
+    match (tag, mode) {
+        ("rpi", 0) | ("rpi", 6) => &[187, 84],
+        _ => &[],
+    }
+}
+
 #[test]
 fn the_task_16_golden_records_the_jvm_divergence() {
-    if regolden_via_optimizer_sections() {
-        return;
-    }
     for (tag, mode) in [("rpi", 0), ("rpi", 6), ("ecc83", 0)] {
         let ours = p7t4_rows(tag, mode);
         let golden = section(TASK_16_GOLDEN, &format!("{tag} mode {mode}"));
@@ -317,7 +291,35 @@ fn the_task_16_golden_records_the_jvm_divergence() {
                 .collect::<Vec<_>>(),
             "{tag} mode {mode}: the corrected behavior must remain distinct from the JVM"
         );
+
+        let our_vias: Vec<&String> = ours.iter().filter(|r| r.starts_with("via ")).collect();
+        let their_vias: Vec<&&str> = theirs.iter().filter(|r| r.starts_with("via ")).collect();
+        assert_eq!(
+            our_vias.len(),
+            their_vias.len(),
+            "{tag} mode {mode}: via row count"
+        );
+        let mut checked = Vec::new();
+        for (ours_row, theirs_row) in our_vias.iter().zip(&their_vias) {
+            let id = via_id_of(theirs_row);
+            if !formerly_divergent_vias(tag, mode).contains(&id) {
+                continue;
+            }
+            checked.push(id);
+            assert_eq!(split_ids(ours_row).1, split_ids(theirs_row).1);
+        }
+        assert_eq!(
+            checked,
+            formerly_divergent_vias(tag, mode),
+            "{tag} mode {mode}: every formerly divergent via is still in the run"
+        );
     }
+}
+
+fn via_id_of(row: &str) -> u32 {
+    column(row, "id=")
+        .parse()
+        .unwrap_or_else(|_| panic!("an id in {row}"))
 }
 
 fn column<'a>(row: &'a str, key: &str) -> &'a str {
@@ -469,12 +471,9 @@ fn a_refused_move_leaves_the_board_byte_identical() {
 #[test]
 fn the_overload_dispatch_matches_javas_contact_counts() {
     let mut seen = BTreeMap::new();
-    if regolden_via_optimizer_sections() {
-        return;
-    }
     for (tag, mode) in [("rpi", 0), ("ecc83", 0)] {
         let ours = p7t4_rows(tag, mode);
-        let theirs = section(TASK_16_GOLDEN, &format!("{tag} mode {mode}"));
+        let theirs = section(TRANSCRIPT, &format!("{tag} mode {mode}"));
         let ours_vias = ours.iter().filter(|r| r.starts_with("via "));
         let theirs_vias = theirs.iter().filter(|r| r.starts_with("via "));
         let mut rows = 0;
@@ -510,13 +509,15 @@ fn the_overload_dispatch_matches_javas_contact_counts() {
     }
     assert_eq!(
         seen.get("PLANE_OR_FANOUT_ONE_CONTACT").copied(),
-        Some(1),
-        "`rpi` reaches the one-contact arm at :47 once"
+        Some(2),
+        "`rpi` reaches the one-contact arm at :47 twice"
     );
     assert_eq!(
         seen.get("TWO_TRACES").copied(),
-        Some(2),
-        "`rpi` reaches the two-trace arm at :118 twice"
+        Some(4),
+        "`rpi` reaches the two-trace arm at :118 four times. It was TEN across `rpi` and `j2` \
+         until the plan9-t7t8 accept wave retired the `j2` arm — see the retirement record. The \
+         number is asserted rather than the retirement quietly absorbed."
     );
 }
 
@@ -539,12 +540,15 @@ fn a_plane_via_moves_through_overload_a() {
     }
     assert_eq!(
         one_contact.iter().map(|id| id.0).collect::<Vec<_>>(),
-        vec![141],
-        "the routed `rpi` prefix leaves exactly this one-contact via"
+        vec![189, 84],
+        "the routed `rpi` prefix leaves exactly these two one-contact vias"
     );
-    assert_eq!(two_trace.len(), 2);
+    assert_eq!(two_trace.len(), 4);
 
-    for (via_id, expected) in [(ItemId(141), IntPoint::new(1_011_300, 3_485_879))] {
+    for (via_id, expected) in [
+        (ItemId(189), IntPoint::new(932_812, 1_011_224)),
+        (ItemId(84), IntPoint::new(1_016_000, 3_119_161)),
+    ] {
         for label in ["opt_via_location", "opt_plane_or_fanout_via"] {
             let mut scratch = board.clone();
             let before = scratch.structural_hash();

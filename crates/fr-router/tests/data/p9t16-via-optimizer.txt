@@ -1,32 +1,39 @@
 ######## rpi mode 0
 route k=1 item=23 net=3 state=ROUTED ripped=0
-route k=2 item=22 net=2 state=ROUTED ripped=0
+route k=2 item=22 net=2 state=FAILED ripped=0
 route k=3 item=21 net=1 state=FAILED ripped=0
 route k=4 item=16 net=5 state=ROUTED ripped=0
 route k=5 item=10 net=3 state=ROUTED ripped=0
 route k=6 item=7 net=5 state=NO_UNCONNECTED_NETS ripped=0
 route k=7 item=4 net=3 state=NO_UNCONNECTED_NETS ripped=0
-route k=8 item=3 net=2 state=NO_UNCONNECTED_NETS ripped=0
+route k=8 item=3 net=2 state=FAILED ripped=0
 route k=9 item=2 net=1 state=FAILED ripped=0
 sweep regime=FORTYFIVE_DEGREE traceCosts=2
-vias n=3
-via id=141 center=(1006600,3490579) minWidth=75640.0 contacts=[140:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1011300,3485879)
-via id=66 center=(885668,1221669) minWidth=75640.0 contacts=[70:PolylineTrace,65:PolylineTrace] class=TWO_TRACES result=false after=(885668,1221669)
-via id=57 center=(1240335,2968339) minWidth=75640.0 contacts=[65:PolylineTrace,56:PolylineTrace] class=TWO_TRACES result=false after=(1240335,2968339)
-maxId=218
-item id=218 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(1016000,3306000)->(1015999,3306000),(1016000,3306000)->(1016000,3306001),(0,3481817)->(-1,3481817)] corners=[(1016000,3306000),(1016000,3481817)]
-item id=215 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(1016000,3306000)->(1016000,3306001),(0,3481817)->(-1,3481817),(1016000,3481179)->(1006600,3490579),(1011300,3485879)->(1011299,3485878)] corners=[(1016000,3481817),(1015362,3481817),(1011300,3485879)]
-item id=213 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=6 lines=[(1116000,802200)->(1116001,802200),(1116000,802200)->(1116000,784944),(1116000,784944)->(1299561,601383),(1299561,601383)->(1524824,601383),(1524839,621398)->(1524840,621399),(1524839,621398)->(1524840,621398)] corners=[(1116000,802200),(1116000,784944),(1299561,601383),(1504824,601383),(1524839,621398)]
-item id=190 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=8 lines=[(856000,3248876)->(856001,3248876),(856000,3248876)->(856000,3163824),(856000,3163824)->(1193229,2826595),(1193229,2826595)->(1243085,2826595),(1243085,2826595)->(1453717,2615963),(1453717,2615963)->(1453717,889917),(1453717,889917)->(1366000,802200),(1366000,802200)->(1365999,802201)] corners=[(856000,3248876),(856000,3163824),(1193229,2826595),(1243085,2826595),(1453717,2615963),(1453717,889917),(1366000,802200)]
-item id=173 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=7 lines=[(856000,3248876)->(856001,3248876),(856000,3306000)->(856000,3153620),(552098,2887850)->(552083,2887835),(552083,2887835)->(552083,2343913),(581696,2343898)->(581697,2343897),(691296,2204700)->(727900,2204700),(727900,2204700)->(727900,2204699)] corners=[(856000,3248876),(856000,3191752),(552083,2887835),(552083,2373511),(720894,2204700),(727900,2204700)]
-item id=172 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,3153620),(856000,3248876)->(856001,3248876)] corners=[(856000,3306000),(856000,3248876)]
-item id=156 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=6 lines=[(727900,1884700)->(727900,1884699),(727900,1884700)->(721033,1884700),(721033,1884700)->(442883,1606550),(551827,1560677)->(551827,1560676),(442883,1025317)->(666000,802200),(666000,802200)->(665999,802199)] corners=[(727900,1884700),(721033,1884700),(551827,1715494),(551827,916373),(666000,802200)]
-item id=141 type=Via nets=[1] cl=3 fix=UNFIXED center=(1011300,3485879)
-item id=70 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(885668,1221669)->(885668,1221670),(885668,1221669)->(885669,1221668),(916000,1209371)->(916000,802200),(916000,802200)->(915999,802200)] corners=[(885668,1221669),(916000,1191337),(916000,802200)]
-item id=66 type=Via nets=[2] cl=3 fix=UNFIXED center=(885668,1221669)
-item id=65 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=1 hw=20320 n=4 lines=[(1240335,2968339)->(1240336,2968339),(1240335,2968339)->(1240335,1576336),(1240335,1576336)->(885668,1221669),(885668,1221669)->(885667,1221670)] corners=[(1240335,2968339),(1240335,1576336),(885668,1221669)]
-item id=57 type=Via nets=[2] cl=3 fix=UNFIXED center=(1240335,2968339)
-item id=56 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(1096000,3306000)->(1096001,3306000),(1096000,3306000)->(1096000,3112674),(1096000,3112674)->(1240335,2968339),(1240335,2968339)->(1240334,2968338)] corners=[(1096000,3306000),(1096000,3112674),(1240335,2968339)]
+vias n=6
+via id=189 center=(932812,1038683) minWidth=75640.0 contacts=[184:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(932812,1011224)
+via id=98 center=(531001,1221669) minWidth=75640.0 contacts=[100:PolylineTrace,97:PolylineTrace] class=TWO_TRACES result=false after=(531001,1221669)
+via id=93 center=(765863,1751594) minWidth=75640.0 contacts=[97:PolylineTrace,92:PolylineTrace] class=TWO_TRACES result=false after=(765863,1751594)
+via id=84 center=(977281,2968339) minWidth=75640.0 contacts=[83:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1016000,3119161)
+via id=49 center=(531001,2269671) minWidth=75640.0 contacts=[116:PolylineTrace,48:PolylineTrace] class=TWO_TRACES result=false after=(531001,2269671)
+via id=43 center=(531001,2619005) minWidth=75640.0 contacts=[48:PolylineTrace,42:PolylineTrace] class=TWO_TRACES result=false after=(531001,2619005)
+maxId=226
+item id=225 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(1016000,3119161)->(1016001,3119161)] corners=[(1016000,3306000),(1016000,3119161)]
+item id=220 type=PolylineTrace nets=[2] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(916000,802200)->(915999,802200),(916000,802200)->(916000,802201),(0,1003017)->(-1,1003017)] corners=[(916000,802200),(916000,1003017)]
+item id=217 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(916000,802200)->(916000,802201),(-1,1003017)->(0,1003017),(932812,1011224)->(932813,1011225),(932812,1011224)->(932811,1011224)] corners=[(916000,1003017),(924605,1003017),(932812,1011224)]
+item id=189 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1011224)
+item id=188 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=10 lines=[(1365999,802200)->(1366000,802200),(1366000,802200)->(1366000,1069252),(1116684,1069251)->(1116683,1069252),(1366000,1069252)->(955860,1069252),(2075295,0)->(2075294,1),(0,1112080)->(-1,1112080),(955860,1069252)->(552083,1473029),(552083,1473029)->(552083,2269656),(552083,2269656)->(552098,2269671),(552099,2269670)->(552098,2269671)] corners=[(1366000,802200),(1366000,819935),(1116683,1069252),(1006043,1069252),(963215,1112080),(913032,1112080),(552083,1473029),(552083,2269656),(552098,2269671)]
+item id=116 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552098,2269671)->(552098,2269670),(662929,2269671)->(531001,2269671),(531001,2269672)->(531001,2269671)] corners=[(552098,2269671),(531001,2269671)]
+item id=115 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727899,2204699)->(727900,2204700),(727900,2204700)->(662929,2269671),(662929,2269671)->(531001,2269671),(552098,2269671)->(552098,2269670)] corners=[(727900,2204700),(662929,2269671),(552098,2269671)]
+item id=100 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(531001,1221669)->(531002,1221670),(531001,1221669)->(666000,1086670),(666000,1086670)->(666000,802200),(666000,802200)->(665999,802200)] corners=[(531001,1221669),(666000,1086670),(666000,802200)]
+item id=98 type=Via nets=[5] cl=3 fix=UNFIXED center=(531001,1221669)
+item id=97 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=20320 n=4 lines=[(765863,1751594)->(765864,1751594),(765863,1751594)->(765863,1456531),(765863,1456531)->(531001,1221669),(531001,1221669)->(531000,1221670)] corners=[(765863,1751594),(765863,1456531),(531001,1221669)]
+item id=93 type=Via nets=[5] cl=3 fix=UNFIXED center=(765863,1751594)
+item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727900,1884700)->(727901,1884700),(727900,1861335)->(727900,1861334),(692011,1825446)->(765863,1751594),(765863,1751594)->(765862,1751593)] corners=[(727900,1884700),(727900,1789557),(765863,1751594)]
+item id=84 type=Via nets=[1] cl=3 fix=UNFIXED center=(1016000,3119161)
+item id=49 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2269671)
+item id=48 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(531001,2619005)->(531002,2619006),(531001,2340216)->(531001,2269671),(531001,2269671)->(531000,2269671)] corners=[(531001,2619005),(531001,2269671)]
+item id=43 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2619005)
+item id=42 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,2944004),(856000,2944004)->(531001,2619005),(531001,2619005)->(531000,2619006)] corners=[(856000,3306000),(856000,2944004),(531001,2619005)]
 item id=33 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
 item id=32 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
 item id=31 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
@@ -62,33 +69,40 @@ item id=2 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1116000,802200)
 item id=1 type=BoardOutline nets=[] cl=2 fix=SYSTEM_FIXED
 ######## rpi mode 1
 route k=1 item=23 net=3 state=ROUTED ripped=0
-route k=2 item=22 net=2 state=ROUTED ripped=0
+route k=2 item=22 net=2 state=FAILED ripped=0
 route k=3 item=21 net=1 state=FAILED ripped=0
 route k=4 item=16 net=5 state=ROUTED ripped=0
 route k=5 item=10 net=3 state=ROUTED ripped=0
 route k=6 item=7 net=5 state=NO_UNCONNECTED_NETS ripped=0
 route k=7 item=4 net=3 state=NO_UNCONNECTED_NETS ripped=0
-route k=8 item=3 net=2 state=NO_UNCONNECTED_NETS ripped=0
+route k=8 item=3 net=2 state=FAILED ripped=0
 route k=9 item=2 net=1 state=FAILED ripped=0
 sweep regime=FORTYFIVE_DEGREE traceCosts=2
-vias n=3
-via id=141 center=(1006600,3490579) minWidth=75640.0 contacts=[140:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1011300,3485879)
-via id=66 center=(885668,1221669) minWidth=75640.0 contacts=[70:PolylineTrace,65:PolylineTrace] class=TWO_TRACES result=false after=(885668,1221669)
-via id=57 center=(1240335,2968339) minWidth=75640.0 contacts=[65:PolylineTrace,56:PolylineTrace] class=TWO_TRACES result=false after=(1240335,2968339)
-maxId=218
-item id=218 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(1016000,3306000)->(1015999,3306000),(1016000,3306000)->(1016000,3306001),(0,3481817)->(-1,3481817)] corners=[(1016000,3306000),(1016000,3481817)]
-item id=215 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(1016000,3306000)->(1016000,3306001),(0,3481817)->(-1,3481817),(1016000,3481179)->(1006600,3490579),(1011300,3485879)->(1011299,3485878)] corners=[(1016000,3481817),(1015362,3481817),(1011300,3485879)]
-item id=213 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=6 lines=[(1116000,802200)->(1116001,802200),(1116000,802200)->(1116000,784944),(1116000,784944)->(1299561,601383),(1299561,601383)->(1524824,601383),(1524839,621398)->(1524840,621399),(1524839,621398)->(1524840,621398)] corners=[(1116000,802200),(1116000,784944),(1299561,601383),(1504824,601383),(1524839,621398)]
-item id=190 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=8 lines=[(856000,3248876)->(856001,3248876),(856000,3248876)->(856000,3163824),(856000,3163824)->(1193229,2826595),(1193229,2826595)->(1243085,2826595),(1243085,2826595)->(1453717,2615963),(1453717,2615963)->(1453717,889917),(1453717,889917)->(1366000,802200),(1366000,802200)->(1365999,802201)] corners=[(856000,3248876),(856000,3163824),(1193229,2826595),(1243085,2826595),(1453717,2615963),(1453717,889917),(1366000,802200)]
-item id=173 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=7 lines=[(856000,3248876)->(856001,3248876),(856000,3306000)->(856000,3153620),(552098,2887850)->(552083,2887835),(552083,2887835)->(552083,2343913),(581696,2343898)->(581697,2343897),(691296,2204700)->(727900,2204700),(727900,2204700)->(727900,2204699)] corners=[(856000,3248876),(856000,3191752),(552083,2887835),(552083,2373511),(720894,2204700),(727900,2204700)]
-item id=172 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,3153620),(856000,3248876)->(856001,3248876)] corners=[(856000,3306000),(856000,3248876)]
-item id=156 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=6 lines=[(727900,1884700)->(727900,1884699),(727900,1884700)->(721033,1884700),(721033,1884700)->(442883,1606550),(551827,1560677)->(551827,1560676),(442883,1025317)->(666000,802200),(666000,802200)->(665999,802199)] corners=[(727900,1884700),(721033,1884700),(551827,1715494),(551827,916373),(666000,802200)]
-item id=141 type=Via nets=[1] cl=3 fix=UNFIXED center=(1011300,3485879)
-item id=70 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(885668,1221669)->(885668,1221670),(885668,1221669)->(885669,1221668),(916000,1209371)->(916000,802200),(916000,802200)->(915999,802200)] corners=[(885668,1221669),(916000,1191337),(916000,802200)]
-item id=66 type=Via nets=[2] cl=3 fix=UNFIXED center=(885668,1221669)
-item id=65 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=1 hw=20320 n=4 lines=[(1240335,2968339)->(1240336,2968339),(1240335,2968339)->(1240335,1576336),(1240335,1576336)->(885668,1221669),(885668,1221669)->(885667,1221670)] corners=[(1240335,2968339),(1240335,1576336),(885668,1221669)]
-item id=57 type=Via nets=[2] cl=3 fix=UNFIXED center=(1240335,2968339)
-item id=56 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(1096000,3306000)->(1096001,3306000),(1096000,3306000)->(1096000,3112674),(1096000,3112674)->(1240335,2968339),(1240335,2968339)->(1240334,2968338)] corners=[(1096000,3306000),(1096000,3112674),(1240335,2968339)]
+vias n=6
+via id=189 center=(932812,1038683) minWidth=75640.0 contacts=[184:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(932812,1011224)
+via id=98 center=(531001,1221669) minWidth=75640.0 contacts=[100:PolylineTrace,97:PolylineTrace] class=TWO_TRACES result=false after=(531001,1221669)
+via id=93 center=(765863,1751594) minWidth=75640.0 contacts=[97:PolylineTrace,92:PolylineTrace] class=TWO_TRACES result=false after=(765863,1751594)
+via id=84 center=(977281,2968339) minWidth=75640.0 contacts=[83:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1016000,3119161)
+via id=49 center=(531001,2269671) minWidth=75640.0 contacts=[116:PolylineTrace,48:PolylineTrace] class=TWO_TRACES result=false after=(531001,2269671)
+via id=43 center=(531001,2619005) minWidth=75640.0 contacts=[48:PolylineTrace,42:PolylineTrace] class=TWO_TRACES result=false after=(531001,2619005)
+maxId=226
+item id=225 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(1016000,3119161)->(1016001,3119161)] corners=[(1016000,3306000),(1016000,3119161)]
+item id=220 type=PolylineTrace nets=[2] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(916000,802200)->(915999,802200),(916000,802200)->(916000,802201),(0,1003017)->(-1,1003017)] corners=[(916000,802200),(916000,1003017)]
+item id=217 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(916000,802200)->(916000,802201),(-1,1003017)->(0,1003017),(932812,1011224)->(932813,1011225),(932812,1011224)->(932811,1011224)] corners=[(916000,1003017),(924605,1003017),(932812,1011224)]
+item id=189 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1011224)
+item id=188 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=10 lines=[(1365999,802200)->(1366000,802200),(1366000,802200)->(1366000,1069252),(1116684,1069251)->(1116683,1069252),(1366000,1069252)->(955860,1069252),(2075295,0)->(2075294,1),(0,1112080)->(-1,1112080),(955860,1069252)->(552083,1473029),(552083,1473029)->(552083,2269656),(552083,2269656)->(552098,2269671),(552099,2269670)->(552098,2269671)] corners=[(1366000,802200),(1366000,819935),(1116683,1069252),(1006043,1069252),(963215,1112080),(913032,1112080),(552083,1473029),(552083,2269656),(552098,2269671)]
+item id=116 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552098,2269671)->(552098,2269670),(662929,2269671)->(531001,2269671),(531001,2269672)->(531001,2269671)] corners=[(552098,2269671),(531001,2269671)]
+item id=115 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727899,2204699)->(727900,2204700),(727900,2204700)->(662929,2269671),(662929,2269671)->(531001,2269671),(552098,2269671)->(552098,2269670)] corners=[(727900,2204700),(662929,2269671),(552098,2269671)]
+item id=100 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(531001,1221669)->(531002,1221670),(531001,1221669)->(666000,1086670),(666000,1086670)->(666000,802200),(666000,802200)->(665999,802200)] corners=[(531001,1221669),(666000,1086670),(666000,802200)]
+item id=98 type=Via nets=[5] cl=3 fix=UNFIXED center=(531001,1221669)
+item id=97 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=20320 n=4 lines=[(765863,1751594)->(765864,1751594),(765863,1751594)->(765863,1456531),(765863,1456531)->(531001,1221669),(531001,1221669)->(531000,1221670)] corners=[(765863,1751594),(765863,1456531),(531001,1221669)]
+item id=93 type=Via nets=[5] cl=3 fix=UNFIXED center=(765863,1751594)
+item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727900,1884700)->(727901,1884700),(727900,1861335)->(727900,1861334),(692011,1825446)->(765863,1751594),(765863,1751594)->(765862,1751593)] corners=[(727900,1884700),(727900,1789557),(765863,1751594)]
+item id=84 type=Via nets=[1] cl=3 fix=UNFIXED center=(1016000,3119161)
+item id=49 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2269671)
+item id=48 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(531001,2619005)->(531002,2619006),(531001,2340216)->(531001,2269671),(531001,2269671)->(531000,2269671)] corners=[(531001,2619005),(531001,2269671)]
+item id=43 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2619005)
+item id=42 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,2944004),(856000,2944004)->(531001,2619005),(531001,2619005)->(531000,2619006)] corners=[(856000,3306000),(856000,2944004),(531001,2619005)]
 item id=33 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
 item id=32 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
 item id=31 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
@@ -124,33 +138,40 @@ item id=2 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1116000,802200)
 item id=1 type=BoardOutline nets=[] cl=2 fix=SYSTEM_FIXED
 ######## rpi mode 6
 route k=1 item=23 net=3 state=ROUTED ripped=0
-route k=2 item=22 net=2 state=ROUTED ripped=0
+route k=2 item=22 net=2 state=FAILED ripped=0
 route k=3 item=21 net=1 state=FAILED ripped=0
 route k=4 item=16 net=5 state=ROUTED ripped=0
 route k=5 item=10 net=3 state=ROUTED ripped=0
 route k=6 item=7 net=5 state=NO_UNCONNECTED_NETS ripped=0
 route k=7 item=4 net=3 state=NO_UNCONNECTED_NETS ripped=0
-route k=8 item=3 net=2 state=NO_UNCONNECTED_NETS ripped=0
+route k=8 item=3 net=2 state=FAILED ripped=0
 route k=9 item=2 net=1 state=FAILED ripped=0
 sweep regime=FORTYFIVE_DEGREE traceCosts=null
-vias n=3
-via id=141 center=(1006600,3490579) minWidth=75640.0 contacts=[140:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1011300,3485879)
-via id=66 center=(885668,1221669) minWidth=75640.0 contacts=[70:PolylineTrace,65:PolylineTrace] class=TWO_TRACES result=false after=(885668,1221669)
-via id=57 center=(1240335,2968339) minWidth=75640.0 contacts=[65:PolylineTrace,56:PolylineTrace] class=TWO_TRACES result=false after=(1240335,2968339)
-maxId=218
-item id=218 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(1016000,3306000)->(1015999,3306000),(1016000,3306000)->(1016000,3306001),(0,3481817)->(-1,3481817)] corners=[(1016000,3306000),(1016000,3481817)]
-item id=215 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(1016000,3306000)->(1016000,3306001),(0,3481817)->(-1,3481817),(1016000,3481179)->(1006600,3490579),(1011300,3485879)->(1011299,3485878)] corners=[(1016000,3481817),(1015362,3481817),(1011300,3485879)]
-item id=213 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=6 lines=[(1116000,802200)->(1116001,802200),(1116000,802200)->(1116000,784944),(1116000,784944)->(1299561,601383),(1299561,601383)->(1524824,601383),(1524839,621398)->(1524840,621399),(1524839,621398)->(1524840,621398)] corners=[(1116000,802200),(1116000,784944),(1299561,601383),(1504824,601383),(1524839,621398)]
-item id=190 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=8 lines=[(856000,3248876)->(856001,3248876),(856000,3248876)->(856000,3163824),(856000,3163824)->(1193229,2826595),(1193229,2826595)->(1243085,2826595),(1243085,2826595)->(1453717,2615963),(1453717,2615963)->(1453717,889917),(1453717,889917)->(1366000,802200),(1366000,802200)->(1365999,802201)] corners=[(856000,3248876),(856000,3163824),(1193229,2826595),(1243085,2826595),(1453717,2615963),(1453717,889917),(1366000,802200)]
-item id=173 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=7 lines=[(856000,3248876)->(856001,3248876),(856000,3306000)->(856000,3153620),(552098,2887850)->(552083,2887835),(552083,2887835)->(552083,2343913),(581696,2343898)->(581697,2343897),(691296,2204700)->(727900,2204700),(727900,2204700)->(727900,2204699)] corners=[(856000,3248876),(856000,3191752),(552083,2887835),(552083,2373511),(720894,2204700),(727900,2204700)]
-item id=172 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,3153620),(856000,3248876)->(856001,3248876)] corners=[(856000,3306000),(856000,3248876)]
-item id=156 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=6 lines=[(727900,1884700)->(727900,1884699),(727900,1884700)->(721033,1884700),(721033,1884700)->(442883,1606550),(551827,1560677)->(551827,1560676),(442883,1025317)->(666000,802200),(666000,802200)->(665999,802199)] corners=[(727900,1884700),(721033,1884700),(551827,1715494),(551827,916373),(666000,802200)]
-item id=141 type=Via nets=[1] cl=3 fix=UNFIXED center=(1011300,3485879)
-item id=70 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(885668,1221669)->(885668,1221670),(885668,1221669)->(885669,1221668),(916000,1209371)->(916000,802200),(916000,802200)->(915999,802200)] corners=[(885668,1221669),(916000,1191337),(916000,802200)]
-item id=66 type=Via nets=[2] cl=3 fix=UNFIXED center=(885668,1221669)
-item id=65 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=1 hw=20320 n=4 lines=[(1240335,2968339)->(1240336,2968339),(1240335,2968339)->(1240335,1576336),(1240335,1576336)->(885668,1221669),(885668,1221669)->(885667,1221670)] corners=[(1240335,2968339),(1240335,1576336),(885668,1221669)]
-item id=57 type=Via nets=[2] cl=3 fix=UNFIXED center=(1240335,2968339)
-item id=56 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(1096000,3306000)->(1096001,3306000),(1096000,3306000)->(1096000,3112674),(1096000,3112674)->(1240335,2968339),(1240335,2968339)->(1240334,2968338)] corners=[(1096000,3306000),(1096000,3112674),(1240335,2968339)]
+vias n=6
+via id=189 center=(932812,1038683) minWidth=75640.0 contacts=[184:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(932812,1011224)
+via id=98 center=(531001,1221669) minWidth=75640.0 contacts=[100:PolylineTrace,97:PolylineTrace] class=TWO_TRACES result=false after=(531001,1221669)
+via id=93 center=(765863,1751594) minWidth=75640.0 contacts=[97:PolylineTrace,92:PolylineTrace] class=TWO_TRACES result=false after=(765863,1751594)
+via id=84 center=(977281,2968339) minWidth=75640.0 contacts=[83:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1016000,3119161)
+via id=49 center=(531001,2269671) minWidth=75640.0 contacts=[116:PolylineTrace,48:PolylineTrace] class=TWO_TRACES result=false after=(531001,2269671)
+via id=43 center=(531001,2619005) minWidth=75640.0 contacts=[48:PolylineTrace,42:PolylineTrace] class=TWO_TRACES result=false after=(531001,2619005)
+maxId=226
+item id=225 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(1016000,3119161)->(1016001,3119161)] corners=[(1016000,3306000),(1016000,3119161)]
+item id=220 type=PolylineTrace nets=[2] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(916000,802200)->(915999,802200),(916000,802200)->(916000,802201),(0,1003017)->(-1,1003017)] corners=[(916000,802200),(916000,1003017)]
+item id=217 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(916000,802200)->(916000,802201),(-1,1003017)->(0,1003017),(932812,1011224)->(932813,1011225),(932812,1011224)->(932811,1011224)] corners=[(916000,1003017),(924605,1003017),(932812,1011224)]
+item id=189 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1011224)
+item id=188 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=10 lines=[(1365999,802200)->(1366000,802200),(1366000,802200)->(1366000,1069252),(1116684,1069251)->(1116683,1069252),(1366000,1069252)->(955860,1069252),(2075295,0)->(2075294,1),(0,1112080)->(-1,1112080),(955860,1069252)->(552083,1473029),(552083,1473029)->(552083,2269656),(552083,2269656)->(552098,2269671),(552099,2269670)->(552098,2269671)] corners=[(1366000,802200),(1366000,819935),(1116683,1069252),(1006043,1069252),(963215,1112080),(913032,1112080),(552083,1473029),(552083,2269656),(552098,2269671)]
+item id=116 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552098,2269671)->(552098,2269670),(662929,2269671)->(531001,2269671),(531001,2269672)->(531001,2269671)] corners=[(552098,2269671),(531001,2269671)]
+item id=115 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727899,2204699)->(727900,2204700),(727900,2204700)->(662929,2269671),(662929,2269671)->(531001,2269671),(552098,2269671)->(552098,2269670)] corners=[(727900,2204700),(662929,2269671),(552098,2269671)]
+item id=100 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(531001,1221669)->(531002,1221670),(531001,1221669)->(666000,1086670),(666000,1086670)->(666000,802200),(666000,802200)->(665999,802200)] corners=[(531001,1221669),(666000,1086670),(666000,802200)]
+item id=98 type=Via nets=[5] cl=3 fix=UNFIXED center=(531001,1221669)
+item id=97 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=20320 n=4 lines=[(765863,1751594)->(765864,1751594),(765863,1751594)->(765863,1456531),(765863,1456531)->(531001,1221669),(531001,1221669)->(531000,1221670)] corners=[(765863,1751594),(765863,1456531),(531001,1221669)]
+item id=93 type=Via nets=[5] cl=3 fix=UNFIXED center=(765863,1751594)
+item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727900,1884700)->(727901,1884700),(727900,1861335)->(727900,1861334),(692011,1825446)->(765863,1751594),(765863,1751594)->(765862,1751593)] corners=[(727900,1884700),(727900,1789557),(765863,1751594)]
+item id=84 type=Via nets=[1] cl=3 fix=UNFIXED center=(1016000,3119161)
+item id=49 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2269671)
+item id=48 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(531001,2619005)->(531002,2619006),(531001,2340216)->(531001,2269671),(531001,2269671)->(531000,2269671)] corners=[(531001,2619005),(531001,2269671)]
+item id=43 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2619005)
+item id=42 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,2944004),(856000,2944004)->(531001,2619005),(531001,2619005)->(531000,2619006)] corners=[(856000,3306000),(856000,2944004),(531001,2619005)]
 item id=33 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
 item id=32 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
 item id=31 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
@@ -1325,163 +1346,158 @@ item id=3 type=Pin nets=[2] cl=1 fix=UNFIXED center=(1416050,-996950)
 item id=2 type=ConductionArea nets=[1] cl=1 fix=SYSTEM_FIXED
 item id=1 type=BoardOutline nets=[] cl=1 fix=SYSTEM_FIXED
 ######## rpi mode 4
-repB id=141 k=0 r=0 to=(1006600,3481179) connect=(1016000,3481179) -> false
-repB id=141 k=0 r=1 to=(1006600,3481179) connect=(1016000,3481179) -> false
-repB id=141 k=1 r=0 to=(1016000,3490579) connect=(1016000,3481179) -> true
-repB id=141 k=1 r=1 to=(1016000,3490579) connect=(1016000,3481179) -> true
-repB id=141 k=2 r=0 to=(1006600,3481179) connect=(1016000,3481179) -> false
-repB id=141 k=2 r=1 to=(1006600,3481179) connect=(1016000,3481179) -> false
-repB id=141 k=3 r=0 to=(1016000,3490579) connect=(1016000,3481179) -> true
-repB id=141 k=3 r=1 to=(1016000,3490579) connect=(1016000,3481179) -> true
-repB id=141 k=4 r=0 to=(1016000,3481179) connect=(1016000,3481179) -> false
-repB id=141 k=4 r=1 to=(1016000,3481179) connect=(1016000,3481179) -> false
-repB id=141 k=5 r=0 to=(1016000,3481179) connect=(1016000,3481179) -> false
-repB id=141 k=5 r=1 to=(1016000,3481179) connect=(1016000,3481179) -> false
-repB id=141 k=6 r=0 to=(1006600,3490579) connect=(1016000,3481179) -> false
-repB id=141 k=6 r=1 to=(1006600,3490579) connect=(1016000,3481179) -> false
-repB id=141 k=7 r=0 to=(1006601,3490579) connect=(1016000,3481179) -> true
-repB id=141 k=7 r=1 to=(1006601,3490579) connect=(1016000,3481179) -> true
-repB id=141 k=8 r=0 to=(1006601,3490580) connect=(1016000,3481179) -> true
-repB id=141 k=8 r=1 to=(1006601,3490580) connect=(1016000,3481179) -> true
-repB id=141 k=9 r=0 to=(1007600,3491579) connect=(1016000,3481179) -> true
-repB id=141 k=9 r=1 to=(1007600,3491579) connect=(1016000,3481179) -> true
-repB id=141 k=10 r=0 to=(1005600,3490579) connect=(1016000,3481179) -> false
-repB id=141 k=10 r=1 to=(1005600,3490579) connect=(1016000,3481179) -> false
-repB id=66 k=0 r=0 to=(885668,1191337) connect=(916000,1191337) -> true
-repB id=66 k=0 r=1 to=(885668,1191337) connect=(1240335,1576336) -> true
-repB id=66 k=1 r=0 to=(916000,1221669) connect=(916000,1191337) -> true
-repB id=66 k=1 r=1 to=(916000,1221669) connect=(1240335,1576336) -> true
-repB id=66 k=2 r=0 to=(885668,1576336) connect=(916000,1191337) -> false
-repB id=66 k=2 r=1 to=(885668,1576336) connect=(1240335,1576336) -> false
-repB id=66 k=3 r=0 to=(1240335,1221669) connect=(916000,1191337) -> true
-repB id=66 k=3 r=1 to=(1240335,1221669) connect=(1240335,1576336) -> true
-repB id=66 k=4 r=0 to=(916000,1191337) connect=(916000,1191337) -> false
-repB id=66 k=4 r=1 to=(916000,1191337) connect=(1240335,1576336) -> true
-repB id=66 k=5 r=0 to=(1240335,1576336) connect=(916000,1191337) -> false
-repB id=66 k=5 r=1 to=(1240335,1576336) connect=(1240335,1576336) -> false
-repB id=66 k=6 r=0 to=(885668,1221669) connect=(916000,1191337) -> false
-repB id=66 k=6 r=1 to=(885668,1221669) connect=(1240335,1576336) -> false
-repB id=66 k=7 r=0 to=(885669,1221669) connect=(916000,1191337) -> true
-repB id=66 k=7 r=1 to=(885669,1221669) connect=(1240335,1576336) -> true
-repB id=66 k=8 r=0 to=(885669,1221670) connect=(916000,1191337) -> true
-repB id=66 k=8 r=1 to=(885669,1221670) connect=(1240335,1576336) -> true
-repB id=66 k=9 r=0 to=(886668,1222669) connect=(916000,1191337) -> true
-repB id=66 k=9 r=1 to=(886668,1222669) connect=(1240335,1576336) -> true
-repB id=66 k=10 r=0 to=(884668,1221669) connect=(916000,1191337) -> true
-repB id=66 k=10 r=1 to=(884668,1221669) connect=(1240335,1576336) -> true
-repB id=57 k=0 r=0 to=(1240335,1576336) connect=(1240335,1576336) -> false
-repB id=57 k=0 r=1 to=(1240335,1576336) connect=(1096000,3112674) -> false
-repB id=57 k=1 r=0 to=(1240335,2968339) connect=(1240335,1576336) -> false
-repB id=57 k=1 r=1 to=(1240335,2968339) connect=(1096000,3112674) -> false
-repB id=57 k=2 r=0 to=(1240335,3112674) connect=(1240335,1576336) -> true
-repB id=57 k=2 r=1 to=(1240335,3112674) connect=(1096000,3112674) -> true
-repB id=57 k=3 r=0 to=(1096000,2968339) connect=(1240335,1576336) -> false
-repB id=57 k=3 r=1 to=(1096000,2968339) connect=(1096000,3112674) -> false
-repB id=57 k=4 r=0 to=(1240335,1576336) connect=(1240335,1576336) -> false
-repB id=57 k=4 r=1 to=(1240335,1576336) connect=(1096000,3112674) -> false
-repB id=57 k=5 r=0 to=(1096000,3112674) connect=(1240335,1576336) -> false
-repB id=57 k=5 r=1 to=(1096000,3112674) connect=(1096000,3112674) -> false
-repB id=57 k=6 r=0 to=(1240335,2968339) connect=(1240335,1576336) -> false
-repB id=57 k=6 r=1 to=(1240335,2968339) connect=(1096000,3112674) -> false
-repB id=57 k=7 r=0 to=(1240336,2968339) connect=(1240335,1576336) -> true
-repB id=57 k=7 r=1 to=(1240336,2968339) connect=(1096000,3112674) -> true
-repB id=57 k=8 r=0 to=(1240336,2968340) connect=(1240335,1576336) -> true
-repB id=57 k=8 r=1 to=(1240336,2968340) connect=(1096000,3112674) -> true
-repB id=57 k=9 r=0 to=(1241335,2969339) connect=(1240335,1576336) -> true
-repB id=57 k=9 r=1 to=(1241335,2969339) connect=(1096000,3112674) -> true
-repB id=57 k=10 r=0 to=(1239335,2968339) connect=(1240335,1576336) -> true
-repB id=57 k=10 r=1 to=(1239335,2968339) connect=(1096000,3112674) -> true
+repB id=189 k=0 r=0 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=0 r=1 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=1 r=0 to=(932812,1038683) connect=(932812,819012) -> false
+repB id=189 k=1 r=1 to=(932812,1038683) connect=(932812,819012) -> false
+repB id=189 k=2 r=0 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=2 r=1 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=3 r=0 to=(932812,1038683) connect=(932812,819012) -> false
+repB id=189 k=3 r=1 to=(932812,1038683) connect=(932812,819012) -> false
+repB id=189 k=4 r=0 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=4 r=1 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=5 r=0 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=5 r=1 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=6 r=0 to=(932812,1038683) connect=(932812,819012) -> false
+repB id=189 k=6 r=1 to=(932812,1038683) connect=(932812,819012) -> false
+repB id=189 k=7 r=0 to=(932813,1038683) connect=(932812,819012) -> false
+repB id=189 k=7 r=1 to=(932813,1038683) connect=(932812,819012) -> false
+repB id=189 k=8 r=0 to=(932813,1038684) connect=(932812,819012) -> false
+repB id=189 k=8 r=1 to=(932813,1038684) connect=(932812,819012) -> false
+repB id=189 k=9 r=0 to=(933812,1039683) connect=(932812,819012) -> false
+repB id=189 k=9 r=1 to=(933812,1039683) connect=(932812,819012) -> false
+repB id=189 k=10 r=0 to=(931812,1038683) connect=(932812,819012) -> true
+repB id=189 k=10 r=1 to=(931812,1038683) connect=(932812,819012) -> true
+repB id=98 k=0 r=0 to=(531001,1086670) connect=(666000,1086670) -> true
+repB id=98 k=0 r=1 to=(531001,1086670) connect=(765863,1456531) -> true
+repB id=98 k=1 r=0 to=(666000,1221669) connect=(666000,1086670) -> true
+repB id=98 k=1 r=1 to=(666000,1221669) connect=(765863,1456531) -> true
+repB id=98 k=2 r=0 to=(531001,1456531) connect=(666000,1086670) -> false
+repB id=98 k=2 r=1 to=(531001,1456531) connect=(765863,1456531) -> false
+repB id=98 k=3 r=0 to=(765863,1221669) connect=(666000,1086670) -> false
+repB id=98 k=3 r=1 to=(765863,1221669) connect=(765863,1456531) -> false
+repB id=98 k=4 r=0 to=(666000,1086670) connect=(666000,1086670) -> false
+repB id=98 k=4 r=1 to=(666000,1086670) connect=(765863,1456531) -> true
+repB id=98 k=5 r=0 to=(765863,1456531) connect=(666000,1086670) -> false
+repB id=98 k=5 r=1 to=(765863,1456531) connect=(765863,1456531) -> false
+repB id=98 k=6 r=0 to=(531001,1221669) connect=(666000,1086670) -> false
+repB id=98 k=6 r=1 to=(531001,1221669) connect=(765863,1456531) -> false
+repB id=98 k=7 r=0 to=(531002,1221669) connect=(666000,1086670) -> true
+repB id=98 k=7 r=1 to=(531002,1221669) connect=(765863,1456531) -> true
+repB id=98 k=8 r=0 to=(531002,1221670) connect=(666000,1086670) -> true
+repB id=98 k=8 r=1 to=(531002,1221670) connect=(765863,1456531) -> true
+repB id=98 k=9 r=0 to=(532001,1222669) connect=(666000,1086670) -> true
+repB id=98 k=9 r=1 to=(532001,1222669) connect=(765863,1456531) -> true
+repB id=98 k=10 r=0 to=(530001,1221669) connect=(666000,1086670) -> true
+repB id=98 k=10 r=1 to=(530001,1221669) connect=(765863,1456531) -> true
+repB id=93 k=0 r=0 to=(765863,1456531) connect=(765863,1456531) -> false
+repB id=93 k=0 r=1 to=(765863,1456531) connect=(727900,1789557) -> false
+repB id=93 k=1 r=0 to=(765863,1751594) connect=(765863,1456531) -> false
+repB id=93 k=1 r=1 to=(765863,1751594) connect=(727900,1789557) -> false
+repB id=93 k=2 r=0 to=(765863,1789557) connect=(765863,1456531) -> true
+repB id=93 k=2 r=1 to=(765863,1789557) connect=(727900,1789557) -> true
+repB id=93 k=3 r=0 to=(727900,1751594) connect=(765863,1456531) -> true
+repB id=93 k=3 r=1 to=(727900,1751594) connect=(727900,1789557) -> true
+repB id=93 k=4 r=0 to=(765863,1456531) connect=(765863,1456531) -> false
+repB id=93 k=4 r=1 to=(765863,1456531) connect=(727900,1789557) -> false
+repB id=93 k=5 r=0 to=(727900,1789557) connect=(765863,1456531) -> true
+repB id=93 k=5 r=1 to=(727900,1789557) connect=(727900,1789557) -> false
+repB id=93 k=6 r=0 to=(765863,1751594) connect=(765863,1456531) -> false
+repB id=93 k=6 r=1 to=(765863,1751594) connect=(727900,1789557) -> false
+repB id=93 k=7 r=0 to=(765864,1751594) connect=(765863,1456531) -> true
+repB id=93 k=7 r=1 to=(765864,1751594) connect=(727900,1789557) -> true
+repB id=93 k=8 r=0 to=(765864,1751595) connect=(765863,1456531) -> true
+repB id=93 k=8 r=1 to=(765864,1751595) connect=(727900,1789557) -> true
+repB id=93 k=9 r=0 to=(766863,1752594) connect=(765863,1456531) -> true
+repB id=93 k=9 r=1 to=(766863,1752594) connect=(727900,1789557) -> true
+repB id=93 k=10 r=0 to=(764863,1751594) connect=(765863,1456531) -> true
+repB id=93 k=10 r=1 to=(764863,1751594) connect=(727900,1789557) -> true
+repB id=84 k=0 r=0 to=(977281,3007058) connect=(1016000,3007058) -> true
+repB id=84 k=0 r=1 to=(977281,3007058) connect=(1016000,3007058) -> true
+repB id=84 k=1 r=0 to=(1016000,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=1 r=1 to=(1016000,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=2 r=0 to=(977281,3007058) connect=(1016000,3007058) -> true
+repB id=84 k=2 r=1 to=(977281,3007058) connect=(1016000,3007058) -> true
+repB id=84 k=3 r=0 to=(1016000,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=3 r=1 to=(1016000,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=4 r=0 to=(1016000,3007058) connect=(1016000,3007058) -> false
+repB id=84 k=4 r=1 to=(1016000,3007058) connect=(1016000,3007058) -> false
+repB id=84 k=5 r=0 to=(1016000,3007058) connect=(1016000,3007058) -> false
+repB id=84 k=5 r=1 to=(1016000,3007058) connect=(1016000,3007058) -> false
+repB id=84 k=6 r=0 to=(977281,2968339) connect=(1016000,3007058) -> false
+repB id=84 k=6 r=1 to=(977281,2968339) connect=(1016000,3007058) -> false
+repB id=84 k=7 r=0 to=(977282,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=7 r=1 to=(977282,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=8 r=0 to=(977282,2968340) connect=(1016000,3007058) -> true
+repB id=84 k=8 r=1 to=(977282,2968340) connect=(1016000,3007058) -> true
+repB id=84 k=9 r=0 to=(978281,2969339) connect=(1016000,3007058) -> true
+repB id=84 k=9 r=1 to=(978281,2969339) connect=(1016000,3007058) -> true
+repB id=84 k=10 r=0 to=(976281,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=10 r=1 to=(976281,2968339) connect=(1016000,3007058) -> true
+repB id=49 k=0 r=0 to=(531001,2269671) connect=(552098,2269671) -> false
+repB id=49 k=0 r=1 to=(531001,2269671) connect=(531001,2619005) -> false
+repB id=49 k=1 r=0 to=(552098,2269671) connect=(552098,2269671) -> false
+repB id=49 k=1 r=1 to=(552098,2269671) connect=(531001,2619005) -> true
+repB id=49 k=2 r=0 to=(531001,2619005) connect=(552098,2269671) -> false
+repB id=49 k=2 r=1 to=(531001,2619005) connect=(531001,2619005) -> false
+repB id=49 k=3 r=0 to=(531001,2269671) connect=(552098,2269671) -> false
+repB id=49 k=3 r=1 to=(531001,2269671) connect=(531001,2619005) -> false
+repB id=49 k=4 r=0 to=(552098,2269671) connect=(552098,2269671) -> false
+repB id=49 k=4 r=1 to=(552098,2269671) connect=(531001,2619005) -> true
+repB id=49 k=5 r=0 to=(531001,2619005) connect=(552098,2269671) -> false
+repB id=49 k=5 r=1 to=(531001,2619005) connect=(531001,2619005) -> false
+repB id=49 k=6 r=0 to=(531001,2269671) connect=(552098,2269671) -> false
+repB id=49 k=6 r=1 to=(531001,2269671) connect=(531001,2619005) -> false
+repB id=49 k=7 r=0 to=(531002,2269671) connect=(552098,2269671) -> true
+repB id=49 k=7 r=1 to=(531002,2269671) connect=(531001,2619005) -> true
+repB id=49 k=8 r=0 to=(531002,2269672) connect=(552098,2269671) -> true
+repB id=49 k=8 r=1 to=(531002,2269672) connect=(531001,2619005) -> true
+repB id=49 k=9 r=0 to=(532001,2270671) connect=(552098,2269671) -> true
+repB id=49 k=9 r=1 to=(532001,2270671) connect=(531001,2619005) -> true
+repB id=49 k=10 r=0 to=(530001,2269671) connect=(552098,2269671) -> true
+repB id=49 k=10 r=1 to=(530001,2269671) connect=(531001,2619005) -> true
+repB id=43 k=0 r=0 to=(531001,2269671) connect=(531001,2269671) -> false
+repB id=43 k=0 r=1 to=(531001,2269671) connect=(856000,2944004) -> false
+repB id=43 k=1 r=0 to=(531001,2619005) connect=(531001,2269671) -> false
+repB id=43 k=1 r=1 to=(531001,2619005) connect=(856000,2944004) -> false
+repB id=43 k=2 r=0 to=(531001,2944004) connect=(531001,2269671) -> true
+repB id=43 k=2 r=1 to=(531001,2944004) connect=(856000,2944004) -> true
+repB id=43 k=3 r=0 to=(856000,2619005) connect=(531001,2269671) -> false
+repB id=43 k=3 r=1 to=(856000,2619005) connect=(856000,2944004) -> false
+repB id=43 k=4 r=0 to=(531001,2269671) connect=(531001,2269671) -> false
+repB id=43 k=4 r=1 to=(531001,2269671) connect=(856000,2944004) -> false
+repB id=43 k=5 r=0 to=(856000,2944004) connect=(531001,2269671) -> true
+repB id=43 k=5 r=1 to=(856000,2944004) connect=(856000,2944004) -> false
+repB id=43 k=6 r=0 to=(531001,2619005) connect=(531001,2269671) -> false
+repB id=43 k=6 r=1 to=(531001,2619005) connect=(856000,2944004) -> false
+repB id=43 k=7 r=0 to=(531002,2619005) connect=(531001,2269671) -> true
+repB id=43 k=7 r=1 to=(531002,2619005) connect=(856000,2944004) -> true
+repB id=43 k=8 r=0 to=(531002,2619006) connect=(531001,2269671) -> true
+repB id=43 k=8 r=1 to=(531002,2619006) connect=(856000,2944004) -> true
+repB id=43 k=9 r=0 to=(532001,2620005) connect=(531001,2269671) -> true
+repB id=43 k=9 r=1 to=(532001,2620005) connect=(856000,2944004) -> true
+repB id=43 k=10 r=0 to=(530001,2619005) connect=(531001,2269671) -> true
+repB id=43 k=10 r=1 to=(530001,2619005) connect=(856000,2944004) -> true
 ######## rpi mode 5
-repC id=141 class=PLANE_OR_FANOUT_ONE_CONTACT state=SKIP
-repC id=66 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(916000,1191337) from2=(1240335,1576336) -> null
-repC id=66 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(916000,1191337) from2=(1240335,1576336) -> (885668,1191337)
-repC id=66 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(916000,1191337) from2=(1240335,1576336) -> (916000,1221669)
-repC id=66 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(916000,1191337) from2=(1240335,1576336) -> (1112548,1448549)
-repC id=66 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(916000,1191337) from2=(1240335,1576336) -> (916000,1221669)
-repC id=57 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(1240335,1576336) from2=(1096000,3112674) -> null
-repC id=57 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(1240335,1576336) from2=(1096000,3112674) -> (1240335,2909859)
-repC id=57 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(1240335,1576336) from2=(1096000,3112674) -> (1240335,3112674)
-repC id=57 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(1240335,1576336) from2=(1096000,3112674) -> (1096000,3112674)
-repC id=57 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(1240335,1576336) from2=(1096000,3112674) -> (1240335,3112674)
-######## rpi mode 3
-repA id=141 k=0 to=(1016000,3481179) hw=20320 layer=0 cl=1 -> (1011300,3485879)
-repA id=141 k=1 to=(1016000,3481179) hw=20320 layer=0 cl=1 -> (1011300,3485879)
-repA id=141 k=2 to=(1006600,3490579) hw=20320 layer=0 cl=1 -> null
-repA id=141 k=3 to=(1006601,3490579) hw=20320 layer=0 cl=1 -> (1006601,3490579)
-repA id=141 k=4 to=(1006600,3490580) hw=20320 layer=0 cl=1 -> (1006600,3490580)
-repA id=141 k=5 to=(1006601,3490580) hw=20320 layer=0 cl=1 -> (1006601,3490580)
-repA id=141 k=6 to=(1006599,3490579) hw=20320 layer=0 cl=1 -> (1006599,3490579)
-repA id=141 k=7 to=(1006600,3490578) hw=20320 layer=0 cl=1 -> (1006600,3490578)
-repA id=141 k=8 to=(1006599,3490578) hw=20320 layer=0 cl=1 -> (1006599,3490578)
-repA id=141 k=9 to=(1007600,3490579) hw=20320 layer=0 cl=1 -> (1007600,3490579)
-repA id=141 k=10 to=(1006600,3491579) hw=20320 layer=0 cl=1 -> (1006600,3491579)
-repA id=141 k=11 to=(1007600,3491579) hw=20320 layer=0 cl=1 -> (1007600,3491579)
-repA id=141 k=12 to=(1005600,3490579) hw=20320 layer=0 cl=1 -> null
-repA id=141 k=13 to=(1006600,3489579) hw=20320 layer=0 cl=1 -> (1006600,3489579)
-repA id=141 k=14 to=(1005600,3489579) hw=20320 layer=0 cl=1 -> null
-repA id=141 k=15 to=(1016600,3490579) hw=20320 layer=0 cl=1 -> (1016600,3490579)
-repA id=141 k=16 to=(1006600,3500579) hw=20320 layer=0 cl=1 -> (1006600,3500579)
-repA id=141 k=17 to=(1016600,3500579) hw=20320 layer=0 cl=1 -> (1016600,3500579)
-repA id=141 k=18 to=(996600,3490579) hw=20320 layer=0 cl=1 -> null
-repA id=141 k=19 to=(1006600,3480579) hw=20320 layer=0 cl=1 -> null
-repA id=141 k=20 to=(996600,3480579) hw=20320 layer=0 cl=1 -> null
-repA id=141 k=21 to=(1106600,3490579) hw=20320 layer=0 cl=1 -> (1025132,3490579)
-repA id=141 k=22 to=(1006600,3590579) hw=20320 layer=0 cl=1 -> (1006600,3590579)
-repA id=141 k=23 to=(1106600,3590579) hw=20320 layer=0 cl=1 -> (1024719,3508698)
-repA id=141 k=24 to=(906600,3490579) hw=20320 layer=0 cl=1 -> null
-repA id=141 k=25 to=(1006600,3390579) hw=20320 layer=0 cl=1 -> null
-repA id=141 k=26 to=(906600,3390579) hw=20320 layer=0 cl=1 -> null
-repA id=66 k=0 to=(916000,1191337) hw=20320 layer=0 cl=1 -> (916000,1191337)
-repA id=66 k=1 to=(916000,1191337) hw=20320 layer=0 cl=1 -> (916000,1191337)
-repA id=66 k=2 to=(885668,1221669) hw=20320 layer=0 cl=1 -> null
-repA id=66 k=3 to=(885669,1221669) hw=20320 layer=0 cl=1 -> (885669,1221669)
-repA id=66 k=4 to=(885668,1221670) hw=20320 layer=0 cl=1 -> (885668,1221670)
-repA id=66 k=5 to=(885669,1221670) hw=20320 layer=0 cl=1 -> (885669,1221670)
-repA id=66 k=6 to=(885667,1221669) hw=20320 layer=0 cl=1 -> (885667,1221669)
-repA id=66 k=7 to=(885668,1221668) hw=20320 layer=0 cl=1 -> (885668,1221668)
-repA id=66 k=8 to=(885667,1221668) hw=20320 layer=0 cl=1 -> (885667,1221668)
-repA id=66 k=9 to=(886668,1221669) hw=20320 layer=0 cl=1 -> (886668,1221669)
-repA id=66 k=10 to=(885668,1222669) hw=20320 layer=0 cl=1 -> (885668,1222669)
-repA id=66 k=11 to=(886668,1222669) hw=20320 layer=0 cl=1 -> (886668,1222669)
-repA id=66 k=12 to=(884668,1221669) hw=20320 layer=0 cl=1 -> (884668,1221669)
-repA id=66 k=13 to=(885668,1220669) hw=20320 layer=0 cl=1 -> (885668,1220669)
-repA id=66 k=14 to=(884668,1220669) hw=20320 layer=0 cl=1 -> (884668,1220669)
-repA id=66 k=15 to=(895668,1221669) hw=20320 layer=0 cl=1 -> (895668,1221669)
-repA id=66 k=16 to=(885668,1231669) hw=20320 layer=0 cl=1 -> (885668,1231669)
-repA id=66 k=17 to=(895668,1231669) hw=20320 layer=0 cl=1 -> (895668,1231669)
-repA id=66 k=18 to=(875668,1221669) hw=20320 layer=0 cl=1 -> (875668,1221669)
-repA id=66 k=19 to=(885668,1211669) hw=20320 layer=0 cl=1 -> (885668,1211669)
-repA id=66 k=20 to=(875668,1211669) hw=20320 layer=0 cl=1 -> (875668,1211669)
-repA id=66 k=21 to=(985668,1221669) hw=20320 layer=0 cl=1 -> (985668,1221669)
-repA id=66 k=22 to=(885668,1321669) hw=20320 layer=0 cl=1 -> (885668,1321669)
-repA id=66 k=23 to=(985668,1321669) hw=20320 layer=0 cl=1 -> (985668,1321669)
-repA id=66 k=24 to=(785668,1221669) hw=20320 layer=0 cl=1 -> (785668,1221669)
-repA id=66 k=25 to=(885668,1121669) hw=20320 layer=0 cl=1 -> (885668,1121669)
-repA id=66 k=26 to=(785668,1121669) hw=20320 layer=0 cl=1 -> (785668,1121669)
-repA id=57 k=0 to=(1240335,1576336) hw=20320 layer=1 cl=1 -> (1240335,1750336)
-repA id=57 k=1 to=(1240335,1576336) hw=20320 layer=1 cl=1 -> (1240335,1750336)
-repA id=57 k=2 to=(1240335,2968339) hw=20320 layer=1 cl=1 -> null
-repA id=57 k=3 to=(1240336,2968339) hw=20320 layer=1 cl=1 -> (1240336,2968339)
-repA id=57 k=4 to=(1240335,2968340) hw=20320 layer=1 cl=1 -> (1240335,2968340)
-repA id=57 k=5 to=(1240336,2968340) hw=20320 layer=1 cl=1 -> (1240336,2968340)
-repA id=57 k=6 to=(1240334,2968339) hw=20320 layer=1 cl=1 -> (1240334,2968339)
-repA id=57 k=7 to=(1240335,2968338) hw=20320 layer=1 cl=1 -> (1240335,2968338)
-repA id=57 k=8 to=(1240334,2968338) hw=20320 layer=1 cl=1 -> (1240334,2968338)
-repA id=57 k=9 to=(1241335,2968339) hw=20320 layer=1 cl=1 -> (1241335,2968339)
-repA id=57 k=10 to=(1240335,2969339) hw=20320 layer=1 cl=1 -> (1240335,2969339)
-repA id=57 k=11 to=(1241335,2969339) hw=20320 layer=1 cl=1 -> (1241335,2969339)
-repA id=57 k=12 to=(1239335,2968339) hw=20320 layer=1 cl=1 -> (1239335,2968339)
-repA id=57 k=13 to=(1240335,2967339) hw=20320 layer=1 cl=1 -> (1240335,2967339)
-repA id=57 k=14 to=(1239335,2967339) hw=20320 layer=1 cl=1 -> (1239335,2967339)
-repA id=57 k=15 to=(1250335,2968339) hw=20320 layer=1 cl=1 -> (1250335,2968339)
-repA id=57 k=16 to=(1240335,2978339) hw=20320 layer=1 cl=1 -> (1240335,2978339)
-repA id=57 k=17 to=(1250335,2978339) hw=20320 layer=1 cl=1 -> (1250335,2978339)
-repA id=57 k=18 to=(1230335,2968339) hw=20320 layer=1 cl=1 -> (1230335,2968339)
-repA id=57 k=19 to=(1240335,2958339) hw=20320 layer=1 cl=1 -> (1240335,2958339)
-repA id=57 k=20 to=(1230335,2958339) hw=20320 layer=1 cl=1 -> (1230335,2958339)
-repA id=57 k=21 to=(1340335,2968339) hw=20320 layer=1 cl=1 -> (1340335,2968339)
-repA id=57 k=22 to=(1240335,3068339) hw=20320 layer=1 cl=1 -> (1240335,3068339)
-repA id=57 k=23 to=(1340335,3068339) hw=20320 layer=1 cl=1 -> (1340335,3068339)
-repA id=57 k=24 to=(1140335,2968339) hw=20320 layer=1 cl=1 -> (1159085,2968339)
-repA id=57 k=25 to=(1240335,2868339) hw=20320 layer=1 cl=1 -> (1240335,2905839)
-repA id=57 k=26 to=(1140335,2868339) hw=20320 layer=1 cl=1 -> (1202835,2930839)
+repC id=189 class=PLANE_OR_FANOUT_ONE_CONTACT state=SKIP
+repC id=98 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(666000,1086670) from2=(765863,1456531) -> null
+repC id=98 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(666000,1086670) from2=(765863,1456531) -> (531001,1086670)
+repC id=98 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(666000,1086670) from2=(765863,1456531) -> (666000,1221669)
+repC id=98 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(666000,1086670) from2=(765863,1456531) -> (611550,1302218)
+repC id=98 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(666000,1086670) from2=(765863,1456531) -> (666000,1221669)
+repC id=93 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(765863,1456531) from2=(727900,1789557) -> null
+repC id=93 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(765863,1456531) from2=(727900,1789557) -> (727900,1751594)
+repC id=93 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(765863,1456531) from2=(727900,1789557) -> (765863,1789557)
+repC id=93 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(765863,1456531) from2=(727900,1789557) -> (727900,1789557)
+repC id=93 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(765863,1456531) from2=(727900,1789557) -> (765863,1789557)
+repC id=84 class=PLANE_OR_FANOUT_ONE_CONTACT state=SKIP
+repC id=49 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(552098,2269671) from2=(531001,2619005) -> null
+repC id=49 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(552098,2269671) from2=(531001,2619005) -> null
+repC id=49 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(552098,2269671) from2=(531001,2619005) -> (552098,2269671)
+repC id=49 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(552098,2269671) from2=(531001,2619005) -> (531001,2520755)
+repC id=49 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(552098,2269671) from2=(531001,2619005) -> (552098,2269671)
+repC id=43 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(531001,2269671) from2=(856000,2944004) -> null
+repC id=43 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(531001,2269671) from2=(856000,2944004) -> (531001,2367921)
+repC id=43 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(531001,2269671) from2=(856000,2944004) -> (531001,2944004)
+repC id=43 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(531001,2269671) from2=(856000,2944004) -> (856000,2944004)
+repC id=43 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(531001,2269671) from2=(856000,2944004) -> (531001,2944004)

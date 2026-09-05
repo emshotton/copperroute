@@ -11,6 +11,7 @@ use fr_geometry::Point;
 use fr_settings::{ExpansionCostFactor, RouterSettings};
 
 use crate::autoroute::attempt::{AutorouteAttemptResult, AutorouteAttemptState};
+use crate::autoroute::maze::ViaPricing;
 use crate::autoroute::maze::engine::{AutorouteEngine, route_connection_full};
 use crate::board_ext::RoutingBoardExt;
 use crate::error::RouterError;
@@ -271,6 +272,11 @@ impl<'a> BatchAutorouter<'a> {
         ripup_pass_no: i32,
         stop: StopCheck<'_>,
     ) -> AutorouteAttemptResult {
+        let via_pricing = if self.is_optimizer_autorouter {
+            ViaPricing::PerMillimetre
+        } else {
+            ViaPricing::ByPadstackRadius
+        };
         route_connection_full(
             board,
             engine,
@@ -278,6 +284,7 @@ impl<'a> BatchAutorouter<'a> {
             route_net_no,
             self.settings,
             &self.trace_costs,
+            via_pricing,
             ripped_item_list,
             ripup_costs,
             ripup_pass_no,

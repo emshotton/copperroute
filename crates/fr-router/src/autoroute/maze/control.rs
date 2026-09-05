@@ -5,6 +5,16 @@ use fr_board::{Board, Item};
 use fr_geometry::{Point, java_max};
 use fr_settings::{ExpansionCostFactor, RouterSettings};
 
+/// How the maze prices a via. Routing prices it as Java does, by the largest via radius in
+/// board units, because the score's price is too dear for a search that must still complete the
+/// board; the optimizer's re-router prices it in the score's own currency, because a candidate
+/// it rejects costs nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViaPricing {
+    ByPadstackRadius,
+    PerMillimetre,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ViaMask {
     pub from_layer: i32,
@@ -58,6 +68,7 @@ pub struct AutorouteControl {
     pub units_per_mm: f64,
     pub trace_cost_per_mm: f64,
     pub smd_via_cost_factor: f64,
+    pub via_pricing: ViaPricing,
 }
 
 pub fn board_units_per_mm(board: &Board) -> f64 {
@@ -73,7 +84,26 @@ impl AutorouteControl {
         via_costs: i32,
         trace_costs: &[ExpansionCostFactor],
     ) -> AutorouteControl {
+        AutorouteControl::priced(
+            board,
+            net_no,
+            settings,
+            via_costs,
+            trace_costs,
+            ViaPricing::ByPadstackRadius,
+        )
+    }
+
+    pub fn priced(
+        board: &Board,
+        net_no: i32,
+        settings: &RouterSettings,
+        via_costs: i32,
+        trace_costs: &[ExpansionCostFactor],
+        via_pricing: ViaPricing,
+    ) -> AutorouteControl {
         let mut control = AutorouteControl::private(board, settings, trace_costs);
+        control.via_pricing = via_pricing;
         control.init_net(net_no, board, via_costs);
         control
     }
@@ -172,6 +202,7 @@ impl AutorouteControl {
             units_per_mm,
             trace_cost_per_mm,
             smd_via_cost_factor: settings.get_smd_via_cost_factor(),
+            via_pricing: ViaPricing::ByPadstackRadius,
         }
     }
 
@@ -290,7 +321,10 @@ impl AutorouteControl {
             self.via_radii[j] = java_max(self.via_radii[j], f64::from(self.trace_half_width[j]));
             self.max_via_radius = java_max(self.max_via_radius, self.via_radii[j]);
         }
-        let mut via_cost_factor = self.units_per_mm * self.trace_cost_per_mm;
+        let mut via_cost_factor = match self.via_pricing {
+            ViaPricing::ByPadstackRadius => java_max(self.max_via_radius, 1.0),
+            ViaPricing::PerMillimetre => self.units_per_mm * self.trace_cost_per_mm,
+        };
         if self.smd_via_relaxation && pure_smd_net {
             via_cost_factor *= self.smd_via_cost_factor;
         }

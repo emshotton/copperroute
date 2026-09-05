@@ -294,7 +294,7 @@ Steps 1–4 of §5 are implemented on the branch that carries this document; 5 a
 | finding | change | where |
 |---|---|---|
 | F1 | the optimizer stage exits before a pass only when the routing cost is zero, and its pass-improvement test is the relative reduction of that cost (a completed connection counts as full improvement) | `optimizer.rs` `optimizer_nothing_to_improve`, `apply_pass_improvement` |
-| F2 | a via costs `via_costs` millimetres of trace in the maze, whatever the padstack radius; the pure-SMD tenth is `router.scoring.smd_via_cost_factor` (default `0.1`) | `control.rs` `rebuild_via_info`, `scoring_settings.rs` |
+| F2 | **split by stage** (see §7): the routing stage keeps Java's price, `via_costs` times the largest via radius in board units; the optimizer's re-router prices a via at `via_costs` millimetres of trace. The pure-SMD tenth is `router.scoring.smd_via_cost_factor` (default `0.1`) under both | `control.rs` `ViaPricing`, `batch_autorouter.rs` `autoroute_item`, `scoring_settings.rs` |
 | F3 | an optimizer item is accepted when the board's routing penalty falls — unrouted and violation penalties plus the cost term, in `f64` | `item_route_result.rs`, `normalized.rs` `routing_penalty` |
 | F4 | `default_bend_cost` and a layer's `bend_cost` mean millimetres of trace per bend; the clamp ceiling is 100. The default stays `0.0` | `control.rs`, `router_settings.rs` |
 | F5 | the board history ranks and restores by the `f64` penalty; the `f32` score stays the manifest's number | `board_history.rs`, `batch_loop.rs` |
@@ -343,3 +343,41 @@ freerouting route fixtures/Issue026-J2_reference.dsn -o out.ses --max-passes 99 
 `bends.total_count` are read from `out.json`; the cost column is `length + 50·vias + 10·bends`.
 bm11 is `Issue730-DAC2020_bm11.dsn` at `--max-passes 2`, rpi is `Issue143-rpi_splitter.dsn` at 8.
 Incompletes here are the manifest's own count, not the referee's; the G2 harness must be the gate.
+
+## 7. The corpus said no to the score's price in the maze
+
+The first 605-board run of the branch (`via-and-trace-length-full-r2` on the workbench, against
+`full-r1` at the branch's base, both at `-mp 10` with a 300 s job timeout) was read at 191 boards:
+
+| metric over the 191 boards | r1 | r2 | change |
+|---|---|---|---|
+| vias | 4051 | 2859 | −29 % |
+| wirelength mm | 196272 | 197039 | +0.4 % |
+| unrouted | 354 | 467 | **+32 %** |
+| violations | 100 | 96 | −4 |
+| cpu s | 9623 | 17682 | +84 % |
+
+Twenty boards lost completions. Reproduced locally on four of them, two mechanisms:
+
+1. **A via priced at 50 mm is too dear for the search.** The maze hunts for 50 mm same-layer
+   detours before it takes a layer change, so congested boards route slower and complete less.
+   FT231X: 0 unrouted before, 4–7 after; priced at 20 mm (about Java's price for a 0.4 mm via)
+   it comes back to 1. Two boards that finished in 73 s now hit the 300 s timeout.
+2. **The optimizer stage is expensive on large routed boards.** Hardware_Playground routes in
+   3 s; the stage then spends 215–280 s stripping four vias, and on the slower host it ran past
+   the job timeout and the harness killed it with no output. The stage's search budget
+   (`max_search_steps`) trips inside the pull-tight sweep, where `route_connection_full` still
+   `expect`s success; the panic is caught one frame up and the pass ends, so the budget bounds
+   the stage but not tidily.
+
+**Decision: the via price is split by stage.** Routing prices a via as Java does, by padstack
+radius, because completion is that stage's job and the score's price costs completions. The
+optimizer's re-router prices it in the score's currency, because a candidate it rejects costs
+nothing and most of the via gain measured on the fixtures came from that stage stripping fanout
+vias. `ViaPricing` in `control.rs` carries the choice; `BatchAutorouter::autoroute_item` picks it
+from `is_optimizer_autorouter`.
+
+**Still open:** the optimizer's cost on big routed boards (W3's problem), and why a run can end
+more than 100 s past its job deadline with nothing written — the stage is stopped by the deadline
+in a unit test, and locally the same boards finish under the limit, so the overrun needs a stack
+sample on the slow host to explain.

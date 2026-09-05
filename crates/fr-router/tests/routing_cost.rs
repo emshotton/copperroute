@@ -241,3 +241,55 @@ fn a_fully_routed_board_still_gets_an_optimizer_pass() {
     let after = BoardStatistics::new(&mut board);
     assert!(after.routing_cost(&scoring) < before.routing_cost(&scoring));
 }
+
+#[test]
+#[cfg_attr(debug_assertions, ignore)]
+fn the_job_deadline_ends_the_optimizer_stage_on_a_routed_board() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let mut board = load_rpi();
+    let mut settings = rpi_settings(&board);
+    settings.max_passes = Some(8);
+    settings.fanout.get_or_insert_with(Default::default).enabled = Some(true);
+    AutorouteBatchLoop::run(
+        &mut board,
+        &settings,
+        &RouterStop::new(),
+        RouterBudget::disabled(),
+        &mut NoopProgressSink,
+    )
+    .expect("rpi_splitter routes");
+    assert_eq!(
+        BoardStatistics::new(&mut board)
+            .connections
+            .incomplete_count,
+        Some(0),
+        "a complete board: the per-item re-router has nothing to route and never polls"
+    );
+
+    settings.set_run_optimizer(true);
+    let stop = RouterStop::with_deadline(1);
+    std::thread::sleep(std::time::Duration::from_millis(5));
+    let mut optimizer = BatchOptimizer::new(&settings);
+    let result = optimizer
+        .run_batch_loop(
+            &mut board,
+            &stop,
+            RouterBudget::disabled(),
+            &mut NoopProgressSink,
+        )
+        .expect("the stage runs");
+
+    assert!(stop.is_timed_out(), "the stage polled the job deadline");
+    assert!(
+        stop.is_stop_requested(),
+        "…and the deadline stops everything"
+    );
+    assert_eq!(result.state, fr_router::pipeline::TaskState::Cancelled);
+    assert!(
+        result.items_optimized <= 1,
+        "at most the item in flight when the deadline was seen: {}",
+        result.items_optimized
+    );
+}

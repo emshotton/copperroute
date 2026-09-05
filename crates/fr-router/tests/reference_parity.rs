@@ -6,6 +6,7 @@ use fr_drc::DesignRulesChecker;
 use fr_dsn::java_double_to_string;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::Point;
+use fr_router::autoroute::maze::ViaPricing;
 use fr_router::pipeline::RouterBudget;
 use fr_router::{route_connection, route_connection_full};
 use fr_settings::sources::DefaultSettings;
@@ -189,6 +190,7 @@ fn route_stem_with(row: &Row, steps: Steps) -> Vec<RouterConnectionDoc> {
                 net_no,
                 &settings,
                 &trace_costs,
+                ViaPricing::ByPadstackRadius,
                 &mut ripped,
                 &mut ripup_costs,
                 row.ripup_pass_no,

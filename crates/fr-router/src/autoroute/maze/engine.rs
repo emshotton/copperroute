@@ -19,7 +19,9 @@ use crate::autoroute::expansion::{
     ExpandableRef, ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom, RoomRef,
 };
 use crate::autoroute::item_info;
-use crate::autoroute::maze::{AutorouteControl, MazeResult, MazeSearchElement, MazeSearchEngine};
+use crate::autoroute::maze::{
+    AutorouteControl, MazeResult, MazeSearchElement, MazeSearchEngine, ViaPricing,
+};
 use crate::autoroute::path::{Connection, FoundConnectionInserter, FoundConnectionLocator};
 use crate::autoroute::tree_ext::{AutorouteSearchTreeExt, p7t14b_cs_ledger};
 use crate::board_ext::RoutingBoardExt;
@@ -1005,6 +1007,7 @@ pub fn route_connection(
             net_no,
             settings,
             trace_costs,
+            ViaPricing::ByPadstackRadius,
             ripped,
             ripup_costs,
             ripup_pass_no,
@@ -1053,6 +1056,7 @@ fn route_connection_steps_1_to_5(
     net_no: i32,
     settings: &RouterSettings,
     trace_costs: &[ExpansionCostFactor],
+    via_pricing: ViaPricing,
     ripped: &mut BTreeSet<ItemId>,
     ripup_costs: &mut BTreeMap<ItemId, i32>,
     ripup_pass_no: i32,
@@ -1070,8 +1074,14 @@ fn route_connection_steps_1_to_5(
         settings.get_via_costs()
     };
 
-    let mut autoroute_control =
-        AutorouteControl::new(board, net_no, settings, current_via_costs, trace_costs);
+    let mut autoroute_control = AutorouteControl::priced(
+        board,
+        net_no,
+        settings,
+        current_via_costs,
+        trace_costs,
+        via_pricing,
+    );
     autoroute_control.ripup_allowed = true;
     autoroute_control.ripup_costs = start_ripup_costs * ripup_pass_no;
     autoroute_control.remove_unconnected_vias = remove_unconnected_vias;
@@ -1149,6 +1159,7 @@ pub fn route_connection_full(
     net_no: i32,
     settings: &RouterSettings,
     trace_costs: &[ExpansionCostFactor],
+    via_pricing: ViaPricing,
     ripped: &mut BTreeSet<ItemId>,
     ripup_costs: &mut BTreeMap<ItemId, i32>,
     ripup_pass_no: i32,
@@ -1166,6 +1177,7 @@ pub fn route_connection_full(
             net_no,
             settings,
             trace_costs,
+            via_pricing,
             ripped,
             ripup_costs,
             ripup_pass_no,
@@ -1187,6 +1199,7 @@ fn route_connection_steps_1_to_8(
     net_no: i32,
     settings: &RouterSettings,
     trace_costs: &[ExpansionCostFactor],
+    via_pricing: ViaPricing,
     ripped: &mut BTreeSet<ItemId>,
     ripup_costs: &mut BTreeMap<ItemId, i32>,
     ripup_pass_no: i32,
@@ -1203,6 +1216,7 @@ fn route_connection_steps_1_to_8(
         net_no,
         settings,
         trace_costs,
+        via_pricing,
         ripped,
         ripup_costs,
         ripup_pass_no,
@@ -1319,12 +1333,13 @@ fn retry_connection_necked(
         return None;
     }
 
-    let mut neck_control = AutorouteControl::new(
+    let mut neck_control = AutorouteControl::priced(
         board,
         route_net_no,
         settings,
         context.current_via_costs,
         trace_costs,
+        original_control.via_pricing,
     );
     neck_control.ripup_allowed = true;
     neck_control.ripup_costs = start_ripup_costs * ripup_pass_no;

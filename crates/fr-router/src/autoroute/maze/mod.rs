@@ -10,7 +10,7 @@ pub mod search;
 pub mod search_element;
 pub mod trace_shover;
 
-pub use control::{AutorouteControl, ViaMask};
+pub use control::{AutorouteControl, ViaMask, ViaPricing};
 pub use destination_distance::DestinationDistance;
 pub use engine::{AutorouteEngine, route_connection, route_connection_full};
 pub use expansion_engine::MazeExpansionEngine;
