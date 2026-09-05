@@ -3,7 +3,7 @@ mod common;
 use common::synthetic::{PadSpec, SyntheticBoard};
 use fr_board::DrcConstraints;
 use fr_drc::checks::geometry::{gap_below, hole_of, is_microvia, is_through_hole_pin, item_shapes};
-use fr_drc::checks::{copper, holes};
+use fr_drc::checks::{copper, holes, single};
 use fr_drc::{DrcViolation, DrcViolationKind};
 use fr_geometry::{IntBox, IntVector, TileShape};
 
@@ -270,4 +270,108 @@ fn hole_to_hole_is_skipped_without_a_rule_and_for_far_holes() {
     constraints.hole_to_hole = Some(1000);
     holes::run(&mut synthetic.board, &constraints, &mut out);
     assert!(out.is_empty());
+}
+
+#[test]
+fn a_thin_trace_is_a_track_width_violation() {
+    let mut synthetic = SyntheticBoard::new(&[], 1, 2000);
+    synthetic.trace(&[(0, 0), (10_000, 0)], 0, 500, 1);
+    let mut constraints = DrcConstraints::default();
+    constraints
+        .netclass_track_width
+        .insert("Default".to_string(), 2000);
+    let mut out = Vec::new();
+    single::run(&mut synthetic.board, &constraints, &mut out);
+    assert_eq!(kinds(&out), vec![DrcViolationKind::TrackWidth]);
+    assert_eq!(out[0].expected, 2000.0);
+    assert_eq!(out[0].actual, 1000.0);
+    assert_eq!(out[0].second_item, None);
+}
+
+#[test]
+fn the_board_minimum_floors_the_netclass_width() {
+    let mut synthetic = SyntheticBoard::new(&[], 1, 2000);
+    synthetic.trace(&[(0, 0), (10_000, 0)], 0, 1000, 1);
+    let mut constraints = DrcConstraints::default();
+    constraints
+        .netclass_track_width
+        .insert("Default".to_string(), 1000);
+    constraints.min_track_width = Some(2500);
+    let mut out = Vec::new();
+    single::run(&mut synthetic.board, &constraints, &mut out);
+    assert_eq!(kinds(&out), vec![DrcViolationKind::TrackWidth]);
+    assert_eq!(out[0].expected, 2500.0);
+}
+
+#[test]
+#[allow(clippy::field_reassign_with_default)]
+fn via_diameter_annular_width_and_drill_are_checked_against_project_minimums() {
+    let mut synthetic = SyntheticBoard::new(&[], 1, 2000);
+    synthetic.via(0, 0, 1);
+    let mut constraints = DrcConstraints::default();
+    constraints.min_via_diameter = Some(7000);
+    constraints.min_via_annular_width = Some(2000);
+    constraints.min_through_hole_diameter = Some(4000);
+    let mut out = Vec::new();
+    single::run(&mut synthetic.board, &constraints, &mut out);
+    assert_eq!(
+        kinds(&out),
+        vec![
+            DrcViolationKind::ViaDiameter,
+            DrcViolationKind::AnnularWidth,
+            DrcViolationKind::DrillOutOfRange,
+        ]
+    );
+    let diameter = out
+        .iter()
+        .find(|v| v.kind == DrcViolationKind::ViaDiameter)
+        .unwrap();
+    assert_eq!(diameter.actual, 6000.0);
+    let annular = out
+        .iter()
+        .find(|v| v.kind == DrcViolationKind::AnnularWidth)
+        .unwrap();
+    assert!((annular.actual - 1500.0).abs() < 1.0);
+    let drill = out
+        .iter()
+        .find(|v| v.kind == DrcViolationKind::DrillOutOfRange)
+        .unwrap();
+    assert!((drill.actual - 3000.0).abs() < 1.0);
+    assert!(!drill.estimated);
+}
+
+#[test]
+#[allow(clippy::field_reassign_with_default)]
+fn a_compliant_via_reports_nothing() {
+    let mut synthetic = SyntheticBoard::new(&[], 1, 2000);
+    synthetic.via(0, 0, 1);
+    let mut constraints = DrcConstraints::default();
+    constraints.min_via_diameter = Some(5000);
+    constraints.min_via_annular_width = Some(1000);
+    constraints.min_through_hole_diameter = Some(3000);
+    let mut out = Vec::new();
+    single::run(&mut synthetic.board, &constraints, &mut out);
+    assert!(out.is_empty(), "{out:?}");
+}
+
+#[test]
+#[allow(clippy::field_reassign_with_default)]
+fn a_through_hole_pad_annular_violation_is_marked_estimated() {
+    let mut synthetic = SyntheticBoard::new(
+        &[PadSpec {
+            name: "1",
+            half: 800,
+            offset: IntVector::new(0, 0),
+            through_hole: true,
+        }],
+        1,
+        2000,
+    );
+    synthetic.pin(0, 1);
+    let mut constraints = DrcConstraints::default();
+    constraints.min_via_annular_width = Some(1000);
+    let mut out = Vec::new();
+    single::run(&mut synthetic.board, &constraints, &mut out);
+    assert_eq!(kinds(&out), vec![DrcViolationKind::AnnularWidth]);
+    assert!(out[0].estimated);
 }
