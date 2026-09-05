@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Generate the Java DRC references for `crates/fr-drc/tests/reference_parity.rs` (Plan 5 Task 9).
 #
+# `crates/fr-drc/tests/reference_parity.rs` no longer exists: the DRC checker it compared against
+# the jar was replaced by a native port of KiCad's own routing-type checks, so there is no more
+# Java DRC behavior to hold in parity. This script now serves `scripts/quality-ab.sh`, which reads
+# `tests/reference/drc-fixtures.txt` for its DRC stems, and the `--from-port` lane's port-cut DRC
+# references, both below.
+#
 # Sibling of `scripts/gen-reference.sh`, not an extension of it (plan-5 ruling 10):
 #
 #   * that script is pinned to the downloaded **2.3.0** jar, because the `io/specctra` byte-parity

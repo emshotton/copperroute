@@ -42,6 +42,7 @@ stripped KiCad board:
 | Routing-type errors | 2 | 0 |
 | Unconnected items | 1 | 1 |
 | Wall time | 0.24 s | 5.2 s |
+| Oracle agreement, ported checker (spike plus five KiCad issue boards) | — | matches per violation type, with two documented exceptions |
 
 The two current errors are stacked GND sub-pads of one footprint's split
 thermal pad. KiCad waives same-net pairs and same-logical-pad pairs. The
@@ -51,15 +52,20 @@ Java-derived predicate treats same-net pins as obstacles to each other.
 
 ### Components
 
-1. **`DrcConstraints`** in `fr-drc`. Resolved minimums in board units. Every
-   field is an `Option`; `None` means the check is skipped, which is how
-   KiCad's providers behave when no rule exists for a constraint type.
+1. **`DrcConstraints` and `DrcSeverity`** are defined in `fr-board`
+   (`rules/drc_constraints.rs`), alongside `merge`. The builders, `from_dsn`
+   and `from_kicad_project`, and the constraint resolver live in `fr-drc`
+   (`constraints.rs`). Resolved minimums are in board units. Every field
+   named below is an `Option`; `None` means the check is skipped, which is
+   how KiCad's providers behave when no rule exists for a constraint type.
 
    Fields: per-netclass clearance and track width, `min_clearance`,
    `min_track_width`, `hole_clearance`, `hole_to_hole`,
    `copper_edge_clearance`, `min_via_diameter`, `min_via_annular_width`,
    `min_through_hole_diameter`, `min_microvia_diameter`,
-   `min_microvia_drill`, and a severity map keyed by violation kind.
+   `min_microvia_drill`, a severity map keyed by violation kind, and
+   `epsilon: i32`, KiCad's DRC epsilon (0.0005 mm) in board units, set by
+   both builders.
 
 2. **Two sources.**
    - `DrcConstraints::from_dsn(&BoardRules)` reads per-netclass clearance
@@ -74,15 +80,16 @@ Java-derived predicate treats same-net pins as obstacles to each other.
      DSN fills gaps.
 
 3. **Storage.** `BoardRules` gains `drc_constraints: Option<DrcConstraints>`.
-   This is the only change to `fr-board`. It exists so that every existing
-   `DesignRulesChecker::new(board)` call site keeps working. When the field
-   is `None` the checker derives DSN-only constraints on construction.
+   It exists so that every existing `DesignRulesChecker::new(board)` call
+   site keeps working. When the field is `None` the checker derives
+   DSN-only constraints on construction.
 
-4. **Job input.** `RoutingJob` gains an optional project file. The CLI
-   exposes it as `--kicad-project <path>` on `route` and `drc`. `fr-core`
-   loads it next to the rules and session files and stores the merged
-   constraints on the board. A missing or unparsable project logs a warning
-   and the run continues DSN-only, the same contract the rules file has.
+4. **Job input.** The project file reaches the board through
+   `commands::drc::load_kicad_project_file`, called by the `drc` and
+   `route` commands and the MCP `check_drc` tool, next to the rules and
+   session files. `RoutingJob` is unchanged. A missing or unparsable
+   project logs a warning and the run continues DSN-only, the same
+   contract the rules file has.
 
 5. **Checker.** `DesignRulesChecker` keeps its connectivity methods
    unchanged. `get_all_clearance_violations` is replaced by
@@ -141,8 +148,9 @@ Board ──► DesignRulesChecker::get_all_violations ◄───────�
 2. **Netclass lookup.** A net's class comes from `BoardRules::nets`. The
    class clearance comes from the project's `net_settings.classes` entry
    with the same name when a project is loaded, else from the DSN class
-   rule. KiCad's exporter names the default class `kicad_default` and the
-   project names it `Default`; the resolver treats them as one class.
+   rule. `default` (the DSN reader's own name), `kicad_default` (KiCad's
+   export name), and `Default` (the project's name) are one class, matched
+   case-insensitively.
 
 3. **Same-net waiver.** Clearance, shorting, and hole-clearance checks are
    skipped when both items carry the same defined net.
@@ -154,14 +162,24 @@ Board ──► DesignRulesChecker::get_all_violations ◄───────�
 5. **Net ties.** Not implemented. The DSN carries no footprint net-tie
    metadata. Boards with net-tie footprints will diverge from KiCad here.
 
-6. **Single-item constraints.** Track width uses the netclass width floored
-   by `min_track_width`. Via diameter, annular width, and drill size use
-   the project minimums, with the microvia variants for microvias.
-   Hole-to-hole and hole clearance use project values only.
+6. **Single-item constraints.** Track width uses `min_track_width` from the
+   project only. A netclass's track width is KiCad's default width for new
+   tracks, not a minimum, so the DSN class width is not a constraint. Via
+   diameter, annular width, and drill size use the project minimums, with
+   the microvia variants for microvias. Hole-to-hole and hole clearance use
+   project values only.
 
 7. **Severity.** With a project loaded, `rule_severities` applies per kind:
    `ignore` skips the check, `warning` and `error` set the reported
    severity. Without a project every kind is `error`.
+
+8. **Epsilon.** Every gap test in the copper, hole-clearance,
+   hole-to-hole, and edge checks compares against
+   `max(0, constraint - epsilon)`, mirroring KiCad's `sub_e`: a gap exactly
+   at the nominal clearance is not flagged by integer rounding. The
+   `expected` value in the report stays the full constraint. Single-item
+   checks — track width, via diameter, annular width, drill — apply no
+   epsilon, as in KiCad.
 
 ## Checks
 
@@ -199,8 +217,9 @@ Implementation notes:
 Zone-based checks (isolated copper, starved thermals, zone intersections,
 connection width, slivers), courtyard, silk, text, library and schematic
 parity, net ties, custom rule expressions, creepage, differential pairs,
-and length matching. Zones are excluded because the DSN carries zone
-outlines as wiring polygons without fills.
+and length matching. `ConductionArea` items take no part in any check: the
+DSN carries pour outlines without fills, and KiCad refills zones around
+imported traces, so a trace crossing an outline is not a violation.
 
 ## Scoring and consumers
 
@@ -253,12 +272,45 @@ outlines as wiring polygons without fills.
    and `Issue742-tastexx-pcb`. Fixtures with a DSN but no session are added
    later by routing them with the port first.
 
+   The oracle passes on all six stems, per violation type, once the two
+   `ignore_types` exceptions in the divergences list below are applied.
+
 4. **Retired tests.** `reference_parity.rs`, `java_ports.rs`,
    `clearance_list.rs`, and the clearance assertions in `report.rs` and
-   `report_json.rs` that encode Java semantics are removed. The DRC entries
-   in `tests/reference/drc-fixtures.txt` and the `tests/reference/drc-*`
-   directories go with them. The frozen baseline under
+   `report_json.rs` that encode Java semantics are removed. The fixture
+   list and its `drc-*` reference directories stay because
+   `scripts/quality-ab.sh` defines the 29-stem quality gate over them; only
+   the parity tests are removed. The frozen baseline under
    `tests/reference-frozen/` is not touched. Connectivity tests stay.
+
+   Java routing-parity references were re-cut from the port with the
+   existing `--from-port` lanes: batch references for the four CI stems,
+   the rpi-splitter per-connection reference, the CI CLI references, and
+   the eight DRC references. `tests/reference-frozen/` is untouched. Spec
+   rung (c) in `check_spec9` compares the port's routing-involved
+   violation count with the reference's; port-lane task ids are any
+   alphanumeric token.
+
+   Reference re-cutting now uses the router and CLI test suites' own
+   `FR_REGOLDEN=<label>` switch rather than the `gen-*-reference.sh
+   --from-port` lanes, which describe the earlier mechanism and still
+   serve the DRC oracle references. The port goldens re-cut on this branch
+   carry the label `KICAD-DRC`. The slow-stem references (routed only
+   under `FR_SLOW_PARITY=1`) were left as they were: no failure was
+   observed against the new checker, so re-golden was not needed and was
+   skipped, as the process permits.
+
+   The parity harness's `DrcReportDoc` accepts both the KiCad and the
+   Freerouting-head key spellings. `reference_parity::metrics` and the
+   routing-parity differential driver count only routing-involved
+   violations; the algorithm-level differential's mode 0 no longer
+   describes a Java-comparable checker.
+
+   One CLI fixture, `p8t13-via-net-numbers`, no longer carries a via
+   through the session writer: its pre-placed 0.2 mm wire violates its
+   class's 0.25 mm width under the KiCad checker, and its via was
+   dangling, so the router now finishes without either. Via output stays
+   covered by `do_out_json_writes_the_routed_board`.
 
 5. **Whole workspace.** Router and core tests that assert violation counts
    are re-baselined against the new checker and reviewed one by one, not
@@ -268,6 +320,12 @@ outlines as wiring polygons without fills.
    disagreement metric in the comparison suite becomes the convergence
    measure for this work.
 
+7. **Known follow-up, not a divergence.** Two differential drivers that
+   compare router-internal state against a JVM probe do not compile
+   against the workspace's current crates: an engine signature and a
+   removed helper method moved since those drivers were written. This
+   predates the port and is unrelated to it.
+
 ## Known divergences from `kicad-cli`
 
 Recorded so the oracle test can filter them rather than hide them:
@@ -276,3 +334,17 @@ Recorded so the oracle test can filter them rather than hide them:
 - Net-tie footprints are not exempted.
 - Custom rule expressions in a project are not evaluated.
 - Zone-dependent kinds are not produced.
+- **Epsilon scale.** `from_dsn` derives the epsilon from the DSN
+  resolution, not the reader's coordinate scale. On boards whose
+  coordinates force the reader to shrink its scale, the epsilon is coarser
+  by the same factor. No fixture reaches that path.
+- **Per-type clearances on non-KiCad DSNs.** A DSN exported from Eagle and
+  similar tools may grant Freerouting per-type clearances such as
+  `wire_via`. The router obeys them; the checker judges by netclass
+  clearance alone. The score therefore penalises those placements, and
+  routing outcomes differ from the Java jar's on such boards.
+- **`unconnected_items` counts by island, not by net.** The port reports
+  one missing connection per net; KiCad reports one per disjoint island
+  after zone refill. The oracle ignores this kind on
+  `kicad-issue283-preamp` for that reason, and on `kicad-issue191-z80`
+  because that fixture's DSN/SES net names do not match its `.kicad_pcb`.
