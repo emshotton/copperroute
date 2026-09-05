@@ -263,7 +263,7 @@ OUT_DIR="$ROOT/scripts/differential/out"
 # The gate version this build of the script emits and is willing to compare against. Task 13
 # changes this to `g2`; Task 19 to `g3`. Changing it without re-cutting the previous task's rows
 # is what the refusal below exists to catch.
-GATE_VERSION="g1"
+GATE_VERSION="g2"
 
 # The `cpu_s` noise floor. `> 2x` and `> 20 %` are ruling BO's thresholds and are **not**
 # tolerances; this is the floor beneath which a "slowdown" is the machine and not the code. A
@@ -421,6 +421,31 @@ if [[ -z "${QUALITY_AB_TEEING:-}" ]]; then
   "$0" ${ORIGINAL_ARGV+"${ORIGINAL_ARGV[@]}"} 2>&1 | tee "$CONSOLE"
   exit "${PIPESTATUS[0]}"
 fi
+
+gate_version_of() {
+  awk -F ': *' '$1 == "# gate-version" { print $2; exit }' "$1"
+}
+
+require_current_gate() {
+  local path="$1"
+  local description="$2"
+  local version
+  [[ -f "$path" ]] || return 0
+  version="$(gate_version_of "$path")"
+  if [[ -z "$version" ]]; then
+    echo "error: $description ($path) carries no gate-version header." >&2
+    exit 3
+  fi
+  if [[ "$version" != "$GATE_VERSION" ]]; then
+    echo "error: $description ($path) carries gate-version $version and this run is $GATE_VERSION." >&2
+    echo "       Re-cut the baseline before running this comparison." >&2
+    exit 3
+  fi
+}
+
+require_current_gate "$PREV_TSV" "the port baseline"
+require_current_gate "$JAR_TSV" "the jar reference"
+require_current_gate "$STEM_TIMES" "the rolling time baseline"
 
 TIMEOUT_SECONDS="${QUALITY_AB_TIMEOUT:-3600}"
 TIMEOUT=()

@@ -127,10 +127,18 @@ impl Polyline {
 
     /// Creates a polyline consisting of three lines (Polyline.java:59-71).
     ///
-    /// Note that Java recomputes the closing direction as `from_corner -> to_corner` (line 69),
-    /// not `to_corner -> from_corner` as [`Polyline::from_polygon`] does, so the two constructors
-    /// produce opposite (but geometrically identical) closing lines for the same two points.
-    // Java bug: Polyline.java:69 repeats line 66 verbatim; see docs/java-quirks.md.
+    /// Java recomputed the closing direction as `from_corner -> to_corner` (line 69), not
+    /// `to_corner -> from_corner` as [`Polyline::from_polygon`] does, so the two constructors
+    /// produced opposite (but geometrically identical) closing lines for the same two points —
+    /// and the polyline's two ends were handed differently, with both closing lines pointing the
+    /// same way instead of outward from each end.
+    // Java bug: Polyline.java:69 repeats line 66 verbatim; see docs/java-quirks.md #23.
+    //
+    // fixed: T11 (#23) — the end closing direction is `to_corner -> from_corner`, which is what
+    // `from_polygon` uses and what the rest of the code assumes (the shape lies on the right of
+    // every line). Measured: `from_two_points((0,0), (100,0))` had `lines[2] = (100,0)->(100,1)`,
+    // co-directed with `lines[0]`, and now has `(100,0)->(100,-1)`. The binding statement is that
+    // `from_two_points(a, b)` and `from_points(&[a, b])` produce the same line array.
     pub fn from_two_points(from_corner: &Point, to_corner: &Point) -> Polyline {
         if from_corner == to_corner {
             return Polyline { lines: Vec::new() };
@@ -140,7 +148,7 @@ impl Polyline {
         let dir = Direction::between(from_corner, to_corner).expect("the corners differ");
         let l0 = line_from_direction(from, &dir.turn_45_degree(2));
         let l1 = Line::new(from, to);
-        let dir = Direction::between(from_corner, to_corner).expect("the corners differ");
+        let dir = Direction::between(to_corner, from_corner).expect("the corners differ");
         let l2 = line_from_direction(to, &dir.turn_45_degree(2));
         Polyline {
             lines: vec![l0, l1, l2],
@@ -190,12 +198,30 @@ impl Polyline {
     /// exists. Java's two early `return`s before the flip loop (either normaliser answering an
     /// empty array, or fewer than 3 lines surviving) leave the caller's array untouched, and so
     /// does this.
-    pub fn from_lines_in_place(input_lines: &mut Vec<Line>) -> Result<Polyline, PolylineError> {
-        let (polyline, writes_through) = Polyline::build(input_lines.clone())?;
-        if writes_through {
-            input_lines.clone_from(&polyline.lines);
-        }
-        Ok(polyline)
+    ///
+    /// **fixed: T11 (#188).** This was `from_lines_in_place(&mut Vec<Line>)` and wrote the
+    /// normalised lines **back into the caller's `Vec`**, reproducing Java's aliasing exactly. It
+    /// no longer writes to anything the caller owns: it takes a `&[Line]` and *returns* the array
+    /// the caller should read, so the `opposite()` flips stay inside the `Polyline` and the
+    /// constructor cannot reach into its caller's state. That is the register's own remedy —
+    /// "copy before normalising ... then the six sites read what they built".
+    ///
+    /// The returned `Vec` is the polyline's own lines when Java's write-back would have happened,
+    /// and the input unchanged when it would not, so the six sites see byte-for-byte what they saw
+    /// before. Making it a return value rather than a mutation is the whole of the change: it
+    /// moves the aliasing out of the API without moving the answer.
+    pub fn from_lines_normalised(
+        input_lines: &[Line],
+    ) -> Result<(Polyline, Vec<Line>), PolylineError> {
+        let (polyline, writes_through) = Polyline::build(input_lines.to_vec())?;
+        let as_the_caller_sees_it = if writes_through {
+            polyline.lines.clone()
+        } else {
+            // Java returned before the flip loop, or a normaliser handed back a strictly shorter
+            // copy; either way the caller's array is the one it built.
+            input_lines.to_vec()
+        };
+        Ok((polyline, as_the_caller_sees_it))
     }
 
     /// The body of `new Polyline(Line[])` (Polyline.java:73-102).
@@ -1235,17 +1261,19 @@ mod tests {
         assert_eq!(p.lines()[1], Line::from_coords(0, 0, 10, 0));
         assert_eq!(p.lines()[2], Line::from_coords(10, 0, 10, 10));
         assert_eq!(p.lines()[3], Line::from_coords(10, 10, 11, 10));
-        // Polyline.java:59-71 recomputes the direction as from->to, so its closing line points
-        // the other way than the Polygon constructor's would.
+        // Java bug: Polyline.java:59-71 recomputed the direction as from->to, so its closing line
+        // pointed the *same* way as the start's instead of the other way, and the two constructors
+        // disagreed at index 2. fixed: T11 (#23) — `two.lines()[2]` was `(10,0)->(10,1)`, and the
+        // binding statement is now that the two constructors agree.
         let two = Polyline::from_two_points(
             &Point::Int(IntPoint::new(0, 0)),
             &Point::Int(IntPoint::new(10, 0)),
         );
         assert_eq!(two.lines().len(), 3);
-        assert_eq!(two.lines()[2], Line::from_coords(10, 0, 10, 1));
+        assert_eq!(two.lines()[2], Line::from_coords(10, 0, 10, -1));
         assert_eq!(
-            Polyline::from_points(&pts(&[(0, 0), (10, 0)])).lines()[2],
-            Line::from_coords(10, 0, 10, -1)
+            Polyline::from_points(&pts(&[(0, 0), (10, 0)])).lines(),
+            two.lines()
         );
         // equal corners produce an empty polyline
         assert!(
@@ -1457,65 +1485,80 @@ mod tests {
         assert_eq!(degenerate.lines().len(), 0);
     }
 
-    /// `new Polyline(Line[])` normalises the **caller's** array: `removeConsecutiveParallelLines`
-    /// (Polyline.java:118) and `removeOverlaps` (:165) both `return lines` when they skip nothing,
-    /// and the constructor's `filteredLines[i] = filteredLines[i].opposite()` (:97) then writes
-    /// through to it. Five Plan 6 tightener sites re-read that array (see
-    /// [`Polyline::from_lines_in_place`]), and since quirk #74 the *identity* of what they read
+    /// **fixed: T11 (#188).** Java bug: `new Polyline(Line[])` normalises the **caller's** array —
+    /// `removeConsecutiveParallelLines` (Polyline.java:118) and `removeOverlaps` (:165) both
+    /// `return lines` when they skip nothing, and the constructor's
+    /// `filteredLines[i] = filteredLines[i].opposite()` (:97) then writes through to it. Six Plan 6
+    /// tightener sites re-read that array, and since quirk #74 the *identity* of what they read
     /// back is board-observable: a flipped line is a new `Line` object.
+    ///
+    /// This test was `from_lines_in_place_writes_the_normalised_lines_back_to_the_caller` and
+    /// asserted the write-back — `arr == polyline.lines()`, object for object. It is now the
+    /// plan's inversion: constructing a `Polyline` leaves the caller's `Vec` **unchanged**, and the
+    /// normalised array the six sites need comes back as a return value instead.
+    ///
+    /// The answer is deliberately not moved, only the aliasing: the second half of
+    /// [`Polyline::from_lines_normalised`]'s result is exactly what the caller's array used to
+    /// become, so the six sites read what they always read.
     #[test]
-    fn from_lines_in_place_writes_the_normalised_lines_back_to_the_caller() {
+    fn the_caller_s_array_is_not_normalised_in_place() {
         // A two-corner polyline's three lines, with the middle one handed in reversed. The
-        // constructor's normalisation turns it back round, so index 1 comes back as a *different*
-        // object with a different value; indices 0 and 2 are untouched.
+        // constructor's normalisation turns it back round, so index 1 of the *returned* array is a
+        // different line from the one handed in; indices 0 and 2 are untouched.
         let base = Polyline::from_points(&pts(&[(0, 0), (10000, 0)]));
-        let mut arr = vec![base.lines()[0], base.lines()[1].opposite(), base.lines()[2]];
+        let arr = vec![base.lines()[0], base.lines()[1].opposite(), base.lines()[2]];
         let handed_in = arr.clone();
 
-        let polyline = Polyline::from_lines_in_place(&mut arr).expect("normalises");
+        let (polyline, normalised) = Polyline::from_lines_normalised(&arr).expect("normalises");
 
-        assert_eq!(polyline.lines().len(), 3);
-        // The write-back happened, and it is Java's: the caller's array *is* the polyline's.
-        assert_eq!(arr, polyline.lines());
-        for (caller, built) in arr.iter().zip(polyline.lines()) {
-            assert!(caller.is_same_object(built));
-        }
-        // Index 1 was flipped: a new object, and no longer the reversed line handed in.
-        assert!(!arr[1].is_same_object(&handed_in[1]));
-        assert_ne!(arr[1], handed_in[1]);
-        assert_eq!(arr[1], base.lines()[1]);
-        // Indices 0 and 2 keep the objects the caller put in, exactly as Java keeps the
-        // references it was handed.
-        assert!(arr[0].is_same_object(&handed_in[0]));
-        assert!(arr[2].is_same_object(&handed_in[2]));
-
-        // `from_lines` is the same construction with the write-back dropped, which is what every
-        // caller that does not re-read its array wants.
-        let mut same_input = handed_in.clone();
+        // The caller's array is untouched — the whole of #188.
         assert_eq!(
-            Polyline::from_lines(same_input.clone()).expect("normalises"),
+            arr, handed_in,
+            "fixed: T11 (#188) — the caller's Vec is unchanged"
+        );
+        for (after, before) in arr.iter().zip(&handed_in) {
+            assert!(
+                after.is_same_object(before),
+                "fixed: T11 (#188) — not even the identity tokens moved"
+            );
+        }
+
+        // And the normalised array the six sites need is the polyline's own, which is what they
+        // used to find in their local array.
+        assert_eq!(polyline.lines().len(), 3);
+        assert_eq!(normalised, polyline.lines());
+        assert_ne!(normalised[1], handed_in[1]);
+        assert_eq!(normalised[1], base.lines()[1]);
+        assert!(normalised[0].is_same_object(&handed_in[0]));
+        assert!(normalised[2].is_same_object(&handed_in[2]));
+
+        // `from_lines` builds the same polyline; the two entry points differ only in whether the
+        // normalised array comes back with it.
+        assert_eq!(
+            Polyline::from_lines(handed_in.clone()).expect("normalises"),
             polyline
         );
-        same_input.clone_from(&handed_in);
-        assert!(same_input[1].is_same_object(&handed_in[1]));
     }
 
     /// The negative half: when either normaliser *skips* a line it returns a fresh array, so
-    /// Java's write-back lands in the copy and the caller's array is untouched
-    /// (Polyline.java:126-130, :168-172, and the constructor's `< 3` return at :80-83).
+    /// Java's write-back landed in the copy and the caller's array was untouched even before the
+    /// fix (Polyline.java:126-130, :168-172, and the constructor's `< 3` return at :80-83). The
+    /// returned array is then the caller's own, unchanged — which is what keeps the six sites'
+    /// behaviour identical across the fix rather than merely similar.
     #[test]
-    fn from_lines_in_place_leaves_the_caller_alone_when_a_line_is_skipped() {
+    fn a_skipped_line_leaves_the_array_as_the_caller_built_it() {
         // Two consecutive parallel lines: `removeConsecutiveParallelLines` skips one, two survive,
         // and the constructor returns an empty polyline before its normalisation loop.
-        let mut arr = vec![
+        let arr = vec![
             Line::from_coords(0, 0, 0, 1),
             Line::from_coords(0, 0, 10000, 0),
             Line::from_coords(0, 100, 10000, 100),
         ];
         let handed_in = arr.clone();
-        let polyline = Polyline::from_lines_in_place(&mut arr).expect("no underflow");
+        let (polyline, normalised) = Polyline::from_lines_normalised(&arr).expect("no underflow");
         assert!(polyline.lines().is_empty());
-        for (after, before) in arr.iter().zip(&handed_in) {
+        assert_eq!(arr, handed_in);
+        for (after, before) in normalised.iter().zip(&handed_in) {
             assert!(after.is_same_object(before));
         }
     }

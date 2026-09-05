@@ -23,6 +23,10 @@
         "description": "Run the auto-routing stage at all.",
         "type": "boolean"
       },
+      "failure_give_up_threshold": {
+        "description": "Skip an item on a later auto-routing pass once it has failed this many times. Absent (the default) retries every item on every pass.",
+        "type": "integer"
+      },
       "fanout": {
         "additionalProperties": false,
         "description": "The fanout pre-pass, which escapes SMD pins onto a routable layer before auto-routing starts.",
@@ -161,6 +165,10 @@
             "description": "How many optimizer passes to run.",
             "type": "integer"
           },
+          "max_search_steps": {
+            "description": "A deterministic cap on the total search steps the optimizer may spend; 0 means unlimited. Bounds runaway routing on incomplete boards without a wall-clock.",
+            "type": "integer"
+          },
           "max_threads": {
             "description": "Worker threads for the optimizer.",
             "type": "integer"
@@ -222,6 +230,10 @@
           }
         },
         "type": "object"
+      },
+      "smd_via_relaxation": {
+        "description": "On a pure-SMD net, allow a via to attach to an SMD pad and cut the via cost to a tenth, even where the via rule itself disallows SMD attach. Default true keeps that relaxation; false leaves the via rule's own attach permission and cost alone.",
+        "type": "boolean"
       },
       "strict_drc": {
         "description": "Refuse a route that would leave a clearance violation, rather than accepting it and scoring the penalty.",

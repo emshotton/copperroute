@@ -1102,9 +1102,25 @@ fn pull_tight_honours_the_net_class_flag() {
 // `smoothenEndCornersAtTrace` — probe mode `smooth`
 // =================================================================================================
 
+/// **fixed: T11 (#183) — PORT LANE.** `TraceTightenerAnyAngle.smoothenEndCornerAtTrace` read
+/// `prevLineDirection` from `lines[endLineNo]`, the same line `lineDirection` comes from
+/// (`:907-908`), where the 45-degree sibling reads `lines[length - 3]` and this class's own
+/// *start*-corner method reads `lines[startLineNo + 1]`. The `bend` arm needs
+/// `lineDirection.projection(otherDir) == ZERO` **and**
+/// `prevLineDirection.projection(otherDir) == POSITIVE`, and `Direction.projection` is a pure
+/// function of its two arguments — so two equal directions cannot satisfy both and the arm was
+/// unreachable for every input.
+///
+/// The reachability was **measured on this fixture**, which is the answer key's proof shape rather
+/// than a geometry literal: with `lines[endLineNo]` the `bend` arm executes **0** times over this
+/// whole test; with `lines[endLineNo - 1]` it executes **3**. The rows that move are the ones
+/// where the corrected `prevLineDirection` changes what `scan_contacts` finds, which is the fix
+/// doing exactly what it is for.
+///
+/// The section is therefore the port's, per rulings BT and CC/BV — see [`PORT_LANE`].
 #[test]
 fn smoothen_end_corners_at_trace_matches_the_jvm() {
-    let expected = section("smooth");
+    let expected = section_for("smooth");
     let mut actual: Vec<String> = Vec::new();
     for angle in [
         AngleRestriction::NinetyDegree,
@@ -1155,6 +1171,12 @@ fn smoothen_end_corners_at_trace_matches_the_jvm() {
         }
         actual.extend(dump_board(&board));
     }
+    // Re-cuts the port-lane golden: `T11_DUMP_SMOOTH=<path>` writes the rows this run produced,
+    // for pasting under `data/p9t11-tightener-smooth.txt`'s `#` provenance header, where the
+    // command is recorded. Writing rather than printing keeps 143 rows out of a captured stdout.
+    if let Ok(path) = std::env::var("T11_DUMP_SMOOTH") {
+        std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
+    }
     assert_rows("smooth", &expected, &actual);
 }
 
@@ -1169,6 +1191,94 @@ fn the_ninety_degree_regime_never_smoothens_an_end_corner() {
         assert!(a.smoothen_start_corner_at_trace(&mut board, id).is_none());
         assert!(a.smoothen_end_corner_at_trace(&mut board, id).is_none());
     }
+}
+
+/// #210 — three traces share the corner being smoothed. Two of them (`far`, `near`) satisfy the
+/// acute-angle branch; the third (`middle`) points the wrong way and satisfies neither. `far`
+/// gets the smallest item id and `near` the largest, so an id-ordered walk that keeps whichever
+/// match it visits last would keep `far`. The winning contact is instead the one whose own far
+/// corner lands closest to the corner being smoothed — `near`, at distance 500 against `far`'s
+/// 5000 — regardless of id.
+#[test]
+fn the_start_corner_contact_is_chosen_by_geometry() {
+    let mut rules = rules_with_wide_class(AngleRestriction::FortyFiveDegree);
+    let default_class = rules.get_default_net_class();
+    rules.nets.add("N1", 1, false, default_class);
+    let mut board = Board::new(
+        Vec::new(),
+        0,
+        BOUNDING_BOX,
+        rules,
+        BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
+        Components::new(),
+        Communication::default(),
+    );
+
+    let main = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[p(0, 0), p(1000, 1000), p(2000, 1000)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insert");
+    let far = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[p(0, 0), p(5000, 0), p(5000, -500)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insert");
+    board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[p(0, 0), p(-500, 0), p(-500, -500)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insert");
+    let near = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[p(0, 0), p(500, 0), p(500, -500)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("insert");
+    assert!(
+        far.0 < near.0,
+        "far must have the smaller id for this test to distinguish the two rules"
+    );
+
+    let near_first_line = polyline_of(&board, near).expect("near trace").lines()[1];
+    let far_first_line = polyline_of(&board, far).expect("far trace").lines()[1];
+
+    let main_polyline = polyline_of(&board, main).expect("main trace").clone();
+    let mut a = algo(&mut board, 500);
+    a.pull_tight_polyline(&mut board, &main_polyline, 0, 30, &[1], 1, None);
+    let smoothed = a
+        .smoothen_start_corner_at_trace(&mut board, main)
+        .expect("the acute branch matches");
+
+    assert_eq!(
+        smoothed.lines()[0],
+        near_first_line,
+        "the nearest contact's own line shapes the new corner"
+    );
+    assert_ne!(
+        smoothed.lines()[0],
+        far_first_line,
+        "not the farther contact, even though it has the smaller id"
+    );
 }
 
 // =================================================================================================
@@ -1437,17 +1547,87 @@ fn polyline_of(board: &Board, id: ItemId) -> Option<&Polyline> {
 
 /// Compare two row lists and report the first difference with its line number, so a diff in a
 /// 771-row random block names the row rather than dumping the block.
+///
+/// `expected` is the JVM transcript's section, except for a [`PORT_LANE`] mode, where it is the
+/// port's own re-cut golden — see [`section_for`].
 fn assert_rows(mode: &str, expected: &[&str], actual: &[String]) {
+    let lane = if PORT_LANE.iter().any(|(name, _, _)| *name == mode) {
+        "port-lane golden"
+    } else {
+        "JVM transcript"
+    };
     for (i, (want, got)) in expected.iter().zip(actual.iter()).enumerate() {
         assert_eq!(
             *want,
             got.as_str(),
-            "mode `{mode}` row {i} differs from the JVM transcript"
+            "mode `{mode}` row {i} differs from the {lane}"
         );
     }
     assert_eq!(
         expected.len(),
         actual.len(),
-        "mode `{mode}` row count differs from the JVM transcript"
+        "mode `{mode}` row count differs from the {lane}"
     );
+}
+
+// =================================================================================================
+// The port lane (ruling BT / CC)
+// =================================================================================================
+
+/// The port's own rows for the transcript section Plan 9 Task 11 deliberately moved off the jar.
+///
+/// [`TRANSCRIPT`] is untouched and stays the jar's stdout — still the record of what the jar does,
+/// and still the input corpus. This is what the *port* answers over the same input, so both sides
+/// are pinned and drift fails in both directions: [`assert_rows`] replays this byte for byte, and
+/// [`the_port_lane_modes_still_differ_from_the_jar`] requires the divergence to persist, so a fix
+/// silently reverted fails here too.
+const T11_SMOOTH: &str = include_str!("data/p9t11-tightener-smooth.txt");
+
+/// The sections that are the **port's** rather than the jar's, each with the register row that
+/// authorizes the divergence.
+const PORT_LANE: &[(&str, &str, &str)] = &[(
+    "smooth",
+    "#183",
+    "`TraceTightenerAnyAngle.smoothenEndCornerAtTrace` read `prevLineDirection` from the same \
+     line as `lineDirection`, so the `bend` arm — which needs the two to differ — was unreachable \
+     for every input. Reading `lines[endLineNo - 1]` makes it reachable: measured 0 executions \
+     before and 3 after, over this very fixture.",
+)];
+
+/// The port-lane golden's rows, with its `#` provenance header stripped.
+fn port_lane_section(mode: &str) -> Vec<&'static str> {
+    let text = match mode {
+        "smooth" => T11_SMOOTH,
+        _ => panic!("no port-lane golden for mode `{mode}`"),
+    };
+    let rows: Vec<&str> = text
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .map(str::trim_end)
+        .collect();
+    assert!(!rows.is_empty(), "port-lane golden `{mode}` is empty");
+    rows
+}
+
+/// [`section`] for a jar-lane mode, [`port_lane_section`] for a port-lane one.
+fn section_for(mode: &str) -> Vec<&'static str> {
+    if PORT_LANE.iter().any(|(name, _, _)| *name == mode) {
+        port_lane_section(mode)
+    } else {
+        section(mode)
+    }
+}
+
+/// Every [`PORT_LANE`] mode must **still** differ from the jar. Without this, a fix that was
+/// quietly reverted would go green against its own re-cut golden and nothing would notice.
+#[test]
+fn the_port_lane_modes_still_differ_from_the_jar() {
+    for (mode, row, reason) in PORT_LANE {
+        assert_ne!(
+            port_lane_section(mode),
+            section(mode),
+            "port-lane mode `{mode}` now MATCHES the jar — delete its PORT_LANE entry \
+             (register {row}: {reason})"
+        );
+    }
 }

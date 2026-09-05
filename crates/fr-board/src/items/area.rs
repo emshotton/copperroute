@@ -244,10 +244,18 @@ impl ObstacleAreaData {
 
     /// Port of `ObstacleArea.rotateApprox` (ObstacleArea.java:227-244).
     ///
-    /// Note the asymmetry Java has here and in `Component.rotate` (quirk #48): the *stored*
+    /// Java bug: the asymmetry Java has here and in `Component.rotate` (quirk #48) — the *stored*
     /// rotation takes the complement `360 - angleInDegree` for a flipped area under
     /// `flipStyleRotateFirst`, but the translation is rotated by the original `angleInDegree`
-    /// (ObstacleArea.java:240-241).
+    /// (ObstacleArea.java:240-241), so the two disagree by `360 - 2*angle`. Quirk #57.
+    ///
+    /// The complement is the intended angle, because Java computes `turnAngle` under an
+    /// explanatory comment about back-side mirroring order and then fails to use it. The geometry
+    /// now follows it; the decision is recorded on `Component::rotate`.
+    //
+    // fixed: T11 (#57, #48) — this site is named by both rows, and all three sites move in one
+    // commit: fixing one alone would make them disagree with each other rather than with the
+    // truth, which is strictly worse than the shared error.
     fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint, ctx: &ItemCtx<'_>) {
         let mut turn_angle = angle_in_degree;
         if self.side_changed && ctx.components.get_flip_style_rotate_first() {
@@ -257,7 +265,7 @@ impl ObstacleAreaData {
         let new_translation = self
             .translation
             .to_float()
-            .rotate(angle_in_degree.to_radians(), pole);
+            .rotate(turn_angle.to_radians(), pole);
         self.translation = Point::Int(new_translation.round()).difference_by(&Point::ZERO);
         self.absolute_area.take();
         self.convex_pieces.take();
@@ -555,10 +563,19 @@ impl ConductionArea {
     // Java bug: an area on anything other than exactly one net is not copied at all — Java warns
     // ("not yet implemented for areas with more than 1 net") and returns `null`
     // (ConductionArea.java:310-313), which includes an area with **zero** nets despite the
-    // message. Reproduced as `None`; see docs/java-quirks.md.
-    /// Returns `None` unless the area is on exactly one net.
+    // message. Every other `Item.copy` override always produces an item, so a caller that does
+    // not null-check gets an NPE one call later. See docs/java-quirks.md #46.
+    //
+    // fixed: T10 (#46) — the **zero-net** case, which the sketch calls out as needing no new
+    // logic at all: an area on no nets copies to an area on no nets, and `copied_header` already
+    // carries the (empty) net list. The guard is now `> 1`, so only the case Java's own warning
+    // names — "more than 1 net" — still answers `None`. The multi-net copy is deliberately left
+    // for a later plan: the constructor takes an `int[]` and would carry it, but nothing in the
+    // port constructs a multi-net conduction area, so there is no way to measure the change and
+    // "it should work" is not evidence. The register row carries that as an open question.
+    /// Returns `None` only for an area on **more than one** net.
     pub fn copy(&self, new_id: ItemId) -> Option<ConductionArea> {
-        if self.hdr.net_count() != 1 {
+        if self.hdr.net_count() > 1 {
             return None;
         }
         Some(ConductionArea {
@@ -881,6 +898,13 @@ impl ComponentOutline {
 
     /// Port of `ComponentOutline.rotateApprox` (ComponentOutline.java:158-175), the mirror image
     /// of `ObstacleArea.rotateApprox`: the complement is taken for a **back-side** outline.
+    ///
+    /// Java bug: the identical split as quirk #48 and `ObstacleArea::rotate_approx` — the stored
+    /// rotation took `turnAngle` and the translation `angleInDegree`. Quirk #57.
+    /// The decision is recorded on `Component::rotate`.
+    //
+    // fixed: T11 (#57, #48) — this site is named by both rows, in the same commit as its two
+    // siblings.
     pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint, ctx: &ItemCtx<'_>) {
         let mut turn_angle = angle_in_degree;
         if !self.is_front && ctx.components.get_flip_style_rotate_first() {
@@ -890,7 +914,7 @@ impl ComponentOutline {
         let new_translation = self
             .translation
             .to_float()
-            .rotate(angle_in_degree.to_radians(), pole);
+            .rotate(turn_angle.to_radians(), pole);
         self.translation = Point::Int(new_translation.round()).difference_by(&Point::ZERO);
         self.clear_derived_data();
     }
@@ -912,6 +936,7 @@ impl ComponentOutline {
     // autoroute scratch of a component outline survive every transform. Reproduced — the header
     // is deliberately left alone. See docs/java-quirks.md.
     pub fn clear_derived_data(&mut self) {
+        self.hdr.clear_derived_data();
         self.absolute_area.take();
     }
 }

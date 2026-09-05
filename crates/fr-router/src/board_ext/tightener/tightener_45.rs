@@ -7,7 +7,7 @@ use fr_geometry::{
     java_max, java_min,
 };
 
-use super::base::{TightenerBase, new_polyline, new_polyline_in_place};
+use super::base::{TightenerBase, new_polyline, new_polyline_normalised};
 
 /// `class TraceTightener45 extends TraceTightener` (TraceTightener45.java:21).
 ///
@@ -39,13 +39,8 @@ impl<'a> TraceTightener45<'a> {
         board: &mut Board,
         polyline: &Polyline,
     ) -> Option<Polyline> {
-        // :36. `ever_changed` is seeded from this arm, not from the loop — see
-        // [`TraceTightener90::pull_tight`](super::TraceTightener90::pull_tight) for why the
-        // `avoidAcidTraps` result counts as a change in its own right. Dead today (quirk #182).
-        let (mut new_result, mut ever_changed) = match self.base.avoid_acid_traps(polyline) {
-            Some(replacement) => (replacement, true),
-            None => (polyline.clone(), false),
-        };
+        let mut new_result = polyline.clone();
+        let mut ever_changed = false;
         // :37-38.
         let mut changed = true;
         while changed && !self.base.is_stop_requested() {
@@ -534,9 +529,9 @@ impl<'a> TraceTightener45<'a> {
                 || new_line_side_of_nearest_corner == Side::Collinear
             {
                 // :420-432. `new Polyline(checkLines)` normalises **checkLines itself**, and
-                // `:435` reads element 1 back out of it — see `new_polyline_in_place`.
-                let mut check_lines = vec![check_line_0, new_line, check_line_2];
-                let tmp = new_polyline_in_place(&mut check_lines);
+                // `:435` reads element 1 back out of it — see `new_polyline_normalised`.
+                let check_lines = vec![check_line_0, new_line, check_line_2];
+                let (tmp, check_lines) = new_polyline_normalised(&check_lines);
                 let new_line = check_lines[1];
                 if tmp.lines().len() == 3 {
                     let shape_to_check = tmp

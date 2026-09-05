@@ -14,7 +14,7 @@
 //! `unimplemented!()` — are additionally asserted as literals so the intent survives a
 //! regenerated transcript.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::BoardError;
 use fr_board::ids::{ItemId, PadstackId};
@@ -901,25 +901,26 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
         assert_eq!((free, fixed, on_pin), (ItemId(6), ItemId(7), ItemId(8)));
 
         let delta = Vector::from(IntVector::new(300, 0));
-        let mut ignore = Vec::new();
+        let ignore: Vec<ItemId> = Vec::new();
         assert!(
-            DrillItemMover::check(&mut board, free, &delta, 20, 5, Some(&mut ignore), None),
+            DrillItemMover::check(&mut board, free, &delta, 20, 5, Some(&ignore), None),
             "probe `check viaId=6 delta=(300,0) result=true`"
         );
-        assert_eq!(
-            ignore,
-            vec![free],
-            "quirk #175: `:63` appends the drill item to the caller's list"
-        );
+        // quirk #175 (fixed: T10): Java's `:63` appended the drill item to the **caller's** list,
+        // so the jar's probe prints `ignoreSize=1` after this successful check. The collection is
+        // copied unconditionally now, the way `shoveVias:220-223` already did, and the parameter
+        // is a shared slice — so the caller's list is untouched. The routing answer above, which
+        // is what the probe row actually measures, is unchanged.
+        assert!(ignore.is_empty());
         for via in [fixed, on_pin] {
-            let mut ignore = Vec::new();
+            let ignore: Vec<ItemId> = Vec::new();
             assert!(!DrillItemMover::check(
                 &mut board,
                 via,
                 &delta,
                 20,
                 5,
-                Some(&mut ignore),
+                Some(&ignore),
                 None
             ));
             assert!(ignore.is_empty());
@@ -929,7 +930,7 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
             (-2000, -1600, true),
             (-1500, -1900, false),
         ] {
-            let mut ignore = Vec::new();
+            let ignore: Vec<ItemId> = Vec::new();
             assert_eq!(
                 DrillItemMover::check(
                     &mut board,
@@ -937,17 +938,19 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
                     &Vector::from(IntVector::new(dx, dy)),
                     20,
                     5,
-                    Some(&mut ignore),
+                    Some(&ignore),
                     None,
                 ),
                 expected,
                 "probe `check viaId=6 delta=({dx},{dy}) result={expected}` ({angle:?})"
             );
-            assert_eq!(ignore, vec![free]);
+            // quirk #175 (fixed: T10), as above: the jar's `ignoreSize=1` is the caller's list
+            // being mutated by a check, and it no longer is.
+            assert!(ignore.is_empty());
         }
-        let mut ignore = Vec::new();
+        let ignore: Vec<ItemId> = Vec::new();
         assert!(
-            DrillItemMover::check(&mut board, free, &delta, 20, 0, Some(&mut ignore), None),
+            DrillItemMover::check(&mut board, free, &delta, 20, 0, Some(&ignore), None),
             "probe `check viaId=6 delta=(300,0) viaDepth=0 result=true`"
         );
     }
@@ -1832,6 +1835,12 @@ fn assert_board_matches(board: &Board, case: &ProbeCase) {
     }
 }
 
+/// [`assert_board_matches`] as a predicate rather than an assertion, for the one probe axis a
+/// Plan 9 fix has moved off the jar — see `trace_shover_insert_agrees_with_the_jvm_on_every_probe_row`.
+fn board_matches(board: &Board, case: &ProbeCase) -> bool {
+    max_generated_id(board) == case.max_id && dump_board(board) == case.items
+}
+
 /// `P6T10bProbe.buildWithVia` — the probe board plus a free, unfixed net-3 via.
 fn probe_board_with_via(angle: AngleRestriction, via_center: Point) -> (Board, ItemId) {
     let mut board = probe_board(angle);
@@ -2006,13 +2015,48 @@ fn forced_pad_agrees_with_the_jvm_on_every_probe_row() {
     assert!(probe_rows.next().is_none(), "every `pad` row was consumed");
 }
 
+/// The number of the 320 `trace` grid rows whose board **moved off the jar** when T11 fixed
+/// quirk #177. Every one of them is a `changedArea=false` row, and every one of them moved to the
+/// answer its `changedArea=true` twin already gave — the test below asserts both, so this literal
+/// is a count, not a claim on its own.
+/// Measured: **4** — `spot=onNet1Trace r=60 nets=[3] maxRec=20`, at `spring=0` and `spring=3`, in
+/// both angle regimes. That is the row the register's JVM-pinned literal already named (three
+/// traces, ids 6/7/8, where a marked board leaves one, id 8 with all eight corners), and it is the
+/// only grid point at which the un-normalized pieces are distinguishable: everywhere else the
+/// shove either fails, or leaves a single piece that normalisation would not have changed.
+const MOVED_BY_177: usize = 4;
+
 /// Mode `trace`: `TraceShover.insert` over the same grid plus the spring-over budget — **320 grid
 /// rows and 2 extra rows**.
+///
+/// # PORT-REGRESSION PIN on the `changedArea=false` axis — fixed: T11 (#177)
+///
+/// This transcript is the jar's own stdout, and 316 of its 320 grid rows still match it exactly.
+/// The rest are the rows quirk #177 moved: `TraceShover.insert:572` dereferenced a null
+/// `changedArea` and its own `catch` swallowed the `NullPointerException`, so an unmarked board
+/// kept the substitute pieces un-normalized. `ForcedPadRouter.forcedPad:439-444` guards the
+/// identical call in the identical loop, so the two mutating halves of the shove disagreed about
+/// the same board state, and the register's own remedy was to compute `optArea` the way the
+/// sibling already does.
+///
+/// Under ruling CC (the M1 accept wave's precedent, ruling BV) a jar row a Plan 9 fix moves is
+/// **re-cut as a port-regression pin with provenance** rather than left red. The re-cut here is
+/// not a literal but the invariant that replaces it, which is stronger than a transcript row and
+/// cannot rot into agreement with a future bug: for every one of the moved rows, the port's
+/// unmarked board must equal the board its **marked** twin produces. That is the sibling being
+/// the specification, asserted 320 rows wide instead of on the one hand-picked row
+/// `an_unmarked_changed_area_still_normalises` uses.
+///
+/// The jar comparison is kept for every other row and every other axis, so a real parity
+/// regression anywhere else in the grid still fails here.
 #[test]
 fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
     let stop = never_stop();
     let mut probe_rows = cases("trace").into_iter();
     let mut checked = 0usize;
+    let mut moved: Vec<String> = Vec::new();
+    let mut unmarked_boards: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut marked_boards: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for angle in [AngleRestriction::None, AngleRestriction::NinetyDegree] {
         let is_90 = angle == AngleRestriction::NinetyDegree;
         for (label, centre) in probe_spots() {
@@ -2020,6 +2064,11 @@ fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
                 for net_arr in [vec![1], vec![3]] {
                     for max_recursion_depth in [0, 20] {
                         for spring_over in [0, 3] {
+                            // Everything but the `changedArea` axis: the key that pairs a
+                            // `changedArea=false` row with its `changedArea=true` twin.
+                            let key = format!(
+                                "{is_90}|{label}|{radius}|{net_arr:?}|{max_recursion_depth}|{spring_over}"
+                            );
                             for with_changed_area in [false, true] {
                                 let case = probe_rows.next().expect("a probe row per grid point");
                                 let mut board = probe_board(angle);
@@ -2056,7 +2105,15 @@ fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
                                     "shoveFailingObstacle after `{}`",
                                     case.row
                                 );
-                                assert_board_matches(&board, &case);
+                                if with_changed_area || board_matches(&board, &case) {
+                                    assert_board_matches(&board, &case);
+                                } else {
+                                    moved.push(case.row.to_string());
+                                    unmarked_boards.insert(key.clone(), dump_board(&board));
+                                }
+                                if with_changed_area {
+                                    marked_boards.insert(key.clone(), dump_board(&board));
+                                }
                                 checked += 1;
                             }
                         }
@@ -2066,6 +2123,33 @@ fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
         }
     }
     assert_eq!(checked, 320);
+
+    // fixed: T11 (#177). Every row that has moved off the jar is a `changedArea=false` row, and it
+    // moved because `TraceShover.insert:572` no longer dereferences a null `changedArea`. See the
+    // doc comment above for why these rows are a port-regression pin rather than a parity failure.
+    assert!(
+        moved.iter().all(|row| row.contains("changedArea=false")),
+        "a row moved off the jar on an axis #177 does not touch:\n{}",
+        moved.join("\n")
+    );
+    assert_eq!(
+        moved.len(),
+        MOVED_BY_177,
+        "the number of probe rows #177 moves changed:\n{}",
+        moved.join("\n")
+    );
+    // And they moved *to* the marked board's answer, which is the whole content of the fix: the
+    // sibling `ForcedPadRouter.forcedPad` is the specification, so the shove's result must not
+    // depend on whether the caller happened to be marking the changed area.
+    for (key, unmarked) in &unmarked_boards {
+        assert_eq!(
+            unmarked,
+            marked_boards
+                .get(key)
+                .expect("every unmarked row has its marked twin"),
+            "fixed: T11 (#177) — the two halves of the shove still disagree at `{key}`"
+        );
+    }
 
     let empty_case = probe_rows.next().expect("the emptyShape row");
     let mut board = probe_board(AngleRestriction::None);
@@ -2114,21 +2198,31 @@ fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
     );
 }
 
-/// Quirk #177's minimal repro, straight off the probe: with `board.changedArea == null`,
-/// `TraceShover.insert:572`'s `board.changedArea.getArea(layer)` throws a
-/// `NullPointerException` that the `catch (Exception)` one line down swallows — so the substitute
-/// pieces are inserted **un-normalized**, three separate traces, where the identical call on a
-/// board that *is* marking its changed area normalizes them into one.
+/// **fixed: T11 (#177).** Java bug: with `board.changedArea == null`,
+/// `TraceShover.insert:572`'s `board.changedArea.getArea(layer)` throws a `NullPointerException`
+/// that the `catch (Exception)` one line down swallows — so the substitute pieces were inserted
+/// **un-normalized**: three separate traces (ids 6, 7, 8), where the identical call on a board
+/// that *is* marking its changed area normalizes them into one (id 8, all eight corners).
+/// `ForcedPadRouter.forcedPad:439-444` guards the same null in the same loop over the same
+/// pieces, so the two mutating halves of the shove disagreed about the same board state.
 ///
-/// `ForcedPadRouter.forcedPad:437-441` guards the same null; the two are not symmetric.
+/// This test was `trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
+/// unnormalized` and pinned that three-trace board as the unmarked answer.
+///
+/// The sibling is the specification, so the binding assertion is now an **equality between the
+/// two halves** rather than two literals: the board after the shove does not depend on whether
+/// `changed_area` was marked. It holds exactly — the unmarked board is not merely "also one
+/// trace", it is the *same* board, item for item and corner for corner, and `maxGeneratedId` is 8
+/// on both sides as it always was. The marked half's literal is kept below so the pair still says
+/// what that board is, rather than only that the two agree about something.
 #[test]
-fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_unnormalized() {
+fn an_unmarked_changed_area_still_normalises() {
     let stop = never_stop();
     let shape = probe_pad_shape(IntPoint::new(0, 200), 60, false);
     let from_side = ShapeEntrySide::from_point(&Point::new(0, 200), &shape);
 
-    // changedArea == null: the NPE is swallowed, three pieces survive (probe row
-    // `spot=onNet1Trace r=60 nets=[3] maxRec=20 spring=0 changedArea=false`).
+    // changedArea == null. Probe row `spot=onNet1Trace r=60 nets=[3] maxRec=20 spring=0
+    // changedArea=false`, whose JVM answer is the three un-normalized pieces.
     let mut board = probe_board(AngleRestriction::None);
     assert!(board.changed_area.is_none());
     assert!(
@@ -2148,12 +2242,16 @@ fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
         .unwrap()
     );
     assert_eq!(max_generated_id(&board), 8);
+    let unmarked = dump_board(&board);
+    // One trace, not three. The pinned answer was
+    //   id=8 corners=[(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0)]
+    //   id=7 corners=[(269,400),(500,400)]
+    //   id=6 corners=[(-500,0),(-269,0)]
+    // — the same copper, left in the three pieces `nextSubstituteTracePiece` built.
     assert_eq!(
-        dump_board(&board),
+        unmarked,
         vec![
-            "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0)]",
-            "    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(269,400),(500,400)]",
-            "    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(-500,0),(-269,0)]",
+            "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(500,400),(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0),(-500,0)]",
             "    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 corners=[(-800,300),(-800,900),(300,900)]",
             "    item id=3 type=Pin nets=[1] cl=1 padstack=thru center=(500,0)",
             "    item id=2 type=Pin nets=[1] cl=1 padstack=smd center=(-500,0)",
@@ -2161,7 +2259,7 @@ fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
         ]
     );
 
-    // changedArea != null: `normalize` runs and combines the three into one.
+    // changedArea != null: the half that always worked, and the specification for the half above.
     let mut board = probe_board(AngleRestriction::None);
     board.start_marking_changed_area();
     assert!(
@@ -2181,8 +2279,9 @@ fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
         .unwrap()
     );
     assert_eq!(max_generated_id(&board), 8);
+    let marked = dump_board(&board);
     assert_eq!(
-        dump_board(&board),
+        marked,
         vec![
             "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(500,400),(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0),(-500,0)]",
             "    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 corners=[(-800,300),(-800,900),(300,900)]",
@@ -2190,6 +2289,15 @@ fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
             "    item id=2 type=Pin nets=[1] cl=1 padstack=smd center=(-500,0)",
             "    item id=1 type=BoardOutline nets=[] cl=0",
         ]
+    );
+
+    // The invariant, stated on its own: the shove does not depend on whether the caller happened
+    // to be marking the changed area. This is the assertion that would catch a future divergence
+    // between `TraceShover::insert` and `ForcedPadRouter::forced_pad` even if both literals above
+    // were updated together.
+    assert_eq!(
+        unmarked, marked,
+        "fixed: T11 (#177) — the shove's two mutating halves agree about the same board state"
     );
 }
 

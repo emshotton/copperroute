@@ -1,0 +1,42 @@
+# gate-version: g2
+# task: T11
+# port-sha: 3a3a2fc9d7df (the tree the numbers came out of; it may since have been rewritten by an amend or a rebase, so it is not necessarily an ancestor of the commit carrying this file)
+# repeats: 3
+# port-baseline: benchmark/baselines/ab/quality-ab-T8.tsv  [T10 has not landed; this is the newest committed tsv at or below it]
+# jar-baseline: benchmark/baselines/quality-baseline-java-head.tsv  [read; rendered in the jar_* columns as context, never a gate; 29 stems]
+# time-baseline: benchmark/baselines/stem-times.tsv
+# corpus-median-cpu-ratio: 0.990
+# source-of-incomplete-and-violations: the referee's DRC document (`-de <board> <ses> -drc <report>`), NEVER the manifest (survey §4.1)
+# forbidden-inputs: traces.total_{vertical,horizontal,angled}_length (#195), board.bounding_box.width/height (#196)
+# quality-lane-budget: RouterBudget::disabled() (ruling AI); cpu_s lane: RouterBudget::default()
+# connectivity-claim: DECLARED (--claims-connectivity) — the must-fall rule was ARMED (ruling BZ(a): it binds a task that declares a connectivity claim)
+# cols:family	stem	mp_cap	incomplete	violations	clearance_violations	hole_clearance_violations	normalized_score	trace_length_mm	via_total	via_through	via_blind	via_buried	bend_count	neckdown_below_class_width	cpu_s	cpu_spread_s	jar_incomplete	jar_violations	jar_clearance_violations	jar_normalized_score	flag
+batch	router-rpi-splitter	8	0	0	0	0	999.97314	112.35205	9	9	0	0	11	0	0.069	0.011	0	0	0	999.9719	ok
+batch	router-dac2020-bm01	2	28	0	0	0	846.1418	3212.7322	74	74	0	0	485	0	14.409	0.246	31	0	0	825.6295	ok
+batch	router-j2-reference	99	0	0	0	0	999.9899	379.84253	18	18	0	0	38	0	0.267	0.007	0	0	0	999.9895	ok
+batch	router-tutorial-board	8	0	0	0	0	0.0	0.0	0	0	0	0	0	0	6.995	0.009	0	0	0	0.0	ok
+batch	router-ecc83-input	8	0	0	0	0	999.997	161.85194	0	0	0	0	15	0	0.027	0.001	0	0	0	999.997	ok
+batch	router-fanout-bm11	2	8	6	0	0	887.4913	1549.0908	59	59	0	0	252	0	2.998	0.038	2	5	0	987.4912	INCOMPLETE-ROSE
+batch	router-strict-drc-cnh	2	16	17	0	16	900.4859	4273.824	0	0	0	0	258	1	9.665	0.149	11	17	0	930.0412	INCOMPLETE-ROSE
+batch	router-empty-board	1	0	0	0	0	0.0	0.0	0	0	0	0	0	0	0.006	0.001	0	0	0	0.0	ok
+cli	router-rpi-splitter	8	0	0	0	0	999.97314	112.35205	9	9	0	0	11	0	0.057	0.001	0	0	0	999.9719	ok
+cli	router-j2-reference	99	0	0	0	0	999.9899	379.84253	18	18	0	0	38	0	0.262	0.003	0	0	0	999.9895	ok
+cli	router-ecc83-input	8	0	0	0	0	999.997	161.85194	0	0	0	0	15	0	0.028	0.001	0	0	0	999.997	ok
+cli	router-empty-board	1	0	0	0	0	0.0	0.0	0	0	0	0	0	0	0.006	0.001	0	0	0	0.0	ok
+cli	router-dac2020-bm01	2	28	0	0	0	846.1418	3212.7322	74	74	0	0	485	0	14.353	0.057	31	0	0	825.6295	ok
+cli	router-tutorial-board	8	0	0	0	0	0.0	0.0	0	0	0	0	0	0	6.987	0.047	0	0	0	0.0	ok
+cli	router-fanout-bm11	2	8	6	0	0	887.4913	1549.0908	59	59	0	0	252	0	3.002	0.013	2	5	0	987.4912	INCOMPLETE-ROSE
+cli	router-strict-drc-cnh	2	16	17	0	16	900.4859	4273.824	0	0	0	0	258	1	9.538	0.098	11	17	0	930.0412	INCOMPLETE-ROSE
+cli	tutorial_board	default	0	0	0	0	0.0	0.0	0	0	0	0	0	0	6.982	0.021	0	0	0	0.0	ok
+cli	Issue026-J2_reference	default	0	0	0	0	999.9899	379.84253	18	18	0	0	38	0	0.263	0.002	0	0	0	999.9895	ok
+cli	large-outline	2	10	423	0	400	819.15186	4668.72	165	165	0	0	477	0	4.176	0.048	8	415	0	823.31805	ok
+cli	kicad-ecc83-json	3	6	14	0	14	309.9979	113.13035	0	0	0	0	10	0	0.284	0.005	6	14	0	309.99774	ok
+cli	kicad-complex-hierarchy-json	default	0	36	0	36	935.7093	1337.2172	0	0	0	0	145	0	5.515	0.018	0	36	0	935.709	ok
+drc	drc-dev-board	n/a	4	10	0	2	-	-	-	-	-	-	-	-	0.046	0.000	4	10	0	-	ok
+drc	drc-bbd-mars-64	n/a	3	96	12	64	-	-	-	-	-	-	-	-	0.054	0.000	3	96	12	-	ok
+drc	drc-natural-tone-preamp	n/a	44	112	0	0	-	-	-	-	-	-	-	-	0.124	0.002	44	115	0	-	ok
+drc	drc-issue593-rules	n/a	74	0	0	0	-	-	-	-	-	-	-	-	0.013	0.002	74	0	0	-	ok
+drc	drc-issue593-ses	n/a	45	13	0	0	-	-	-	-	-	-	-	-	0.028	0.001	45	13	0	-	ok
+drc	drc-issue753-cpu85	n/a	169	107	0	78	-	-	-	-	-	-	-	-	0.123	0.002	169	107	0	-	ok
+drc	drc-issue110-relay	n/a	44	26	0	4	-	-	-	-	-	-	-	-	0.013	0.000	44	26	0	-	ok
+drc	drc-tutorial-board	n/a	0	0	0	0	-	-	-	-	-	-	-	-	0.843	0.004	0	0	0	-	ok

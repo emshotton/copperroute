@@ -418,13 +418,42 @@ impl FloatPoint {
     /// instead. This port surfaces that as `None` (checked with `f64::is_finite`), which is the
     /// only sensible outcome for a caller — a `FloatPoint` full of `NaN` cannot denote a circle
     /// center.
+    ///
+    /// # deferred to Task 13 (#82) — quirk #9, and why it is not fixed with #15/#16/#13
+    ///
+    /// The horizontal case is quirk **#9**, and Plan 9 Task 11 fixes the other three of
+    /// #15/#16/#9/#13 and deliberately leaves this one. It is the *mechanism* of **#82**, so
+    /// fixing it here would move #82's behaviour without #82's measurement; both ends of the split
+    /// name each other, and this arm lands with #82 in **Task 13**.
+    ///
+    /// The remedy is "swap the point roles for the horizontal case", and the reason that works is
+    /// worth recording where the fix will happen: the circumcentre **exists and is computable**,
+    /// and only the argument order decides whether it is found. Measured —
+    ///
+    /// ```text
+    /// circle_center((0,0), (1000,0), (1000,1000))   -> None            first pair horizontal
+    /// circle_center((1000,0), (1000,1000), (0,0))   -> None            first pair vertical
+    /// circle_center((1000,1000), (0,0), (1000,0))   -> Some((500,500)) the correct answer
+    /// ```
+    ///
+    /// — three of the six orders find the same circle the other three refuse.
+    /// `crates/fr-geometry/tests/nearest_and_stairs.rs::circle_center_is_deferred_to_task_13`
+    /// pins those three rows, so Task 13 inherits a before-picture rather than a promise.
     pub fn circle_center(&self, p1: &FloatPoint, p2: &FloatPoint) -> Option<FloatPoint> {
-        let slope1 = (p1.y - self.y) / (p1.x - self.x);
-        let slope2 = (p2.y - p1.y) / (p2.x - p1.x);
-        let center_x = (slope1 * slope2 * (self.y - p2.y) + slope2 * (self.x + p1.x)
-            - slope1 * (p1.x + p2.x))
-            / (2.0 * (slope2 - slope1));
-        let center_y = (0.5 * (self.x + p1.x) - center_x) / slope1 + 0.5 * (self.y + p1.y);
+        let denominator =
+            2.0 * (self.x * (p1.y - p2.y) + p1.x * (p2.y - self.y) + p2.x * (self.y - p1.y));
+        if denominator == 0.0 {
+            return None;
+        }
+        let self_size = self.x * self.x + self.y * self.y;
+        let p1_size = p1.x * p1.x + p1.y * p1.y;
+        let p2_size = p2.x * p2.x + p2.y * p2.y;
+        let center_x =
+            (self_size * (p1.y - p2.y) + p1_size * (p2.y - self.y) + p2_size * (self.y - p1.y))
+                / denominator;
+        let center_y =
+            (self_size * (p2.x - p1.x) + p1_size * (self.x - p2.x) + p2_size * (p1.x - self.x))
+                / denominator;
         if center_x.is_finite() && center_y.is_finite() {
             Some(FloatPoint::new(center_x, center_y))
         } else {

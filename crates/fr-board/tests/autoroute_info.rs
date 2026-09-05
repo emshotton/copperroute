@@ -1,16 +1,8 @@
-//! `AutorouteInfo`'s real body (plan-6 ruling 15) and the two places the board drops it wholesale
-//! (plan-6 ruling 10).
-//!
-//! Java: `autoroute/ItemAutorouteInfo.java:10-105`, `board/model/items/Item.java:212-226`
-//! (`getTreeShape`'s `clearDerivedData()` retry) and `:1060-1064` (`clearDerivedData` nulling
-//! `autorouteInfo`).
-
 mod board_builder;
 
 use board_builder::p2t11_board;
 use fr_board::prelude::*;
 
-/// Fills item `id`'s autoroute info with something recognisable.
 fn populate(board: &mut Board, id: ItemId) {
     let info = board
         .get_item_mut(id)
@@ -23,8 +15,6 @@ fn populate(board: &mut Board, id: ItemId) {
 
 #[test]
 fn default_is_javas_freshly_constructed_item_autoroute_info() {
-    // `new ItemAutorouteInfo(item)` leaves every field at its Java default: `startInfo` false,
-    // `precalculatedConnection` null and `expansionRoomArr` null (ItemAutorouteInfo.java:15-25).
     let info = AutorouteInfo::default();
     assert!(!info.start_info);
     assert_eq!(info.precalculated_connection, None);
@@ -55,11 +45,6 @@ fn get_autoroute_info_creates_the_default_body_on_demand() {
 
 #[test]
 fn item_tree_shape_with_an_out_of_range_index_drops_the_autoroute_info() {
-    // Plan-6 ruling 10, the whole ruling in one test: `Item.getTreeShape` (Item.java:212-226)
-    // calls `clearDerivedData()` on an out-of-range index, and `clearDerivedData` sets
-    // `autorouteInfo = null` (Item.java:1060-1064) — dropping `startInfo`, the precalculated
-    // connection and the whole `ObstacleExpansionRoom` array. `fr-router` must therefore never
-    // reach for the `&self` twin, which cannot do this.
     let mut board = p2t11_board();
     let tree = board.default_tree_id();
     let id = ItemId(4);
@@ -94,8 +79,6 @@ fn item_tree_shape_with_an_out_of_range_index_drops_the_autoroute_info() {
 
 #[test]
 fn deep_copy_drops_a_populated_autoroute_info() {
-    // Plan 2's snapshot tests already pin this for the empty placeholder; with a body it still
-    // holds (RoutingBoard.java:901-904 clears the engine, `deep_copy` clears the scratch).
     let mut board = p2t11_board();
     let id = ItemId(4);
     populate(&mut board, id);
@@ -121,9 +104,6 @@ fn deep_copy_drops_a_populated_autoroute_info() {
 
 #[test]
 fn get_autoroute_info_pur_mut_writes_without_creating() {
-    // The accessor `AutorouteEngine.resetAllDoors` (AutorouteEngine.java:661-667) needs: Java
-    // null-checks `getAutorouteInfoPur()` and then calls `setPrecalculatedConnection(null)`
-    // through the same reference, so an item with no scratch is skipped rather than given one.
     let mut board = p2t11_board();
     let untouched = ItemId(5);
     assert_eq!(

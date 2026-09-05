@@ -18,9 +18,10 @@
 //! * **A** — the port's loader and Java's agree on the pristine board, so every later diff is
 //!   the override's and not the reader's.
 //! * **B** / **D** — `applyCopperToEdgeClearanceOverride` at the real merged 500 µm: the
-//!   `board_edge` class, its row *and* column on every layer, and the re-pointed outline. It
-//!   fires on 15 of the 16 boards; `router-rpi-splitter` early-returns through the `:501-507`
-//!   guard because its outline carries an explicit `boundary` class (quirk #231).
+//!   `board_edge` class, its row *and* column on every layer, and the re-pointed outline. On the
+//!   jar it fires on 15 of the 16 boards; `router-rpi-splitter` early-returns through the
+//!   `:501-507` guard because its outline carries an explicit `boundary` class (quirk #231).
+//!   **The port fires on 16 of 16** — see [`KNOWN_DIVERGENCES`].
 //! * **C** — `applyHoleClearanceOverride` at the real merged 0 µm: fires on all 16 and changes
 //!   nothing, which is why the gap went unnoticed for six plans.
 //! * **E** / **F** — the non-default hole path at 100 µm and 500 µm, i.e. the µm → board-unit
@@ -28,9 +29,20 @@
 //!   `router-rpi-splitter`), the `hole_edge` class, the `Math.max` floor, and the reclassified
 //!   circular component keepouts.
 //! * **G** / **H** — the two negative early returns.
-//! * **I** — a **non-default** copper value (0.0), which the `:501-507` guard cannot stop: it
-//!   mutates even `router-rpi-splitter`. This is the arm that shows the guard keys on the
-//!   *value*, not on the board.
+//! * **I** — a copper value of 0.0, which Java's `:501-507` guard could not stop either: it
+//!   mutates even `router-rpi-splitter` on both sides. On the jar this was the arm that showed
+//!   the guard keying on the *value* rather than on the board; on the port it is now
+//!   indistinguishable from B/D, which is precisely what quirk #231's fix means.
+//!
+//! # The transcript is a jar reference, and the port has left it on one board
+//!
+//! This file is a **parity** replay: the committed transcript is the HEAD jar's own output and
+//! nothing here re-cuts it. Plan 9 Task 10 fixed quirk #231, so the port now deliberately
+//! disagrees with the jar on the arms the `:501-507` guard used to stop. [`KNOWN_DIVERGENCES`]
+//! names every such `(stem, variant)` pair with its register row and its reason, and the replay
+//! checks **both** directions: a pair that differs without an entry fails, and an entry whose
+//! pair no longer differs fails. That keeps the other 15 boards × 9 variants live parity coverage
+//! rather than turning the whole file into a port golden.
 
 use std::collections::BTreeMap;
 
@@ -283,6 +295,32 @@ fn format_optional(value: Option<f64>) -> String {
 // The tests
 // =================================================================================================
 
+/// The `(stem, variant)` pairs on which the port deliberately disagrees with the committed jar
+/// transcript, each with its register row and its reason.
+///
+/// Both directions are checked by [`replay`]: a pair that differs without an entry fails, and an
+/// entry whose pair no longer differs fails.
+const KNOWN_DIVERGENCES: &[(&str, &str, &str, &str)] = &[
+    (
+        "router-rpi-splitter",
+        "B",
+        "#231",
+        "the one corpus board whose outline (`boundary`) carries an explicit, non-fallback DSN \
+         clearance class, and so the only one Java's `:501-507` guard could stop. The jar \
+         early-returns at the default 500 µm and leaves the board pristine; the port applies it, \
+         appending `board_edge`, writing 500 µm into its row and column on every layer and \
+         re-pointing the outline — the same thing it does on the other fifteen. Quirk #231's fix \
+         made the option continuous, so this board is no longer the exception.",
+    ),
+    (
+        "router-rpi-splitter",
+        "D",
+        "#231",
+        "B's divergence with the 0 µm hole override beside it; the hole half is identical on both \
+         sides and contributes nothing to the diff.",
+    ),
+];
+
 fn replay(stems: &[&str]) {
     let transcript = parse_transcript();
     assert_eq!(
@@ -291,6 +329,7 @@ fn replay(stems: &[&str]) {
         "the committed transcript should carry the whole sixteen-board corpus"
     );
     let mut replayed = 0usize;
+    let mut diverged: Vec<(String, String)> = Vec::new();
     for board_block in &transcript {
         if !stems.contains(&board_block.stem.as_str()) {
             continue;
@@ -309,15 +348,29 @@ fn replay(stems: &[&str]) {
             settings.hole_clearance_um = variant.hole;
             prepare_board(&mut board, &settings);
             let actual = render(&mut board, &variant.name, variant.copper, variant.hole);
-            assert_eq!(
-                actual.trim_end(),
-                variant.block.trim_end(),
-                "{} variant {}: the port's board disagrees with the jar's\n--- port ---\n{}\n--- jar ---\n{}",
+            let known = KNOWN_DIVERGENCES
+                .iter()
+                .find(|(stem, name, _, _)| *stem == board_block.stem && *name == variant.name);
+            if actual.trim_end() == variant.block.trim_end() {
+                if let Some((stem, name, row, reason)) = known {
+                    panic!(
+                        "`{stem}` variant {name} now MATCHES the jar — delete its \
+                         KNOWN_DIVERGENCES entry ({row}: {reason})"
+                    );
+                }
+                continue;
+            }
+            assert!(
+                known.is_some(),
+                "{} variant {}: the port's board disagrees with the jar's and no \
+                 KNOWN_DIVERGENCES entry names it — add one with the register row that \
+                 authorises it\n--- port ---\n{}\n--- jar ---\n{}",
                 board_block.stem,
                 variant.name,
                 actual,
                 variant.block
             );
+            diverged.push((board_block.stem.clone(), variant.name.clone()));
         }
         replayed += 1;
     }
@@ -326,6 +379,18 @@ fn replay(stems: &[&str]) {
         stems.len(),
         "every requested stem must be present in the transcript"
     );
+    // The other direction, for the stems this call actually replayed: every entry whose stem was
+    // in scope must have been exercised.
+    for (stem, name, row, reason) in KNOWN_DIVERGENCES {
+        if !stems.contains(stem) {
+            continue;
+        }
+        assert!(
+            diverged.iter().any(|(s, n)| s == stem && n == name),
+            "`{stem}` variant {name} was replayed and did not diverge — delete its \
+             KNOWN_DIVERGENCES entry ({row}: {reason})"
+        );
+    }
 }
 
 #[test]
@@ -351,9 +416,10 @@ fn p7t15b_transcript_matches_on_the_whole_corpus() {
 }
 
 /// `fr-board` cannot depend on `fr-settings`, so
-/// [`fr_board::DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM`] — which the `:501-507` guard compares
-/// against — is a second copy of `DefaultSettings.DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM`. This is
-/// the assertion that keeps the two from drifting apart.
+/// [`fr_board::DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM`] is a second copy of
+/// `DefaultSettings.DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM`. Quirk #231's fix removed the
+/// `:501-507` comparison that used to read it, but the constant is still the default a CLI run
+/// carries; this is the assertion that keeps the two from drifting apart.
 #[test]
 fn the_two_copies_of_the_default_copper_to_edge_clearance_agree() {
     assert_eq!(

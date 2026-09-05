@@ -1,11 +1,3 @@
-//! Gson parity for `RouterSettings`'s JSON in and out (Plan 4 Task 10).
-//!
-//! Every expected string below is a verbatim line of `tests/data/JProbe.java`'s transcript —
-//! `GsonProvider.GSON` (`util/gson/GsonProvider.java:12-20`: pretty printing, HTML escaping off,
-//! `Strictness.LENIENT`, `RouterSettingsTypeAdapterFactory` registered) run against the clone's
-//! HEAD jar on JDK 25. The recorded command is in `tests/data/README.md`; the full transcript is
-//! in `.superpowers/sdd/2026-08-28-plan-4-settings/task-10-report.md`.
-
 use std::path::{Path, PathBuf};
 
 use fr_settings::prelude::*;
@@ -13,13 +5,6 @@ use fr_settings::prelude::*;
 #[path = "matrix/mod.rs"]
 mod matrix;
 
-// -------------------------------------------------------------------------------------------
-// fixtures
-// -------------------------------------------------------------------------------------------
-
-/// `JProbe.java` block A: every field Gson round-trips set to a distinct value, plus all four
-/// `transient` fields and the three `transient` `OptimizerSettings`/`ScoringSettings` fields set
-/// to values that must not reach the output.
 fn fully_populated() -> RouterSettings {
     let mut s = RouterSettings::new();
     s.set_layer_count(2);
@@ -36,7 +21,6 @@ fn fully_populated() -> RouterSettings {
     s.automatic_neckdown = Some(false);
     s.max_threads = Some(13);
     s.result_json_path = Some("/tmp/result.json".to_string());
-    // `transient` in Java — must not appear in the output.
     s.max_items = Some(14);
     s.save_intermediate_stages = Some(true);
     s.ignore_net_classes = Some(vec!["x".to_string(), "y".to_string()]);
@@ -70,8 +54,8 @@ fn fully_populated() -> RouterSettings {
     o.additional_ripup_cost_factor_at_start = Some(35);
     o.trace_ripup_cost_factor = Some(0.7);
     o.max_autoroute_passes = Some(36);
+    o.max_search_steps = Some(37);
     o.timeout_string = Some("00:02:00".to_string());
-    // `transient` in Java — must not appear in the output.
     o.board_update_strategy = Some(BoardUpdateStrategy::Hybrid);
     o.hybrid_ratio = Some("1:1".to_string());
     o.item_selection_strategy = Some(ItemSelectionStrategy::Prioritized);
@@ -86,14 +70,12 @@ fn fully_populated() -> RouterSettings {
     sc.clearance_violation_penalty = Some(45.5);
     sc.bend_penalty = Some(46.5);
     sc.default_bend_cost = Some(3.5);
-    // `transient` in Java — must not appear in the output.
     sc.preferred_direction_trace_cost = Some(vec![7.0, 8.0]);
     sc.undesired_direction_trace_cost = Some(vec![9.0, 10.0]);
 
     s
 }
 
-/// `JProbe.java` block A's output, byte for byte.
 const FULLY_POPULATED_JSON: &str = r#"{
   "enabled": true,
   "algorithm": "freerouting-router-v19",
@@ -131,6 +113,7 @@ const FULLY_POPULATED_JSON: &str = r#"{
     "additional_ripup_cost_factor_at_start": 35,
     "trace_ripup_cost_factor": 0.7,
     "max_autoroute_passes": 36,
+    "max_search_steps": 37,
     "timeout": "00:02:00"
   },
   "scoring": {
@@ -148,8 +131,6 @@ const FULLY_POPULATED_JSON: &str = r#"{
   "result_json": "/tmp/result.json"
 }"#;
 
-/// `JProbe.java` block B's output, byte for byte: the four places `Double.toString` /
-/// `Float.toString` disagree with Rust's shortest-round-trip formatter.
 const NUMBER_FORMAT_JSON: &str = r#"{
   "fanout": {
     "min_escape_length_mm": 0.1,
@@ -195,16 +176,10 @@ fn number_format_fixture() -> RouterSettings {
     s
 }
 
-/// Top-level keys of the pretty-printed object, in **emission** order.
-///
-/// Read off the text rather than through `serde_json::Value`, whose map sorts its keys unless the
-/// `preserve_order` feature is on — and emission order is the whole point here (Gson writes
-/// `getDeclaredFields()` order).
 fn keys(json: &str) -> Vec<String> {
     keys_at(json, 1)
 }
 
-/// The keys of the object under `name`, in emission order.
 fn nested_keys(json: &str, name: &str) -> Vec<String> {
     let opener = format!("  \"{name}\": {{\n");
     let start = json
@@ -218,7 +193,6 @@ fn nested_keys(json: &str, name: &str) -> Vec<String> {
     keys_at(&json[start..end], 2)
 }
 
-/// Every `"key":` sitting at exactly `depth` levels of two-space indentation.
 fn keys_at(json: &str, depth: usize) -> Vec<String> {
     let indent = "  ".repeat(depth);
     json.lines()
@@ -234,15 +208,6 @@ fn keys_at(json: &str, depth: usize) -> Vec<String> {
         .collect()
 }
 
-// -------------------------------------------------------------------------------------------
-// the write side
-// -------------------------------------------------------------------------------------------
-
-/// `JProbe.java` block A. The 16 keys Gson emits, in `getDeclaredFields()` order, with all four
-/// of `RouterSettings`'s `transient` fields absent — **`layers` among them**. The brief's
-/// illustrative key list wrongly included `layers`;
-/// `RouterSettingsSerializationTest.routerSettingsSerializationAndDeserialization` asserts
-/// `json` does **not** contain `"layers"`, and the JVM agrees.
 #[test]
 fn emitted_key_set_matches_gson() {
     let json = fully_populated()
@@ -270,8 +235,6 @@ fn emitted_key_set_matches_gson() {
             "result_json",
         ]
     );
-    // Checked against the *top-level* key list rather than by substring, because `max_items` is
-    // a legitimate key of both `fanout` and `optimizer`.
     for absent in [
         "layers",
         "max_items",
@@ -285,8 +248,6 @@ fn emitted_key_set_matches_gson() {
     }
 }
 
-/// `JProbe.java` block A, nested. `scoring`'s two `transient` cost arrays and `optimizer`'s three
-/// `transient` fields are dropped; everything else keeps declaration order.
 #[test]
 fn scoring_and_optimizer_key_sets() {
     let json = fully_populated()
@@ -319,6 +280,7 @@ fn scoring_and_optimizer_key_sets() {
             "additional_ripup_cost_factor_at_start",
             "trace_ripup_cost_factor",
             "max_autoroute_passes",
+            "max_search_steps",
             "timeout",
         ]
     );
@@ -341,8 +303,6 @@ fn scoring_and_optimizer_key_sets() {
     );
 }
 
-/// The whole of `JProbe.java` block A, byte for byte: two-space indent, `": "` after every key,
-/// no trailing newline, and `null` fields omitted (`GsonProvider` never calls `serializeNulls`).
 #[test]
 fn fully_populated_output_is_byte_identical_to_gson() {
     assert_eq!(
@@ -353,10 +313,6 @@ fn fully_populated_output_is_byte_identical_to_gson() {
     );
 }
 
-/// `JProbe.java` block B. Gson writes numbers through `JsonWriter.value(Number)`, which is
-/// `Number.toString()` — `Double.toString` for a `Double` field and `Float.toString` for a
-/// `Float` one. Both switch to scientific notation outside `[1e-3, 1e7)`, which Rust's
-/// shortest-round-trip formatter does not, and both keep the sign of `-0.0`.
 #[test]
 fn number_formatting_matches_java_number_to_string() {
     assert_eq!(
@@ -367,9 +323,6 @@ fn number_formatting_matches_java_number_to_string() {
     );
 }
 
-/// `JProbe.java` block F: Gson instantiates the target through `RouterSettings()`
-/// (`RouterSettings.java:119-124`), so an object that names none of the three nested settings
-/// still round-trips as three empty objects.
 #[test]
 fn an_empty_object_round_trips_to_three_empty_nested_objects() {
     let s = RouterSettings::from_json_str("{}").expect("parses");
@@ -379,9 +332,6 @@ fn an_empty_object_round_trips_to_three_empty_nested_objects() {
     );
 }
 
-/// `JProbe.java` block B4: `GsonProvider` never calls `serializeSpecialFloatingPointValues`, so
-/// `Gson.toJson` throws `IllegalArgumentException` on a non-finite `Double`/`Float` even under
-/// `Strictness.LENIENT`. The port returns an error rather than emitting `null`.
 #[test]
 fn non_finite_floats_are_refused_like_gson() {
     for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
@@ -400,15 +350,6 @@ fn non_finite_floats_are_refused_like_gson() {
     assert!(s.to_json_string_pretty().is_err());
 }
 
-// -------------------------------------------------------------------------------------------
-// the read side
-// -------------------------------------------------------------------------------------------
-
-/// `JProbe.java` block C4 / F. A partial object is a *settings source*: only the keys it names
-/// are non-`None`. The three nested objects are the one exception — Gson's `ObjectConstructor`
-/// runs `RouterSettings()` before the reflective adapter writes any field, so they come back
-/// allocated-and-empty rather than `None` (JVM-verified; this corrects the brief, which expected
-/// "every other field `None`").
 #[test]
 fn partial_object_deserialises_as_a_source() {
     let s = RouterSettings::from_json_str(r#"{"max_passes": 42}"#).expect("parses");
@@ -422,8 +363,6 @@ fn partial_object_deserialises_as_a_source() {
     assert_eq!(s, expected);
 }
 
-/// `JProbe.java` block F: an explicit `null` does clear a nested object — the constructor runs
-/// first, the adapter overwrites second.
 #[test]
 fn explicit_nulls_clear_the_nested_objects() {
     let s = RouterSettings::from_json_str(r#"{"fanout":null,"optimizer":null,"scoring":null}"#)
@@ -433,7 +372,6 @@ fn explicit_nulls_clear_the_nested_objects() {
     assert_eq!(s.scoring, None);
 }
 
-/// `JProbe.java` block C3: every `@SerializedName(alternate = …)` in the four structs.
 #[test]
 fn aliases_round_trip() {
     let s = RouterSettings::from_json_str(
@@ -452,17 +390,12 @@ fn aliases_round_trip() {
         Some(false)
     );
 
-    // The write side always emits the canonical name.
     let json = s.to_json_string_pretty().expect("serialises");
     assert!(json.contains("\"via_costs\": 7"), "{json}");
     assert!(json.contains("\"trace_pull_tight_accuracy\": 7"), "{json}");
     assert!(!json.contains("viaCosts"), "{json}");
 }
 
-/// `RouterSettingsSerializationTest.routerSettingsSerializationAndDeserialization` step 4, and
-/// `JProbe.java` block C: `layers` is `transient`, so the delegate adapter drops it — but
-/// `RouterSettingsTypeAdapterFactory.read` (`:59-64`) re-reads it from the raw tree. The other
-/// three `transient` fields have no such rescue and stay `None` (block C2).
 #[test]
 fn layers_are_read_back_but_the_other_transients_are_not() {
     let s = RouterSettings::from_json_str(
@@ -495,8 +428,6 @@ fn layers_are_read_back_but_the_other_transients_are_not() {
     assert_eq!(s.layers.as_ref().map(Vec::len), Some(1));
 }
 
-/// `JProbe.java` block F: `optimizer`'s three `transient` fields are dropped on read as well as
-/// on write — the factory rescues `layers` and nothing else.
 #[test]
 fn the_transient_optimizer_fields_are_dropped_on_read() {
     let s = RouterSettings::from_json_str(
@@ -510,7 +441,6 @@ fn the_transient_optimizer_fields_are_dropped_on_read() {
     assert_eq!(optimizer.item_selection_strategy, None);
 }
 
-/// `JProbe.java` block C4: Gson ignores keys it does not know, at every level.
 #[test]
 fn unknown_keys_are_ignored() {
     let s = RouterSettings::from_json_str(
@@ -521,8 +451,6 @@ fn unknown_keys_are_ignored() {
     assert_eq!(s.scoring, Some(ScoringSettings::default()));
 }
 
-/// A round trip of the fully populated object: the write side is the fixed point Java's block E
-/// reports (`re-serialised equal: true`), and `layers` does not survive it.
 #[test]
 fn the_written_form_round_trips_to_itself() {
     let json = fully_populated()
@@ -533,9 +461,6 @@ fn the_written_form_round_trips_to_itself() {
     assert_eq!(back.layers, None);
 }
 
-/// `JProbe.java` block D, the documented divergence: Gson's `Strictness.LENIENT` reader accepts
-/// four shapes strict JSON rejects, and coerces a quoted scalar to the field's type. The port
-/// rejects all five. See the `// not ported:` marker on [`RouterSettings::from_json_str`].
 #[test]
 fn the_lenient_reader_shapes_are_not_ported() {
     for accepted_by_gson in [
@@ -550,17 +475,9 @@ fn the_lenient_reader_shapes_are_not_ported() {
             "{accepted_by_gson:?} is accepted by Gson but not by this port"
         );
     }
-    // The one shape Gson rejects too (`JsonSyntaxException`).
     assert!(RouterSettings::from_json_str(r#"{"max_passes": 42,}"#).is_err());
 }
 
-/// `JProbe.java` block H (fix round 1). Reading a non-finite float back is refused too, despite
-/// `Strictness.LENIENT`: `RouterSettingsTypeAdapterFactory.read` builds the tree with the lenient
-/// textual reader (`:50`) and then re-reads it through `delegate.fromJsonTree` (`:56`), a fresh
-/// `JsonTreeReader` at default strictness, whose `nextDouble` throws
-/// `MalformedJsonException: JSON forbids NaN and infinities`. `serde_json` rejects the same five
-/// documents, so this is an **agreement**, not a divergence — the row it corrects in
-/// `docs/java-quirks.md` claimed Gson would read them back.
 #[test]
 fn non_finite_floats_are_refused_on_the_read_side_too() {
     for refused_by_gson in [
@@ -577,28 +494,16 @@ fn non_finite_floats_are_refused_on_the_read_side_too() {
     }
 }
 
-/// `JProbe.java` block I (fix round 1): three more shapes Gson's reader accepts and this port
-/// does not. Illustrative, not exhaustive — see the `not ported:` note in `crate::json`.
 #[test]
 fn the_lenient_reader_coercions_are_not_ported() {
-    // Duplicate key: Gson keeps the last (`maxPasses = 2`); `serde` reports a duplicate field.
     assert!(RouterSettings::from_json_str(r#"{"max_passes": 1, "max_passes": 2}"#).is_err());
-    // A fractional literal in an `Integer` field: Gson truncates to 1; `serde` rejects the type.
     assert!(RouterSettings::from_json_str(r#"{"max_passes": 1.9}"#).is_err());
-    // An empty, whitespace-only or literal-`null` document: Gson answers a *null* `RouterSettings`
-    // (`RouterSettingsTypeAdapterFactory.java:51-53`), which this port has no way to spell —
-    // `from_json_str` returns `RouterSettings`, not `Option<RouterSettings>` — so it errors.
     for null_document_for_gson in ["null", "", "   "] {
         assert!(RouterSettings::from_json_str(null_document_for_gson).is_err());
     }
-    // A *quoted* "null" is a `JsonSyntaxException` on both sides.
     assert!(RouterSettings::from_json_str(r#""null""#).is_err());
 }
 
-/// `JProbe.java` block J (fix round 1). `disableHtmlEscaping()` turns off the `<`/`>`/`&`/`'` set
-/// only; Gson's `JsonWriter` still escapes the two Unicode line separators, which are legal in a
-/// JSON string and illegal in a JavaScript one. The transcript is
-/// `"algorithm": "a b c"` and `"result_json": "<&>'\""`, byte for byte.
 #[test]
 fn the_unicode_line_separators_are_escaped_and_the_html_set_is_not() {
     let mut s = RouterSettings::new();
@@ -618,39 +523,10 @@ fn the_unicode_line_separators_are_escaped_and_the_html_set_is_not() {
     );
 }
 
-// -------------------------------------------------------------------------------------------
-// the differential golden
-// -------------------------------------------------------------------------------------------
-
 fn golden_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/p4t1-mode1/all.txt")
 }
 
-/// The whole `p4t1` matrix through `GsonProvider.GSON`, as `scripts/differential/run.sh p4t1
-/// <matrix> all 1` writes it. The golden is the **Java** side of that run (its two header lines
-/// stripped), committed so the parity survives without a JVM; `run.sh` re-proves it against the
-/// live jar.
-///
-/// The golden carries all 84 rows of `scripts/differential/matrix/p4t1-cases.tsv`; this test
-/// replays the 64 that are the cross product `tests/matrix/mod.rs` builds and looks each one up
-/// by case id. The remaining 20 `x-*` rows exist only in the TSV, so only `run.sh` covers them —
-/// and it covers all 84.
-///
-/// The resolution below is one call to `resolve_headless` with the `.rules` **bytes**, which is
-/// what `p4t1.rs` now does too: since Task 8's fix round 2, `resolve_headless` performs both of
-/// Java's parses itself — the file-discovered one for the priority-40 slot and the
-/// board-structured one for the post-merge re-apply (quirk #142). An earlier revision of this
-/// comment noted that the two sides fed different single parses and that the golden was the same
-/// text either way, because the two differ only in per-layer fields — `layers` and both `scoring`
-/// cost arrays — every one of which Gson drops. That remains true of the golden, and is no longer
-/// something this test has to rely on.
-///
-/// This test compares `parity::normalize_whitespace` of both sides, not raw bytes, so it does not
-/// by itself pin exact formatting (indentation, key order, `": "` spacing). That fidelity is
-/// covered elsewhere: the exact-bytes unit tests in this file (e.g.
-/// `fully_populated_output_is_byte_identical_to_gson`) and `scripts/differential/run.sh p4t1
-/// <matrix> all 1` itself, which this golden is committed from and which re-diffs byte for byte
-/// against a live jar.
 #[test]
 fn p4t1_mode_1_parity() {
     if !parity::require_java_dir() {
@@ -699,7 +575,6 @@ fn p4t1_mode_1_parity() {
     assert_eq!(expected.len(), 84, "the TSV adds 20 hand-written rows");
 }
 
-/// Splits a `CASE <id>` / JSON transcript into `(id, json)` pairs.
 fn split_cases(text: &str) -> Vec<(String, String)> {
     let mut cases: Vec<(String, String)> = Vec::new();
     for line in text.lines() {
@@ -718,14 +593,6 @@ fn split_cases(text: &str) -> Vec<(String, String)> {
     cases
 }
 
-// =================================================================================================
-// The priority-10 tier, through `resolve_headless` (Plan 8 Task 6)
-// =================================================================================================
-
-/// Writes a `freerouting.json` into a fresh scratch directory and returns the loaded source.
-///
-/// The document shape is Java's: `GlobalSettings`' Gson tree, of which `JsonFileSettings`
-/// (`settings/sources/JsonFileSettings.java:41-63`) reads the `"router"` member and nothing else.
 fn json_file_source(name: &str, body: &str) -> JsonFileSettings {
     let dir = std::env::temp_dir()
         .join("fr-settings-json-tier")
@@ -737,55 +604,12 @@ fn json_file_source(name: &str, body: &str) -> JsonFileSettings {
     JsonFileSettings::new(&path)
 }
 
-/// **The priority-10 tier, proven present rather than merely wired** (Plan 8 Task 6; the review's
-/// B1).
-///
-/// `JsonFileSettings` is priority **10** on Java's prototype merger
-/// (`Freerouting.java:1408-1413`), i.e. above `DefaultSettings(0)` and below
-/// `DsnFileSettings(20)`. `p4t1`'s 64-case matrix pins the *absent*-file shape — the tier
-/// contributes nothing — which was the only shape reachable before `commands::route` existed.
-/// This is the present-file shape.
-///
-/// # The three runs, and why the pair is what makes run B's answer readable
-///
-/// The document sets two fields:
-///
-/// * `scoring.via_costs = 77`, which `DefaultSettings.java:149` seeds at **50** and
-///   `Issue187-processor.Z80.dsn`'s `(autoroute_settings …)` block **also** carries as 50;
-/// * `max_passes = 11`, which `DefaultSettings` seeds at 9999 and that DSN block does **not**
-///   carry at all (`AutorouteSettings.readScope` has no such member).
-///
-/// | run | inputs | `via_costs` | `max_passes` |
-/// |---|---|---|---|
-/// | **A** | the json file alone | **77** — the tier beats `DefaultSettings` | **11** |
-/// | **B** | the json file **and** the DSN | **50** — the DSN at 20 beats the json at 10 | **11** — still the json's |
-/// | **C** | neither | 50 | 9999 |
-///
-/// Run B's `50` is readable only against run A: `apply_new_values_from` never resets a field to
-/// its default, so the base is `DefaultSettings`' 50, the json overwrites it to 77, and only a
-/// **later** source can put it back. If the DSN contributed nothing the answer would still be 77,
-/// as run A shows. `max_passes` staying 11 in run B is the other half of the argument — it proves
-/// the json tier is still live there, so run B's 50 is the DSN winning and not the json failing.
-///
-/// # What this does *not* claim about merge #2
-///
-/// `resolve_headless` applies the tier twice, because Java's merge #2 clones the same prototype
-/// merger (`RoutingJobScheduler.java:103`): `apply_new_values_from` in merge #1 and
-/// `fill_absent_from` in merge #2. The second is a **fidelity** arm, not an observable one: after
-/// merge #1 every field the document carries is non-null, so `fill_absent_from` finds nothing of
-/// its own to fill. Its only reachable channel is a field the between-merges board pass *nulled*
-/// — `set_layer_count`'s `preferred_direction_horizontal`/`bend_cost` wipe
-/// (`RouterSettings.java`'s `:741-744` counterpart) — which is exactly the Q1 channel
-/// `resolve.rs`'s own `adjacent_rules_reach_only_the_fields_merge_one_left_null` already pins for
-/// the `.rules` tier, with the same mechanism and the same `fill_absent_from` call.
 #[test]
 fn a_json_file_tier_beats_the_defaults_and_loses_to_the_dsn() {
     if !parity::require_java_dir() {
         return;
     }
     let host = HostEnvironment::with_processors(4);
-    // `dsn2-autoroute` — `Issue187-processor.Z80.dsn`, the matrix's one fixture with a real
-    // `(autoroute_settings …)` block, so priority 20 has something to say.
     let dsn_case = &matrix::DSN_CASES[2];
     assert_eq!(dsn_case.id, "dsn2-autoroute");
     let board = matrix::board(dsn_case);
@@ -797,7 +621,6 @@ fn a_json_file_tier_beats_the_defaults_and_loses_to_the_dsn() {
     );
     let json_settings = json.get_settings().expect("the document parsed");
 
-    // Run A — the tier alone.
     let a = resolve_headless(
         &SettingsInputs {
             json_file: Some(json_settings),
@@ -813,7 +636,6 @@ fn a_json_file_tier_beats_the_defaults_and_loses_to_the_dsn() {
     );
     assert_eq!(a.max_passes, Some(11));
 
-    // Run B — the tier under the DSN.
     let b = resolve_headless(
         &SettingsInputs {
             json_file: Some(json_settings),
@@ -834,7 +656,6 @@ fn a_json_file_tier_beats_the_defaults_and_loses_to_the_dsn() {
         "the json tier is still live in run B, which is what makes its via_costs 50 the DSN's"
     );
 
-    // Run C — the absent-file shape `p4t1` pins, restated here so the three answers sit together.
     let c = resolve_headless(
         &SettingsInputs {
             dsn: dsn.get_settings(),

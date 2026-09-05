@@ -1,31 +1,3 @@
-//! Plan 6 Task 16: `AutorouteEngine.autorouteConnection` (AutorouteEngine.java:130-280),
-//! `describeConnection` (`:282-287`) and steps 1-5 of `AutorouteConnectionRouter.route`
-//! (AutorouteConnectionRouter.java:30-100) — the top of Plan 6's scope and the surface Plan 7
-//! consumes.
-//!
-//! # Where the numbers come from
-//!
-//! Every expectation below is **read off the HEAD jar**, not off this port. The probe is
-//! `scripts/differential/java/probes/P6T16Probe.java`, committed with the exact `javac`/`java`
-//! invocation in its header, and its whole stdout is committed as
-//! `tests/data/p6t16-autoroute-connection.txt`. Each test regenerates its mode's rows and
-//! compares them line by line, so a board that differs by one item, one id, one corner, one
-//! ripped id or one word of a `FAILED` message fails.
-//!
-//! The brief asks for `routing_the_first_connection_of_rpi_splitter_matches_java` with literals
-//! from `p6t1`. `p6t1` is **Task 17's** driver and does not exist yet, so ruling 1(a)+(b) is
-//! pinned here against `P6T16Probe` instead: the same state, the same ripped-item id set and the
-//! same inserted geometry, on four hand-built boards and in all three angle regimes. Task 17
-//! adds the fixture-scale version on `Issue143-rpi_splitter.dsn`.
-//!
-//! # The fixtures
-//!
-//! `P6T13Probe.buildSimple`'s two-pin board and `P6T13Probe.build`'s 8000-unit board, both
-//! through `P6T14Probe`; `P6T14Probe.buildBlocked` (the blocker 100 units short of the outline,
-//! which the search rips); `P6T16Probe.buildSealed` (the blocker taken to the outline, which
-//! makes `MazeSearchEngine.getInstance` answer null); and `P6T16Probe`'s power-plane variant of
-//! `buildSimple`, the only shape that reaches `:221-228`.
-
 #![allow(clippy::too_many_lines, clippy::too_many_arguments)]
 
 use std::cell::Cell;
@@ -44,10 +16,6 @@ use fr_router::board_ext::RoutingBoardExt;
 use fr_router::{AutorouteAttemptResult, AutorouteAttemptState, route_connection};
 use fr_settings::RouterSettings;
 
-// =================================================================================================
-// The probe's boards, rebuilt from scratch (`P6T13Probe`'s, through `P6T14Probe`)
-// =================================================================================================
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -4_000,
@@ -64,14 +32,6 @@ const SIMPLE_BOUNDING_BOX: IntBox = IntBox {
     ur: IntPoint { x: 1_000, y: 1_000 },
 };
 
-/// The rules, library and via rule every fixture shares (`P6T13Probe.build`'s prologue).
-///
-/// `front_is_signal` is `P6T16Probe`'s `inactive` mode: Java replaces
-/// `board.layerStructure.layers[0]` with a dedicated power plane straight after `buildSimple`,
-/// and the port builds the same structure up front, because `fr-board` has no mutable accessor
-/// for it. The two are equivalent: the only value computed from `isSignal` in between is
-/// `NetClass.activeRoutingLayer[0]`, and `AutorouteControl.java:151-158` forces `layerActive[0]`
-/// off for a non-signal layer before `:225-227` ever consults it.
 fn base_board(bounds: IntBox, front_is_signal: bool) -> Board {
     let layers = || {
         LayerStructure::new(vec![
@@ -155,7 +115,6 @@ fn add_package(board: &mut Board, name: &str, pins: Vec<PackagePin>) -> usize {
     )
 }
 
-/// `P6T13Probe.buildSimple` — two net-1 pins on a 2000-unit square.
 fn simple_board_with(front_is_signal: bool) -> Board {
     let mut board = base_board(SIMPLE_BOUNDING_BOX, front_is_signal);
     let default_class = board.rules.get_default_net_class();
@@ -171,8 +130,8 @@ fn simple_board_with(front_is_signal: bool) -> Board {
     board
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg);
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); // id 2
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); // id 3
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
     board
 }
 
@@ -180,8 +139,6 @@ fn simple_board() -> Board {
     simple_board_with(true)
 }
 
-/// `P6T14Probe.buildBlocked` — `simple_board` plus a net-2 blocker that stops 100 units short of
-/// the outline at each end, so the search can rip it rather than fail to seed.
 fn blocked_board() -> Board {
     let mut board = simple_board();
     let default_class = board.rules.get_default_net_class();
@@ -193,12 +150,10 @@ fn blocked_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); // id 4
+    );
     board
 }
 
-/// `P6T16Probe.buildSealed` — the same blocker taken all the way to the outline, which makes
-/// `MazeSearchEngine.getInstance` answer null (`init` cannot seed the destination).
 fn sealed_board() -> Board {
     let mut board = simple_board();
     let default_class = board.rules.get_default_net_class();
@@ -210,11 +165,10 @@ fn sealed_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); // id 4
+    );
     board
 }
 
-/// `P6T13Probe.build` — the 8000-unit board whose connection crosses two drills.
 fn probe_board() -> Board {
     let mut board = base_board(BOUNDING_BOX, true);
     let default_class = board.rules.get_default_net_class();
@@ -245,10 +199,10 @@ fn probe_board() -> Board {
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg2);
 
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); // id 2, the start pin
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); // id 3, the destination pin
-    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed); // id 4
-    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed); // id 5
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed);
+    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed);
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[
             Point::new(0, -2000),
@@ -260,7 +214,7 @@ fn probe_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); // id 6
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -270,7 +224,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the free via inserts"); // id 7
+        .expect("the free via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, 2500), Point::new(2500, 3500)]),
         0,
@@ -278,7 +232,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); // id 8
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -288,7 +242,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the two-contact via inserts"); // id 9
+        .expect("the two-contact via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(2500, -3500)]),
         0,
@@ -296,7 +250,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); // id 10
+    );
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(3500, -2500)]),
         0,
@@ -304,13 +258,9 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); // id 11
+    );
     board
 }
-
-// =================================================================================================
-// The probe's harness
-// =================================================================================================
 
 fn probe_settings(board: &Board) -> RouterSettings {
     let mut settings = RouterSettings::new();
@@ -319,7 +269,6 @@ fn probe_settings(board: &Board) -> RouterSettings {
     settings
 }
 
-/// `P6T16Probe.control`.
 fn probe_control(board: &Board, net_no: i32) -> AutorouteControl {
     let settings = probe_settings(board);
     let trace_costs = settings.get_trace_costs();
@@ -332,12 +281,9 @@ fn probe_control(board: &Board, net_no: i32) -> AutorouteControl {
     )
 }
 
-/// `P6T16Probe.Stop` — a stop check whose answer is fixed, plus its call counter.
 struct Stop {
     calls: Cell<u32>,
     stopped: bool,
-    /// `P6T16Probe.StopAfter`: answer false `limit` times and true from then on. `u32::MAX`
-    /// disables it.
     limit: u32,
 }
 
@@ -381,13 +327,11 @@ fn set_of(ids: &[u32]) -> BTreeSet<ItemId> {
     ids.iter().map(|id| ItemId(*id)).collect()
 }
 
-/// `P6T16Probe.rippedOf` — Java's `TreeSet<Item>` prints **descending** by id.
 fn ripped_of(ripped: &BTreeSet<ItemId>) -> String {
     let ids: Vec<String> = ripped.iter().rev().map(|id| id.0.to_string()).collect();
     format!("ripped n={} [{}]", ripped.len(), ids.join(","))
 }
 
-/// `P6T16Probe.ripupCostsOf` — likewise a `TreeMap<Item,Integer>`, descending by id.
 fn ripup_costs_of(costs: &BTreeMap<ItemId, i32>) -> String {
     let entries: Vec<String> = costs
         .iter()
@@ -397,12 +341,10 @@ fn ripup_costs_of(costs: &BTreeMap<ItemId, i32>) -> String {
     format!("ripupCosts n={} [{}]", costs.len(), entries.join(","))
 }
 
-/// `P6T15Probe.ln`, reused by `P6T16Probe.boardDump`.
 fn ln(line: &fr_geometry::Line) -> String {
     format!("({},{})->({},{})", line.a.x, line.a.y, line.b.x, line.b.y)
 }
 
-/// `P6T15Probe.pt`.
 fn pt(polyline: &Polyline, no: usize) -> String {
     match polyline.corner(no) {
         Some(Point::Int(p)) => format!("({},{})", p.x, p.y),
@@ -417,7 +359,6 @@ fn pt(polyline: &Polyline, no: usize) -> String {
     }
 }
 
-/// `P6T15Probe.poly`.
 fn poly(polyline: &Polyline) -> String {
     let lines: Vec<String> = polyline.lines().iter().map(ln).collect();
     let corners: Vec<String> = (0..polyline.corner_count())
@@ -431,13 +372,11 @@ fn poly(polyline: &Polyline) -> String {
     )
 }
 
-/// `P6T15Probe.pointOf`.
 fn point_of(point: &Point) -> String {
     let rounded = point.to_float().round();
     format!("({},{})", rounded.x, rounded.y)
 }
 
-/// `P6T15Probe.nets`.
 fn nets(net_nos: &[i32]) -> String {
     let inner: Vec<String> = net_nos.iter().map(i32::to_string).collect();
     format!("[{}]", inner.join(","))
@@ -457,8 +396,6 @@ fn type_name(item: &Item) -> &'static str {
     }
 }
 
-/// `P6T15Probe.boardDump` — `maxId=` plus one line per item in `getItems()` order (descending id,
-/// quirk #63).
 fn board_dump(board: &Board) -> Vec<String> {
     let ctx = board.ctx();
     let mut out = vec![format!(
@@ -504,13 +441,8 @@ fn board_dump(board: &Board) -> Vec<String> {
     out
 }
 
-// =================================================================================================
-// The transcript
-// =================================================================================================
-
 const T16: &str = include_str!("data/p6t16-autoroute-connection.txt");
 
-/// The rows of one `=== mode <mode> ===` section of the Task 16 transcript.
 fn t16_section(mode: &str) -> Vec<&'static str> {
     let header = format!("=== mode {mode} ===");
     let mut rows = Vec::new();
@@ -528,62 +460,15 @@ fn t16_section(mode: &str) -> Vec<&'static str> {
     rows
 }
 
-/// The rows where this port **deliberately** disagrees with the jar, as `(mode, row, jvm, rust)`.
-///
-/// The transcript is the jar's own stdout and is never re-cut: a Plan 9 fix that changes what the
-/// port answers is recorded here instead, so the jar's number and the port's sit side by side and
-/// a reviewer can see both.
-///
-/// **Every entry carries the register row that authorizes it.** A divergence with no row behind it
-/// is a regression someone wrote a table entry for, which is the one failure mode this table has;
-/// the comment is what makes that visible in review.
-///
-/// * **#168** — `DrillPage.getDrills` threw on a cancelled `splitToConvex` (`:108` dereferencing
-///   the null `drillShapes`), ending the connection there. The fix installs the drill list only
-///   after the split succeeds, so a cancelled page answers "no drills" and the connection
-///   **continues** — reaching one more of ruling 6's six stop-check sites before it ends. Hence
-///   `stopCalls` one higher, on exactly the four of nine regime/limit blocks whose stop trips
-///   inside a drill page. What the test is named for does not move: `:207-213`'s degraded FAILED,
-///   the board dumps and the item lists are byte-identical on all 100 rows.
-/// * **#173** — `AutorouteControl.initNet`'s null-net arm completed only for `netNumber <= 0`; a
-///   **positive unknown** net took the arm and threw two lines later at `:219`. Mode `route`'s
-///   third call is exactly that (item 2 on net **99**, which this board does not have), so the
-///   throw hit ruling 7's fifth boundary and degraded to a bare `FAILED`. With the arm given its
-///   own half-width fallback the control builds, the router runs on, and `:49-52` answers
-///   `NO_UNCONNECTED_NETS` for an item that is already routed. The fifth boundary keeps a
-///   producer: [`a_panicking_locator_degrades_to_javas_message_less_failure`] still reaches
-///   `:154-158` and still asserts the empty `details` that distinguishes it.
-/// * **#165 (second half), accepted at plan9-t7t8 (ruling CC)** — `addCompleteRoom`'s `null` path
-///   now calls `detach_all_doors` on the room it abandons, so that room stops being reachable
-///   through its doors. On `buildSimple` the only path from pin 2 to pin 3 ran *through* that
-///   abandoned room, so `find_connection` answers `None` where the jar routed. **Ablation, run at
-///   this wave**: with that one call commented out, mode `plain`'s seven rows and mode
-///   `stopafter`'s row 99 are byte-identical to the jar again and the five `locator` tests and one
-///   `inserter` test pass — 43 of 44 green, the only survivor being mode `maintain` below, which
-///   is a different mechanism. **On the six real router stems `#165` changes nothing**: incomplete
-///   and violation counts are byte-identical with and without the call (Task 8 §6a). The trade was
-///   put to the controller and taken: reachability the fix exists to remove is worth six probe
-///   boards' connection.
-/// * **#165a + #156/#167/#158, accepted at plan9-t7t8 (ruling CC)** — room ids are now **dense**
-///   (an abandoned room hands its id back) and drawn from **one shared counter** across the
-///   engine's room kinds instead of a per-kind one. Every mode-`maintain` row below is a room-id
-///   literal moving under those two mechanisms and nothing else: the **counts** (`n=1`, `n=6`,
-///   `n=5`, `n=2`) and the descending `TreeSet` order the rows are named for are unchanged on
-///   every one, and only the ids inside the brackets differ.
 const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
-    // #168 — the connection survives a cancelled drill page and consults the stop flag once more.
-    //
-    // TWO of the four entries this bullet used to carry — rows 77 and 88, `stopCalls=9` and
-    // `stopCalls=13` — were DELETED at the plan9-t7t8 accept wave (ruling CC) because they
-    // HEALED, and this table's own rule is that a healed divergence goes rather than rots. What
-    // healed them is #165's second half, in the opposite direction: on those two blocks the
-    // detached room removes exactly the one extra stop-check #168 had added, so the port answers
-    // the jar's 9 and 13 again. The measurement is `assert_rows_match`'s shortfall assert, which
-    // is what caught them: the table declared 5 for this mode and only 3 still differed.
+    (
+        "plain",
+        18,
+        "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(401,-1),(-400,0)->(-401,0),(-400,0)->(-399,1)] corners=[(400,0),(-400,0)]",
+        "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(401,-1),(-264,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]",
+    ),
     ("stopafter", 10, "  stopCalls=9", "  stopCalls=10"),
     ("stopafter", 55, "  stopCalls=13", "  stopCalls=14"),
-    // #173 — net 99 no longer throws, so boundary 5 is not reached and `:49-52` answers instead.
-    // Three regimes x (the result line, the state line).
     (
         "route",
         9,
@@ -620,9 +505,6 @@ const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
         "  boundary5state=FAILED",
         "  boundary5state=NO_UNCONNECTED_NETS",
     ),
-    // #165 second half — the abandoned room is detached, so `buildSimple`'s only path from pin 2
-    // to pin 3 is gone: the connection FAILs and no trace is inserted, which shortens the item
-    // dump by one and drops `maxId` from 4 to 3.
     (
         "plain",
         23,
@@ -649,20 +531,13 @@ const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
         "    item id=2 type=Pin nets=[1] cl=1 center=(-400,0)",
         "    item id=1 type=BoardOutline nets=[] cl=0",
     ),
-    // The jar's item list is one longer than the port's, so its last row has no counterpart.
-    // `<missing>` is `assert_rows_match`'s own sentinel for that, and pinning it is what keeps a
-    // *third* lost item from passing unnoticed.
     (
         "plain",
         32,
         "    item id=1 type=BoardOutline nets=[] cl=0",
         "<missing>",
     ),
-    // #165 second half — one of the nine regime/limit blocks loses the pop that would have found
-    // the connection, so the run reaches one fewer of ruling 6's stop-check sites. The other 99
-    // rows of mode `stopafter`, the degraded FAILED included, are byte-identical.
     ("stopafter", 99, "  stopCalls=21", "  stopCalls=20"),
-    // #165a + #156/#167/#158 — dense ids from one shared counter. Counts and order unmoved.
     (
         "maintain",
         11,
@@ -737,8 +612,6 @@ const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
     ),
 ];
 
-/// Compares the rows this port produces with the JVM's, collecting **every** difference rather
-/// than stopping at the first.
 fn assert_rows_match(mode: &str, actual: &[String]) {
     let expected = t16_section(mode);
     let mut diffs = Vec::new();
@@ -752,9 +625,6 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
         if want == got {
             continue;
         }
-        // A row this plan has deliberately moved away from the jar still has to match the jar on
-        // the left and the port on the right — a divergence that drifts is a new difference, not
-        // a known one.
         if KNOWN_DIVERGENCES
             .iter()
             .any(|(m, row, jvm, rust)| *m == mode && *row == i && *jvm == want && *rust == got)
@@ -764,12 +634,6 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
         }
         diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
     }
-    // The diff assert runs FIRST, and the order is load-bearing. A declared row that *drifts* —
-    // the port answering something new — both fails to match the entry (so it lands in `diffs`)
-    // and leaves `accounted` short. With the healed-check first, that drift was reported as
-    // "a divergence has healed, delete it from KNOWN_DIVERGENCES" and the actual jvm/rust detail
-    // was never printed, which is exactly backwards: the entry is right and the port moved.
-    // Mutation-verified by the Task 6 reviewer.
     assert!(
         diffs.is_empty(),
         "mode `{mode}`: {} of {} rows differ\n{}",
@@ -782,8 +646,6 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
             .collect::<Vec<_>>()
             .join("\n")
     );
-    // Only once every row matches either the jar or its declared divergence is a shortfall here
-    // unambiguous: the divergence really has healed and its entry must go.
     let declared = KNOWN_DIVERGENCES
         .iter()
         .filter(|(m, ..)| *m == mode)
@@ -796,7 +658,6 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
     );
 }
 
-/// The three regimes, in the probe's order.
 const REGIMES: [AngleRestriction; 3] = [
     AngleRestriction::NinetyDegree,
     AngleRestriction::FortyFiveDegree,
@@ -811,7 +672,6 @@ fn regime_name(angle: AngleRestriction) -> &'static str {
     }
 }
 
-/// `P6T16Probe.run` — one `autorouteConnection`, printed the way every mode prints it.
 fn run(
     board: &mut Board,
     engine: &mut AutorouteEngine,
@@ -843,7 +703,6 @@ fn run(
     out
 }
 
-/// `P6T16Probe.oneRegime`.
 fn one_regime(
     board: &mut Board,
     regime: AngleRestriction,
@@ -877,7 +736,6 @@ fn one_regime(
     (rows, engine)
 }
 
-/// Every regime of one mode, over a fresh board each time.
 fn all_regimes(mode: &str, build: fn() -> Board, no_vias: bool, ripup_allowed: bool) {
     let mut rows = Vec::new();
     for regime in REGIMES {
@@ -891,60 +749,21 @@ fn all_regimes(mode: &str, build: fn() -> Board, no_vias: bool, ripup_allowed: b
     assert_rows_match(mode, &rows);
 }
 
-// =================================================================================================
-// Ruling 1(a)+(b): the state, the ripped set and the inserted geometry
-// =================================================================================================
-
-/// Probe mode `plain`: `ROUTED`, an empty ripped set and one inserted trace. The 45-degree run
-/// burns ids 4..7 inside `insertForcedTracePolyline` before the combined trace lands on 8, and
-/// that id burn is part of the comparison.
-///
-/// **In two of the three regimes, not all three, since #165.** `NINETY_DEGREE` and
-/// `FORTYFIVE_DEGREE` are byte-identical to the jar — the routed state, the id burn and the
-/// inserted polyline all still match. The free-angle `NONE` regime is the one that lost its
-/// connection to #165's second half, and its seven rows are declared in `KNOWN_DIVERGENCES` with
-/// the ablation that attributes them. The name still describes what this test measures, on the
-/// two regimes that still measure it.
 #[test]
 fn a_plain_connection_routes_and_inserts_javas_trace() {
     all_regimes("plain", simple_board, false, false);
 }
 
-/// Probe mode `via`: the connection crosses two `ExpansionDrill`s, so the insert lays down a via
-/// at the layer change (`FoundConnectionInserter.java:66`) — ruling 1(b)'s via case.
 #[test]
 fn a_layer_changing_connection_routes_through_javas_via() {
     all_regimes("via", probe_board, false, false);
 }
 
-/// Probe mode `ripup`: with vias forbidden and ripup on, the search rips the net-2 blocker, so
-/// `:238-263` runs with a non-empty `rippedItemList` — the ripped ids, the per-item ripup costs
-/// and the item the board loses are all compared. The 90-degree regime is the control: it finds
-/// no connection at all and rips nothing.
 #[test]
 fn a_ripping_connection_deletes_javas_items_and_reports_javas_ripped_set() {
     all_regimes("ripup", blocked_board, true, true);
 }
 
-// =================================================================================================
-// One test per early return, asserting both the state and the message
-// =================================================================================================
-
-/// Probe mode `nomaze`. The blocker taken to the outline reaches `:145-151` — the
-/// "maze search algorithm could not be created" message — in the **free-angle regime only**:
-/// under `NINETY_DEGREE` and `FORTYFIVE_DEGREE` `MazeSearchEngine::get_instance` still succeeds
-/// and it is `find_connection` that answers `None`, so those two rows land on `:207-213`.
-/// `an_already_stopped_run_fails_before_the_maze_is_built` is the test that reaches `:145-151`
-/// in all three.
-///
-/// The room and tree-leaf counts afterwards are the point of the extra rows, and the `NONE` row
-/// is the one that measures them. `:145-151` returns **before** the cleanup of `:198-205`, where
-/// every later early return runs it — an asymmetry that would leak complete expansion rooms and
-/// their leaves in the compensated autoroute tree into the next connection. The JVM says it is
-/// **latent**: `get_instance` answers `None` only when `init` fails, which is before any room
-/// has been completed, so `completeRooms n=0` and `treeSize=4` (the four board items). That is
-/// why it earns no quirk row — but the port transcribes the order anyway, and
-/// `cleanup_runs_before_every_early_return` is what holds it there.
 #[test]
 fn a_maze_that_cannot_be_built_fails_with_javas_message() {
     let mut rows = Vec::new();
@@ -960,7 +779,6 @@ fn a_maze_that_cannot_be_built_fails_with_javas_message() {
     assert_rows_match("nomaze", &rows);
 }
 
-/// `P6T16Probe.treeSize` — the leaf count of the engine's compensated autoroute tree.
 fn tree_size(engine: &AutorouteEngine, board: &Board) -> usize {
     board
         .trees
@@ -970,17 +788,11 @@ fn tree_size(engine: &AutorouteEngine, board: &Board) -> usize {
         .size()
 }
 
-/// Probe mode `nopath` (`:207-213`): the maze builds but `findConnection` answers null.
 #[test]
 fn no_connection_found_fails_with_javas_message() {
     all_regimes("nopath", blocked_board, true, false);
 }
 
-/// Probe mode `inactive` (`:221-228`). A plain `layerActive[0] = false` cannot reach it: with a
-/// **signal** layer `MazeSearchEngine.expandToRoomDoors:396-399` returns before expanding
-/// anything and `:207` fires instead. The lever is a dedicated **power plane**, whose
-/// `layerActive` `AutorouteControl.java:151-158` forces off while `:397-399`'s guard does not
-/// fire — so the located `startLayer` is a disabled one.
 #[test]
 fn an_inactive_layer_fails_with_javas_message() {
     let mut rows = Vec::new();
@@ -1011,10 +823,6 @@ fn an_inactive_layer_fails_with_javas_message() {
     assert_rows_match("inactive", &rows);
 }
 
-/// `:230-235`'s `SKIPPED` is **dead code** — quirk #180. `FoundConnectionLocator.connectionItems`
-/// is a `final` field assigned at `FoundConnectionLocator.java:101`, before both of the
-/// constructor's early returns, so the `== null` test cannot hold; the port's type is a `Vec`
-/// and cannot express the null. Nothing in `fr-router` may produce `SKIPPED`.
 #[test]
 fn skipped_has_no_producer_because_connection_items_is_never_null() {
     let source = include_str!("../src/autoroute/maze/engine.rs");
@@ -1023,26 +831,11 @@ fn skipped_has_no_producer_because_connection_items_is_never_null() {
         "AutorouteEngine.autorouteConnection:230-235 is unreachable (quirk #180); a `Skipped` \
          here would be a state Java cannot produce"
     );
-    // And the state itself still exists, because Task 1 ported all nine constants.
     assert_eq!(AutorouteAttemptState::Skipped.name(), "SKIPPED");
 }
 
-// =================================================================================================
-// The cleanup order (`:198-205`)
-// =================================================================================================
-
-/// `:201-205` runs **before** every early return from `:207` on, and **after** the `:145-151`
-/// one. Getting that wrong leaks rooms into the next connection and is invisible until a later
-/// fixture routes differently, so this measures both halves directly:
-///
-/// * `maintain_database = false` — `clear()` empties the complete-room list;
-/// * `maintain_database = true` — `resetAllDoors()` keeps it, which is what probe mode
-///   `maintain` then shows carrying into the next `initConnection`;
-/// * the `:145-151` return — the rooms `initConnection` left are untouched, because the cleanup
-///   is three statements further down than the return.
 #[test]
 fn cleanup_runs_before_every_early_return() {
-    // `maintain_database = false`: the list is empty afterwards.
     let mut board = blocked_board();
     board.rules.trace_angle_restriction = AngleRestriction::None;
     let stop = Stop::never();
@@ -1059,7 +852,6 @@ fn cleanup_runs_before_every_early_return() {
         "clear() empties completeExpansionRooms before the `:207-213` return"
     );
 
-    // `maintain_database = true`: the list survives, with every door reset.
     let mut board = blocked_board();
     let stop = Stop::never();
     let (_, engine) = one_regime(&mut board, AngleRestriction::None, true, false, true, &stop);
@@ -1087,9 +879,6 @@ fn cleanup_runs_before_every_early_return() {
         }
     }
 
-    // The `:145-151` return happens *before* the cleanup, so the rooms `initConnection` built
-    // are still there — with `maintain_database = false`, where `clear()` would have dropped
-    // them.
     let mut board = sealed_board();
     board.rules.trace_angle_restriction = AngleRestriction::None;
     let mut engine = board.init_autoroute(None, 1, 1, None, false);
@@ -1114,18 +903,6 @@ fn cleanup_runs_before_every_early_return() {
     );
 }
 
-/// Probe mode `maintain`: with `maintainDatabase = true` the complete-room list, the target-door
-/// index and every reset door carry into the next `initConnection` on the **same** net, and are
-/// dropped on a different one. The `roomsWithTargetItems` row is
-/// `getRoomsWithTargetItems`'s `SortedSet<CompleteFreeSpaceExpansionRoom>`, whose comparator is
-/// `other.id - this.id` — so the port's `BTreeSet<RoomId>` is walked `.rev()` (Task 11's
-/// carry-over, only observable here).
-///
-/// The connection deliberately FAILs. A successful one would insert items, and every
-/// `BoardItemRepository`/`PolylineTrace` mutation runs `RoutingBoard.additionalUpdateAfterChange`
-/// on the JVM while `fr-board` cannot (see the crate README's Task 16 section), so with
-/// `maintainDatabase = true` the two room databases would part company for a reason that has
-/// nothing to do with this method.
 #[test]
 fn the_room_database_carries_over_when_maintain_database_is_set() {
     let mut rows = Vec::new();
@@ -1144,7 +921,6 @@ fn the_room_database_carries_over_when_maintain_database_is_set() {
     assert_rows_match("maintain", &rows);
 }
 
-/// `P6T16Probe.dumpRooms`.
 fn dump_rooms(engine: &AutorouteEngine, _board: &Board, label: &str) -> Vec<String> {
     let listed = engine.complete_expansion_rooms();
     let ids: Vec<String> = listed
@@ -1159,8 +935,6 @@ fn dump_rooms(engine: &AutorouteEngine, _board: &Board, label: &str) -> Vec<Stri
         })
         .collect();
     let with_targets = engine.rooms_with_target_items(&set_of(&[2, 3]));
-    // `getRoomsWithTargetItems` answers a `TreeSet<CompleteFreeSpaceExpansionRoom>` whose
-    // comparator is `other.id - this.id` — descending (plan-2 ruling 14's third rule).
     let target_ids: Vec<String> = with_targets
         .iter()
         .rev()
@@ -1187,13 +961,6 @@ fn dump_rooms(engine: &AutorouteEngine, _board: &Board, label: &str) -> Vec<Stri
     ]
 }
 
-// =================================================================================================
-// Ruling 7's recovery boundaries
-// =================================================================================================
-
-/// Probe mode `stop`: a stop check that is already tripped bails inside `MazeSearchEngine.init`,
-/// so `getInstance` answers null and `:145-151` fires. This is ruling 6's cancellation reaching
-/// `autorouteConnection`'s first early return.
 #[test]
 fn an_already_stopped_run_fails_before_the_maze_is_built() {
     let mut rows = Vec::new();
@@ -1207,26 +974,6 @@ fn an_already_stopped_run_fails_before_the_maze_is_built() {
     assert_rows_match("stop", &rows);
 }
 
-/// Probe mode `stopafter` — **ruling 7's boundary #3 (`:157`), reached naturally**.
-///
-/// A stop check that answers false a fixed number of times first lets `getInstance` finish and
-/// then trips inside the pop loop. On the JVM two of the nine rows do more than that:
-/// `PolylineArea.splitToConvex` answers `null` when the flag trips inside it, and
-/// `DrillPage.getDrills:108` then dereferences it — a `NullPointerException` that only
-/// `AutorouteEngine.java:157` catches, degrading to `:207-213`'s FAILED. The port panics at the
-/// same place (`DrillPage::get_drills`) and boundary #3 turns it back into the same value.
-///
-/// The `stopCalls` row is the second assertion: ruling 6 fixes the six sites that may consult
-/// the stop flag, so a port that checks a seventh — or skips one — lands on a different count
-/// and on a different result.
-///
-/// `limit = 20` is above the 14 checks the 90-degree search costs on this board, so that row
-/// **routes** on both sides. It is the row that pins controller ruling AC: Java tests
-/// cancellation nowhere below `AutorouteEngine.java:265`, so
-/// `FoundConnectionInserter::get_instance` is handed `&|| false` rather than the caller's
-/// `stop`. Passing the caller's flag down instead makes this row answer
-/// `AutorouteConnectionRouter.route:155-158`'s bare `FAILED` after `:260` has already removed
-/// the ripped items — a board worse than either outcome, and 21 stop calls instead of 14.
 #[test]
 fn a_stop_inside_the_pop_loop_degrades_through_boundary_three() {
     let mut rows = Vec::new();
@@ -1243,14 +990,6 @@ fn a_stop_inside_the_pop_loop_degrades_through_boundary_three() {
     assert_rows_match("stopafter", &rows);
 }
 
-/// **Ruling 7's boundary #4 (`:190`)**, and the only way to reach `:215-219`'s message-less
-/// FAILED: `FoundConnectionLocator::get_instance` answers `None` for exactly one input, a null
-/// maze result, which `:180` has already excluded.
-///
-/// The JVM lever is probe mode `locatorfail`: an **unmodifiable** `rippedItemList`, which makes
-/// `backtrack:318`'s `add` throw. A `BTreeSet` cannot refuse an insert, so the port injects the
-/// panic instead and asserts the probe's value — the exact message, for the two regimes whose
-/// search actually rips (the 90-degree one finds no connection at all and stops at `:207`).
 #[test]
 fn a_panicking_locator_degrades_to_javas_message_less_failure() {
     let expected: Vec<&str> = t16_section("locatorfail")
@@ -1270,8 +1009,6 @@ fn a_panicking_locator_degrades_to_javas_message_less_failure() {
         ctrl.ripup_costs = 1000;
         let stop = Stop::never();
         let mut ripped = BTreeSet::new();
-        // The 90-degree row never reaches the locator, so it must not be injected: its FAILED is
-        // `:207-213`'s, and the transcript says so.
         let inject = i != 0;
         let result = engine.autoroute_connection_with_forced_locator_failure(
             &mut board,
@@ -1288,11 +1025,6 @@ fn a_panicking_locator_degrades_to_javas_message_less_failure() {
     assert_eq!(actual, expected);
 }
 
-// =================================================================================================
-// `AutorouteConnectionRouter.route` steps 1-5
-// =================================================================================================
-
-/// `P6T16Probe.routeSteps1to5`, i.e. `route_connection` under the probe's arguments.
 fn route_once(
     board: &mut Board,
     engine: &mut Option<AutorouteEngine>,
@@ -1314,10 +1046,6 @@ fn route_once(
         ripped,
         ripup_costs,
         1,
-        // The `RoutingJob` constructor's defaults (`BatchAutorouter.java:110-121`), which is
-        // what `P6T16Probe.routeSteps1to5` passes. `BatchAutorouter.java:253-261`'s optimizer
-        // constructor uses a caller-supplied `startRipupCosts` and an unconditional `true`, and
-        // that is Plan 7's — which is why both are parameters rather than derived here.
         settings.get_start_ripup_costs(),
         !settings.is_fanout_enabled(),
         false,
@@ -1325,19 +1053,6 @@ fn route_once(
     )
 }
 
-/// Probe mode `route`: the first connection routes, the same item routed again answers
-/// `NO_UNCONNECTED_NETS` at `:49-52` before any engine is built, and a positive net the board
-/// does not have used to make `AutorouteControl::new` panic — **ruling 7's fifth boundary
-/// (`:154-158`)** — which degraded to a **bare** `FAILED` with no details at all. That empty
-/// `details` is the whole difference between the fifth boundary and every message-carrying
-/// `FAILED` `autoroute_connection` produces.
-///
-/// Plan 9 Task 6 fixed quirk #173, so the third call no longer panics: the control builds on the
-/// null-net arm's own half-width fallback and the router reaches `:49-52`'s
-/// `NO_UNCONNECTED_NETS`, item 2 being already routed. The jar's six rows are kept verbatim in
-/// the transcript and declared in [`KNOWN_DIVERGENCES`]; the fifth boundary itself keeps its
-/// producer in [`a_panicking_locator_degrades_to_javas_message_less_failure`], which is where the
-/// empty-`details` assertion now lives alone.
 #[test]
 fn route_steps_one_to_five_match_java_including_the_fifth_boundary() {
     let mut rows = Vec::new();
@@ -1390,11 +1105,6 @@ fn route_steps_one_to_five_match_java_including_the_fifth_boundary() {
     assert_rows_match("route", &rows);
 }
 
-/// Probe mode `routeripup`: `route_connection` on the blocker board over three `ripupPassNo`
-/// values, which is the only fixture here where `:44-46` — `ripupAllowed = true`,
-/// `ripupCosts = startRipupCosts * ripupPassNo` and
-/// `removeUnconnectedVias = !settings.isFanoutEnabled()` — reaches the ripup cost model and the
-/// `:241-245` `StopConnectionOption` choice through the full pipeline entry point.
 #[test]
 fn route_connection_rips_through_javas_cost_model() {
     let mut rows = Vec::new();
@@ -1433,8 +1143,6 @@ fn route_connection_rips_through_javas_cost_model() {
     assert_rows_match("routeripup", &rows);
 }
 
-/// `no_unconnected_items_answers_no_unconnected_nets` — the brief's name for the second half of
-/// the mode above, asserted on its own so that a failure names the arm.
 #[test]
 fn no_unconnected_items_answers_no_unconnected_nets() {
     let mut board = simple_board();
@@ -1465,10 +1173,6 @@ fn no_unconnected_items_answers_no_unconnected_nets() {
     assert_eq!(second.details(), "");
 }
 
-/// Probe mode `plane`: `:54-68`. `describeConnection` prints the **start** set first, so the
-/// FAILED message is where the swap is observable — `plain` names the unconnected set first,
-/// `plane` names the connected one. A `ConductionArea` of the same net in the connected set
-/// short-circuits at `:58-60` with `CONNECTED_TO_PLANE`, before the swap.
 #[test]
 fn the_plane_swap_reverses_start_and_dest() {
     let mut rows = Vec::new();
@@ -1495,7 +1199,7 @@ fn the_plane_swap_reverses_start_and_dest() {
                     1,
                     false,
                     FixedState::Unfixed,
-                ); // id 5
+                );
             }
             let stop = Stop::never();
             let mut engine = None;
@@ -1516,13 +1220,6 @@ fn the_plane_swap_reverses_start_and_dest() {
     assert_rows_match("plane", &rows);
 }
 
-// =================================================================================================
-// `describeConnection`
-// =================================================================================================
-
-/// Probe mode `describe`: the `", "` join, the `" and "` separator, the empty-set shape and —
-/// the load-bearing part — the **descending** id order of Java's `TreeSet<Item>`
-/// (`Item.compareTo:95-102` is `other.id - this.id`, quirk #44).
 #[test]
 fn describe_connection_joins_javas_item_names_in_descending_id_order() {
     let board = probe_board();
@@ -1550,8 +1247,6 @@ fn describe_connection_joins_javas_item_names_in_descending_id_order() {
     assert_rows_match("describe", &rows);
 }
 
-/// `describeConnection`, called directly — Java's probe reaches the `private static` method by
-/// reflection and the port's is `pub` for the same reason.
 fn describe_via_message(
     board: &Board,
     start: &BTreeSet<ItemId>,

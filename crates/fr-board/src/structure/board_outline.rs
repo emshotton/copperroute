@@ -182,12 +182,26 @@ impl BoardOutline {
 
     /// Port of `BoardOutline.translateBy` (BoardOutline.java:112-121).
     //
-    // Java bug: the loop body is `currentShape = currentShape.translateBy(vector);`, which
-    // assigns to the **loop variable** of an enhanced `for` — `this.shapes` is never written, so
-    // the outline polygons do not move. Only the cached `keepoutArea` does. The same defect is
-    // in all four transforms (BoardOutline.java:114-116, 125-127, 137-139, 148-150). Reproduced;
-    // see docs/java-quirks.md.
+    // Java bug: the loop body is `currentShape = currentShape.translateBy(vector);`, which assigns
+    // to the **loop variable** of an enhanced `for` — Java binds a *copy of the reference* there,
+    // so `this.shapes` is never written and the outline polygons do not move, turn, rotate or
+    // mirror. The same defect is in all four transforms (BoardOutline.java:114-116, 125-127,
+    // 137-139, 148-150).
+    //
+    // Only the lazily built `keepoutArea` followed the transform, because that one *is* a field
+    // assignment. So after any of the four, the outline's curves and its outside-keepout
+    // disagreed — and worse, they disagreed *depending on build order*, since the keepout is
+    // rebuilt from the (untransformed) shapes if it had not been built yet. `boundingBox()`,
+    // `lineCount()`, `getShape()` and the search-tree line bands all kept answering from the
+    // untransformed shapes.
+    //
+    // fixed: T11 (#55) — Java's own suggested remedy: write back into the array, in all four.
+    // Measured: no golden moved, because the four transforms are reachable only from
+    // `BasicBoard.moveItems`/`changePlacementSide`, which the headless pipeline never calls.
     pub fn translate_by(&mut self, vector: &Vector) {
+        for shape in &mut self.shapes {
+            *shape = shape.translate_by(vector);
+        }
         if let Some(keepout_area) = self.keepout_area.get_mut() {
             *keepout_area = keepout_area.translate_by(vector);
         }
@@ -196,8 +210,11 @@ impl BoardOutline {
     }
 
     /// Port of `BoardOutline.turn90Degree` (BoardOutline.java:123-132). See
-    /// [`Self::translate_by`] for the reproduced `for`-loop bug.
+    /// [`Self::translate_by`] for the `for`-loop bug — fixed: T11 (#55) here too.
     pub fn turn_90_degree(&mut self, factor: i32, pole: &IntPoint) {
+        for shape in &mut self.shapes {
+            *shape = shape.turn_90_degree(factor, pole);
+        }
         if let Some(keepout_area) = self.keepout_area.get_mut() {
             *keepout_area = keepout_area.turn_90_degree(factor, pole);
         }
@@ -206,10 +223,13 @@ impl BoardOutline {
     }
 
     /// Port of `BoardOutline.rotateApprox` (BoardOutline.java:134-144). See
-    /// [`Self::translate_by`] for the reproduced `for`-loop bug.
+    /// [`Self::translate_by`] for the `for`-loop bug — fixed: T11 (#55) here too.
     pub fn rotate_approx(&mut self, angle_in_degree: f64, pole: &FloatPoint) {
         // BoardOutline.java:136 converts to radians once, before the loop.
         let angle = angle_in_degree.to_radians();
+        for shape in &mut self.shapes {
+            *shape = shape.rotate_approx(angle, pole);
+        }
         if let Some(keepout_area) = self.keepout_area.get_mut() {
             *keepout_area = keepout_area.rotate_approx(angle, pole);
         }
@@ -218,8 +238,11 @@ impl BoardOutline {
     }
 
     /// Port of `BoardOutline.changePlacementSide` (BoardOutline.java:146-155). See
-    /// [`Self::translate_by`] for the reproduced `for`-loop bug.
+    /// [`Self::translate_by`] for the `for`-loop bug — fixed: T11 (#55) here too.
     pub fn change_placement_side(&mut self, pole: &IntPoint) {
+        for shape in &mut self.shapes {
+            *shape = shape.mirror_vertical(pole);
+        }
         if let Some(keepout_area) = self.keepout_area.get_mut() {
             *keepout_area = keepout_area.mirror_vertical(pole);
         }

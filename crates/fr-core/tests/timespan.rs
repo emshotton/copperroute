@@ -1,60 +1,15 @@
-//! Plan 8 Task 0's timespan table: `TextManager.parseTimespanString` and
-//! `RoutingJobSchedulerActionThread`'s cap, thirty rows, pinned to the HEAD jar.
-//!
-//! # Where the expectations come from
-//!
-//! `scripts/differential/java/probes/P8T0Probe.java` runs both Java methods on the thirty inputs
-//! below against `../freerouting/build/libs/freerouting-current-executable.jar` (JDK 25,
-//! `-Djava.awt.headless=true -Duser.language=en -Duser.country=US
-//! -XX:+UnlockExperimentalVMOptions -XX:hashCode=2`) and prints one row each. Its output is
-//! committed verbatim as `tests/data/p8t0-timespans.txt`, and
-//! `scripts/differential/run.sh p8t0` diffs it live against `scripts/differential/rust/src/bin/p8t0.rs`
-//! — **MATCH on all 30 rows** at the jar whose `Build-Revision` the transcript's header records.
-//!
-//! # Why the table is literals AND the transcript is re-checked
-//!
-//! [`ROWS`] is the transcript transcribed into Rust, one case per row, as the brief asks: a test
-//! that reads its expectations out of a file can agree with itself while disagreeing with the
-//! jar. [`the_committed_transcript_still_says_what_this_table_says`] then re-reads the file and
-//! requires the two to agree, so a regenerated transcript cannot drift away from the table
-//! silently either.
-//!
-//! # What each row proves
-//!
-//! Beyond the ten inputs the brief names, the table's own surprises — every one of them measured,
-//! not reasoned:
-//!
-//! * `""` -> `"PTS"`, not `"PT"`. `"".split(":")` is `[""]`, length **1**: Java's split only drops
-//!   trailing empties when the separator matched at all. `":"` really is the empty array.
-//! * `"1:"` is the **one**-part arm (`"PT1S"` = 1 s), not `mm:ss`.
-//! * `"1:60"` is 120 s and `"0:0:90"` is 90 s — out-of-range components are not normalised, they
-//!   are just added up.
-//! * `"1:5.5"` parses (only the seconds field may be fractional) and `"1.5:00"` does not.
-//! * `"-1.5"` is **-2**, not -1: `Duration.getSeconds()` floors.
-//! * `"-1"` is -1 and the cap does **not** clamp it — `:47-49` has no lower arm, so a negative
-//!   `--job-timeout` is a deadline in the past.
-//! * `"24:00:01"` caps to 86 400; `"24:00:00"` is already exactly `MAX_TIMEOUT`.
-//! * `" 1:00 "` fails: `Duration.parse` has no tolerance for whitespace inside the literal.
-
 use fr_core::{
     GRACE_PERIOD_SECONDS, MAX_TIMEOUT_SECONDS, convert_from_timespan_to_duration_format,
     job_timeout_deadline_from, parse_timespan, parse_timespan_seconds, parse_timespan_seconds_java,
 };
 
-/// One row of `tests/data/p8t0-timespans.txt`.
 struct Row {
-    /// The `RAW` column, as the string itself rather than as its C-quoted rendering.
     input: &'static str,
-    /// The `CONV` column — `convertFromTimespanToDurationFormat`'s answer.
     conv: &'static str,
-    /// The `PARSE` column — `parseTimespanString`'s `Long`, or `None` for Java's `null`.
-    /// **Never an exception**: scan ruling R11, and thirty rows of evidence.
     parse: Option<i64>,
-    /// The `CAPPED` column — `:47-49`'s clamp applied to `parse`.
     capped: Option<i64>,
 }
 
-/// The thirty rows of `tests/data/p8t0-timespans.txt`, in its order.
 const ROWS: &[Row] = &[
     Row {
         input: "1:30:00",
@@ -238,7 +193,6 @@ const ROWS: &[Row] = &[
     },
 ];
 
-/// `convertFromTimespanToDurationFormat` (`util/TextManager.java:101-118`), row by row.
 #[test]
 fn the_grammar_matches_the_jar_on_all_thirty_rows() {
     for row in ROWS {
@@ -252,13 +206,6 @@ fn the_grammar_matches_the_jar_on_all_thirty_rows() {
     assert_eq!(ROWS.len(), 30);
 }
 
-/// `parseTimespanString` (`:83-93`), row by row — the exact `Long`/`null` answer.
-///
-/// Against `parse_timespan_seconds_java` since Plan 9 Task 1: #224 fixed the port's own parser
-/// (`5m` and `300s` now work, and an unreadable string is refused rather than silently unbounded),
-/// and this transcript is the record of what the **jar** answers, which did not change. The gap
-/// between the two functions is checked from the other side, row by row, by
-/// [`the_fix_only_adds_acceptances_and_refusals`].
 #[test]
 fn parse_timespan_string_matches_the_jar_on_all_thirty_rows() {
     for row in ROWS {
@@ -271,13 +218,6 @@ fn parse_timespan_string_matches_the_jar_on_all_thirty_rows() {
     }
 }
 
-/// #224's blast radius over the whole thirty-row transcript, stated as an invariant rather than
-/// as a list: **for every row, the port either answers exactly what the jar answered, or refuses
-/// a string the jar swallowed into an unbounded run.** It never answers a different number.
-///
-// fixed: T1 (#224) — the transcript is thirty measured JVM answers, which makes it the strongest
-// available check that the fix is additive. Two of the thirty are blank strings, which stay
-// `Ok(None)` — Java's own `isBlank` arm and a deliberate "no timeout".
 #[test]
 fn the_fix_only_adds_acceptances_and_refusals() {
     let mut refused = 0;
@@ -300,8 +240,6 @@ fn the_fix_only_adds_acceptances_and_refusals() {
             }
         }
     }
-    // Not a magic number for its own sake: it is "every row the jar could not read, less the two
-    // blank ones", and it fails if a later edit quietly turns a refusal back into silence.
     let jar_nulls = ROWS.iter().filter(|r| r.parse.is_none()).count();
     let blanks = ROWS.iter().filter(|r| r.input.trim().is_empty()).count();
     assert_eq!(
@@ -315,16 +253,12 @@ fn the_fix_only_adds_acceptances_and_refusals() {
     );
 }
 
-/// `threadAction:43-52`'s ladder, row by row: parse, cap from above, offset from `startedAt`.
 #[test]
 fn the_timeout_ladder_matches_the_jar_on_all_thirty_rows() {
     let base = std::time::Instant::now();
     for row in ROWS {
         let deadline = job_timeout_deadline_from(Some(row.input), base);
         match row.capped {
-            // Java's null `timeoutAt` splits in two under #224: a blank string is still a silent
-            // "no job timeout" (`Ok(None)`), and everything else the jar could not read is now a
-            // refusal instead of an unbounded run.
             None => match deadline {
                 Ok(none) => assert!(
                     none.is_none() && row.input.trim().is_empty(),
@@ -337,7 +271,6 @@ fn the_timeout_ladder_matches_the_jar_on_all_thirty_rows() {
                 let deadline = deadline
                     .unwrap_or_else(|e| panic!("job_timeout_deadline({:?}): {e}", row.input))
                     .unwrap_or_else(|| panic!("job_timeout_deadline({:?}) is None", row.input));
-                // `:51` — `job.startedAt.plusSeconds(timeout)`.
                 let expected_stop = if seconds >= 0 {
                     base + std::time::Duration::from_secs(seconds as u64)
                 } else {
@@ -348,7 +281,6 @@ fn the_timeout_ladder_matches_the_jar_on_all_thirty_rows() {
                     "stop_at for {:?}",
                     row.input
                 );
-                // `:25`/`:77` — the grace, which `:43-52` does NOT apply.
                 assert_eq!(
                     deadline.timed_out_at,
                     expected_stop + std::time::Duration::from_secs(GRACE_PERIOD_SECONDS as u64),
@@ -360,8 +292,6 @@ fn the_timeout_ladder_matches_the_jar_on_all_thirty_rows() {
     }
 }
 
-/// `None` — Java's `job.routerSettings.jobTimeoutString == null` — is "no job timeout", which is
-/// what every parity run uses and what `RouterStop::new()` is.
 #[test]
 fn a_null_timeout_string_is_no_deadline() {
     assert_eq!(
@@ -370,8 +300,6 @@ fn a_null_timeout_string_is_no_deadline() {
     );
 }
 
-/// The two literals are the file's, not the plan's (`RoutingJobSchedulerActionThread.java:24`,
-/// `:25`), and the probe re-reads them out of the jar by reflection.
 #[test]
 fn the_two_literals_agree_with_the_jar() {
     let transcript = transcript();
@@ -385,9 +313,6 @@ fn the_two_literals_agree_with_the_jar() {
     );
 }
 
-/// [`ROWS`] is the transcript, transcribed. This re-reads the file and requires the two to still
-/// say the same thing, so a regenerated `p8t0-timespans.txt` cannot drift away from the table
-/// without a failing test.
 #[test]
 fn the_committed_transcript_still_says_what_this_table_says() {
     let transcript = transcript();
@@ -399,7 +324,6 @@ fn the_committed_transcript_still_says_what_this_table_says() {
 
     for (line, row) in rows.iter().zip(ROWS) {
         let fields: Vec<&str> = line.split('\t').collect();
-        // RAW <q> CONV <c> PARSE <p> CAPPED <k> OFFSET <o>
         assert_eq!(fields.len(), 10, "malformed transcript row: {line}");
         assert_eq!(fields[1], quote(row.input), "RAW column of {line}");
         assert_eq!(fields[3], row.conv, "CONV column of {line}");
@@ -418,9 +342,6 @@ fn the_committed_transcript_still_says_what_this_table_says() {
     }
 }
 
-/// The lossy `Duration` view of [`parse_timespan_seconds`], and the one input that proves it is
-/// lossy: Java answers -1 for `"-1"`, [`std::time::Duration`] cannot hold it, and
-/// [`parse_timespan`] therefore folds it into `None`. Nothing on a decision path reads this.
 #[test]
 fn the_duration_view_loses_exactly_the_negatives() {
     assert_eq!(
@@ -430,7 +351,6 @@ fn the_duration_view_loses_exactly_the_negatives() {
     assert_eq!(parse_timespan("0"), Some(std::time::Duration::ZERO));
     assert_eq!(parse_timespan_seconds("-1"), Ok(Some(-1)));
     assert_eq!(parse_timespan("-1"), None, "Duration is unsigned");
-    // …and the ladder, which is the decision path, keeps the sign.
     let base = std::time::Instant::now();
     let deadline = job_timeout_deadline_from(Some("-1"), base)
         .expect("`-1` parses")
@@ -447,7 +367,6 @@ fn transcript() -> String {
     std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()))
 }
 
-/// `P8T0Probe.quote`, so the `RAW` column can be compared without unescaping it.
 fn quote(s: &str) -> String {
     let mut out = String::from("\"");
     for c in s.chars() {

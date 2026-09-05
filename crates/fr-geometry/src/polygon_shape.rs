@@ -9,6 +9,7 @@
 //! fixed seed 99 at the top of every non-memoised call (PolygonShape.java:534), so recomputing
 //! reproduces the identical division sequence.
 
+use crate::float_line::FloatLine;
 use crate::float_point::FloatPoint;
 use crate::int_box::IntBox;
 use crate::int_octagon::IntOctagon;
@@ -200,29 +201,62 @@ impl PolygonShape {
         }
     }
 
-    /// Java stub: warns "PolygonShape.cutout not yet implemented" and returns `null`
-    /// (PolygonShape.java:167-171).
-    pub fn cutout(&self, _polyline: &Polyline) -> Option<Vec<Polyline>> {
-        None
+    pub fn intersects_polygon(&self, other: &PolygonShape) -> bool {
+        let left = self.convex_pieces();
+        let right = other.convex_pieces();
+        left.iter().any(|left_piece| {
+            right
+                .iter()
+                .any(|right_piece| left_piece.intersects(right_piece))
+        })
     }
 
-    /// Java stub: returns `this` for a zero offset, otherwise warns "PolygonShape.enlarge not yet
-    /// implemented" and returns `null` (PolygonShape.java:173-180).
+    pub fn cutout(&self, polyline: &Polyline) -> Option<Vec<Polyline>> {
+        let mut pieces = vec![polyline.clone()];
+        for cutter in self.convex_pieces() {
+            let mut remaining = Vec::new();
+            for piece in pieces {
+                remaining.extend(cutter.cutout_polyline(&piece).ok()?);
+            }
+            pieces = remaining;
+        }
+        Some(pieces)
+    }
+
     pub fn enlarge(&self, offset: f64) -> Option<PolygonShape> {
         if offset == 0.0 {
             return Some(self.clone());
         }
-        None
+        if self.corners.len() < 3 || !offset.is_finite() {
+            return None;
+        }
+        let mut shifted = Vec::with_capacity(self.corners.len());
+        for index in 0..self.corners.len() {
+            let a = self.corners[index].to_float();
+            let b = self.corners[(index + 1) % self.corners.len()].to_float();
+            shifted.push(FloatLine::new(a, b).translate(-offset));
+        }
+        let mut corners = Vec::with_capacity(shifted.len());
+        for index in 0..shifted.len() {
+            let previous = &shifted[(index + shifted.len() - 1) % shifted.len()];
+            corners.push(Point::Int(previous.intersection(&shifted[index])?.round()));
+        }
+        Some(PolygonShape::from_points(&corners))
     }
 
-    /// Java stub: warns "PolygonShape.border_distance not yet implemented" and returns 0
-    /// (PolygonShape.java:182-186).
-    pub fn border_distance(&self, _point: &FloatPoint) -> f64 {
-        0.0
+    pub fn border_distance(&self, point: &FloatPoint) -> f64 {
+        if self.corners.is_empty() {
+            return f64::MAX;
+        }
+        (0..self.corners.len())
+            .map(|index| {
+                let a = self.corners[index].to_float();
+                let b = self.corners[(index + 1) % self.corners.len()].to_float();
+                FloatLine::new(a, b).segment_distance(point)
+            })
+            .fold(f64::MAX, f64::min)
     }
 
-    /// `borderDistance(centreOfGravity())`, hence always 0 while `borderDistance` is a stub
-    /// (PolygonShape.java:188-191).
     pub fn smallest_radius(&self) -> f64 {
         self.border_distance(&PolylineShapeOps::centre_of_gravity(self))
     }
@@ -241,11 +275,6 @@ impl PolygonShape {
         !self.is_outside(point)
     }
 
-    /// Returns true if `point` is contained in this shape, but not on the border
-    /// (PolygonShape.java:209-215).
-    ///
-    /// Because `containsOnBorder` is a Java stub that always answers `false`, this is exactly
-    /// `contains`.
     pub fn contains_inside(&self, point: &Point) -> bool {
         if self.contains_on_border(point) {
             return false;
@@ -262,17 +291,29 @@ impl PolygonShape {
             .any(|piece| !piece.is_outside(point))
     }
 
-    /// Java stub: the body is a commented-out warning followed by `return false`
-    /// (PolygonShape.java:228-232). Ported as-is.
-    pub fn contains_on_border(&self, _point: &Point) -> bool {
-        // FRLogger.warn("PolygonShape.contains_on_edge not yet implemented");
-        false
+    pub fn contains_on_border(&self, point: &Point) -> bool {
+        (0..self.corners.len()).any(|index| {
+            let a = &self.corners[index];
+            let b = &self.corners[(index + 1) % self.corners.len()];
+            if point.side_of(a, b) != Side::Collinear {
+                return false;
+            }
+            let point = point.to_float();
+            let a = a.to_float();
+            let b = b.to_float();
+            point.x >= a.x.min(b.x)
+                && point.x <= a.x.max(b.x)
+                && point.y >= a.y.min(b.y)
+                && point.y <= a.y.max(b.y)
+        })
     }
 
-    /// Java stub: warns "PolygonShape.distance not yet implemented" and returns 0
-    /// (PolygonShape.java:234-238).
-    pub fn distance(&self, _point: &FloatPoint) -> f64 {
-        0.0
+    pub fn distance(&self, point: &FloatPoint) -> f64 {
+        if self.contains_float(point) {
+            0.0
+        } else {
+            self.border_distance(point)
+        }
     }
 
     /// Returns the affine translation of the shape by `vector` (PolygonShape.java:240-250).
@@ -449,10 +490,16 @@ impl PolygonShape {
     ///
     // Java bug: the guard is `if (dimension() <= 2) return 0;`, but `PolygonShape.dimension()`
     // returns at most 2 (PolygonShape.java:430-442), so the guard is always true and the shoelace
-    // sum below is dead code — `area()` always answers 0. Reproduced verbatim; the shoelace body
-    // is kept so that a post-parity fix is a one-character change (`<= 2` → `< 2`).
+    // sum below is dead code — `area()` always answers 0. It is reached from `DsnFile.java:70,89`
+    // through `Shape.area()`, so the plane autoroute settings derived from a board area were
+    // derived from zero. See docs/java-quirks.md #26.
+    //
+    // fixed: T11 (#26) — `<= 2` becomes `< 2`, which is the one-character change the shoelace body
+    // was kept for, plus the `corners[len - 2]` guard the register's column asks for: a 1-corner
+    // polygon has `dimension() == 0`, so it no longer returns early, and `len - 2` would underflow.
+    // A polygon with fewer than 3 corners encloses no area, which is what `0.0` says.
     pub fn area(&self) -> f64 {
-        if self.dimension() <= 2 {
+        if self.dimension() < 2 || self.corners.len() < 3 {
             return 0.0;
         }
         // calculate half of the absolute value of
@@ -901,17 +948,25 @@ mod tests {
     #[test]
     fn convexity_area_and_split() {
         assert!(square().is_convex());
-        // Java bug (PolygonShape.java:411): `dimension() <= 2` is always true, so `area()` is
-        // always 0 — the shoelace sum below it is unreachable. Verified against the Java class.
-        assert_eq!(square().area(), 0.0);
+        // Java bug (PolygonShape.java:411): `dimension() <= 2` is always true, so `area()` was
+        // always 0 and the shoelace sum below it unreachable. fixed: T11 (#26) — both literals
+        // below were `0.0`. `square()` is 10 x 10 = 100; `l_shape()` is a 20 x 10 arm plus a
+        // 10 x 10 one = 300, which the shoelace confirms: the cross terms are
+        // 0 + 200 + 100 + 100 + 200 + 0 = 600, halved. The 100 x 100 square and the notched
+        // L the answer key hand-computes (10000 and 8400) are in
+        // `crates/fr-geometry/tests/tail.rs::area_is_not_always_zero`.
+        assert_eq!(square().area(), 100.0);
         assert_eq!(square().split_to_convex().unwrap().len(), 1);
         assert!(!l_shape().is_convex());
-        assert_eq!(l_shape().area(), 0.0);
+        assert_eq!(l_shape().area(), 300.0);
         let parts = l_shape().split_to_convex().unwrap();
         assert_eq!(parts.len(), 2);
         // The convex pieces are ordinary TileShapes, so their `area()` is the real one.
         assert!((parts.iter().map(|t| t.area()).sum::<f64>() - 300.0).abs() < 1e-9);
-        assert_eq!(l_shape().convex_hull().area(), 0.0);
+        // fixed: T11 (#26) — was `0.0`. The hull is the 20 x 20 square with the triangle
+        // (20,10)-(10,20)-(20,20) cut off, so 400 − ½·10·10 = 350; the shoelace agrees
+        // (0 + 200 + 300 + 200 + 0 = 700, halved).
+        assert_eq!(l_shape().convex_hull().area(), 350.0);
         assert_eq!(
             l_shape().convex_hull().corners().to_vec(),
             pts(&[(0, 0), (20, 0), (20, 10), (10, 20), (0, 20)])
@@ -979,17 +1034,6 @@ mod tests {
     }
 
     #[test]
-    fn stubs_match_the_java_stubs() {
-        let s = square();
-        assert_eq!(s.border_distance(&FloatPoint::new(100.0, 100.0)), 0.0);
-        assert_eq!(s.smallest_radius(), 0.0);
-        assert_eq!(s.distance(&FloatPoint::new(100.0, 100.0)), 0.0);
-        assert!(!s.contains_on_border(&Point::Int(IntPoint::new(0, 0))));
-        assert_eq!(s.enlarge(0.0), Some(s.clone()));
-        assert_eq!(s.enlarge(1.0), None);
-    }
-
-    #[test]
     fn transformations_round_trip() {
         let s = square();
         assert_eq!(
@@ -1037,12 +1081,12 @@ mod tests {
         assert_eq!(s.dimension(), 2);
         assert!(s.is_bounded());
         assert!(!s.is_empty());
-        assert_eq!(
-            s.cutout(&crate::polyline::Polyline::from_two_points(
+        let pieces = s
+            .cutout(&crate::polyline::Polyline::from_two_points(
                 &Point::Int(IntPoint::new(-5, 5)),
-                &Point::Int(IntPoint::new(15, 5))
-            )),
-            None
-        );
+                &Point::Int(IntPoint::new(15, 5)),
+            ))
+            .unwrap();
+        assert_eq!(pieces.len(), 2);
     }
 }

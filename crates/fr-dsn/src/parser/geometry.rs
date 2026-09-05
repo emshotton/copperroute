@@ -658,8 +658,15 @@ impl DsnPolygonPath {
                 // Java bug: PolygonPath.boundingBox adds the offset *outside* the `Math.max`
                 // on the x axis (PolygonPath.java:122, `Math.max(bounds[2], arr[i]) + offset`)
                 // but inside it on the y axis (:126), so the upper x bound grows by `offset`
-                // once per x coordinate instead of once in total. See docs/java-quirks.md.
-                bounds[2] = bounds[2].max(*c) + offset;
+                // once per x coordinate instead of once in total. See docs/java-quirks.md #88.
+                //
+                // fixed: T11 (#88) — the offset moves inside the `max`, matching the y axis one
+                // line below. The recurrence was `b_k = max(b_{k-1}, x_{k-1}) + off`, i.e.
+                // `b_k = max_{j<k}(x_j + (k-j)·off)`, so the over-estimate was `(k-2)·offset` for
+                // a closed path and grew **linearly with the corner count**: a square path of
+                // width 200 reported `1300` where `1100` is right, and a 100-corner keepout
+                // outline at the same width was over-wide by ~9800 units.
+                bounds[2] = bounds[2].max(*c + offset);
             } else {
                 // y coordinate
                 bounds[1] = bounds[1].min(*c - offset);

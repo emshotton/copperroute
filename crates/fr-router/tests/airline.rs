@@ -1,29 +1,3 @@
-//! Plan 9 Task 2 (R1, register row #293) — `AutorouteAirlineCalculator.calculateItemDistance`
-//! (`:162-177`) and the two private helpers it reaches, `calculateMinDistance` (`:179-202`) and
-//! `getItemReferencePoint` (`:204-213`).
-//!
-//! These three were rostered `// not ported:` by Plan 7 on correct evidence — a tree-wide grep
-//! finds no caller for any of them at HEAD — and the absent caller is exactly the regression
-//! `benchmark/reports/java-regressions-2026-09.md` §"Regression 1" measures. Task 2 ports them
-//! and gives them their caller back, so they need a test of the **formula** rather than of the
-//! sort that consumes it; the sort's own tests are in `batch_autorouter.rs`.
-//!
-//! # The expectations are hand-computed, not read from the jar (recommendation 9)
-//!
-//! Every number below is derived from the Java source in this file's doc comments and checked by
-//! hand against the board the test builds. Nothing here was produced by running the program:
-//! `calculateItemDistance` has no caller in the jar, so there is no jar transcript to read, and
-//! a probe written to create one would be testing a driver rather than the method.
-//!
-//! # Why the fixture is via / via / trace rather than pin / via / trace
-//!
-//! `getItemReferencePoint`'s first arm is `item instanceof DrillItem` (`:205-206`), and the port
-//! dispatches it through [`fr_board::Board::drill_center`], whose whole job is the `Via`/`Pin`
-//! split and which `crates/fr-board/tests/board.rs` already pins on both. A `Pin` here would
-//! reach the identical line through the identical call and would cost this file a package
-//! library, a component and a placement to say so. The three arms this file must distinguish are
-//! **drill / trace / neither**, and a via, a trace and an obstacle area distinguish them.
-
 use std::collections::BTreeSet;
 
 use fr_board::items::Item;
@@ -50,7 +24,6 @@ fn p(x: i32, y: i32) -> Point {
     Point::new(x, y)
 }
 
-/// A two-layer board with one through-via padstack, so `insert_via` has something to place.
 fn via_board() -> Board {
     let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
     let mut rules = BoardRules::new(layers(), clearance_matrix);
@@ -96,42 +69,6 @@ fn add_trace(board: &mut Board, corners: &[Point], nets: Vec<i32>) -> ItemId {
         .expect("a two-corner polyline always inserts")
 }
 
-/// `:162-213`, every arm, on one board.
-///
-/// # The board
-///
-/// Three nets, all on layer 0, none of whose items touch any other's (the via octagon is
-/// `±100 / ±200` about its centre and the traces are half width 30, so 1 000 units of separation
-/// is a wide margin; nothing here is in contact and every `getConnectedSet` is therefore the
-/// singleton the item itself makes).
-///
-/// ```text
-///   net 1   via A  (0, 0)          via B  (4000, 0)      trace T  (0, 1000) -> (2000, 1000)
-///   net 2   via C  (0, -4000)      -- alone on its net
-///   net 3   trace U (5000, 5000) -> (5000, 9000)         via D  (9000, 5000)
-/// ```
-///
-/// # The hand-computed answers
-///
-/// `getItemReferencePoint` (`:204-213`) gives `A = (0, 0)`, `B = (4000, 0)`, `D = (9000, 5000)`
-/// (`:206`, the drill centre) and `T = (1000, 1000)`, `U = (5000, 7000)` (`:209-211`, the mean of
-/// the first and last corner — **not** the polyline's centroid).
-///
-/// * `calculateItemDistance(A)`: net 1, `unconnectedSet = {B, T}`, `connectedSet = {A}`, so
-///   `calculateMinDistance({A}, {B, T})` = `min(|AB|, |AT|)` =
-///   `min(4000, sqrt(1000² + 1000²))` = `sqrt(2 000 000)` = **1414.2135623730951** — the trace,
-///   not the via, because `:191` measures the true distance and the trace's midpoint is nearer.
-/// * `calculateItemDistance(B)` = `min(|BA|, |BT|)` = `min(4000, sqrt(3000² + 1000²))` =
-///   `min(4000, sqrt(10 000 000) = 3162.27…)` = **3162.2776601683795**.
-/// * `calculateItemDistance(C)`: net 2 holds only `C`, so `getUnconnectedSet` is empty and
-///   `:173` answers exactly **0**.
-/// * `calculateItemDistance(U)` = `|U D|` = `sqrt(4000² + 2000²)` = `sqrt(20 000 000)` =
-///   **4472.13595499958** — the trace end, taken from its midpoint `(5000, 7000)`.
-/// * An item on **no net** answers `Double.MAX_VALUE` (`:163-165`).
-/// * An obstacle area is neither a `DrillItem` nor a `PolylineTrace`, so
-///   `getItemReferencePoint` answers `null` (`:212`) and `calculateMinDistance` skips it — a set
-///   of nothing but such items leaves `minDistance` at its `Double.MAX_VALUE` seed (`:180`,
-///   `:201`).
 #[test]
 fn calculate_item_distance_matches_the_java_formula() {
     let mut board = via_board();
@@ -146,9 +83,6 @@ fn calculate_item_distance_matches_the_java_formula() {
     let trace_u = add_trace(&mut board, &[p(5000, 5000), p(5000, 9000)], vec![3]);
     add_via(&mut board, p(9000, 5000), 3);
 
-    // Nothing is in contact, so every connected set is a singleton and every item of a net is in
-    // every other item's unconnected set. If this ever fails the distances below are measuring a
-    // different board.
     for id in [via_a, via_b, trace_t] {
         assert_eq!(
             board.connected_set(id, 1, false),
@@ -157,7 +91,6 @@ fn calculate_item_distance_matches_the_java_formula() {
         );
     }
 
-    // `:176-177` with the closest reference point being the **trace's midpoint**, not the via.
     assert_eq!(
         calculate_item_distance(&board, via_a),
         2_000_000.0_f64.sqrt(),
@@ -168,20 +101,17 @@ fn calculate_item_distance_matches_the_java_formula() {
         10_000_000.0_f64.sqrt(),
         ":191 — min(|BA| = 4000, |BT| = sqrt(3000^2 + 1000^2))"
     );
-    // `:171-174` — nothing unconnected, so exactly 0 and the item sorts first.
     assert_eq!(
         calculate_item_distance(&board, via_c),
         0.0,
         ":173 — net 2 holds only C, so getUnconnectedSet is empty"
     );
-    // `:209-211` — the trace's own reference point is the midpoint of its **end corners**.
     assert_eq!(
         calculate_item_distance(&board, trace_u),
         20_000_000.0_f64.sqrt(),
         ":209-211 — U's midpoint is (5000, 7000), and D is at (9000, 5000)"
     );
 
-    // `:163-165` — an item on no net at all.
     let netless = add_trace(&mut board, &[p(-8000, -8000), p(-6000, -8000)], Vec::new());
     assert_eq!(
         board.get_item(netless).expect("just inserted").net_count(),
@@ -193,11 +123,6 @@ fn calculate_item_distance_matches_the_java_formula() {
         ":164 — no net, no connections, so it sorts last"
     );
 
-    // `:212` — a `ConductionArea` is `Connectable` (so it enters an unconnected set) and is
-    // neither a `DrillItem` nor a `PolylineTrace`, so `getItemReferencePoint` answers `null` and
-    // `calculateMinDistance` skips it. A pair whose only members are such items therefore leaves
-    // `minDistance` at its `Double.MAX_VALUE` seed (`:180`, `:201`) — the one way this method
-    // returns the seed with a *non-empty* unconnected set.
     add_net(&mut board, "N4");
     let pour = board.insert_conduction_area(
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(

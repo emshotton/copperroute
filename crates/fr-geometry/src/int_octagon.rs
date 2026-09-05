@@ -369,20 +369,36 @@ impl IntOctagon {
 
     /// Returns true if `point` is contained in this octagon. Because of the parameter type
     /// `FloatPoint`, the function may not be exact close to the border.
+    /// Java bug: `IntOctagon.contains(FloatPoint)` (IntOctagon.java:327-343) is **inclusive** on
+    /// the border, where the generic `TileShape.contains(FloatPoint)` that the box and the simplex
+    /// take (TileShape.java:161-183, via `side_of_float(point, 0.0) != OnTheRight`) is
+    /// **exclusive**. The same point on the same border answered differently depending on which
+    /// representation held the shape. Measured on `Oct[0,0,100,100,-100,100,0,200]` against
+    /// `Box[0,0 .. 100,100]`: all three of `(0,50)`, `(50,0)` and `(100,50)` disagreed.
+    /// See docs/java-quirks.md #17.
+    ///
+    /// **fixed: T11 (#17), and the decision it required.** The convention chosen is the
+    /// **exclusive** one, applied here so that all three representations agree — the octagon moves
+    /// to the box's and the simplex's answer rather than the other way round. Two reasons:
+    /// `contains_float` is one method with three implementations and the disagreement was between
+    /// them, so aligning it is the whole of the fix; and the *integer* `TileShape::contains(&Point)`
+    /// is a different method with a deliberately different contract (`!is_outside`, border
+    /// included), which nothing here asks to change and which changing would be a far larger
+    /// behavioural move than this row authorises.
     pub fn contains_float(&self, point: &FloatPoint) -> bool {
-        if self.left_x as f64 > point.x
-            || self.bottom_y as f64 > point.y
-            || (self.right_x as f64) < point.x
-            || (self.top_y as f64) < point.y
+        if self.left_x as f64 >= point.x
+            || self.bottom_y as f64 >= point.y
+            || (self.right_x as f64) <= point.x
+            || (self.top_y as f64) <= point.y
         {
             return false;
         }
         let tmp1 = point.x - point.y;
         let tmp2 = point.x + point.y;
-        self.upper_left_diagonal_x as f64 <= tmp1
-            && self.lower_right_diagonal_x as f64 >= tmp1
-            && self.lower_left_diagonal_x as f64 <= tmp2
-            && self.upper_right_diagonal_x as f64 >= tmp2
+        (self.upper_left_diagonal_x as f64) < tmp1
+            && (self.lower_right_diagonal_x as f64) > tmp1
+            && (self.lower_left_diagonal_x as f64) < tmp2
+            && (self.upper_right_diagonal_x as f64) > tmp2
     }
 
     /// Returns the smallest octagon containing this octagon and `other`.
@@ -800,14 +816,24 @@ impl IntOctagon {
         self.compare_octagon(&other.to_int_octagon(), edge_index)
     }
 
-    /// Java `borderLineIndex(Line line)` (IntOctagon.java:842-846) is an unfinished stub in
-    /// upstream freerouting: it unconditionally logs "edge_index_of_line not yet implemented for
-    /// octagons" and returns -1, regardless of whether `line` actually is one of this octagon's
-    /// border lines. Ported faithfully as always `None` (`FRLogger.warn` dropped per conventions
-    /// — `fr-geometry` has no `tracing` dependency, and the log carried no information beyond
-    /// "not implemented").
-    pub fn border_line_index(&self, _line: &Line) -> Option<usize> {
-        None
+    /// Returns the index of `line` among this octagon's eight border lines, or `None` if it is
+    /// not one of them.
+    ///
+    /// **Java bug:** `borderLineIndex(Line line)` (IntOctagon.java:842-846) is an unfinished stub
+    /// in upstream freerouting — it logs "edge_index_of_line not yet implemented for octagons"
+    /// and returns `-1` for *every* line, including this octagon's own border lines. The live
+    /// caller `ShapeAndEntrySide.java:59,63` receives that `-1`.
+    ///
+    /// **fixed: T11 (#7).** Implemented geometrically against [`IntOctagon::border_line`], the
+    /// same way `IntBox::border_line_index` and the already-implemented
+    /// `Simplex::border_line_index` (Simplex.java:668) are — see the box's doc for why the
+    /// comparison must be [`Line::equals_geometric`] (orientation is part of a border line's
+    /// identity) rather than structural equality.
+    ///
+    /// A **degenerate** octagon — one whose normalisation has collapsed two sides onto the same
+    /// line — answers the lower of the two indices, matching `Simplex`'s `find`-first behaviour.
+    pub fn border_line_index(&self, line: &Line) -> Option<usize> {
+        (0..self.border_line_count()).find(|&i| line.equals_geometric(&self.border_line(i)))
     }
 
     /// Returns the side of `point` with respect to border line `line_index`, with `tolerance`.
@@ -1708,11 +1734,20 @@ mod tests {
         let d = IntOctagon::new(-10, -10, 10, 10, -10, 10, -10, 10).normalize();
         for i in 0..8 {
             let line = d.border_line(i);
-            // `IntOctagon.borderLineIndex` (IntOctagon.java:842-846) is an unfinished stub in
-            // upstream freerouting: it logs "edge_index_of_line not yet implemented for octagons"
-            // and returns -1 for *every* line, including this octagon's own border lines. Ported
-            // as always `None`; the brief's `Some(i)` expectation does not match the Java source.
-            assert_eq!(d.border_line_index(&line), None);
+            // fixed: T11 (#7). Java bug: `IntOctagon.borderLineIndex` (IntOctagon.java:842-846) is
+            // an unfinished stub in upstream freerouting — it logs "edge_index_of_line not yet
+            // implemented for octagons" and returns -1 for *every* line, including this octagon's
+            // own border lines, and this assertion pinned that `None`. It is now the round trip.
+            //
+            // `d` is `IntOctagon::new(-10,-10,10,10,-10,10,-10,10).normalize()`, whose diagonals
+            // are slack enough that two of its eight border lines coincide, so `find` can answer
+            // an index below `i`; what is binding is that the answer *names the same line*.
+            // `crates/fr-geometry/tests/border_line_index.rs` carries the exact round trip on an
+            // octagon asserted to have eight distinct sides.
+            let found = d
+                .border_line_index(&line)
+                .expect("every border line is a border line");
+            assert!(d.border_line(found).equals_geometric(&line));
             // Freerouting's actual side convention (TileShape.java:140-157, `isOutside` /
             // `contains(Point)`): a point is outside the shape as soon as
             // `borderLine(i).sideOf(point) == ON_THE_LEFT`, i.e. the shape lies on the *right* of

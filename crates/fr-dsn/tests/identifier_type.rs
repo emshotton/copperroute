@@ -1,8 +1,3 @@
-//! JVM-verified test vectors for `IdentifierType::write` (`datastructures/IdentifierType.java`).
-//!
-//! Every row was re-verified for this task against `tools/freerouting-2.3.0.jar` via a small
-//! headless Java driver (see task-1-report.md) — not merely re-derived from reading the source.
-
 use fr_dsn::format::{DSN_RESERVED, IdentifierType, IndentFileWriter, SES_RESERVED};
 
 fn dsn_id() -> IdentifierType {
@@ -26,7 +21,6 @@ fn write_with(id: &IdentifierType, name: &str) -> String {
     String::from_utf8(w.into_inner()).expect("output must be valid UTF-8")
 }
 
-/// input, expected DSN output, expected SES output
 const CASES: &[(&str, &str, &str)] = &[
     ("\"abc\"", "ab", "ab"),
     ("\"ab\"", "a", "a"),

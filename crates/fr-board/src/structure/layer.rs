@@ -72,30 +72,33 @@ impl LayerStructure {
     }
 
     /// Port of `LayerStructure.getSignalLayer` (LayerStructure.java:49-61): the `no`-th signal
-    /// layer.
-    ///
-    /// Panics if `self.layers` is empty, matching Java's crash there too
-    /// (`layers[layers.length - 1]` with `length == 0` throws
-    /// `ArrayIndexOutOfBoundsException`).
+    /// layer, or `None` when there is no such layer.
     //
     // Java bug: when `no` is greater than or equal to the number of signal layers, Java falls
     // off the loop and returns `layers[layers.length - 1]` — the *last* layer, whether or not it
-    // is even a signal layer — instead of erroring (LayerStructure.java:60). Reproduced here;
-    // see docs/java-quirks.md (#35).
-    pub fn get_signal_layer(&self, no: usize) -> &Layer {
+    // is even a signal layer — instead of erroring (LayerStructure.java:60); and with an empty
+    // `layers` it throws `ArrayIndexOutOfBoundsException` on `layers[-1]`. See
+    // docs/java-quirks.md #35.
+    //
+    // fixed: T10 (#35) — `Option<&Layer>`, as the sketch asks. Both of Java's failure modes
+    // become `None`: a silent wrong answer and a crash are both replaced by an answer the caller
+    // has to look at. The audit the sketch asks for came back empty — `ComboBoxLayer.java:45`,
+    // `RouteState.java:265` and `InteractiveState.java:193` are the three Java call sites that
+    // could rely on the fallback and all three are GUI, out of scope for this port, and
+    // `get_signal_layer` has **no** caller in the port outside this file and
+    // `get_layer_no_of_signal_layer` below. So the signature change costs nothing and removes a
+    // trap.
+    pub fn get_signal_layer(&self, no: usize) -> Option<&Layer> {
         let mut found = 0usize;
         for layer in &self.layers {
             if layer.is_signal {
                 if no == found {
-                    return layer;
+                    return Some(layer);
                 }
                 found += 1;
             }
         }
-        self.layers.last().expect(
-            "LayerStructure must have at least one layer: Java crashes here too \
-             (layers[layers.length - 1] with length 0, LayerStructure.java:60)",
-        )
+        None
     }
 
     /// Port of `LayerStructure.getSignalLayerNo(Layer)` (LayerStructure.java:63-75), renamed
@@ -117,14 +120,19 @@ impl LayerStructure {
     /// Port of `LayerStructure.getLayerNo(int)` (LayerStructure.java:77-81), renamed to
     /// `get_layer_no_of_signal_layer` to disambiguate from [`Self::get_no`]: returns the
     /// overall layer index of the `signal_layer_no`-th signal layer
-    /// (`getNo(getSignalLayer(signalLayerNo))` in Java — inherits `get_signal_layer`'s Java-bug
-    /// fallback for an out-of-range `signal_layer_no`).
-    pub fn get_layer_no_of_signal_layer(&self, signal_layer_no: usize) -> usize {
-        let layer = self.get_signal_layer(signal_layer_no);
-        self.layers
-            .iter()
-            .position(|l| std::ptr::eq(l, layer))
-            .expect("get_signal_layer always returns a reference into self.layers")
+    /// (`getNo(getSignalLayer(signalLayerNo))` in Java).
+    ///
+    /// `None` when there is no such signal layer — it inherits [`Self::get_signal_layer`]'s
+    /// answer, which quirk #35's fix (T10) turned from Java's silent last-layer fallback into an
+    /// `Option`.
+    pub fn get_layer_no_of_signal_layer(&self, signal_layer_no: usize) -> Option<usize> {
+        let layer = self.get_signal_layer(signal_layer_no)?;
+        Some(
+            self.layers
+                .iter()
+                .position(|l| std::ptr::eq(l, layer))
+                .expect("get_signal_layer always returns a reference into self.layers"),
+        )
     }
 }
 
@@ -281,27 +289,30 @@ mod tests {
     #[test]
     fn get_signal_layer_indexes_only_signal_layers() {
         let s = structure();
-        assert_eq!(s.get_signal_layer(0).name, "F.Cu");
-        assert_eq!(s.get_signal_layer(1).name, "In2.Cu");
-        assert_eq!(s.get_signal_layer(2).name, "B.Cu");
+        assert_eq!(s.get_signal_layer(0).map(|l| l.name.as_str()), Some("F.Cu"));
+        assert_eq!(
+            s.get_signal_layer(1).map(|l| l.name.as_str()),
+            Some("In2.Cu")
+        );
+        assert_eq!(s.get_signal_layer(2).map(|l| l.name.as_str()), Some("B.Cu"));
     }
 
+    /// Quirk #35, fixed at Plan 9 Task 10. Java's `:60` answered `layers[layers.length - 1]` —
+    /// the last layer of the *whole stack*, signal or not — for an out-of-range `no`, and threw
+    /// `ArrayIndexOutOfBoundsException` on an empty stack. Both are `None` now. The binding
+    /// version of this test is `crates/fr-board/tests/layer_structure.rs`.
     #[test]
-    fn get_signal_layer_out_of_range_falls_back_to_last_layer() {
-        // Java bug pin (LayerStructure.java:60): out-of-range `no` returns the *last* layer
-        // regardless of whether it is a signal layer.
+    fn get_signal_layer_out_of_range_is_none() {
         let s = structure();
-        assert_eq!(s.get_signal_layer(99).name, "B.Cu");
+        assert_eq!(s.get_signal_layer(99), None);
 
+        // The case that made Java's fallback a *wrong answer* rather than merely an odd one: the
+        // last layer of the stack is not a signal layer at all.
         let non_signal_last = LayerStructure::new(vec![layer("F.Cu", true), layer("Adhes", false)]);
-        assert_eq!(non_signal_last.get_signal_layer(99).name, "Adhes");
-        assert!(!non_signal_last.get_signal_layer(99).is_signal);
-    }
+        assert_eq!(non_signal_last.get_signal_layer(99), None);
 
-    #[test]
-    #[should_panic]
-    fn get_signal_layer_panics_on_empty_structure() {
-        LayerStructure::new(vec![]).get_signal_layer(0);
+        // And the crash.
+        assert_eq!(LayerStructure::new(vec![]).get_signal_layer(0), None);
     }
 
     #[test]
@@ -316,9 +327,9 @@ mod tests {
     #[test]
     fn get_layer_no_of_signal_layer_round_trips_get_signal_layer() {
         let s = structure();
-        assert_eq!(s.get_layer_no_of_signal_layer(0), 0); // F.Cu
-        assert_eq!(s.get_layer_no_of_signal_layer(1), 2); // In2.Cu
-        assert_eq!(s.get_layer_no_of_signal_layer(2), 3); // B.Cu
+        assert_eq!(s.get_layer_no_of_signal_layer(0), Some(0)); // F.Cu
+        assert_eq!(s.get_layer_no_of_signal_layer(1), Some(2)); // In2.Cu
+        assert_eq!(s.get_layer_no_of_signal_layer(2), Some(3)); // B.Cu
     }
 
     #[test]

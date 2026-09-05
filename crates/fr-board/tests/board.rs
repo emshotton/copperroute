@@ -50,6 +50,31 @@ fn the_constructor_inserts_the_board_outline_as_item_one() {
 }
 
 #[test]
+fn setting_flip_style_clears_the_item_caches() {
+    let mut board = p2t11_board();
+    let tree_id = board.trees.get_default_tree().id();
+    let item_id = board
+        .get_items()
+        .find(|item| matches!(item, Item::Trace(_)))
+        .expect("the fixture has a trace")
+        .id();
+    board
+        .get_item_mut(item_id)
+        .expect("the trace still exists")
+        .set_precalculated_tree_shapes(tree_id, vec![Some(TileShape::Box(IntBox::EMPTY))]);
+
+    board.set_flip_style_rotate_first(true);
+
+    assert_eq!(
+        board
+            .get_item(item_id)
+            .expect("the trace still exists")
+            .tree_shape_count(tree_id),
+        0
+    );
+}
+
+#[test]
 fn every_insert_bumps_the_revision_once() {
     // BoardItemRepository.java:166: `board.incrementRevision()` is the last line of `insertItem`.
     // `P2T11.java` mode 0: `mode=0 revision=8` for the outline plus seven inserted items.
@@ -1199,24 +1224,35 @@ fn remove_items_marking_changed_area_marks_what_it_removed() {
     assert_eq!(board.get_item(ItemId(5)), None);
 }
 
+/// `P2T11.java` mode 3, quirk #50 — **fixed at Plan 9 Task 10**, so this test is renamed from
+/// `change_conduction_is_obstacle_reproduces_the_java_latch` and inverted.
+///
+/// Java's guard at `RoutingBoard.java:1254` is `if (getIgnoreConduction() != value) return;`,
+/// which reads the board-level flag as a proxy for the per-item ones. On this fixture they are
+/// desynchronised from birth — `ignoreConduction = true` beside `isObstacle = true` — so `change`
+/// alternated between the two arguments instead of applying whichever it was given. The guard is
+/// gone; the store stays `!value`, which is what the field's name, `unfillConductionAreas` and the
+/// Java caller all mean by it. See `crates/fr-board/tests/conduction.rs` for the full story and
+/// the foreign-net measurement on a signal-layer pour.
 #[test]
-fn change_conduction_is_obstacle_reproduces_the_java_latch() {
-    // `P2T11.java` mode 3, quirk #50: the guard at RoutingBoard.java:1254 is `!=`, so a call only
-    // does anything when the flag already equals the argument, and :1273 then stores `!value`.
+fn change_conduction_is_obstacle_applies_what_it_is_asked() {
     let mut board = p2t11_board();
     assert!(board.rules.get_ignore_conduction());
     assert!(is_obstacle(&board, 8));
 
-    // `ignoreConduction` is true, so `change(false)` returns immediately.
+    // Java returns immediately here (`true != false`) and item 8 goes on obstructing. It does not.
     board.change_conduction_is_obstacle(false);
     assert!(board.rules.get_ignore_conduction());
-    assert!(is_obstacle(&board, 8));
+    assert!(!is_obstacle(&board, 8));
+    // Idempotent, where Java alternated.
     board.change_conduction_is_obstacle(false);
     assert!(board.rules.get_ignore_conduction());
-    assert!(is_obstacle(&board, 8));
+    assert!(!is_obstacle(&board, 8));
 
-    // `change(true)` passes the guard, writes `true` into every signal-layer conduction area
-    // (already true here) and then stores `ignoreConduction = !true`.
+    // And back: `true` into every signal-layer conduction area, and `ignoreConduction = !true`.
+    board.change_conduction_is_obstacle(true);
+    assert!(!board.rules.get_ignore_conduction());
+    assert!(is_obstacle(&board, 8));
     board.change_conduction_is_obstacle(true);
     assert!(!board.rules.get_ignore_conduction());
     assert!(is_obstacle(&board, 8));
@@ -2488,10 +2524,17 @@ fn store_items_refuses_a_non_shovable_item_of_a_foreign_net() {
     assert_eq!(entries.get_found_obstacle(), Some(area));
 }
 
+/// Quirk #65's *other* arm. **Renamed at Plan 9 Task 10**, because its old name
+/// (`a_component_keepout_is_skipped_by_store_items_whatever_the_pad_check_says`) described the
+/// defect while the body only ever built a `ViaObstacleArea` — the arm the `&&` legitimately
+/// bound to, and the one the fix leaves exactly where it was. The component-keepout half the old
+/// name claimed is `crates/fr-board/tests/shape_trace_entries.rs::a_component_keepout_blocks_a_via`,
+/// which now asserts the opposite of what the old name said.
 #[test]
-fn a_component_keepout_is_skipped_by_store_items_whatever_the_pad_check_says() {
-    // quirk #65: `!isPadCheck && a || b` means a `ComponentObstacleArea` is skipped
-    // unconditionally, while a `ViaObstacleArea` is skipped only when this is not a pad check.
+fn a_via_keepout_is_skipped_by_store_items_outside_a_pad_check() {
+    // `ShapeTraceEntries.java:180-183`, post-#65: `!isPadCheck && (viaObstacle ||
+    // componentObstacle)`. A `ViaObstacleArea` is skipped outside a pad check and blocks inside
+    // one, which is what Java's `&&` already did for this arm.
     let mut board = board_builder::shove_board();
     let via_keepout = board.insert_via_obstacle(
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(

@@ -1,10 +1,3 @@
-//! Plan 6 Task 3: `AutorouteSearchTreeExt::{complete_shape, divide_large_room}` in all three
-//! angle regimes.
-//!
-//! The three fixed scripts at the foot of this file are transcribed from `P6T2.java`'s output
-//! (`scripts/differential/run.sh p6t2 …`) — the Java side is the fixture generator, so a
-//! regression here is a regression against the HEAD jar, not against the port's own opinion.
-
 use std::collections::BTreeMap;
 
 use fr_board::ids::{ItemId, RoomId, TreeId, TreeObject};
@@ -14,10 +7,6 @@ use fr_geometry::{
 };
 use fr_router::autoroute::expansion::{ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom};
 use fr_router::autoroute::tree_ext::AutorouteSearchTreeExt;
-
-// ---------------------------------------------------------------------------------------------
-// A minimal board: two layers, one bounding box, whatever items the test asks for.
-// ---------------------------------------------------------------------------------------------
 
 const BOARD: IntBox = IntBox {
     ll: IntPoint { x: 0, y: 0 },
@@ -90,8 +79,6 @@ impl TestBoard {
         }
     }
 
-    /// One `CompleteFreeSpaceExpansionRoom` into the tree, as
-    /// `AutorouteEngine.addCompleteRoom` does (AutorouteEngine.java:534).
     fn insert_room(&mut self, shape: TileShape, layer: usize) -> RoomId {
         let id_no = self.rooms.next_room_id_no();
         let room = self.rooms.new_complete_room(Some(shape), layer, id_no);
@@ -122,7 +109,6 @@ fn boxed(llx: i32, lly: i32, urx: i32, ury: i32) -> TileShape {
     TileShape::Box(IntBox::from_coords(llx, lly, urx, ury))
 }
 
-/// `(layer, dimension, shape, contained shape)` — the four values `P6T2.java` prints per room.
 fn describe(rooms: &[IncompleteFreeSpaceExpansionRoom]) -> Vec<(usize, i32, IntBox, IntBox)> {
     rooms
         .iter()
@@ -140,15 +126,8 @@ fn describe(rooms: &[IncompleteFreeSpaceExpansionRoom]) -> Vec<(usize, i32, IntB
         .collect()
 }
 
-// ---------------------------------------------------------------------------------------------
-// The four behavioural tests the brief names
-// ---------------------------------------------------------------------------------------------
-
 #[test]
 fn an_empty_board_returns_the_seed_room_unchanged() {
-    // "Empty" means *no obstacle on the room's layer* — an empty tree has a null root, and
-    // `ShapeSearchTree.completeShape` (ShapeSearchTree.java:591-593) returns an empty list for
-    // that, so the tree must hold something for the seed to survive at all.
     let board = TestBoard::new(
         AngleRestriction::None,
         &[(ItemId(1), boxed(200, 200, 300, 300), 1, vec![])],
@@ -172,9 +151,6 @@ fn an_empty_board_returns_the_seed_room_unchanged() {
 
 #[test]
 fn an_obstacle_fully_containing_the_seed_returns_nothing() {
-    // No border line segment of the obstacle intersects the interior of the room, so
-    // `restrainShape` finds no cut line in either of its two loops (ShapeSearchTree.java:719-737
-    // and :786-798) and returns the empty list.
     let board = TestBoard::new(
         AngleRestriction::None,
         &[(ItemId(1), boxed(0, 0, 1000, 1000), 0, vec![])],
@@ -189,8 +165,6 @@ fn an_obstacle_fully_containing_the_seed_returns_nothing() {
 
 #[test]
 fn divide_large_room_splits_at_the_board_bounds() {
-    // ShapeSearchTree.java:1095-1118: one room whose bounding box is more than half the board in
-    // *both* directions is cut into `divideIntoSections(0.5 * max(height, width))` pieces.
     let tree = ShapeSearchTree::new(TreeId(1), AngleRestriction::None, 0);
     let room = IncompleteFreeSpaceExpansionRoom::new(
         Some(boxed(0, 0, 1000, 1000)),
@@ -228,7 +202,6 @@ fn divide_large_room_splits_at_the_board_bounds() {
         ]
     );
 
-    // A room that is small in one direction is left alone (`||`, not `&&`, at :1102-1105).
     let small = IncompleteFreeSpaceExpansionRoom::new(
         Some(boxed(0, 0, 1000, 400)),
         0,
@@ -239,18 +212,8 @@ fn divide_large_room_splits_at_the_board_bounds() {
 
 #[test]
 fn the_45_degree_override_is_not_the_base_algorithm() {
-    // A diamond obstacle, whose only live border lines are the four diagonals. The base class
-    // ranks them by `TileShape.distanceToTheLeft` — a real Euclidean distance
-    // (ShapeSearchTree.java:740) — while the 45-degree override ranks them by
-    // `signedLineDistance`, a raw coordinate difference with a deliberate factor `0.5` on the
-    // diagonals "to prefer orthogonal lines slightly" (…45Degree.java:75-80). The two metrics
-    // pick **different** restraining lines here, so the two algorithms answer different rooms.
     let obstacle = TileShape::Octagon(IntOctagon::new(300, 300, 700, 700, -200, 1200, 0, 1000));
     let obstacles = [(ItemId(1), obstacle, 0, vec![])];
-    // A `null` seed shape — "the whole plane" (IncompleteFreeSpaceExpansionRoom.java:14-16) —
-    // because the 45-degree override's `room.getShape() instanceof IntOctagon` test (:134-138) is
-    // a **type** test: handing it an `IntBox` makes it answer the empty list, however
-    // octagon-shaped that box is.
     let seed = || IncompleteFreeSpaceExpansionRoom::new(None, 0, Some(boxed(900, 50, 960, 110)));
 
     let base = TestBoard::new(AngleRestriction::None, &obstacles);
@@ -290,10 +253,6 @@ fn the_45_degree_override_is_not_the_base_algorithm() {
 
 #[test]
 fn the_90_degree_override_splits_around_a_straddling_obstacle() {
-    // The obstacle straddles the contained shape, so no border line has all of the contained
-    // shape on its right: `restrainShape` falls through to its second half
-    // (ShapeSearchTree90Degree.java:279-320), splits the room in two and recurses. Four boxes
-    // survive, in the order the recursion produces them.
     let board = TestBoard::new(
         AngleRestriction::NinetyDegree,
         &[(ItemId(1), boxed(200, 200, 800, 800), 0, vec![])],
@@ -332,14 +291,6 @@ fn the_90_degree_override_splits_around_a_straddling_obstacle() {
 
 #[test]
 fn the_90_degree_override_never_calls_divide_large_room() {
-    // ShapeSearchTree90Degree.completeShape ends at `return result` (:190) — unlike the base
-    // class (:692) and the 45-degree override (:276), it never divides. A board-sized seed room
-    // on a 90-degree tree therefore comes back as one room.
-    //
-    // Plan 9 Task 8 measured whether to change that alongside #159 and decided **not** to: see
-    // `the_ninety_degree_override_keeps_the_room_it_ignores_by_shape` for the argument and the
-    // measurement. This third difference between the override and its two siblings is Java's, it
-    // has no register row of its own, and it stays.
     let board = TestBoard::new(
         AngleRestriction::NinetyDegree,
         &[(ItemId(1), boxed(200, 200, 300, 300), 1, vec![])],
@@ -360,7 +311,6 @@ fn the_90_degree_override_never_calls_divide_large_room() {
         )]
     );
 
-    // The base class, on the same geometry, does divide.
     let base = TestBoard::new(
         AngleRestriction::None,
         &[(ItemId(1), boxed(200, 200, 300, 300), 1, vec![])],
@@ -370,10 +320,6 @@ fn the_90_degree_override_never_calls_divide_large_room() {
 
 #[test]
 fn an_octagon_obstacle_restrains_the_45_degree_room_on_a_diagonal() {
-    // `signedLineDistance` (ShapeSearchTree45Degree.java:67-86) can pick one of the four
-    // diagonal border lines, and `calcOutsideRestrainedShape` then writes one of the four
-    // diagonal ordinates rather than one of `leftX`/`rightX`/`bottomY`/`topY` — the case the
-    // base algorithm has no counterpart for.
     let obstacle = TileShape::Octagon(IntOctagon::new(200, 200, 800, 800, -300, 1300, -300, 1300));
     let board = TestBoard::new(
         AngleRestriction::FortyFiveDegree,
@@ -394,38 +340,6 @@ fn an_octagon_obstacle_restrains_the_45_degree_room_on_a_diagonal() {
 
 #[test]
 fn the_ninety_degree_override_keeps_the_room_it_ignores_by_shape() {
-    // fixed: T8 (#159). Java bug: `ShapeSearchTree90Degree.completeShape` drops the room instead
-    // of keeping it. At the `ignoreShape.contains(intersection)` decision the base class falls
-    // through to `if (!somethingChanged) newResult.add(currentIncompleteRoom)`
-    // (ShapeSearchTree.java:683-687) and the 45-degree override re-adds the room explicitly
-    // unless the ignore shape swallows it whole (…45Degree.java:209-212), but the 90-degree
-    // override just `continue`s (…90Degree.java:126-129) — so the room vanished from the result
-    // and, since `completeExpansionRoom` passes exactly that pair on every room completion, a
-    // 90-degree room whose only overlap is the door it came through expanded to nothing.
-    //
-    // This test replaces `only_the_90_degree_override_drops_a_room_it_ignores_by_shape`, which
-    // asserted `[4, 4, 0]`.
-    //
-    // # Why `[4, 4, 1]` and not the plan's `[4, 4, 4]` — decided and measured
-    //
-    // The 4 in the first two regimes is `divideLargeRoom`'s 2x2 sectioning of the board-sized
-    // room the fallthrough keeps (room bbox = board bbox = 1000x1000, neither `2 * 1000 <= 1000`
-    // guard fires, `maxSectionWidth = 0.5 * 1000 = 500`, `ceil(1000 / 500) ^ 2 = 4`). The
-    // 90-degree override does not call `divideLargeRoom` at all (…90Degree.java:190), so the fix
-    // as the register sketches it — restore the re-add — gives **1**, not 4, and reaching 4 needs
-    // a *second* change: routing the 90-degree path through `divideLargeRoom` too.
-    //
-    // Both were implemented and measured against the HEAD-jar transcripts. Restoring the re-add
-    // alone moves **no** jar-parity row anywhere in the workspace. Adding the division breaks
-    // `p6t16-autoroute-connection.txt` on **four** modes in the `NINETY_DEGREE` block — `plain` 2
-    // of 33 rows, `route` 2 of 36, `stopafter` 4 of 100 and `routeripup` **73 of 84**, which is
-    // **81 rows in all**, where the port
-    // stops taking Java's via detour and rips the net-2 blocker instead. Those are real routing
-    // changes, they are the second change's and not #159's, and no register row authorizes them:
-    // a 73-row `KNOWN_DIVERGENCES` entry against a jar transcript is a re-cut wearing a table's
-    // clothes. So the fix is the register's, the third difference stays Java's (see
-    // `the_90_degree_override_never_calls_divide_large_room`), and the literal is amended — which
-    // `docs/plan-9-prep/fixtures/task-8/expected-outcomes.md`'s ⚠ block explicitly provides for.
     let ignore = boxed(300, 300, 700, 700);
     let mut results = Vec::new();
     for angle in [
@@ -433,12 +347,8 @@ fn the_ninety_degree_override_keeps_the_room_it_ignores_by_shape() {
         AngleRestriction::FortyFiveDegree,
         AngleRestriction::NinetyDegree,
     ] {
-        // One item on the other layer, so the tree has a root at all; the only thing the seed
-        // room meets on layer 0 is the complete expansion room.
         let mut board = TestBoard::new(angle, &[(ItemId(1), boxed(10, 900, 40, 950), 1, vec![])]);
         board.insert_room(boxed(400, 400, 600, 600), 0);
-        // A box seed shape is rejected outright by both overrides' `instanceof` guard, so the
-        // whole-plane seed is the only one all three regimes accept.
         let seed = IncompleteFreeSpaceExpansionRoom::new(None, 0, Some(boxed(100, 100, 200, 200)));
         results.push(board.complete(&seed, 1, None, Some(&ignore)).len());
     }
@@ -449,16 +359,6 @@ fn the_ninety_degree_override_keeps_the_room_it_ignores_by_shape() {
          the third, unregistered difference — the 90-degree override does not divide"
     );
 }
-
-// ---------------------------------------------------------------------------------------------
-// The three fixed scripts, transcribed from `P6T2.java`'s output
-//
-// `scripts/differential/run.sh p6t2 42 20 2000` is the fixture generator: the board below is the
-// board that driver builds (the `P2T10.java` board plus the 20 random obstacle areas seed 42
-// draws, here as literals), the three seed expansion rooms are the ones it inserts into the
-// autoroute tree, and the expected room lists are copied verbatim out of the Java side's stdout.
-// A regression here is a regression against the HEAD jar, not against the port's own opinion.
-// ---------------------------------------------------------------------------------------------
 
 const P6T2_BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -471,8 +371,6 @@ const P6T2_BOUNDING_BOX: IntBox = IntBox {
     },
 };
 
-/// `(item id, layer, box)` — the 20 obstacle areas `P6T2.java` inserts for seed 42, read off its
-/// own item dump.
 const P6T2_OBSTACLES: [(u32, usize, [i32; 4]); 20] = [
     (6, 0, [8496, 4150, 9056, 6521]),
     (7, 1, [-3980, -333, -1897, 700]),
@@ -496,8 +394,6 @@ const P6T2_OBSTACLES: [(u32, usize, [i32; 4]); 20] = [
     (25, 1, [4098, -8459, 5378, -6908]),
 ];
 
-/// `(layer, box)` — the three `CompleteFreeSpaceExpansionRoom`s the driver inserts into the
-/// autoroute tree, in creation order, so their Java ids are 1, 2 and 3.
 const P6T2_SEED_ROOMS: [(usize, [i32; 4]); 3] = [
     (1, [1386, -2517, 2807, 458]),
     (0, [2811, 8147, 3647, 10698]),
@@ -553,9 +449,6 @@ impl P6t2Board {
     }
 }
 
-/// The board `P6T2.java` builds for seed 42 with 20 obstacles: the `P2T10.java` board (two
-/// layers, a two-pin component, two traces, an empty outline) plus the obstacle areas above, its
-/// `getAutorouteTree(1)`, and the three seed expansion rooms inserted into that tree.
 fn p6t2_board(angle: AngleRestriction) -> P6t2Board {
     let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
     let mut clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
@@ -684,8 +577,6 @@ fn p6t2_board(angle: AngleRestriction) -> P6t2Board {
             bounding_box: &bounding_box,
             max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
         };
-        // The default tree first, then `getAutorouteTree(1)` — both walk the item list in board
-        // order (descending id, quirk #63).
         for item in items.values_mut().rev() {
             manager.insert(item, &ctx);
         }
@@ -721,7 +612,6 @@ fn p6t2_board(angle: AngleRestriction) -> P6t2Board {
     }
 }
 
-/// One line per room, in `P6T2.java`'s own `dumpRooms` wording.
 fn render(rooms: &[IncompleteFreeSpaceExpansionRoom]) -> Vec<String> {
     rooms
         .iter()
@@ -742,7 +632,6 @@ fn opt_shp(shape: Option<&TileShape>) -> String {
     shape.map_or("null".to_string(), shp)
 }
 
-/// Byte-for-byte with `P6T2.java`'s `shp`.
 fn shp(s: &TileShape) -> String {
     match s {
         TileShape::Box(x) => format!("Box[{},{}..{},{}]", x.ll.x, x.ll.y, x.ur.x, x.ur.y),
@@ -772,10 +661,6 @@ fn shp(s: &TileShape) -> String {
 
 #[test]
 fn the_base_regime_matches_the_p6t2_script() {
-    // `run.sh p6t2 42 20 2000`, `call regime=0 i=1`: a whole-plane seed room on layer 0, net 3,
-    // ignoring seed room 2 and with no ignore shape. Four rooms survive, three of them with an
-    // **empty** contained shape — `restrainShape`'s recursion keeps a piece whose contained
-    // shape the cut half plane has already emptied (ShapeSearchTree.java:795-809).
     let board = p6t2_board(AngleRestriction::None);
     let room =
         IncompleteFreeSpaceExpansionRoom::new(None, 0, Some(boxed(3456, -3011, 3469, -2803)));
@@ -794,17 +679,12 @@ fn the_base_regime_matches_the_p6t2_script() {
     ];
     let completed = board.complete(&room, 3, Some(TreeObject::Room(board.seed_rooms[1])), None);
     assert_eq!(render(&completed), expected);
-    // `divideLargeRoom` on four rooms is the identity (ShapeSearchTree.java:1097-1099).
     let divided = board
         .tree()
         .divide_large_room(completed, &P6T2_BOUNDING_BOX);
     assert_eq!(render(&divided), expected);
 }
 
-/// The 90-degree and the 45-degree scripts below are **the same call** — `run.sh p6t2 42 20
-/// 2000`, `call regime=1 i=103` and `call regime=2 i=103`, which the driver feeds identical
-/// inputs because it resets the xorshift stream per regime. Only the tree class differs, and the
-/// two answers differ in both geometry and representation.
 #[test]
 fn the_90_degree_regime_matches_the_p6t2_script() {
     let board = p6t2_board(AngleRestriction::NinetyDegree);
@@ -833,8 +713,6 @@ fn the_90_degree_regime_matches_the_p6t2_script() {
 
 #[test]
 fn the_45_degree_regime_matches_the_p6t2_script() {
-    // Note that every contained shape has been replaced by its bounding octagon, which is
-    // `restrainShape`'s doing (…45Degree.java:322-334), not `divideLargeRoom`'s.
     let board = p6t2_board(AngleRestriction::FortyFiveDegree);
     let room =
         IncompleteFreeSpaceExpansionRoom::new(None, 0, Some(boxed(-6067, -1181, -5767, -1030)));
@@ -859,29 +737,12 @@ fn the_45_degree_regime_matches_the_p6t2_script() {
     assert_eq!(render(&divided), expected);
 }
 
-// =================================================================================================
-// The 90-degree fixture (Plan 9 Task 8)
-//
-// Nothing in the committed corpus declares `(snap_angle ninety_degree)` — `Issue103`, `Issue187`
-// and `Issue413` are all `fortyfive_degree` — so before this fixture `complete_shape_90` was
-// reachable only from the synthetic `TestBoard` above. `tests/data/p9t8-ninety-degree.dsn` is a
-// hand-written 200 mm x 200 mm two-layer board with four corner pads on two nets that must cross
-// and one 40 mm x 40 mm through-board blocker in the middle, so the maze has to build rooms
-// around an obstacle in the regime `#159` lives in.
-//
-// The assertion is **structural, not a byte pin**: both nets route, and every emitted segment is
-// axis-aligned. A byte-exact SES would be a port-against-itself golden that every routing fix in
-// this task moves; "the board really does drive the 90-degree regime, and it routes" is the
-// property the fixture exists to carry, and it holds before and after #159.
-// =================================================================================================
-
 const NINETY_DEGREE_STEM: &str = "p9t8-ninety-degree";
 
 #[test]
 fn the_ninety_degree_fixture_routes_and_every_segment_is_axis_aligned() {
     let ses = route_ninety_degree_fixture();
 
-    // One `(net …)` scope per routed net, and the two signal nets are both in it.
     for net in ["NA", "NB"] {
         assert!(
             ses.contains(&format!("(net {net}")),
@@ -889,7 +750,6 @@ fn the_ninety_degree_fixture_routes_and_every_segment_is_axis_aligned() {
         );
     }
 
-    // Every `(path <layer> <width> x0 y0 x1 y1 …)` step changes only x or only y.
     let mut segments = 0usize;
     for chunk in ses.split("(path ").skip(1) {
         let body = &chunk[..chunk.find(')').unwrap_or(chunk.len())];
@@ -919,8 +779,6 @@ fn the_ninety_degree_fixture_routes_and_every_segment_is_axis_aligned() {
     assert!(segments > 0, "the fixture routes something");
 }
 
-/// `-de <fixture>` through ruling AW's `resolve_headless` ladder, the way `fanout_tie_break.rs`
-/// and `batch_parity.rs` build it, with the SES written into a `Vec`.
 fn route_ninety_degree_fixture() -> String {
     use fr_dsn::{BoardReadResult, DsnReadOptions};
     use fr_router::pipeline::{

@@ -214,15 +214,23 @@ fn middle_of_side(shape: &TileShape, no: usize, border_line_count: usize) -> Opt
 /// Port of `ShapeAndEntrySide` (`board/model/structure/ShapeAndEntrySide.java`): a trace's tree
 /// shape with its dog ears cut off, plus the side a shove should push it from.
 ///
-/// # Quirk #7
+/// # Quirks #7 and #68 — one defect from two sides, both fixed in T11
 ///
 /// The `fromSideIndex = currentShape.borderLineIndex(cutLine)` calls (ShapeAndEntrySide.java:59,63)
 /// land on `IntBox.borderLineIndex` / `IntOctagon.borderLineIndex`, which in Java are **stubs**
-/// that log a warning and return `-1` unconditionally. Only `Simplex.borderLineIndex` really
-/// searches. The port's `TileShape::border_line_index` answers `None` for a box or an octagon for
-/// the same reason, so this constructor takes the same branches Java does. That is deliberate;
-/// see docs/java-quirks.md row 7. In practice the shape at this point has been through
-/// `toSimplex()` (:36), so the live path is the one that works.
+/// that log a warning and return `-1` unconditionally; only `Simplex.borderLineIndex` really
+/// searches (**#7**). In the same file, both dog-ear cuts are guarded by an always-true reference
+/// comparison, so a cut that removed nothing still set `cutOffAtStart`/`cutOffAtEnd` and sent this
+/// search after a border line the shape does not have (**#68**).
+///
+/// The register lists the two separately and does not connect them, but they are the same failure:
+/// #68 starts searches that should never have started, and #7 makes them unrecoverable when they
+/// do. Fixing either alone leaves the other visible, so T11 fixes both here — the box and the
+/// octagon now answer geometrically (see `IntBox::border_line_index`), and the cut guards compare
+/// the shapes by value.
+///
+/// `scripts/differential/java/P2T11.java` mode 5 pins all four
+/// `(cut_off_at_start, cut_off_at_end)` combinations and is the before/after evidence.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShapeAndEntrySide {
     /// Java `public final TileShape shape` (ShapeAndEntrySide.java:17).
@@ -320,12 +328,25 @@ impl ShapeAndEntrySide {
                 let cut_plane = TileShape::get_instance_from_line(end_cutline);
                 let tmp_shape = current_shape.intersection(&cut_plane);
                 // Java bug: ShapeAndEntrySide.java:41 reads `tmpShape != currentShape &&
-                // !tmpShape.isEmpty()`, but `!=` on two `TileShape` references is *identity*, and
+                // !tmpShape.isEmpty()`, but `!=` on two `TileShape` *references* is identity, and
                 // `Simplex.intersection(Simplex)` always allocates (Simplex.java:620-630), so the
-                // first half is always true. The effective condition is just "non-empty" — which
-                // means the cut counts as a cut even when it removed nothing. Reproduced; see
-                // docs/java-quirks.md.
-                if !tmp_shape.is_empty() {
+                // first half is always true. The effective condition is just "non-empty" — so a
+                // cut that removed nothing still set `cutOffAtEnd`, and the `fromSide` search
+                // below then hunted for a border line the shape does not have. That is the same
+                // defect as #7's `-1` from the other side: #7 makes the hunt unrecoverable, #68
+                // starts hunts that never needed to happen.
+                //
+                // fixed: T11 (#68).
+                //
+                // The comparison is now by **value**, via Java's own
+                // `TileShape.contains(TileShape)`. `tmp_shape` is an intersection and so is
+                // always a subset of `current_shape`; the two are therefore equal as regions
+                // exactly when `tmp_shape` still contains every corner of `current_shape`, and a
+                // half-plane removes a piece of a convex shape iff it excludes one of its
+                // corners. Structural equality of the two line vectors would not do: the
+                // intersection sorts its lines and drops the redundant cut line, so an unchanged
+                // region can come back described differently.
+                if !tmp_shape.is_empty() && !tmp_shape.contains_tile(&current_shape) {
                     current_shape = TileShape::Simplex(tmp_shape.to_simplex());
                     cut_off_at_end = true;
                 }
@@ -335,8 +356,9 @@ impl ShapeAndEntrySide {
             if let Some(start_cutline) = start_cutline {
                 let cut_plane = TileShape::get_instance_from_line(start_cutline);
                 let tmp_shape = current_shape.intersection(&cut_plane);
-                // Java bug: ShapeAndEntrySide.java:50, the same identity comparison as above.
-                if !tmp_shape.is_empty() {
+                // Java bug: ShapeAndEntrySide.java:50, the same always-true identity comparison as
+                // above. fixed: T11 (#68), the same way.
+                if !tmp_shape.is_empty() && !tmp_shape.contains_tile(&current_shape) {
                     current_shape = TileShape::Simplex(tmp_shape.to_simplex());
                     cut_off_at_start = true;
                 }

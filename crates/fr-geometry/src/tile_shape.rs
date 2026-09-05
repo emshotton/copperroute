@@ -24,7 +24,10 @@ use crate::int_box::IntBox;
 use crate::int_direction::IntDirection;
 use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
-use crate::limits::{JAVA_DOUBLE_MIN_VALUE, java_min};
+// `JAVA_DOUBLE_MIN_VALUE` was imported here for `index_of_nearest_corner`'s seed until
+// fixed: T11 (#15) replaced it with `f64::MAX`. The constant itself stays in `limits.rs` — it is a
+// fact about Java that other code may still need, and `limits.rs`'s own tests pin it.
+use crate::limits::java_min;
 use crate::line::Line;
 use crate::line_segment::LineSegment;
 use crate::point::Point;
@@ -848,15 +851,23 @@ impl TileShape {
     /// Returns the number of the nearest corner of the shape to `from_point`
     /// (TileShape.java:448-462).
     ///
-    /// Java initializes the running minimum with `Double.MIN_VALUE`, the smallest *positive*
-    /// double, instead of `Double.MAX_VALUE`, so `currentDistance < minDist` can only fire for a
-    /// distance of exactly 0. The method therefore returns 0 unless `from_point` coincides with a
-    /// corner, in which case it returns that corner's index. That bug is ported verbatim.
+    /// Java bug: Java initializes the running minimum with `Double.MIN_VALUE`, the smallest
+    /// *positive subnormal* (`4.9E-324`), instead of `Double.MAX_VALUE`, so
+    /// `currentDistance < minDist` can only fire for a distance of exactly 0. The method therefore
+    /// returns 0 unless `from_point` coincides with a corner. See docs/java-quirks.md #15.
+    ///
+    /// fixed: T11 (#15) — seeded with `f64::MAX`, which is Java's `Double.MAX_VALUE`.
+    ///
+    /// Note that the survey's sentence for this row reads the wrong way round: it says a corner at
+    /// distance exactly 0 is *never* nearest, where in fact `0.0 < 4.9E-324` is true and distance
+    /// 0 was the **only** thing that could fire. The defect is that every non-zero distance was
+    /// skipped. `crates/fr-geometry/tests/nearest_and_stairs.rs` carries both cases and says which
+    /// is which.
     pub fn index_of_nearest_corner(&self, from_point: &Point) -> usize {
         let from_point_f = from_point.to_float();
         let mut result = 0;
         let corner_count = self.border_line_count();
-        let mut min_dist = JAVA_DOUBLE_MIN_VALUE;
+        let mut min_dist = f64::MAX;
         for i in 0..corner_count {
             let current_distance = self.corner_approx_at(i).distance(&from_point_f);
             if current_distance < min_dist {
@@ -1533,9 +1544,20 @@ impl TileShape {
 /// The insertion step shared by `nearestBorderPointsApprox` and
 /// `nearestRelativeOutsideLocations` (TileShape.java:406-416, 430-440 and 513-523).
 ///
-/// Java's inner shift loop runs upward — `values[k] = values[k - 1]` for `k` from `j + 1` — so it
-/// copies the entry displaced at `j` into *every* later slot instead of moving each entry one slot
-/// down. Kept verbatim: it changes which points come back for `count > 1`.
+/// Java bug: Java's inner shift loop runs **upward** — `values[k] = values[k - 1]` for `k` from
+/// `j + 1` ascending — so each iteration reads the slot the previous one has just written, and the
+/// entry displaced at `j` is smeared into *every* later slot instead of each entry moving down by
+/// one. An element inserted above position 0 overwrote its neighbour rather than displacing it.
+/// See docs/java-quirks.md #16.
+///
+/// fixed: T11 (#16) — the shift runs downward, which is the ordinary insertion-sort move.
+///
+/// **The callers whose behaviour this changes.** `count == 1` never enters the shift at all, so
+/// every caller passing 1 is unaffected and always was; the defect was reachable only through
+/// `count > 1`. In this port those are `TileShape::nearest_border_points_approx` and
+/// `TileShape::nearest_relative_outside_locations` (TileShape.java:406-416, 430-440, 513-523) —
+/// both of which now return `count` **distinct** points sorted by ascending distance, where before
+/// one point was duplicated and one lost.
 fn insert_sorted(
     min_dists: &mut [f64],
     values: &mut [Option<FloatPoint>],
@@ -1545,7 +1567,7 @@ fn insert_sorted(
     let result_count = min_dists.len();
     for j in 0..result_count {
         if current_distance < min_dists[j] {
-            for k in (j + 1)..result_count {
+            for k in ((j + 1)..result_count).rev() {
                 min_dists[k] = min_dists[k - 1];
                 values[k] = values[k - 1];
             }
@@ -1812,11 +1834,17 @@ mod tests {
         assert!(bx().corner_is_bounded(0) && tri().corner_is_bounded(0));
         assert_eq!(bx().corner(2), Point::Int(IntPoint::new(10, 10)));
         assert_eq!(bx().corner_approx_arr().len(), 4);
-        // borderLineIndex is a Java stub for IntBox/IntOctagon and real only for Simplex
+        // fixed: T11 (#7). Java bug: `borderLineIndex` was a stub for IntBox/IntOctagon and real
+        // only for Simplex, so the same geometry answered differently depending on which
+        // representation held it — and this dispatch test pinned that disagreement. All three
+        // arms now search geometrically, so the dispatch is a dispatch rather than a fork.
         let tri_line = tri().border_line(0).unwrap();
         assert_eq!(tri().border_line_index(&tri_line), Some(0));
-        assert_eq!(bx().border_line_index(&bx().border_line(0).unwrap()), None);
-        assert_eq!(oct.border_line_index(&oct.border_line(0).unwrap()), None);
+        assert_eq!(
+            bx().border_line_index(&bx().border_line(0).unwrap()),
+            Some(0)
+        );
+        assert_eq!(oct.border_line_index(&oct.border_line(0).unwrap()), Some(0));
     }
 
     #[test]
@@ -1850,15 +1878,19 @@ mod tests {
         assert_eq!(m.bounding_box(), IntBox::from_coords(0, -10, 10, 0));
     }
 
-    /// Java initializes the running minimum of `indexOfNearestCorner` with `Double.MIN_VALUE`
-    /// (the smallest *positive* double) instead of `Double.MAX_VALUE`, so the comparison only
-    /// fires at distance 0: for any point that is not itself a corner the answer is 0, however
-    /// near corner 2 is (TileShape.java:448-462).
+    /// **fixed: T11 (#15).** Java bug: `indexOfNearestCorner` seeded the running minimum with
+    /// `Double.MIN_VALUE` — the smallest positive *subnormal*, `4.9E-324` — instead of
+    /// `Double.MAX_VALUE`, so `currentDistance < minDist` fired only at distance 0 and every
+    /// corner at a non-zero distance was skipped (TileShape.java:448-462).
+    ///
+    /// This test was `index_of_nearest_corner_only_moves_off_zero_at_distance_zero` and asserted
+    /// `(9,9) -> 0`, "however near corner 2 is". `(9,9)` is `sqrt(2)` from corner 2 and `sqrt(162)`
+    /// from corner 0, so 2 is the answer.
     #[test]
-    fn index_of_nearest_corner_only_moves_off_zero_at_distance_zero() {
+    fn index_of_nearest_corner_answers_the_nearest_corner() {
         assert_eq!(
             bx().index_of_nearest_corner(&Point::Int(IntPoint::new(9, 9))),
-            0
+            2
         );
         assert_eq!(
             bx().index_of_nearest_corner(&Point::Int(IntPoint::new(10, 10))),
@@ -1886,11 +1918,31 @@ mod tests {
         assert!(!b.contains_approx(&b));
         assert!(!b.contains_float(&FloatPoint::new(0.0, 5.0)));
         assert!(!b.contains_float_tol(&FloatPoint::new(0.0, 5.0), 0.0));
-        // ... but IntOctagon overrides it with an inclusive coordinate test that accepts the
-        // border (IntOctagon.java:327-343).
+        // Java bug: IntOctagon overrode it with an *inclusive* coordinate test that accepted the
+        // border (IntOctagon.java:327-343), so the same point on the same border answered
+        // differently depending on which representation held the shape. fixed: T11 (#17) — the
+        // octagon is exclusive too, and the assertion below was `assert!(oct.contains_float(...))`.
         let oct = TileShape::Octagon(IntBox::from_coords(0, 0, 10, 10).to_int_octagon());
-        assert!(oct.contains_float(&FloatPoint::new(0.0, 5.0)));
+        assert!(!oct.contains_float(&FloatPoint::new(0.0, 5.0)));
         assert!(!oct.contains_float_tol(&FloatPoint::new(0.0, 5.0), 0.0));
+        // The three representations of the same square now agree about their own border, which is
+        // the whole of #17.
+        let as_box = TileShape::Box(IntBox::from_coords(0, 0, 10, 10));
+        let as_simplex = TileShape::Simplex(IntBox::from_coords(0, 0, 10, 10).to_simplex());
+        for p in [
+            FloatPoint::new(0.0, 5.0),
+            FloatPoint::new(5.0, 0.0),
+            FloatPoint::new(10.0, 5.0),
+            FloatPoint::new(5.0, 5.0),
+            FloatPoint::new(-1.0, 5.0),
+        ] {
+            assert_eq!(oct.contains_float(&p), as_box.contains_float(&p), "{p:?}");
+            assert_eq!(
+                oct.contains_float(&p),
+                as_simplex.contains_float(&p),
+                "{p:?}"
+            );
+        }
     }
 
     #[test]

@@ -6,7 +6,6 @@ pub enum Side {
 }
 
 impl Side {
-    /// Returns OnTheLeft if value > 0, OnTheRight if value < 0, and Collinear if value == 0.
     pub fn of_i64(value: i64) -> Side {
         match value.signum() {
             1 => Side::OnTheLeft,
@@ -15,7 +14,6 @@ impl Side {
         }
     }
 
-    /// Returns OnTheLeft if value > 0, OnTheRight if value < 0, and Collinear if value == 0.
     pub fn of_f64(value: f64) -> Side {
         if value > 0.0 {
             Side::OnTheLeft
@@ -26,7 +24,6 @@ impl Side {
         }
     }
 
-    /// Returns the opposite side of this side.
     pub fn negate(self) -> Side {
         match self {
             Side::OnTheLeft => Side::OnTheRight,

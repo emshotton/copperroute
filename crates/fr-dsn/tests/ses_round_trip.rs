@@ -1,19 +1,3 @@
-//! The round-trip half of `io/specctra/SesRoundTripTest.java`: every case that needs
-//! [`fr_dsn::ses_reader`], plus a JVM-golden check of the whole import against the pinned 2.3.0
-//! jar.
-//!
-//! The three writer-only cases of that Java class — `sesWriterProducesValidHeader`,
-//! `sesWriterOutputIsNonEmpty` and `placementRotationFormattingMatchesKicadStyle` — are Task 12's
-//! and live in `tests/parity_ses.rs`, which pins the writer far harder (byte-exact against the
-//! committed references) than those three assertions do.
-//!
-//! // not ported: `nullInputStreamThrowsIoException` (SesRoundTripTest.java:143-156) and
-//! `nullBoardThrowsIoException` (:163-169). Both assert that `SesReader.read`'s two explicit
-//! null guards (SesReader.java:61-66) fire instead of an NPE; `read(input: impl Read, board:
-//! &mut Board, …)` cannot be handed either null, so the guards have no Rust counterpart and
-//! neither has a test. `invalid_ses_is_an_error` below covers the third `IOException` the same
-//! method can raise, which is the only one still reachable.
-
 mod common;
 
 use std::path::Path;
@@ -23,8 +7,6 @@ use fr_dsn::parser::scope_parameter::DsnReadOptions;
 use fr_dsn::{BoardReadResult, CoordinateTransform, ses_reader, ses_writer};
 use fr_geometry::FloatPoint;
 
-/// `DsnTestFixtures.loadBoard(name)` — a fresh board plus the transform its `structure` scope
-/// built, which Java reads back off `board.communication.coordinateTransform` (plan ruling A).
 fn load_board(name: &str) -> (Board, CoordinateTransform) {
     let path = Path::new(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -50,8 +32,6 @@ fn load_board(name: &str) -> (Board, CoordinateTransform) {
             coordinate_transform
                 .unwrap_or_else(|| panic!("{name} produced no coordinate transform")),
         ),
-        // fixed: T4 (#91) — a committed fixture is never truncated; if one becomes so, the
-        // reader now says which scope was left open instead of quietly handing back half a board.
         BoardReadResult::Partial { diagnostic, .. } => {
             panic!("{name}: truncated: {diagnostic}")
         }
@@ -62,7 +42,6 @@ fn load_board(name: &str) -> (Board, CoordinateTransform) {
     }
 }
 
-/// `DsnTestFixtures.openFixtureStream(name)`.
 fn fixture_bytes(name: &str) -> Vec<u8> {
     let path = Path::new(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -72,11 +51,6 @@ fn fixture_bytes(name: &str) -> Vec<u8> {
     std::fs::read(&path).unwrap_or_else(|e| panic!("cannot read fixture {}: {e}", path.display()))
 }
 
-// ------------------------------------------------------------------------------------------
-// SesRoundTripTest.java, the SesReader half
-// ------------------------------------------------------------------------------------------
-
-/// `SesRoundTripTest.sesRoundTripPreservesWireCount` (SesRoundTripTest.java:38-52).
 #[test]
 fn ses_round_trip_preserves_wire_count() {
     let (mut board, ct) = load_board("Issue593-BBD_Mars-64.dsn");
@@ -93,8 +67,6 @@ fn ses_round_trip_preserves_wire_count() {
     );
 }
 
-/// `SesRoundTripTest.invalidSesThrowsOnRead` (SesRoundTripTest.java:78-92): garbage must be an
-/// `Err`, not a summary of zeroes.
 #[test]
 fn invalid_ses_is_an_error() {
     let (mut board, ct) = load_board("Issue143-rpi_splitter.dsn");
@@ -105,7 +77,6 @@ fn invalid_ses_is_an_error() {
     );
 }
 
-/// `SesRoundTripTest.writerOutputCanBeReadBackBySesReader` (SesRoundTripTest.java:99-136).
 #[test]
 fn writer_output_can_be_read_back_by_ses_reader() {
     let (mut source, ct) = load_board("Issue593-BBD_Mars-64.dsn");
@@ -136,9 +107,6 @@ fn writer_output_can_be_read_back_by_ses_reader() {
     );
 }
 
-/// `SesRoundTripTest.endpointSnappingIsStableAndRoundTrips` (SesRoundTripTest.java:186-232) —
-/// Task 12's report concern (2): the only test that exercises
-/// [`ses_writer::snapped_endpoint`]'s contact walk against a real board.
 #[test]
 fn endpoint_snapping_is_stable_and_round_trips() {
     let (mut board, ct) = load_board("Issue593-BBD_Mars-64.dsn");
@@ -160,8 +128,6 @@ fn endpoint_snapping_is_stable_and_round_trips() {
             } else {
                 board.trace_end_contacts(trace_id)
             };
-            // `contacts.stream().anyMatch(DrillItem.class::isInstance)` (SesRoundTripTest.java:199)
-            // — Java's `DrillItem` is exactly `Via` + `Pin`.
             let drill_contacts: Vec<_> = contacts
                 .iter()
                 .filter(|id| matches!(board.items.get(id), Some(Item::Via(_) | Item::Pin(_))))
@@ -170,9 +136,6 @@ fn endpoint_snapping_is_stable_and_round_trips() {
                 continue;
             }
             traces_with_drill_contacts += 1;
-            // `((DrillItem) c).getCenter().toFloat()` (:212). `Board::drill_center` answers `None`
-            // only for a *non*-drill item, which `drill_contacts` has already excluded, so this
-            // `filter_map` drops nothing — it is `Option` plumbing, not a second predicate.
             let drill_centers: Vec<FloatPoint> = drill_contacts
                 .into_iter()
                 .filter_map(|id| board.drill_center(*id))
@@ -217,12 +180,6 @@ fn endpoint_snapping_is_stable_and_round_trips() {
     assert_eq!(0, reimported.errors_encountered);
 }
 
-/// `SesRoundTripTest.issue742SesRoundTripsWithoutErrors` (SesRoundTripTest.java:240-269), the
-/// reader half. The writer half of that test (balanced scopes, unique library padstacks, KiCad
-/// rotation formatting) is kept here too: this is the only place those three run against the
-/// board Java actually writes from, i.e. *after* the session import.
-/// `tests/parity_ses.rs::issue742_placement_and_library_out_are_well_formed` runs the same two
-/// shared helpers on the un-imported board.
 #[test]
 fn issue742_ses_round_trips_without_errors() {
     let (mut board, ct) = load_board("Issue742-tastexx-pcb.dsn");
@@ -238,8 +195,6 @@ fn issue742_ses_round_trips_without_errors() {
     ses_writer::write(&board, &ct, &mut out, "Issue742-tastexx-pcb.dsn").expect("write");
     let content = String::from_utf8(out.clone()).expect("SES output must be valid UTF-8");
 
-    // `assertBalancedScopes` (:280-284) and `assertUniqueLibraryPadstacks` (:286-302), the two
-    // helpers `tests/parity_ses.rs` shares with this file — Java has one copy of each.
     common::assert_balanced_scopes(&content);
     common::assert_unique_library_padstacks(&content);
     assert!(
@@ -260,16 +215,6 @@ fn issue742_ses_round_trips_without_errors() {
     assert_eq!(0, reimported.errors_encountered);
 }
 
-// ------------------------------------------------------------------------------------------
-// JVM goldens (`crates/fr-dsn/tests/data/SProbe.java` against the pinned 2.3.0 jar)
-// ------------------------------------------------------------------------------------------
-
-/// Every `<name>.dsn` / `<name>.ses` pair in the fixture corpus, with the summary the pinned
-/// 2.3.0 jar produces for it — `SProbe`'s first line, `summary wires=W vias=V errors=E`.
-///
-/// The plan's own acceptance datum for this task is the `Issue593-BBD_Mars-64` row; the other
-/// five come for free from the same probe and are the only corpus-wide coverage the SES read
-/// path has until Task 15.
 const JVM_SUMMARIES: [(&str, usize, usize, usize); 6] = [
     ("Issue026-J2_reference", 89, 10, 0),
     ("Issue313-FastTest", 129, 21, 0),
@@ -298,29 +243,9 @@ fn ses_import_summaries_match_the_jvm() {
     }
 }
 
-/// Fix round 1. A `(path pcb …)` / `(path signal …)` wire carries `Layer.no == -1`
-/// (`Shape.getLayer` hands back the shared `Layer.PCB`/`Layer.SIGNAL` constants), which
-/// `SesReader.processWireScope` passes to `insertTrace` unchecked — and `Trace`'s constructor
-/// clamps it with `Math.min(Math.max(p_layer, 0), layerCount - 1)` (Trace.java:45-47). So the
-/// wire lands on **layer 0** and counts as imported; it is not an error.
-///
-/// JVM-verified against the pinned 2.3.0 jar by relabelling `Issue026-J2_reference.ses`'s third
-/// `(path …)` line, which is the only `B.Cu` (layer 1) path among the first three:
-///
-/// ```text
-/// sed '56s/(path B.Cu 2500/(path pcb 2500/' ../freerouting/fixtures/Issue026-J2_reference.ses \
-///     > /tmp/Issue026-pcb-layer.ses
-/// java -Djava.awt.headless=true -cp tools/freerouting-2.3.0.jar:/tmp/sprobe \
-///     SProbe ../freerouting/fixtures/Issue026-J2_reference.dsn /tmp/Issue026-pcb-layer.ses
-/// ```
-///
-/// gives `summary wires=89 vias=10 errors=0`, and the single line that moves against the
-/// unmodified run is `item 84 PolylineTrace layer=1 …` becoming `layer=0`.
 #[test]
 fn pcb_layer_path_lands_on_layer_0_and_counts_as_a_wire() {
     let ses = String::from_utf8(fixture_bytes("Issue026-J2_reference.ses")).expect("UTF-8");
-    // The same edit as the `sed` above, expressed as a one-shot replace of the file's only
-    // `B.Cu` path among the leading three.
     let mutated = ses.replacen("(path B.Cu 2500", "(path pcb 2500", 1);
     assert_ne!(ses, mutated, "the fixture must still contain a B.Cu path");
 
@@ -336,7 +261,6 @@ fn pcb_layer_path_lands_on_layer_0_and_counts_as_a_wire() {
         "a pcb-layer path is imported, not counted as an error"
     );
 
-    // The relabelled trace is the one whose dump line moved from `layer=1` to `layer=0`.
     let mut actual = vec![format!(
         "summary wires={} vias={} errors={}",
         summary.wires_imported, summary.vias_imported, summary.errors_encountered
@@ -358,8 +282,6 @@ fn pcb_layer_path_lands_on_layer_0_and_counts_as_a_wire() {
     assert_eq!(expected.len(), actual.len(), "line count differs");
 }
 
-/// The full board after the import — every item's id, kind, layer, net, clearance class and
-/// fixed state — against the jar's own dump of the same two files.
 #[test]
 fn issue026_ses_import_matches_jvm_golden() {
     let (mut board, ct) = load_board("Issue026-J2_reference.dsn");

@@ -1,13 +1,3 @@
-//! Tests for the two angle-restricted neighbour sorters (Plan 6 Task 5):
-//! `crates/fr-router/src/autoroute/expansion/sorted_neighbours_45.rs` and
-//! `.../sorted_neighbours_orthogonal.rs`, plus the dispatch in
-//! [`SortedRoomNeighbours::complete`] that now reaches three different implementations.
-//!
-//! The fixed scripts are **not** replays of a generator: the board, its obstacles, the three seed
-//! rooms and every call's inputs are literals read off `scripts/differential/java/P6T3.java`'s own
-//! stdout (`run.sh p6t3 6 42 30 1000`, `7 42 30 1000`, `8 42 20 1000`, `9 42 20 1000`), and the
-//! expected lines are that stdout verbatim. So each one reproduces the Java output from scratch.
-
 use fr_board::ids::TreeObject;
 use fr_board::prelude::*;
 use fr_dsn::format::java_double_to_string;
@@ -22,13 +12,6 @@ use fr_router::autoroute::expansion::{
 use fr_router::autoroute::item_info;
 use fr_router::autoroute::tree_ext::AutorouteSearchTreeExt;
 
-// =================================================================================================
-// The `p6t3` board, in whichever angle regime the caller asks for
-// =================================================================================================
-
-/// The thirty grid obstacles seed 42 draws for `p6t3 4/6/7 42 30 …` — the same numbers in all
-/// three regimes, because the obstacle stream is drawn before the tree is built. Read off the
-/// `item id=` lines of `p6t3 6 42 30 1000`.
 const GRID_OBSTACLES: [(i32, i32, i32, i32, usize); 30] = [
     (-3500, 0, -2000, 2000, 0),
     (-500, 7000, 1500, 9000, 1),
@@ -62,8 +45,6 @@ const GRID_OBSTACLES: [(i32, i32, i32, i32, usize); 30] = [
     (-3000, -6500, -1500, -6000, 0),
 ];
 
-/// The twenty ungridded obstacles seed 42 draws for `p6t3 5/8/9 42 20 …`, read off the `item id=`
-/// lines of `p6t3 8 42 20 1000`.
 const RANDOM_OBSTACLES: [(i32, i32, i32, i32, usize); 20] = [
     (8496, 4150, 9056, 6521, 0),
     (-3980, -333, -1897, 700, 1),
@@ -87,26 +68,18 @@ const RANDOM_OBSTACLES: [(i32, i32, i32, i32, usize); 20] = [
     (4098, -8459, 5378, -6908, 1),
 ];
 
-/// `seedRoom 1..3` of `p6t3 6 42 30 1000` (and of modes 4 and 7 — the same stream).
 const GRID_SEED_ROOMS: [(i32, i32, i32, i32, usize); 3] = [
     (-2188, 4586, 247, 6855, 0),
     (-1858, 6349, -1018, 7935, 1),
     (-5674, 8222, -3634, 10595, 0),
 ];
 
-/// `seedRoom 1..3` of `p6t3 8 42 20 1000` (and of modes 5 and 9).
 const RANDOM_SEED_ROOMS: [(i32, i32, i32, i32, usize); 3] = [
     (1386, -2517, 2807, 458, 1),
     (2811, 8147, 3647, 10698, 0),
     (-1114, 1885, 790, 4531, 0),
 ];
 
-/// The `P2T10` board of `P6T3.java` (two layers, a two-pin component, two traces, an empty
-/// outline) in the given angle regime, plus the named obstacle list and the autoroute tree.
-///
-/// This duplicates `tests/sorted_neighbours.rs`'s builder rather than sharing it, because that one
-/// hard-codes the any-angle regime and its own thirty obstacles; both are literal transcriptions
-/// of the same Java driver, and the angle is the whole point here.
 fn p6t3_board(
     angle: AngleRestriction,
     obstacles: &[(i32, i32, i32, i32, usize)],
@@ -206,7 +179,6 @@ fn p6t3_board(
         );
     }
 
-    // `searchTreeManager.getAutorouteTree(1)`, over the item list in board order (descending id).
     let tree_id = {
         let mut items = std::mem::take(&mut board.items);
         let mut manager = std::mem::take(&mut board.trees);
@@ -222,8 +194,6 @@ fn p6t3_board(
     (board, tree_id)
 }
 
-/// The three `CompleteFreeSpaceExpansionRoom`s `P6T3.insertSeedRooms` puts in the tree. The two
-/// obstacle sets draw different ones, so the caller names them.
 fn p6t3_seed_rooms(
     board: &mut Board,
     tree_id: TreeId,
@@ -248,8 +218,6 @@ fn p6t3_seed_rooms(
     rooms
 }
 
-/// `AutorouteEngine.completeExpansionRoom`'s seed: `completeShape` of a whole-plane room around a
-/// small contained box, of which the driver picks candidate `pick`.
 #[allow(clippy::too_many_arguments)]
 fn seed_free_space_room(
     board: &Board,
@@ -279,10 +247,6 @@ fn seed_free_space_room(
         chosen.get_contained_shape().cloned(),
     ))
 }
-
-// =================================================================================================
-// Rendering, byte-for-byte with `scripts/differential/rust/src/bin/p6t3.rs`
-// =================================================================================================
 
 fn shp(s: &TileShape) -> String {
     match s {
@@ -361,8 +325,6 @@ fn describe_object(object: TreeObject, rooms: &ExpansionRoomStore) -> String {
     }
 }
 
-/// `P6T3.dumpRegimeNeighbours` for the 45-degree inner class, plus everything the call left on the
-/// completed room.
 fn dump_45(
     result: &Sorted45DegreeRoomNeighbours,
     rooms: &ExpansionRoomStore,
@@ -393,7 +355,6 @@ fn dump_45(
     dump_target_doors(result.completed_room, rooms, out);
 }
 
-/// `P6T3.dumpRegimeNeighbours` for the orthogonal inner class.
 fn dump_orthogonal(
     result: &SortedOrthogonalRoomNeighbours,
     rooms: &ExpansionRoomStore,
@@ -456,7 +417,6 @@ fn dump_target_doors(room: RoomRef, rooms: &ExpansionRoomStore, out: &mut Vec<St
     }
 }
 
-/// `P6T3.dumpIncompleteRooms`, minus the arena slots the driver filters out as its own seed.
 fn dump_incomplete_rooms(rooms: &ExpansionRoomStore, skip: &[u32], out: &mut Vec<String>) {
     let engine_rooms: Vec<u32> = rooms
         .incomplete_rooms
@@ -492,16 +452,6 @@ fn flags(values: &[bool]) -> String {
     out
 }
 
-/// Compares one produced script with the expected one, line by line.
-///
-/// `FR_DUMP_SCRIPT=1` prints what was actually produced, prefixed `DUMP|`, instead of only saying
-/// which line differs. It exists because these scripts are re-cut by hand whenever an authorized
-/// divergence moves one, and doing that from a first-differing-line message is how a re-cut goes
-/// wrong. Added at Plan 9 Task 8 (it cut `an_eight_sided_obstacle_room_gets_eight_doors`); named
-/// for what it does rather than for the task, because the next re-cut will want it too.
-///
-/// It is a **read** — it prints and changes no assertion — so an unset variable and a set one
-/// compare exactly the same thing.
 fn assert_script(actual: &[String], expected: &str) {
     if std::env::var_os("FR_DUMP_SCRIPT").is_some() {
         for line in actual {
@@ -519,21 +469,8 @@ fn assert_script(actual: &[String], expected: &str) {
     assert_eq!(actual.len(), expected.len(), "line count");
 }
 
-// =================================================================================================
-// The 45-degree sorter — `p6t3 6 42 30 1000`, `call i=7`
-// =================================================================================================
-
 #[test]
 fn the_45_degree_sorter_matches_the_p6t3_script() {
-    // `run.sh p6t3 6 42 30 1000`, `call i=7`, verbatim:
-    //
-    //   call i=7 kind=freeSpace layer=0 contained=Box[-5996,7255..-5783,7396] candidates=1 pick=0
-    //     chosenContained=Oct[-5996,7255,-5783,7396,-13392,-13038,1259,1613] net=3 roomIdNo=11
-    //     shape=Oct[-10000,2100,-3100,8222,-18222,-5200,-7900,5122] roomLayer=0
-    //
-    // Three neighbours, two board items and one of the seed rooms; every shape and intersection an
-    // `IntOctagon`, and `edgeInteriorTouchesObstacle` with five of its eight flags set — the array
-    // `tryRemoveEdgeLine` reads.
     let (mut board, tree_id) = p6t3_board(AngleRestriction::FortyFiveDegree, &GRID_OBSTACLES);
     let mut rooms = p6t3_seed_rooms(&mut board, tree_id, GRID_SEED_ROOMS);
     let room = seed_free_space_room(
@@ -573,21 +510,8 @@ fn the_45_degree_sorter_matches_the_p6t3_script() {
     );
 }
 
-// =================================================================================================
-// The orthogonal sorter — `p6t3 7 42 30 1000`, `call i=4` and `call i=62`
-// =================================================================================================
-
 #[test]
 fn the_orthogonal_sorter_matches_the_p6t3_script() {
-    // `run.sh p6t3 7 42 30 1000`, `call i=4`, verbatim:
-    //
-    //   call i=4 kind=freeSpace layer=1 contained=Box[-5947,599..-5730,882] candidates=1 pick=0
-    //     chosenContained=Box[-5900,599..-5730,882] net=3 roomIdNo=8
-    //     shape=Box[-5900,-3900..-1600,6349] roomLayer=1
-    //
-    // Four neighbours, every shape an `IntBox`: two touch one side (`fts == lts`), one wraps side 1
-    // to side 2 and the last wraps side 3 round to side 0 — which is what the comparator's
-    // `(lastTouchingSide - firstTouchingSide + 4) % 4` span is for.
     let (mut board, tree_id) = p6t3_board(AngleRestriction::NinetyDegree, &GRID_OBSTACLES);
     let mut rooms = p6t3_seed_rooms(&mut board, tree_id, GRID_SEED_ROOMS);
     let room = seed_free_space_room(
@@ -630,13 +554,6 @@ fn the_orthogonal_sorter_matches_the_p6t3_script() {
 
 #[test]
 fn an_own_net_object_becomes_a_target_door_inside_the_neighbour_loop() {
-    // `run.sh p6t3 7 42 30 1000`, `call i=62`, verbatim. This is the structural difference the two
-    // angle-restricted sorters have from the base class:
-    // `CompleteFreeSpaceExpansionRoom.calculateTargetDoors` runs **inside** the neighbour loop
-    // (`SortedOrthogonalRoomNeighbours.java:155`), one tree entry at a time, where the base class
-    // defers every own-net object to a list and processes it after `calculate`
-    // (`SortedRoomNeighbours.java:132-134`, `:158-185`). Item 3 — the through-hole pin on the
-    // routed net 1 — therefore never becomes a neighbour and yields a target door instead.
     let (mut board, tree_id) = p6t3_board(AngleRestriction::NinetyDegree, &GRID_OBSTACLES);
     let mut rooms = p6t3_seed_rooms(&mut board, tree_id, GRID_SEED_ROOMS);
     let room = seed_free_space_room(
@@ -674,9 +591,6 @@ fn an_own_net_object_becomes_a_target_door_inside_the_neighbour_loop() {
     [0] item=3 entry=1 dim=2 shape=Box[330,-170..670,170]
 "#,
     );
-    // And the room is net-dependent, because `calculateTargetDoors` sets that unconditionally
-    // (`CompleteFreeSpaceExpansionRoom.java:134`) — the half of the method the base class's static
-    // namesake only performs when its deferred list is non-empty (`SortedRoomNeighbours.java:162`).
     let RoomRef::Complete(completed) = result.completed_room else {
         panic!("a free-space room completes to a CompleteFreeSpaceExpansionRoom")
     };
@@ -688,45 +602,8 @@ fn an_own_net_object_becomes_a_target_door_inside_the_neighbour_loop() {
     );
 }
 
-// =================================================================================================
-// Quirk #163 — `calculateEdgeIncompleteRoomsOfObstacleExpansionRoom` skipped its last side
-// =================================================================================================
-
 #[test]
 fn an_eight_sided_obstacle_room_gets_eight_doors() {
-    // `run.sh p6t3 8 42 20 1000`, `call i=4` — the whole of
-    // `Sorted45DegreeRoomNeighbours.calculate` for an obstacle room over the second trace's first
-    // segment. Its shape has **eight distinct corners** and no touching neighbour at all, so
-    // `calculate:73` runs `calculateEdgeIncompleteRoomsOfObstacleExpansionRoom(0, 7)` — which in
-    // the jar produces **seven** incomplete rooms, not eight.
-    //
-    // That is quirk #163: `:264` computes `currentCorner = roomShape.corner(fromSideIndex)` and
-    // the loop body never reassigns it, so the `!currentCorner.equals(nextCorner)` guard at `:269`
-    // compares each side's *end* corner against the corner the walk started at rather than against
-    // the side's own start corner. On a full 0..7 walk that is true for every side but the last,
-    // whose end corner **is** `corner(0)`. The jar's doors run round sides 0..6 —
-    // `(-1024,-240)→(-576,-240)`, `…→(-260,76)`, `…→(-260,1124)`, `…→(-576,1440)`,
-    // `…→(-1024,1440)`, `…→(-1340,1124)`, `…→(-1340,76)` — and the eighth side,
-    // `(-1340,76)→(-1024,-240)`, got no room at all.
-    //
-    // **fixed: T8 (#163)** — `currentCorner = nextCorner` at the foot of the loop. **7 -> 8**
-    // incomplete rooms and **8 -> 9** doors (the extra one beside the dimension-2 door to
-    // `obs5/1`). This is a **KNOWN DIVERGENCE from the jar authorized by #163**: the jar's script
-    // said `doors n=8` / `incompleteRooms n=7` and its seven room literals are the seven below,
-    // unchanged; `doors[8]` and `incompleteRooms[7]` are the port's, and they are the two shapes
-    // `docs/plan-9-prep/fixtures/task-8/expected-outcomes.md` derives **by hand** from the
-    // octagon's own geometry, without the jar:
-    //
-    //     eighth door  Oct[-1340,-240,-1024,76,-1416,-784,-1264,-1264]   dim 1
-    //     eighth room  Oct[-10000,-10000,8736,8736,-18736,18736,-20000,-1264]
-    //
-    // Both match the port to the unit, which is an independent confirmation of the fix rather
-    // than a re-cut of its output.
-    //
-    // The invariant behind the literal, so a future octagon needs no new derivation: an obstacle
-    // expansion room whose octagon has **k distinct corners** and no touching neighbour gets **k**
-    // edge incomplete rooms, one per side, and each side's door is that side's segment. No side of
-    // a non-degenerate octagon is unreachable. `k -> k`; `7 -> 8` is this instance.
     let (mut board, tree_id) = p6t3_board(AngleRestriction::FortyFiveDegree, &RANDOM_OBSTACLES);
     let mut rooms = p6t3_seed_rooms(&mut board, tree_id, RANDOM_SEED_ROOMS);
     let obstacle = {
@@ -753,20 +630,6 @@ fn an_eight_sided_obstacle_room_gets_eight_doors() {
     dump_doors(result, &rooms, &mut actual);
     dump_target_doors(result, &rooms, &mut actual);
     dump_incomplete_rooms(&rooms, &[], &mut actual);
-    // PORT-REGRESSION PINS in the script below, `accepted at plan9-t7t8 (ruling CC)`: the
-    // `incN` tokens. Java's `IncompleteFreeSpaceExpansionRoom.getId` is the hash
-    // `31 * shape.getId() + layer` over a MUTABLE shape (quirk #158, hazard C), so the jar printed
-    // eight wide hash values here. #158's fix at Task 8 gives the room an
-    // `id_no` drawn from the engine's shared counter as it enters the arena, and the port prints
-    // the counter's small consecutive ids instead. Nothing else in the script moved: the door
-    // count, every door's dimension, every shape and every corner list is the jar's to the digit,
-    // and so is the `incompleteRooms` block below.
-    //
-    // Java's arithmetic is not lost — it survives as `IncompleteFreeSpaceExpansionRoom::java_id`,
-    // which still panics on the whole-plane room exactly where Java NPEs, with its own tests
-    // beside it. The jar's tokens, for the record:
-    // `inc-475676864 inc943169552 inc1803269220 inc-1549944256 inc-1656480944 inc184106368`
-    // `inc-1738579036 inc-1129576944` -> `inc8 inc9 inc10 inc11 inc12 inc13 inc14 inc15`.
     assert_script(
         &actual,
         r#"
@@ -794,7 +657,6 @@ fn an_eight_sided_obstacle_room_gets_eight_doors() {
 "#,
     );
 
-    // The invariant, asserted rather than only described.
     let shape = rooms.room_shape(result).expect("a shape").clone();
     let distinct: std::collections::BTreeSet<(u64, u64)> = shape
         .corner_approx_arr()
@@ -814,17 +676,8 @@ fn an_eight_sided_obstacle_room_gets_eight_doors() {
     );
 }
 
-// =================================================================================================
-// The orthogonal empty-neighbour path — `p6t3 9 42 20 1000`, `call i=83`
-// =================================================================================================
-
 #[test]
 fn an_orthogonal_obstacle_room_with_no_neighbours_gets_one_room_per_board_side() {
-    // `run.sh p6t3 9 42 20 1000`, `call i=83`, verbatim.
-    // `SortedOrthogonalRoomNeighbours.calculateIncompleteRoomsWithEmptyNeighbours` (`:79-108`)
-    // builds **four** rooms, one per side of the board's bounding box, and a `dimension == 1` door
-    // to each — with no `insertDoorOk` test, no dimension test and no `isEmpty` guard, all three
-    // of which the base class's namesake (SortedRoomNeighbours.java:138-156) applies per room.
     let (mut board, tree_id) = p6t3_board(AngleRestriction::NinetyDegree, &RANDOM_OBSTACLES);
     let mut rooms = p6t3_seed_rooms(&mut board, tree_id, RANDOM_SEED_ROOMS);
     let obstacle = {
@@ -848,19 +701,6 @@ fn an_orthogonal_obstacle_room_with_no_neighbours_gets_one_room_per_board_side()
     dump_doors(result, &rooms, &mut actual);
     dump_target_doors(result, &rooms, &mut actual);
     dump_incomplete_rooms(&rooms, &[], &mut actual);
-    // PORT-REGRESSION PINS in the script below, `accepted at plan9-t7t8 (ruling CC)`: the
-    // `incN` tokens. Java's `IncompleteFreeSpaceExpansionRoom.getId` is the hash
-    // `31 * shape.getId() + layer` over a MUTABLE shape (quirk #158, hazard C), so the jar printed
-    // four wide hash values here. #158's fix at Task 8 gives the room an
-    // `id_no` drawn from the engine's shared counter as it enters the arena, and the port prints
-    // the counter's small consecutive ids instead. Nothing else in the script moved: the door
-    // count, every door's dimension, every shape and every corner list is the jar's to the digit,
-    // and so is the `incompleteRooms` block below.
-    //
-    // Java's arithmetic is not lost — it survives as `IncompleteFreeSpaceExpansionRoom::java_id`,
-    // which still panics on the whole-plane room exactly where Java NPEs, with its own tests
-    // beside it. The jar's tokens, for the record:
-    // `inc-297914650 inc-10116850 inc-287845850 inc-307834650` -> `inc8 inc9 inc10 inc11`.
     assert_script(
         &actual,
         r#"
@@ -880,22 +720,6 @@ fn an_orthogonal_obstacle_room_with_no_neighbours_gets_one_room_per_board_side()
     );
 }
 
-// =================================================================================================
-// The free-space 2-dimensional overlap arm — `p6t3 6/7 42 30 1000`, the `overlap` probe
-// =================================================================================================
-
-/// The `overlap` probe of `p6t3` modes 6 and 7: a `CompleteFreeSpaceExpansionRoom` that overlaps
-/// the room under test 2-dimensionally, on an otherwise empty part of layer 1.
-///
-/// The random part of the driver cannot produce this: its seed rooms are `completeShape` output,
-/// restrained against everything already in the tree. But it is **not** structurally unreachable
-/// in production — `tryRemoveEdgeLine`/`tryRemoveEdge` deliberately look for a `dimension == 2`
-/// door to a free-space room to use as `completeShape`'s `ignoreObject`
-/// (`Sorted45DegreeRoomNeighbours.java:373-394`, `SortedOrthogonalRoomNeighbours.java:459-526`),
-/// which is exactly a room the next pass may then overlap; and
-/// `CompleteFreeSpaceExpansionRoom.isTraceObstacle` is the constant `true`
-/// (`CompleteFreeSpaceExpansionRoom.java:81-84`), so nothing diverts such an overlap to
-/// `calculateTargetDoors`.
 fn overlap_probe_rooms(
     board: &mut Board,
     rooms: &mut ExpansionRoomStore,
@@ -924,18 +748,6 @@ fn overlap_probe_rooms(
 
 #[test]
 fn a_two_dimensional_overlap_is_a_45_degree_neighbour_with_a_two_dimensional_door() {
-    // `run.sh p6t3 6 42 30 1000`, the `overlap regime=2` block, verbatim. Two things are pinned:
-    //
-    // * `Sorted45DegreeRoomNeighbours.java:132` is `dimension > 1 && completedRoom instanceof
-    //   ObstacleExpansionRoom`, so a 2-dimensional overlap with a **free-space** completed room
-    //   falls through to `addSortedNeighbour` — where the base class `continue`s for every
-    //   `dimension > 1` (`SortedRoomNeighbours.java:232`);
-    // * `:164` is the **two**-argument `new ExpansionDoor(completedRoom, neighbourRoom)`
-    //   (`ExpansionDoor.java:35-39`), which *computes* the dimension from the two rooms' shapes —
-    //   `dim=2` here. Only the base class hard-codes 1 at that spot
-    //   (`SortedRoomNeighbours.java:281`). This is the only site in the class that can build a
-    //   `dimension == 2` door, and `:381` scans for exactly one when it picks `completeShape`'s
-    //   `ignoreObject`.
     let (mut board, tree_id) = p6t3_board(AngleRestriction::FortyFiveDegree, &GRID_OBSTACLES);
     let mut rooms = p6t3_seed_rooms(&mut board, tree_id, GRID_SEED_ROOMS);
     let room = overlap_probe_rooms(&mut board, &mut rooms, tree_id);
@@ -958,8 +770,6 @@ fn a_two_dimensional_overlap_is_a_45_degree_neighbour_with_a_two_dimensional_doo
   targetDoors n=0
 "#,
     );
-    // Spelled out, because a hard-coded `1` here would still have matched every other fixture in
-    // this file and every configuration of `p6t3` modes 6-9.
     let doors = rooms.room_doors(result.completed_room);
     assert_eq!(doors.len(), 1);
     assert_eq!(rooms.door(doors[0]).expect("a live door").dimension, 2);
@@ -967,9 +777,6 @@ fn a_two_dimensional_overlap_is_a_45_degree_neighbour_with_a_two_dimensional_doo
 
 #[test]
 fn a_two_dimensional_overlap_is_an_orthogonal_neighbour_with_a_two_dimensional_door() {
-    // `run.sh p6t3 7 42 30 1000`, the `overlap regime=1` block, verbatim — the same two facts for
-    // `SortedOrthogonalRoomNeighbours.java:168` and `:201`, whose `dimension == 2` scan is at
-    // `:468`.
     let (mut board, tree_id) = p6t3_board(AngleRestriction::NinetyDegree, &GRID_OBSTACLES);
     let mut rooms = p6t3_seed_rooms(&mut board, tree_id, GRID_SEED_ROOMS);
     let room = overlap_probe_rooms(&mut board, &mut rooms, tree_id);
@@ -997,12 +804,6 @@ fn a_two_dimensional_overlap_is_an_orthogonal_neighbour_with_a_two_dimensional_d
     assert_eq!(rooms.door(doors[0]).expect("a live door").dimension, 2);
 }
 
-// =================================================================================================
-// The dispatch reaches three different implementations
-// =================================================================================================
-
-/// A two-layer board with the named box obstacles, in the given angle regime, plus its autoroute
-/// tree — the smallest board on which the three sorters visibly disagree.
 fn tiny_board(angle: AngleRestriction, obstacles: &[IntBox]) -> (Board, TreeId) {
     let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
     let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 0);
@@ -1041,8 +842,6 @@ fn tiny_board(angle: AngleRestriction, obstacles: &[IntBox]) -> (Board, TreeId) 
     (board, tree_id)
 }
 
-/// Runs the whole of `SortedRoomNeighbours::complete` for one regime over the same input room and
-/// renders everything the call left behind.
 fn complete_in_regime(
     angle: AngleRestriction,
     room_box: IntBox,
@@ -1063,25 +862,12 @@ fn complete_in_regime(
         opt_shp(rooms.room_shape(result))
     )];
     dump_doors(result, &rooms, &mut out);
-    // Arena slot 0 is the seed room itself, which Java never puts on the engine's list.
     dump_incomplete_rooms(&rooms, &[0], &mut out);
     out
 }
 
 #[test]
 fn the_three_regimes_disagree_on_the_same_room() {
-    // One room and one board, three sorters — reached only through
-    // `SortedRoomNeighbours::complete`, so this is the dispatch under test and not the three
-    // entry points called directly. The two obstacles touch the room's right and top sides, so all
-    // three implementations have work to do, and they do three different things:
-    //
-    // * the base class walks the room's own simplex border lines and answers four one-dimensional
-    //   doors onto half-plane simplices;
-    // * `Sorted45DegreeRoomNeighbours` walks the eight sides of the room's **bounding octagon** and
-    //   answers two two-dimensional doors onto octagons — and leaves the room's shape alone,
-    //   because its `tryRemoveEdgeLine` insists on an `IntOctagon` (`:320-325`);
-    // * `SortedOrthogonalRoomNeighbours` accepts the `IntBox`, so its `tryRemoveEdge` **does**
-    //   enlarge the room, and its doors are boxes.
     let obstacles = [
         IntBox::from_coords(0, -500, 1000, 500),
         IntBox::from_coords(-3000, 1000, -500, 2000),
@@ -1101,34 +887,19 @@ fn the_three_regimes_disagree_on_the_same_room() {
         "the two subclasses must not be each other"
     );
 
-    // The base class keeps the room's shape as a simplex and builds one-dimensional doors.
     assert!(any[0].contains("shape=Simplex{"), "{}", any[0]);
     assert_eq!(any[1], "  doors n=4");
     assert!(any[2..6].iter().all(|line| line.contains(" dim=1 ")));
 
-    // The 45-degree class leaves the box alone and answers two-dimensional octagon doors.
-    //
-    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: the jar's completed room is
-    // `cfsr1`, the port's is `cfsr2`. Room ids come from ONE shared counter across the engine's
-    // room kinds (#156/#167/#158), and the seed incomplete room this call completes now draws
-    // from that counter too, so the complete room it becomes is the second id issued rather than
-    // the first — and the orthogonal arm below moves from `cfsr2` to `cfsr3` by the same step.
-    // The SHAPES, the door counts and the door dimensions on all three arms are the jar's, and
-    // they are what the three-way disagreement this test is named for is read off.
     assert_eq!(deg45[0], "  result=cfsr2 shape=Box[-2000,-1000..0,1000]");
     assert_eq!(deg45[1], "  doors n=2");
     assert!(deg45[2..4].iter().all(|line| line.contains(" dim=2 ")));
     assert!(deg45[2..4].iter().all(|line| line.contains("shape=Oct[")));
 
-    // The orthogonal class enlarges the room, and its doors are boxes.
-    //
-    // Same pin: jar `cfsr2`, port `cfsr3`, `accepted at plan9-t7t8 (ruling CC)`.
     assert_eq!(
         orthogonal[0],
         "  result=cfsr3 shape=Box[-2000,-10000..0,1000]"
     );
-    // The three arms must stay three DIFFERENT answers, which is the whole subject; the
-    // `assert_ne!`s above are what hold it, and they are unaffected by the id re-cut.
     assert_eq!(orthogonal[1], "  doors n=2");
     assert!(orthogonal[2..4].iter().all(|line| line.contains(" dim=2 ")));
     assert!(
@@ -1138,16 +909,10 @@ fn the_three_regimes_disagree_on_the_same_room() {
     );
 }
 
-// =================================================================================================
-// The two comparators — total orders, unlike the base class's (quirks #160 and #161)
-// =================================================================================================
-
 type Neighbour45 = fr_router::autoroute::expansion::sorted_neighbours_45::SortedRoomNeighbour;
 type NeighbourOrthogonal =
     fr_router::autoroute::expansion::sorted_neighbours_orthogonal::SortedRoomNeighbour;
 
-/// One 45-degree neighbour, built directly through the inner class's constructor exactly as
-/// `addSortedNeighbour` does.
 fn neighbour_45(
     room: IntOctagon,
     neighbour: IntOctagon,
@@ -1164,7 +929,6 @@ fn neighbour_45(
     )
 }
 
-/// One orthogonal neighbour, likewise.
 fn neighbour_orthogonal(
     room: IntBox,
     neighbour: IntBox,
@@ -1181,8 +945,6 @@ fn neighbour_orthogonal(
     )
 }
 
-/// A spread of neighbour boxes that really touch a `[-2000,-2000..2000,2000]` room on each of its
-/// four sides, at several offsets and two spans.
 fn touching_boxes() -> Vec<IntBox> {
     let mut boxes = Vec::new();
     for (dx, dy) in [(0, -2400), (2000, 0), (0, 2000), (-2400, 0)] {
@@ -1198,13 +960,6 @@ fn touching_boxes() -> Vec<IntBox> {
 
 #[test]
 fn both_regime_comparators_are_total_orders_where_the_base_class_is_not() {
-    // The base class's `compareTo` is **not** transitive (quirk #160, pinned by
-    // `tests/sorted_neighbours.rs::the_comparator_is_not_transitive_…`): its refinements are
-    // entered on different conditions for different pairs, so its `Equal` is not an equivalence
-    // and a `TreeSet` and a `BTreeSet` keep different elements. Both of Task 5's comparators are
-    // plain lexicographic orders on five Java `int` keys — every refinement is entered on the same
-    // `cmpValue == 0` for both operands — so they are antisymmetric and transitive. Checked over
-    // every ordered triple of the spread above, which is the property both module docs claim.
     let room_oct = IntOctagon::new(-2000, -2000, 2000, 2000, -8000, 8000, -8000, 8000).normalize();
     let mut oct_flags = [false; 8];
     let built: Vec<Neighbour45> = touching_boxes()
@@ -1255,11 +1010,6 @@ fn assert_transitive<T>(items: &[T], cmp: impl Fn(&T, &T) -> std::cmp::Ordering)
 
 #[test]
 fn identical_geometry_and_a_colliding_id_still_drops_a_neighbour() {
-    // Both comparators end in `this.searchTreeObject.getId() - other.searchTreeObject.getId()`
-    // (Sorted45DegreeRoomNeighbours.java:977, SortedOrthogonalRoomNeighbours.java:723) over two id
-    // spaces that both start at 1 (quirk #161), so an **item** 3 and a **room** 3 with the same
-    // geometry compare `Equal` — and `TreeSet.add` then answers false and keeps the first. Being a
-    // total order does not save the second element; only an unequal key would.
     let room = IntBox::from_coords(-2000, -2000, 2000, 2000);
     let neighbour = IntBox::from_coords(-500, -2400, 500, -2000);
     let mut edge_flags = [false; 4];

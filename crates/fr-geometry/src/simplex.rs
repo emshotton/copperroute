@@ -658,13 +658,42 @@ impl Simplex {
             }
         }
         let mut check_cross_first_line = false;
-        // Java declares `prevDivisionLine` here and never assigns it inside the loop: the only
-        // assignment in the whole method is the reversed `nextDivisionLine = prevDivisionLine;`
-        // at the very end of the loop body (Simplex.java:860), which writes the *other* way
-        // round and is itself dead (`nextDivisionLine` is recomputed at the top of the next
-        // iteration). `prevDivisionLine` therefore stays null for every iteration and both
-        // `mergePrevDivisionLine` flags below are always false. Ported verbatim, bug included;
-        // the dead `nextDivisionLine = prevDivisionLine;` is not ported.
+        // Java bug: Java declares `prevDivisionLine` here and never assigns it inside the loop.
+        // The only assignment in the whole method is the reversed
+        // `nextDivisionLine = prevDivisionLine;` at the very end of the loop body
+        // (Simplex.java:860), which writes the *other* way round and is itself dead
+        // (`nextDivisionLine` is recomputed at the top of the next iteration). So
+        // `prevDivisionLine` stays null for every iteration and both `mergePrevDivisionLine`
+        // branches below are unreachable: `cutoutFrom` never merges two adjacent pieces and always
+        // returns the maximal division. Ported verbatim, bug included; the dead
+        // `nextDivisionLine = prevDivisionLine;` is not ported. See docs/java-quirks.md #11.
+        //
+        // # Task 11 examined this row and deliberately did not fix it
+        //
+        // The register offers two remedies — "either delete the dead code **or** finish the
+        // intended merge logic" — and the second is not recoverable from the source. Two readings
+        // are available and they disagree:
+        //
+        //   * the literal transposition, `prevDivisionLine = nextDivisionLine`, carries
+        //     `divisionLineArr[nextCornerNo][0]`, which at the next iteration is that corner's
+        //     *own* first division line. Self-referential, and "previous" under no reading.
+        //   * `prevDivisionLine = lastCurrDivisionLine` is semantically coherent — it bounds the
+        //     piece just emitted, which makes the guard's own comment ("the previous division line
+        //     may intersect currentDivisionLines[0]") true, and it is the exact counterpart of
+        //     `mergeFirstDivisionLine`'s clip against the first piece.
+        //
+        // The second was implemented and **measured**: it changes the convex decomposition, and
+        // through it the maze. `every_drill_of_the_page_whose_room_matches_is_expanded_once` moved
+        // 53 -> 50 expansions and `the_reversed_search_with_vias_splits_into_three_traces` routed a
+        // materially different connection — `(-2000,0) -> (-764,0) -> (-764,815)` in place of the
+        // jar's detour through `(-2000,-76) -> (-1734,-76) -> (-1734,815)`. The new route may well
+        // be better, but "may well be" is the problem: there is no oracle for it, and the choice
+        // between the two readings is a guess about an author's intent, not a transcription error
+        // with one right answer like #5's sign or #13's function.
+        //
+        // So this row keeps Java's behaviour and the register's first remedy stands: the dead code
+        // is documented rather than completed. Reopening it needs a decision about what
+        // `cutoutFrom` is *for*, taken with a routing measurement, not a code reading.
         let prev_division_line: Option<Line> = None;
         let first_division_line = division_line_arr[0][0];
         let first_direction = first_division_line.direction();
@@ -772,6 +801,10 @@ impl Simplex {
             }
             let current_piece = Simplex::new(piece_lines);
             result_list.push(current_piece.intersection(outer_simplex));
+            // pinned: #11 — Java's `:860` is `nextDivisionLine = prevDivisionLine;`, the dead
+            // assignment this loop deliberately does not port; the row stays reproduced. Task 11
+            // examined it and left it pinned — see the `prev_division_line` declaration above for
+            // the full reasoning and the measurement.
         }
         Some(result_list)
     }

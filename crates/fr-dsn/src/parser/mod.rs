@@ -1,22 +1,3 @@
-//! Specctra DSN/SES scope parsers (`io/specctra/parser/**`).
-//!
-//! [`scope_parameter`] holds `ReadScopeParameter`/`WriteScopeParameter` (`ReadScopeParameter.java`
-//! / `WriteScopeParameter.java`) plus the generic `ScopeKeyword.readScope`/`skipScope` dispatch
-//! loop (`ScopeKeyword.java`); [`dsn_file`] holds `DsnFile`'s scalar scope helpers
-//! (`DsnFile.java`). Everything else in this module is one file per Specctra scope class,
-//! matching the Java package's own one-class-per-file layout: [`structure`], [`network`],
-//! [`wiring`], [`library`], [`part_library`], [`placement`], [`header`] (which groups
-//! `Parser.java`/`Resolution.java`/`Unit.java`/`PlaceControl.java` — four small, closely related
-//! header scopes with no dedicated file of their own in the plan's file structure) and
-//! [`geometry`] (`Shape.java` with its five subclasses, plus `Layer.java`/`LayerStructure.java`).
-//!
-//! The remaining **stubs** — scope readers that still just call [`scope_parameter::skip_scope`]
-//! — are `network::read_network_scope` (Task 9) and `wiring::read_wiring_scope`. Later tasks
-//! replace the body, not the signature, so [`scope_parameter::read_scope`]'s dispatch `match`
-//! does not change shape again.
-
-// added in Plan 3: ScopeKeyword.readScope dispatch table (this module's scope-reader stubs) —
-// fix round 1 moved this marker out of the `//!` sentence above, which it was breaking in two.
 pub mod autoroute_settings;
 pub mod dsn_file;
 pub mod geometry;

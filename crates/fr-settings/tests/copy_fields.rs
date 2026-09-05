@@ -1,17 +1,6 @@
-//! `ReflectionUtil.copyFields` (`util/ReflectionUtil.java:215-344`) rule-by-rule, plus
-//! `RouterSettings.applyNewValuesFrom` (`settings/RouterSettings.java:907-929`) and its inverse
-//! `fill_absent_from` (plan ruling 1).
-//!
-//! Ported from `settings/RouterSettingsMergeTest.java` and `settings/SettingsMergerTest.java`.
-//! Every test is named after the `copyFields` rule it pins; the eight rules are enumerated in plan
-//! ruling 4. (`util/ReflectionUtilArrayTest.java` exercises `setFieldValue`'s array handling, not
-//! `copyFields` — it belongs to Task 3.)
-
 use fr_settings::copy_fields::{CopyFields, JavaEnum, enum_copy_by_name};
 use fr_settings::prelude::*;
 
-/// Rule 6 (object arrays, `ReflectionUtil.java:291-327`), port of
-/// `RouterSettingsMergeTest.java:13-38` (`mergeLayersArray`).
 #[test]
 fn merge_layers_array() {
     let mut source = RouterSettings::new();
@@ -37,14 +26,10 @@ fn merge_layers_array() {
     assert_eq!(target_layers[0].preferred_direction_horizontal, Some(true));
     assert_eq!(target_layers[1].preferred_direction_horizontal, Some(false));
 
-    // Java's `assertNotSame(source.layers[0], target.layers[0])` — the merge deep-copies, so
-    // writing through the target must not reach the source.
     target.layers.as_mut().unwrap()[0].routable = Some(true);
     assert_eq!(source.layers.as_ref().unwrap()[0].routable, Some(false));
 }
 
-/// Rule 6's never-shrink half (`ReflectionUtil.java:302-312`), port of
-/// `SettingsMergerTest.java:259-277` (`layersArrayNotShrunkOnMerge`).
 #[test]
 fn layers_array_not_shrunk_on_merge() {
     let mut target = RouterSettings::new();
@@ -74,9 +59,6 @@ fn layers_array_not_shrunk_on_merge() {
     assert_eq!(layers[2].routable, Some(true));
 }
 
-/// Rule 6's count (`ReflectionUtil.java:311`, `:325`): the object-array arm adds
-/// `sourceArray.length` whether or not any element actually moved, and discards the inner
-/// `copyFields` return values.
 #[test]
 fn object_array_count_is_source_length() {
     let mut target = RouterSettings::new();
@@ -84,7 +66,6 @@ fn object_array_count_is_source_length() {
 
     let mut source = RouterSettings::new();
     source.set_layer_count(2);
-    // Make the two source layers identical to the target's, so nothing actually changes.
     for i in 0..2 {
         source.layers.as_mut().unwrap()[i] = target.layers.as_ref().unwrap()[i];
     }
@@ -99,10 +80,8 @@ fn object_array_count_is_source_length() {
     );
 }
 
-/// Rule 5 (primitive/`String` arrays, `ReflectionUtil.java:269-290`): first writer wins.
 #[test]
 fn primitive_arrays_are_first_writer_wins() {
-    // Populated target: never overwritten.
     let mut target = ScoringSettings {
         preferred_direction_trace_cost: Some(vec![1.0, 1.0]),
         ..Default::default()
@@ -115,7 +94,6 @@ fn primitive_arrays_are_first_writer_wins() {
     source.copy_fields_into(&mut target, &mut report);
     assert_eq!(target.preferred_direction_trace_cost, Some(vec![1.0, 1.0]));
 
-    // Empty target + non-empty source: copied (`targetArrayLength == 0 && sourceArrayLength > 0`).
     let mut target = ScoringSettings {
         preferred_direction_trace_cost: Some(vec![]),
         ..Default::default()
@@ -127,12 +105,10 @@ fn primitive_arrays_are_first_writer_wins() {
     source.copy_fields_into(&mut target, &mut report);
     assert_eq!(target.preferred_direction_trace_cost, Some(vec![2.5]));
 
-    // Null target: copied (`targetValue == null`).
     let mut target = ScoringSettings::default();
     source.copy_fields_into(&mut target, &mut report);
     assert_eq!(target.preferred_direction_trace_cost, Some(vec![2.5]));
 
-    // Empty source onto a populated target: the `sourceArrayLength > 0` half of :285.
     let mut target = ScoringSettings {
         preferred_direction_trace_cost: Some(vec![1.0]),
         ..Default::default()
@@ -145,7 +121,6 @@ fn primitive_arrays_are_first_writer_wins() {
     assert_eq!(target.preferred_direction_trace_cost, Some(vec![1.0]));
 }
 
-/// Rule 5 again, for the one `String[]` field of `RouterSettings`.
 #[test]
 fn ignore_net_classes_follows_the_same_rule() {
     let mut target = RouterSettings::new();
@@ -156,26 +131,11 @@ fn ignore_net_classes_follows_the_same_rule() {
     target.apply_new_values_from(&source);
     assert_eq!(target.ignore_net_classes, Some(vec!["GND".to_string()]));
 
-    // ... and the null-target half.
     let mut target = RouterSettings::new();
     target.apply_new_values_from(&source);
     assert_eq!(target.ignore_net_classes, Some(vec!["VCC".to_string()]));
 }
 
-// Rule 1's non-`public` half (`ReflectionUtil.java:226-228`) — `private transient Boolean
-// boardSpecificTraceCostsApplied` (`RouterSettings.java:111`) is never copied — is pinned by the
-// `board_specific_flag_is_never_copied` unit test in `src/copy_fields.rs`: the Rust field is
-// `pub(crate)` for exactly the reason the Java one is `private`, so only an in-crate test can set
-// it to `Some(true)` and observe that the merge leaves the target's `None` alone.
-
-// Rule 1's `static` half (`ReflectionUtil.java:221-223`) is unrepresentable in Rust and has no
-// test: Java's four `public static final` constants (`RouterSettings.java:15-18`) are not
-// per-instance fields at all, so there is nothing a field table could wrongly include. Asserting
-// that `RouterSettings::FIELD_NAMES` omits them would test Task 1's const, not this engine.
-
-/// Rule 2's default-suppression half (`ReflectionUtil.java:235-238` with
-/// `getDefaultValue` :350-372): a Java `boolean` field's default is `false`, so a `false` source
-/// value can never be merged.
 #[test]
 fn primitive_false_does_not_copy() {
     let source = DesignRulesCheckerSettings {
@@ -195,7 +155,6 @@ fn primitive_false_does_not_copy() {
         "Java bug: `false` is indistinguishable from unset for a primitive field"
     );
 
-    // The `true` direction does copy.
     let source = DesignRulesCheckerSettings {
         enabled: true,
         ..Default::default()
@@ -205,8 +164,6 @@ fn primitive_false_does_not_copy() {
     assert!(target.enabled);
 }
 
-/// Rule 2 on `DebugSettings`'s `int` and `String[]` fields: `getDefaultValue` answers `0` for an
-/// `int` (`ReflectionUtil.java:355-356`), and `operationFilters` goes down rule 5's path.
 #[test]
 fn debug_settings_primitive_defaults_are_suppressed() {
     let source = DebugSettings {
@@ -236,7 +193,6 @@ fn debug_settings_primitive_defaults_are_suppressed() {
     assert_eq!(target.trace_insertion_delay, 3);
 }
 
-/// Rule 2's null half (`ReflectionUtil.java:234`): a `None` source field copies nothing.
 #[test]
 fn absent_source_fields_are_not_copied() {
     let source = RouterSettings::default();
@@ -252,7 +208,6 @@ fn absent_source_fields_are_not_copied() {
     assert!(report.errors.is_empty());
 }
 
-/// Rule 3 (primitives, wrappers and `String`, `ReflectionUtil.java:242-259`).
 #[test]
 fn scalars_wrappers_and_strings_copy() {
     let mut source = RouterSettings::new();
@@ -272,15 +227,12 @@ fn scalars_wrappers_and_strings_copy() {
     assert_eq!(target.algorithm.as_deref(), Some("freerouting-router-v19"));
     assert_eq!(target.copper_to_edge_clearance_um, Some(300.0));
     assert_eq!(target.max_passes, Some(11));
-    // `transient` is NOT skipped by copyFields (plan ruling 4).
     assert_eq!(target.max_items, Some(5000));
     assert_eq!(target.save_intermediate_stages, Some(true));
     assert_eq!(target.result_json_path.as_deref(), Some("/tmp/out.json"));
     assert_eq!(report.fields_changed, 7);
 }
 
-/// Rule 4 (enums by name, `ReflectionUtil.java:260-266`): `Enum.valueOf(type, source.toString())`
-/// — exact, case-sensitive matching, unlike `setFieldValue`'s case-insensitive one (:158-164).
 #[test]
 fn enums_are_copied_by_name() {
     let source = OptimizerSettings {
@@ -306,7 +258,6 @@ fn enums_are_copied_by_name() {
         Some(BoardUpdateStrategy::Hybrid)
     );
 
-    // Case-sensitive: `Enum.valueOf` throws IllegalArgumentException for "hybrid".
     assert_eq!(BoardUpdateStrategy::from_java_name("hybrid"), None);
     let mut dst: Option<BoardUpdateStrategy> = None;
     let mut report = MergeReport::default();
@@ -327,8 +278,6 @@ fn enums_are_copied_by_name() {
     assert_eq!(report.fields_changed, 0);
 }
 
-/// Rule 7 (any other object, `ReflectionUtil.java:328-336`): recurse, instantiating a `null`
-/// target field with its no-arg constructor.
 #[test]
 fn nested_objects_recurse_and_instantiate() {
     let mut source = RouterSettings::default();
@@ -340,14 +289,11 @@ fn nested_objects_recurse_and_instantiate() {
         enabled: Some(true),
         ..Default::default()
     });
-    // A target whose nested objects are all absent — Java's `new RouterSettings()` allocates them,
-    // but `RouterSettings::default()` (the deserialised shape) does not.
     let mut target = RouterSettings::default();
     let report = target.apply_new_values_from(&source);
 
     assert_eq!(target.optimizer.as_ref().unwrap().max_passes, Some(9));
     assert_eq!(target.fanout.as_ref().unwrap().enabled, Some(true));
-    // The nested field itself is not counted — only the leaves it wrote (:335).
     assert_eq!(report.fields_changed, 2);
     assert!(
         target.scoring.is_none(),
@@ -355,13 +301,9 @@ fn nested_objects_recurse_and_instantiate() {
     );
 }
 
-/// Rule 8 (`ReflectionUtil.java:338-340`): every exception is swallowed per field and the merge
-/// carries on with the next one.
 #[test]
 fn errors_never_abort() {
     let mut report = MergeReport::default();
-    // An error already recorded by an earlier field (Task 3's string-keyed sources are where a
-    // real one comes from) must not stop anything that follows.
     enum_copy_by_name(
         "optimizer.item_selection_strategy",
         "not-a-constant",
@@ -390,9 +332,6 @@ fn errors_never_abort() {
     );
 }
 
-/// `fill_absent_from` (plan ruling 1): `copy_fields` with the scalar roles inverted. Only fields
-/// still `None` — and arrays still null-or-empty, which rule 5 already does in both directions —
-/// are filled.
 #[test]
 fn fill_absent_from_only_fills_absent_fields() {
     let mut target = RouterSettings::new();
@@ -434,21 +373,11 @@ fn fill_absent_from_only_fills_absent_fields() {
         Some("5m")
     );
 
-    // ... and `apply_new_values_from` is still the other direction.
     let mut target = RouterSettings::new();
     target.max_passes = Some(3);
     target.apply_new_values_from(&source);
     assert_eq!(target.max_passes, Some(99));
 }
-
-// ---------------------------------------------------------------------------------------------
-// Field-table completeness: one test per struct. Each populates EVERY `pub` field of the source
-// with a distinct non-default value, copies into an empty target, and asserts the whole struct
-// compares equal — so omitting a line from a `merge_fields_into` body fails here. `FIELD_NAMES`
-// and `tests/struct_shape.rs` pin the table's *order* against Java's `getDeclaredFields()`; these
-// pin its *completeness*, and tie the two together through `FIELD_NAMES.len()` wherever the
-// struct has no nested object to make the arithmetic indirect.
-// ---------------------------------------------------------------------------------------------
 
 fn populated_layer() -> LayerSettings {
     LayerSettings {
@@ -486,6 +415,7 @@ fn populated_optimizer() -> OptimizerSettings {
         additional_ripup_cost_factor_at_start: Some(25),
         trace_ripup_cost_factor: Some(0.75),
         max_autoroute_passes: Some(26),
+        max_search_steps: Some(27),
         board_update_strategy: Some(BoardUpdateStrategy::Hybrid),
         hybrid_ratio: Some("1:2".to_string()),
         item_selection_strategy: Some(ItemSelectionStrategy::Prioritized),
@@ -510,9 +440,6 @@ fn populated_fanout() -> FanoutSettings {
     }
 }
 
-/// Every `pub` field of `RouterSettings`, set by assignment rather than by struct literal so the
-/// `pub(crate)` `board_specific_trace_costs_applied` stays `None` on both sides — rule 1 never
-/// copies it, so the equality assertion would otherwise be pinning the wrong thing.
 fn populated_router() -> RouterSettings {
     let mut s = RouterSettings::default();
     s.enabled = Some(true);
@@ -535,10 +462,9 @@ fn populated_router() -> RouterSettings {
     s.scoring = Some(populated_scoring());
     s.max_threads = Some(47);
     s.result_json_path = Some("/tmp/result.json".to_string());
-    // The port's own field (Plan 9 Task 1, #234) — populated like any other `pub` scalar, which
-    // is the assertion: rule 1 copies it because it is `public` and non-`transient`, and nothing
-    // about it is special-cased.
     s.opt_changed_area_ms = Some(48);
+    s.smd_via_relaxation = Some(false);
+    s.failure_give_up_threshold = Some(50);
     s
 }
 
@@ -633,15 +559,6 @@ fn router_settings_table_covers_every_field() {
         "a field missing from the table would differ"
     );
 
-    // `FIELD_NAMES` minus the three nested objects, `layers`, `ignore_net_classes` and the
-    // `private` flag rule 1 skips = the plain scalars; the nested objects contribute their own
-    // recursive counts (`:335`), `layers` contributes `source.len()` (`:311`) and
-    // `ignore_net_classes` one (`:288`).
-    //
-    // `opt_changed_area_ms` (Plan 9 Task 1, #234) needs no term of its own: it is a `public`,
-    // non-`transient` scalar, so it is inside the `FIELD_NAMES.len() - 6` above and the arithmetic
-    // absorbs it. That it does is the point — a port-only field that rule 1 treated specially
-    // would be a second merge rule nobody asked for.
     let expected = (RouterSettings::FIELD_NAMES.len() - 6)
         + 1
         + 1
@@ -658,8 +575,6 @@ fn router_settings_table_covers_every_field() {
 
 #[test]
 fn design_rules_checker_settings_table_covers_every_field() {
-    // Every field is a Java `boolean` primitive, so "non-default" can only mean `true` — rule 2
-    // makes `false` unmergeable (quirks row 115).
     let source = DesignRulesCheckerSettings {
         enabled: true,
         include_warnings: true,
@@ -678,7 +593,6 @@ fn design_rules_checker_settings_table_covers_every_field() {
         DesignRulesCheckerSettings::FIELD_NAMES.len()
     );
 
-    // `MergeMode` is ignored: a non-nullable field has no "absent" state to detect.
     let mut fill_target = DesignRulesCheckerSettings::default();
     let mut report = MergeReport::default();
     source.merge_fields_into(&mut fill_target, MergeMode::FillAbsent, &mut report);
@@ -697,10 +611,6 @@ fn debug_settings_table_covers_every_field() {
         operation_filters: vec!["only_this".to_string()],
     };
 
-    // Two of the five fields cannot round-trip, and both are Java's doing, not a gap in the table:
-    // `filter_by_net` is a `Set` and rule 7 copies nothing out of it (quirks row 116), and
-    // `operation_filters` is a `String[]` whose default-constructed target is already non-empty,
-    // so rule 5 declines it. Asserted field by field rather than by whole-struct equality.
     let mut target = DebugSettings::default();
     let mut report = MergeReport::default();
     source.copy_fields_into(&mut target, &mut report);
@@ -717,7 +627,6 @@ fn debug_settings_table_covers_every_field() {
     );
     assert_eq!(report.fields_changed, 3);
 
-    // With the target's `String[]` emptied, rule 5 does copy — the fifth field is in the table.
     let mut target = DebugSettings {
         operation_filters: Vec::new(),
         ..Default::default()
@@ -727,7 +636,6 @@ fn debug_settings_table_covers_every_field() {
     assert_eq!(target.operation_filters, vec!["only_this".to_string()]);
     assert_eq!(report.fields_changed, 4);
 
-    // `MergeMode` is ignored: every field is a non-nullable Java primitive or collection.
     let mut fill_target = DebugSettings::default();
     let mut report = MergeReport::default();
     source.merge_fields_into(&mut fill_target, MergeMode::FillAbsent, &mut report);
@@ -735,14 +643,6 @@ fn debug_settings_table_covers_every_field() {
     assert_eq!(fill_target.trace_insertion_delay, 7);
 }
 
-/// Rule 6's arm selection is on `targetLength >= sourceArray.length` alone
-/// (`ReflectionUtil.java:299-302`), and `targetLength` is `0` for a null target — so an **empty**
-/// source array takes the merge arm, whose `targetObjArray` is then the null it just read. The
-/// loop body never runs, `field.set` is never called, and the target field stays null.
-///
-/// JVM-verified against the clone-HEAD jar (task-2-report.md, probe K/K2): with a `setLayerCount(0)`
-/// source, `copyFields` returns 2 (the two now-empty `scoring` cost arrays, via rule 5) and
-/// `target.layers` is still `null`.
 #[test]
 fn empty_object_array_leaves_a_null_target_null() {
     let mut source = RouterSettings::new();
@@ -762,17 +662,12 @@ fn empty_object_array_leaves_a_null_target_null() {
         "the two empty scoring cost arrays"
     );
 
-    // ... and a populated target is left alone too (probe L).
     let mut target = RouterSettings::new();
     target.set_layer_count(2);
     target.apply_new_values_from(&source);
     assert_eq!(target.get_layer_count(), 2);
 }
 
-/// `fill_absent_from`'s grow arm: a target object array *shorter* than the source. Rule 6 would
-/// replace it outright (`:313-326`), discarding the target's present values — which is the one
-/// thing the inverted mode must not do — so the target grows with default elements and every slot
-/// is then filled element-wise. No Java analogue; see `object_array_merge`'s doc comment.
 #[test]
 fn fill_absent_grows_a_short_object_array_without_discarding_it() {
     let mut target = RouterSettings::new();

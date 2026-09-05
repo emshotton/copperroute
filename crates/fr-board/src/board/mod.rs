@@ -298,6 +298,16 @@ pub struct Board {
 }
 
 impl Board {
+    pub fn set_flip_style_rotate_first(&mut self, value: bool) {
+        if self.components.get_flip_style_rotate_first() == value {
+            return;
+        }
+        self.components.set_flip_style_rotate_first(value);
+        for item in self.items.values_mut() {
+            item.clear_derived_data();
+        }
+    }
+
     // -- construction ---------------------------------------------------------------------------
 
     /// Port of the `BasicBoard(IntBox, LayerStructure, PolylineShape[], int, BoardRules,
@@ -1242,19 +1252,53 @@ impl Board {
     }
 
     /// Port of `RoutingBoard.changeConductionIsObstacle(boolean)`
-    /// (RoutingBoard.java:1252-1277), copied line for line — see quirk #50.
+    /// (RoutingBoard.java:1252-1277): "sets, if all conduction areas on the board are obstacles
+    /// for route of foreign nets" — see quirk #50.
+    ///
+    /// The per-item `ConductionArea::is_obstacle` flag is what
+    /// [`Item::is_obstacle`](crate::items::Item::is_obstacle) /
+    /// `is_trace_obstacle` / `is_drillable` actually read, so this method decides whether copper
+    /// pours obstruct foreign-net routing — the most user-visible boolean on a KiCad board with
+    /// ground pours.
     //
     // Java bug: the guard at RoutingBoard.java:1254 is `if (getIgnoreConduction() != value)
-    // return;`, so the method only does anything when the flag *already equals* the requested
-    // value, and the store at :1273 writes `!value`, the negation of what it just pushed into
-    // every conduction area. Together they make `rules.ignoreConduction` a latch that alternates
-    // with the per-item flag rather than mirroring it. Both lines are reproduced verbatim; see
-    // docs/java-quirks.md row 50.
+    // return;` — the method does nothing unless `rules.ignoreConduction` is in one particular
+    // relation to the argument, so it alternates rather than mirrors. See docs/java-quirks.md #50.
+    //
+    // fixed: T10 (#50) — the guard is removed. **Decided, as the row's sketch asks, and the
+    // decision is not quite the sketch's; here is the reasoning.**
+    //
+    // The flag's name is `ignoreConduction`, and the name is the specification: ignoring
+    // conduction is the opposite of treating it as an obstacle. Two independent sites agree.
+    // `BasicBoard.unfillConductionAreas:1427` writes `setIgnoreConduction(true)` beside
+    // `setIsObstacle(false)` on every area, and the method's single Java caller,
+    // `GuiBoardRoutingSettings.setIgnoreConduction(value):33-37`, calls
+    // `changeConductionIsObstacle(!value)`. So `ignoreConduction == !isObstacle`, and the
+    // `setIgnoreConduction(!value)` store at `:1273` is **correct** and stays. The register's
+    // sketch — "guard `==`, store `value`" — is coherent only under the other reading, in which
+    // the field means "conduction is obstacle"; that reading contradicts the field's name and both
+    // of those sites, so it is not adopted. The sketch's real instruction, "decide what the flag
+    // means and make it mean it", is what is followed.
+    //
+    // What is genuinely broken is the **guard**, which reads the board-level flag as a proxy for
+    // the per-item ones. They desynchronise — `unfillConductionAreas` writes every area while
+    // this method writes only signal-layer ones, and a loaded board arrives desynchronised
+    // already (`p2t11_board` has `ignoreConduction = true` beside `isObstacle = true`). Once out
+    // of sync the guard silently drops the user's request: on a board at the `ignoreConduction =
+    // true` default (`BoardRules::new`), `change(false)` returns immediately, so "stop treating
+    // pours as obstacles" does nothing at all, and the next call flips which of the two arguments
+    // works. Removing it makes the method mean what it says: it always applies `value`, and it is
+    // idempotent because the per-item `getIsObstacle() != value` test inside the loop — the one
+    // test that reads the state it is about to change — already gates both the write and
+    // `somethingChanged`.
+    //
+    // The `currentLayer.isSignal` restriction at `:1267` is **kept**, deliberately, and the
+    // register row carries the reason as an open question: removing it would change whether a
+    // *plane* layer's pour obstructs foreign nets, which is a different decision with a different
+    // blast radius, and nothing in Plan 9 measures it. This method has no caller in the port
+    // (its Java caller is the GUI), so the change here moves no routed byte on its own; it is a
+    // correctness fix on the API a host would drive.
     pub fn change_conduction_is_obstacle(&mut self, value: bool) {
-        // RoutingBoard.java:1254-1256.
-        if self.rules.get_ignore_conduction() != value {
-            return;
-        }
         let mut something_changed = false;
         // RoutingBoard.java:1259-1272, in item-list order (descending id).
         for item in self.items.values_mut().rev() {
@@ -1266,7 +1310,7 @@ impl Board {
                 }
             }
         }
-        // RoutingBoard.java:1273.
+        // RoutingBoard.java:1273 — `ignoreConduction` is the negation of `isObstacle`; see above.
         self.rules.set_ignore_conduction(!value);
         if something_changed {
             self.reinsert_tree_items();

@@ -310,7 +310,7 @@ makes the port's output depend on the wall clock has to go first or the goldens 
 
 | # | T | mechanism | Java site | port site(s) | fix sketch | status | Δrefs |
 |---|---|---|---|---|---|---|---|
-| **#182** | T2 | `TraceTightener.avoidAcidTraps` is disabled by its own first statement — `if (true) { return polyline; }` — so 20 lines of `springOverObstacles` + `checkPolylineTrace` are dead and all three `pullTight` overrides hand their argument back. **The port has no acid-trap avoidance at all, because Java does not.** | `TraceTightener` | `crates/fr-router/tests/tightener.rs`'s three regime tables | **Turning a feature on, not fixing a bug.** Give it its own setting, default it on only after a measurement round — nobody has ever run this code. Needs an acid-trap fixture (a trace approaching a same-net pin at an acute angle). Deleting the dead body is **not** an equal alternative: it removes the option. | **FIX** (measured) | R, B; U (new fixture) |
+| **#182** | T2 | A disabled trace-tightening feature existed only as a no-op stub around unreachable Java code. | `TraceTightener` | The ordinary tightener regime tables. | **User decision:** delete the feature rather than expose or measure it. | **REMOVED before T18** | none |
 | **#172** | T2/T4 | `AutorouteControl.rebuildViaInfo` relaxes **two** routing gates for a pure-SMD net, overriding what the padstacks say: it forces `attachSmdAllowed = true` while the per-via `ViaMask` keeps saying `false` (the two disagree **inside the same object**), and it multiplies `viaCostFactor` by `0.1`, making every via **ten times cheaper**. HEAD-only; JVM-pinned at `minNormalViaCost` 400 vs 4000. | `AutorouteControl.rebuildViaInfo` | ported | Make the relaxation an **explicit router setting** rather than an implicit override of the DSN. A policy row: change the default, do not delete the behaviour. Interacts with **I2** (via inflation) — a 10× via discount on SMD nets is a plausible contributor. | **FIX** (policy) | B, C (pure-SMD stems) |
 | **#235** | T2/perf | `RoutingFailureLog`'s documented `FAILURE_THRESHOLD = 50` give-up policy **never runs**: `shouldSkip`'s one caller is on the dead multithreaded path and the other three methods have no callers at all. An item that fails 50 times is retried on the 51st pass exactly as on the first. | `RoutingFailureLog.java:16, :56-63, :70-78, :85-87, :104-106, :147-149` | `crates/fr-router/src/pipeline/failure_log.rs` (six `// not ported:` markers, one per caller-less member) | A **policy decision**: wiring `shouldSkip` into the item loop is a real behaviour change (faster, possibly fewer connections) and belongs behind a setting with an A/B, not in a cleanup. Otherwise delete the four methods and the constant. | **FIX** (policy) | B/C if enabled |
 | **#104** | T4 | `Network.createViaRule` takes an `attachAllowed` it never reads, so **a `(via_at_smd on)` control scope has no effect on a net class's `use_via` rule** — only on the via infos. | `Network.createViaRule` | `crates/fr-dsn` | **Use** the parameter; dropping it is behaviour-preserving and is not the fix (the register does not distinguish them — the roadmap's correction). Pairs with #172: both decide whether SMD pads get vias. | **FIX** | G, B likely |
@@ -801,11 +801,10 @@ Each carries a recommendation; none is blocking on its own, but 1-4 shape the pl
     guarantee value stability. Either way the generator is **in the port's own control**, so a
     `cargo update` can never move a golden.
 
-11. **Defaults for the three policy switches (#182 acid-trap avoidance, #172 the pure-SMD
-    relaxation, #235 the give-up policy).**
-    *Recommend:* implement all three as settings with the **current** behaviour as the default, then
-    decide each default from its own A/B. Nobody has ever run #182's code, and #172's removal
-    interacts with the via-inflation finding.
+11. **Defaults for the two remaining policy switches (#172 the pure-SMD relaxation and #235 the
+    give-up policy).**
+    *Recommend:* implement both as settings with the **current** behaviour as the default, then
+    decide each default from its own A/B. #172's removal interacts with the via-inflation finding.
 12. **Do the new capabilities reach the MCP surface too** (`--fail-on-violations`, a DRC unit flag,
     `-v`)? *Recommend:* CLI first, MCP in the same task only where the tool already exposes the
     neighbouring option — the MCP tool set is a contract with its own delta table (`p8t6`).

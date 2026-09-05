@@ -167,14 +167,14 @@ impl TraceShover {
                     return 0.0;
                 };
                 let delta = Point::Int(new_via_center[0]).difference_by(&via_center);
-                let mut ignore_items = Vec::new();
+                let ignore_items = Vec::new();
                 shove_via_ok = DrillItemMover::check(
                     board,
                     current_shove_via,
                     &delta,
                     max_recursion_depth,
                     max_via_recursion_depth - 1,
-                    Some(&mut ignore_items),
+                    Some(&ignore_items),
                     None,
                 );
             }
@@ -347,6 +347,16 @@ impl TraceShover {
         max_spring_over_recursion_depth: i32,
         time_limit: Option<&TimeLimit>,
     ) -> bool {
+        // fixed: T10 (#174) — the other half of the row. Java never clears
+        // `shoveFailingObstacle` on entry (the field is declared at `RoutingBoard.java:72` and
+        // written only at a refusal), so a `check` that refuses on a path that sets nothing
+        // leaves whatever an *earlier* call wrote — possibly an item from a different call on a
+        // different net — for `MazeRipupResolver` to tear up, and on a fresh board the field can
+        // simply be null. Clearing here makes the field mean one thing: "the culprit of the call
+        // that just refused". Every `return false` below now writes it; the recursion is safe
+        // because an inner call that succeeds leaves `None` and an outer refusal writes its own
+        // culprit after the inner call has returned.
+        board.clear_shove_failing_obstacle();
         // :242-244.
         if time_limit.is_some_and(TimeLimit::is_exceeded) {
             return false;
@@ -439,14 +449,14 @@ impl TraceShover {
                         <= max_dist_square
                 {
                     let delta = Point::Int(*try_via_center).difference_by(&via_center);
-                    let mut ignore_items = Vec::new();
+                    let ignore_items = Vec::new();
                     if DrillItemMover::check(
                         board,
                         current_shove_via,
                         &delta,
                         max_recursion_depth,
                         max_via_recursion_depth - 1,
-                        Some(&mut ignore_items),
+                        Some(&ignore_items),
                         time_limit,
                     ) {
                         shove_via_ok = true;
@@ -454,9 +464,22 @@ impl TraceShover {
                     }
                 }
             }
-            // :348-350. Java does **not** set `shoveFailingObstacle` here, unlike every other
-            // refusal in this method.
+            // :348-350.
+            //
+            // Java bug: this refusal — every one of `tryShoveViaPoints`' candidate centres failed
+            // `DrillItemMover.check` — is a bare `return false` that does **not** set
+            // `shoveFailingObstacle`, unlike every other refusal in this method (`:251` the
+            // outline, `:263`/`:306`/`:357` `shapeEntries.getFoundObstacle()`, `:318` the via
+            // itself one branch up). The field is not diagnostic: `MazeRipupResolver` reads it to
+            // decide what to tear up. See docs/java-quirks.md #174.
+            //
+            // fixed: T10 (#174) — the culprit is `current_shove_via`, exactly as `:318` already
+            // writes it one branch up, and the entry of this method now clears the field (see the
+            // top). Together those close both halves of the row: a caller that refuses here and
+            // reads the field is handed the via that could not be moved, and can no longer be
+            // handed an item left over from a different `check` call on a different net.
             if !shove_via_ok {
+                board.set_shove_failing_obstacle(Some(current_shove_via));
                 return false;
             }
         }
@@ -603,16 +626,30 @@ impl TraceShover {
     ///   `obstaclesShovable = false` is then dead: the very next line returns.
     /// * **there is no `stackDepth() > 1` gate.** `check:305-308` has one; this does not.
     ///
-    /// # Java bug: `TraceShover.insert:572` dereferences a null `changedArea` (quirk #177)
+    /// # Java bug: `TraceShover.insert:572` dereferences a null `changedArea` (quirk #177) — fixed: T11 (#177)
     ///
     /// `:572` is `currentSubstituteTrace.normalize(board.changedArea.getArea(layer))` with no
     /// null guard, inside the `try` whose `catch (Exception e)` swallows everything. So on a board
-    /// that is **not** marking its changed area the normalisation never runs: the substitute
-    /// pieces stay on the board un-normalized and un-combined. `ForcedPadRouter.forcedPad:439-443`
-    /// guards the identical call. The port reproduces the asymmetry — see
-    /// [`swallow_normalize_error`](crate::board_ext) — and
-    /// `trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_unnormalized`
-    /// pins both sides of it against the JVM.
+    /// that is **not** marking its changed area the normalisation never ran: the substitute pieces
+    /// stayed on the board un-normalized and un-combined — JVM-pinned as **three** traces where a
+    /// marked board leaves **one**. `ForcedPadRouter.forcedPad:439-444` guards the identical call
+    /// in the identical loop, so the two mutating halves of the shove disagreed about the same
+    /// board state.
+    ///
+    /// **The sibling is the specification.** `opt_area` is now computed the way `forcedPad`
+    /// already computed it, and the invariant is that the board after the shove does not depend on
+    /// whether `changed_area` happens to be marked. `an_unmarked_changed_area_still_normalises`
+    /// (`crates/fr-router/tests/forced_via.rs`) replaces the pinned literal `3` with `1`, which is
+    /// the answer a marked board already produced.
+    ///
+    /// **On "narrow the catch".** The register asks for that in the same breath, and in Java it is
+    /// load-bearing: the `catch (Exception e)` was hiding the very `NullPointerException` that was
+    /// the defect, filing it under "Couldn't normalize trace." The port has no NPE to hide — it
+    /// modelled the null as an `Option` and skipped — so there is nothing here left to narrow, and
+    /// the error handling stays byte-for-byte the sibling's
+    /// ([`swallow_normalize_error`](crate::board_ext), which already lets `BoardError::Stopped`
+    /// through and drops the rest). Narrowing *this* site alone would have re-created the very
+    /// asymmetry #177 is about, from the other direction.
     #[allow(clippy::too_many_arguments)]
     pub fn insert(
         board: &mut Board,
@@ -818,22 +855,25 @@ impl TraceShover {
             };
             // :569. The piece keeps the id `nextSubstituteTracePiece` burnt for it.
             let inserted = board.insert_item(Item::Trace(current_substitute_trace));
-            // :571-575. Java bug: `TraceShover.insert`'s `board.changedArea.getArea(layer)` has
-            // no null guard, so on a board that is not marking its changed area this throws a
-            // `NullPointerException` the `catch` one line down swallows — and the piece is left
-            // un-normalized. Quirk #177; see the doc comment above.
-            match board
+            // :571-575. fixed: T11 (#177). Java bug: `TraceShover.insert`'s
+            // `board.changedArea.getArea(layer)` has no null guard, so on a board that is not
+            // marking its changed area it throws a `NullPointerException` that the `catch` one
+            // line down swallows — leaving the piece un-normalized. The port modelled that as
+            // "skip the normalisation for `None`", which is the same observable outcome.
+            //
+            // `opt_area` is now computed exactly the way `ForcedPadRouter.forcedPad:439-444`
+            // already computed it — the sibling *is* the specification, because it is the same
+            // loop over the same pieces, and the two mutating halves of the shove had no business
+            // disagreeing about the same board state. See the doc comment above.
+            let opt_area = board
                 .changed_area
                 .as_ref()
-                .map(|changed_area| changed_area.get_area(layer))
-            {
-                None => {}
-                Some(opt_area) => swallow_normalize_error(board.normalize_trace_checked(
-                    inserted,
-                    Some(&opt_area),
-                    stop,
-                ))?,
-            }
+                .map(|changed_area| changed_area.get_area(layer));
+            swallow_normalize_error(board.normalize_trace_checked(
+                inserted,
+                opt_area.as_ref(),
+                stop,
+            ))?;
             // :577-587.
             if let Some(end_corners) = end_corners {
                 for corner in end_corners.into_iter().flatten() {
@@ -941,7 +981,6 @@ impl TraceShover {
                 };
                 // :635-664.
                 let is_obstacle = if item.shares_net_no(net_numbers) {
-                    // "to avoid acid traps"
                     matches!(item, Item::Pin(_))
                         && contact_pins.is_some_and(|pins| !pins.contains(&current_item))
                 } else if let Item::ConductionArea(area) = item {

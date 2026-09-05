@@ -1,20 +1,7 @@
-//! **Padstack identity** on the KiCad board-JSON path: which pads share a padstack, and what
-//! happens to a pad that has no shape on any layer.
-//!
-//! Java keys a pad's padstack on the name `getDescriptivePadstackName` generates
-//! (`KiCadJsonReader.java:560-564`), looks it up case-insensitively (`Padstacks.java:25-32`), and
-//! that name encodes **neither the layer span nor the drill** — so the second pad to generate a
-//! name silently inherits the first pad's shapes and its `attachAllowed`. It also masks the
-//! negative `DrillItem.tileShapeCount`: a pad whose `layers` match nothing borrows a valid
-//! padstack instead of producing the all-`null` one that crashes.
-//!
-//! fixed: T7 (#284, #286).
-
 use fr_board::{Board, PadstackId};
 use fr_dsn::error::BoardReadResult;
 use fr_dsn::kicad::read_board;
 
-/// The board a payload loads to, or a panic naming what came back instead.
 fn board(json: &str) -> Board {
     match read_board(json, None) {
         BoardReadResult::Success { board: Some(b), .. } => *b,
@@ -22,7 +9,6 @@ fn board(json: &str) -> Board {
     }
 }
 
-/// The `(location, detail)` of a [`BoardReadResult::ParseError`].
 fn parse_error(json: &str) -> (String, String) {
     match read_board(json, None) {
         BoardReadResult::ParseError { location, detail } => (location, detail),
@@ -30,7 +16,6 @@ fn parse_error(json: &str) -> (String, String) {
     }
 }
 
-/// The padstack the first pin of component `index` (0-based, in `Components` order) sits on.
 fn first_pin_padstack(board: &Board, index: usize) -> PadstackId {
     let component_package = board
         .components
@@ -45,8 +30,6 @@ fn first_pin_padstack(board: &Board, index: usize) -> PadstackId {
         .padstack_no
 }
 
-/// A four-layer board whose two components carry one `1 x 1 mm` rectangular pad each, on the
-/// layers `first` and `second` respectively.
 fn two_pads_on(first: &str, second: &str, drill_a: f64, drill_b: f64) -> String {
     format!(
         r#"{{
@@ -62,9 +45,6 @@ fn two_pads_on(first: &str, second: &str, drill_a: f64, drill_b: f64) -> String 
     )
 }
 
-/// Two pads whose `layers` lists have the same **length** — so both spell their layer type `A` —
-/// and different **contents**. Java gives them one padstack, and the second pad ends up with
-/// copper on the first pad's layers.
 #[test]
 fn two_pads_of_the_same_name_and_different_layers_get_different_padstacks() {
     let board = board(&two_pads_on(
@@ -94,8 +74,6 @@ fn two_pads_of_the_same_name_and_different_layers_get_different_padstacks() {
     );
 }
 
-/// The same two pads on the **same** layers: one padstack, because the identity is the shapes and
-/// the drill and both agree.
 #[test]
 fn two_pads_of_the_same_shapes_and_drill_share_one_padstack() {
     let board = board(&two_pads_on(
@@ -111,9 +89,6 @@ fn two_pads_of_the_same_shapes_and_drill_share_one_padstack() {
     );
 }
 
-/// A drilled and an undrilled pad of the same size. Java's name carries no drill, so the second
-/// pad inherited the first one's `attachAllowed` — the flag that decides whether a via of the
-/// same net may overlap the pad.
 #[test]
 fn a_drilled_and_an_undrilled_pad_do_not_share_attach_allowed() {
     let board = board(&two_pads_on(
@@ -139,8 +114,6 @@ fn a_drilled_and_an_undrilled_pad_do_not_share_attach_allowed() {
     );
 }
 
-/// `getDescriptivePadstackName`'s `"Round"` branch used the **one-number** `Pad_<x>_um` form, so
-/// a `1 x 2 mm` round pad and a `1 x 1 mm` one had the same name.
 #[test]
 fn a_round_pad_name_carries_size_y() {
     let board = board(
@@ -156,10 +129,6 @@ fn a_round_pad_name_carries_size_y() {
     assert_eq!(padstack.name, "Round[T]Pad_1000x2000_um");
 }
 
-/// A pad whose `layers` list names no layer this board has. Java left `startLayer > endLayer`, so
-/// every shape stayed `null`, `DrillItem.tileShapeCount` answered `-layerCount`, and `insertPin`
-/// allocated `new TileShape[-2]` — reported to the user as the bare number, `Exception occurred:
-/// -2`.
 #[test]
 fn an_all_null_shape_array_is_refused_naming_the_pad() {
     let (location, detail) = parse_error(
@@ -187,9 +156,6 @@ fn an_all_null_shape_array_is_refused_naming_the_pad() {
     );
 }
 
-/// The same refusal from the other direction: a via whose `startLayerIndex` is past its
-/// `endLayerIndex`. Java put the via in the item list and *then* threw from inside the
-/// search-tree update, leaving an item in no search tree.
 #[test]
 fn a_via_with_an_empty_layer_span_is_refused_naming_the_via() {
     let (location, detail) = parse_error(

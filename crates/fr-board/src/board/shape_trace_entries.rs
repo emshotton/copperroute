@@ -152,7 +152,16 @@ impl ShapeTraceEntries {
     // ComponentObstacleArea)` (ShapeTraceEntries.java:180-183). `&&` binds tighter than `||`, so
     // a `ComponentObstacleArea` is skipped **unconditionally**, while a `ViaObstacleArea` is only
     // skipped when this is not a pad check — almost certainly not what the author meant
-    // (`!isPadCheck && (a || b)`). Reproduced; see docs/java-quirks.md.
+    // (`!isPadCheck && (a || b)`). See docs/java-quirks.md #65.
+    //
+    // fixed: T10 (#65) — parenthesised as `!is_pad_check && (a || b)`, which is what the
+    // comment, the sibling call sites and every reading of the intent all say. The consequence
+    // of the precedence was that a `ComponentObstacleArea` was skipped even during a **pad
+    // check**, so **a component keepout could never block a via placement**: on a KiCad board
+    // that is the difference between a via landing inside a footprint's courtyard keepout and
+    // not. The `ViaObstacleArea` half is unchanged — it was already `!isPadCheck`-gated — so
+    // this fix strictly *adds* obstacles during a pad check and can only refuse placements
+    // Java accepted, never the reverse.
     pub fn store_items(
         &mut self,
         board: &Board,
@@ -165,9 +174,13 @@ impl ShapeTraceEntries {
             let Some(item) = board.get_item(*id) else {
                 continue;
             };
-            // ShapeTraceEntries.java:180-183, precedence reproduced.
-            if (!is_pad_check && matches!(item, Item::ViaObstacleArea(_)))
-                || matches!(item, Item::ComponentObstacleArea(_))
+            // ShapeTraceEntries.java:180-183, parenthesised — see the `// fixed: T10 (#65)`
+            // note on this method.
+            if !is_pad_check
+                && matches!(
+                    item,
+                    Item::ViaObstacleArea(_) | Item::ComponentObstacleArea(_)
+                )
             {
                 continue;
             }
@@ -307,10 +320,22 @@ impl ShapeTraceEntries {
                             // line above. It compares an item with itself, so it is always false;
                             // the intent was plainly `trace.clearanceClassIndex()`, i.e. "the
                             // contact has a different clearance class from the trace being
-                            // stored". Reproduced; see docs/java-quirks.md.
+                            // stored". See docs/java-quirks.md #69.
+                            //
+                            // fixed: T10 (#69) — the third disjunct now reads
+                            // `trace.clearance_class() != contact_trace.clearance_class()`, the
+                            // symmetry the second disjunct
+                            // (`contactTrace.getHalfWidth() != trace.getHalfWidth()`) makes
+                            // obvious and the only reading under which the line says anything at
+                            // all. As Java wrote it **a contact whose clearance class differs
+                            // never blocked**, so the shove carried copper across a
+                            // clearance-class boundary — a live source of clearance violations.
+                            // Like #65 the fix is one-directional: a disjunct that could only be
+                            // `false` becomes one that can be `true`, so nothing that blocked
+                            // stops blocking.
                             if (contact_item.is_shove_fixed(&board.rules)
                                 || contact_trace.get_half_width() != trace.get_half_width()
-                                || contact_item.clearance_class()
+                                || trace.hdr.clearance_class()
                                     != contact_trace.hdr.clearance_class())
                                 && offset_shape.contains_inside(&end_corner)
                             {

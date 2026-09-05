@@ -169,8 +169,8 @@ impl Board {
     /// shape be inserted on `layer` without a clearance violation?
     ///
     /// `contact_pins` is Java's `Set<Pin> contactPins`: when it is `Some`, every pin *not* in it
-    /// counts as an obstacle even on the trace's own net, which is what keeps the router out of
-    /// acid traps (BasicBoard.java:1010-1014).
+    /// counts as an obstacle even on the trace's own net, so only the listed same-net pins are
+    /// passable (BasicBoard.java:1010-1014).
     pub fn check_trace_shape(
         &mut self,
         shape: &TileShape,
@@ -981,6 +981,49 @@ impl Board {
             pen_half_width,
             clearance_class,
         )
+    }
+
+    /// [`Self::connect_to_trace`] sized from **the layer the stub lands on**, which this method
+    /// computes and the caller cannot.
+    ///
+    /// **Java bug:** `RoutingBoard.connectToTrace` takes a scalar `penHalfWidth` and its two live
+    /// callers (`FoundConnectionInserter.getInstance:79-83` and `:94-98`) pass the *other* end's
+    /// layer's width — `ctrl.traceHalfWidth[connection.startLayer]` for the stub onto the target
+    /// item, `[connection.targetLayer]` for the stub onto the start item. But `:1135` is
+    /// `int traceLayer = toTrace.getLayer()` and `:1140-1152` insert the connection trace on
+    /// **that** layer, so each stub was inserted on one layer and sized from the other's width.
+    /// The two indices are simply crossed; there is no reading under which the width belongs to a
+    /// layer the copper does not land on. See docs/java-quirks.md #187.
+    ///
+    /// **fixed: T11 (#187).** The register's own preferred remedy is "let `connectToTrace` take
+    /// the width for the layer it has just computed", and that is what this is: the caller hands
+    /// over `AutorouteControl.traceHalfWidth` whole — `AutorouteControl.java:219` fills it per
+    /// layer from `board.rules.getTraceHalfWidth(netNumber, i)` — and the index is chosen here,
+    /// beside the `to_trace.get_layer()` that decides where the copper goes.
+    ///
+    /// Latent on every board in the corpus, because all of them share one width across layers; a
+    /// DSN `(layer_rule … (rule (width …)))` per layer makes the two differ.
+    /// `crates/fr-router/tests/data/p9t11-per-layer-width.dsn` is such a board, at an 8:1 ratio.
+    ///
+    /// An out-of-range layer falls back to the last entry rather than panicking, matching the
+    /// scalar overload's tolerance of any width the caller chose.
+    pub fn connect_to_trace_sized_by_layer(
+        &mut self,
+        from_point: &Point,
+        to_trace: ItemId,
+        pen_half_width_per_layer: &[i32],
+        clearance_class: usize,
+    ) -> bool {
+        let Some(Item::Trace(trace)) = self.items.get(&to_trace) else {
+            return false;
+        };
+        let trace_layer = trace.get_layer();
+        let pen_half_width = pen_half_width_per_layer
+            .get(trace_layer)
+            .or_else(|| pen_half_width_per_layer.last())
+            .copied()
+            .unwrap_or(0);
+        self.connect_to_trace(from_point, to_trace, pen_half_width, clearance_class)
     }
 
     /// [`Self::connect_to_trace`] on a trace the board may no longer hold — the whole of

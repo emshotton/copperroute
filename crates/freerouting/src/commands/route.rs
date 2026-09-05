@@ -347,7 +347,17 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
 
     // ── 9c. `applyRouterSettingsForLoadedBoard` (`:741-747`) and
     //        `applyImmediatePostLoadProcessing` (`:755`) ─────────────────────────────────────
-    fr_core::apply_router_settings_for_loaded_board(&mut board, &mut settings);
+    // fixed: T10 (#231) — Java logs the clearance-override mutation at `FRLogger.debug`
+    // (`HeadlessBoardManager.java:546-552`), invisible at the default log level, on a change that
+    // reaches the output bytes of every corpus board. `info!`, so a user can see the board they
+    // are actually routing.
+    if fr_core::apply_router_settings_for_loaded_board(&mut board, &mut settings) {
+        tracing::info!(
+            copper_to_edge_clearance_um = ?settings.copper_to_edge_clearance_um,
+            hole_clearance_um = ?settings.hole_clearance_um,
+            "the clearance overrides changed the board's clearance matrix"
+        );
+    }
     fr_core::apply_immediate_post_load_processing(&mut board);
 
     // ── 10b. the **board** half of the post-merge `RulesReader.read` (`:173-184`) ─────────────

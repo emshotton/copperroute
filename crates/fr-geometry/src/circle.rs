@@ -276,24 +276,54 @@ impl Circle {
 
     /// The affine translation of this circle by `vector` (Circle.java:244-255).
     ///
-    /// Java warns "Circle.translate_by only implemented for IntVectors till now" and returns
-    /// `this` unchanged for a rational vector; ported as-is, because the Java caller sees a
-    /// value, not a crash.
+    /// **Java bug:** for a `RationalVector` Java warns "Circle.translate_by only implemented for
+    /// IntVectors till now" and returns **`this` unchanged** — a silently wrong shape, where every
+    /// sibling (`Line`, `IntBox`, `Polyline`) throws on the same input. Silently returning the
+    /// untranslated shape is the one answer no caller can detect. See docs/java-quirks.md #32.
+    ///
+    /// **fixed: T11 (#32), and the decision it required: translate-or-fail, matching the
+    /// siblings.** The alternative was to implement rational translation, and it is not available:
+    /// a `Circle`'s centre is an `IntPoint`, so a rational translation has no representable result
+    /// in general — which is precisely why Java gave up here. Given that, the honest answers are a
+    /// hard error or a documented rounding, and rounding would invent a shape the caller did not
+    /// ask for. So this panics, as `Line`/`IntBox`/`Polyline` throw.
+    ///
+    /// No caller in the port reaches it: nothing constructs a `Vector::Rational` and hands it to a
+    /// circle, which is why the silent-wrong-answer went unnoticed rather than being relied on.
+    ///
+    /// # Panics
+    ///
+    /// On a `Vector::Rational`, where Java returned the untranslated circle.
     pub fn translate_by(&self, vector: &Vector) -> Circle {
         if *vector == Vector::ZERO {
             return *self;
         }
         let Vector::Int(int_vector) = vector else {
-            // Java: FRLogger.warn("Circle.translate_by only implemented for IntVectors till now")
-            return *self;
+            // fixed: T11 (#32). Java bug: `FRLogger.warn("Circle.translate_by only implemented for
+            // IntVectors till now")` and `return this` — the untranslated circle. Now a hard error,
+            // like every sibling shape's throw on the same input.
+            panic!(
+                "Circle.translateBy is not implemented for a RationalVector (Circle.java:249-252); \
+                 a circle's centre is an IntPoint, so a rational translation has no representable \
+                 result. Java returned the untranslated circle here, which no caller could detect."
+            );
         };
         Circle::new(self.center.translate_by(int_vector), self.radius)
     }
 
-    /// Java stub: warns "Circle.nearest_point_approx not yet implemented" and returns `null`
-    /// (Circle.java:257-261).
-    pub fn nearest_point_approx(&self, _point: &FloatPoint) -> Option<FloatPoint> {
-        None
+    pub fn nearest_point_approx(&self, point: &FloatPoint) -> Option<FloatPoint> {
+        let center = self.center.to_float();
+        let dx = point.x - center.x;
+        let dy = point.y - center.y;
+        let length = (dx * dx + dy * dy).sqrt();
+        if length == 0.0 {
+            return Some(FloatPoint::new(center.x + self.radius as f64, center.y));
+        }
+        let scale = self.radius as f64 / length;
+        Some(FloatPoint::new(
+            center.x + dx * scale,
+            center.y + dy * scale,
+        ))
     }
 
     /// The distance between `point` and its nearest point on the border (Circle.java:263-267).
@@ -348,10 +378,11 @@ impl Circle {
         }
     }
 
-    /// Java stub: warns "Circle.cutout not yet implemented" and returns `null`
-    /// (Circle.java:305-309).
-    pub fn cutout(&self, _polyline: &Polyline) -> Option<Vec<Polyline>> {
-        None
+    pub fn cutout(&self, polyline: &Polyline) -> Option<Vec<Polyline>> {
+        let max_segment_length = (self.radius / 32).max(1);
+        self.bounding_tile_max_seg(max_segment_length)
+            .cutout_polyline(polyline)
+            .ok()
     }
 
     /// A division of this circle into convex pieces: the single bounding tile
@@ -504,7 +535,8 @@ mod tests {
         assert_eq!(c.split_to_convex().len(), 1);
         assert!(c.get_holes().is_empty());
         assert!(c.corner_approx_arr().is_empty());
-        assert!(c.nearest_point_approx(&FloatPoint::new(0.0, 0.0)).is_none());
+        let nearest = c.nearest_point_approx(&FloatPoint::new(0.0, 0.0)).unwrap();
+        assert!((nearest.distance(&c.center.to_float()) - c.radius as f64).abs() < 1e-9);
     }
 
     #[test]

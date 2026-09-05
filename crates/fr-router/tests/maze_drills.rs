@@ -1,25 +1,3 @@
-//! Plan 6 Task 13, the drill half: `autoroute.maze.MazeExpansionEngine`
-//! (`MazeExpansionEngine.java:31-414`) and the first end-to-end
-//! `MazeSearchEngine.findConnection` (`MazeSearchEngine.java:300-312`).
-//!
-//! # Where the numbers come from
-//!
-//! Every literal below is **read off the HEAD jar**. The probe is
-//! `scripts/differential/java/probes/P6T13Probe.java`, committed with the exact `javac`/`java`
-//! invocation in its header; its whole stdout is committed as
-//! `tests/data/p6t13-drills-ripup.txt`. Each test names its probe mode and pastes the lines it
-//! asserts against.
-//!
-//! # The fixture
-//!
-//! `P6T13Probe.build`: two layers on a 8000-unit square, a 200-unit clearance matrix, a **real**
-//! one-via `ViaRule` on the default net class (Tasks 11-12's board carries an empty one, so
-//! `ctrl.viaInfos` is zero-length there and every via mask of `MazeExpansionEngine.java:331-345`
-//! would be dead), a default trace half width of 30, a two-pin net-1 component, a two-pin net-2
-//! component whose bent trace crosses the channel between them, and two net-3 vias with one and
-//! two trace contacts. `find` uses `P6T13Probe.buildSimple`, a 2000-unit square with nothing but
-//! the two net-1 pins, so the search terminates in seven pops.
-
 #![allow(clippy::too_many_lines)]
 
 use std::cell::Cell;
@@ -42,10 +20,6 @@ use fr_router::autoroute::maze::{AutorouteControl, MazeAdjustment, MazeListEleme
 use fr_router::board_ext::CheckDrillResult;
 use fr_settings::RouterSettings;
 
-// =================================================================================================
-// The probe's board, rebuilt from scratch (`P6T13Probe.build`)
-// =================================================================================================
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -4_000,
@@ -62,14 +36,11 @@ const SIMPLE_BOUNDING_BOX: IntBox = IntBox {
     ur: IntPoint { x: 1_000, y: 1_000 },
 };
 
-/// The rules, library and via rule every fixture below shares.
 fn base_board(bounds: IntBox) -> Board {
     let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
     let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
     let mut rules = BoardRules::new(layers(), clearance_matrix);
     rules.trace_angle_restriction = AngleRestriction::None;
-    // `P6T13Probe.build`: the default is 1500, which leaves no channel at all on a board this
-    // size.
     rules.set_default_trace_half_widths(30);
 
     let mut padstacks = Padstacks::new(layers());
@@ -143,7 +114,6 @@ fn add_package(board: &mut Board, name: &str, pins: Vec<PackagePin>) -> usize {
     )
 }
 
-/// `P6T13Probe.build`.
 fn probe_board() -> Board {
     let mut board = base_board(BOUNDING_BOX);
     let default_class = board.rules.get_default_net_class();
@@ -174,10 +144,10 @@ fn probe_board() -> Board {
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg2);
 
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); // id 2, the start pin
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); // id 3, the destination pin
-    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed); // id 4
-    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed); // id 5
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed);
+    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed);
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[
             Point::new(0, -2000),
@@ -189,7 +159,7 @@ fn probe_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); // id 6
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -199,7 +169,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the free via inserts"); // id 7
+        .expect("the free via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, 2500), Point::new(2500, 3500)]),
         0,
@@ -207,7 +177,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); // id 8
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -217,7 +187,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the two-contact via inserts"); // id 9
+        .expect("the two-contact via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(2500, -3500)]),
         0,
@@ -225,7 +195,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); // id 10
+    );
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(3500, -2500)]),
         0,
@@ -233,11 +203,10 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); // id 11
+    );
     board
 }
 
-/// `P6T13Probe.buildSimple` — the `find` mode's board.
 fn simple_board() -> Board {
     let mut board = base_board(SIMPLE_BOUNDING_BOX);
     let default_class = board.rules.get_default_net_class();
@@ -258,20 +227,6 @@ fn simple_board() -> Board {
     board
 }
 
-/// `simple_board` with the board's own angle restriction set to `NINETY_DEGREE`, which is the
-/// regime the maze search runs in.
-///
-/// **#165's second half, `accepted at plan9-t7t8 (ruling CC)`.** `addCompleteRoom`'s `null` path
-/// now detaches the doors of the room it abandons, and on this board that room carried the
-/// free-angle search's only route to pin 3: measured at the accept wave, the free-angle pop loop
-/// now drains its queue to zero in six pops and never reaches a destination door. The two
-/// `findConnection` tests below are re-pointed to the 90-degree search, which still reaches it.
-///
-/// **90 degrees and not 45, measured**: the 45-degree search reaches the destination in
-/// **17** pops against the jar's seven, and a seventeen-row transcript of the port's own numbers
-/// is a worse record than a four-row one. The 90-degree search reaches it in **four**, through
-/// the same four door kinds the jar's seven walk — a target door, the drill page, an expansion
-/// drill and the destination target door — which is what these tests are for.
 fn simple_board_ninety() -> Board {
     let mut board = simple_board();
     board.rules.trace_angle_restriction = AngleRestriction::NinetyDegree;
@@ -303,7 +258,6 @@ fn probe_engine(board: &mut Board, net_no: i32) -> AutorouteEngine {
     engine
 }
 
-/// A `StopCheck` that never fires.
 struct Counter {
     calls: Cell<u32>,
 }
@@ -325,8 +279,6 @@ fn set_of(ids: &[u32]) -> BTreeSet<ItemId> {
     ids.iter().map(|id| ItemId(*id)).collect()
 }
 
-/// `P6T11Probe.dumpQueue` prints `expansionValue`/`sortingValue` with `%.9f` and every
-/// `FloatPoint` with `%.6f`; the assertions are made at exactly that precision.
 fn r9(x: f64) -> f64 {
     (x * 1e9).round() / 1e9
 }
@@ -335,8 +287,6 @@ fn r6(p: &FloatPoint) -> (f64, f64) {
     ((p.x * 1e6).round() / 1e6, (p.y * 1e6).round() / 1e6)
 }
 
-/// One queue row: `(door id, section, expansion, sorting, next-room id, entry a, entry b,
-/// roomRipped, adjustment, alreadyChecked, ripupCost)`.
 type QueueRow = (
     i32,
     i32,
@@ -377,18 +327,8 @@ fn drain(maze: &mut MazeSearchEngine<'_>) {
     while maze.queue.pop_first().is_some() {}
 }
 
-// =================================================================================================
-// The control the drill half reads (probe mode `ctrl`)
-// =================================================================================================
-
 #[test]
 fn the_control_carries_a_real_via_rule_and_the_start_ripup_costs() {
-    // === mode ctrl ===
-    // traceHalfWidth=[30, 30]  compensatedTraceHalfWidth=[130, 130]
-    // viaRadii=[141.42135623730948, 141.42135623730948]  maxViaRadius=141.42135623730948
-    // minNormalViaCost=141.42135623730948  minCheapViaCost=113.1370849898476
-    // viaLowerBound=0 viaUpperBound=2  viaClearanceClass=1  viaInfos.length=1
-    // viaInfos[0] fromLayer=0 toLayer=1 attachSmdAllowed=false  startRipupCosts=1
     let board = probe_board();
     let ctrl = probe_control(&board, 1);
     assert_eq!(ctrl.trace_half_width, vec![30, 30]);
@@ -408,23 +348,12 @@ fn the_control_carries_a_real_via_rule_and_the_start_ripup_costs() {
     assert_eq!(ctrl.ripup_costs, 1000);
     assert_eq!(ctrl.ripup_pass_no, 1);
     assert!(ctrl.remove_unconnected_vias);
-    // `MazeRipupResolver.java:99` reads `ctrl.settings.getStartRipupCosts()` — the **third**
-    // reader of `AutorouteControl.settings`, which plan-6 ruling 8 said there were two of.
     assert_eq!(ctrl.start_ripup_costs, 1);
     assert_eq!(ctrl.add_via_costs, vec![vec![0, 0], vec![0, 0]]);
 }
 
-// =================================================================================================
-// expandToDrillPage (:115-143) — probe mode `page`
-// =================================================================================================
-
 #[test]
 fn a_drill_page_element_costs_one_normal_via_and_keeps_the_room() {
-    // === mode page ===
-    // overlappingPages n=1 / page [-4000,-4000..4000,4000] getId=-119040001
-    //   [0] door=DrillPage id=-119040001 section=0 backtrack=TargetItemExpansionDoor id=63
-    //       expansion=141.421356237 sorting=3_971.421356237 nextRoom=1 nextRoomLayer=0
-    //       shapeEntry=(-2_000.000000,0.000000)-(-2_000.000000,0.000000)
     let mut board = probe_board();
     let mut engine = probe_engine(&mut board, 1);
     let ctrl = probe_control(&board, 1);
@@ -440,10 +369,6 @@ fn a_drill_page_element_costs_one_normal_via_and_keeps_the_room() {
     .expect("init succeeds");
 
     let from = maze.queue.iter().next().expect("a seeded element").clone();
-    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: jar door id `63`, port `65`.
-    // Door ids derive from room ids and the room-id counter is now shared across the engine's
-    // room kinds (#156/#167/#158). Everything this test is named for — one normal via cost and
-    // the room kept — is asserted on costs and rooms, not on this number.
     assert_eq!(maze.engine.expandable_id_no(from.door), 65);
     let room_shape = maze
         .engine
@@ -453,10 +378,6 @@ fn a_drill_page_element_costs_one_normal_via_and_keeps_the_room() {
         .clone();
     let pages: Vec<PageId> = maze.engine.drill_pages().overlapping_pages(&room_shape);
     assert_eq!(pages.len(), 1);
-    // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: the jar's page id is the
-    // `31 * shape.getId() + netNumber` hash `-119040001`; #167's fix at Task 8 gives the page a
-    // stable id drawn from the engine's counter, and this one is `1`. Java's hash survives as
-    // `DrillPage::java_id` and is asserted against these very digits in `drill.rs`.
     assert_eq!(
         maze.engine.expandable_id_no(ExpandableRef::Page(pages[0])),
         1
@@ -467,9 +388,6 @@ fn a_drill_page_element_costs_one_normal_via_and_keeps_the_room() {
     assert_eq!(
         queue_rows(&maze),
         vec![(
-            // Same pins: the page's id is `1` (#167's fix), the jar's `-119040001`; the room is
-            // `3`, the jar's `1` (shared room-id counter). Both costs and the `keeps the room`
-            // claim this test is named for are the jar's.
             1,
             0,
             141.421_356_237,
@@ -485,11 +403,28 @@ fn a_drill_page_element_costs_one_normal_via_and_keeps_the_room() {
     );
 }
 
-// =================================================================================================
-// expandToDrillsOfPage (:145-235) and expandToDrill (:31-112) — modes `pagedrills`, `drill`
-// =================================================================================================
+#[test]
+fn a_shape_ending_on_a_page_boundary_reaches_the_next_page() {
+    let mut board = probe_board();
+    board.bounding_box = IntBox::from_coords(-12_000, -12_000, 12_000, 12_000);
+    let engine = probe_engine(&mut board, 1);
+    let pages = engine.drill_pages();
+    assert!(pages.column_count() > 1);
+    let bounds = pages.bounds();
+    let boundary_x = bounds.ll.x + pages.page_width();
+    let shape = TileShape::Box(IntBox::from_coords(
+        bounds.ll.x + 1,
+        bounds.ll.y + 1,
+        boundary_x,
+        bounds.ll.y + pages.page_height() - 1,
+    ));
 
-/// Drives the shared board up to the drill page's own queue element.
+    assert_eq!(
+        pages.overlapping_pages(&shape),
+        [pages.page_id(0, 0), pages.page_id(1, 0)]
+    );
+}
+
 struct DrillFixture {
     board: Board,
     engine: AutorouteEngine,
@@ -509,15 +444,6 @@ fn drill_fixture() -> DrillFixture {
 
 #[test]
 fn every_drill_of_the_page_whose_room_matches_is_expanded_once() {
-    // === mode pagedrills ===
-    // drills n=53
-    //   drill[39] location=(-2661,-1226) getId=-80452036 room0=1 room1=8
-    //   drill[42] location=(-2075,-2172) getId=-63903616 room0=1 room1=8
-    // queue n=2
-    //   [0] door=ExpansionDrill id=-80452036 section=0 expansion=433.228227301
-    //       sorting=4_403.114875557 nextRoom=null shapeEntry=(-2_130.500000,-310.500000)-…
-    //   [1] door=ExpansionDrill id=-63903616 section=0 expansion=4_033.421356237
-    //       sorting=9_508.149112026 shapeEntry=(-2_000.000000,-2_126.000000)-…
     let mut fixture = drill_fixture();
     let counter = Counter::new();
     let mut maze = MazeSearchEngine::get_instance(
@@ -591,13 +517,6 @@ fn every_drill_of_the_page_whose_room_matches_is_expanded_once() {
 
 #[test]
 fn a_drill_from_a_page_door_skips_the_via_cost_and_uses_the_pins_trace_exit_corner() {
-    // === mode drill ===
-    // room minWidth=2_134.000000000 2*traceHalfWidth=260
-    // --- fromPage addCosts=0   expansion=8_040.526115639 sorting=11_555.947471876
-    // --- fromDoor addCosts=0   expansion=8_137.326308149 sorting=11_652.747664386
-    // --- fromPage addCosts=250 expansion=8_290.526115639 sorting=11_805.947471876
-    // --- fromDoor addCosts=250 expansion=8_387.326308149 sorting=11_902.747664386
-    // shapeEntry=(2_364.000000,-3_350.000000)-(2_364.000000,-3_350.000000), door id 67236366
     let mut fixture = drill_fixture();
     let counter = Counter::new();
     let mut maze = MazeSearchEngine::get_instance(
@@ -691,11 +610,6 @@ fn a_drill_from_a_page_door_skips_the_via_cost_and_uses_the_pins_trace_exit_corn
 
 #[test]
 fn a_thin_room_refuses_a_drill_unless_the_backtrack_door_intersects_it() {
-    // === mode drill ===
-    // thin: minWidth=2_134.000000000 2*traceHalfWidth=4000
-    // --- thin, backtrackDoor=null            queue n=0
-    // drill.shape=[2359,-4000..2370,-2700] backtrack.shape=[-4000,-4000..4000,4000] intersects=true
-    // --- thin, backtrackDoor=the whole page  expansion=8_137.326308149 sorting=11_652.747664386
     let mut fixture = drill_fixture();
     let counter = Counter::new();
     let mut ctrl = fixture.ctrl.clone();
@@ -727,13 +641,11 @@ fn a_thin_room_refuses_a_drill_unless_the_backtrack_door_intersects_it() {
             });
     let first = drills[0];
 
-    // `:37-51`: `backtrackDoor == null` on a thin room refuses outright.
     assert!(from.backtrack_door.is_none());
     drain(&mut maze);
     MazeExpansionEngine::expand_to_drill(&mut maze, &mut fixture.board, first, &from, 0);
     assert_eq!(queue_rows(&maze), vec![]);
 
-    // The same element with a backtrack door the drill shape does intersect.
     let with_backtrack = MazeListElement {
         backtrack_door: Some(page_element.door),
         ..from.clone()
@@ -758,29 +670,13 @@ fn a_thin_room_refuses_a_drill_unless_the_backtrack_door_intersects_it() {
     );
 }
 
-// =================================================================================================
-// expandToOtherLayers (:237-375) — probe mode `layers`
-// =================================================================================================
-
 #[test]
 fn a_free_space_drill_expands_to_the_other_layer_at_the_add_via_cost() {
-    // === mode layers ===
-    // --- free space
-    //   [0] door=ExpansionDrill id=-80452036 section=1 backtrack=ExpansionDrill id=-80452036
-    //       sectionOfBacktrack=0 expansion=433.228227301 sorting=4_674.649583538 nextRoom=8
-    //       nextRoomLayer=1
-    // --- free space addViaCosts[0][1]=700
-    //   [0] … expansion=1_133.228227301 sorting=5_374.649583538
     let mut fixture = drill_fixture();
     let counter = Counter::new();
-    // Both controls have to outlive the maze, which holds one for its whole life; the maze also
-    // has to be the one `getInstance` built, because its `DestinationDistance` was filled by
-    // `init` and a fresh engine would answer `Integer.MAX_VALUE` for every sorting value.
     let plain_ctrl = fixture.ctrl.clone();
     let mut costed_ctrl = fixture.ctrl.clone();
     costed_ctrl.add_via_costs[0][1] = 700;
-    // The probe sets both directions; only `[0][1]` is on the 0 -> 1 path these rows exercise, so
-    // 900 is the one number in this file the transcript does not print.
     costed_ctrl.add_via_costs[1][0] = 900;
     let mut maze = MazeSearchEngine::get_instance(
         &set_of(&[2]),
@@ -821,10 +717,6 @@ fn a_free_space_drill_expands_to_the_other_layer_at_the_add_via_cost() {
             1,
             433.228_227_301,
             4_674.649_583_538,
-            // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: jar room `8`, port `25`;
-            // one shared room-id counter (#156/#167/#158). The drill's own id `-80452036` is
-            // Java's location hash and is unmoved, and so are both costs — which is what "at the
-            // add-via cost" names.
             Some(25),
             (-2_130.5, -310.5),
             (-2_130.5, -310.5),
@@ -845,7 +737,6 @@ fn a_free_space_drill_expands_to_the_other_layer_at_the_add_via_cost() {
             1,
             1_133.228_227_301,
             5_374.649_583_538,
-            // Same pin as above: jar room `8`, port `25`. Both costs are the jar's.
             Some(25),
             (-2_130.5, -310.5),
             (-2_130.5, -310.5),
@@ -857,41 +748,14 @@ fn a_free_space_drill_expands_to_the_other_layer_at_the_add_via_cost() {
     );
 }
 
-// =================================================================================================
-// The attach-SMD half of the expansion — probe mode `attachsmd`
-// =================================================================================================
-
 #[test]
 fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span() {
-    // === mode attachsmd ===
-    // ctrl attachSmdAllowed=true viaInfos[0].attachSmdAllowed=true
-    //   room=800 spot=onSmdPin layer=0 -> DRILLABLE_WITH_ATTACH_SMD   (the only promoted cell)
-    // pageDrills=42
-    // drill frontSmd rooms=true
-    //   room0=…id=6 layer=0   room1=…id=51 layer=1
-    // --- drill=frontSmd section=0 maskAttachSmdAllowed=false  queue n=0
-    // --- drill=frontSmd section=0 maskAttachSmdAllowed=true   expansion=1700 sorting=5671.421356237
-    // --- drill=frontSmd section=1 maskAttachSmdAllowed=false  queue n=0
-    // --- drill=frontSmd section=1 maskAttachSmdAllowed=true   expansion=1900 sorting=5730
-    //
-    // `ForcedPadRouter.checkForcedPad:281-287` only answers `DRILLABLE_WITH_ATTACH_SMD` when
-    // copper sharing is allowed **and** one of the same-net obstacles is a `Pin`, and
-    // `ForcedViaInserter.checkLayer:82` passes the `ViaInfo`'s own flag — so flipping the board's
-    // one `ViaInfo` to attach-on is what makes `expandToOtherLayers:276-282`'s
-    // `smdAttachedOnComponentSide` write and **both halves** of `maskOk` (`:336-339`) reachable.
     let mut board = probe_board();
     board
         .rules
         .via_infos
         .get_mut(ViaInfoId(0))
         .set_attach_smd_allowed(true);
-    // `P6T13Probe.attachSmd:1003-1004` mutates the `ViaInfo` **object** the rule also holds
-    // (`ViaRule.java:21`), and the net class holds that same rule object (`NetClass.java:28`), so
-    // on the JVM the new flag is visible all the way down to `AutorouteControl.initNet:210`. The
-    // port owns a copy at **both** levels since ruling H closed — the `ViaInfo` copy inside the
-    // rule (Plan 7 Task 0) and the `ViaRule` copy inside the net class (Plan 7 Task 11) — so both
-    // are refreshed here. Java's aliasing, spelled out; the two lines are the price of a model
-    // that can also express a *detached* rule, which is what ruling H is about.
     let mut via_rule = ViaRule::new("rule");
     via_rule.append_via(board.rules.via_infos.get(ViaInfoId(0)).clone());
     board.rules.via_rules[0] = via_rule.clone();
@@ -905,8 +769,6 @@ fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span()
     let base = probe_control(&board, 1);
     assert!(base.attach_smd_allowed);
     assert!(base.via_infos[0].attach_smd_allowed);
-    // The two controls differ **only** in the mask the span loop reads; both keep the attach-on
-    // via rule that `checkLayerWithAnyMatchingVia` walks. Both outlive the maze.
     let controls: Vec<AutorouteControl> = [false, true]
         .into_iter()
         .map(|mask_attach| {
@@ -932,7 +794,6 @@ fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span()
     )
     .expect("init succeeds");
 
-    // The `checklayer` table again, attach on: `onSmdPin layer=0` is the one promoted cell.
     let spots = [
         ("freeSpace", IntPoint::new(1000, 1000)),
         ("onBlocker", IntPoint::new(400, 0)),
@@ -980,10 +841,6 @@ fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span()
         }
     }
 
-    // Partition the board first: `calculateExpansionRooms` completes a room per layer at the
-    // drill location, and completing one from scratch in layer 1's almost-empty half-plane runs
-    // the engine out of heap. `attachSmdAllowed` also changes the cut-out loop, so the page
-    // answers 42 drills here where mode `pagedrills` sees 53.
     let seed = maze.queue.iter().next().expect("a seeded element").clone();
     let room_shape = maze
         .engine
@@ -1014,9 +871,6 @@ fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span()
             .iter()
             .map(|room| room.and_then(|r| maze.engine.rooms.room_id_no(r)))
             .collect::<Vec<_>>(),
-        // PORT-REGRESSION PIN, `accepted at plan9-t7t8 (ruling CC)`: jar rooms `6, 51`, port
-        // `15, 249`; same shared-counter cause. The span this test is named for is the pair being
-        // `Some`/`Some` across the two layers, and it is unmoved.
         vec![Some(15), Some(249)]
     );
     assert_eq!(
@@ -1024,11 +878,6 @@ fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span()
         -59_581_999
     );
 
-    // `maskOk`'s two halves (`:336-339`): with `smdAttachedOnComponentSide` set, a mask whose
-    // `fromLayer` is 0 is refused unless the mask itself allows attaching.
-    // PORT-REGRESSION PINS, `accepted at plan9-t7t8 (ruling CC)`: jar rooms `51` and `6`, port
-    // `249` and `15`; one shared room-id counter (#156/#167/#158). The layers, both cost pairs
-    // and the drill's own hash `-59581999` are the jar's, and they are what decides the span.
     let expected_rows: [(i32, f64, f64, Option<i32>); 2] = [
         (1, 1700.0, 5_671.421_356_237, Some(249)),
         (0, 1900.0, 5730.0, Some(15)),
@@ -1071,19 +920,8 @@ fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span()
     }
 }
 
-// =================================================================================================
-// checkLayerWithAnyMatchingVia (:377-414) — probe mode `checklayer`
-// =================================================================================================
-
 #[test]
 fn check_layer_with_any_matching_via_answers_javas_table() {
-    // === mode checklayer ===  (room = the box side length around the location)
-    // room=120 …                              all ten NOT_DRILLABLE
-    // room=800 freeSpace  layer 0/1 DRILLABLE/DRILLABLE
-    // room=800 onBlocker  layer 0/1 DRILLABLE/DRILLABLE
-    // room=800 onSmdPin   layer 0/1 NOT_DRILLABLE/DRILLABLE
-    // room=800 onThruPin  layer 0/1 NOT_DRILLABLE/NOT_DRILLABLE
-    // room=800 onFreeVia  layer 0/1 NOT_DRILLABLE/NOT_DRILLABLE
     let mut fixture = drill_fixture();
     let counter = Counter::new();
     let maze = MazeSearchEngine::get_instance(
@@ -1150,41 +988,8 @@ fn check_layer_with_any_matching_via_answers_javas_table() {
     }
 }
 
-// =================================================================================================
-// findConnection end to end — probe mode `find`
-// =================================================================================================
-
-/// **PORT-REGRESSION PINS, `accepted at plan9-t7t8 (ruling CC)`, and the test is renamed with
-/// them** — a test named for a pop count it no longer measures is worse than a re-cut literal.
-///
-/// The jar's mode `find` is quoted below and is unchanged as a record. It ran the FREE-ANGLE
-/// search, which #165's second half took away (see [`simple_board_ninety`]); this now runs the
-/// 90-degree one, and the port reaches the destination door in **four** pops rather than seven.
-///
-/// | | jar (free-angle) | port (90-degree) |
-/// |---|---|---|
-/// | pops | 7 | **4** |
-/// | destination door | `TargetItemExpansionDoor 97` | **`TargetDoor 96`** |
-/// | final queue | 3 | **6** |
-///
-/// **What the test is for is unchanged and every one of these is still asserted**: the pop loop
-/// takes the queue head each time, `occupyNextElement` answers `true` until the destination is
-/// reached and `false` on the pop that reaches it, the destination is a `TargetItemExpansionDoor`
-/// at section 0, and the walk passes through a drill page and an expansion drill on the way — the
-/// two `ExpandableObject` kinds this file exists for. Two of the four rows keep the JAR's numbers
-/// exactly: the drill page's `141.421356237/771.421356237` and the expansion drill's own id
-/// `-297909`.
 #[test]
 fn find_connection_reaches_the_destination_door_in_four_pops() {
-    // === mode find === — the JAR's free-angle transcript, kept as the record of what moved.
-    // pop[0] TargetItemExpansionDoor id=63 section=0 expansion=0 sorting=630          queue=3
-    // pop[1] DrillPage id=-29760001 section=0 expansion=141.421356237 sorting=771.421356237 queue=6
-    // pop[2] ExpansionDrill id=-297909 section=0 expansion=351.421356237 sorting=591.421356237 q=5
-    // pop[3] ExpansionDrill id=-1076319 section=0 expansion=456.833784654 sorting=719.833784654 q=4
-    // pop[4] ExpansionDoor id=35 section=0 expansion=100 sorting=830                  queue=5
-    // pop[5] TargetItemExpansionDoor id=66 section=0 expansion=200 sorting=830        queue=4
-    // pop[6] TargetItemExpansionDoor id=97 section=0 expansion=1000 sorting=1000 -> more=false q=3
-    // destinationDoor=TargetItemExpansionDoor id=97 item=3 dest=true section=0
     let mut board = simple_board_ninety();
     let mut engine = probe_engine(&mut board, 1);
     let ctrl = probe_control(&board, 1);
@@ -1200,9 +1005,6 @@ fn find_connection_reaches_the_destination_door_in_four_pops() {
     .expect("init succeeds");
     assert_eq!(maze.queue.len(), 1);
 
-    // The port's four, measured at the wave. The drill page's id is `1` and not the jar's
-    // `-29760001` because #167's fix gives the page a stable id from the engine's own counter;
-    // Java's hash survives as `DrillPage::java_id` and is asserted in `drill.rs`.
     let expected: [(i32, i32, f64, f64, bool, usize); 4] = [
         (65, 0, 0.0, 630.0, true, 2),
         (1, 0, 141.421_356_237, 771.421_356_237, true, 8),
@@ -1238,12 +1040,6 @@ fn find_connection_reaches_the_destination_door_in_four_pops() {
 
 #[test]
 fn find_connection_answers_the_result_the_pop_loop_leaves_behind() {
-    // `simple_board_ninety`, and the literals below are PORT-REGRESSION PINS
-    // `accepted at plan9-t7t8 (ruling CC)`, for the reason that function gives. What this test is
-    // for — that `findConnection` answers exactly the result the pop loop left behind, and leaves
-    // the queue where the loop left it — is unchanged, and it is checked against the pop loop's
-    // own numbers in `find_connection_reaches_the_destination_door_in_four_pops`, which is the
-    // pairing that makes the claim mean something.
     let mut board = simple_board_ninety();
     let mut engine = probe_engine(&mut board, 1);
     let ctrl = probe_control(&board, 1);
@@ -1262,10 +1058,6 @@ fn find_connection_answers_the_result_the_pop_loop_leaves_behind() {
         .expect("the destination is reached");
     assert_eq!(maze.engine.expandable_id_no(result.destination_door), 96);
     assert_eq!(result.section_no_of_door, 0);
-    // The jar's `=== mode find === --- final` is three elements —
-    // `(-12022109, 363.421356237, 1038.302086441)`, `(-15852655, 400.689557141, 1158.689557141)`,
-    // `(33, 1077.032961427, 1775.960711627)`. The port's 90-degree search leaves six, and the
-    // first of the jar's three is the first of them, unchanged to the digit.
     assert_eq!(
         queue_rows(&maze)
             .into_iter()
@@ -1282,27 +1074,10 @@ fn find_connection_answers_the_result_the_pop_loop_leaves_behind() {
     );
 }
 
-// =================================================================================================
-// The obstacle-via arm of expandToOtherLayers and Via.getAutorouteDrillInfo — mode `layers`
-// =================================================================================================
-
 #[test]
 fn an_obstacle_via_room_expands_only_when_ripup_is_allowed_and_marks_the_element_ripped() {
-    // === mode layers ===
-    // viaDrill location=(2500,2500) firstLayer=0 lastLayer=1 getId=76880001
-    //   room0=ObstacleExpansionRoom id=7168 layer=0 shape=[2300,2300..2700,2700]
-    //   room1=ObstacleExpansionRoom id=7169 layer=1 shape=[2300,2300..2700,2700]
-    // --- obstacle via ripupAllowed=false  queue n=0
-    // --- obstacle via ripupAllowed=true
-    //   [0] door=ExpansionDrill id=76880001 section=1 backtrack=ExpansionDrill id=76880001
-    //       sectionOfBacktrack=0 expansion=1_700.000000000 sorting=3_530.000000000 nextRoom=7169
-    //       nextRoomLayer=1 shapeEntry=(2_000.000000,2_000.000000)-… roomRipped=true
     let mut fixture = drill_fixture();
     let counter = Counter::new();
-    // The probe's `layers` mode reaches this arm on the control it has already given
-    // `addViaCosts[0][1] = 700`, and `:355` charges that on the way to layer 1. Both controls
-    // outlive the maze, which must stay the one `getInstance` built so that its
-    // `DestinationDistance` is the initialised one.
     let mut ctrl = fixture.ctrl.clone();
     ctrl.add_via_costs[0][1] = 700;
     ctrl.add_via_costs[1][0] = 900;

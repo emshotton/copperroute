@@ -37,7 +37,6 @@ public final class SProbe {
     out.println("summary wires=" + summary.wiresImported() + " vias=" + summary.viasImported()
         + " errors=" + summary.errorsEncountered());
     out.println("layers " + board.get_layer_count());
-    // items in board order
     List<Item> items = new ArrayList<>(board.get_items());
     items.sort(Comparator.comparingInt(Item::get_id_no));
     int n = 0;
@@ -46,31 +45,26 @@ public final class SProbe {
       out.println("item " + it.get_id_no() + " " + describe(it, board));
     }
     out.println("itemcount " + items.size());
-    // nets
     for (int i = 1; i <= board.rules.nets.max_net_no(); i++) {
       app.freerouting.rules.Net net = board.rules.nets.get(i);
       out.println("net " + i + " " + net.name + " subnet=" + net.subnet_number
           + " class=" + net.get_class().get_name() + " plane=" + net.contains_plane());
     }
-    // via padstacks
     app.freerouting.core.Padstack[] vps = board.library.get_via_padstacks();
     StringBuilder sb = new StringBuilder();
     for (app.freerouting.core.Padstack p : vps) sb.append(p.name).append(" ");
     out.println("viapadstacks[" + vps.length + "] " + sb.toString().trim());
-    // via infos
     for (int i = 0; i < board.rules.via_infos.count(); i++) {
       ViaInfo v = board.rules.via_infos.get(i);
       out.println("viainfo " + i + " " + v.get_name() + " padstack=" + v.get_padstack().name
           + " cl=" + v.get_clearance_class() + " attach=" + v.attach_smd_allowed());
     }
-    // via rules
     int vr = 0;
     for (ViaRule r : board.rules.via_rules) {
       StringBuilder b2 = new StringBuilder();
       for (int i = 0; i < r.via_count(); i++) b2.append(r.get_via(i).get_name()).append(" ");
       out.println("viarule " + (vr++) + " " + r.name + " [" + b2.toString().trim() + "]");
     }
-    // net classes
     for (int i = 0; i < board.rules.net_classes.count(); i++) {
       NetClass nc = board.rules.net_classes.get(i);
       out.println("netclass " + i + " " + nc.get_name() + " traceCl=" + nc.get_trace_clearance_class()
@@ -79,7 +73,6 @@ public final class SProbe {
           + " pullTight=" + nc.get_pull_tight() + " shoveFixed=" + nc.is_shove_fixed()
           + " minLen=" + nc.get_minimum_trace_length() + " maxLen=" + nc.get_maximum_trace_length());
     }
-    // clearance matrix
     ClearanceMatrix cm = board.rules.clearance_matrix;
     StringBuilder cn = new StringBuilder();
     for (int i = 0; i < cm.get_class_count(); i++) cn.append(i).append(':').append(cm.get_name(i)).append(' ');
@@ -89,7 +82,6 @@ public final class SProbe {
       for (int j = 0; j < cm.get_class_count(); j++) row.append(cm.get_value(i, j, 0, false)).append(' ');
       out.println("clrow " + i + " " + row.toString().trim());
     }
-    // components
     for (int i = 1; i <= board.components.count(); i++) {
       Component c = board.components.get(i);
       out.println("component " + i + " " + c.name + " pkg=" + c.get_package().name
@@ -123,8 +115,6 @@ public final class SProbe {
     } else if (it instanceof ConductionArea ca) {
       sb.append(" layer=").append(ca.get_layer());
     } else if (it instanceof PolylineTrace t) {
-      // added by Plan 3 Task 10 (the `wiring` scope). Every fixture whose goldens predate this
-      // task has an empty `(wiring)` scope, so their files are unchanged by these two arms.
       sb.append(" layer=").append(t.get_layer())
         .append(" hw=").append(t.get_half_width())
         .append(" corners=").append(t.corner_count())

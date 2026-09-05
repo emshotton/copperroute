@@ -1,11 +1,3 @@
-//! Plan 8 Task 4: `core.results.RoutingResultManifest` against the committed `p8t2` transcript,
-//! plus the named pins the task brief asks for.
-//!
-//! `tests/data/p8t2-manifest-shape.txt` is `scripts/differential/run.sh p8t2`'s stdout, which the
-//! Java half and the Rust twin produced **identically** (760 lines, MATCH). Everything below
-//! either replays a row of it or asserts something that row implies, so the expected values in
-//! this file are the HEAD jar's answers rather than the port's.
-
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -23,22 +15,14 @@ use fr_settings::sources::{
 };
 use fr_settings::{HostEnvironment, SettingsInputs, SettingsSource, resolve_headless};
 
-/// `P8T2.FIXED_INSTANT`.
 const FIXED_INSTANT: &str = "1970-01-01T00:00:00Z";
-/// `P8T2.FIXED_GIT_SHA`.
 const FIXED_GIT_SHA: &str = "0000000";
 
-// =================================================================================================
-// the transcript
-// =================================================================================================
-
-/// One `[man]` case: its JSON lines and the byte length the Java half measured.
 struct ManifestRow {
     lines: Vec<String>,
     len: usize,
 }
 
-/// The committed transcript, split into the tables this file reads.
 struct Transcript {
     manifests: BTreeMap<String, ManifestRow>,
     durations: Vec<(u64, u64, String)>,
@@ -52,10 +36,6 @@ struct GitShaRow {
     label: String,
     env: Option<String>,
     prop: Option<String>,
-    /// Java's third arm, `System.getProperty("FREEROUTING_GIT_SHA")` (`:156`), which this port
-    /// renames onto the **first** arm's environment variable — so a row that sets only this one
-    /// is driven here by setting `FREEROUTING_GIT_SHA`, exactly as `p8t2.rs` does. The two rows
-    /// where the rename changes the answer are `XDIFF`s the parser skips.
     legacy_prop: Option<String>,
     answer: String,
 }
@@ -77,7 +57,7 @@ fn transcript() -> Transcript {
         if let Some(rest) = line.strip_prefix("MAN ") {
             let (label, rest) = rest.split_once(' ').expect("a label");
             if label == "root_input" {
-                continue; // the XDIFF row — asserted by name below
+                continue;
             }
             let entry = manifests.entry(label.to_string()).or_insert(ManifestRow {
                 lines: Vec::new(),
@@ -86,7 +66,6 @@ fn transcript() -> Transcript {
             match rest.split_once(' ') {
                 Some(("len", value)) => entry.len = value.parse().expect("a byte count"),
                 Some((_index, content)) => entry.lines.push(unescape(content)),
-                // A blank JSON line would arrive with no content; Gson never writes one.
                 None => entry.lines.push(String::new()),
             }
         } else if let Some(rest) = line.strip_prefix("DUR ") {
@@ -136,7 +115,6 @@ fn transcript() -> Transcript {
     }
 }
 
-/// One `key="value"` field out of a `[gitsha]` row's `in=` column.
 fn source_value(sources: &str, key: &str) -> Option<String> {
     for part in sources.split('|') {
         if let Some(rest) = part.strip_prefix(key)
@@ -148,7 +126,6 @@ fn source_value(sources: &str, key: &str) -> Option<String> {
     None
 }
 
-/// `P8T2.escape`, backwards.
 fn unescape(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut chars = text.chars().peekable();
@@ -166,10 +143,6 @@ fn unescape(text: &str) -> String {
     }
     out
 }
-
-// =================================================================================================
-// the cases, rebuilt exactly as `p8t2.rs` builds them
-// =================================================================================================
 
 fn fixtures() -> PathBuf {
     parity::java_dir().join("fixtures")
@@ -233,7 +206,6 @@ fn with_weights(mut job: RoutingJob) -> RoutingJob {
     job
 }
 
-/// Every `[man]` case of the transcript, keyed by label.
 fn cases() -> BTreeMap<String, RoutingResultManifest> {
     let fixtures = fixtures();
     let scratch = scratch();
@@ -365,15 +337,6 @@ fn json_of(manifest: &RoutingResultManifest) -> String {
         .expect("no non-finite float in a corpus manifest")
 }
 
-// =================================================================================================
-// the whole-transcript replay
-// =================================================================================================
-
-/// Every `[man]` case of the committed transcript, line for line and byte for byte.
-///
-/// This is the acceptance test: fifteen manifests, from the untouched `new RoutingResultManifest()`
-/// to a routed board's full `board_statistics` and `normalized_score`, each of them a JSON
-/// document the HEAD jar wrote.
 #[test]
 fn the_manifest_transcript_replays_row_for_row() {
     let transcript = transcript();
@@ -392,7 +355,6 @@ fn the_manifest_transcript_replays_row_for_row() {
     }
 }
 
-/// The `[dur]` table: `fromJob:128-132`'s `(float)(millis / 1000.0)`.
 #[test]
 fn the_duration_narrowing_matches_the_transcript() {
     let epoch = Instant::now();
@@ -418,7 +380,6 @@ fn the_duration_narrowing_matches_the_transcript() {
     }
 }
 
-/// The `[sha256]` table, including the two rows where the key disappears.
 #[test]
 fn sha256_hex_matches_the_nist_vectors_and_the_corpus() {
     let transcript = transcript();
@@ -459,12 +420,6 @@ fn sha256_hex_matches_the_nist_vectors_and_the_corpus() {
     expect("directory", &fixtures);
 }
 
-// =================================================================================================
-// the named pins
-// =================================================================================================
-
-/// Gson serialises in field declaration order, and the port's field order is Java's
-/// (`RoutingResultManifest.java:28-65`).
 #[test]
 fn the_key_order_is_declaration_order() {
     let manifest = cases()
@@ -504,8 +459,6 @@ fn the_key_order_is_declaration_order() {
     );
 }
 
-/// `GsonBuilder` is never given `serializeNulls()`, so a `null` field disappears — and the three
-/// Java primitives do not.
 #[test]
 fn nulls_are_omitted() {
     let json = json_of(&RoutingResultManifest::default());
@@ -517,7 +470,6 @@ fn nulls_are_omitted() {
         "ten null fields gone; the three primitives stay"
     );
 
-    // The same rule one level down: `sha256` disappears from `fixture` while `filename` stays.
     let cases = cases();
     let missing = json_of(&cases["input_missing"]);
     assert!(
@@ -526,8 +478,6 @@ fn nulls_are_omitted() {
     );
 }
 
-/// Quirk #254, first half: `phases.fanout` and `phases.optimizer` are allocated by the field
-/// initialisers at `:78`/`:84` and **never written**, on every manifest the CLI can produce.
 #[test]
 fn fanout_and_optimizer_phases_are_empty_objects() {
     for (label, manifest) in cases() {
@@ -557,25 +507,9 @@ fn fanout_and_optimizer_phases_are_empty_objects() {
     }
 }
 
-/// **Quirk #267, fixed in Plan 9 Task 9: the two stages report their own pass counts.**
-///
-/// Java has one `job.currentPass` and **two** loops write it — `AutorouteBatchLoop.java:276`
-/// counting from 1 and `BatchOptimizer.java:196` counting from 0 — and
-/// `RoutingResultManifest.fromJob:124-126` then reports whichever wrote last, under a key that
-/// names the **autorouter**. Measured on the HEAD jar: `router-dac2020-bm01` at `-mp 2` logs two
-/// routing passes and one optimizer pass and its manifest says `"passes_completed": 1`.
-///
-/// The port gives each stage its own field. A three-pass routing stage followed by a one-pass
-/// optimizer stage reads back as **3 and 1**, and `phases.autorouter.passes_completed` is the
-/// router's 3 — no longer the optimizer's 1.
-///
-/// `phases.optimizer.passes_completed` is still `{}`: writing it is **Task 20's** (quirk #254),
-/// and `fanout_and_optimizer_phases_are_empty_objects` above pins that it has not been written
-/// yet. What landed here is the split, so that the number exists to be written.
 #[test]
 fn the_two_stages_report_their_own_pass_counts() {
     let mut job = fresh_job();
-    // What `commands::route` writes from `PipelineResult`.
     job.set_current_pass(3);
     job.set_optimizer_pass(1);
 
@@ -598,7 +532,6 @@ fn the_two_stages_report_their_own_pass_counts() {
         "fixed: T9 (#267) — the key that names the autorouter reports the autorouter's passes, \
          not whichever stage announced a pass last"
     );
-    // Task 20's obligation, still open — and deliberately so.
     assert_eq!(
         phases.optimizer.expect("optimizer is always allocated"),
         PhaseDetail::default(),
@@ -606,8 +539,6 @@ fn the_two_stages_report_their_own_pass_counts() {
          number it will be written from is on the job already"
     );
 
-    // The old shape is what this pins against: one shared field would have let the optimizer's
-    // `1` overwrite the router's `3`.
     let mut shared = fresh_job();
     shared.set_current_pass(3);
     shared.set_optimizer_pass(1);
@@ -618,8 +549,6 @@ fn the_two_stages_report_their_own_pass_counts() {
     );
 }
 
-/// Quirk #254, second half: what `:131` puts in `phases.autorouter.duration_seconds` is the
-/// **whole job's** wall-clock duration, not the routing stage's.
 #[test]
 fn autorouter_duration_is_the_whole_job() {
     let epoch = Instant::now();
@@ -640,7 +569,6 @@ fn autorouter_duration_is_the_whole_job() {
     assert_eq!(phases.fanout, Some(PhaseDetail::default()));
     assert_eq!(phases.optimizer, Some(PhaseDetail::default()));
 
-    // One instant is not enough: `:128`'s guard needs both.
     let mut half = fresh_job();
     half.started_at = Some(epoch);
     let manifest = from_job(&half, None, false, 1, None);
@@ -655,11 +583,6 @@ fn autorouter_duration_is_the_whole_job() {
     );
 }
 
-/// Scan ruling R20: `getNormalizedScore:626-633`'s guard answers `0f` — not `NaN` — for a board
-/// with no connections, and `empty_board.dsn` is the fixture that reaches it.
-///
-/// The two methods below it are **not** total: `maximum_score` unboxes
-/// `connections.maximumCount` and `unroutedNetPenalty`, and panics exactly where Java throws.
 #[test]
 fn a_connectionless_board_scores_zero_not_nan() {
     let dsn = fixtures().join("empty_board.dsn");
@@ -682,8 +605,6 @@ fn a_connectionless_board_scores_zero_not_nan() {
     assert_eq!(manifest.normalized_score, Some(0.0));
     assert!(json_of(&manifest).contains("\"normalized_score\": 0.0"));
 
-    // `:118`'s second guard: no `scoring`, no `normalized_score` — but `board_statistics` still
-    // goes in.
     let mut no_scoring = fresh_job();
     no_scoring.router_settings.scoring = None;
     let manifest = from_job(&no_scoring, Some(&dsn), true, 0, Some(&stats));
@@ -692,14 +613,11 @@ fn a_connectionless_board_scores_zero_not_nan() {
     assert!(!json_of(&manifest).contains("normalized_score"));
 }
 
-/// Quirk #255: `sha256Hex` answers `null` on any failure and Gson then drops the key, so an
-/// unreadable fixture is indistinguishable from one that was never hashed.
 #[test]
 fn an_unreadable_input_omits_the_sha256_key() {
     let scratch = scratch();
     let missing = scratch.join("no-such-file.dsn");
     assert_eq!(sha256_hex(&missing), None);
-    // A directory fails the same way — `Files.readAllBytes` throws `IOException` for one.
     assert_eq!(sha256_hex(&fixtures()), None);
 
     let manifest = from_job(&fresh_job(), Some(&missing), false, 1, None);
@@ -715,18 +633,12 @@ fn an_unreadable_input_omits_the_sha256_key() {
         "the key is gone entirely — {json}"
     );
 
-    // And the indistinguishability the quirk is about: no input at all leaves `fixture` an empty
-    // object, so neither field says which case happened.
     let none = from_job(&fresh_job(), None, false, 1, None);
     assert_eq!(none.fixture, Some(fr_core::FixtureInfo::default()));
     assert!(json_of(&none).contains("\"fixture\": {},"));
 }
 
-/// `resolveGitSha:147-161`'s ladder, replayed against the transcript's own `[gitsha]` rows.
-///
-/// The environment cannot be mutated in process without `unsafe`, and this crate is
 /// `#![forbid(unsafe_code)]`, so each row spawns **this test binary** in the child mode below —
-/// the same shape the `p8t2` driver uses on both sides.
 #[test]
 fn resolve_git_sha_walks_all_three_sources_then_unknown() {
     let scratch = scratch();
@@ -737,9 +649,6 @@ fn resolve_git_sha_walks_all_three_sources_then_unknown() {
         let _ = std::fs::remove_file(&out);
         let mut command = Command::new(std::env::current_exe().expect("this test binary"));
         command.args(["--exact", "resolve_git_sha_child"]);
-        // The child answers through `FR_GITSHA_OUT`, never through stdout, so its inherited
-        // pipes are closed: an open handle outliving the test is what `cargo nextest` reports
-        // as a LEAK.
         command.stdout(std::process::Stdio::null());
         command.stderr(std::process::Stdio::null());
         command.env("FR_GITSHA_OUT", &out);
@@ -761,8 +670,6 @@ fn resolve_git_sha_walks_all_three_sources_then_unknown() {
     }
 }
 
-/// The child half of [`resolve_git_sha_walks_all_three_sources_then_unknown`]. Inert unless
-/// `FR_GITSHA_OUT` names a file, which only that test sets.
 #[test]
 fn resolve_git_sha_child() {
     if let Ok(path) = std::env::var("FR_GITSHA_OUT") {
@@ -770,7 +677,6 @@ fn resolve_git_sha_child() {
     }
 }
 
-/// `write:142-143` — `Gson.toJson` appends no newline and `Files.writeString` adds none.
 #[test]
 fn no_trailing_newline() {
     let transcript = transcript();
@@ -795,7 +701,6 @@ fn no_trailing_newline() {
     assert_eq!(bytes.len(), 519, "and the port writes exactly as many");
 }
 
-/// `write:139-141` — `Files.createDirectories(parent)`, and only when `getParent()` is non-null.
 #[test]
 fn the_parent_directory_is_created() {
     let transcript = transcript();
@@ -812,32 +717,11 @@ fn the_parent_directory_is_created() {
         json_of(&manifest).into_bytes()
     );
 
-    // Java's `Path.of("manifest.json").getParent()` is `null`, so no directory is created for a
-    // bare filename — the same `getParent()` quirk #242 turns into an NPE one file over.
     assert_eq!(transcript.writes["bare_filename"], "parent=null");
     assert_eq!(transcript.writes["root_parent"], "parent=null");
     assert_eq!(transcript.writes["nested_parent"], "parent=<SCRATCH>/a/b/c");
 }
 
-/// The brief's requirement on `from_job`'s `stats` parameter, asserted against the **pipeline**.
-///
-/// The brief: *"Task 6 supplies the already-computed `PipelineResult::final_statistics` … assert
-/// it equals a fresh recompute in a test, then use the cached one."* So this runs the real
-/// pipeline over a real stem and compares `result.pipeline.final_statistics` — the object Task 6
-/// will hand `from_job` — with a fresh `BoardStatistics::new(&mut board)`, which is
-/// `fromJob:117`'s `new BoardStatistics(job.board)` exactly.
-///
-/// **The recompute happens after `RoutingPipeline::run` has returned**, which is the version of
-/// the claim that matters: the wrapper runs `build_unrouted_report` and `DesignRulesChecker::new`
-/// after `run_pipeline`, both taking `&mut Board`, so a fresh constructor here sees the board in
-/// the state Java's `fromJob` would see it in — after the SES has been produced, not before.
-///
-/// The last assertion is the contract in the form the manifest cares about: the **document** is
-/// byte-identical either way, so substituting the cached statistics for Java's recompute cannot
-/// move a byte of `board_statistics` or of `normalized_score`.
-///
-/// (The first version of this test asserted only that `BoardStatistics::new` gives the same
-/// answer twice — constructor purity, not the equivalence the brief named. Task review SF2.)
 #[test]
 fn the_pipelines_cached_statistics_equal_a_fresh_recompute() {
     let dsn = fixtures().join("Issue143-rpi_splitter.dsn");
@@ -849,9 +733,6 @@ fn the_pipelines_cached_statistics_equal_a_fresh_recompute() {
         .into_owned();
     let mut board = load_board(&dsn);
 
-    // `batch_parity::route_stem`'s load-and-resolve sequence (controller ruling AW), with two
-    // passes rather than eight: this test is about the statistics object's identity, not about
-    // the SES bytes, which `tests/pipeline.rs` already pins against the jar.
     let argv = [
         "-de".to_string(),
         dsn.display().to_string(),
@@ -883,32 +764,24 @@ fn the_pipelines_cached_statistics_equal_a_fresh_recompute() {
         "the router must actually have run, or the comparison is about an unrouted board"
     );
 
-    // What Task 6 hands `from_job`…
     let cached = result.pipeline.final_statistics.clone();
-    // …and what `fromJob:117` would have computed instead.
     let fresh = BoardStatistics::new(&mut board);
     assert_eq!(
         cached, fresh,
         "PipelineResult::final_statistics is not what `new BoardStatistics(job.board)` would          answer for the same board — `from_job`'s cached `stats` would change the manifest"
     );
 
-    // The same claim as the manifest sees it: the document does not move.
     let job = with_weights(fresh_job());
     assert_eq!(
         json_of(&from_job(&job, Some(&dsn), true, 0, Some(&cached))),
         json_of(&from_job(&job, Some(&dsn), true, 0, Some(&fresh))),
         "the manifest built from the cached statistics differs from the recomputed one"
     );
-    // And it is a manifest with something in it, not an empty one that would agree vacuously.
     let json = json_of(&from_job(&job, Some(&dsn), true, 0, Some(&cached)));
     assert!(json.contains("\"board_statistics\""), "{json}");
     assert!(json.contains("\"normalized_score\""), "{json}");
 }
 
-/// `normalize_manifest`'s five rules, as the transcript's `[norm]` table recorded them.
-///
-/// The normaliser itself lives in the two driver halves (Task 6 turns the end-to-end gate on);
-/// this asserts the *shape* it produces, which is the contract Task 6 will compare through.
 #[test]
 fn the_normaliser_strips_exactly_the_five_irreproducible_things() {
     let norm = transcript().norm;
@@ -930,20 +803,15 @@ fn the_normaliser_strips_exactly_the_five_irreproducible_things() {
         !text.contains("resource_usage") && !text.contains("io_read"),
         "the whole object is removed, not blanked — {text}"
     );
-    // Everything it does NOT strip is still there, including the two fields the driver set on the
-    // live manifest.
     assert!(text.contains("\"passes_completed\": 4"), "{text}");
     assert!(text.contains("\"final_state\": \"COMPLETED\""), "{text}");
     assert!(
         text.contains("\"app_version\": \"2.3.1-SNAPSHOT\""),
         "{text}"
     );
-    // And what is left is still a valid JSON document — removing `resource_usage` never orphans a
-    // comma, because three keys always follow it.
     serde_json::from_str::<serde_json::Value>(&text).expect("still valid JSON");
 }
 
-/// `app_version` is `Constants.FREEROUTING_VERSION` (ruling AT/5), never the Rust crate version.
 #[test]
 fn app_version_is_the_parity_version() {
     let manifest = from_job(&fresh_job(), None, false, 1, None);
@@ -958,8 +826,6 @@ fn app_version_is_the_parity_version() {
     );
 }
 
-/// Quirk #257: `fromJob:107` dereferences `Path.of("/").getFileName()`, which is `null`. The port
-/// totalises it to the empty string, which is the transcript's `MAN root_input` XDIFF row.
 #[test]
 fn the_filesystem_root_as_an_input_is_totalized() {
     let manifest = from_job(&fresh_job(), Some(Path::new("/")), false, 1, None);
@@ -978,26 +844,13 @@ fn the_filesystem_root_as_an_input_is_totalized() {
     );
 }
 
-/// Ruling 12: `src/test/java/…/RoutingResultManifestTest.java`, ported.
-///
-/// Both of that file's tests. `resolveGitShaPrefersEnvironmentVariable:34-45` is a
-/// self-defeating test — its own comment says *"Cannot set env in Java portably"* and it asserts
-/// `"unknown"` only when the variable is already unset, so it is the `GITSHA none` row and nothing
-/// more; [`resolve_git_sha_walks_all_three_sources_then_unknown`] covers it and eighteen inputs it
-/// could not reach. `writeProducesRequiredJsonKeys:47-86` is the real one, and every assertion of
-/// it is below **except** its last two (`:83-85`), which read the manifest back with
-/// `GsonProvider.GSON.fromJson`: the port derives `Serialize` and not `Deserialize`, because
-/// nothing in `src/main` ever reads a manifest and `board_statistics` is `fr-router`'s
-/// `BoardStatistics`, which has no `Deserialize` — see `manifest.rs`' `// not ported:` marker.
 #[test]
 fn the_java_unit_tests_assertions_hold() {
-    // `:49-52` — the same fixture, read the same way.
     let dsn = fixtures().join("Issue143-rpi_splitter.dsn");
     let mut board = load_board(&dsn);
     let stats = BoardStatistics::new(&mut board);
     let layer_count = board.get_layer_count() as i32;
 
-    // `:54-59`.
     let mut job = fresh_job();
     job.router_settings = DefaultSettings::new(&HostEnvironment::detect())
         .get_settings()
@@ -1007,8 +860,6 @@ fn the_java_unit_tests_assertions_hold() {
     job.resource_usage.cpu_time_used = 1.5;
     job.resource_usage.peak_memory_used = 128.0;
 
-    // `:61-69` — the fixture is copied into the scratch directory, as the Java test does, so the
-    // hashed file is not the corpus one.
     let input = scratch().join("input.dsn");
     std::fs::copy(&dsn, &input).expect("copy the fixture");
     let manifest = RoutingResultManifest::from_job(
@@ -1022,7 +873,6 @@ fn the_java_unit_tests_assertions_hold() {
     let out = scratch().join("java-test-result.json");
     RoutingResultManifest::write(&out, &manifest).expect("write");
 
-    // `:71-81` — the nine assertions, against the file rather than the object.
     let json = std::fs::read_to_string(&out).expect("read back");
     let root: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
     assert_eq!(root["schema_version"].as_i64(), Some(1));
@@ -1035,20 +885,14 @@ fn the_java_unit_tests_assertions_hold() {
     assert_eq!(root["exit_code"].as_i64(), Some(0));
     assert_eq!(root["output_written"].as_bool(), Some(true));
 
-    // `:85`, as far as the write side can carry it: the round trip is not ported, but the value it
-    // would have compared is asserted here on the way out.
     assert_eq!(
         root["board_statistics"]["layers"]["total_count"].as_i64(),
         Some(i64::from(layer_count))
     );
-    // And the two `resourceUsage` fields the Java test sets, which its own assertions never check.
     assert_eq!(root["resource_usage"]["cpu_time"].as_f64(), Some(1.5));
     assert_eq!(root["resource_usage"]["peak_memory"].as_f64(), Some(128.0));
 }
 
-/// Quirk #256 and the brief's one falsified claim: Java writes **all five** `resource_usage`
-/// fields, `io_read` and `io_written` included, because they are `float` primitives that Gson
-/// never omits — even though nothing in the Java tree ever assigns those two.
 #[test]
 fn resource_usage_writes_all_five_fields_including_the_two_dead_ones() {
     let json = json_of(&from_job(&fresh_job(), None, false, 1, None));

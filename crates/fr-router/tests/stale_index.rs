@@ -38,10 +38,16 @@
 //! pipeline is deterministic — `batch_parity.rs` gets a byte-identical SES out of these same runs.
 //! A moved count is a real change in what the router does, not measurement noise.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
+use fr_board::prelude::*;
+use fr_board::{ItemId, TreeId};
 use fr_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
+use fr_geometry::{
+    IntBox, IntVector, Point, PolygonShape, Polyline, PolylineShapeRef, Shape, TileShape,
+};
 use fr_router::autoroute::instrument::{self, Guard, Snapshot};
+use fr_router::autoroute::maze::search::MazeSearchEngine;
 use fr_router::pipeline::{
     NoopProgressSink, RouterBudget, RouterStop, prepare_board, run_pipeline,
 };
@@ -206,13 +212,28 @@ struct Expected {
 /// are **unchanged by every one of the ten commits** — and by all seven of Task 9's. #159 (`9fea49e`) cannot move any of these:
 /// it is a 90-degree-only defect and every corpus board declares `fortyfive_degree`. #160/#161,
 /// #162, #164, #165/#166 and #178 moved no count on any stem.
+///
+/// # T10: one row moved, and it is a board-shape change rather than a search change
+///
+/// **#231** — the copper-to-edge override becomes continuous — moves **`router-rpi-splitter`
+/// alone**, because it is the only corpus board Java's `:501-507` guard could stop: its outline
+/// carries an explicit `boundary` clearance class, so the default 500 µm board-edge keep-out used
+/// to be refused there and is now applied like everywhere else. The maze therefore walks a
+/// differently shaped free space. Still zero fires on every guard.
 const MEASURED: &[Expected] = &[
     Expected {
         stem: "router-rpi-splitter",
         fires: [0, 0, 0, 0, 0],
         // T8: unchanged by all ten commits. T9: unchanged — the routed board is near-perfect, so
         // `BatchOptimizer.java:182-193` exits before the first optimizer pass touches an item.
-        visits: [76, 76, 1042, 1042, 111],
+        // T10 #231 (the copper-to-edge override becomes continuous) -> below. This is the one
+        // corpus board whose outline carries an explicit DSN clearance class, so it is the only
+        // one whose board Java's `:501-507` guard used to leave alone; it now carries the same
+        // 500 µm board-edge keep-out as the other fifteen, and the maze walks a differently
+        // shaped free space. Was T9's [76, 76, 1042, 1042, 111]. No guard started or stopped
+        // tripping, and the routed SES is byte-identical either way — the traces here are
+        // nowhere near the edge.
+        visits: [75, 75, 1059, 1059, 114],
     },
     Expected {
         stem: "router-dac2020-bm01",
@@ -649,4 +670,225 @@ fn the_stem_table_matches_the_fixture_file() {
             stem.name
         );
     }
+}
+
+// =================================================================================================
+// Quirk #297: does `reduceTraceShapesAtTiePins` ever fire? (Plan 9 Task 10's investigation)
+// =================================================================================================
+
+/// A board carrying a genuine **tie pin** — a pin declared on two nets — with a trace of one of
+/// those nets ending exactly at its centre.
+///
+/// Returns `(board, tie_pin, foreign_trace, own_net_trace)`. The pin is on nets `{1, 2}`;
+/// `foreign_trace` is on net **2** and `own_net_trace` on net **1**, and both end at the pin's
+/// centre, so both are `getNormalContacts()` of it (`DrillItem.java:283-291` matches end points
+/// exactly). Searching for net 1 therefore makes the net-2 trace the "foreign net trace already
+/// connected to a tie pin" that `MazeSearchEngine.reduceTraceShapesAtTiePins` exists to shorten,
+/// and the net-1 trace the control that must be left alone.
+fn tie_pin_board() -> (Board, ItemId, ItemId, ItemId) {
+    let ls = LayerStructure::new(vec![
+        Layer::new("front".to_string(), true),
+        Layer::new("back".to_string(), true),
+    ]);
+    let cm = ClearanceMatrix::get_default_instance(&ls, 200);
+    let mut rules = BoardRules::new(ls.clone(), cm);
+    rules.create_default_net_class();
+    let default_class = rules.get_default_net_class();
+
+    // A through pad, so the pin has a shape on both layers and a centre to contact.
+    let mut padstacks = Padstacks::new(ls);
+    let pad_shape = Shape::Tile(TileShape::Box(IntBox::from_coords(-200, -200, 200, 200)));
+    let pad = padstacks.add(
+        "tie",
+        vec![Some(pad_shape.clone()), Some(pad_shape)],
+        true,
+        false,
+    );
+    let mut packages = Packages::new();
+    let pkg = packages.add(
+        "tiepkg",
+        vec![PackagePin::new("P1", pad, IntVector::new(0, 0).into(), 0.0)],
+        None,
+        None,
+        None,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        true,
+    );
+    let mut components = Components::new();
+    components.add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg);
+
+    let outline = vec![PolylineShapeRef::Polygon(PolygonShape::from_points(&[
+        Point::new(-10_000, -10_000),
+        Point::new(10_000, -10_000),
+        Point::new(10_000, 10_000),
+        Point::new(-10_000, 10_000),
+    ]))];
+    let mut board = Board::new(
+        outline,
+        0,
+        IntBox::from_coords(-20_000, -20_000, 20_000, 20_000),
+        rules,
+        BoardLibrary::new(padstacks, packages),
+        components,
+        Communication::default(),
+    );
+    board.rules.nets.add("GND", 1, false, default_class);
+    board.rules.nets.add("GNDA", 1, false, default_class);
+
+    // **The tie pin**: one pin, two nets. This is the input `:157`'s `netCount() > 1` asks for,
+    // and the thing no corpus board turned out to have in this configuration.
+    let tie_pin = board.insert_pin(1, 0, vec![1, 2], 1, FixedState::Unfixed);
+    assert_eq!(
+        board
+            .get_item(tie_pin)
+            .expect("the pin inserts")
+            .net_count(),
+        2,
+        "the fixture must actually be a tie pin, or `:157` is not reached at all"
+    );
+
+    let foreign = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(0, 0), Point::new(5000, 0)]),
+            0,
+            100,
+            vec![2],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("the foreign-net trace inserts");
+    let own = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(0, 0), Point::new(-5000, 0)]),
+            0,
+            100,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("the own-net trace inserts");
+
+    let contacts = board.normal_contacts(tie_pin);
+    assert!(
+        contacts.contains(&foreign) && contacts.contains(&own),
+        "both traces must be normal contacts of the tie pin, or `:158`'s loop never sees them: \
+         {contacts:?}"
+    );
+    (board, tie_pin, foreign, own)
+}
+
+/// The tree shapes of one item in the default tree, as a comparable snapshot.
+fn tree_shapes(board: &mut Board, id: ItemId, tree: TreeId) -> Vec<Option<TileShape>> {
+    (0..board.item_tree_shape_count(id, tree))
+        .map(|i| board.item_tree_shape(id, tree, i))
+        .collect()
+}
+
+/// **Quirk #297, resolved: reading (a).** The predicate is not mis-ported; the corpus is sparse.
+///
+/// Plan 9 Task 17's read-only instrumentation counted **0** `TiePinReduction` mutations on all
+/// eight batch stems, including `router-dac2020-bm01`, whose search ripped 131 items and removed
+/// 150 trace tails in the same connection. Two readings were left open and that measurement could
+/// not separate them: **(a)** no corpus board presents a multi-net tie pin with a foreign-net
+/// trace touching it, or **(b)** the port's `is_tie_pin` / `is_foreign_trace` are mis-ported
+/// against `MazeSearchEngine.java:157-162` and the guard is dead by defect.
+///
+/// This test settles it. On a board built to present exactly that configuration — a pin declared
+/// on nets `{1, 2}` with a net-2 trace ending at its centre, searched for net 1 — the predicate
+/// **fires**, and it fires on the foreign trace only. Reading (a) holds: the corpus is simply too
+/// sparse in this configuration, and the row closes as documented rather than as a defect.
+///
+/// The line-by-line re-derivation the row also asks for was done and agrees, which is the second
+/// half of the answer:
+///
+/// ```text
+/// :157  (currentItem instanceof Pin currentTiePin) && currentItem.netCount() > 1
+///       matches!(item, Item::Pin(_)) && item.net_count() > 1
+/// :160  if (!(currentContact instanceof PolylineTrace) || currentContact.containsNet(ownNetNo))
+///         continue;
+///       let is_foreign_trace = matches!(item, Item::Trace(_)) && !item.contains_net(own_net_no);
+///       if !is_foreign_trace { continue; }
+/// ```
+///
+/// De Morgan, and nothing else. The iteration order differs deliberately (`.rev()`, for Java's
+/// descending-id `TreeSet` — quirk #44) and cannot change *whether* the body runs, only in what
+/// order; the body is idempotent per `(pin, trace)` pair.
+#[test]
+fn the_tie_pin_reduction_fires_on_a_genuine_tie_pin() {
+    let (mut board, tie_pin, foreign, own) = tie_pin_board();
+    let tree = board.trees.get_default_tree().id();
+
+    // The shape arrays before, so "it fired" is a board fact and not only a counter reading.
+    let foreign_before = tree_shapes(&mut board, foreign, tree);
+    let own_before = tree_shapes(&mut board, own, tree);
+
+    let item_list: BTreeSet<ItemId> = [tie_pin].into_iter().collect();
+    MazeSearchEngine::reduce_trace_shapes_at_tie_pins(&mut board, &item_list, 1, tree);
+
+    assert_ne!(
+        tree_shapes(&mut board, foreign, tree),
+        foreign_before,
+        "the foreign-net trace's tree shape must actually be reduced, so the pin centre stops \
+         being blocked — the whole point of the method"
+    );
+    assert_eq!(
+        tree_shapes(&mut board, own, tree),
+        own_before,
+        "and the own-net trace must be left alone: `:160`'s `containsNet(ownNetNo)` excuses it"
+    );
+}
+
+/// The other half of #297's answer: two negative controls, so
+/// [`the_tie_pin_reduction_fires_on_a_genuine_tie_pin`] cannot be passing for a reason unrelated
+/// to the predicate.
+///
+/// * Searching for net **2** on the same board makes the net-1 trace the foreign one, so the
+///   *other* trace is reduced — the predicate keys on the net argument, not on which trace the
+///   contact set happens to list first.
+/// * A pin on a **single** net fails `:157`'s `netCount() > 1` and nothing fires at all. That is
+///   the configuration every pin on all eight corpus stems is in, and it is why the census reads
+///   zero.
+#[test]
+fn the_tie_pin_reduction_keys_on_the_net_and_on_the_pin_being_a_tie() {
+    // Control 1: the same board, the other net.
+    let (mut board, tie_pin, foreign, own) = tie_pin_board();
+    let tree = board.trees.get_default_tree().id();
+    let own_before = tree_shapes(&mut board, own, tree);
+    let foreign_before = tree_shapes(&mut board, foreign, tree);
+    let item_list: BTreeSet<ItemId> = [tie_pin].into_iter().collect();
+    MazeSearchEngine::reduce_trace_shapes_at_tie_pins(&mut board, &item_list, 2, tree);
+    assert_ne!(
+        tree_shapes(&mut board, own, tree),
+        own_before,
+        "net 1's trace is the foreign one now"
+    );
+    assert_eq!(
+        tree_shapes(&mut board, foreign, tree),
+        foreign_before,
+        "and net 2's is excused"
+    );
+
+    // Control 2: a pin on one net. `:157` refuses, so neither trace moves.
+    let (mut board, _tie_pin, foreign, own) = tie_pin_board();
+    let tree = board.trees.get_default_tree().id();
+    let single_net_pin = board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    assert_eq!(
+        board
+            .get_item(single_net_pin)
+            .expect("inserted")
+            .net_count(),
+        1
+    );
+    let foreign_before = tree_shapes(&mut board, foreign, tree);
+    let own_before = tree_shapes(&mut board, own, tree);
+    let item_list: BTreeSet<ItemId> = [single_net_pin].into_iter().collect();
+    MazeSearchEngine::reduce_trace_shapes_at_tie_pins(&mut board, &item_list, 1, tree);
+    assert_eq!(
+        tree_shapes(&mut board, foreign, tree),
+        foreign_before,
+        "a pin on one net is not a tie pin — `:157` refuses"
+    );
+    assert_eq!(tree_shapes(&mut board, own, tree), own_before);
 }

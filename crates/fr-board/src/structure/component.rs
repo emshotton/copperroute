@@ -188,8 +188,25 @@ impl Component {
     //
     // Java quirk: the location is rotated by `angleInDegree`, not by `turnAngle`
     // (Component.java:146), so on the back side with `flipStyleRotateFirst` the stored rotation
-    // and the moved location disagree by `360 - 2*angle`. Ported verbatim; see
-    // docs/java-quirks.md.
+    // and the moved location disagree by `360 - 2*angle`. See docs/java-quirks.md #48.
+    //
+    // fixed: T11 (#48), together with #57's two sites in `items/area.rs` — `Component.rotate`
+    // moves the component while those move its keepouts and outlines, so fixing one alone would
+    // make them disagree with each other instead, which is strictly worse than the shared error.
+    //
+    // **The decision, and why it went this way.** Two readings were available: rotate the location
+    // by `turnAngle` (keeping the complement), or drop the complement and use `angleInDegree`
+    // throughout. The complement is the intended one, and Java says so itself: `turnAngle` is
+    // computed at `:133-136` under an explanatory comment — "to take care of the order of
+    // mirroring and rotating on the back side of the board" — which is a deliberate statement
+    // about back-side semantics. `:146`'s `angleInDegree` carries no such comment; it is a line
+    // that failed to use the variable computed three lines above it for a documented reason. A
+    // local computed on purpose and then applied to only half of the transform is the shape of
+    // the bug, not of the intent. So the complement stays and the geometry follows it.
+    //
+    // At 180 degrees and at 0 the two readings coincide (`360 - 2a` is `0 mod 360`), so a test at
+    // either proves nothing; `a_back_side_rotation_keeps_the_outline_and_the_pads_together` uses
+    // 90, the largest disagreement.
     pub fn rotate(&mut self, angle_in_degree: f64, pole: &IntPoint, flip_style_rotate_first: bool) {
         if angle_in_degree == 0.0 {
             return;
@@ -203,7 +220,7 @@ impl Component {
             self.location = Some(Point::Int(
                 location
                     .to_float()
-                    .rotate(angle_in_degree.to_radians(), &pole.to_float())
+                    .rotate(turn_angle.to_radians(), &pole.to_float())
                     .round(),
             ));
         }
@@ -634,18 +651,26 @@ mod tests {
         assert_eq!(c.get(1).get_location(), Some(&point(-20, 10)));
     }
 
+    /// **fixed: T11 (#48).** Java bug: Component.java:133-136 computes
+    /// `turnAngle = 360 - angleInDegree` for the *rotation field*, and `:146` still rotates the
+    /// location by `angleInDegree` — so the two disagreed by `360 - 2*angle`. This test pinned
+    /// that disagreement: rotation `270` with the location at `(0, 10)`, i.e. moved by `+90`.
+    ///
+    /// The complement is the intended angle (see `Component::rotate`'s doc for the decision), so
+    /// the location now moves by `270` too: `(10, 0)` rotated by `-90` about the origin is
+    /// `(0, -10)`.
     #[test]
     fn rotate_on_the_back_side_with_flip_style_rotate_first_uses_the_complement() {
-        // Component.java:133-136: `turnAngle = 360 - angleInDegree` for the *rotation field*,
-        // while the location is still rotated by `angleInDegree` (Component.java:146) — the
-        // Java quirk noted on `Component::rotate`.
         let mut c = Components::new();
         c.add("B1", Some(point(10, 0)), 0.0, false, 1, 1, false, None);
         c.set_flip_style_rotate_first(true);
         c.rotate(1, 90.0, &IntPoint::new(0, 0));
         assert_eq!(c.get(1).get_rotation_in_degree(), 270.0);
-        // ... but the location moved by +90 degrees, not -90.
-        assert_eq!(c.get(1).get_location(), Some(&point(0, 10)));
+        assert_eq!(
+            c.get(1).get_location(),
+            Some(&point(0, -10)),
+            "fixed: T11 (#48) — was (0, 10), the location moved by +90 while the field said 270"
+        );
     }
 
     #[test]

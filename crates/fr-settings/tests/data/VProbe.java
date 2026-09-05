@@ -9,7 +9,6 @@ public class VProbe {
   public static void main(String[] a) throws Exception {
     System.out.println("availableProcessors = " + Runtime.getRuntime().availableProcessors());
 
-    // ---- A: clone() field set ------------------------------------------------
     RouterSettings s = mk();
     s.setLayerCount(2);
     s.algorithm = "alg";
@@ -53,12 +52,10 @@ public class VProbe {
     System.out.println("A.applied(src)=" + v(f.get(s)) + " applied(clone)=" + v(f.get(c)));
     System.out.println("A.layersNotSame = " + (c.layers != s.layers));
 
-    // clone with null scoring
     RouterSettings n = mk(); n.setLayerCount(2); n.scoring = null;
     RouterSettings nc = n.clone();
     System.out.println("A.nullScoringClone.scoringNotNull = " + (nc.scoring != null));
 
-    // ---- B: validate() matrix ------------------------------------------------
     Integer[] mp = {-1, 10000, 0, 50};
     for (Integer x : mp) {
       RouterSettings t = mk(); t.maxPasses = x; t.tracePullTightAccuracy = 500; t.maxThreads = 2;
@@ -77,7 +74,6 @@ public class VProbe {
       t.validate();
       System.out.println("B.tpta " + x + " -> " + t.tracePullTightAccuracy);
     }
-    // NPE rows
     try { RouterSettings t = mk(); t.tracePullTightAccuracy = 500; t.validate();
           System.out.println("B.nullMaxPasses -> no throw, " + v(t.maxPasses)); }
     catch (Throwable e) { System.out.println("B.nullMaxPasses -> " + e.getClass().getName()); }
@@ -85,7 +81,6 @@ public class VProbe {
           System.out.println("B.nullTpta -> no throw, " + v(t.tracePullTightAccuracy)); }
     catch (Throwable e) { System.out.println("B.nullTpta -> " + e.getClass().getName()); }
 
-    // ---- C: setMaxThreads / normalizeMaxThreads ------------------------------
     for (Integer x : mt) {
       RouterSettings t = mk(); t.setMaxThreads(x);
       System.out.println("C.setMaxThreads " + v(x) + " -> " + v(t.maxThreads)
@@ -95,7 +90,6 @@ public class VProbe {
     System.out.println("C.nullOptimizer -> maxThreads=" + v(nullOpt.maxThreads)
         + " optimizerStillNull=" + (nullOpt.optimizer == null));
 
-    // ---- D: setLayerCount re-wipe (Q11 / docs/java-quirks.md #126) ------------
     RouterSettings d = mk();
     d.setLayerCount(2);
     d.setPreferredDirectionTraceCosts(0, 2.5);
@@ -112,10 +106,9 @@ public class VProbe {
     d.setLayerCount(4);
     System.out.println("D.after(diff) applied=" + v(f.get(d)) + " layerCount=" + d.getLayerCount());
 
-    // ---- E: getHorizontal/VerticalTraceCosts NPE ------------------------------
     RouterSettings e = mk();
     e.layers = new LayerSettings[] { new LayerSettings(), new LayerSettings() };
-    e.scoring = new ScoringSettings(); // arrays null
+    e.scoring = new ScoringSettings(); 
     System.out.println("E.getPreferredDirectionTraceCosts(0) = " + e.getPreferredDirectionTraceCosts(0));
     System.out.println("E.getAgainstPreferredDirectionTraceCosts(0) = " + e.getAgainstPreferredDirectionTraceCosts(0));
     try { System.out.println("E.getHorizontalTraceCosts(0) = " + e.getHorizontalTraceCosts(0)); }
@@ -125,11 +118,9 @@ public class VProbe {
     System.out.println("E.getTraceCosts().length (arrays null) = " + e.getTraceCosts().length);
     try { RouterSettings e2 = mk(); System.out.println("E.getTraceCosts on new = " + e2.getTraceCosts().length); }
     catch (Throwable t) { System.out.println("E.getTraceCosts on new -> " + t.getClass().getName()); }
-    // out of range
     System.out.println("E.getHorizontalTraceCosts(-1) = " + e.getHorizontalTraceCosts(-1));
     System.out.println("E.getHorizontalTraceCosts(9) = " + e.getHorizontalTraceCosts(9));
 
-    // swap-by-preferred-direction, populated
     RouterSettings g = mk(); g.setLayerCount(2);
     g.setPreferredDirectionTraceCosts(0, 2.0); g.setAgainstPreferredDirectionTraceCosts(0, 3.0);
     g.setPreferredDirectionTraceCosts(1, 4.0); g.setAgainstPreferredDirectionTraceCosts(1, 5.0);
@@ -139,7 +130,6 @@ public class VProbe {
         + " h=" + g.getHorizontalTraceCosts(1) + " v=" + g.getVerticalTraceCosts(1));
     AutorouteControlShim.print(g);
 
-    // ---- F: misc accessor defaults -------------------------------------------
     RouterSettings x = mk();
     System.out.println("F.runRouter=" + x.getRunRouter() + " runOptimizer=" + x.getRunOptimizer()
         + " viasAllowed=" + x.getViasAllowed() + " viaCosts=" + x.getViaCosts()
@@ -164,23 +154,19 @@ public class VProbe {
     RouterSettings w = mk(); w.setViaCosts(-4); w.setPlaneViaCosts(0); w.setStartRipupCosts(-9);
     System.out.println("F.clamps via=" + w.getViaCosts() + " plane=" + w.getPlaneViaCosts()
         + " ripup=" + w.getStartRipupCosts());
-    // setPreferredDirectionTraceCosts clamp + applied flag
     RouterSettings q = mk(); q.setLayerCount(2); q.setPreferredDirectionTraceCosts(0, 0.05);
     System.out.println("F.prefTraceClamp = " + q.getPreferredDirectionTraceCosts(0)
         + " applied=" + v(f.get(q)));
     RouterSettings q2 = mk(); q2.setLayerCount(2); q2.setAgainstPreferredDirectionTraceCosts(0, -1.0);
     System.out.println("F.undesiredClamp = " + q2.getAgainstPreferredDirectionTraceCosts(0)
         + " applied=" + v(f.get(q2)));
-    // setter out of range is a no-op
     RouterSettings q3 = mk(); q3.setPreferredDirectionTraceCosts(0, 9.0);
     System.out.println("F.setterOutOfRange applied=" + v(f.get(q3)) + " scoringPref="
         + (q3.scoring.preferredDirectionTraceCost == null ? "null" : "len " + q3.scoring.preferredDirectionTraceCost.length));
-    // setter reallocation when array length != layer count
     RouterSettings q4 = mk(); q4.setLayerCount(2);
     q4.scoring.preferredDirectionTraceCost = new double[] {7.0};
     q4.setPreferredDirectionTraceCosts(1, 2.0);
     System.out.println("F.realloc = " + java.util.Arrays.toString(q4.scoring.preferredDirectionTraceCost));
-    // setRunOptimizer / setRunRouter etc.
     RouterSettings r = mk(); r.optimizer = null; r.setRunOptimizer(true);
     System.out.println("F.setRunOptimizer on null optimizer -> " + r.getRunOptimizer());
     RouterSettings r2 = mk(); r2.optimizer = null;

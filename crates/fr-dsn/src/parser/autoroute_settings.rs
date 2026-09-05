@@ -1,16 +1,3 @@
-//! `io/specctra/parser/AutorouteSettings.java` — the `autoroute_settings` scope.
-//!
-//! # `apply_new_values_from` is clone-HEAD-only, so it is not jar-pinned
-//!
-//! [`DsnRouterSettings::apply_new_values_from`] ports
-//! `settings/RouterSettings.applyNewValuesFrom` as it is reached from `RulesReader`'s
-//! four-argument `read`. `javap -p` on `tools/freerouting-2.3.0.jar` shows that overload does not
-//! exist there (the jar's `RulesReader` has a single three-argument `read`), so no JVM golden in
-//! this port exercises the copy: its tests are read from the Java source at the clone's HEAD and
-//! are **not** jar-verified. The rest of this module — `read_autoroute_settings_scope`,
-//! `read_layer_rule`, `write_autoroute_settings_scope` — *is* jar-pinned, the writer byte for
-//! byte (`rules_round_trip.rs::rules_writer_with_settings_matches_java`).
-
 use std::io::Write;
 
 use fr_board::LayerStructure;
@@ -23,79 +10,18 @@ use crate::parser::dsn_file::{read_float_scope, read_integer_scope, read_on_off_
 use crate::parser::geometry::DsnLayerStructure;
 use crate::parser::scope_parameter::skip_scope;
 
-/// The router settings the DSN `autoroute_settings` scope reads and writes (plan ruling 5).
-///
-/// Java's `AutorouteSettings.readScope` returns an `app.freerouting.settings.RouterSettings` and
-/// `BoardMetadata` carries one; Plan 4 owns `fr-settings`, which cannot be a dependency of Plan 3
-/// without inverting the build order. This type therefore holds **exactly** the fields the
-/// DSN/rules scopes read and write, with the same defaults and the same setter clamping as the
-/// Java class, and Plan 4 writes the `From`/`Into` pair.
-///
-// obligation: settings/RouterSettings.java — Plan 4 owns the real `RouterSettings`; this
-// `DsnRouterSettings` is the `fr-dsn`-local subset the DSN reader/writer needs (plan ruling 5),
-// and Plan 4 must supply the conversion in both directions rather than a second parser.
-///
-/// # Defaults, and where they come from
-///
-/// Every getter below reproduces `RouterSettings`' own null-coalescing default, because Java's
-/// fields are boxed and start `null`. **The nullability itself is part of the model**, not just
-/// the default: `AutorouteSettings.readScope` calls `setViasAllowed`/`setViaCosts`/
-/// `setPlaneViaCosts`/`setStartRipupCosts` **only** when the corresponding token appears
-/// (:50-58), so a file that omits `(via_costs …)` leaves `scoring.viaCosts` at `null` and every
-/// higher-priority settings source's value survives the merge. A field that stored the coalesced
-/// default instead would report `1` — an *opinion* — and silently overwrite them (Plan 4 Task 6
-/// review, controller ruling L; JVM row `SProbe H.reduced.merged.getViaCosts = 50`). The four
-/// fields that can be absent are therefore `Option`, and the raw `*_raw` accessors expose that;
-/// the plain getters below coalesce, because that is what the DSN/`.rules` **writers** call.
-///
-/// | Field | Java | Default |
-/// |---|---|---|
-/// | `run_router` | `enabled != null ? enabled : true` (:553) | `true` |
-/// | `run_optimizer` | `optimizer != null && optimizer.enabled != null ? … : false` (:562) | `false` |
-/// | `vias_allowed` | `viasAllowed != null ? viasAllowed : true` (:596) | `true` |
-/// | `via_costs` / `plane_via_costs` / `start_ripup_costs` | `scoring…!= null ? … : 1` (:538,601,614) | `1` |
-/// | layer `active` | `layers[layer].routable`, seeded `true` by `setLayerCount` (:471) | `true` |
-/// | `preferred_direction_is_horizontal` | `layer % 2 == 1` when unset (:743,747) | alternating |
-/// | both trace costs | `1.0` when unset (:786,806), seeded `1.0` by `setLayerCount` (:475-476) | `1.0` |
 #[derive(Debug, Clone, PartialEq)]
 pub struct DsnRouterSettings {
-    /// `RouterSettings.enabled` (`getRunRouter`/`setRunRouter`, RouterSettings.java:552-557).
     run_router: bool,
-    /// `RouterSettings.optimizer.enabled` (`getRunOptimizer`/`setRunOptimizer`, :561-568).
     run_optimizer: bool,
-    /// `RouterSettings.viasAllowed` (`getViasAllowed`, :595-597). `None` is Java's `null` — the
-    /// `(vias …)` token was absent, so `readScope` never called the setter (:50-51).
     vias_allowed: Option<bool>,
-    /// `RouterSettings.scoring.viaCosts` (:600-611). `None` is Java's `null` (:52-53).
     via_costs: Option<i32>,
-    /// `RouterSettings.scoring.planeViaCosts` (:613-624). `None` is Java's `null` (:54-55).
     plane_via_costs: Option<i32>,
-    /// `RouterSettings.scoring.startRipupCosts` (:537-548). `None` is Java's `null` (:56-57).
     start_ripup_costs: Option<i32>,
-    /// `RouterSettings.layers[i].routable` (:629-670).
     layer_active: Vec<bool>,
-    /// `RouterSettings.layers[i].preferredDirectionHorizontal` (:709-749). `None` is Java's
-    /// `null`, whose default is the alternating `layer % 2 == 1` — not a constant, so the
-    /// nullability has to survive into this port.
     preferred_direction_is_horizontal: Vec<Option<bool>>,
-    /// `RouterSettings.scoring.preferredDirectionTraceCost` (:751-793).
     preferred_direction_trace_costs: Vec<f64>,
-    /// `RouterSettings.scoring.undesiredDirectionTraceCost` (:795-813,838-853).
     against_preferred_direction_trace_costs: Vec<f64>,
-    /// `RouterSettings.boardSpecificTraceCostsApplied` (:111, `private transient Boolean`).
-    ///
-    /// Both per-layer cost arrays are **always** populated — `setLayerCount` seeds every entry
-    /// with `1.0` (:466-472) — so their values alone cannot say whether the file named a cost.
-    /// This flag can: `setLayerCount` clears it on a reallocation (:457) and the two trace-cost
-    /// setters set it (:776, :858), so it is `true` exactly when at least one
-    /// `(preferred_direction_trace_costs …)` / `(against_preferred_direction_trace_costs …)`
-    /// token was read (`AutorouteSettings.java:139-145`). Plan 4's conversion needs it: it is
-    /// what makes `applyBoardSpecificOptimizationsIfNeeded` re-tune, or not. JVM rows `SProbe
-    /// H.reduced.raw.areBoardSpecificTraceCostsApplied = false` against
-    /// `H.full.raw.… = true` for the same file with its four cost lines restored.
-    ///
-    /// Java's field is `private`, so `ReflectionUtil.copyFields` never carries it (quirk 127) —
-    /// and neither does [`Self::apply_new_values_from`].
     board_specific_trace_costs_applied: bool,
 }
 
@@ -106,9 +32,6 @@ impl Default for DsnRouterSettings {
 }
 
 impl DsnRouterSettings {
-    /// `new RouterSettings()` (RouterSettings.java:119-124) with no layers yet — every nullable
-    /// field **absent**, exactly as Java's boxed fields start `null`. The getters below are what
-    /// coalesce absence into Java's default.
     #[must_use]
     pub fn new() -> DsnRouterSettings {
         DsnRouterSettings {
@@ -126,18 +49,8 @@ impl DsnRouterSettings {
         }
     }
 
-    /// `RouterSettings.setLayerCount` (RouterSettings.java:455-477): resizes the per-layer arrays
-    /// and re-seeds every entry — `routable = true`, `preferredDirectionHorizontal = null`, both
-    /// trace costs `1.0`.
-    ///
-    /// [`Self::board_specific_trace_costs_applied`] is cleared **only** when the count actually
-    /// changes (`:456-457` — the write sits inside the reallocation branch) while the reseeding
-    /// below runs on every call. That asymmetry is quirk #126; reproduced here rather than
-    /// simplified, so this type answers `areBoardSpecificTraceCostsApplied` exactly as Java's
-    /// object does.
     pub fn set_layer_count(&mut self, layer_count: usize) {
         if self.layer_active.len() != layer_count {
-            // Java bug: setLayerCount (RouterSettings.java:456-457) — see quirk #126.
             self.board_specific_trace_costs_applied = false;
         }
         self.layer_active = vec![true; layer_count];
@@ -146,123 +59,96 @@ impl DsnRouterSettings {
         self.against_preferred_direction_trace_costs = vec![1.0; layer_count];
     }
 
-    /// `RouterSettings.getLayerCount` (RouterSettings.java:442-448).
     #[must_use]
     pub fn get_layer_count(&self) -> usize {
         self.layer_active.len()
     }
 
-    /// `RouterSettings.getRunRouter` (RouterSettings.java:552-554).
     #[must_use]
     pub fn run_router(&self) -> bool {
         self.run_router
     }
 
-    /// `RouterSettings.setRunRouter` (RouterSettings.java:555-557).
     pub fn set_run_router(&mut self, value: bool) {
         self.run_router = value;
     }
 
-    /// `RouterSettings.getRunOptimizer` (RouterSettings.java:561-563).
     #[must_use]
     pub fn run_optimizer(&self) -> bool {
         self.run_optimizer
     }
 
-    /// `RouterSettings.setRunOptimizer` (RouterSettings.java:564-569).
     pub fn set_run_optimizer(&mut self, value: bool) {
         self.run_optimizer = value;
     }
 
-    /// `RouterSettings.getViasAllowed` (RouterSettings.java:595-597): `true` when absent.
     #[must_use]
     pub fn vias_allowed(&self) -> bool {
         self.vias_allowed.unwrap_or(true)
     }
 
-    /// The raw, un-coalesced `viasAllowed` — `None` where the file named no `(vias …)`.
-    // added in Plan 4: (no Java counterpart — a raw field read in Java)
     #[must_use]
     pub fn vias_allowed_raw(&self) -> Option<bool> {
         self.vias_allowed
     }
 
-    /// `RouterSettings.setViasAllowed(boolean)` (RouterSettings.java:216-218).
     pub fn set_vias_allowed(&mut self, value: bool) {
         self.vias_allowed = Some(value);
     }
 
-    /// `RouterSettings.getViaCosts` (RouterSettings.java:600-602): `1` when absent.
     #[must_use]
     pub fn via_costs(&self) -> i32 {
         self.via_costs.unwrap_or(1)
     }
 
-    /// The raw, un-coalesced `scoring.viaCosts` — `None` where the file named no `(via_costs …)`.
-    // added in Plan 4: (no Java counterpart — a raw field read in Java)
     #[must_use]
     pub fn via_costs_raw(&self) -> Option<i32> {
         self.via_costs
     }
 
-    /// `RouterSettings.setViaCosts` (RouterSettings.java:604-611): clamped up to 1.
     pub fn set_via_costs(&mut self, value: i32) {
         self.via_costs = Some(value.max(1));
     }
 
-    /// `RouterSettings.getPlaneViaCosts` (RouterSettings.java:613-615): `1` when absent.
     #[must_use]
     pub fn plane_via_costs(&self) -> i32 {
         self.plane_via_costs.unwrap_or(1)
     }
 
-    /// The raw, un-coalesced `scoring.planeViaCosts`.
-    // added in Plan 4: (no Java counterpart — a raw field read in Java)
     #[must_use]
     pub fn plane_via_costs_raw(&self) -> Option<i32> {
         self.plane_via_costs
     }
 
-    /// `RouterSettings.setPlaneViaCosts` (RouterSettings.java:617-624): clamped up to 1.
     pub fn set_plane_via_costs(&mut self, value: i32) {
         self.plane_via_costs = Some(value.max(1));
     }
 
-    /// `RouterSettings.getStartRipupCosts` (RouterSettings.java:537-539): `1` when absent.
     #[must_use]
     pub fn start_ripup_costs(&self) -> i32 {
         self.start_ripup_costs.unwrap_or(1)
     }
 
-    /// The raw, un-coalesced `scoring.startRipupCosts`.
-    // added in Plan 4: (no Java counterpart — a raw field read in Java)
     #[must_use]
     pub fn start_ripup_costs_raw(&self) -> Option<i32> {
         self.start_ripup_costs
     }
 
-    /// `RouterSettings.setStartRipupCosts` (RouterSettings.java:541-548): clamped up to 1.
     pub fn set_start_ripup_costs(&mut self, value: i32) {
         self.start_ripup_costs = Some(value.max(1));
     }
 
-    /// `RouterSettings.getLayerActive` (RouterSettings.java:658-670): `false` for an
-    /// out-of-range layer, exactly as Java's guarded getter answers.
     #[must_use]
     pub fn get_layer_active(&self, layer: usize) -> bool {
         self.layer_active.get(layer).copied().unwrap_or(false)
     }
 
-    /// `RouterSettings.setLayerActive` (RouterSettings.java:635-650): an out-of-range layer is
-    /// a no-op (Java warns and returns).
     pub fn set_layer_active(&mut self, layer: usize, value: bool) {
         if let Some(slot) = self.layer_active.get_mut(layer) {
             *slot = value;
         }
     }
 
-    /// `RouterSettings.getPreferredDirectionIsHorizontal` (RouterSettings.java:733-749): `false`
-    /// out of range, otherwise the stored value, otherwise the alternating `layer % 2 == 1`.
     #[must_use]
     pub fn get_preferred_direction_is_horizontal(&self, layer: usize) -> bool {
         match self.preferred_direction_is_horizontal.get(layer) {
@@ -272,18 +158,6 @@ impl DsnRouterSettings {
         }
     }
 
-    /// The **raw**, un-defaulted `layers[layer].preferredDirectionHorizontal` — `None` where no
-    /// `(layer_rule … (preferred_direction …))` ever set one, and `None` for an out-of-range
-    /// layer.
-    ///
-    /// Java has no such accessor: `settings/RouterSettings.java` exposes the field directly
-    /// (`public LayerSettings[] layers`), so its callers read the nullability for free while
-    /// this type keeps its fields private behind the clamping setters. Added by the port so
-    /// Plan 4's `impl From<DsnRouterSettings> for fr_settings::RouterSettings` can carry the
-    /// `Option<bool>` across intact — plan 3 ruling 5 kept the nullability precisely for that,
-    /// and [`Self::get_preferred_direction_is_horizontal`] has already collapsed it into the
-    /// alternating `layer % 2 == 1` default.
-    // added in Plan 4: (no Java counterpart — a raw field read in Java)
     #[must_use]
     pub fn preferred_direction_is_horizontal_raw(&self, layer: usize) -> Option<bool> {
         self.preferred_direction_is_horizontal
@@ -292,15 +166,12 @@ impl DsnRouterSettings {
             .flatten()
     }
 
-    /// `RouterSettings.setPreferredDirectionIsHorizontal` (RouterSettings.java:709-725).
     pub fn set_preferred_direction_is_horizontal(&mut self, layer: usize, value: bool) {
         if let Some(slot) = self.preferred_direction_is_horizontal.get_mut(layer) {
             *slot = Some(value);
         }
     }
 
-    /// `RouterSettings.getPreferredDirectionTraceCosts` (RouterSettings.java:779-793): `0` out of
-    /// range, `1.0` when unset.
     #[must_use]
     pub fn get_preferred_direction_trace_costs(&self, layer: usize) -> f64 {
         self.preferred_direction_trace_costs
@@ -309,18 +180,13 @@ impl DsnRouterSettings {
             .unwrap_or(0.0)
     }
 
-    /// `RouterSettings.setPreferredDirectionTraceCosts` (RouterSettings.java:756-773): clamped up
-    /// to 0.1, and sets [`Self::are_board_specific_trace_costs_applied`] (`:776`).
     pub fn set_preferred_direction_trace_costs(&mut self, layer: usize, value: f64) {
         if let Some(slot) = self.preferred_direction_trace_costs.get_mut(layer) {
             *slot = value.max(0.1);
-            // `boardSpecificTraceCostsApplied = true` (:776) — inside the range guard, as Java
-            // has it, so an out-of-range layer sets nothing.
             self.board_specific_trace_costs_applied = true;
         }
     }
 
-    /// `RouterSettings.getAgainstPreferredDirectionTraceCosts` (RouterSettings.java:795-813).
     #[must_use]
     pub fn get_against_preferred_direction_trace_costs(&self, layer: usize) -> f64 {
         self.against_preferred_direction_trace_costs
@@ -329,74 +195,22 @@ impl DsnRouterSettings {
             .unwrap_or(0.0)
     }
 
-    /// `RouterSettings.setAgainstPreferredDirectionTraceCosts` (RouterSettings.java:838-853):
-    /// clamped up to 0.1, and sets [`Self::are_board_specific_trace_costs_applied`] (`:858`).
     pub fn set_against_preferred_direction_trace_costs(&mut self, layer: usize, value: f64) {
         if let Some(slot) = self.against_preferred_direction_trace_costs.get_mut(layer) {
             *slot = value.max(0.1);
-            // `boardSpecificTraceCostsApplied = true` (:858).
             self.board_specific_trace_costs_applied = true;
         }
     }
 
-    /// `RouterSettings.areBoardSpecificTraceCostsApplied` (RouterSettings.java:257-259):
-    /// `Boolean.TRUE.equals(boardSpecificTraceCostsApplied)`.
-    ///
-    /// For a settings object built by [`read_autoroute_settings_scope`] this answers "the file
-    /// named at least one per-layer trace cost", which is the only way to tell a named `1.0`
-    /// from `setLayerCount`'s seeded `1.0`.
     #[must_use]
     pub fn are_board_specific_trace_costs_applied(&self) -> bool {
         self.board_specific_trace_costs_applied
     }
 
-    /// `RouterSettings.applyNewValuesFrom(RouterSettings)` (RouterSettings.java:907-929) —
-    /// `RulesReader.read`'s way of pushing a file's `(autoroute_settings …)` into the caller's
-    /// settings object (RulesReader.java:156).
-    ///
-    /// Java delegates the whole job to `ReflectionUtil.copyFields(source, target)`
-    /// (ReflectionUtil.java:215-340), a reflective walk of `RouterSettings`' **public** fields.
-    /// Restricted to the fields this type carries, that walk reduces to the four rules below —
-    /// all four are reproduced, not simplified away, because `read` is handed a target the caller
-    /// may already have filled in:
-    ///
-    /// | Java field | type | rule (ReflectionUtil.java) |
-    /// |---|---|---|
-    /// | `enabled`, `viasAllowed`, `optimizer.enabled` | `Boolean` | non-`null` copies (:235) |
-    /// | `scoring.{viaCosts,planeViaCosts,startRipupCosts}` | `Integer` | non-`null` copies (:235) |
-    /// | `scoring.{preferredDirectionTraceCost,undesiredDirectionTraceCost}` | `double[]` | copied **only** when the target's array is `null` or empty (:285) |
-    /// | `layers` | `LayerSettings[]` | merged element-wise when the target is at least as long, else replaced; each element's `Boolean routable`/`preferredDirectionHorizontal` copy when non-`null` (:291-326) |
-    ///
-    /// **All four rules are conditional.** An earlier revision of this port stored the four
-    /// nullable scalars as plain `bool`/`i32` and copied them unconditionally, on the reasoning
-    /// that `read_autoroute_settings_scope` always fills them — it does not: `readScope` calls
-    /// each setter only when its token appears (`AutorouteSettings.java:50-58`). Copying the
-    /// coalesced default instead of skipping an absent field is exactly what rule 2 exists to
-    /// prevent (Plan 4 Task 6 review, controller ruling L).
-    ///
-    /// `run_router`/`run_optimizer` stay unconditional, and correctly so: `readScope` assigns
-    /// both after the loop from locals that default to `true` (`:67-68`), so they are never
-    /// absent on an object this module produces.
-    ///
-    /// [`Self::board_specific_trace_costs_applied`] is **not** copied — Java's field is
-    /// `private`, and rule 1 (`ReflectionUtil.java:226-228`) skips non-`public` fields. That is
-    /// quirk 127, reproduced here by omission.
-    ///
-    /// Java returns the number of fields it changed, which no caller of `applyNewValuesFrom`
-    /// reads (`RulesReader.java:156` discards it); this returns `()`.
-    ///
-    // obligation: settings/RouterSettings.java — Plan 4 owns the real `applyNewValuesFrom`,
-    // including the fields `DsnRouterSettings` does not carry and the `PropertyChangeSupport`
-    // events (:917-926) this port drops with the GUI.
-    // not ported: `pcs.firePropertyChange` (RouterSettings.java:917-926) — GUI notification.
-    // not ported: the `settings == null` guard (:908-911) — `&DsnRouterSettings` cannot be null.
-    // renamed: applyNewValuesFrom -> apply_new_values_from, returning `()` rather than Java's
-    // never-read change count.
     pub fn apply_new_values_from(&mut self, other: &DsnRouterSettings) {
         self.run_router = other.run_router;
         self.run_optimizer = other.run_optimizer;
 
-        // Rule 2 (`ReflectionUtil.java:235`): a `null` source field is skipped.
         if other.vias_allowed.is_some() {
             self.vias_allowed = other.vias_allowed;
         }
@@ -410,8 +224,6 @@ impl DsnRouterSettings {
             self.start_ripup_costs = other.start_ripup_costs;
         }
 
-        // `layers` (ReflectionUtil.java:291-326): merge into the target's own elements when it
-        // has at least as many, otherwise take the source's array wholesale.
         if self.layer_active.len() >= other.layer_active.len() {
             for (i, active) in other.layer_active.iter().enumerate() {
                 if let Some(slot) = self.layer_active.get_mut(i) {
@@ -431,8 +243,6 @@ impl DsnRouterSettings {
                 other.preferred_direction_is_horizontal.clone();
         }
 
-        // The two `double[]`s (ReflectionUtil.java:267-290): a target array that already has
-        // entries is left alone.
         if self.preferred_direction_trace_costs.is_empty() {
             self.preferred_direction_trace_costs = other.preferred_direction_trace_costs.clone();
         }
@@ -443,18 +253,6 @@ impl DsnRouterSettings {
     }
 }
 
-/// `AutorouteSettings.readScope` (AutorouteSettings.java:18-70): the `(autoroute_settings …)`
-/// scope, whose opening bracket and keyword the caller has already consumed.
-///
-/// `None` is Java's `null` — end of file, or a `layer_rule` sub-scope that named an unknown
-/// layer. Java's `FRLogger.warn`/`error` calls are dropped (no `tracing` in `fr-dsn`); a genuine
-/// scanner error still propagates as `Err`.
-///
-/// `withAutoroute`/`withPostroute` default to `true` and land in `run_router`/`run_optimizer`
-/// after the loop (:67-68) — note that this is what makes a DSN-read `run_optimizer` default to
-/// `true` even though the plain `RouterSettings` getter defaults it to `false`.
-// renamed: AutorouteSettings.readScope -> read_autoroute_settings_scope (this module has no
-// `AutorouteSettings` type to hang it on: the Java class is a static-method holder).
 pub fn read_autoroute_settings_scope(
     scanner: &mut DsnScanner,
     layer_structure: &DsnLayerStructure,
@@ -464,31 +262,14 @@ pub fn read_autoroute_settings_scope(
     let mut with_autoroute = true;
     let mut with_postroute = true;
 
-    // Java bug: (#90) Java's loop is flat and depth-unaware — it breaks on the *first* closing
-    // bracket it sees, whatever nesting level that bracket actually belongs to. Paired with
-    // `DsnFile.readIntegerScope`'s failure branch, which returns without consuming its own
-    // scope's closing bracket, a single malformed `(via_costs 5.0)` ends the whole
-    // `autoroute_settings` scope one field early and every field after it is read by the
-    // enclosing `structure` loop instead.
-    //
-    // fixed: T4 (#90) — the loop counts brackets. `depth` is the nesting level *inside* this
-    // scope: an `(` raises it, a `)` at depth 0 ends the scope and a `)` above it closes an inner
-    // bracket that no sub-reader claimed. Every dispatch arm below consumes its sub-scope through
-    // that sub-scope's own closing bracket, so each dispatch lowers `depth` by the one its `(`
-    // raised. This is the caller half of #90's repair: the reader half (`read_integer_scope` /
-    // `read_float_scope` consuming to their matching bracket) is what stops the desync happening
-    // in the first place, and this is what stops a bracket left behind by *any* sub-reader from
-    // being mistaken for the end of this scope.
     let mut depth: u32 = 0;
     let mut prev_was_open = false;
     loop {
         let Some(next_token) = scanner.next_token()? else {
-            // "unexpected end of file" (AutorouteSettings.java:31-36).
             return Ok(None);
         };
         if next_token == Token::Close {
             let Some(outer) = depth.checked_sub(1) else {
-                // end of scope
                 break;
             };
             depth = outer;
@@ -503,7 +284,6 @@ pub fn read_autoroute_settings_scope(
         if prev_was_open {
             match next_token {
                 Token::Kw(Keyword::Fanout) => {
-                    // Java reads it and throws the value away (AutorouteSettings.java:41-42).
                     let _ = read_on_off_scope(scanner)?;
                 }
                 Token::Kw(Keyword::Autoroute) => with_autoroute = read_on_off_scope(scanner)?,
@@ -534,11 +314,6 @@ pub fn read_autoroute_settings_scope(
                     let _ = skip_scope(scanner)?;
                 }
             }
-            // Every arm above consumed its sub-scope's own closing bracket, so the `(` that
-            // opened it is closed and no longer counts towards this scope's nesting.
-            // `prev_was_open` is only ever set by the `Token::Open` arm above, which raises
-            // `depth` first, so this cannot underflow; `saturating_sub` keeps a future edit to
-            // that invariant from wrapping the counter in a release build.
             depth = depth.saturating_sub(1);
         }
         prev_was_open = false;
@@ -548,8 +323,6 @@ pub fn read_autoroute_settings_scope(
     Ok(Some(result))
 }
 
-/// `AutorouteSettings.readLayerRule` (AutorouteSettings.java:73-158): one `(layer_rule <layer> …)`
-/// sub-scope, taking and returning the settings object Java threads through it.
 pub fn read_layer_rule(
     scanner: &mut DsnScanner,
     layer_structure: &DsnLayerStructure,
@@ -557,30 +330,20 @@ pub fn read_layer_rule(
 ) -> Result<Option<DsnRouterSettings>, DsnError> {
     scanner.yybegin(LexicalState::Name);
     let Some(Token::Str(layer_name)) = scanner.next_token()? else {
-        // "String expected" (AutorouteSettings.java:83-89).
         return Ok(None);
     };
-    // Java: `layerStructure.getNo(name)` answers `-1` for an unknown layer (:91-98).
     let Some(layer_index) = layer_structure.get_no(&layer_name) else {
         return Ok(None);
     };
 
-    // Java seeds `prevToken` from the layer-name token, which is a `String`, so the first
-    // iteration's `prevToken == OPEN_BRACKET` test is false either way.
-    //
-    // Java bug: (#90) the same flat, depth-unaware loop as `readScope`'s, reading the same
-    // under-consuming scalar helper (`DsnFile.readFloatScope`, AutorouteSettings.java:141,147).
-    // fixed: T4 (#90) — bracket-counted the same way; see `read_autoroute_settings_scope`.
     let mut depth: u32 = 0;
     let mut prev_was_open = false;
     loop {
         let Some(next_token) = scanner.next_token()? else {
-            // "unexpected end of file" (AutorouteSettings.java:104-110).
             return Ok(None);
         };
         if next_token == Token::Close {
             let Some(outer) = depth.checked_sub(1) else {
-                // end of scope
                 break;
             };
             depth = outer;
@@ -602,13 +365,11 @@ pub fn read_layer_rule(
                     match scanner.next_token()? {
                         Some(Token::Kw(Keyword::Vertical)) => pref_dir_is_horizontal = false,
                         Some(Token::Kw(Keyword::Horizontal)) => {}
-                        // "unexpected key word" (AutorouteSettings.java:124-130).
                         _ => return Ok(None),
                     }
                     settings
                         .set_preferred_direction_is_horizontal(layer_index, pref_dir_is_horizontal);
                     if scanner.next_token()? != Some(Token::Close) {
-                        // "closing bracket expected" (AutorouteSettings.java:133-139).
                         return Ok(None);
                     }
                 }
@@ -626,7 +387,6 @@ pub fn read_layer_rule(
                     let _ = skip_scope(scanner)?;
                 }
             }
-            // See `read_autoroute_settings_scope`: every arm consumed its own closing bracket.
             depth = depth.saturating_sub(1);
         }
         prev_was_open = false;
@@ -634,16 +394,6 @@ pub fn read_layer_rule(
     Ok(Some(settings))
 }
 
-/// `AutorouteSettings.writeScope` (AutorouteSettings.java:159-239).
-///
-/// The per-layer trace costs go through [`java_float_to_string`], because Java writes
-/// `String.valueOf((float) settings.getPreferredDirectionTraceCosts(i))` (:228,234) — a
-/// `Float.toString`, not a `Double.toString`, so a cost of 1.0 is `1.0` rather than
-/// `1.0000000149011612`. Everything else here is an `int` or an on/off literal.
-///
-/// `layer_structure` is the **board's** layer structure (`board/model/structure/LayerStructure`),
-/// not the DSN parser's, exactly as Java's parameter is.
-// renamed: AutorouteSettings.writeScope -> write_autoroute_settings_scope.
 pub fn write_autoroute_settings_scope<W: Write>(
     file: &mut IndentFileWriter<W>,
     settings: &DsnRouterSettings,
@@ -702,13 +452,13 @@ pub fn write_autoroute_settings_scope<W: Write>(
         });
         file.new_line();
         file.write("(preferred_direction_trace_costs ");
-        #[allow(clippy::cast_possible_truncation)] // Java's own `(float)` cast (:228).
+        #[allow(clippy::cast_possible_truncation)]
         let trace_costs = settings.get_preferred_direction_trace_costs(i) as f32;
         file.write(&java_float_to_string(trace_costs));
         file.write(")");
         file.new_line();
         file.write("(against_preferred_direction_trace_costs ");
-        #[allow(clippy::cast_possible_truncation)] // Java's own `(float)` cast (:234).
+        #[allow(clippy::cast_possible_truncation)]
         let trace_costs = settings.get_against_preferred_direction_trace_costs(i) as f32;
         file.write(&java_float_to_string(trace_costs));
         file.write(")");
@@ -737,7 +487,6 @@ mod tests {
     fn set_layer_count_seeds_javas_alternating_preferred_direction() {
         let mut settings = DsnRouterSettings::new();
         settings.set_layer_count(4);
-        // `layer % 2 == 1` (RouterSettings.java:743,747).
         assert!(!settings.get_preferred_direction_is_horizontal(0));
         assert!(settings.get_preferred_direction_is_horizontal(1));
         assert!(!settings.get_preferred_direction_is_horizontal(2));

@@ -1,0 +1,1503 @@
+######## rpi mode 0
+route k=1 item=23 net=3 state=ROUTED ripped=0
+route k=2 item=22 net=2 state=FAILED ripped=0
+route k=3 item=21 net=1 state=FAILED ripped=0
+route k=4 item=16 net=5 state=ROUTED ripped=0
+route k=5 item=10 net=3 state=ROUTED ripped=0
+route k=6 item=7 net=5 state=NO_UNCONNECTED_NETS ripped=0
+route k=7 item=4 net=3 state=NO_UNCONNECTED_NETS ripped=0
+route k=8 item=3 net=2 state=FAILED ripped=0
+route k=9 item=2 net=1 state=FAILED ripped=0
+sweep regime=FORTYFIVE_DEGREE traceCosts=2
+vias n=6
+via id=189 center=(932812,1038683) minWidth=75640.0 contacts=[184:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(932812,1011224)
+via id=98 center=(531001,1221669) minWidth=75640.0 contacts=[100:PolylineTrace,97:PolylineTrace] class=TWO_TRACES result=false after=(531001,1221669)
+via id=93 center=(765863,1751594) minWidth=75640.0 contacts=[97:PolylineTrace,92:PolylineTrace] class=TWO_TRACES result=false after=(765863,1751594)
+via id=84 center=(977281,2968339) minWidth=75640.0 contacts=[83:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1016000,3119161)
+via id=49 center=(531001,2269671) minWidth=75640.0 contacts=[116:PolylineTrace,48:PolylineTrace] class=TWO_TRACES result=false after=(531001,2269671)
+via id=43 center=(531001,2619005) minWidth=75640.0 contacts=[48:PolylineTrace,42:PolylineTrace] class=TWO_TRACES result=false after=(531001,2619005)
+maxId=226
+item id=225 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(1016000,3119161)->(1016001,3119161)] corners=[(1016000,3306000),(1016000,3119161)]
+item id=220 type=PolylineTrace nets=[2] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(916000,802200)->(915999,802200),(916000,802200)->(916000,802201),(0,1003017)->(-1,1003017)] corners=[(916000,802200),(916000,1003017)]
+item id=217 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(916000,802200)->(916000,802201),(-1,1003017)->(0,1003017),(932812,1011224)->(932813,1011225),(932812,1011224)->(932811,1011224)] corners=[(916000,1003017),(924605,1003017),(932812,1011224)]
+item id=189 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1011224)
+item id=188 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=10 lines=[(1365999,802200)->(1366000,802200),(1366000,802200)->(1366000,1069252),(1116684,1069251)->(1116683,1069252),(1366000,1069252)->(955860,1069252),(2075295,0)->(2075294,1),(0,1112080)->(-1,1112080),(955860,1069252)->(552083,1473029),(552083,1473029)->(552083,2269656),(552083,2269656)->(552098,2269671),(552099,2269670)->(552098,2269671)] corners=[(1366000,802200),(1366000,819935),(1116683,1069252),(1006043,1069252),(963215,1112080),(913032,1112080),(552083,1473029),(552083,2269656),(552098,2269671)]
+item id=116 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552098,2269671)->(552098,2269670),(662929,2269671)->(531001,2269671),(531001,2269672)->(531001,2269671)] corners=[(552098,2269671),(531001,2269671)]
+item id=115 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727899,2204699)->(727900,2204700),(727900,2204700)->(662929,2269671),(662929,2269671)->(531001,2269671),(552098,2269671)->(552098,2269670)] corners=[(727900,2204700),(662929,2269671),(552098,2269671)]
+item id=100 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(531001,1221669)->(531002,1221670),(531001,1221669)->(666000,1086670),(666000,1086670)->(666000,802200),(666000,802200)->(665999,802200)] corners=[(531001,1221669),(666000,1086670),(666000,802200)]
+item id=98 type=Via nets=[5] cl=3 fix=UNFIXED center=(531001,1221669)
+item id=97 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=20320 n=4 lines=[(765863,1751594)->(765864,1751594),(765863,1751594)->(765863,1456531),(765863,1456531)->(531001,1221669),(531001,1221669)->(531000,1221670)] corners=[(765863,1751594),(765863,1456531),(531001,1221669)]
+item id=93 type=Via nets=[5] cl=3 fix=UNFIXED center=(765863,1751594)
+item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727900,1884700)->(727901,1884700),(727900,1861335)->(727900,1861334),(692011,1825446)->(765863,1751594),(765863,1751594)->(765862,1751593)] corners=[(727900,1884700),(727900,1789557),(765863,1751594)]
+item id=84 type=Via nets=[1] cl=3 fix=UNFIXED center=(1016000,3119161)
+item id=49 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2269671)
+item id=48 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(531001,2619005)->(531002,2619006),(531001,2340216)->(531001,2269671),(531001,2269671)->(531000,2269671)] corners=[(531001,2619005),(531001,2269671)]
+item id=43 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2619005)
+item id=42 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,2944004),(856000,2944004)->(531001,2619005),(531001,2619005)->(531000,2619006)] corners=[(856000,3306000),(856000,2944004),(531001,2619005)]
+item id=33 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=32 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=31 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=30 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=29 type=Pin nets=[4] cl=4 fix=UNFIXED center=(1176000,3306000)
+item id=28 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3306000)
+item id=27 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3856000)
+item id=26 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3306000)
+item id=25 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3856000)
+item id=24 type=Pin nets=[] cl=4 fix=UNFIXED center=(936000,3306000)
+item id=23 type=Pin nets=[3] cl=4 fix=UNFIXED center=(856000,3306000)
+item id=22 type=Pin nets=[2] cl=4 fix=UNFIXED center=(1096000,3306000)
+item id=21 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1016000,3306000)
+item id=20 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=19 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=18 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=17 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=16 type=Pin nets=[5] cl=4 fix=UNFIXED center=(727900,1884700)
+item id=15 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2494700)
+item id=14 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,2494700)
+item id=13 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1594700)
+item id=12 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,1594700)
+item id=11 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2124700)
+item id=10 type=Pin nets=[3] cl=4 fix=UNFIXED center=(727900,2204700)
+item id=9 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1964700)
+item id=8 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2044700)
+item id=7 type=Pin nets=[5] cl=4 fix=UNFIXED center=(666000,802200)
+item id=6 type=Pin nets=[] cl=5 fix=UNFIXED center=(359410,381000)
+item id=5 type=Pin nets=[] cl=5 fix=UNFIXED center=(1672590,381000)
+item id=4 type=Pin nets=[3] cl=4 fix=UNFIXED center=(1366000,802200)
+item id=3 type=Pin nets=[2] cl=4 fix=UNFIXED center=(916000,802200)
+item id=2 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1116000,802200)
+item id=1 type=BoardOutline nets=[] cl=2 fix=SYSTEM_FIXED
+######## rpi mode 1
+route k=1 item=23 net=3 state=ROUTED ripped=0
+route k=2 item=22 net=2 state=FAILED ripped=0
+route k=3 item=21 net=1 state=FAILED ripped=0
+route k=4 item=16 net=5 state=ROUTED ripped=0
+route k=5 item=10 net=3 state=ROUTED ripped=0
+route k=6 item=7 net=5 state=NO_UNCONNECTED_NETS ripped=0
+route k=7 item=4 net=3 state=NO_UNCONNECTED_NETS ripped=0
+route k=8 item=3 net=2 state=FAILED ripped=0
+route k=9 item=2 net=1 state=FAILED ripped=0
+sweep regime=FORTYFIVE_DEGREE traceCosts=2
+vias n=6
+via id=189 center=(932812,1038683) minWidth=75640.0 contacts=[184:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(932812,1011224)
+via id=98 center=(531001,1221669) minWidth=75640.0 contacts=[100:PolylineTrace,97:PolylineTrace] class=TWO_TRACES result=false after=(531001,1221669)
+via id=93 center=(765863,1751594) minWidth=75640.0 contacts=[97:PolylineTrace,92:PolylineTrace] class=TWO_TRACES result=false after=(765863,1751594)
+via id=84 center=(977281,2968339) minWidth=75640.0 contacts=[83:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1016000,3119161)
+via id=49 center=(531001,2269671) minWidth=75640.0 contacts=[116:PolylineTrace,48:PolylineTrace] class=TWO_TRACES result=false after=(531001,2269671)
+via id=43 center=(531001,2619005) minWidth=75640.0 contacts=[48:PolylineTrace,42:PolylineTrace] class=TWO_TRACES result=false after=(531001,2619005)
+maxId=226
+item id=225 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(1016000,3119161)->(1016001,3119161)] corners=[(1016000,3306000),(1016000,3119161)]
+item id=220 type=PolylineTrace nets=[2] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(916000,802200)->(915999,802200),(916000,802200)->(916000,802201),(0,1003017)->(-1,1003017)] corners=[(916000,802200),(916000,1003017)]
+item id=217 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(916000,802200)->(916000,802201),(-1,1003017)->(0,1003017),(932812,1011224)->(932813,1011225),(932812,1011224)->(932811,1011224)] corners=[(916000,1003017),(924605,1003017),(932812,1011224)]
+item id=189 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1011224)
+item id=188 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=10 lines=[(1365999,802200)->(1366000,802200),(1366000,802200)->(1366000,1069252),(1116684,1069251)->(1116683,1069252),(1366000,1069252)->(955860,1069252),(2075295,0)->(2075294,1),(0,1112080)->(-1,1112080),(955860,1069252)->(552083,1473029),(552083,1473029)->(552083,2269656),(552083,2269656)->(552098,2269671),(552099,2269670)->(552098,2269671)] corners=[(1366000,802200),(1366000,819935),(1116683,1069252),(1006043,1069252),(963215,1112080),(913032,1112080),(552083,1473029),(552083,2269656),(552098,2269671)]
+item id=116 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552098,2269671)->(552098,2269670),(662929,2269671)->(531001,2269671),(531001,2269672)->(531001,2269671)] corners=[(552098,2269671),(531001,2269671)]
+item id=115 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727899,2204699)->(727900,2204700),(727900,2204700)->(662929,2269671),(662929,2269671)->(531001,2269671),(552098,2269671)->(552098,2269670)] corners=[(727900,2204700),(662929,2269671),(552098,2269671)]
+item id=100 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(531001,1221669)->(531002,1221670),(531001,1221669)->(666000,1086670),(666000,1086670)->(666000,802200),(666000,802200)->(665999,802200)] corners=[(531001,1221669),(666000,1086670),(666000,802200)]
+item id=98 type=Via nets=[5] cl=3 fix=UNFIXED center=(531001,1221669)
+item id=97 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=20320 n=4 lines=[(765863,1751594)->(765864,1751594),(765863,1751594)->(765863,1456531),(765863,1456531)->(531001,1221669),(531001,1221669)->(531000,1221670)] corners=[(765863,1751594),(765863,1456531),(531001,1221669)]
+item id=93 type=Via nets=[5] cl=3 fix=UNFIXED center=(765863,1751594)
+item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727900,1884700)->(727901,1884700),(727900,1861335)->(727900,1861334),(692011,1825446)->(765863,1751594),(765863,1751594)->(765862,1751593)] corners=[(727900,1884700),(727900,1789557),(765863,1751594)]
+item id=84 type=Via nets=[1] cl=3 fix=UNFIXED center=(1016000,3119161)
+item id=49 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2269671)
+item id=48 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(531001,2619005)->(531002,2619006),(531001,2340216)->(531001,2269671),(531001,2269671)->(531000,2269671)] corners=[(531001,2619005),(531001,2269671)]
+item id=43 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2619005)
+item id=42 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,2944004),(856000,2944004)->(531001,2619005),(531001,2619005)->(531000,2619006)] corners=[(856000,3306000),(856000,2944004),(531001,2619005)]
+item id=33 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=32 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=31 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=30 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=29 type=Pin nets=[4] cl=4 fix=UNFIXED center=(1176000,3306000)
+item id=28 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3306000)
+item id=27 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3856000)
+item id=26 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3306000)
+item id=25 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3856000)
+item id=24 type=Pin nets=[] cl=4 fix=UNFIXED center=(936000,3306000)
+item id=23 type=Pin nets=[3] cl=4 fix=UNFIXED center=(856000,3306000)
+item id=22 type=Pin nets=[2] cl=4 fix=UNFIXED center=(1096000,3306000)
+item id=21 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1016000,3306000)
+item id=20 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=19 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=18 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=17 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=16 type=Pin nets=[5] cl=4 fix=UNFIXED center=(727900,1884700)
+item id=15 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2494700)
+item id=14 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,2494700)
+item id=13 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1594700)
+item id=12 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,1594700)
+item id=11 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2124700)
+item id=10 type=Pin nets=[3] cl=4 fix=UNFIXED center=(727900,2204700)
+item id=9 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1964700)
+item id=8 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2044700)
+item id=7 type=Pin nets=[5] cl=4 fix=UNFIXED center=(666000,802200)
+item id=6 type=Pin nets=[] cl=5 fix=UNFIXED center=(359410,381000)
+item id=5 type=Pin nets=[] cl=5 fix=UNFIXED center=(1672590,381000)
+item id=4 type=Pin nets=[3] cl=4 fix=UNFIXED center=(1366000,802200)
+item id=3 type=Pin nets=[2] cl=4 fix=UNFIXED center=(916000,802200)
+item id=2 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1116000,802200)
+item id=1 type=BoardOutline nets=[] cl=2 fix=SYSTEM_FIXED
+######## rpi mode 6
+route k=1 item=23 net=3 state=ROUTED ripped=0
+route k=2 item=22 net=2 state=FAILED ripped=0
+route k=3 item=21 net=1 state=FAILED ripped=0
+route k=4 item=16 net=5 state=ROUTED ripped=0
+route k=5 item=10 net=3 state=ROUTED ripped=0
+route k=6 item=7 net=5 state=NO_UNCONNECTED_NETS ripped=0
+route k=7 item=4 net=3 state=NO_UNCONNECTED_NETS ripped=0
+route k=8 item=3 net=2 state=FAILED ripped=0
+route k=9 item=2 net=1 state=FAILED ripped=0
+sweep regime=FORTYFIVE_DEGREE traceCosts=null
+vias n=6
+via id=189 center=(932812,1038683) minWidth=75640.0 contacts=[184:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(932812,1011224)
+via id=98 center=(531001,1221669) minWidth=75640.0 contacts=[100:PolylineTrace,97:PolylineTrace] class=TWO_TRACES result=false after=(531001,1221669)
+via id=93 center=(765863,1751594) minWidth=75640.0 contacts=[97:PolylineTrace,92:PolylineTrace] class=TWO_TRACES result=false after=(765863,1751594)
+via id=84 center=(977281,2968339) minWidth=75640.0 contacts=[83:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1016000,3119161)
+via id=49 center=(531001,2269671) minWidth=75640.0 contacts=[116:PolylineTrace,48:PolylineTrace] class=TWO_TRACES result=false after=(531001,2269671)
+via id=43 center=(531001,2619005) minWidth=75640.0 contacts=[48:PolylineTrace,42:PolylineTrace] class=TWO_TRACES result=false after=(531001,2619005)
+maxId=226
+item id=225 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(1016000,3119161)->(1016001,3119161)] corners=[(1016000,3306000),(1016000,3119161)]
+item id=220 type=PolylineTrace nets=[2] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(916000,802200)->(915999,802200),(916000,802200)->(916000,802201),(0,1003017)->(-1,1003017)] corners=[(916000,802200),(916000,1003017)]
+item id=217 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(916000,802200)->(916000,802201),(-1,1003017)->(0,1003017),(932812,1011224)->(932813,1011225),(932812,1011224)->(932811,1011224)] corners=[(916000,1003017),(924605,1003017),(932812,1011224)]
+item id=189 type=Via nets=[2] cl=3 fix=UNFIXED center=(932812,1011224)
+item id=188 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=10 lines=[(1365999,802200)->(1366000,802200),(1366000,802200)->(1366000,1069252),(1116684,1069251)->(1116683,1069252),(1366000,1069252)->(955860,1069252),(2075295,0)->(2075294,1),(0,1112080)->(-1,1112080),(955860,1069252)->(552083,1473029),(552083,1473029)->(552083,2269656),(552083,2269656)->(552098,2269671),(552099,2269670)->(552098,2269671)] corners=[(1366000,802200),(1366000,819935),(1116683,1069252),(1006043,1069252),(963215,1112080),(913032,1112080),(552083,1473029),(552083,2269656),(552098,2269671)]
+item id=116 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(552098,2269671)->(552098,2269670),(662929,2269671)->(531001,2269671),(531001,2269672)->(531001,2269671)] corners=[(552098,2269671),(531001,2269671)]
+item id=115 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727899,2204699)->(727900,2204700),(727900,2204700)->(662929,2269671),(662929,2269671)->(531001,2269671),(552098,2269671)->(552098,2269670)] corners=[(727900,2204700),(662929,2269671),(552098,2269671)]
+item id=100 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(531001,1221669)->(531002,1221670),(531001,1221669)->(666000,1086670),(666000,1086670)->(666000,802200),(666000,802200)->(665999,802200)] corners=[(531001,1221669),(666000,1086670),(666000,802200)]
+item id=98 type=Via nets=[5] cl=3 fix=UNFIXED center=(531001,1221669)
+item id=97 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=20320 n=4 lines=[(765863,1751594)->(765864,1751594),(765863,1751594)->(765863,1456531),(765863,1456531)->(531001,1221669),(531001,1221669)->(531000,1221670)] corners=[(765863,1751594),(765863,1456531),(531001,1221669)]
+item id=93 type=Via nets=[5] cl=3 fix=UNFIXED center=(765863,1751594)
+item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727900,1884700)->(727901,1884700),(727900,1861335)->(727900,1861334),(692011,1825446)->(765863,1751594),(765863,1751594)->(765862,1751593)] corners=[(727900,1884700),(727900,1789557),(765863,1751594)]
+item id=84 type=Via nets=[1] cl=3 fix=UNFIXED center=(1016000,3119161)
+item id=49 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2269671)
+item id=48 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=1 hw=20320 n=3 lines=[(531001,2619005)->(531002,2619006),(531001,2340216)->(531001,2269671),(531001,2269671)->(531000,2269671)] corners=[(531001,2619005),(531001,2269671)]
+item id=43 type=Via nets=[3] cl=3 fix=UNFIXED center=(531001,2619005)
+item id=42 type=PolylineTrace nets=[3] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(856000,3306000)->(856001,3306000),(856000,3306000)->(856000,2944004),(856000,2944004)->(531001,2619005),(531001,2619005)->(531000,2619006)] corners=[(856000,3306000),(856000,2944004),(531001,2619005)]
+item id=33 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=32 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=31 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=30 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=29 type=Pin nets=[4] cl=4 fix=UNFIXED center=(1176000,3306000)
+item id=28 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3306000)
+item id=27 type=Pin nets=[] cl=4 fix=UNFIXED center=(566000,3856000)
+item id=26 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3306000)
+item id=25 type=Pin nets=[] cl=4 fix=UNFIXED center=(1466000,3856000)
+item id=24 type=Pin nets=[] cl=4 fix=UNFIXED center=(936000,3306000)
+item id=23 type=Pin nets=[3] cl=4 fix=UNFIXED center=(856000,3306000)
+item id=22 type=Pin nets=[2] cl=4 fix=UNFIXED center=(1096000,3306000)
+item id=21 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1016000,3306000)
+item id=20 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=19 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=18 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=17 type=ObstacleArea nets=[] cl=6 fix=UNFIXED
+item id=16 type=Pin nets=[5] cl=4 fix=UNFIXED center=(727900,1884700)
+item id=15 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2494700)
+item id=14 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,2494700)
+item id=13 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1594700)
+item id=12 type=Pin nets=[] cl=4 fix=UNFIXED center=(1277900,1594700)
+item id=11 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2124700)
+item id=10 type=Pin nets=[3] cl=4 fix=UNFIXED center=(727900,2204700)
+item id=9 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,1964700)
+item id=8 type=Pin nets=[] cl=4 fix=UNFIXED center=(727900,2044700)
+item id=7 type=Pin nets=[5] cl=4 fix=UNFIXED center=(666000,802200)
+item id=6 type=Pin nets=[] cl=5 fix=UNFIXED center=(359410,381000)
+item id=5 type=Pin nets=[] cl=5 fix=UNFIXED center=(1672590,381000)
+item id=4 type=Pin nets=[3] cl=4 fix=UNFIXED center=(1366000,802200)
+item id=3 type=Pin nets=[2] cl=4 fix=UNFIXED center=(916000,802200)
+item id=2 type=Pin nets=[1] cl=4 fix=UNFIXED center=(1116000,802200)
+item id=1 type=BoardOutline nets=[] cl=2 fix=SYSTEM_FIXED
+######## ecc83 mode 0
+route k=1 item=342 net=5 state=ROUTED ripped=0
+route k=2 item=337 net=6 state=ROUTED ripped=0
+route k=3 item=336 net=4 state=ROUTED ripped=0
+route k=4 item=335 net=12 state=ROUTED ripped=0
+route k=5 item=334 net=2 state=ROUTED ripped=0
+route k=6 item=333 net=7 state=ROUTED ripped=0
+route k=7 item=332 net=7 state=ROUTED ripped=0
+route k=8 item=331 net=13 state=ROUTED ripped=0
+route k=9 item=330 net=5 state=ROUTED ripped=0
+route k=10 item=329 net=12 state=ROUTED ripped=0
+route k=11 item=316 net=7 state=NO_UNCONNECTED_NETS ripped=0
+route k=12 item=315 net=6 state=NO_UNCONNECTED_NETS ripped=0
+sweep regime=FORTYFIVE_DEGREE traceCosts=2
+vias n=0
+maxId=409
+item id=409 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1526750,-1184650)->(1526749,-1184651),(1492067,-1149967)->(1492066,-1149966),(1492067,-1118850)->(1436150,-1118850),(1436150,-1118850)->(1436150,-1118849)] corners=[(1526750,-1184650),(1460950,-1118850),(1436150,-1118850)]
+item id=405 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1155350)->(1548251,-1155350),(1548250,-1155350)->(1548251,-1155351),(1644650,-1174750)->(1644651,-1174750),(1644650,-1174750)->(1644651,-1174751)] corners=[(1548250,-1155350),(1567650,-1174750),(1644650,-1174750)]
+item id=399 type=PolylineTrace nets=[13] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1118850)->(1548249,-1118849),(1548250,-1118850)->(1582398,-1084702),(1562100,-1039700)->(1562100,-958850),(1562100,-958850)->(1562101,-958850)] corners=[(1548250,-1118850),(1562100,-1105000),(1562100,-958850)]
+item id=391 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1492250,-1078150)->(1492251,-1078150),(1492250,-1078150)->(1492250,-1298740),(1492250,-1298740)->(1505420,-1311910),(1505420,-1311910)->(1505419,-1311911)] corners=[(1492250,-1078150),(1492250,-1298740),(1505420,-1311910)]
+item id=386 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1492250,-1078150)->(1492250,-1078149),(1492250,-1078150)->(1515350,-1078150),(1515350,-1078150)->(1526750,-1089550),(1526750,-1089550)->(1526749,-1089551)] corners=[(1492250,-1078150),(1515350,-1078150),(1526750,-1089550)]
+item id=384 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1089550)->(1457649,-1089551),(1457650,-1089550)->(1416050,-1047950),(1416050,-1047950)->(1416050,-996950),(1416050,-996950)->(1416051,-996950)] corners=[(1457650,-1089550),(1416050,-1047950),(1416050,-996950)]
+item id=373 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1436150,-1118850)->(1436150,-1118851),(1436150,-1118850)->(1402060,-1118850),(1402060,-1118850)->(1362710,-1079500),(1362710,-1079500)->(1362711,-1079499)] corners=[(1436150,-1118850),(1402060,-1118850),(1362710,-1079500)]
+item id=371 type=PolylineTrace nets=[4] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1436150,-1154950)->(1436150,-1154951),(1417998,-1154950)->(1363460,-1154950),(1363460,-1154950)->(1362710,-1155700),(1362710,-1155700)->(1362709,-1155699)] corners=[(1436150,-1154950),(1363460,-1154950),(1362710,-1155700)]
+item id=368 type=PolylineTrace nets=[6] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1184650)->(1457651,-1184651),(1457650,-1184650)->(1455420,-1186880),(1455420,-1186880)->(1455420,-1311910),(1455420,-1311910)->(1455419,-1311910)] corners=[(1457650,-1184650),(1455420,-1186880),(1455420,-1311910)]
+item id=366 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=4000 n=5 lines=[(1663700,-1004100)->(1663701,-1004101),(1663700,-1004100)->(1638927,-1028873),(1640357,-1028873)->(1640357,-1028874),(1644650,-1174750)->(1644651,-1174751),(1644650,-1174750)->(1644650,-1174751)] corners=[(1663700,-1004100),(1640357,-1027443),(1640357,-1170457),(1644650,-1174750)]
+item id=354 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=353 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=352 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=351 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=350 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=349 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=348 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=347 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=346 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=345 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=344 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=343 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=342 type=Pin nets=[5] cl=1 fix=UNFIXED center=(1663700,-1004100)
+item id=341 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1663700,-1054100)
+item id=340 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=339 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=338 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=337 type=Pin nets=[6] cl=1 fix=UNFIXED center=(1457650,-1184650)
+item id=336 type=Pin nets=[4] cl=1 fix=UNFIXED center=(1436150,-1154950)
+item id=335 type=Pin nets=[12] cl=1 fix=UNFIXED center=(1436150,-1118850)
+item id=334 type=Pin nets=[2] cl=1 fix=UNFIXED center=(1457650,-1089550)
+item id=333 type=Pin nets=[7] cl=1 fix=UNFIXED center=(1492250,-1078150)
+item id=332 type=Pin nets=[7] cl=1 fix=UNFIXED center=(1526750,-1089550)
+item id=331 type=Pin nets=[13] cl=1 fix=UNFIXED center=(1548250,-1118850)
+item id=330 type=Pin nets=[5] cl=1 fix=UNFIXED center=(1548250,-1155350)
+item id=329 type=Pin nets=[12] cl=1 fix=UNFIXED center=(1526750,-1184650)
+item id=328 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=327 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=326 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=325 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=324 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=323 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=322 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=321 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=320 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=319 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=318 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=317 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=316 type=Pin nets=[7] cl=1 fix=UNFIXED center=(1505420,-1311910)
+item id=315 type=Pin nets=[6] cl=1 fix=UNFIXED center=(1455420,-1311910)
+item id=314 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=313 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=312 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=311 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=310 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=309 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=308 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=307 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=306 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=305 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=304 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=303 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=302 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1282700,-1057110)
+item id=301 type=Pin nets=[2] cl=1 fix=UNFIXED center=(1282700,-1007110)
+item id=300 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=299 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=298 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=297 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=296 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=295 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=294 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=293 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=292 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=291 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=290 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=289 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=288 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1282700,-1177760)
+item id=287 type=Pin nets=[3] cl=1 fix=UNFIXED center=(1282700,-1127760)
+item id=286 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=285 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=284 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=283 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=282 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=281 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=280 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=279 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=278 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=277 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=276 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=275 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=274 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=273 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1263650,-1250950)
+item id=272 type=Pin nets=[3] cl=1 fix=UNFIXED center=(1339850,-1250950)
+item id=271 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=270 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=269 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=268 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=267 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=266 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=265 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=264 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=263 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=262 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=261 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=260 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=259 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=258 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1485900,-958850)
+item id=257 type=Pin nets=[13] cl=1 fix=UNFIXED center=(1562100,-958850)
+item id=256 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=255 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=254 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=253 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=252 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=251 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=250 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=249 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=248 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=247 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=246 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=245 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=244 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=243 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1644650,-1250950)
+item id=242 type=Pin nets=[5] cl=1 fix=UNFIXED center=(1644650,-1174750)
+item id=241 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=240 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=239 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=238 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=237 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=236 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=235 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=234 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=233 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=232 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=231 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=230 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=229 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=228 type=Pin nets=[4] cl=1 fix=UNFIXED center=(1362710,-1155700)
+item id=227 type=Pin nets=[12] cl=1 fix=UNFIXED center=(1362710,-1079500)
+item id=226 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=225 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=224 type=Pin nets=[11] cl=1 fix=UNFIXED center=(1250950,-1327150)
+item id=223 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=222 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=221 type=Pin nets=[10] cl=1 fix=UNFIXED center=(1695450,-1327150)
+item id=220 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=219 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=218 type=Pin nets=[9] cl=1 fix=UNFIXED center=(1695450,-939800)
+item id=217 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=216 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=215 type=Pin nets=[8] cl=1 fix=UNFIXED center=(1250950,-939800)
+item id=214 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=213 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=212 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=211 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=210 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=209 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=208 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=207 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=206 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=205 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=204 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=203 type=Pin nets=[4] cl=1 fix=UNFIXED center=(1371600,-1200950)
+item id=202 type=Pin nets=[3] cl=1 fix=UNFIXED center=(1371600,-1250950)
+item id=201 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=200 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=199 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=198 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=197 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=196 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=195 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=194 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=193 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=192 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=191 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=190 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=189 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=188 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=187 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=186 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=185 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=184 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=183 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=182 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=181 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=180 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=179 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=178 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=177 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=176 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=175 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=174 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=173 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=172 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=171 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=170 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=169 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=168 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=167 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=166 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=165 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=164 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=163 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=162 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=161 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=160 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=159 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=158 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=157 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=156 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=155 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=154 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=153 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=152 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=151 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=150 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=149 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=148 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=147 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=146 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=145 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=144 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=143 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=142 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=141 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=140 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=139 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=138 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=137 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=136 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=135 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=134 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=133 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=132 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=131 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=130 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=129 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=128 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=127 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=126 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=125 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=124 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=123 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=122 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=121 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=120 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=119 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=118 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=117 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=116 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=115 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=114 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=113 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=112 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=111 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=110 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=109 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=108 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=107 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=106 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=105 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=104 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=103 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=102 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=101 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=100 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=99 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=98 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=97 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=96 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=95 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=94 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=93 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=92 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=91 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=90 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=89 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=88 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=87 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=86 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=85 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=84 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=83 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=82 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=81 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=80 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=79 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=78 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=77 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=76 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=75 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=74 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=73 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=72 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=71 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=70 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=69 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=68 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=67 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=66 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=65 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=64 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=63 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=62 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=61 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=60 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=59 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=58 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=57 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=56 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=55 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=54 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=53 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=52 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=51 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=50 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=49 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=48 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=47 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=46 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=45 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=44 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=43 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=42 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=41 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=40 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=39 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=38 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=37 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=36 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=35 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=34 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=33 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=32 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=31 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=30 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=29 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=28 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=27 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=26 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=25 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=24 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=23 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=22 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=21 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=20 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=19 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=18 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=17 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=16 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=15 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=14 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=13 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=12 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=11 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=10 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=9 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=8 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=7 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=6 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=5 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=4 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1416050,-946950)
+item id=3 type=Pin nets=[2] cl=1 fix=UNFIXED center=(1416050,-996950)
+item id=2 type=ConductionArea nets=[1] cl=1 fix=SYSTEM_FIXED
+item id=1 type=BoardOutline nets=[] cl=1 fix=SYSTEM_FIXED
+######## ecc83 mode 1
+route k=1 item=342 net=5 state=ROUTED ripped=0
+route k=2 item=337 net=6 state=ROUTED ripped=0
+route k=3 item=336 net=4 state=ROUTED ripped=0
+route k=4 item=335 net=12 state=ROUTED ripped=0
+route k=5 item=334 net=2 state=ROUTED ripped=0
+route k=6 item=333 net=7 state=ROUTED ripped=0
+route k=7 item=332 net=7 state=ROUTED ripped=0
+route k=8 item=331 net=13 state=ROUTED ripped=0
+route k=9 item=330 net=5 state=ROUTED ripped=0
+route k=10 item=329 net=12 state=ROUTED ripped=0
+route k=11 item=316 net=7 state=NO_UNCONNECTED_NETS ripped=0
+route k=12 item=315 net=6 state=NO_UNCONNECTED_NETS ripped=0
+sweep regime=FORTYFIVE_DEGREE traceCosts=2
+vias n=0
+maxId=409
+item id=409 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1526750,-1184650)->(1526749,-1184651),(1492067,-1149967)->(1492066,-1149966),(1492067,-1118850)->(1436150,-1118850),(1436150,-1118850)->(1436150,-1118849)] corners=[(1526750,-1184650),(1460950,-1118850),(1436150,-1118850)]
+item id=405 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1155350)->(1548251,-1155350),(1548250,-1155350)->(1548251,-1155351),(1644650,-1174750)->(1644651,-1174750),(1644650,-1174750)->(1644651,-1174751)] corners=[(1548250,-1155350),(1567650,-1174750),(1644650,-1174750)]
+item id=399 type=PolylineTrace nets=[13] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1118850)->(1548249,-1118849),(1548250,-1118850)->(1582398,-1084702),(1562100,-1039700)->(1562100,-958850),(1562100,-958850)->(1562101,-958850)] corners=[(1548250,-1118850),(1562100,-1105000),(1562100,-958850)]
+item id=391 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1492250,-1078150)->(1492251,-1078150),(1492250,-1078150)->(1492250,-1298740),(1492250,-1298740)->(1505420,-1311910),(1505420,-1311910)->(1505419,-1311911)] corners=[(1492250,-1078150),(1492250,-1298740),(1505420,-1311910)]
+item id=386 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1492250,-1078150)->(1492250,-1078149),(1492250,-1078150)->(1515350,-1078150),(1515350,-1078150)->(1526750,-1089550),(1526750,-1089550)->(1526749,-1089551)] corners=[(1492250,-1078150),(1515350,-1078150),(1526750,-1089550)]
+item id=384 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1089550)->(1457649,-1089551),(1457650,-1089550)->(1416050,-1047950),(1416050,-1047950)->(1416050,-996950),(1416050,-996950)->(1416051,-996950)] corners=[(1457650,-1089550),(1416050,-1047950),(1416050,-996950)]
+item id=373 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1436150,-1118850)->(1436150,-1118851),(1436150,-1118850)->(1402060,-1118850),(1402060,-1118850)->(1362710,-1079500),(1362710,-1079500)->(1362711,-1079499)] corners=[(1436150,-1118850),(1402060,-1118850),(1362710,-1079500)]
+item id=371 type=PolylineTrace nets=[4] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1436150,-1154950)->(1436150,-1154951),(1417998,-1154950)->(1363460,-1154950),(1363460,-1154950)->(1362710,-1155700),(1362710,-1155700)->(1362709,-1155699)] corners=[(1436150,-1154950),(1363460,-1154950),(1362710,-1155700)]
+item id=368 type=PolylineTrace nets=[6] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1184650)->(1457651,-1184651),(1457650,-1184650)->(1455420,-1186880),(1455420,-1186880)->(1455420,-1311910),(1455420,-1311910)->(1455419,-1311910)] corners=[(1457650,-1184650),(1455420,-1186880),(1455420,-1311910)]
+item id=366 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=4000 n=5 lines=[(1663700,-1004100)->(1663701,-1004101),(1663700,-1004100)->(1638927,-1028873),(1640357,-1028873)->(1640357,-1028874),(1644650,-1174750)->(1644651,-1174751),(1644650,-1174750)->(1644650,-1174751)] corners=[(1663700,-1004100),(1640357,-1027443),(1640357,-1170457),(1644650,-1174750)]
+item id=354 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=353 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=352 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=351 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=350 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=349 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=348 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=347 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=346 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=345 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=344 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=343 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=342 type=Pin nets=[5] cl=1 fix=UNFIXED center=(1663700,-1004100)
+item id=341 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1663700,-1054100)
+item id=340 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=339 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=338 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=337 type=Pin nets=[6] cl=1 fix=UNFIXED center=(1457650,-1184650)
+item id=336 type=Pin nets=[4] cl=1 fix=UNFIXED center=(1436150,-1154950)
+item id=335 type=Pin nets=[12] cl=1 fix=UNFIXED center=(1436150,-1118850)
+item id=334 type=Pin nets=[2] cl=1 fix=UNFIXED center=(1457650,-1089550)
+item id=333 type=Pin nets=[7] cl=1 fix=UNFIXED center=(1492250,-1078150)
+item id=332 type=Pin nets=[7] cl=1 fix=UNFIXED center=(1526750,-1089550)
+item id=331 type=Pin nets=[13] cl=1 fix=UNFIXED center=(1548250,-1118850)
+item id=330 type=Pin nets=[5] cl=1 fix=UNFIXED center=(1548250,-1155350)
+item id=329 type=Pin nets=[12] cl=1 fix=UNFIXED center=(1526750,-1184650)
+item id=328 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=327 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=326 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=325 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=324 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=323 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=322 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=321 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=320 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=319 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=318 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=317 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=316 type=Pin nets=[7] cl=1 fix=UNFIXED center=(1505420,-1311910)
+item id=315 type=Pin nets=[6] cl=1 fix=UNFIXED center=(1455420,-1311910)
+item id=314 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=313 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=312 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=311 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=310 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=309 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=308 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=307 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=306 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=305 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=304 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=303 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=302 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1282700,-1057110)
+item id=301 type=Pin nets=[2] cl=1 fix=UNFIXED center=(1282700,-1007110)
+item id=300 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=299 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=298 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=297 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=296 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=295 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=294 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=293 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=292 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=291 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=290 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=289 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=288 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1282700,-1177760)
+item id=287 type=Pin nets=[3] cl=1 fix=UNFIXED center=(1282700,-1127760)
+item id=286 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=285 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=284 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=283 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=282 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=281 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=280 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=279 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=278 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=277 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=276 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=275 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=274 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=273 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1263650,-1250950)
+item id=272 type=Pin nets=[3] cl=1 fix=UNFIXED center=(1339850,-1250950)
+item id=271 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=270 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=269 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=268 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=267 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=266 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=265 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=264 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=263 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=262 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=261 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=260 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=259 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=258 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1485900,-958850)
+item id=257 type=Pin nets=[13] cl=1 fix=UNFIXED center=(1562100,-958850)
+item id=256 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=255 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=254 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=253 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=252 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=251 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=250 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=249 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=248 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=247 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=246 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=245 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=244 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=243 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1644650,-1250950)
+item id=242 type=Pin nets=[5] cl=1 fix=UNFIXED center=(1644650,-1174750)
+item id=241 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=240 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=239 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=238 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=237 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=236 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=235 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=234 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=233 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=232 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=231 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=230 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=229 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=228 type=Pin nets=[4] cl=1 fix=UNFIXED center=(1362710,-1155700)
+item id=227 type=Pin nets=[12] cl=1 fix=UNFIXED center=(1362710,-1079500)
+item id=226 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=225 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=224 type=Pin nets=[11] cl=1 fix=UNFIXED center=(1250950,-1327150)
+item id=223 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=222 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=221 type=Pin nets=[10] cl=1 fix=UNFIXED center=(1695450,-1327150)
+item id=220 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=219 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=218 type=Pin nets=[9] cl=1 fix=UNFIXED center=(1695450,-939800)
+item id=217 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=216 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=215 type=Pin nets=[8] cl=1 fix=UNFIXED center=(1250950,-939800)
+item id=214 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=213 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=212 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=211 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=210 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=209 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=208 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=207 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=206 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=205 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=204 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=203 type=Pin nets=[4] cl=1 fix=UNFIXED center=(1371600,-1200950)
+item id=202 type=Pin nets=[3] cl=1 fix=UNFIXED center=(1371600,-1250950)
+item id=201 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=200 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=199 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=198 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=197 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=196 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=195 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=194 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=193 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=192 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=191 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=190 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=189 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=188 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=187 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=186 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=185 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=184 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=183 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=182 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=181 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=180 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=179 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=178 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=177 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=176 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=175 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=174 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=173 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=172 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=171 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=170 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=169 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=168 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=167 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=166 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=165 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=164 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=163 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=162 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=161 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=160 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=159 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=158 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=157 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=156 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=155 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=154 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=153 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=152 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=151 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=150 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=149 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=148 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=147 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=146 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=145 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=144 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=143 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=142 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=141 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=140 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=139 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=138 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=137 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=136 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=135 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=134 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=133 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=132 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=131 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=130 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=129 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=128 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=127 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=126 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=125 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=124 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=123 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=122 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=121 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=120 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=119 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=118 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=117 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=116 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=115 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=114 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=113 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=112 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=111 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=110 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=109 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=108 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=107 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=106 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=105 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=104 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=103 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=102 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=101 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=100 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=99 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=98 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=97 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=96 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=95 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=94 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=93 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=92 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=91 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=90 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=89 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=88 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=87 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=86 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=85 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=84 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=83 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=82 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=81 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=80 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=79 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=78 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=77 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=76 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=75 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=74 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=73 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=72 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=71 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=70 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=69 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=68 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=67 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=66 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=65 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=64 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=63 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=62 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=61 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=60 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=59 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=58 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=57 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=56 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=55 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=54 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=53 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=52 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=51 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=50 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=49 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=48 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=47 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=46 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=45 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=44 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=43 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=42 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=41 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=40 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=39 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=38 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=37 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=36 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=35 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=34 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=33 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=32 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=31 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=30 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=29 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=28 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=27 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=26 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=25 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=24 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=23 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=22 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=21 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=20 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=19 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=18 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=17 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=16 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=15 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=14 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=13 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=12 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=11 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=10 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=9 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=8 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=7 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=6 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=5 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=4 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1416050,-946950)
+item id=3 type=Pin nets=[2] cl=1 fix=UNFIXED center=(1416050,-996950)
+item id=2 type=ConductionArea nets=[1] cl=1 fix=SYSTEM_FIXED
+item id=1 type=BoardOutline nets=[] cl=1 fix=SYSTEM_FIXED
+######## ecc83 mode 6
+route k=1 item=342 net=5 state=ROUTED ripped=0
+route k=2 item=337 net=6 state=ROUTED ripped=0
+route k=3 item=336 net=4 state=ROUTED ripped=0
+route k=4 item=335 net=12 state=ROUTED ripped=0
+route k=5 item=334 net=2 state=ROUTED ripped=0
+route k=6 item=333 net=7 state=ROUTED ripped=0
+route k=7 item=332 net=7 state=ROUTED ripped=0
+route k=8 item=331 net=13 state=ROUTED ripped=0
+route k=9 item=330 net=5 state=ROUTED ripped=0
+route k=10 item=329 net=12 state=ROUTED ripped=0
+route k=11 item=316 net=7 state=NO_UNCONNECTED_NETS ripped=0
+route k=12 item=315 net=6 state=NO_UNCONNECTED_NETS ripped=0
+sweep regime=FORTYFIVE_DEGREE traceCosts=null
+vias n=0
+maxId=409
+item id=409 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1526750,-1184650)->(1526749,-1184651),(1492067,-1149967)->(1492066,-1149966),(1492067,-1118850)->(1436150,-1118850),(1436150,-1118850)->(1436150,-1118849)] corners=[(1526750,-1184650),(1460950,-1118850),(1436150,-1118850)]
+item id=405 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1155350)->(1548251,-1155350),(1548250,-1155350)->(1548251,-1155351),(1644650,-1174750)->(1644651,-1174750),(1644650,-1174750)->(1644651,-1174751)] corners=[(1548250,-1155350),(1567650,-1174750),(1644650,-1174750)]
+item id=399 type=PolylineTrace nets=[13] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1118850)->(1548249,-1118849),(1548250,-1118850)->(1582398,-1084702),(1562100,-1039700)->(1562100,-958850),(1562100,-958850)->(1562101,-958850)] corners=[(1548250,-1118850),(1562100,-1105000),(1562100,-958850)]
+item id=391 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1492250,-1078150)->(1492251,-1078150),(1492250,-1078150)->(1492250,-1298740),(1492250,-1298740)->(1505420,-1311910),(1505420,-1311910)->(1505419,-1311911)] corners=[(1492250,-1078150),(1492250,-1298740),(1505420,-1311910)]
+item id=386 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1492250,-1078150)->(1492250,-1078149),(1492250,-1078150)->(1515350,-1078150),(1515350,-1078150)->(1526750,-1089550),(1526750,-1089550)->(1526749,-1089551)] corners=[(1492250,-1078150),(1515350,-1078150),(1526750,-1089550)]
+item id=384 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1089550)->(1457649,-1089551),(1457650,-1089550)->(1416050,-1047950),(1416050,-1047950)->(1416050,-996950),(1416050,-996950)->(1416051,-996950)] corners=[(1457650,-1089550),(1416050,-1047950),(1416050,-996950)]
+item id=373 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1436150,-1118850)->(1436150,-1118851),(1436150,-1118850)->(1402060,-1118850),(1402060,-1118850)->(1362710,-1079500),(1362710,-1079500)->(1362711,-1079499)] corners=[(1436150,-1118850),(1402060,-1118850),(1362710,-1079500)]
+item id=371 type=PolylineTrace nets=[4] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1436150,-1154950)->(1436150,-1154951),(1417998,-1154950)->(1363460,-1154950),(1363460,-1154950)->(1362710,-1155700),(1362710,-1155700)->(1362709,-1155699)] corners=[(1436150,-1154950),(1363460,-1154950),(1362710,-1155700)]
+item id=368 type=PolylineTrace nets=[6] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1184650)->(1457651,-1184651),(1457650,-1184650)->(1455420,-1186880),(1455420,-1186880)->(1455420,-1311910),(1455420,-1311910)->(1455419,-1311910)] corners=[(1457650,-1184650),(1455420,-1186880),(1455420,-1311910)]
+item id=366 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=4000 n=5 lines=[(1663700,-1004100)->(1663701,-1004101),(1663700,-1004100)->(1638927,-1028873),(1640357,-1028873)->(1640357,-1028874),(1644650,-1174750)->(1644651,-1174751),(1644650,-1174750)->(1644650,-1174751)] corners=[(1663700,-1004100),(1640357,-1027443),(1640357,-1170457),(1644650,-1174750)]
+item id=354 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=353 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=352 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=351 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=350 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=349 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=348 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=347 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=346 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=345 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=344 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=343 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=342 type=Pin nets=[5] cl=1 fix=UNFIXED center=(1663700,-1004100)
+item id=341 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1663700,-1054100)
+item id=340 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=339 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=338 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=337 type=Pin nets=[6] cl=1 fix=UNFIXED center=(1457650,-1184650)
+item id=336 type=Pin nets=[4] cl=1 fix=UNFIXED center=(1436150,-1154950)
+item id=335 type=Pin nets=[12] cl=1 fix=UNFIXED center=(1436150,-1118850)
+item id=334 type=Pin nets=[2] cl=1 fix=UNFIXED center=(1457650,-1089550)
+item id=333 type=Pin nets=[7] cl=1 fix=UNFIXED center=(1492250,-1078150)
+item id=332 type=Pin nets=[7] cl=1 fix=UNFIXED center=(1526750,-1089550)
+item id=331 type=Pin nets=[13] cl=1 fix=UNFIXED center=(1548250,-1118850)
+item id=330 type=Pin nets=[5] cl=1 fix=UNFIXED center=(1548250,-1155350)
+item id=329 type=Pin nets=[12] cl=1 fix=UNFIXED center=(1526750,-1184650)
+item id=328 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=327 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=326 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=325 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=324 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=323 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=322 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=321 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=320 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=319 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=318 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=317 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=316 type=Pin nets=[7] cl=1 fix=UNFIXED center=(1505420,-1311910)
+item id=315 type=Pin nets=[6] cl=1 fix=UNFIXED center=(1455420,-1311910)
+item id=314 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=313 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=312 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=311 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=310 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=309 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=308 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=307 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=306 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=305 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=304 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=303 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=302 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1282700,-1057110)
+item id=301 type=Pin nets=[2] cl=1 fix=UNFIXED center=(1282700,-1007110)
+item id=300 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=299 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=298 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=297 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=296 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=295 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=294 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=293 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=292 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=291 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=290 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=289 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=288 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1282700,-1177760)
+item id=287 type=Pin nets=[3] cl=1 fix=UNFIXED center=(1282700,-1127760)
+item id=286 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=285 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=284 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=283 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=282 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=281 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=280 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=279 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=278 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=277 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=276 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=275 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=274 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=273 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1263650,-1250950)
+item id=272 type=Pin nets=[3] cl=1 fix=UNFIXED center=(1339850,-1250950)
+item id=271 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=270 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=269 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=268 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=267 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=266 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=265 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=264 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=263 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=262 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=261 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=260 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=259 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=258 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1485900,-958850)
+item id=257 type=Pin nets=[13] cl=1 fix=UNFIXED center=(1562100,-958850)
+item id=256 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=255 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=254 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=253 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=252 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=251 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=250 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=249 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=248 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=247 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=246 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=245 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=244 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=243 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1644650,-1250950)
+item id=242 type=Pin nets=[5] cl=1 fix=UNFIXED center=(1644650,-1174750)
+item id=241 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=240 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=239 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=238 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=237 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=236 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=235 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=234 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=233 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=232 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=231 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=230 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=229 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=228 type=Pin nets=[4] cl=1 fix=UNFIXED center=(1362710,-1155700)
+item id=227 type=Pin nets=[12] cl=1 fix=UNFIXED center=(1362710,-1079500)
+item id=226 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=225 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=224 type=Pin nets=[11] cl=1 fix=UNFIXED center=(1250950,-1327150)
+item id=223 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=222 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=221 type=Pin nets=[10] cl=1 fix=UNFIXED center=(1695450,-1327150)
+item id=220 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=219 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=218 type=Pin nets=[9] cl=1 fix=UNFIXED center=(1695450,-939800)
+item id=217 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=216 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=215 type=Pin nets=[8] cl=1 fix=UNFIXED center=(1250950,-939800)
+item id=214 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=213 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=212 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=211 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=210 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=209 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=208 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=207 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=206 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=205 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=204 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=203 type=Pin nets=[4] cl=1 fix=UNFIXED center=(1371600,-1200950)
+item id=202 type=Pin nets=[3] cl=1 fix=UNFIXED center=(1371600,-1250950)
+item id=201 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=200 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=199 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=198 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=197 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=196 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=195 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=194 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=193 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=192 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=191 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=190 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=189 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=188 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=187 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=186 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=185 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=184 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=183 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=182 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=181 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=180 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=179 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=178 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=177 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=176 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=175 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=174 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=173 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=172 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=171 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=170 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=169 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=168 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=167 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=166 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=165 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=164 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=163 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=162 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=161 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=160 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=159 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=158 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=157 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=156 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=155 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=154 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=153 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=152 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=151 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=150 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=149 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=148 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=147 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=146 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=145 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=144 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=143 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=142 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=141 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=140 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=139 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=138 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=137 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=136 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=135 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=134 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=133 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=132 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=131 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=130 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=129 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=128 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=127 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=126 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=125 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=124 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=123 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=122 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=121 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=120 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=119 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=118 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=117 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=116 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=115 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=114 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=113 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=112 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=111 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=110 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=109 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=108 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=107 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=106 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=105 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=104 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=103 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=102 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=101 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=100 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=99 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=98 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=97 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=96 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=95 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=94 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=93 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=92 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=91 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=90 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=89 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=88 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=87 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=86 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=85 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=84 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=83 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=82 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=81 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=80 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=79 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=78 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=77 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=76 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=75 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=74 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=73 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=72 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=71 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=70 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=69 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=68 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=67 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=66 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=65 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=64 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=63 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=62 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=61 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=60 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=59 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=58 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=57 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=56 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=55 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=54 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=53 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=52 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=51 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=50 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=49 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=48 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=47 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=46 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=45 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=44 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=43 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=42 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=41 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=40 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=39 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=38 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=37 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=36 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=35 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=34 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=33 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=32 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=31 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=30 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=29 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=28 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=27 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=26 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=25 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=24 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=23 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=22 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=21 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=20 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=19 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=18 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=17 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=16 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=15 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=14 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=13 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=12 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=11 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=10 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=9 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=8 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=7 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=6 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=5 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
+item id=4 type=Pin nets=[1] cl=1 fix=UNFIXED center=(1416050,-946950)
+item id=3 type=Pin nets=[2] cl=1 fix=UNFIXED center=(1416050,-996950)
+item id=2 type=ConductionArea nets=[1] cl=1 fix=SYSTEM_FIXED
+item id=1 type=BoardOutline nets=[] cl=1 fix=SYSTEM_FIXED
+######## rpi mode 4
+repB id=189 k=0 r=0 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=0 r=1 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=1 r=0 to=(932812,1038683) connect=(932812,819012) -> false
+repB id=189 k=1 r=1 to=(932812,1038683) connect=(932812,819012) -> false
+repB id=189 k=2 r=0 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=2 r=1 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=3 r=0 to=(932812,1038683) connect=(932812,819012) -> false
+repB id=189 k=3 r=1 to=(932812,1038683) connect=(932812,819012) -> false
+repB id=189 k=4 r=0 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=4 r=1 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=5 r=0 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=5 r=1 to=(932812,819012) connect=(932812,819012) -> false
+repB id=189 k=6 r=0 to=(932812,1038683) connect=(932812,819012) -> false
+repB id=189 k=6 r=1 to=(932812,1038683) connect=(932812,819012) -> false
+repB id=189 k=7 r=0 to=(932813,1038683) connect=(932812,819012) -> false
+repB id=189 k=7 r=1 to=(932813,1038683) connect=(932812,819012) -> false
+repB id=189 k=8 r=0 to=(932813,1038684) connect=(932812,819012) -> false
+repB id=189 k=8 r=1 to=(932813,1038684) connect=(932812,819012) -> false
+repB id=189 k=9 r=0 to=(933812,1039683) connect=(932812,819012) -> false
+repB id=189 k=9 r=1 to=(933812,1039683) connect=(932812,819012) -> false
+repB id=189 k=10 r=0 to=(931812,1038683) connect=(932812,819012) -> true
+repB id=189 k=10 r=1 to=(931812,1038683) connect=(932812,819012) -> true
+repB id=98 k=0 r=0 to=(531001,1086670) connect=(666000,1086670) -> true
+repB id=98 k=0 r=1 to=(531001,1086670) connect=(765863,1456531) -> true
+repB id=98 k=1 r=0 to=(666000,1221669) connect=(666000,1086670) -> true
+repB id=98 k=1 r=1 to=(666000,1221669) connect=(765863,1456531) -> true
+repB id=98 k=2 r=0 to=(531001,1456531) connect=(666000,1086670) -> false
+repB id=98 k=2 r=1 to=(531001,1456531) connect=(765863,1456531) -> false
+repB id=98 k=3 r=0 to=(765863,1221669) connect=(666000,1086670) -> false
+repB id=98 k=3 r=1 to=(765863,1221669) connect=(765863,1456531) -> false
+repB id=98 k=4 r=0 to=(666000,1086670) connect=(666000,1086670) -> false
+repB id=98 k=4 r=1 to=(666000,1086670) connect=(765863,1456531) -> true
+repB id=98 k=5 r=0 to=(765863,1456531) connect=(666000,1086670) -> false
+repB id=98 k=5 r=1 to=(765863,1456531) connect=(765863,1456531) -> false
+repB id=98 k=6 r=0 to=(531001,1221669) connect=(666000,1086670) -> false
+repB id=98 k=6 r=1 to=(531001,1221669) connect=(765863,1456531) -> false
+repB id=98 k=7 r=0 to=(531002,1221669) connect=(666000,1086670) -> true
+repB id=98 k=7 r=1 to=(531002,1221669) connect=(765863,1456531) -> true
+repB id=98 k=8 r=0 to=(531002,1221670) connect=(666000,1086670) -> true
+repB id=98 k=8 r=1 to=(531002,1221670) connect=(765863,1456531) -> true
+repB id=98 k=9 r=0 to=(532001,1222669) connect=(666000,1086670) -> true
+repB id=98 k=9 r=1 to=(532001,1222669) connect=(765863,1456531) -> true
+repB id=98 k=10 r=0 to=(530001,1221669) connect=(666000,1086670) -> true
+repB id=98 k=10 r=1 to=(530001,1221669) connect=(765863,1456531) -> true
+repB id=93 k=0 r=0 to=(765863,1456531) connect=(765863,1456531) -> false
+repB id=93 k=0 r=1 to=(765863,1456531) connect=(727900,1789557) -> false
+repB id=93 k=1 r=0 to=(765863,1751594) connect=(765863,1456531) -> false
+repB id=93 k=1 r=1 to=(765863,1751594) connect=(727900,1789557) -> false
+repB id=93 k=2 r=0 to=(765863,1789557) connect=(765863,1456531) -> true
+repB id=93 k=2 r=1 to=(765863,1789557) connect=(727900,1789557) -> true
+repB id=93 k=3 r=0 to=(727900,1751594) connect=(765863,1456531) -> true
+repB id=93 k=3 r=1 to=(727900,1751594) connect=(727900,1789557) -> true
+repB id=93 k=4 r=0 to=(765863,1456531) connect=(765863,1456531) -> false
+repB id=93 k=4 r=1 to=(765863,1456531) connect=(727900,1789557) -> false
+repB id=93 k=5 r=0 to=(727900,1789557) connect=(765863,1456531) -> true
+repB id=93 k=5 r=1 to=(727900,1789557) connect=(727900,1789557) -> false
+repB id=93 k=6 r=0 to=(765863,1751594) connect=(765863,1456531) -> false
+repB id=93 k=6 r=1 to=(765863,1751594) connect=(727900,1789557) -> false
+repB id=93 k=7 r=0 to=(765864,1751594) connect=(765863,1456531) -> true
+repB id=93 k=7 r=1 to=(765864,1751594) connect=(727900,1789557) -> true
+repB id=93 k=8 r=0 to=(765864,1751595) connect=(765863,1456531) -> true
+repB id=93 k=8 r=1 to=(765864,1751595) connect=(727900,1789557) -> true
+repB id=93 k=9 r=0 to=(766863,1752594) connect=(765863,1456531) -> true
+repB id=93 k=9 r=1 to=(766863,1752594) connect=(727900,1789557) -> true
+repB id=93 k=10 r=0 to=(764863,1751594) connect=(765863,1456531) -> true
+repB id=93 k=10 r=1 to=(764863,1751594) connect=(727900,1789557) -> true
+repB id=84 k=0 r=0 to=(977281,3007058) connect=(1016000,3007058) -> true
+repB id=84 k=0 r=1 to=(977281,3007058) connect=(1016000,3007058) -> true
+repB id=84 k=1 r=0 to=(1016000,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=1 r=1 to=(1016000,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=2 r=0 to=(977281,3007058) connect=(1016000,3007058) -> true
+repB id=84 k=2 r=1 to=(977281,3007058) connect=(1016000,3007058) -> true
+repB id=84 k=3 r=0 to=(1016000,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=3 r=1 to=(1016000,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=4 r=0 to=(1016000,3007058) connect=(1016000,3007058) -> false
+repB id=84 k=4 r=1 to=(1016000,3007058) connect=(1016000,3007058) -> false
+repB id=84 k=5 r=0 to=(1016000,3007058) connect=(1016000,3007058) -> false
+repB id=84 k=5 r=1 to=(1016000,3007058) connect=(1016000,3007058) -> false
+repB id=84 k=6 r=0 to=(977281,2968339) connect=(1016000,3007058) -> false
+repB id=84 k=6 r=1 to=(977281,2968339) connect=(1016000,3007058) -> false
+repB id=84 k=7 r=0 to=(977282,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=7 r=1 to=(977282,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=8 r=0 to=(977282,2968340) connect=(1016000,3007058) -> true
+repB id=84 k=8 r=1 to=(977282,2968340) connect=(1016000,3007058) -> true
+repB id=84 k=9 r=0 to=(978281,2969339) connect=(1016000,3007058) -> true
+repB id=84 k=9 r=1 to=(978281,2969339) connect=(1016000,3007058) -> true
+repB id=84 k=10 r=0 to=(976281,2968339) connect=(1016000,3007058) -> true
+repB id=84 k=10 r=1 to=(976281,2968339) connect=(1016000,3007058) -> true
+repB id=49 k=0 r=0 to=(531001,2269671) connect=(552098,2269671) -> false
+repB id=49 k=0 r=1 to=(531001,2269671) connect=(531001,2619005) -> false
+repB id=49 k=1 r=0 to=(552098,2269671) connect=(552098,2269671) -> false
+repB id=49 k=1 r=1 to=(552098,2269671) connect=(531001,2619005) -> true
+repB id=49 k=2 r=0 to=(531001,2619005) connect=(552098,2269671) -> false
+repB id=49 k=2 r=1 to=(531001,2619005) connect=(531001,2619005) -> false
+repB id=49 k=3 r=0 to=(531001,2269671) connect=(552098,2269671) -> false
+repB id=49 k=3 r=1 to=(531001,2269671) connect=(531001,2619005) -> false
+repB id=49 k=4 r=0 to=(552098,2269671) connect=(552098,2269671) -> false
+repB id=49 k=4 r=1 to=(552098,2269671) connect=(531001,2619005) -> true
+repB id=49 k=5 r=0 to=(531001,2619005) connect=(552098,2269671) -> false
+repB id=49 k=5 r=1 to=(531001,2619005) connect=(531001,2619005) -> false
+repB id=49 k=6 r=0 to=(531001,2269671) connect=(552098,2269671) -> false
+repB id=49 k=6 r=1 to=(531001,2269671) connect=(531001,2619005) -> false
+repB id=49 k=7 r=0 to=(531002,2269671) connect=(552098,2269671) -> true
+repB id=49 k=7 r=1 to=(531002,2269671) connect=(531001,2619005) -> true
+repB id=49 k=8 r=0 to=(531002,2269672) connect=(552098,2269671) -> true
+repB id=49 k=8 r=1 to=(531002,2269672) connect=(531001,2619005) -> true
+repB id=49 k=9 r=0 to=(532001,2270671) connect=(552098,2269671) -> true
+repB id=49 k=9 r=1 to=(532001,2270671) connect=(531001,2619005) -> true
+repB id=49 k=10 r=0 to=(530001,2269671) connect=(552098,2269671) -> true
+repB id=49 k=10 r=1 to=(530001,2269671) connect=(531001,2619005) -> true
+repB id=43 k=0 r=0 to=(531001,2269671) connect=(531001,2269671) -> false
+repB id=43 k=0 r=1 to=(531001,2269671) connect=(856000,2944004) -> false
+repB id=43 k=1 r=0 to=(531001,2619005) connect=(531001,2269671) -> false
+repB id=43 k=1 r=1 to=(531001,2619005) connect=(856000,2944004) -> false
+repB id=43 k=2 r=0 to=(531001,2944004) connect=(531001,2269671) -> true
+repB id=43 k=2 r=1 to=(531001,2944004) connect=(856000,2944004) -> true
+repB id=43 k=3 r=0 to=(856000,2619005) connect=(531001,2269671) -> false
+repB id=43 k=3 r=1 to=(856000,2619005) connect=(856000,2944004) -> false
+repB id=43 k=4 r=0 to=(531001,2269671) connect=(531001,2269671) -> false
+repB id=43 k=4 r=1 to=(531001,2269671) connect=(856000,2944004) -> false
+repB id=43 k=5 r=0 to=(856000,2944004) connect=(531001,2269671) -> true
+repB id=43 k=5 r=1 to=(856000,2944004) connect=(856000,2944004) -> false
+repB id=43 k=6 r=0 to=(531001,2619005) connect=(531001,2269671) -> false
+repB id=43 k=6 r=1 to=(531001,2619005) connect=(856000,2944004) -> false
+repB id=43 k=7 r=0 to=(531002,2619005) connect=(531001,2269671) -> true
+repB id=43 k=7 r=1 to=(531002,2619005) connect=(856000,2944004) -> true
+repB id=43 k=8 r=0 to=(531002,2619006) connect=(531001,2269671) -> true
+repB id=43 k=8 r=1 to=(531002,2619006) connect=(856000,2944004) -> true
+repB id=43 k=9 r=0 to=(532001,2620005) connect=(531001,2269671) -> true
+repB id=43 k=9 r=1 to=(532001,2620005) connect=(856000,2944004) -> true
+repB id=43 k=10 r=0 to=(530001,2619005) connect=(531001,2269671) -> true
+repB id=43 k=10 r=1 to=(530001,2619005) connect=(856000,2944004) -> true
+######## rpi mode 5
+repC id=189 class=PLANE_OR_FANOUT_ONE_CONTACT state=SKIP
+repC id=98 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(666000,1086670) from2=(765863,1456531) -> null
+repC id=98 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(666000,1086670) from2=(765863,1456531) -> (531001,1086670)
+repC id=98 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(666000,1086670) from2=(765863,1456531) -> (666000,1221669)
+repC id=98 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(666000,1086670) from2=(765863,1456531) -> (611550,1302218)
+repC id=98 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(666000,1086670) from2=(765863,1456531) -> (666000,1221669)
+repC id=93 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(765863,1456531) from2=(727900,1789557) -> null
+repC id=93 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(765863,1456531) from2=(727900,1789557) -> (727900,1751594)
+repC id=93 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(765863,1456531) from2=(727900,1789557) -> (765863,1789557)
+repC id=93 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(765863,1456531) from2=(727900,1789557) -> (727900,1789557)
+repC id=93 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(765863,1456531) from2=(727900,1789557) -> (765863,1789557)
+repC id=84 class=PLANE_OR_FANOUT_ONE_CONTACT state=SKIP
+repC id=49 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(552098,2269671) from2=(531001,2619005) -> null
+repC id=49 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(552098,2269671) from2=(531001,2619005) -> null
+repC id=49 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(552098,2269671) from2=(531001,2619005) -> (552098,2269671)
+repC id=49 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(552098,2269671) from2=(531001,2619005) -> (531001,2520755)
+repC id=49 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(552098,2269671) from2=(531001,2619005) -> (552098,2269671)
+repC id=43 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(531001,2269671) from2=(856000,2944004) -> null
+repC id=43 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(531001,2269671) from2=(856000,2944004) -> (531001,2367921)
+repC id=43 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(531001,2269671) from2=(856000,2944004) -> (531001,2944004)
+repC id=43 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(531001,2269671) from2=(856000,2944004) -> (856000,2944004)
+repC id=43 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(531001,2269671) from2=(856000,2944004) -> (531001,2944004)

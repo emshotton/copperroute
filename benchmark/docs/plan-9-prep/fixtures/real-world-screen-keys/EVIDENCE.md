@@ -67,6 +67,33 @@ somewhere earlier and reading 2 stands and needs its own hypothesis. One
 instrumented run answers it, and it belongs with whoever owns the next
 hypothesis rather than with this file.
 
+### Task 10 measured its own half, and it is another "no"
+
+Plan 9 Task 10 is the shove/obstacle/clearance group — eight fixes, of which four
+change a routing decision on this kind of board: #65 (a component keepout can
+block a via again), #69 (a contact in another clearance class blocks the shove
+again), #72 (a trace is no longer cut inside a pin pad) and #179 (a start pin's
+neckdown no longer shrinks a pass-through trace), with #231 changing the
+board-edge keep-out every run carries. Measured the same way, `FR_ROUTER_BUDGET=disabled`,
+release, before at Task 10's base commit `6c56932` and after at its tip:
+
+    -mp 10   SES byte-identical before and after
+    -mp 40   SES byte-identical before and after
+    after    3 unconnected, 0 violations, at both caps (unchanged)
+
+**Not one byte.** The `-mp 10` and `-mp 40` sessions are also byte-identical to
+*each other*, as they were at Task 8: this board still stops improving long
+before pass 10.
+
+So the shove decisions are not the thing either, and the escalation's reading 1
+is narrowed rather than answered — if it is a cost or shove decision, it is not
+one of the five this task repaired. **The separating probe above was not run
+here.** It is gated on Task 9's outcome (the pass loop is the other half of the
+escalation's reading 1) and Task 9 had not landed at this task's base, so its
+trigger was not observable from Task 10's isolated worktree. The before/after
+half of the escalation is discharged; the probe stays owed, and it is a
+controller assignment once Task 9's answer is on the record.
+
 Note also that the board is **1 incomplete worse than its own v1.0.0 line below**
 (70/71 at `-mp 40` there against 68/71 now). That regression predates Task 8 —
 it is present at `90ee5a3` — and is Task 2's territory, not this hypothesis's.

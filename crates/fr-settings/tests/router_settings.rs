@@ -1,28 +1,9 @@
-//! `RouterSettings`'s null-coalescing accessors, setter clamps, `setLayerCount`, `clone` and
-//! `validate` (`settings/RouterSettings.java:120-259, 440-560, 590-900, 925-965`).
-//!
-//! Ported from the Java tests `settings/BendCostSettingsTest.java`,
-//! `settings/NeckWidthSettingsTest.java` and `settings/Issue729TraceCostSettingsTest.java`, plus
-//! the `validate`/`normalizeMaxThreads` matrices that no Java test covers. Every numeric
-//! expectation below was read back out of the real JVM — see `task-4-report.md` for the driver
-//! (`VProbe.java`) and its transcript.
-//!
-//! The two tests that must observe `board_specific_trace_costs_applied` (a `pub(crate)` field,
-//! `private` in Java for the same reason) live as unit tests in `src/router_settings.rs`:
-//! `set_layer_count_rewipes_costs_but_keeps_the_applied_flag` and
-//! `set_layer_count_resets_applied_flag`. The cost-array half of the first one is also pinned
-//! here, from the outside, by `set_layer_count_rewipes_costs`.
-
 use fr_settings::prelude::*;
 
-/// The `HostEnvironment` every threading expectation below is stated against
-/// (`java -XX:ActiveProcessorCount=4`, which is how the JVM probe was run).
 fn host() -> HostEnvironment {
     HostEnvironment::with_processors(4)
 }
 
-/// A settings object with `max_passes` and `trace_pull_tight_accuracy` populated, so
-/// `validate()`'s two unboxed dereferences (`RouterSettings.java:934, :958`) do not panic.
 fn validatable() -> RouterSettings {
     let mut s = RouterSettings::new();
     s.max_passes = Some(50);
@@ -31,12 +12,6 @@ fn validatable() -> RouterSettings {
     s
 }
 
-// --- BendCostSettingsTest.java --------------------------------------------------------------
-
-/// `BendCostSettingsTest.defaultBendCost` (:12-18) asserts `DefaultSettings().getSettings()`
-/// gives `scoring.defaultBendCost == 0.0`. `DefaultSettings` is Task 6's; what this task can pin
-/// is the *un*seeded shape the brief spells out: the no-arg constructor allocates `scoring` but
-/// leaves `defaultBendCost` absent, and `getBendCost` then answers `0.0`.
 #[test]
 fn default_bend_cost() {
     let mut settings = RouterSettings::new();
@@ -48,8 +23,6 @@ fn default_bend_cost() {
     assert_eq!(settings.get_bend_cost(1), 0.0);
 }
 
-/// `BendCostSettingsTest.setGetBendCost` (:20-43). Java's last row uses `15.0`; the brief uses
-/// `99.0`. Both clamp to `MAX_BEND_COST`, so both are asserted.
 #[test]
 fn set_get_bend_cost() {
     let mut settings = RouterSettings::new();
@@ -72,8 +45,6 @@ fn set_get_bend_cost() {
     assert_eq!(settings.get_bend_cost(1), 9.9);
 }
 
-/// `getBendCost` clamps `scoring.defaultBendCost` on the way *out* too
-/// (`RouterSettings.java:697-700`) — JVM probe row `F.defaultBendCost 15.0 -> 9.9`, `-3.0 -> 0.0`.
 #[test]
 fn bend_cost_falls_back_to_a_clamped_default_bend_cost() {
     let mut settings = RouterSettings::new();
@@ -88,27 +59,20 @@ fn bend_cost_falls_back_to_a_clamped_default_bend_cost() {
     settings.scoring.as_mut().unwrap().default_bend_cost = Some(-3.0);
     assert_eq!(settings.get_bend_cost(0), 0.0);
 
-    // An explicit per-layer value wins over the default.
     settings.set_bend_cost(1, 2.0);
     assert_eq!(settings.get_bend_cost(1), 2.0);
 
-    // Out of range answers 0.0 regardless (`:679-682`).
     assert_eq!(settings.get_bend_cost(9), 0.0);
-    // ... and the setter is a no-op out of range (`:675-678`).
     settings.set_bend_cost(9, 4.0);
     assert_eq!(settings.get_layer_count(), 2);
 }
 
-/// `BendCostSettingsTest.nullScoringSafety` (:61-114). Ported here up to `:83`; the
-/// `applyBoardSpecificOptimizations` tail (`:85-113`) is Task 5's, in
-/// `tests/board_optimizations.rs`.
 #[test]
 fn null_scoring_safety() {
     let mut settings = RouterSettings::new();
     settings.set_layer_count(2);
     settings.scoring = None;
 
-    // clone() with a null scoring still produces a non-null one (`:519`).
     assert!(settings.java_clone().scoring.is_some());
 
     assert_eq!(settings.get_start_ripup_costs(), 1);
@@ -120,15 +84,11 @@ fn null_scoring_safety() {
     assert_eq!(settings.get_via_costs(), 3);
 
     assert_eq!(settings.get_preferred_direction_trace_costs(0), 1.0);
-    settings.scoring = None; // reset to null, as the Java test does
+    settings.scoring = None;
     settings.set_preferred_direction_trace_costs(0, 2.0);
     assert_eq!(settings.get_preferred_direction_trace_costs(0), 2.0);
 }
 
-// --- NeckWidthSettingsTest.java ---------------------------------------------------------------
-
-/// `NeckWidthSettingsTest.defaultIsOff` (:17-20) and `cloneCarriesTheField` (:22-27), plus the
-/// negative row `getNeckWidthUm`'s `> 0` guard implies (`RouterSettings.java:527-529`).
 #[test]
 fn neck_width() {
     assert_eq!(RouterSettings::new().get_neck_width_um(), 0.0);
@@ -144,24 +104,20 @@ fn neck_width() {
     assert_eq!(settings.get_neck_width_um(), 0.0);
 }
 
-// --- the plain null-coalescing accessors -----------------------------------------------------
-
-/// Every accessor's answer on a freshly constructed `RouterSettings` — JVM probe row `F`.
 #[test]
 fn accessor_defaults_on_a_fresh_settings_object() {
     let settings = RouterSettings::new();
-    assert!(settings.get_run_router()); // enabled == null -> true (`:550-552`)
-    assert!(!settings.get_run_optimizer()); // optimizer.enabled == null -> false (`:559-568`)
-    assert!(settings.get_vias_allowed()); // `:594-597`
-    assert_eq!(settings.get_via_costs(), 1); // `:599-602`
-    assert_eq!(settings.get_plane_via_costs(), 1); // `:612-615`
-    assert_eq!(settings.get_start_ripup_costs(), 1); // `:536-539`
-    assert_eq!(settings.get_neck_width_um(), 0.0); // `:526-529`
-    assert!(!settings.is_strict_drc()); // `:531-534`
-    assert!(!settings.get_automatic_neckdown()); // `:891-894`
-    assert_eq!(settings.get_layer_count(), 0); // `:442-448`
+    assert!(settings.get_run_router());
+    assert!(!settings.get_run_optimizer());
+    assert!(settings.get_vias_allowed());
+    assert_eq!(settings.get_via_costs(), 1);
+    assert_eq!(settings.get_plane_via_costs(), 1);
+    assert_eq!(settings.get_start_ripup_costs(), 1);
+    assert_eq!(settings.get_neck_width_um(), 0.0);
+    assert!(!settings.is_strict_drc());
+    assert!(!settings.get_automatic_neckdown());
+    assert_eq!(settings.get_layer_count(), 0);
 
-    // With no layers at all, every per-layer accessor is out of range.
     assert!(!settings.get_layer_active(0));
     assert_eq!(settings.get_bend_cost(0), 0.0);
     assert!(!settings.get_preferred_direction_is_horizontal(0));
@@ -172,8 +128,6 @@ fn accessor_defaults_on_a_fresh_settings_object() {
     assert!(settings.get_trace_costs().is_empty());
 }
 
-/// `getRunOptimizer` with an absent `optimizer` is `false`, and `setRunOptimizer` instantiates
-/// one (`RouterSettings.java:559-576`) — JVM probe rows `F.setRunOptimizer`/`F.getRunOptimizer`.
 #[test]
 fn run_router_and_run_optimizer() {
     let mut settings = RouterSettings::new();
@@ -191,7 +145,6 @@ fn run_router_and_run_optimizer() {
     assert!(settings.get_run_router());
 }
 
-/// The three `Math.max(value, 1)` clamps (`:609`, `:622`, `:546`) — JVM probe row `F.clamps`.
 #[test]
 fn scalar_setter_clamps() {
     let mut settings = RouterSettings::new();
@@ -210,8 +163,6 @@ fn scalar_setter_clamps() {
     assert_eq!(settings.get_start_ripup_costs(), 9);
 }
 
-/// `get/setLayerActive` (`:631-667`) and `get/setPreferredDirectionIsHorizontal` (`:711-749`).
-/// The odd/even fallback is JVM probe row `F.prefHoriz 0/1/2 = false/true/false`.
 #[test]
 fn layer_active_and_preferred_direction() {
     let mut settings = RouterSettings::new();
@@ -220,7 +171,6 @@ fn layer_active_and_preferred_direction() {
     assert!(settings.get_layer_active(0));
     settings.set_layer_active(1, false);
     assert!(!settings.get_layer_active(1));
-    // Out of range: `false` from the getter, a no-op in the setter.
     assert!(!settings.get_layer_active(3));
     settings.set_layer_active(3, false);
     assert_eq!(settings.get_layer_count(), 3);
@@ -233,10 +183,6 @@ fn layer_active_and_preferred_direction() {
     assert!(!settings.get_preferred_direction_is_horizontal(3));
 }
 
-/// `get/setPreferredDirectionTraceCosts` (`:757-790`) and their against-preferred siblings
-/// (`:795-813`, `:833-855`): the `Math.max(value, 0.1)` clamp, the reallocation when the array's
-/// length disagrees with the layer count, and the `boardSpecificTraceCostsApplied = true`
-/// side effect. JVM probe rows `F.prefTraceClamp`, `F.undesiredClamp`, `F.realloc`.
 #[test]
 fn trace_cost_setters_clamp_and_reallocate() {
     let mut settings = RouterSettings::new();
@@ -247,8 +193,6 @@ fn trace_cost_setters_clamp_and_reallocate() {
     settings.set_against_preferred_direction_trace_costs(0, -1.0);
     assert_eq!(settings.get_against_preferred_direction_trace_costs(0), 0.1);
 
-    // A wrong-length array is thrown away and replaced with a zero-filled one of the right
-    // length, so the untouched entry reads back as 0.0, not as its old value (`:769`).
     settings
         .scoring
         .as_mut()
@@ -264,7 +208,6 @@ fn trace_cost_setters_clamp_and_reallocate() {
         Some(vec![0.0, 2.0])
     );
 
-    // Out of range: getter 0.0, setter a no-op.
     assert_eq!(settings.get_preferred_direction_trace_costs(9), 0.0);
     assert_eq!(settings.get_against_preferred_direction_trace_costs(9), 0.0);
     let before = settings.clone();
@@ -273,8 +216,6 @@ fn trace_cost_setters_clamp_and_reallocate() {
     assert_eq!(settings, before);
 }
 
-/// A `scoring` whose arrays are shorter than the layer count answers `1.0`
-/// (`:781-785`, `:806-810`).
 #[test]
 fn trace_cost_getters_fall_back_to_one() {
     let mut settings = RouterSettings::new();
@@ -295,9 +236,6 @@ fn trace_cost_getters_fall_back_to_one() {
     assert_eq!(settings.get_against_preferred_direction_trace_costs(0), 1.0);
 }
 
-/// `getHorizontalTraceCosts`/`getVerticalTraceCosts` swap the two arrays by preferred direction
-/// (`:818-830`, `:860-874`) and `getTraceCosts` pairs them (`:877-889`). JVM probe rows
-/// `E.layer0`, `E.layer1`, `E.getTraceCosts`.
 #[test]
 fn horizontal_vertical_and_trace_costs() {
     let mut settings = RouterSettings::new();
@@ -307,12 +245,10 @@ fn horizontal_vertical_and_trace_costs() {
     settings.set_preferred_direction_trace_costs(1, 4.0);
     settings.set_against_preferred_direction_trace_costs(1, 5.0);
 
-    // layer 0: preferred direction is vertical, so horizontal reads the *undesired* array.
     assert!(!settings.get_preferred_direction_is_horizontal(0));
     assert_eq!(settings.get_horizontal_trace_costs(0), 3.0);
     assert_eq!(settings.get_vertical_trace_costs(0), 2.0);
 
-    // layer 1: preferred direction is horizontal, so the pairing flips.
     assert!(settings.get_preferred_direction_is_horizontal(1));
     assert_eq!(settings.get_horizontal_trace_costs(1), 4.0);
     assert_eq!(settings.get_vertical_trace_costs(1), 5.0);
@@ -332,29 +268,17 @@ fn horizontal_vertical_and_trace_costs() {
     );
 }
 
-/// Quirk Q10 (`docs/java-quirks.md` #123), inverted. `getHorizontalTraceCosts` read
-/// `scoring.preferredDirectionTraceCost[layer]` with no null guard (`:825-827`), unlike
-/// `getPreferredDirectionTraceCosts` two methods above, so a `scoring` with null arrays and a
-/// non-empty `layers` threw. JVM-confirmed: `E.getHorizontalTraceCosts(0) ->
-/// java.lang.NullPointerException` **while** `E.getPreferredDirectionTraceCosts(0) = 1.0` on the
-/// very same object — one pair of accessors answered, the other crashed.
-///
-/// Task 6 gave both the siblings' guard, so all four now agree.
 #[test]
 fn horizontal_and_vertical_trace_costs_are_guarded_without_the_array() {
     let mut settings = RouterSettings::new();
     settings.layers = Some(vec![LayerSettings::default(); 2]);
     settings.scoring = Some(ScoringSettings::default());
 
-    // The two that used to throw, now answering the siblings' `1.0` (`:781-785`, `:806-810`).
     assert_eq!(settings.get_horizontal_trace_costs(0), 1.0);
     assert_eq!(settings.get_vertical_trace_costs(0), 1.0);
-    // The siblings, unchanged — this is the disagreement the fix removes.
     assert_eq!(settings.get_preferred_direction_trace_costs(0), 1.0);
     assert_eq!(settings.get_against_preferred_direction_trace_costs(0), 1.0);
 
-    // A `scoring` that is absent altogether takes the same guard: Java's `:825` dereferences
-    // `scoring` itself before either array.
     let mut no_scoring = RouterSettings::new();
     no_scoring.layers = Some(vec![LayerSettings::default(); 2]);
     no_scoring.scoring = None;
@@ -362,10 +286,6 @@ fn horizontal_and_vertical_trace_costs_are_guarded_without_the_array() {
     assert_eq!(no_scoring.get_vertical_trace_costs(0), 1.0);
 }
 
-/// `getTraceCosts` (`:877-889`) guards only `preferredDirectionTraceCost` (`:878-880`), so a
-/// populated preferred array with an absent *undesired* one used to reach the unguarded
-/// dereference one level up and throw. The half-guard is Java's and is unchanged; what changed is
-/// that the entry it walks into now carries the siblings' `1.0`.
 #[test]
 fn trace_costs_survives_a_half_populated_scoring() {
     let mut settings = RouterSettings::new();
@@ -376,25 +296,17 @@ fn trace_costs_survives_a_half_populated_scoring() {
         ..ScoringSettings::default()
     });
 
-    // Which array each accessor reads depends on the layer's preferred direction (`:821-826`),
-    // so pin that first — otherwise the four numbers below are unreadable.
     assert!(!settings.get_preferred_direction_is_horizontal(0));
     assert!(settings.get_preferred_direction_is_horizontal(1));
 
     let costs = settings.get_trace_costs();
     assert_eq!(costs.len(), 2);
-    // Layer 0 prefers *vertical*: `getVerticalTraceCosts` reads the populated preferred array and
-    // `getHorizontalTraceCosts` reaches for the absent undesired one — the throw, now `1.0`.
     assert_eq!(costs[0].vertical, 2.0);
     assert_eq!(costs[0].horizontal, 1.0);
-    // Layer 1 prefers horizontal, so the two swap.
     assert_eq!(costs[1].horizontal, 3.0);
     assert_eq!(costs[1].vertical, 1.0);
 }
 
-/// The out-of-range guard runs *before* the unguarded dereference, so out-of-range indices are
-/// still safe even with null arrays (`:820-823`). JVM probe rows
-/// `E.getHorizontalTraceCosts(-1)`/`(9) = 0.0`.
 #[test]
 fn horizontal_trace_costs_out_of_range_is_checked_first() {
     let mut settings = RouterSettings::new();
@@ -402,22 +314,9 @@ fn horizontal_trace_costs_out_of_range_is_checked_first() {
     settings.scoring = Some(ScoringSettings::default());
     assert_eq!(settings.get_horizontal_trace_costs(9), 0.0);
     assert_eq!(settings.get_vertical_trace_costs(9), 0.0);
-    // getTraceCosts' own guard fires before it can reach the unguarded read (`:878-880`).
     assert!(settings.get_trace_costs().is_empty());
 }
 
-/// `getTraceCosts` is sized by **`scoring.preferredDirectionTraceCost.length`**
-/// (`RouterSettings.java:881-882`), not by `getLayerCount()`, and the two can disagree — nothing
-/// keeps them in step outside `setLayerCount` and `applyBoardSpecificOptimizations`.
-///
-/// Longer array than `layers`: every index past `getLayerCount()` takes the out-of-range arm of
-/// `getHorizontalTraceCosts`/`getVerticalTraceCosts` (`:819-822`, `:862-866`), so the result has
-/// four entries, two of them `(0.0, 0.0)` — a silently zero-cost layer rather than a crash or a
-/// short array. Shorter array: `getTraceCosts` returns fewer factors than the board has layers,
-/// and the caller sees a short list with no warning.
-///
-/// `AutorouteControl` indexes the returned array by layer, so both shapes are live hazards; they
-/// are reproduced, not corrected.
 #[test]
 fn trace_costs_are_sized_by_the_cost_array_not_by_the_layer_count() {
     let mut settings = RouterSettings::new();
@@ -427,7 +326,6 @@ fn trace_costs_are_sized_by_the_cost_array_not_by_the_layer_count() {
     settings.set_preferred_direction_trace_costs(1, 4.0);
     settings.set_against_preferred_direction_trace_costs(1, 5.0);
 
-    // Four costs, two layers.
     let scoring = settings.scoring.as_mut().expect("allocated");
     scoring.preferred_direction_trace_cost = Some(vec![2.0, 4.0, 6.0, 8.0]);
     scoring.undesired_direction_trace_cost = Some(vec![3.0, 5.0, 7.0, 9.0]);
@@ -460,19 +358,11 @@ fn trace_costs_are_sized_by_the_cost_array_not_by_the_layer_count() {
         "layers 2 and 3 do not exist, so both accessors take their out-of-range arm"
     );
 
-    // One cost, two layers: the result is short.
     let scoring = settings.scoring.as_mut().expect("allocated");
     scoring.preferred_direction_trace_cost = Some(vec![2.0]);
     assert_eq!(settings.get_trace_costs().len(), 1);
 }
 
-// --- setLayerCount ----------------------------------------------------------------------------
-
-/// Quirk Q11's (`docs/java-quirks.md` #126) observable half: calling `setLayerCount` with
-/// the layer count it already has
-/// still wipes the cost arrays and the per-layer fields (`RouterSettings.java:466-477`). The
-/// `boardSpecificTraceCostsApplied` half is the unit test in `src/router_settings.rs`. JVM probe
-/// rows `D.before`/`D.after(same)`.
 #[test]
 fn set_layer_count_rewipes_costs() {
     let mut settings = RouterSettings::new();
@@ -491,22 +381,14 @@ fn set_layer_count_rewipes_costs() {
     assert!(settings.get_layer_active(1));
 }
 
-// --- clone ------------------------------------------------------------------------------------
-
-/// `RouterSettings.clone` (`:487-524`) replayed field for field, asserted against
-/// [`RouterSettings::java_clone`]. Quirk Q12 (no `docs/java-quirks.md` row of its own — see
-/// #119's `clone()` aside): Java calls `setLayerCount(layerCount)` first
-/// (`:490-492`), which wipes the layers and both cost arrays of the *fresh* result — and is then
-/// entirely overwritten by `:493-501` and `:519`. It is correct only by accident of ordering.
 #[test]
 fn java_clone_replays_javas_sequence() {
     let source = populated();
 
-    // The literal Java sequence, written out.
     let mut replay = RouterSettings::new();
     let layer_count = source.get_layer_count();
     if layer_count > 0 {
-        replay.set_layer_count(layer_count); // :490-492 — entirely overwritten below
+        replay.set_layer_count(layer_count);
     }
     replay.algorithm = source.algorithm.clone();
     replay.job_timeout_string = source.job_timeout_string.clone();
@@ -529,7 +411,6 @@ fn java_clone_replays_javas_sequence() {
     replay.optimizer = Some(source.optimizer.clone().unwrap_or_default());
     replay.scoring = Some(source.scoring.clone().unwrap_or_default());
     replay.fanout = Some(source.fanout.clone().unwrap_or_default());
-    // :521 restores the applied flag; :487-524 never assigns result_json_path (quirk #114).
 
     let cloned = source.java_clone();
     assert_eq!(cloned.result_json_path, None);
@@ -537,10 +418,6 @@ fn java_clone_replays_javas_sequence() {
     assert_eq!(cloned, replay);
 }
 
-/// Quirk #114 stated as its own row, and the two ways `java_clone` differs from Rust's derived
-/// `Clone`: the dropped `result_json_path` and the null nested objects that come back non-null.
-/// JVM probe rows `A.resultJsonPath(clone) = null` and
-/// `A.nullScoringClone.scoringNotNull = true`.
 #[test]
 fn java_clone_differs_from_the_derived_clone() {
     let source = populated();
@@ -563,7 +440,6 @@ fn java_clone_differs_from_the_derived_clone() {
     assert_eq!(nulled.clone().scoring, None);
 }
 
-/// Everything `clone()` *does* carry across, from JVM probe row `A`.
 #[test]
 fn java_clone_carries_every_other_field() {
     let source = populated();
@@ -599,7 +475,6 @@ fn java_clone_carries_every_other_field() {
     assert_eq!(cloned.fanout.as_ref().unwrap().max_passes, Some(66));
 }
 
-/// The fixture the JVM probe's row `A` was built from, field for field.
 fn populated() -> RouterSettings {
     let mut s = RouterSettings::new();
     s.set_layer_count(2);
@@ -620,11 +495,6 @@ fn populated() -> RouterSettings {
     s.max_threads = Some(3);
     s.result_json_path = Some("/tmp/result.json".to_string());
     s.set_bend_cost(0, 2.5);
-    // Written straight into `scoring` rather than through
-    // `set_preferred_direction_trace_costs`, which would also set the `pub(crate)`
-    // `board_specific_trace_costs_applied` flag — a field `java_clone_replays_javas_sequence`'s
-    // replay cannot write from outside the crate. `:521`'s copy of that flag is pinned by
-    // `src/router_settings.rs::java_clone_carries_the_applied_flag` instead.
     s.scoring
         .as_mut()
         .unwrap()
@@ -637,10 +507,6 @@ fn populated() -> RouterSettings {
     s
 }
 
-// --- validate / setMaxThreads -----------------------------------------------------------------
-
-/// `RouterSettings.validate` (`:925-965`), row by row, on a 4-processor host. Every expectation
-/// is JVM probe block `B`.
 #[test]
 fn validate_matrix() {
     for (input, expected) in [
@@ -682,8 +548,25 @@ fn validate_matrix() {
     }
 }
 
-/// `setMaxThreads` -> `normalizeMaxThreads` (`:176-186`, `:137-149`), and the mirror into
-/// `optimizer.maxThreads` (`:183-185`). JVM probe block `C`.
+#[test]
+fn an_unrecognised_pin_sorting_order_is_refused() {
+    let mut settings = validatable();
+    settings
+        .fanout
+        .get_or_insert_with(Default::default)
+        .pin_sorting_order = Some("not_an_order".to_string());
+
+    settings.validate(&host());
+
+    assert_eq!(
+        settings
+            .fanout
+            .as_ref()
+            .and_then(|fanout| fanout.pin_sorting_order.as_deref()),
+        Some("outer_first")
+    );
+}
+
 #[test]
 fn set_max_threads_normalizes_and_mirrors() {
     for (input, expected) in [
@@ -703,8 +586,6 @@ fn set_max_threads_normalizes_and_mirrors() {
         );
     }
 
-    // An absent optimizer is left absent — Java guards with `if (this.optimizer != null)`
-    // (`:183`) rather than instantiating. JVM probe row `C.nullOptimizer`.
     let mut s = RouterSettings::new();
     s.optimizer = None;
     s.set_max_threads(Some(0), &host());
@@ -712,11 +593,6 @@ fn set_max_threads_normalizes_and_mirrors() {
     assert!(s.optimizer.is_none());
 }
 
-/// Quirk Q4 (`docs/java-quirks.md` #124), stated as one test: `validate()` tests
-/// `maxThreads > availableProcessors`
-/// (`:951` — a strict `>`), so a `0` survives it untouched, while `normalizeMaxThreads` maps `0`
-/// to the full processor count (`:144-146`). Two code paths in one class disagree about the same
-/// input. JVM rows `B.maxThreads 0 -> 0` and `C.setMaxThreads 0 -> 4`.
 #[test]
 fn validate_and_normalize_disagree_about_zero_max_threads() {
     let mut validated = validatable();
@@ -731,10 +607,6 @@ fn validate_and_normalize_disagree_about_zero_max_threads() {
     assert_ne!(validated.max_threads, normalized.max_threads);
 }
 
-/// Quirk Q5 (`docs/java-quirks.md` #125): `validate()` dereferences `this.maxPasses` unboxed
-/// (`:934`), so a settings object
-/// that never went through `DefaultSettings` throws. JVM row
-/// `B.nullMaxPasses -> java.lang.NullPointerException`.
 #[test]
 #[should_panic(expected = "RouterSettings.java:934")]
 fn validate_panics_without_max_passes() {
@@ -743,7 +615,6 @@ fn validate_panics_without_max_passes() {
     s.validate(&host());
 }
 
-/// The same for `tracePullTightAccuracy` (`:958`). JVM row `B.nullTpta`.
 #[test]
 #[should_panic(expected = "RouterSettings.java:958")]
 fn validate_panics_without_trace_pull_tight_accuracy() {
@@ -752,11 +623,6 @@ fn validate_panics_without_trace_pull_tight_accuracy() {
     s.validate(&host());
 }
 
-// --- the remaining plain setters ---------------------------------------------------------------
-
-/// `setMaxPasses` (`:167-173`), `setJobTimeoutString` (`:191-197`), `setEnabled` (`:200-206`),
-/// `setViasAllowed` (`:209-215`, `:218-220`), `setAutomaticNeckdown` (`:897-899`) — no clamping,
-/// no normalisation, and (in the port) no `PropertyChangeSupport`.
 #[test]
 fn plain_setters() {
     let mut s = RouterSettings::new();
@@ -783,33 +649,11 @@ fn plain_setters() {
     assert!(s.is_strict_drc());
 }
 
-// =================================================================================================
-// `router.opt_changed_area_ms` — the port's own field (Plan 9 Task 1, #234)
-// =================================================================================================
-
-/// The directed test the task brief names: `--router.opt_changed_area_ms=250` reaches
-/// `RouterBudget`.
-///
-/// It reaches it in two hops, and both are asserted here because either one silently missing is a
-/// setting that parses and then does nothing:
-///
-/// 1. `--router.<path>=<value>` → the field, through `CliSettings`' property-path setter — the
-///    same route `--router.neck_width_um=250` takes, so a typo'd `FieldSpec` fails here;
-/// 2. the field → `RouterBudget::opt_changed_area_ms`, which is what
-///    `crates/freerouting/src/commands/route.rs::settings_budget` does at exactly one site.
-///
-/// The second hop is spelled out rather than called, because `fr-settings` sits below
-/// `freerouting` and cannot call the CLI; `crates/freerouting/tests/cli_e2e.rs` drives the whole
-/// program over the same setting.
 #[test]
 fn opt_changed_area_ms_is_a_settable_field() {
-    // The field exists, is public, and is absent by default — absent, not `Some(0)`, because
-    // "the user said nothing" and "the user asked for no limit" must stay distinguishable in the
-    // manifest's `settings_snapshot`.
     assert_eq!(RouterSettings::new().opt_changed_area_ms, None);
     assert_eq!(RouterSettings::default().opt_changed_area_ms, None);
 
-    // Hop 1: the CLI property path.
     let argv = ["--router.opt_changed_area_ms=250".to_string()];
     let cli = fr_settings::sources::CliSettings::new(&argv);
     let settings = cli
@@ -823,18 +667,8 @@ fn opt_changed_area_ms_is_a_settable_field() {
     );
     assert!(cli.errors().is_empty());
 
-    // Hop 2: the field to the budget. `fr-settings` sits **below** `fr-router` in the dependency
-    // graph and cannot name `RouterBudget` without inverting it, so what is asserted here is the
-    // shape the CLI's one site relies on — an `Option<i32>` that is `Some` exactly when the user
-    // asked, carrying the user's number unchanged and unclamped. The budget end of the same wire
-    // is `crates/fr-core/tests/ctx.rs`, and the whole program over it is
-    // `crates/freerouting/tests/cli_e2e.rs`.
     assert_eq!(settings.opt_changed_area_ms, Some(250));
 
-    // No clamp, unlike `max_threads` and `trace_pull_tight_accuracy`: every value is meaningful.
-    // `1000` is the jar's own `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` and asks for its behaviour
-    // back; `0` and any negative are Java's "no limit" (`TraceTightener.java:73-77`'s `> 0`, not
-    // `!= 0`), which is what the port does when the field is absent.
     for (arg, want) in [("1000", 1000), ("0", 0), ("-1", -1)] {
         let argv = [format!("--router.opt_changed_area_ms={arg}")];
         let parsed = fr_settings::sources::CliSettings::new(&argv)
@@ -845,9 +679,6 @@ fn opt_changed_area_ms_is_a_settable_field() {
     }
 }
 
-/// It round-trips through JSON under its own name, and — because it is `Option` with
-/// `skip_serializing_if` — an unset field does not appear at all. That is what keeps every
-/// existing manifest and settings golden byte-identical for a user who never touches it.
 #[test]
 fn opt_changed_area_ms_round_trips_and_is_absent_when_unset() {
     let unset = RouterSettings::new();

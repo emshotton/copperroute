@@ -860,7 +860,16 @@ impl Board {
     //
     // Java bug: `currentTrace != this && a || b` parses as `(currentTrace != this && a) || b`
     // (PolylineTrace.java:786-787), so the `lastCorner` half also fires for *this* trace and for
-    // a foreign trace whose first corner does not match. Reproduced; see docs/java-quirks.md.
+    // a foreign trace whose first corner does not match. See docs/java-quirks.md #72.
+    //
+    // fixed: T10 (#72) — parenthesised as `currentTrace != this && (first || last)`, which the
+    // `currentTrace != this` guard makes the only coherent reading: the point of the arm is that
+    // *another* trace already ends here, so the split would be redundant. As Java wrote it the
+    // `lastCorner` half was tested for **this** trace too, and for a foreign trace whose first
+    // corner did not match — and either answer is `return false`, i.e. "split allowed", **even
+    // when a pad was already found**. So a trace could be cut inside a pin pad. The fix removes
+    // two ways to reach that `return false`, so it can only *refuse* splits Java allowed, never
+    // allow ones Java refused.
     fn split_inside_drill_pad_prohibited(
         &self,
         id: ItemId,
@@ -901,10 +910,11 @@ impl Board {
                     pad_found = true;
                 }
                 Item::Trace(other_trace) => {
-                    // PolylineTrace.java:786-789, with Java's precedence bug kept.
-                    if (other_id != id
-                        && other_trace.first_corner().as_ref() == Some(&intersection))
-                        || other_trace.last_corner().as_ref() == Some(&intersection)
+                    // PolylineTrace.java:786-789, parenthesised — see the `// fixed: T10 (#72)`
+                    // note on this method.
+                    if other_id != id
+                        && (other_trace.first_corner().as_ref() == Some(&intersection)
+                            || other_trace.last_corner().as_ref() == Some(&intersection))
                     {
                         return false;
                     }

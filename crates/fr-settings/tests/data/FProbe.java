@@ -1,7 +1,3 @@
-// Plan 4 Task 3 JVM probe — see README.md in this directory for the full command and the
-// jar identity. Recorded command:
-//   javac -cp $JAR -d . FProbe.java && java -Djava.awt.headless=true -cp "$JAR:." FProbe
-// JAR=…/freerouting/build/libs/freerouting-current-executable.jar (clone HEAD, plan ruling 7)
 import app.freerouting.settings.RouterSettings;
 import app.freerouting.util.ReflectionUtil;
 import java.util.Arrays;
@@ -17,12 +13,10 @@ public class FProbe {
   }
 
   public static void main(String[] args) throws Exception {
-    // A. '-' is a path separator (Q14 / docs/java-quirks.md #118)
     RouterSettings a = new RouterSettings();
     System.out.println("A. set optimizer-max_passes=7 -> " + tryset(a, "optimizer-max_passes", "7")
         + " ; optimizer.maxPasses=" + a.optimizer.maxPasses);
 
-    // B. boolean quirk (Q16 / docs/java-quirks.md #120)
     RouterSettings b = new RouterSettings();
     System.out.println("B1. enabled=yes -> " + tryset(b, "enabled", "yes") + " ; enabled=" + b.enabled);
     System.out.println("B2. enabled=TRUE -> " + tryset(b, "enabled", "TRUE") + " ; enabled=" + b.enabled);
@@ -30,7 +24,6 @@ public class FProbe {
     System.out.println("B4. enabled=0 -> " + tryset(b, "enabled", "0") + " ; enabled=" + b.enabled);
     System.out.println("B5. enabled=' true ' -> " + tryset(b, "enabled", " true ") + " ; enabled=" + b.enabled);
 
-    // C. array navigation, extra tokens dropped / allocation size (Q15 / docs/java-quirks.md #119)
     RouterSettings c1 = new RouterSettings();
     c1.setLayerCount(2);
     System.out.println("C1. layers.routable=a,b,c on len2 -> " + tryset(c1, "layers.routable", "a,b,c")
@@ -49,7 +42,6 @@ public class FProbe {
     System.out.println("C5. layers.routable=true,true on len3 -> " + tryset(c5, "layers.routable", "true,true")
         + " ; len=" + c5.layers.length + " [" + c5.layers[0].routable + "," + c5.layers[1].routable + "," + c5.layers[2].routable + "]");
 
-    // D. case insensitivity / serialized names
     RouterSettings d = new RouterSettings();
     d.setLayerCount(2);
     System.out.println("D1. LAYERS.PREFERRED_DIRECTION_HORIZONTAL -> " + tryset(d, "LAYERS.PREFERRED_DIRECTION_HORIZONTAL", "true,false")
@@ -70,7 +62,6 @@ public class FProbe {
     System.out.println("D12. result_json=/tmp/x -> " + tryset(d2, "result_json", "/tmp/x") + " ; " + d2.resultJsonPath);
     System.out.println("D13. resultJsonPath=/tmp/y -> " + tryset(d2, "resultJsonPath", "/tmp/y") + " ; " + d2.resultJsonPath);
 
-    // E. numbers
     RouterSettings e = new RouterSettings();
     System.out.println("E1. max_passes=' 7 ' -> " + tryset(e, "max_passes", " 7 ") + " ; " + e.maxPasses);
     System.out.println("E2. max_passes='+7' -> " + tryset(e, "max_passes", "+7") + " ; " + e.maxPasses);
@@ -89,7 +80,6 @@ public class FProbe {
     System.out.println("E15. scoring.unrouted_net_penalty='1e40' -> " + tryset(e, "scoring.unrouted_net_penalty", "1e40") + " ; " + e.scoring.unroutedNetPenalty);
     System.out.println("E16. max_passes='99999999999' -> " + tryset(e, "max_passes", "99999999999") + " ; " + e.maxPasses);
 
-    // F. enums
     RouterSettings f = new RouterSettings();
     System.out.println("F1. optimizer.board_update_strategy=global_optimal -> " + tryset(f, "optimizer.board_update_strategy", "global_optimal") + " ; " + f.optimizer.boardUpdateStrategy);
     System.out.println("F2. =GLOBAL_OPTIMAL -> " + tryset(f, "optimizer.board_update_strategy", "GLOBAL_OPTIMAL") + " ; " + f.optimizer.boardUpdateStrategy);
@@ -98,7 +88,6 @@ public class FProbe {
     System.out.println("F5. optimizer.hybrid_ratio=1:1 -> " + tryset(f, "optimizer.hybrid_ratio", "1:1") + " ; " + f.optimizer.hybridRatio);
     System.out.println("F6. optimizer.item_selection_strategy=prioritized -> " + tryset(f, "optimizer.item_selection_strategy", "prioritized") + " ; " + f.optimizer.itemSelectionStrategy);
 
-    // G. arrays as leaf values
     RouterSettings g = new RouterSettings();
     System.out.println("G1. scoring.preferred_direction_trace_cost='1.5, 2.0' -> " + tryset(g, "scoring.preferred_direction_trace_cost", "1.5, 2.0")
         + " ; " + Arrays.toString(g.scoring.preferredDirectionTraceCost));
@@ -110,7 +99,6 @@ public class FProbe {
         + " ; " + Arrays.toString(g.ignoreNetClasses));
     System.out.println("G5. scoring.preferred_direction_trace_cost='x' -> " + tryset(g, "scoring.preferred_direction_trace_cost", "x"));
 
-    // H. failure modes
     RouterSettings h = new RouterSettings();
     System.out.println("H1. nope -> " + tryset(h, "nope", "1"));
     System.out.println("H2. min_bend_cost -> " + tryset(h, "min_bend_cost", "1"));

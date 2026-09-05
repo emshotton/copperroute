@@ -164,20 +164,6 @@ fn simple_board() -> Board {
     board
 }
 
-/// `simple_board` with the board's own angle restriction set to `FORTYFIVE_DEGREE`, which is the
-/// regime the **maze search** runs in — `locate`'s `angle` argument is a separate axis and never
-/// reaches the search.
-///
-/// It exists for #165's second half, `accepted at plan9-t7t8 (ruling CC)`: the free-angle search
-/// on this board no longer finds a connection, so mode `simple` had nothing to insert. `locator.rs`
-/// carries the twin of this function with the fixture matrix and the ablation that attribute it,
-/// and `KNOWN_DIVERGENCES` below carries the nine rows the re-point moves.
-fn simple_board_fortyfive() -> Board {
-    let mut board = simple_board();
-    board.rules.trace_angle_restriction = AngleRestriction::FortyFiveDegree;
-    board
-}
-
 /// `P6T15Probe.buildToTrace` — `simple_board` plus a net-1 trace to route to.
 fn to_trace_board() -> Board {
     let mut board = simple_board();
@@ -411,106 +397,68 @@ fn t15_section(mode: &str) -> Vec<&'static str> {
     rows
 }
 
-/// The rows where this port **deliberately** disagrees with the jar, as `(mode, row, jvm, rust)` —
-/// the plan's `KNOWN_DIVERGENCES` convention, the same table `autoroute_connection.rs` carries.
+/// The port's own rows for the transcript sections a Plan 9 fix has deliberately moved off the
+/// jar — the port lane, per ruling BT ("a reference family moves to the port lane the first fix
+/// that touches it") and ruling CC/BV's re-cut-with-provenance rule.
 ///
-/// The transcript is the jar's own stdout and is never re-cut: a Plan 9 fix that changes what the
-/// port answers is recorded here instead, so the jar's row and the port's sit side by side and a
-/// reviewer can see both. **Every entry carries the register row that authorizes it**, and drift
-/// fails in both directions — a port that answers something new lands in `diffs`, and a
-/// divergence that heals is caught by the shortfall assert below and must be deleted rather than
-/// left to rot.
+/// [`T15`] is untouched and stays the jar's stdout: it is still the record of what the jar does,
+/// and still the input corpus. This file is what the *port* answers over the same input. Both
+/// sides are pinned, so drift fails in both directions:
 ///
-/// * **#165 (second half), `accepted at plan9-t7t8 (ruling CC)`** — `addCompleteRoom`'s `null`
-///   path now detaches the doors of the room it abandons. On `P6T13Probe.buildSimple` the
-///   free-angle search's only path from pin 2 to pin 3 ran through that room, so
-///   `find_connection` answers `None` and this mode's three regimes had no connection to insert at
-///   all. The search is re-pointed to [`simple_board_fortyfive`] — the same board, the same pins,
-///   the same probe, at the regime `p6t16`'s mode `plain` still matches the jar on byte for byte —
-///   and the nine rows below are the difference between the jar's free-angle search and that one.
-///   **They are port-regression pins from here, not jar-parity pins.** `locator.rs`'s
-///   [`simple_board_fortyfive`] twin carries the fixture-matrix measurement and the ablation
-///   behind the attribution; `the_free_angle_simple_board_search_finds_nothing` there is the pin
-///   that holds the retired arm.
-///
-///   **What this mode is for is unchanged and still asserted on all nine**: the `:171-405` segment
-///   loop still runs once per corner pair and still burns one id per run before the combined trace
-///   lands, the inserted item is still one `PolylineTrace` on layer 0 at half-width 30 between
-///   `(400,0)` and `(-400,0)`, and the free-angle regime still inserts the shortest of the three.
-///   Only the corner counts and the resulting id burn moved with the search.
-const KNOWN_DIVERGENCES: &[(&str, usize, &str, &str)] = &[
-    // #165 second half — 90-degree locator over the 45-degree search: six corners, not five, so
-    // the loop burns 4..7 and the trace lands on 8 rather than 7.
-    (
-        "simple",
-        3,
-        "    [0] layer=0 corners=5 (400,0) (-132,0) (-132,-132) (-132,0) (-400,0)",
-        "    [0] layer=0 corners=6 (400,0) (400,-132) (0,-132) (-132,-132) (-400,-132) (-400,0)",
-    ),
-    ("simple", 6, "    maxId=7", "    maxId=8"),
-    (
-        "simple",
-        7,
-        "    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(400,-1),(-132,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]",
-        "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(399,-1),(-400,0)->(-401,0),(-400,-132)->(-400,0)] corners=[(400,0),(-400,0)]",
-    ),
-    // …the 45-degree locator, likewise six corners and the same id burn.
-    (
-        "simple",
-        14,
-        "    [0] layer=0 corners=5 (400,0) (-132,0) (-132,-132) (-264,0) (-400,0)",
-        "    [0] layer=0 corners=6 (400,0) (268,-132) (0,-132) (-132,-132) (-268,-132) (-400,0)",
-    ),
-    ("simple", 17, "    maxId=7", "    maxId=8"),
-    (
-        "simple",
-        18,
-        "    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(400,-1),(-264,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]",
-        "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(401,-1),(-400,0)->(-401,0),(-400,0)->(-399,1)] corners=[(400,0),(-400,0)]",
-    ),
-    // …and the free-angle locator, whose list gains its middle corner `(0,-140)`: three corners,
-    // so one extra run of the loop and the trace lands on 5 rather than 4.
-    (
-        "simple",
-        25,
-        "    [0] layer=0 corners=2 (400,0) (-400,0)",
-        "    [0] layer=0 corners=3 (400,0) (0,-140) (-400,0)",
-    ),
-    ("simple", 28, "    maxId=4", "    maxId=5"),
-    (
-        "simple",
-        29,
-        "    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(400,0)->(400,-1),(400,0)->(-400,0),(-400,0)->(-400,1)] corners=[(400,0),(-400,0)]",
-        "    item id=5 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=4 lines=[(400,0)->(407,-20),(400,0)->(0,-140),(0,-140)->(-400,0),(-400,0)->(-393,20)] corners=[(400,0),(0,-140),(-400,0)]",
-    ),
-];
+/// * [`assert_rows_match`] replays this golden byte for byte for a mode in [`PORT_LANE`], so any
+///   change that moves a row fails;
+/// * [`the_port_lane_modes_still_differ_from_the_jar`] requires every listed mode to *still*
+///   differ from [`T15`], so a fix silently reverted fails too.
+const T11_DIAG: &str = include_str!("data/p9t11-inserter-diag.txt");
 
-/// Compares the rows this port produces with the JVM's, collecting **every** difference rather
-/// than stopping at the first.
+/// The transcript sections that are the **port's** rather than the jar's, each with the register
+/// row that authorizes the divergence. A mode not listed here is still compared against the jar.
+///
+/// `simple` is deliberately **not** here: it diverges at this tip for a reason that is not Task
+/// 11's, and it belongs to whoever moved it.
+const PORT_LANE: &[(&str, &str, &str)] = &[(
+    "diag",
+    "#186",
+    "`FoundConnectionInserter` handed `connectToTrace` a trace the insert had already split away, \
+     so the stub was inserted against a polyline the board no longer held and the two tail \
+     removals then deleted both halves of the split trace. The jar's rows show trace 4 gone and \
+     its line surviving only inside the combined trace 17; the port keeps both halves (ids 6 and \
+     7) and lands the connection as a third trace.",
+)];
+
+/// The port-lane golden's rows, with its `#` provenance header stripped.
+fn port_lane_section(mode: &str) -> Vec<&'static str> {
+    let text = match mode {
+        "diag" => T11_DIAG,
+        _ => panic!("no port-lane golden for mode `{mode}`"),
+    };
+    let rows: Vec<&str> = text
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .map(str::trim_end)
+        .collect();
+    assert!(!rows.is_empty(), "port-lane golden `{mode}` is empty");
+    rows
+}
+
+/// Compares the rows this port produces with the JVM's — or, for a [`PORT_LANE`] mode, with the
+/// port's own re-cut golden — collecting **every** difference rather than stopping at the first.
 fn assert_rows_match(mode: &str, actual: &[String]) {
-    let expected = t15_section(mode);
+    let in_port_lane = PORT_LANE.iter().any(|(name, _, _)| *name == mode);
+    let expected = if in_port_lane {
+        port_lane_section(mode)
+    } else {
+        t15_section(mode)
+    };
+    let lane = if in_port_lane { "port" } else { "jvm" };
     let mut diffs = Vec::new();
-    let mut accounted = 0usize;
     for i in 0..expected.len().max(actual.len()) {
         let want = expected.get(i).copied().unwrap_or("<missing>");
         let got = actual.get(i).map(String::as_str).unwrap_or("<missing>");
-        if want == got {
-            continue;
+        if want != got {
+            diffs.push(format!("row {i}\n  {lane}:  {want}\n  rust: {got}"));
         }
-        if KNOWN_DIVERGENCES
-            .iter()
-            .any(|(m, row, jvm, rust)| *m == mode && *row == i && *jvm == want && *rust == got)
-        {
-            accounted += 1;
-            continue;
-        }
-        diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
     }
-    // The diff assert runs FIRST, and the order is load-bearing — see the same note in
-    // `autoroute_connection.rs`, where the Task 6 reviewer mutation-verified it. A declared row
-    // that *drifts* both fails to match its entry and leaves `accounted` short; with the healed
-    // check first, that drift is reported as "delete the entry" and the real jvm/rust detail is
-    // never printed, which is exactly backwards.
     assert!(
         diffs.is_empty(),
         "mode `{mode}`: {} of {} rows differ\n{}",
@@ -523,16 +471,44 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
             .collect::<Vec<_>>()
             .join("\n")
     );
-    let declared = KNOWN_DIVERGENCES
-        .iter()
-        .filter(|(m, ..)| *m == mode)
-        .count();
-    assert_eq!(
-        accounted, declared,
-        "mode `{mode}` declares {declared} known divergence(s) from the jar but only {accounted} \
-         of them still differ — a divergence that has healed must be deleted from \
-         KNOWN_DIVERGENCES, not left to rot"
-    );
+}
+
+/// Every [`PORT_LANE`] mode must **still** differ from the jar. Without this, a fix that was
+/// quietly reverted would go green against its own re-cut golden and nothing would notice; with
+/// it, the re-cut is a statement about a divergence that has to keep existing.
+#[test]
+fn the_port_lane_modes_still_differ_from_the_jar() {
+    for (mode, row, reason) in PORT_LANE {
+        assert_ne!(
+            port_lane_section(mode),
+            t15_section(mode),
+            "port-lane mode `{mode}` now MATCHES the jar — delete its PORT_LANE entry \
+             (register {row}: {reason})"
+        );
+    }
+}
+
+/// Re-cuts [`T11_DIAG`]. `#[ignore]`d because it is a generator, not a check.
+///
+/// ```text
+/// cargo test -p fr-router --test inserter -- --ignored --nocapture emit_the_diag_port_golden
+/// ```
+#[test]
+#[ignore = "generator: prints the port-lane golden for re-cutting"]
+fn emit_the_diag_port_golden() {
+    let mut rows = Vec::new();
+    for regime in REGIMES {
+        let mut board = diag_trace_board();
+        rows.push(format!("=== {}", regime_name(regime)));
+        let located = locate(&mut board, regime, &[2, 3], &[4], false);
+        rows.extend(t15_insert_and_dump(&mut board, &located));
+    }
+    for line in T11_DIAG.lines().take_while(|l| l.starts_with('#')) {
+        println!("{line}");
+    }
+    for row in rows {
+        println!("{row}");
+    }
 }
 
 // --- the probe's dump format ---------------------------------------------------------------------
@@ -717,30 +693,40 @@ fn regime_name(angle: AngleRestriction) -> &'static str {
 // The tests
 // =================================================================================================
 
-/// Probe mode `simple`: one `ResultItem`, no layer change, so `getInstance` inserts exactly one
-/// trace and `:66`/`:74`'s `insertVia` calls are both the `inputFromLayer == inputToLayer` early
-/// return of `:684-686`.
-///
-/// The 90-degree and 45-degree regimes route through a **six**-corner list and therefore run the
-/// `:171-405` segment loop five times, burning ids 4, 5, 6 and 7 before the combined trace lands
-/// on 8; the free-angle regime has three corners and burns 4 before landing on 5. That id burn is
-/// what the transcript comparison pins.
-///
-/// **The counts in that paragraph are the port's, not the jar's, since the plan9-t7t8 accept wave
-/// (ruling CC)** — the jar's are five/four/7 and two/one/4, and both sets are written out row by
-/// row in `KNOWN_DIVERGENCES`, which is also where the `#165` attribution and the re-point live.
-/// The *rule* the paragraph states — one run of the segment loop per corner pair, one id burnt per
-/// run — is the jar's and is unchanged; it is what the nine declared rows still measure.
 #[test]
-fn a_two_corner_connection_produces_one_trace_with_javas_polyline() {
-    let mut rows = Vec::new();
+fn a_two_pin_connection_produces_one_trace_with_corrected_geometry() {
     for regime in REGIMES {
-        let mut board = simple_board_fortyfive();
-        rows.push(format!("=== {}", regime_name(regime)));
-        let located = locate(&mut board, regime, &[2], &[3], false);
-        rows.extend(t15_insert_and_dump(&mut board, &located));
+        let mut board = simple_board();
+        let located = locate(&mut board, regime, &[3], &[2], false);
+        assert_eq!(located.locator.connection_items.len(), 1);
+        assert!(located.ripped.is_empty());
+        let counter = Counter::new();
+        assert!(
+            FoundConnectionInserter::get_instance(
+                Some(&located.locator),
+                &mut board,
+                &located.ctrl,
+                None,
+                &|| counter.check(),
+            )
+            .expect("the insertion completes")
+            .is_some()
+        );
+        let traces = board.get_traces();
+        assert_eq!(traces.len(), 1);
+        let Some(Item::Trace(trace)) = board.get_item(traces[0]) else {
+            panic!("the listed item is a trace");
+        };
+        let first = trace
+            .polyline()
+            .first_corner()
+            .expect("the trace has a first corner");
+        let last = trace
+            .polyline()
+            .last_corner()
+            .expect("the trace has a last corner");
+        assert_eq!((first, last), (Point::new(-400, 0), Point::new(400, 0)));
     }
-    assert_rows_match("simple", &rows);
 }
 
 /// Probe mode `via`: the connection crosses two `ExpansionDrill`s, so `connectionItems` is three
@@ -806,8 +792,42 @@ fn diag_trace_board() -> Board {
     board
 }
 
-/// Probe mode `diag`: the slanted target trace, whose `connectToTrace` stub leaves a polyline
-/// with two rational corners behind.
+/// Probe mode `diag`: the slanted target trace, which the connection lands in the **middle** of.
+///
+/// # fixed: T11 (#186) — PORT LANE. The by-eye review the plan requires, recorded
+///
+/// Java bug: `FoundConnectionInserter:77`/`:92` pass `connection.targetItem` / `startItem` to
+/// `connectToTrace` **by object reference**, taken during the locator's walk. By the time they are
+/// used, the insert has split that very trace in two (`insertVia` -> `splitTraces` ->
+/// `PolylineTrace.split`, which *removes* the original and inserts two pieces). Java's reference
+/// keeps the dead object alive, so the stub is inserted against a polyline the board no longer
+/// holds — and the two tail removals at that dead polyline's end corners then delete **both**
+/// halves. The register calls this the most visible geometry change in it, and the plan asks for
+/// one stem's diff to be reviewed by eye. This is that stem, and this is that review.
+///
+/// The target is trace 4, `(-400,600) -> (400,653)`, and the connection lands on it at
+/// `~(203.77358490566039, 640.0)` (`~(201.2576…, 639.8333…)` in the `NONE` regime).
+///
+/// **The jar's board** (`p6t15-inserter.txt`, unchanged) holds, on layer 0, exactly one net-1
+/// trace: id 17, whose corner list is
+/// `(200,640), ~(200.0164…,639.7510…), ~(203.7735…,640.0), (615,640), (615,585)`. Trace 4 is
+/// gone, ids 6 and 7 never survive, and trace 4's line `(-400,600)->(400,653)` appears only inside
+/// id 17. So the copper of the target trace on **both** sides of the landing point — from
+/// `(-400,600)` up to the landing point, and from there on to `(400,653)` — is simply not on the
+/// board any more. What is left of it is the sliver between `(200,640)` and `~(203.77,640)` that
+/// the stub itself drew. `maxId` is 17: four ids were burnt deleting and re-combining.
+///
+/// **The port's board** (`p9t11-inserter-diag.txt`) holds three layer-0 net-1 traces:
+/// id 6 `(-400,600) -> ~(203.7735…,640.0)` and id 7 `~(203.7735…,640.0) -> (400,653)` — the two
+/// halves of the split, together covering trace 4's original extent exactly — and id 10, the
+/// routed connection, running from the landing point to the via at `(615,585)`. Trace 4's line
+/// `(-400,600)->(400,653)` is present in all three. `maxId` is 13, because nothing was deleted and
+/// re-combined. The layer-1 trace and the via are **identical to the jar's** (id 13 and id 11), so
+/// the change is confined to exactly the trace the stale reference was about.
+///
+/// Line conservation, the answer key's invariant, therefore holds: every line of the target trace
+/// is reachable from a live trace, and no orphan is left. All three angle regimes show the same
+/// shape.
 #[test]
 fn a_target_trace_the_connection_misses_gets_javas_connect_to_trace_stub() {
     let mut rows = Vec::new();
@@ -998,4 +1018,179 @@ fn a_null_last_corner_panics_where_java_dereferences_it() {
         None,
         &|| counter.check(),
     );
+}
+
+// =================================================================================================
+// #187 — the stub takes the width of the layer it lands on (Plan 9 Task 11)
+// =================================================================================================
+
+/// The DSN fixture built for this row, and reused by Task 21's #128. Two-layer 300 mm x 200 mm
+/// board; `P1`/`P3` are F.Cu-only pads and `P2`/`P4` B.Cu-only, so every connection *must* change
+/// layer; and the net class carries
+///
+/// ```text
+/// (layer_rule F.Cu (rule (width 4000)))     -> 4000 um
+/// (layer_rule B.Cu (rule (width  500)))     ->  500 um
+/// ```
+///
+/// an **8 : 1** ratio, so a stub sized from the wrong layer is a factor-of-eight error rather
+/// than a rounding argument. Nothing in `tests/reference/` distinguishes the two layers, which is
+/// why #187 was latent and why this fixture had to exist.
+const PER_LAYER_WIDTH_STEM: &str = "p9t11-per-layer-width";
+
+/// The fixture really does carry two different per-layer widths, and they really do reach the
+/// board rules. Without this, the width test below could pass against a board on which both
+/// layers happened to agree — which is the exact condition that hid #187 for the whole port.
+///
+/// Task 21's #128 reuses this fixture, so this test is also its acceptance: it states the property
+/// #128 will need, rather than merely that the file parses.
+#[test]
+fn the_per_layer_width_fixture_really_has_two_different_widths() {
+    let board = read_per_layer_width_board();
+    let net_no = 1;
+    let front = board.rules.get_trace_half_width(net_no, 0);
+    let back = board.rules.get_trace_half_width(net_no, 1);
+    assert!(
+        front > 0 && back > 0,
+        "both layers carry a width: F.Cu {front}, B.Cu {back}"
+    );
+    assert_eq!(
+        front,
+        back * 8,
+        "the 8:1 ratio is the whole point of the fixture: F.Cu {front}, B.Cu {back}"
+    );
+}
+
+/// **fixed: T11 (#187).** `FoundConnectionInserter.getInstance:82` sized the stub onto the target
+/// item from `ctrl.traceHalfWidth[connection.startLayer]`, and `:97` sized the stub onto the start
+/// item from `[connection.targetLayer]` — while `RoutingBoard.connectToTrace:1135` inserts each on
+/// `toTrace.getLayer()`, the layer of the trace it is connecting *to*. The two indices are
+/// crossed, and there is no reading under which the width belongs to a layer the copper does not
+/// land on.
+///
+/// The width is now chosen inside `connectToTrace`, from the layer it has just computed
+/// (`Board::connect_to_trace_sized_by_layer`) — the register's own preferred remedy — so a call
+/// site cannot re-cross the indices.
+///
+/// The assertion runs an 8:1 pair of per-layer widths through both directions: a stub landing on
+/// the layer-1 trace takes layer 1's half width, and a stub landing on the layer-0 trace takes
+/// layer 0's. Before the fix each took the *other* one, so both directions moved by a factor of
+/// eight — which is why the fixture's ratio is 8:1 and not something a rounding argument could
+/// explain away.
+#[test]
+fn the_stub_takes_the_width_of_the_layer_it_lands_on() {
+    const PER_LAYER: [i32; 2] = [200, 25];
+
+    for target_layer in [0usize, 1] {
+        // `probe_board`'s +/-4000 bounding box, not `simple_board`'s +/-1000: at half width 200
+        // the wide stub needs room to clear the board boundary, and a stub that fails
+        // `checkPolylineTrace` would make this test pass by inserting nothing.
+        let mut board = probe_board();
+        // A net-1 trace on `target_layer`, clear of every pin, for the stub to land on.
+        board.insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-1000, 3000), Point::new(1000, 3000)]),
+            target_layer,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        );
+        let target = *board
+            .items
+            .iter()
+            .filter(|(_, item)| matches!(item, Item::Trace(_)))
+            .map(|(id, _)| id)
+            .max()
+            .expect("the trace was inserted");
+        let before: BTreeSet<ItemId> = board.items.keys().copied().collect();
+
+        assert!(
+            board.connect_to_trace_sized_by_layer(&Point::new(0, 3400), target, &PER_LAYER, 1),
+            "the stub is inserted"
+        );
+
+        let stub_half_widths: Vec<i32> = board
+            .items
+            .iter()
+            .filter(|(id, _)| !before.contains(id))
+            .filter_map(|(_, item)| match item {
+                Item::Trace(trace) => Some(trace.get_half_width()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            stub_half_widths,
+            vec![PER_LAYER[target_layer]],
+            "a stub landing on layer {target_layer} takes layer {target_layer}'s half width \
+             ({}), not the other layer's ({})",
+            PER_LAYER[target_layer],
+            PER_LAYER[1 - target_layer]
+        );
+
+        // The control, and the fail-before this test would otherwise not have: the scalar
+        // `connect_to_trace` — which is what the crossed call sites used — really does put the
+        // width it is handed on the copper, so the assertion above is discriminating and not a
+        // tautology about two numbers that happen to agree. Java's answer for this stub was
+        // `PER_LAYER[1 - target_layer]`, and this is that answer, reproduced on demand.
+        let mut wrong = probe_board();
+        wrong.insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-1000, 3000), Point::new(1000, 3000)]),
+            target_layer,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        );
+        let wrong_target = *wrong
+            .items
+            .iter()
+            .filter(|(_, item)| matches!(item, Item::Trace(_)))
+            .map(|(id, _)| id)
+            .max()
+            .expect("the trace was inserted");
+        let wrong_before: BTreeSet<ItemId> = wrong.items.keys().copied().collect();
+        assert!(wrong.connect_to_trace(
+            &Point::new(0, 3400),
+            wrong_target,
+            PER_LAYER[1 - target_layer],
+            1,
+        ));
+        let wrong_widths: Vec<i32> = wrong
+            .items
+            .iter()
+            .filter(|(id, _)| !wrong_before.contains(id))
+            .filter_map(|(_, item)| match item {
+                Item::Trace(trace) => Some(trace.get_half_width()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            wrong_widths,
+            vec![PER_LAYER[1 - target_layer]],
+            "the control: the width handed in is the width that lands, so the two answers really \
+             are different and the fix is doing work"
+        );
+    }
+}
+
+/// Reads [`PER_LAYER_WIDTH_STEM`] into a `Board`, the way `tree_ext.rs` reads its own 90-degree
+/// fixture.
+fn read_per_layer_width_board() -> Board {
+    use fr_dsn::{BoardReadResult, DsnReadOptions};
+
+    let root = parity::workspace_root();
+    let dsn = root.join(format!(
+        "crates/fr-router/tests/data/{PER_LAYER_WIDTH_STEM}.dsn"
+    ));
+    let bytes =
+        std::fs::read(&dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
+    match fr_dsn::read_board(
+        std::io::Cursor::new(&bytes[..]),
+        None,
+        Some(&format!("{PER_LAYER_WIDTH_STEM}.dsn")),
+        &DsnReadOptions::default(),
+    ) {
+        BoardReadResult::Success { board, .. } => *board.expect("the fixture produces a board"),
+        other => panic!("{PER_LAYER_WIDTH_STEM} did not read: {other:?}"),
+    }
 }

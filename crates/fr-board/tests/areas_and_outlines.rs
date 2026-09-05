@@ -289,20 +289,31 @@ fn turn_90_degree_wraps_the_rotation_and_turns_the_translation_around_the_pole()
 fn rotate_approx_rounds_the_new_translation_and_complements_the_angle_when_flipped() {
     // ObstacleArea.rotateApprox (ObstacleArea.java:227-244). Driver T7b:
     // `rotateApprox(30, pole(50,50)) float=(18.3013, 204.9038) -> (18,205)`, and
-    // `turnAngle when sideChanged && rotateFirst = 330`. Note that only the *stored rotation*
-    // takes the complement; the translation is rotated by the original `angleInDegree`
-    // (ObstacleArea.java:240-241) — the same split Java's `Component.rotate` has (quirk #48).
+    // `turnAngle when sideChanged && rotateFirst = 330`.
+    //
+    // Java bug: only the *stored rotation* took the complement; the translation was rotated by the
+    // original `angleInDegree` (ObstacleArea.java:240-241) — the same split Java's
+    // `Component.rotate` has (quirk #48). fixed: T11 (#57): the flipped case below asserted
+    // `(18, 205)`, the unflipped answer, and now asserts the 330-degree one.
     let mut f = Fixture::new();
     let mut area = obstacle_area(1, 0.0, false);
     area.rotate_approx(30.0, &FloatPoint::new(50.0, 50.0), &f.ctx());
     assert_eq!(area.get_rotation_in_degree(), 30.0);
     assert_eq!(*area.get_translation(), Vector::new(18, 205));
 
+    // Flipped, with `flipStyleRotateFirst`: the stored rotation is 330 and the translation now
+    // follows it. `(100,200)` about `(50,50)` is `(50,150)` relative; rotated by -30 degrees that
+    // is `(50·cos30 + 150·sin30, -50·sin30 + 150·cos30) = (118.30, 104.90)`, so `(168.30, 154.90)`
+    // absolute, rounding to `(168, 155)`.
     f.set_flip_style_rotate_first(true);
     let mut area = obstacle_area(1, 0.0, true);
     area.rotate_approx(30.0, &FloatPoint::new(50.0, 50.0), &f.ctx());
     assert_eq!(area.get_rotation_in_degree(), 330.0);
-    assert_eq!(*area.get_translation(), Vector::new(18, 205));
+    assert_eq!(
+        *area.get_translation(),
+        Vector::new(168, 155),
+        "fixed: T11 (#57) — was (18, 205), the +30 answer under a -30 rotation field"
+    );
 }
 
 #[test]
@@ -519,12 +530,18 @@ fn component_outline_rotate_approx_complements_the_angle_on_the_back() {
     // ComponentOutline.rotateApprox (ComponentOutline.java:158-175): `!this.isFront &&
     // flipStyleRotateFirst` takes `360 - angleInDegree`, the mirror image of
     // ObstacleArea.java:230-232.
+    //
+    // Java bug: the identical split as quirk #48 — the rotation field took the complement and the
+    // translation did not.
+    // fixed: T11 (#57, #48) — this site is named by both rows. The translation below asserted
+    // `(18, 205)` and now asserts `(168, 155)`, the same arithmetic as the `ObstacleArea` sibling
+    // above.
     let mut f = Fixture::new();
     f.set_flip_style_rotate_first(true);
     let mut outline = component_outline(1, false, 0.0);
     outline.rotate_approx(30.0, &FloatPoint::new(50.0, 50.0), &f.ctx());
     assert_eq!(outline.get_rotation_in_degree(), 330.0);
-    assert_eq!(*outline.get_translation(), Vector::new(18, 205));
+    assert_eq!(*outline.get_translation(), Vector::new(168, 155));
 
     // On the front the angle is used as given.
     let mut outline = component_outline(2, true, 0.0);
@@ -533,17 +550,14 @@ fn component_outline_rotate_approx_complements_the_angle_on_the_back() {
 }
 
 #[test]
-fn component_outline_clear_derived_data_does_not_clear_the_header() {
-    // Java quirk: `ComponentOutline.clearDerivedData` (ComponentOutline.java:218-221) does
-    // **not** call `super.clearDerivedData()`, unlike every other override, so the cached tree
-    // shapes and the autoroute scratch survive.
+fn clear_derived_data_chains_to_the_header() {
     let mut item = Item::ComponentOutline(component_outline(1, true, 0.0));
     item.set_precalculated_tree_shapes(TreeId(0), vec![Some(TileShape::Box(bx(0, 0, 1, 1)))]);
     item.get_autoroute_info();
 
     item.clear_derived_data();
-    assert_eq!(item.tree_shape_count(TreeId(0)), 1);
-    assert!(item.get_autoroute_info_pur().is_some());
+    assert_eq!(item.tree_shape_count(TreeId(0)), 0);
+    assert!(item.get_autoroute_info_pur().is_none());
 }
 
 #[test]
@@ -699,32 +713,110 @@ fn board_outline_shape_accessors_match_java() {
     assert_eq!(outline.get_half_width(), 100);
 }
 
+// Java bug: `BoardOutline.translateBy` (BoardOutline.java:112-121) — and its three siblings —
+// assign the transformed shape back to the **loop variable** of an enhanced `for`
+// (`for (PolylineShape currentShape : this.shapes) currentShape = currentShape.translateBy(v);`),
+// which binds a copy of the reference, so `this.shapes` is never written and the outline does not
+// move, turn, rotate or mirror. fixed: T11 (#55).
+/// This test was `board_outline_transforms_leave_the_outline_shapes_where_they_were` and pinned
+/// the bug above: the outline's bounding box stayed at `(100,100 .. 900,900)` through a translate
+/// of 10 000, a quarter turn, a 30-degree rotation and a mirror.
+///
+/// Only the lazily built `keepoutArea` followed the transform, because that one *is* a field
+/// assignment — and that is what made the fourth assertion below the interesting one. The keepout
+/// is rebuilt from the shapes if it has **not** been built yet, so before the fix an outline's
+/// curves and its outside-keepout ended up in different places or the same place depending purely
+/// on whether anyone had touched the keepout first. The two halves are now transformed together
+/// and agree either way.
 #[test]
-fn board_outline_transforms_leave_the_outline_shapes_where_they_were() {
-    // Java bug: `BoardOutline.translateBy` (BoardOutline.java:112-121) — and its three siblings
-    // — assign the transformed shape back to the **loop variable**
-    // (`for (PolylineShape currentShape : this.shapes) currentShape = currentShape.translateBy(
-    // vector);`), so `this.shapes` is never written. Only the cached `keepoutArea` moves.
+fn the_outline_moves_turns_rotates_and_mirrors() {
     let f = Fixture::new();
-    let mut outline = BoardOutline::new(hdr(1), vec![outline_square()]);
-    // Fill the keepout cache first, so the second half of the Java body has something to do.
+    let square = || BoardOutline::new(hdr(1), vec![outline_square()]);
+    let base = square();
+    let base_box = base.bounding_box();
+    let base_lines = base.line_count();
+    let base_shape = base.get_shape(0).map(|s| s.as_ops().bounding_box());
     assert_eq!(
-        outline.get_keepout_area(&f.ctx()).bounding_box(),
-        bx(0, 0, 1000, 1000)
+        base_box,
+        bx(100, 100, 900, 900),
+        "the untransformed outline"
     );
 
-    outline.translate_by(&Vector::new(10_000, 0));
-    assert_eq!(outline.bounding_box(), bx(100, 100, 900, 900));
+    // 1. The outline moved: its bounding box is the transform of its bounding box.
+    let mut moved = square();
+    moved.translate_by(&Vector::new(10_000, 0));
     assert_eq!(
-        outline.get_keepout_area(&f.ctx()).bounding_box(),
-        bx(10_000, 0, 11_000, 1000)
+        moved.bounding_box(),
+        bx(10_100, 100, 10_900, 900),
+        "translate: the outline moved"
     );
 
-    let mut outline = BoardOutline::new(hdr(2), vec![outline_square()]);
-    outline.turn_90_degree(1, &IntPoint::new(0, 0));
-    outline.rotate_approx(30.0, &FloatPoint::new(0.0, 0.0));
-    outline.change_placement_side(&IntPoint::new(0, 0));
-    assert_eq!(outline.bounding_box(), bx(100, 100, 900, 900));
+    // 2. Every shape moved, not merely the box.
+    assert_eq!(
+        moved.get_shape(0).map(|s| s.as_ops().bounding_box()),
+        base_shape.map(|b| bx(b.ll.x + 10_000, b.ll.y, b.ur.x + 10_000, b.ur.y)),
+        "translate: the shape itself moved"
+    );
+
+    // 3. Nothing was lost on the way.
+    assert_eq!(
+        moved.line_count(),
+        base_lines,
+        "translate: the line count is preserved"
+    );
+
+    // 4. The outline and its keepout stay together — the assertion that was false before the fix
+    //    for a *reason* rather than by accident. Build the keepout first, so the transform has to
+    //    move an already-materialised one, and check it against the outline's own new box.
+    let mut both = square();
+    assert_eq!(
+        both.get_keepout_area(&f.ctx()).bounding_box(),
+        bx(0, 0, 1000, 1000),
+        "the keepout is the board box with the outline as its hole"
+    );
+    both.translate_by(&Vector::new(10_000, 0));
+    assert_eq!(
+        both.get_keepout_area(&f.ctx()).bounding_box(),
+        bx(10_000, 0, 11_000, 1000),
+        "the keepout moved"
+    );
+    assert_eq!(
+        both.bounding_box(),
+        moved.bounding_box(),
+        "and the outline moved with it — an outline that had its keepout built and one that did \
+         not now agree, where before the fix only the keepout followed the transform"
+    );
+
+    // The other three transforms move the outline too. A quarter turn about the origin sends
+    // (100,100 .. 900,900) to (-900,100 .. -100,900); the mirror in x = 0 sends it back.
+    let mut turned = square();
+    turned.turn_90_degree(1, &IntPoint::new(0, 0));
+    assert_eq!(
+        turned.bounding_box(),
+        bx(-900, 100, -100, 900),
+        "turn_90_degree: the outline turned"
+    );
+    assert_eq!(turned.line_count(), base_lines);
+
+    let mut mirrored = square();
+    mirrored.change_placement_side(&IntPoint::new(0, 0));
+    assert_eq!(
+        mirrored.bounding_box(),
+        bx(-900, 100, -100, 900),
+        "change_placement_side: the outline mirrored"
+    );
+    assert_eq!(mirrored.line_count(), base_lines);
+
+    // A 180-degree rotation about the origin is exact even through the float path, so it can be
+    // asserted as a literal rather than a tolerance.
+    let mut rotated = square();
+    rotated.rotate_approx(180.0, &FloatPoint::new(0.0, 0.0));
+    assert_eq!(
+        rotated.bounding_box(),
+        bx(-900, -900, -100, -100),
+        "rotate_approx: the outline rotated"
+    );
+    assert_eq!(rotated.line_count(), base_lines);
 }
 
 #[test]

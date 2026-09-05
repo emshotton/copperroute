@@ -466,11 +466,19 @@ impl LineSegment {
                         java_round(self.get_line().function_value_approx(current_x as f64)) as i32;
                 } else {
                     current_y = start_point.y + i * stair_width;
-                    // Java quirk kept verbatim (LineSegment.java:432): the function-of-y branch
-                    // calls `functionValueApprox` — the x -> y function — on a y coordinate,
-                    // where `functionInYValueApprox` is meant (as used in `stairApproximation`).
+                    // Java bug (LineSegment.java:432): the function-of-y branch calls
+                    // `functionValueApprox` — the x -> y function — on a y coordinate, where
+                    // `functionInYValueApprox` is meant and is what the non-45 sibling
+                    // `stairApproximation` uses. See docs/java-quirks.md #13.
+                    //
+                    // fixed: T11 (#13). Measured before: `(0,0) -> (7,20)` at width 2 produced
+                    // `[(0,0) (17,17) (17,6) (34,23) (34,12) (51,29) (51,18) (7,62) (7,20)]` — x
+                    // reaching 51 on a segment whose x never exceeds 7. The corrected branch is
+                    // the transpose of the healthy function-of-x one at the opposite handedness,
+                    // which is what `crates/fr-geometry/tests/nearest_and_stairs.rs` asserts.
                     current_x =
-                        java_round(self.get_line().function_value_approx(current_y as f64)) as i32;
+                        java_round(self.get_line().function_in_y_value_approx(current_y as f64))
+                            as i32;
                 }
                 current_line_point = IntPoint::new(current_x, current_y);
             }
@@ -815,14 +823,29 @@ mod tests {
         assert_eq!(LineSegment::from_tile_shape(&b, 4), None);
     }
 
+    /// fixed: T11 (#17) — this test used to ask `contains_float`, and passed only because
+    /// `IntOctagon` answered *inclusively* where the box and the simplex answer exclusively.
+    ///
+    /// The bounding octagon of a horizontal segment is `[0,0 .. 10,0]`: **degenerate**, with no
+    /// interior at all, so under the exclusive convention no point is strictly inside it and the
+    /// old assertions were beneficiaries of the quirk rather than casualties of the fix — a
+    /// bounding *box* asked the same way has always answered `false`. The property the test is
+    /// for — the bounding shape covers the segment — is border-inclusive containment, which is
+    /// `TileShape::contains(&Point)` (`!is_outside`), and that is what it now asks.
     #[test]
     fn bounding_octagon_covers_the_segment() {
         let s = seg(0, 0, 10, 0);
         let oct = s.bounding_octagon();
         assert_eq!(oct.bounding_box(), IntBox::from_coords(0, 0, 10, 0));
-        assert!(oct.contains_float(&crate::float_point::FloatPoint::new(0.0, 0.0)));
-        assert!(oct.contains_float(&crate::float_point::FloatPoint::new(10.0, 0.0)));
-        assert!(oct.contains_float(&crate::float_point::FloatPoint::new(5.0, 0.0)));
+        let shape = TileShape::Octagon(oct);
+        for (x, y) in [(0, 0), (10, 0), (5, 0)] {
+            assert!(
+                shape.contains(&Point::Int(IntPoint::new(x, y))),
+                "({x},{y})"
+            );
+        }
+        // Degenerate, so nothing is strictly inside — the box would say the same.
+        assert!(!shape.contains_float(&crate::float_point::FloatPoint::new(5.0, 0.0)));
     }
 
     #[test]

@@ -1,17 +1,3 @@
-//! Plan 7 Task 9 — `autoroute/ItemRouteResult.java` (145 lines), the optimizer's per-item
-//! scorecard.
-//!
-//! Every literal below comes from `scripts/differential/java/probes/P7T9Probe.java` run against
-//! the HEAD jar, committed verbatim as `tests/data/p7t9-item-route-result.txt` and replayed here.
-//! The probe's class comment says how to regenerate it.
-//!
-//! # Floating point crosses the boundary as text
-//!
-//! The transcript carries `Float.toString`/`Double.toString` output and this file **parses** it
-//! rather than formatting its own. Both languages' printers emit the shortest round-tripping
-//! form and both parsers are correctly rounded, so a parsed comparison is exact — and a
-//! `java_float_to_string` the port does not otherwise need never enters the test.
-
 use std::cmp::Ordering;
 
 use fr_board::ItemId;
@@ -19,7 +5,6 @@ use fr_router::pipeline::ItemRouteResult;
 
 const TRANSCRIPT: &str = include_str!("data/p7t9-item-route-result.txt");
 
-/// One `[tuples]` row: the seven constructor arguments and the four answers the JVM printed.
 struct Tuple {
     k: usize,
     item_id: u32,
@@ -36,7 +21,6 @@ struct Tuple {
 }
 
 impl Tuple {
-    /// The `ItemRouteResult` this row's seven arguments construct.
     fn build(&self) -> ItemRouteResult {
         ItemRouteResult::new(
             ItemId(self.item_id),
@@ -50,7 +34,6 @@ impl Tuple {
     }
 }
 
-/// The lines of one `[section]` of the transcript, comments and the section header dropped.
 fn section(name: &str) -> Vec<&'static str> {
     let mut lines = Vec::new();
     let mut inside = false;
@@ -92,14 +75,6 @@ fn tuples() -> Vec<Tuple> {
         .collect()
 }
 
-// =================================================================================================
-// The ladder — ItemRouteResult.java:39-57
-// =================================================================================================
-
-/// Rung one (`:39-42`): fewer incompletes after wins, more loses, and neither rung below is
-/// consulted — the vias and the trace length are set to *lose* in the improving case and to
-/// *win* in the worsening one, so a port that ran the rungs in the wrong order would answer the
-/// opposite of both assertions.
 #[test]
 fn the_first_rung_is_the_incomplete_count() {
     let better = ItemRouteResult::new(ItemId(1), 0, 9, 0.0, 9.0, 3, 2);
@@ -109,8 +84,6 @@ fn the_first_rung_is_the_incomplete_count() {
     assert!(!worse.improved(), "ItemRouteResult.java:41-42");
 }
 
-/// Rung two (`:44-47`), reached only when the incompletes tie (`:43`): fewer vias after wins.
-/// The trace length is set to lose in the improving case, so rung three cannot be what answers.
 #[test]
 fn the_second_rung_is_the_via_count() {
     let better = ItemRouteResult::new(ItemId(1), 4, 2, 1.0, 9.0, 2, 2);
@@ -120,9 +93,6 @@ fn the_second_rung_is_the_via_count() {
     assert!(!worse.improved(), "ItemRouteResult.java:46-47");
 }
 
-/// Rung three (`:49-55`), reached only when both counts tie (`:43`, `:48`): a shorter trace wins,
-/// a longer one loses, and **an exact tie loses** — `:53-54`'s `else { improved = false; }`, which
-/// is the one arm of the ladder that has no `<`/`>` behind it.
 #[test]
 fn the_third_rung_is_the_trace_length_and_a_tie_is_not_an_improvement() {
     let better = ItemRouteResult::new(ItemId(1), 3, 3, 10.0, 9.5, 2, 2);
@@ -135,41 +105,21 @@ fn the_third_rung_is_the_trace_length_and_a_tie_is_not_an_improvement() {
     assert!(!tied.improved(), "ItemRouteResult.java:53-54");
 }
 
-// =================================================================================================
-// improvementPercentage — ItemRouteResult.java:59-65 (quirk #212)
-// =================================================================================================
-
-/// The Java bug, with the value `BatchOptimizer.java:340-348` computes beside it.
-///
-/// `:63` writes `viaCountAfter / viaCountBefore` on two `int`s, so the via term is an **integer**
-/// division that truncates towards zero before it is widened for the sum. With
-/// `viaCountBefore = 4`, `viaCountAfter = 2` the via ratio is `0`, not `0.5`.
-///
-/// `BatchOptimizer.java:345` writes the same ratio as `(float) result.viaCount() / <denominator>`
-/// and gets `0.5`. The two numbers are computed from different denominators there (the optimizer
-/// divides by the *board's* via count, not by this result's `viaCountBefore`), so the second
-/// assertion recomputes the expression with this result's own operands — the point being the
-/// **cast**, not the operands.
 #[test]
 fn improvement_percentage_truncates_the_via_term() {
     let r = ItemRouteResult::new(ItemId(1), 4, 2, 100.0, 50.0, 1, 1);
 
-    // Java: 1.0 - ((2/4) + (50.0/100.0)) / 2 = 1.0 - ((0) + 0.5) / 2 = 0.75.
     assert_eq!(
         r.improvement_percentage(),
         0.75_f32,
         "ItemRouteResult.java:59-65 with the integer division (quirk #212)"
     );
 
-    // The same expression with `BatchOptimizer.java:345`'s `(float)` cast in front of the via
-    // term: 1.0 - ((0.5) + 0.5) / 2 = 0.5. Half the ported value, on a case the corpus reaches.
     let corrected = 1.0_f64 - ((2.0_f64 / 4.0) + (50.0 / 100.0)) / 2.0;
     assert_eq!(corrected as f32, 0.5_f32, "BatchOptimizer.java:340-348");
     assert_ne!(r.improvement_percentage(), corrected as f32);
 }
 
-/// `:61`'s guard: **either** `viaCountBefore == 0` **or** `traceLengthBefore == 0` answers a flat
-/// `0`, which is what keeps the integer division at `:63` from throwing.
 #[test]
 fn improvement_percentage_is_zero_when_either_denominator_is_zero() {
     let no_vias = ItemRouteResult::new(ItemId(1), 0, 3, 100.0, 50.0, 1, 1);
@@ -182,12 +132,6 @@ fn improvement_percentage_is_zero_when_either_denominator_is_zero() {
     assert_eq!(neither.improvement_percentage(), 0.0_f32, ":61");
 }
 
-// =================================================================================================
-// The JVM transcript
-// =================================================================================================
-
-/// `:17-20` — the one-argument constructor, whose `this(itemId, 0, 0, 0, 0, 0, 1)` makes the
-/// ladder answer `false` before `:19`'s redundant explicit assignment.
 #[test]
 fn the_unimproved_constructor_matches_the_jvm() {
     let line = section("unimproved-ctor")[0];
@@ -220,7 +164,6 @@ fn the_unimproved_constructor_matches_the_jvm() {
     );
 }
 
-/// `:137-139` — the only mutator on the class, and the only reason `improved` is not `final`.
 #[test]
 fn update_improved_matches_the_jvm() {
     let lines = section("update-improved");
@@ -232,8 +175,6 @@ fn update_improved_matches_the_jvm() {
     assert_eq!(format!("afterFalse={}", r.improved()), lines[2]);
 }
 
-/// All 500 scripted tuples: the ladder's answer, `improvementPercentage`, `viaCountReduced` and
-/// `lengthReduced`, each against the JVM's own printed value.
 #[test]
 fn every_scripted_tuple_matches_the_jvm() {
     let tuples = tuples();
@@ -282,8 +223,6 @@ fn every_scripted_tuple_matches_the_jvm() {
     }
 }
 
-/// `:92-94` — `improvedOver` is `compareTo(...) < 0`, asserted both ways round on every
-/// consecutive pair together with the sign of `compareTo` itself.
 #[test]
 fn improved_over_matches_the_jvm() {
     let results: Vec<ItemRouteResult> = tuples().iter().map(Tuple::build).collect();
@@ -310,15 +249,6 @@ fn improved_over_matches_the_jvm() {
     }
 }
 
-/// `compareTo` (`:69-89`) — the **ordering** it produces over the probe's 500 tuples, not a
-/// per-pair value: the JVM sorted the keys `0..499` with `List.sort`, which is stable, and this
-/// sorts the same tuples with `slice::sort_by`, which is stable too. A behavioural test, as the
-/// brief asks.
-///
-/// **`compareTo` has no live caller.** Its only reader is the `PriorityQueue<ItemRouteResult>` in
-/// the GUI-only multithreaded optimizer (`autoroute/pipeline/BatchAutorouterThread.java`), which
-/// `RoutingPipeline` never constructs on the headless path; it is ported for the audit and pinned
-/// here so a later plan that revives that path inherits a checked comparator.
 #[test]
 fn compare_to_matches_the_jvm() {
     let tuples = tuples();

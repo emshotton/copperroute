@@ -1,6 +1,6 @@
 lane         port (<workspace>/scripts/differential/rust/src/bin/p7t9.rs)
-port sha     3d64aab44d92
-plan 9 task  T9
+port sha     9955a29240b3
+plan 9 task  T16
 java         n/a (no JVM runs in this lane)
 hash mode    n/a (the port has no Object.hashCode)
 budget       RouterBudget::disabled() (ruling AI, which survives the Plan 9 switch:
@@ -8,9 +8,9 @@ budget       RouterBudget::disabled() (ruling AI, which survives the Plan 9 swit
              transcript cannot depend on how fast the machine is). There is no trip
              count in this lane because there is no limit to trip.
 driver       <workspace>/scripts/differential/rust/src/bin/p7t9.rs
-passes       18
-ses bytes    13340
-ses sha256   da3ade87b1433a2febc7aaf4d2f57cdcc0454e69c229441b0da04749f4f7da29
+passes       2
+ses bytes    13160
+ses sha256   2eaa0ad19ef4ee9bd71f48678ff0e0108a94cb4e428e206e63c3e38cf34cc34d
 command      java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp <classes>:<jar> app.freerouting.autoroute.pipeline.P7T9 <FREEROUTING_JAVA_DIR>/fixtures/Issue026-J2_reference.dsn 99 batch --fanout on --optimizer on --ses <ref>/batch.ses
 passes cmd   java -Djava.awt.headless=true -Duser.language=en -Duser.country=US -XX:+UnlockExperimentalVMOptions -XX:hashCode=2 -cp <classes>:<jar> app.freerouting.autoroute.pipeline.P7T9 <FREEROUTING_JAVA_DIR>/fixtures/Issue026-J2_reference.dsn 99 batch-router --fanout on --optimizer off --passes <ref>/batch.passes.jsonl
 bare program freerouting -de <FREEROUTING_JAVA_DIR>/fixtures/Issue026-J2_reference.dsn -do <ses> -mp 99 --router.fanout.enabled=true --router.optimizer.enabled=true

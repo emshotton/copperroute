@@ -114,7 +114,14 @@ pub fn run(
     }
 
     // ── 4. the two post-load passes, on the payload — see the module docs ────────────────────
-    fr_core::apply_router_settings_for_loaded_board(&mut board, &mut job.router_settings);
+    // fixed: T10 (#231) — see `commands::route` for why this is `info!` and not `debug`.
+    if fr_core::apply_router_settings_for_loaded_board(&mut board, &mut job.router_settings) {
+        tracing::info!(
+            copper_to_edge_clearance_um = ?job.router_settings.copper_to_edge_clearance_um,
+            hole_clearance_um = ?job.router_settings.hole_clearance_um,
+            "the clearance overrides changed the board's clearance matrix"
+        );
+    }
     fr_core::apply_immediate_post_load_processing(&mut board);
 
     // ── 5-9. merge #2, alone, with the sparse payload at priority 70 ─────────────────────────

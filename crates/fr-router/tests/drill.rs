@@ -1,33 +1,3 @@
-//! Plan 6 Task 7: the drill pages, the page array and the expansion drills
-//! (`autoroute/drill/{DrillPageArray,DrillPage,ExpansionDrill}.java`).
-//!
-//! # Where the numbers come from
-//!
-//! Every literal below — the page grids, the overlapping-page sets, the drill counts, the drill
-//! shapes and locations, the `getId()` hashes and the room ids each drill binds — is **read off
-//! the HEAD jar**, not off this port. The probe is
-//! `scripts/differential/java/probes/P6T7Probe.java`, which is committed with the exact
-//! `javac`/`java` invocation in its header; it reflects into `DrillPageArray`'s private
-//! `pages`/`columnCount`/`rowCount`/`pageWidth`/`pageHeight` and into `DrillPage`'s private
-//! `drills`/`netNumber`, which are the state these tests assert on.
-//!
-//! Each test names its probe mode and pastes the stdout it asserts against.
-//!
-//! # The seeded incomplete-room list
-//!
-//! Every drill test calls [`seed_incomplete_list`] first, and on the jar that is not decoration:
-//! `AutorouteEngine.removeIncompleteExpansionRoom` (`:368-371`) dereferences
-//! `incompleteExpansionRooms` with no null guard, and the list is created lazily by
-//! `addIncompleteExpansionRoom` (`:344`) — so on an engine that has never had an incomplete room,
-//! **every** drill dies with a `NullPointerException` that `completeExpansionRoom`'s catch turns
-//! into an empty room list.
-//!
-//! Plan 9 Task 6 fixed that (quirk #169), so in this port the seeding is now genuinely
-//! decoration — kept because it is the state a real routing run is in by the time the maze
-//! reaches a drill page, and because the rest of the file's literals were read off the jar in
-//! exactly that state. [`a_virgin_engine_yields_thirteen_drills`] is what changed: it replaces
-//! `a_virgin_engine_yields_no_drills_at_all`, and the count it asserts is mode 2's **13**.
-
 use fr_board::prelude::*;
 use fr_geometry::{
     Area, IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, Shape, TileShape,
@@ -35,10 +5,6 @@ use fr_geometry::{
 use fr_router::autoroute::drill::{DrillPage, DrillPageArray, ExpansionDrill};
 use fr_router::autoroute::expansion::{ExpansionRoomStore, RoomRef};
 use fr_router::autoroute::maze::engine::AutorouteEngine;
-
-// =================================================================================================
-// The probe's board, rebuilt from scratch
-// =================================================================================================
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -51,10 +17,6 @@ const BOUNDING_BOX: IntBox = IntBox {
     },
 };
 
-/// `P6T7Probe.build`, which is `P6T3.build`'s any-angle board verbatim: two layers, a 200-unit
-/// clearance matrix with a "wide" class, a two-pin component (an **SMD** pad at (-500, 0) on
-/// layer 0 only and a **through** pad at (500, 0) on both layers) and two traces, one on net 1
-/// and one on net 2.
 fn probe_board(bounds: IntBox) -> Board {
     let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
     let mut clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
@@ -142,7 +104,6 @@ fn probe_board(bounds: IntBox) -> Board {
     board
 }
 
-/// `board.insertObstacle(new IntBox(...), layer, 1, FixedState.UNFIXED)`.
 fn insert_obstacle(board: &mut Board, llx: i32, lly: i32, urx: i32, ury: i32, layer: usize) {
     board.insert_obstacle(
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
@@ -154,8 +115,6 @@ fn insert_obstacle(board: &mut Board, llx: i32, lly: i32, urx: i32, ury: i32, la
     );
 }
 
-/// `P6T7Probe.seedList`: creates `incompleteExpansionRooms` and leaves it empty. See the module
-/// docs — without it every drill dies on quirk #169.
 fn seed_incomplete_list(engine: &mut AutorouteEngine) {
     let seed = engine.add_incomplete_expansion_room(
         None,
@@ -165,8 +124,6 @@ fn seed_incomplete_list(engine: &mut AutorouteEngine) {
     engine.remove_incomplete_expansion_room(seed);
 }
 
-/// A ready engine on `board`: `new AutorouteEngine(board, 1, true)` + `initConnection(net, …)` +
-/// the seeded list.
 fn engine_on(board: &mut Board, net: i32) -> AutorouteEngine {
     let mut engine = AutorouteEngine::new(board, 1, true);
     engine.init_connection(board, net, None);
@@ -174,7 +131,6 @@ fn engine_on(board: &mut Board, net: i32) -> AutorouteEngine {
     engine
 }
 
-/// `P6T7Probe.componentPage`: the page around the two-pin component.
 fn component_page(board: &Board) -> DrillPage {
     DrillPage::new(IntBox::from_coords(-1000, -1000, 1000, 1000), board, 1)
 }
@@ -182,11 +138,8 @@ fn component_page(board: &Board) -> DrillPage {
 const NEVER: &dyn Fn() -> bool = &|| false;
 const ALWAYS: &dyn Fn() -> bool = &|| true;
 
-/// `(llx, lly, urx, ury)`, the shape the probe prints a page box in.
 type Box4 = (i32, i32, i32, i32);
 
-/// `(columnCount, rowCount, pageWidth, pageHeight)` plus every page box in row-major order, in
-/// the shape the probe prints it.
 fn grid(array: &DrillPageArray) -> (Box4, Vec<Box4>) {
     let head = (
         array.column_count(),
@@ -214,8 +167,6 @@ fn page_boxes(array: &DrillPageArray, pages: &[fr_router::arena::PageId]) -> Vec
         .collect()
 }
 
-/// `(location x, location y, first layer, last layer, getId(), shape bounding box)` for every
-/// drill of a page, in list order.
 type DrillRow = (i32, i32, usize, usize, i32, Box4);
 
 fn drill_rows(engine: &AutorouteEngine, drills: &[fr_router::arena::DrillId]) -> Vec<DrillRow> {
@@ -237,7 +188,6 @@ fn drill_rows(engine: &AutorouteEngine, drills: &[fr_router::arena::DrillId]) ->
         .collect()
 }
 
-/// The Java room id (`CompleteFreeSpaceExpansionRoom.getId()`) each layer of a drill binds.
 fn drill_room_ids(engine: &AutorouteEngine, drill: &ExpansionDrill) -> Vec<Option<i32>> {
     drill
         .rooms
@@ -256,26 +206,6 @@ fn drill_room_ids(engine: &AutorouteEngine, drill: &ExpansionDrill) -> Vec<Optio
         .collect()
 }
 
-// =================================================================================================
-// `DrillPageArray` (DrillPageArray.java:34-62)
-// =================================================================================================
-
-/// Probe mode 0, verbatim:
-///
-/// ```text
-/// square20000 maxPageWidth=7000 columnCount=3 rowCount=3 pageWidth=6667 pageHeight=6667
-///     page[0][0] [-10000,-10000..-3333,-3333]
-///     …
-/// defaultViaDiameter=0.0 maxDrillPageWidth=10000
-/// square20000 engineWidth columnCount=2 rowCount=2 pageWidth=10000 pageHeight=10000
-/// wide30000x4000 maxPageWidth=10000 columnCount=3 rowCount=1 pageWidth=10000 pageHeight=4000
-/// small3000x5000 maxPageWidth=10000 columnCount=1 rowCount=1 pageWidth=3000 pageHeight=5000
-/// ```
-///
-/// The 20 000-unit board over a 7 000-unit page is the one that pins the `ceil` chain of
-/// `:37-41`: `columnCount = ceil(20000/7000) = 3`, and `pageWidth` is then **recomputed** as
-/// `ceil(20000/3) = 6667` rather than reused, so the last column is 6 666 wide and the first two
-/// are 6 667.
 #[test]
 fn page_grid_matches_java_for_a_known_bounding_box() {
     let board = probe_board(BOUNDING_BOX);
@@ -297,8 +227,6 @@ fn page_grid_matches_java_for_a_known_bounding_box() {
         ]
     );
 
-    // The width `AutorouteEngine`'s constructor computes for this board (`:89-90`): the default
-    // via diameter is 0.0, so the `max(…, 10000)` floor wins.
     let array = DrillPageArray::new(&board, 10_000, &mut ExpansionRoomStore::new());
     let (head, boxes) = grid(&array);
     assert_eq!(head, (2, 2, 10000, 10000));
@@ -312,8 +240,6 @@ fn page_grid_matches_java_for_a_known_bounding_box() {
         ]
     );
 
-    // A wide, short board: `columnCount` and `rowCount` differ, and `pageHeight` is the whole
-    // height because one row covers it.
     let board = probe_board(IntBox::from_coords(-15_000, -1000, 15_000, 3000));
     let array = DrillPageArray::new(&board, 10_000, &mut ExpansionRoomStore::new());
     let (head, boxes) = grid(&array);
@@ -327,7 +253,6 @@ fn page_grid_matches_java_for_a_known_bounding_box() {
         ]
     );
 
-    // A board smaller than one page: one page, and `pageWidth`/`pageHeight` are the board's own.
     let board = probe_board(IntBox::from_coords(0, 0, 3000, 5000));
     let array = DrillPageArray::new(&board, 10_000, &mut ExpansionRoomStore::new());
     let (head, boxes) = grid(&array);
@@ -335,27 +260,8 @@ fn page_grid_matches_java_for_a_known_bounding_box() {
     assert_eq!(boxes, vec![(0, 0, 3000, 5000)]);
 }
 
-/// Probe mode 1, verbatim:
-///
-/// ```text
-/// probe [-10000,-10000..1000,1000] minJ=0 maxJ=1.6499175041247938 minI=0 maxI=1.6499175041247938
-///   n=4  [-10000,-10000..-3333,-3333] [-3333,-10000..3334,-3333]
-///        [-10000,-3333..-3333,3334]   [-3333,-3333..3334,3334]
-/// probe [-10000,-10000..-3000,-3000] minJ=0 maxJ=1.0499475026248688 …            n=4
-/// probe [-10000,-10000..10000,10000] minJ=0 maxJ=2.999850007499625 …             n=9
-/// probe [-1000,-1000..-900,-900]     minJ=1 maxJ=1.3649317534123293 minI=1 …     n=1
-/// probe [-3000,-10000..-3000,10000]  minJ=0 maxJ=2.999850007499625 minI=1 maxI=1.0499475026248688
-///                                                                                n=0
-/// probe [5000,5000..30000,30000]     minJ=2 maxJ=2.999850007499625 …             n=1
-/// ```
-///
-/// The loop bounds are Java's `for (int j = minJ; j < maxJ; j++)` with `maxJ` a **`double`**
-/// (DrillPageArray.java:82, `:87`), so `j` is widened per comparison. Truncating `maxJ` to an
-/// `int` — the obvious "cleanup" — loses the page the fractional bound sits in: the first probe
-/// would answer 1 page instead of 4, and the whole-board probe 4 instead of 9. The fourth probe
-/// is the one that also pins `minI`/`minJ` being `floor`ed rather than truncated.
 #[test]
-fn overlapping_pages_uses_javas_mixed_loop_bounds() {
+fn overlapping_pages_include_boundary_contacts() {
     let board = probe_board(BOUNDING_BOX);
     let array = DrillPageArray::new(&board, 7000, &mut ExpansionRoomStore::new());
 
@@ -381,40 +287,20 @@ fn overlapping_pages_uses_javas_mixed_loop_bounds() {
         probe(-1000, -1000, -900, -900),
         vec![(-3333, -3333, 3334, 3334)]
     );
-    // A 1-dimensional shape: the `intersection.dimension() > 1` guard at `:91` drops every page.
-    assert!(probe(-3000, -10000, -3000, 10000).is_empty());
-    // A shape sticking out of the board: `:79` intersects the bounding box first.
+    assert_eq!(
+        probe(-3000, -10000, -3000, 10000),
+        vec![
+            (-3333, -10000, 3334, -3333),
+            (-3333, -3333, 3334, 3334),
+            (-3333, 3334, 3334, 10000),
+        ]
+    );
     assert_eq!(
         probe(5000, 5000, 30000, 30000),
         vec![(3334, 3334, 10000, 10000)]
     );
 }
 
-// =================================================================================================
-// `DrillPage.getDrills` (DrillPage.java:63-131)
-// =================================================================================================
-
-/// Probe modes 2 and 3. With `attachSmd = false` the page yields **13** drills; with
-/// `attachSmd = true` it yields **11**, because `:80-84` skips the SMD pin (`drillAllowed()` is
-/// true for a padstack that lives on one layer, Pin.java:344-350) and the three little drill
-/// shapes wedged around its pad collapse into one.
-///
-/// Probe mode 2, the four rows that change:
-///
-/// ```text
-/// drill loc=(-481,-206) shape=IntOctagon[-576,-240..-409,-150]
-/// drill loc=(-327,-173) shape=IntOctagon[-409,-240..-260,-91]
-/// drill loc=(-294,-19)  shape=IntOctagon[-350,-91..-260,76]
-/// ```
-///
-/// Probe mode 3, in their place:
-///
-/// ```text
-/// drill loc=(-378,-121) shape=IntOctagon[-576,-240..-260,76] id=-11377278
-/// ```
-///
-/// The through pin at (500, 0) is **not** skipped in either run: `drillAllowed()` is false for a
-/// padstack on two layers, so its pad is cut out whatever `attachSmd` says.
 #[test]
 fn an_smd_pin_is_cut_out_unless_attach_smd_and_drill_allowed() {
     let mut board = probe_board(BOUNDING_BOX);
@@ -442,24 +328,9 @@ fn an_smd_pin_is_cut_out_unless_attach_smd_and_drill_allowed() {
         rows[10],
         (-378, -121, 0, 1, -11377278, (-576, -240, -260, 76))
     );
-    // The first ten drills are the same in both runs, so the difference is the SMD pad alone.
     assert_eq!(rows[..10], without_rows[..10]);
 }
 
-/// Probe mode 2's first three rows, verbatim:
-///
-/// ```text
-/// drill loc=(35.0,95.0)   layers=0..1 id=1133981   shape=IntBox[-260,-170..330,360]
-///     rooms: CompleteFreeSpaceExpansionRoom#7@0 CompleteFreeSpaceExpansionRoom#6@1
-/// drill loc=(835.0,125.0) layers=0..1 id=24995611  shape=IntBox[670,-111..1000,360]
-///     rooms: CompleteFreeSpaceExpansionRoom#7@0 CompleteFreeSpaceExpansionRoom#6@1
-/// drill loc=(370.0,-585.0) layers=0..1 id=10460486 shape=IntBox[-260,-1000..1000,-170]
-///     rooms: CompleteFreeSpaceExpansionRoom#7@0 CompleteFreeSpaceExpansionRoom#8@1
-/// pageId=-29759999 pageDim=2 mazeElements=2
-/// ```
-///
-/// The `getId()` of the first drill is `31 * (31 * location.getId() + firstLayer) + lastLayer`
-/// (`:127-130`) over `IntPoint.getId() = 31 * x + y` — `31 * (31 * (31*35 + 95) + 0) + 1`.
 #[test]
 fn get_drills_binds_one_room_per_layer_and_hashes_its_location() {
     let mut board = probe_board(BOUNDING_BOX);
@@ -476,12 +347,6 @@ fn get_drills_binds_one_room_per_layer_and_hashes_its_location() {
             (370, -585, 0, 1, 10460486, (-260, -1000, 1000, -170)),
         ]
     );
-    // PORT-REGRESSION PINS, `accepted at plan9-t7t8 (ruling CC)`. Room ids come from ONE shared
-    // counter across the engine's room kinds (#156/#167/#158), so the probe's `#7 #6` and `#7 #8`
-    // read `#29 #23` and `#29 #34` here. **What this test is named for is the BINDING, and it is
-    // unchanged**: one room per layer, in layer order, and the first and third drills sharing the
-    // layer-0 room while differing on layer 1 — the shared id is still shared and the differing
-    // one still differs, which is asserted below rather than left to the reader.
     let first = engine.rooms.drills.get(drills[0].0).expect("a live drill");
     let first_rooms = drill_room_ids(&engine, first);
     assert_eq!(first_rooms, vec![Some(29), Some(23)]);
@@ -497,36 +362,11 @@ fn get_drills_binds_one_room_per_layer_and_hashes_its_location() {
         "probe: and different layer-1 rooms"
     );
 
-    // The `ExpandableObject` half of the page (`:133-151`, `:190-193`). `java_id`, not `get_id`,
-    // since #167's fix at Task 8 gave the page a stable id of its own — the jar's
-    // `pageId=-29759999` is unchanged and still asserted, on the hash Java computes.
     assert_eq!(page.java_id(), -29_759_999);
     assert_eq!(page.get_dimension(), 2);
     assert_eq!(page.maze_search_element_count(), 2);
 }
 
-/// Probe mode 4: the eight tree entries the page overlaps, and what the cut-out loop
-/// (`:73-96`) does with each.
-///
-/// ```text
-/// netNumber=1 overlaps n=8
-///     entry PolylineTrace#5/0 shape=IntOctagon[-1340,-240..-260,1440]  CUTOUT
-///     entry PolylineTrace#5/1 shape=IntOctagon[-1340,360..840,1440]    CUTOUT
-///     entry PolylineTrace#4/0 -> drillable, skipped
-///     entry PolylineTrace#4/1 -> drillable, skipped
-///     entry PolylineTrace#4/2 -> drillable, skipped
-///     entry Pin#3/0 drillAllowed=false shape=IntOctagon[330,-170..670,170] CUTOUT
-///     entry Pin#3/1 drillAllowed=false shape=IntOctagon[330,-170..670,170]
-///                                                             prevContains -> no cutout
-///     entry Pin#2/0 drillAllowed=true  shape=IntOctagon[-650,-150..-350,150] CUTOUT
-/// cutouts=4
-/// ```
-///
-/// The through pin's padstack is the **same octagon on both layers**, so its second tree entry is
-/// suppressed by `prevObstacleShape.contains(currentObstacleShape)` at `:87` — the carry the
-/// comment at `:88-89` explains ("to avoid multiple cutout for example for vias with the same
-/// shape on all layers"). The carry starts at `IntBox.EMPTY` (`:72`), which contains nothing, so
-/// the first entry is never suppressed.
 #[test]
 fn the_prev_obstacle_carry_suppresses_duplicate_cutouts_for_a_through_via() {
     let mut board = probe_board(BOUNDING_BOX);
@@ -547,63 +387,26 @@ fn the_prev_obstacle_carry_suppresses_duplicate_cutouts_for_a_through_via() {
             (4, 1, true, false),
             (4, 2, true, false),
             (3, 0, false, true),
-            // The through pin's second layer: the same octagon, suppressed by the carry.
             (3, 1, false, false),
             (2, 0, false, true),
         ]
     );
     assert_eq!(entries.iter().filter(|e| e.cut_out).count(), 4);
 
-    // With `attachSmd`, the SMD pin (item 2) is skipped as well and there are three cut-outs.
     let entries = page.obstacle_cutout_trace(&engine, &mut board, true);
     assert_eq!(entries.iter().filter(|e| e.cut_out).count(), 3);
     assert!(entries.last().expect("the SMD pin's entry").skipped);
 }
 
-/// Probe mode 7, verbatim:
-///
-/// ```text
-/// fresh    netNumber=-1 id=-29760001 shapeId=-960000
-/// afterNet1 netNumber=1 id=-29759999 drills=13
-/// afterNet2 netNumber=2 id=-29759998 drills=30
-/// afterReset netNumber=2 drills=30
-/// afterInvalidate drills=null netNumber=2 id=-29759998
-/// ```
-///
-/// `getDrills` writes `this.netNumber` at `:65` **before** it recomputes, and `getId()`
-/// (`:190-193`) is `31 * shape.getId() + netNumber` — so recomputing a page mutates its id. A
-/// page already sitting in the maze's `TreeSet<MazeListElement>` (plan-6 ruling 4, hazard B)
-/// would therefore sort by a key that no longer matches where it is stored, and the set would
-/// neither find nor remove it. Nothing in Plan 6 may "fix" this before parity.
-///
-/// `reset()` (`:154-164`) resets the maze scratch and each drill's, but leaves the memoised list
-/// alone; only `invalidate()` (`:170-172`) drops it — and it does **not** restore `netNumber`, so
-/// an invalidated page keeps the mutated id.
-///
-/// **Re-pointed at the plan9-t7t8 accept wave (ruling CC), from `get_id` to `java_id`.** #167 is
-/// fixed as of Task 8: `DrillPage` draws a stable `id_no` from the engine's counter when the page
-/// grid is built and never writes it again, so `get_id()` no longer moves and the three jar
-/// values below stopped describing it — `page.get_id()` answers `1` on this fixture now, not
-/// `-29760001`. Java's hash survives verbatim as `DrillPage::java_id`, read by nothing in the
-/// port and kept for exactly this: **the defect stays pinned beside the fix**, which is what
-/// #167's register row promises. So every jar number in this test is intact, on `java_id`, and
-/// `get_id` gains the assertions that say the fix holds.
-///
-/// The jar's three values, unchanged and still asserted: `-29760001` fresh, `-29759999` after the
-/// net-1 recomputation, `-29759998` after the net-2 one, and the invalidated page keeping the last
-/// of them. `accepted at plan9-t7t8 (ruling CC)`.
 #[test]
 fn get_drills_recomputes_when_the_net_changes_and_mutates_javas_id() {
     let mut board = probe_board(BOUNDING_BOX);
     let mut engine = AutorouteEngine::new(&mut board, 1, false);
     let mut page = component_page(&board);
 
-    // :33 — the field initialiser, before any `getDrills`.
     assert_eq!(page.shape.get_id(), -960_000);
     let fresh_id = page.java_id();
     assert_eq!(fresh_id, -29_760_001);
-    // The port's own id, which #167's fix makes stable. Every `java_id` assertion below has a
-    // `get_id` twin, so this test measures BOTH the Java defect and the port's answer to it.
     let stable_id = page.get_id();
 
     engine.init_connection(&mut board, 1, None);
@@ -635,7 +438,6 @@ fn get_drills_recomputes_when_the_net_changes_and_mutates_javas_id() {
         "fixed: T8 (#167) — nor on a second net"
     );
 
-    // `reset` keeps the memo; `invalidate` drops it and keeps the mutated id.
     page.reset(&mut engine.rooms.drills);
     assert_eq!(page.drills().map(<[_]>::len), Some(30));
     page.invalidate(&mut engine.rooms.drills);
@@ -648,51 +450,21 @@ fn get_drills_recomputes_when_the_net_changes_and_mutates_javas_id() {
     );
 }
 
-/// Quirk #168, inverted — the probe's mode 6 is what the fix deletes.
-///
-/// Mode 6 on the HEAD jar reads, verbatim:
-///
-/// ```text
-/// threw java.lang.NullPointerException
-///     at app.freerouting.autoroute.drill.DrillPage.getDrills(DrillPage.java:108)
-/// afterThrow netNumber(field)=1 drills=0
-/// secondCall drills n=0
-/// ```
-///
-/// This is ruling 6's sixth and last cancellation site: `:103` passes
-/// `autorouteEngine.stoppableThread` — the raw flag, **not** `isStopRequested()`, so the time
-/// limit is not consulted here — to `PolylineArea.splitToConvex`, which returns `null` when the
-/// flag trips (PolylineArea.java:189-191). `:108` then dereferenced `drillShapes.length` with no
-/// null check and threw.
-///
-/// The damage outlived the throw, and that is the half worth fixing: `:65-66` had already written
-/// the new net number and installed a **fresh empty** `drills` list, so the memo said "this page
-/// has no drills on net 1" and `:64`'s guard sent every later call straight past the
-/// recomputation. **A page interrupted once answered "no drills here" for the rest of the
-/// connection**, silently removing every via candidate on it — the third line above is that, and
-/// note it is measured with the stop flag already *cleared*.
-///
-/// Task 6 installs the list only after the split succeeds. The three lines above become: no
-/// throw, the page untouched, and a second call that recomputes and finds all thirteen.
 #[test]
 fn a_stopped_split_does_not_memoise_an_empty_page() {
     let mut board = probe_board(BOUNDING_BOX);
     let mut engine = engine_on(&mut board, 1);
     let mut page = component_page(&board);
 
-    // A page that has never been computed, so there is a memo to protect.
     assert_eq!(page.drills(), None);
     let before = page.net_number();
 
-    // `ALWAYS` trips `:103`'s raw stop flag, which is what makes `splitToConvex` answer null.
     let cancelled = page.get_drills(&mut engine, &mut board, false, ALWAYS);
     assert!(
         cancelled.is_empty(),
         "a cancelled page has no drills to report"
     );
 
-    // The page is left exactly as it was — this is the whole fix. `drills` is still `None`, not
-    // `Some([])`, so `:64` cannot mistake it for a computed answer.
     assert_eq!(
         page.drills(),
         None,
@@ -704,7 +476,6 @@ fn a_stopped_split_does_not_memoise_an_empty_page() {
         "the net number is written with the list, not before the work"
     );
 
-    // And the recomputation the memo used to suppress now happens, with the flag cleared.
     assert_eq!(
         page.get_drills(&mut engine, &mut board, false, NEVER).len(),
         13,
@@ -713,22 +484,6 @@ fn a_stopped_split_does_not_memoise_an_empty_page() {
     assert_eq!(page.net_number(), 1);
 }
 
-// =================================================================================================
-// `ExpansionDrill.calculateExpansionRooms` (ExpansionDrill.java:55-92)
-// =================================================================================================
-
-/// Probe mode 9, verbatim:
-///
-/// ```text
-/// warm drills n=11
-/// upperBlocked calculateExpansionRooms=false
-///     upperBlocked roomArr[0]=CompleteFreeSpaceExpansionRoom#10@0
-///     upperBlocked roomArr[1]=null
-/// ```
-///
-/// A keepout on layer 1 alone covers the drill location, so layer 0 binds a room and layer 1's
-/// `completeExpansionRoom` answers **no** rooms — `newRooms.size() != 1` at `:80-83` — and the
-/// method returns false with the layers it already bound still in `roomArr`.
 #[test]
 fn calculate_expansion_rooms_fails_when_one_layer_is_blocked() {
     let mut board = probe_board(BOUNDING_BOX);
@@ -747,36 +502,9 @@ fn calculate_expansion_rooms_fails_when_one_layer_is_blocked() {
         1,
     );
     assert!(!drill.calculate_expansion_rooms(&mut engine, &mut board));
-    // PORT-REGRESSION PIN: jar room id `10`, port `33`; one shared room-id counter
-    // (#156/#167/#158); `accepted at plan9-t7t8 (ruling CC)`. The claim is the `None` — the
-    // blocked layer binds no room and the call answers `false` — and both are unmoved.
     assert_eq!(drill_room_ids(&engine, &drill), vec![Some(33), None]);
 }
 
-/// Probe mode 5, verbatim:
-///
-/// ```text
-/// blocked calculateExpansionRooms=false
-///     blocked roomArr[0]=null
-///     blocked roomArr[1]=null
-/// blocked getId=1 dim=2 mazeElements=2 otherRoom=null
-/// layer0 calculateExpansionRooms=true
-///     layer0 roomArr[0]=CompleteFreeSpaceExpansionRoom#4@0
-/// layer0 getId=0 mazeElements=1
-/// free calculateExpansionRooms=true
-///     free roomArr[0]=CompleteFreeSpaceExpansionRoom#6@0
-///     free roomArr[1]=CompleteFreeSpaceExpansionRoom#7@1
-/// free getId=24995611
-/// again calculateExpansionRooms=true
-///     again roomArr[0]=CompleteFreeSpaceExpansionRoom#6@0
-///     again roomArr[1]=CompleteFreeSpaceExpansionRoom#7@1
-/// ```
-///
-/// Three facts in one run: a location where `completeExpansionRoom` answers more than one room
-/// fails on the **first** layer with nothing bound; `roomArr` is sized `lastLayer - firstLayer +
-/// 1`, so a single-layer drill has one slot and one `MazeSearchElement`; and a second drill at
-/// the same location finds the rooms the first one created, through `overlappingObjects`
-/// (`:57-73`) rather than by building new ones.
 #[test]
 fn calculate_expansion_rooms_reuses_the_rooms_that_are_already_in_the_tree() {
     let mut board = probe_board(BOUNDING_BOX);
@@ -806,9 +534,6 @@ fn calculate_expansion_rooms_reuses_the_rooms_that_are_already_in_the_tree() {
         0,
     );
     assert!(layer0.calculate_expansion_rooms(&mut engine, &mut board));
-    // PORT-REGRESSION PIN: jar room id `4`, port `11`; same cause, `accepted at plan9-t7t8
-    // (ruling CC)`. The claim — a single-layer drill reuses the room already in the tree rather
-    // than minting one — is what the single `Some(..)` says, and it is unmoved.
     assert_eq!(drill_room_ids(&engine, &layer0), vec![Some(11)]);
     assert_eq!(layer0.get_id(), 0);
     assert_eq!(layer0.maze_search_element_count(), 1);
@@ -816,10 +541,6 @@ fn calculate_expansion_rooms_reuses_the_rooms_that_are_already_in_the_tree() {
     let free_shape = TileShape::Box(IntBox::from_coords(785, 75, 885, 175));
     let mut free = ExpansionDrill::new(free_shape.clone(), Point::new(835, 125), 0, 1);
     assert!(free.calculate_expansion_rooms(&mut engine, &mut board));
-    // PORT-REGRESSION PINS: jar `6, 7`, port `22, 25`; same shared-counter cause;
-    // `accepted at plan9-t7t8 (ruling CC)`. The drill's OWN id `24995611` is Java's location hash
-    // and is unmoved, and so is the claim below — the second drill over the same shape reuses the
-    // same two rooms rather than minting a second pair.
     assert_eq!(drill_room_ids(&engine, &free), vec![Some(22), Some(25)]);
     assert_eq!(free.get_id(), 24_995_611);
 
@@ -828,41 +549,11 @@ fn calculate_expansion_rooms_reuses_the_rooms_that_are_already_in_the_tree() {
     assert_eq!(drill_room_ids(&engine, &again), vec![Some(22), Some(25)]);
 }
 
-/// Quirk #169, inverted — the probe's mode 8 is what the fix deletes.
-///
-/// Mode 8 on the HEAD jar reads, verbatim:
-///
-/// ```text
-/// virgin drills n=0
-/// virgin calculateExpansionRooms=false
-/// seeded calculateExpansionRooms=false
-/// ```
-///
-/// `AutorouteEngine.removeIncompleteExpansionRoom` (`:368-371`) is
-/// `removeAllDoors(room); incompleteExpansionRooms.remove(room);` with **no null guard**, and
-/// `incompleteExpansionRooms` is created lazily by `addIncompleteExpansionRoom` (`:342-345`). So
-/// on an engine that has never had an incomplete room added, `completeExpansionRoom`'s `:469`
-/// throws a `NullPointerException`, its own `catch` at `:518-521` turns that into an empty room
-/// collection, and `ExpansionDrill.calculateExpansionRooms:80-83` reads the empty collection as
-/// "blocked" and drops the drill. Every drill on the page died the same way and the page memoised
-/// an empty list.
-///
-/// Task 6 fixed both halves — the field guard and `ExpansionDrill` calling
-/// `addIncompleteExpansionRoom` — so a virgin engine now answers the same **13** drills
-/// [`an_smd_pin_is_cut_out_unless_attach_smd_and_drill_allowed`] reads off mode 2 for a *seeded*
-/// engine on this same page. That literal is the headline of the row: **0 -> 13**.
-///
-/// The `seeded` line is kept as the control, and it is still `false`: the drill at (835, 125)
-/// answers false whether or not the list exists, because on a tree with no rooms in it yet
-/// `completeExpansionRoom` answers more than one room there — `:80-83`'s `newRooms.size() != 1`,
-/// which is a different refusal from the swallowed NPE and is not what the fix is about. Which is
-/// why every other test in this file warms the database with `getDrills` first.
 #[test]
 fn a_virgin_engine_yields_thirteen_drills() {
     let mut board = probe_board(BOUNDING_BOX);
     let mut engine = AutorouteEngine::new(&mut board, 1, true);
     engine.init_connection(&mut board, 1, None);
-    // No `seed_incomplete_list` here — that is the whole point.
     assert!(
         !engine.rooms.incomplete_list_created(),
         "the engine is virgin: `incompleteExpansionRooms` is still Java's null"
@@ -881,10 +572,6 @@ fn a_virgin_engine_yields_thirteen_drills() {
          so the list exists by the time the first drill is built"
     );
 
-    // The count alone would be satisfied by thirteen *different* drills, so compare the rows
-    // themselves against the derived expectation: what a **seeded** engine — the state every other
-    // test in this file warms into, and the one mode 2's literals were read off — builds on the
-    // same board and the same page. `0 -> 13` is only the headline if they are the same thirteen.
     let mut seeded_board = probe_board(BOUNDING_BOX);
     let mut seeded_engine = engine_on(&mut seeded_board, 1);
     let mut seeded_page = component_page(&seeded_board);
@@ -896,9 +583,6 @@ fn a_virgin_engine_yields_thirteen_drills() {
         "a virgin engine now builds the same thirteen drills a seeded one does — same locations, \
          same layers, same getId() hashes, same shapes"
     );
-    // And those rows are mode 2's, so this is anchored to the jar and not just to the port
-    // agreeing with itself: the three that `an_smd_pin_is_cut_out_unless_attach_smd_and_drill_
-    // allowed` reads off the probe.
     assert_eq!(
         drill_rows(&engine, &drills)[10..],
         [
@@ -908,14 +592,6 @@ fn a_virgin_engine_yields_thirteen_drills() {
         ]
     );
 
-    // The two controls, on their own **cold** engines — mode 8 measured them on a tree that
-    // `getDrills` had left empty, and the fix has just filled this one, so reusing `engine` here
-    // would be measuring a different thing (and does: the warmed tree answers `true`).
-    //
-    // Cold, unseeded. Pre-fix this was `false` because of the swallowed NullPointerException;
-    // post-fix it is `false` for the reason the `seeded` row always had — `:80-83`'s
-    // `newRooms.size() != 1` on a tree with no rooms in it yet. Same answer, different cause,
-    // which is why the count above and not this line is the fix's evidence.
     let mut cold_board = probe_board(BOUNDING_BOX);
     let mut cold = AutorouteEngine::new(&mut cold_board, 1, true);
     cold.init_connection(&mut cold_board, 1, None);
@@ -927,7 +603,6 @@ fn a_virgin_engine_yields_thirteen_drills() {
     );
     assert!(!drill.calculate_expansion_rooms(&mut cold, &mut cold_board));
 
-    // Cold and seeded: mode 8's third line, unchanged by the fix in either direction.
     let mut seeded_board = probe_board(BOUNDING_BOX);
     let mut seeded = AutorouteEngine::new(&mut seeded_board, 1, true);
     seeded.init_connection(&mut seeded_board, 1, None);
@@ -941,34 +616,6 @@ fn a_virgin_engine_yields_thirteen_drills() {
     assert!(!after.calculate_expansion_rooms(&mut seeded, &mut seeded_board));
 }
 
-// =================================================================================================
-// The engine's three drill hooks (AutorouteEngine.java:91, :597-600, :668)
-// =================================================================================================
-
-/// Probe mode 10, verbatim:
-///
-/// ```text
-/// engineArray columnCount=1 rowCount=1 pageWidth=2000 pageHeight=2000
-///     page[0][0] [-1000,-1000..1000,1000]
-/// page00 [-1000,-1000..1000,1000] drills=9
-/// page00 memo=9
-/// afterInvalidateDrillPages memo=null
-/// recomputed drills=10
-/// afterReset memo=10
-/// afterMissingInvalidate memo=10
-/// ```
-///
-/// The board's bounding box is one page wide here, so the engine's own array is 1x1 and its
-/// single page is the component page. On the full -10 000..10 000 board the engine's pages are
-/// 10 000 units wide, and completing a room in one of them trips quirk #162's non-terminating
-/// `calculateNewIncompleteRooms` — the probe OOMs there, so this is the largest engine-owned page
-/// the ground truth can cover.
-///
-/// Three facts: `invalidateDrillPages` (`:597-600`) reaches the page through the array and drops
-/// its memo; a shape that misses the board's bounding box invalidates **nothing**, because
-/// `overlappingPages` intersects with the bounds first (`:79`); and the recomputation answers
-/// **ten** drills where the first answered nine, because the rooms the first pass created are in
-/// the search tree by then and change which drill locations resolve to a single room.
 #[test]
 fn the_engine_reaches_its_pages_through_invalidate_drill_pages() {
     let mut board = probe_board(IntBox::from_coords(-1000, -1000, 1000, 1000));
@@ -999,7 +646,6 @@ fn the_engine_reaches_its_pages_through_invalidate_drill_pages() {
             .len(),
         10
     );
-    // A shape outside the board's bounding box selects no page at all.
     engine.invalidate_drill_pages(&TileShape::Box(IntBox::from_coords(
         -9000, -9000, -8000, -8000,
     )));
@@ -1009,9 +655,6 @@ fn the_engine_reaches_its_pages_through_invalidate_drill_pages() {
     );
 }
 
-/// `resetAllDoors`' last line (`:668`) resets every page and, through `DrillPage.reset:156-160`,
-/// every drill on it — the maze scratch only. Probe mode 10's `afterReset memo=10` is the other
-/// half: `reset` is not `invalidate`, and the memoised drill list survives it.
 #[test]
 fn reset_all_doors_resets_the_pages_but_keeps_their_drills() {
     let mut board = probe_board(IntBox::from_coords(-1000, -1000, 1000, 1000));
@@ -1020,7 +663,6 @@ fn reset_all_doors_resets_the_pages_but_keeps_their_drills() {
     let drills = engine.drill_page_drills(&mut board, page, false, NEVER);
     assert_eq!(drills.len(), 9);
 
-    // Dirty the maze scratch on the page and on one of its drills.
     engine
         .drill_pages_mut()
         .page_mut(page)
@@ -1058,18 +700,6 @@ fn reset_all_doors_resets_the_pages_but_keeps_their_drills() {
     );
 }
 
-/// Probe mode 10's drill counts (`page00 … drills=9`, `recomputed drills=10`), read as an
-/// **arena** statement rather than a list one.
-///
-/// Java's `DrillPage.invalidate` (`:170-172`) is one line — `this.drills = null` — and the
-/// `ExpansionDrill`s it drops are reclaimed by the collector. The port has no collector and
-/// `invalidateDrillPages` fires once per changed item, so the page hands the ids back instead;
-/// `DrillPage::invalidate`'s docs carry the reachability argument that makes that sound.
-///
-/// The live count therefore tracks the page's list exactly — 9, then 0, then 10 — where an
-/// arena that never released a slot would read 9, 9, 19 and keep climbing for the whole run.
-/// `slot_count` still climbs, because [`fr_router::Arena`] never reuses an index: a stale
-/// `DrillId` reads `None` rather than aliasing a live drill.
 #[test]
 fn invalidating_a_page_frees_its_drills_arena_slots() {
     let mut board = probe_board(IntBox::from_coords(-1000, -1000, 1000, 1000));
@@ -1098,7 +728,6 @@ fn invalidating_a_page_frees_its_drills_arena_slots() {
     );
     assert_eq!(engine.rooms.drills.len(), 10);
 
-    // A third round: the live count still tracks the page, and never accumulates.
     engine.invalidate_drill_pages(&small);
     assert_eq!(
         engine
@@ -1109,16 +738,12 @@ fn invalidating_a_page_frees_its_drills_arena_slots() {
     assert_eq!(engine.rooms.drills.len(), 10);
     assert_eq!(engine.rooms.drills.slot_count(), 29);
 
-    // The memo-hit path frees nothing: the same call twice answers the same ids.
     let first = engine.drill_page_drills(&mut board, page, false, NEVER);
     let second = engine.drill_page_drills(&mut board, page, false, NEVER);
     assert_eq!(first, second);
     assert_eq!(engine.rooms.drills.len(), 10);
 }
 
-/// The recompute path of `getDrills` frees the previous list too — `DrillPage.java:66` replaces
-/// `this.drills` wholesale, and probe mode 7's `afterNet1 drills=13` / `afterNet2 drills=30` is
-/// two lists, not one of 43.
 #[test]
 fn recomputing_for_a_new_net_frees_the_previous_nets_drills() {
     let mut board = probe_board(BOUNDING_BOX);

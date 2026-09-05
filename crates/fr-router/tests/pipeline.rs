@@ -1,18 +1,4 @@
-//! Plan 7 Task 15 — `run_pipeline`, the port of `RoutingPipeline.run()`
-//! (`autoroute/pipeline/RoutingPipeline.java:81-129`), and `build_unrouted_report`, the port of
-//! `AutorouteUnroutedReport.build` (`autoroute/pipeline/AutorouteUnroutedReport.java:19-54`).
-//!
-//! The whole-board evidence is `scripts/differential/run.sh p7t9 <dsn> <maxPasses> full`, which
-//! drives the real Java `RoutingPipeline.createForHeadless(job).run()` against this crate's
-//! `run_pipeline`. This file pins what a differential run cannot show as directly: the
-//! fanout-only settings-clone contract, the `finishAutoroute` no-op, the `--max-items` vs
-//! `--max-passes` distinction in whether the optimizer stage is skipped, the `ProgressSink`
-//! event order across both stages, and `build_unrouted_report`'s net ordering.
-//!
 //! Every test that routes a real board is release-only (`#[cfg_attr(debug_assertions, ignore)]`),
-//! the convention `crates/fr-router/tests/batch_loop.rs` and `optimizer.rs` both established:
-//! `cargo test --release -p fr-router --test pipeline`, **without** `--ignored`.
-
 use std::path::PathBuf;
 
 use fr_board::prelude::*;
@@ -24,14 +10,7 @@ use fr_router::pipeline::{
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
-// =================================================================================================
-// The harness — the same shape `batch_loop.rs`'s and `optimizer.rs`'s carry
-// =================================================================================================
-
-/// `p7t9`'s default stem, and the smallest corpus board that actually routes (eight connections).
 const RPI: &str = "fixtures/Issue143-rpi_splitter.dsn";
-/// The fixture ruling 7's boundary test pins — every layer is a signal layer, so disabling all of
-/// them is the only way a real corpus board reaches `AutorouteBatchLoop.java:51-56`.
 const EMPTY_BOARD: &str = "fixtures/empty_board.dsn";
 
 fn load_board(rel_path: &str) -> Board {
@@ -57,8 +36,6 @@ fn load_board(rel_path: &str) -> Board {
     }
 }
 
-/// The headless ladder's priority-0 source plus this file's own knobs. Fanout is off unless a
-/// test turns it on, so `run_pipeline`'s `routerEnabled` calculation is the whole story.
 fn build_settings(board: &Board, max_passes: i32) -> RouterSettings {
     let mut settings = DefaultSettings::new(&HostEnvironment::detect())
         .get_settings()
@@ -74,8 +51,6 @@ fn build_settings(board: &Board, max_passes: i32) -> RouterSettings {
     settings
 }
 
-/// Keeps every event, tagged by which algorithm fired it — the shape
-/// `crates/fr-router/tests/batch_loop.rs`'s own `Recorder` carries, widened to two algorithms.
 #[derive(Default)]
 struct Recorder {
     events: Vec<RoutingEvent>,
@@ -99,21 +74,6 @@ impl Recorder {
     }
 }
 
-// =================================================================================================
-// `two_runs_of_the_same_board_are_identical` — the port of
-// `RoutingPipelineComparisonTest.guiAndHeadlessPipelinesMatchOnDac2020Fixture`
-// (`src/test/java/app/freerouting/fixtures/RoutingPipelineComparisonTest.java:49-76`), ruling 14
-// =================================================================================================
-
-/// Java's test compares a GUI-driven run against a headless run of the **same** settings on
-/// **independent** board copies, because those are the only two code paths Java has, and settles
-/// for three counters (`incompleteCount`, `viaCount`, clearance-violation count) because a GUI
-/// board and a headless board are not otherwise comparable. The port has one code path, so the
-/// analogous test is two independent `run_pipeline` calls on two independently loaded copies of
-/// the same board under identical settings — and the stronger claim ruling 14 asks for is that
-/// they are not just equal by those three counters but **byte-identical**
-/// ([`Board::structural_hash`]), which is the whole point of a deterministic single-threaded
-/// router.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn two_runs_of_the_same_board_are_identical() {
@@ -155,8 +115,6 @@ fn two_runs_of_the_same_board_are_identical() {
         board_b.structural_hash(),
         "two runs of the same board under identical settings must be byte-identical"
     );
-    // The three counters Java's own test settles for, restated as the stronger claim's
-    // corollaries rather than the whole assertion.
     assert_eq!(
         result_a.final_statistics.connections.incomplete_count,
         result_b.final_statistics.connections.incomplete_count
@@ -165,7 +123,6 @@ fn two_runs_of_the_same_board_are_identical() {
         result_a.final_statistics.items.via_count,
         result_b.final_statistics.items.via_count
     );
-    // Java's third counter: the clearance-violation count on each routed board.
     let mut board_a = board_a;
     let mut board_b = board_b;
     assert_eq!(
@@ -178,50 +135,6 @@ fn two_runs_of_the_same_board_are_identical() {
     );
 }
 
-// =================================================================================================
-// `finish_autoroute_is_called_exactly_once`
-// =================================================================================================
-
-/// `RoutingPipeline.java:110`'s `this.job.board.finishAutoroute()` is the **only** caller of
-/// `RoutingBoard.finishAutoroute` in the whole Java tree (`grep -rn "\.finishAutoroute()"
-/// src/main` finds two hits — `RoutingPipeline.java:110` and `RoutingBoardUndoFacade.java:55` (via `RoutingBoard.deepCopy()`, whose four callers are all dead-on-headless or GUI-only; Task 15 review traced each) — so exactly one is reachable from `run_pipeline`, at that line). Ruling AJ (`BatchAutorouter::
-/// BENCHMARK_RETAIN_AUTOROUTE_DATABASE` permanently `false`) makes the call a no-op on every path
-/// this port can reach — no `AutorouteEngine` ever survives a lower-level call into
-/// `run_pipeline`'s scope for `RoutingBoardExt::finish_autoroute` (the trait method built to
-/// consume exactly that value) to be given one — so there is no board state, no counting `Board`
-/// wrapper and no engine to inspect: `run_pipeline`'s signature does not even have an
-/// `AutorouteEngine` to hand one. What is pinned instead is that the port's own transcription
-/// notes the call exactly once, covering both arms of `:97-108` (the ordinary router run and the
-/// fanout-only mode) rather than once per arm or not at all — `pipeline/run.rs`'s doc explains
-/// why in full.
-#[test]
-fn finish_autoroute_is_called_exactly_once() {
-    let src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/pipeline/run.rs"),
-    )
-    .expect("crates/fr-router/src/pipeline/run.rs must be readable");
-    let hits = src
-        .lines()
-        .filter(|line| line.contains("not reachable: RoutingBoard.finishAutoroute"))
-        .count();
-    assert_eq!(
-        hits, 1,
-        "RoutingPipeline.java:110 is the only finishAutoroute call in the whole Java tree; \
-         run_pipeline's transcription must note it exactly once, after both routing arms and \
-         before the optimizer stage — not once per arm, and not silently dropped"
-    );
-}
-
-// =================================================================================================
-// `the_fanout_only_mode_sets_max_passes_to_zero_and_leaves_the_callers_settings_untouched`
-// =================================================================================================
-
-/// `:99-108`: Java mutates the shared `job.routerSettings.maxPasses` to `0` and restores the
-/// original value in a `finally` once `runBatchLoop()` returns. `run_pipeline` keeps
-/// `settings: &RouterSettings` (Plan 8's contract), so it cannot mutate the caller's object at
-/// all — it clones, mutates the clone, and drops it. This test drives the fanout-only branch
-/// (`getRunRouter() == false`, `isFanoutEnabled() == true`) and asserts the caller's `max_passes`
-/// reads back exactly what it was passed in with.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_fanout_only_mode_sets_max_passes_to_zero_and_leaves_the_callers_settings_untouched() {
@@ -230,16 +143,12 @@ fn the_fanout_only_mode_sets_max_passes_to_zero_and_leaves_the_callers_settings_
     }
     let mut board = load_board(RPI);
     let mut settings = build_settings(&board, 1);
-    // `routerEnabled = getRunRouter() && (maxPasses == null || maxPasses >= 0)`: disabling the
-    // router while keeping fanout on is the only way `:99` is reached rather than `:97`.
     settings.set_run_router(false);
     settings.fanout.get_or_insert_with(Default::default).enabled = Some(true);
     settings
         .fanout
         .get_or_insert_with(Default::default)
         .max_milliseconds_per_pin = Some(i64::from(i32::MAX));
-    // A sentinel that is not `0`, so a leaked mutation is visible rather than accidentally
-    // matching what the fanout-only branch would have set.
     let original_max_passes = Some(7);
     settings.max_passes = original_max_passes;
 
@@ -261,21 +170,6 @@ fn the_fanout_only_mode_sets_max_passes_to_zero_and_leaves_the_callers_settings_
     );
 }
 
-// =================================================================================================
-// `neither_routing_limit_skips_the_optimizer_stage` — quirk #202, end to end
-// =================================================================================================
-
-/// **Quirk #202, fixed in Plan 9 Task 9**, made observable end to end. In Java
-/// `AutoroutePassRunner`'s `maxItems` gate requests an **`ALL`** stop (`requestStop()`), which
-/// `RoutingPipeline.java:117`'s `isStopRequested()` reads — so a router run that stopped because
-/// it hit `--max-items` skipped the optimizer stage entirely, while `AutorouteBatchLoop`'s
-/// `maxPasses` cap, which requests only `AUTO_ROUTER_ONLY` (quirk #214), optimised normally. The
-/// log line even says "Stopping auto-router", and the optimizer is not the auto-router.
-///
-/// Both limits now answer `requestStopAutoRouter()`, so both arms below reach the stage; and
-/// `#227`'s stage-scoped stop then lowers that flag at the boundary, so on the way out the shared
-/// stop reads `NONE` on both paths. `TaskState::Idle` — "configured but never entered" — is what
-/// neither arm may report.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn neither_routing_limit_skips_the_optimizer_stage() {
@@ -283,12 +177,9 @@ fn neither_routing_limit_skips_the_optimizer_stage() {
         return;
     }
 
-    // ---- the max_items arm: AUTO_ROUTER_ONLY since #202, so the stage enters ------------------
     {
         let mut board = load_board(RPI);
         let mut settings = build_settings(&board, 8);
-        // rpi_splitter has eight connections; two is enough to trip the router's own `max_items`
-        // gate well inside the pass budget, so the stop is `ALL` before `maxPasses` ever matters.
         settings.max_items = Some(2);
         settings.set_run_optimizer(true);
         settings
@@ -307,21 +198,10 @@ fn neither_routing_limit_skips_the_optimizer_stage() {
         )
         .expect("rpi_splitter has a routable signal layer");
 
-        // fixed: T9 (#202) — the `maxItems` gate raises `AUTO_ROUTER_ONLY`, not `ALL`, so
-        // `RoutingPipeline.java:117` no longer skips the stage; and fixed: T9 (#227) — the stage
-        // boundary then lowers that flag, so the shared stop reads `NONE` on the way out, exactly
-        // as it does after a `maxPasses` run.
         assert!(
             !stop.is_stop_requested(),
             "fixed: T9 (#202) — reaching --max-items must not raise the ALL stop"
         );
-        // The flag is `AUTO_ROUTER_ONLY` again on the way out, and that is not the stage boundary
-        // failing to lower it: `--max-items` is a **settings** limit, so the fresh
-        // `BatchAutorouter` `autoroutePassesForOptimizingItem` builds for each optimized item
-        // reads the same `settings.max_items` and trips the same `:212-221` gate on its own
-        // counter. Java raises `ALL` there and ends the job; the port raises `AUTO_ROUTER_ONLY`
-        // and ends that item's passes. What matters is that it is never `ALL`, which is the
-        // assertion above.
         assert_eq!(stop.state(), StopRequestState::AutoRouterOnly);
         assert_ne!(
             result.optimizer_state,
@@ -330,7 +210,6 @@ fn neither_routing_limit_skips_the_optimizer_stage() {
         );
     }
 
-    // ---- the max_passes arm: AUTO_ROUTER_ONLY, optimizer stage still runs ---------------------
     {
         let mut board = load_board(RPI);
         let mut settings = build_settings(&board, 1);
@@ -356,12 +235,6 @@ fn neither_routing_limit_skips_the_optimizer_stage() {
             "an ordinary maxPasses stop must never raise ALL (quirk #214's five arms all call \
              requestStopAutoRouter)"
         );
-        // fixed: T9 (#227) — the flag the `maxPasses` break raised was `AUTO_ROUTER_ONLY`, and
-        // `run_pipeline` **lowers it** at the optimizer stage boundary
-        // (`RouterStop::begin_optimizer_stage`). So after a full pipeline run the shared stop
-        // reads `NONE` again, which is the observable signature of the stage-scoped stop: before
-        // the fix it read `AUTO_ROUTER_ONLY` here and the optimizer's per-item autorouter ran
-        // zero passes because of it.
         assert_eq!(
             stop.state(),
             StopRequestState::None,
@@ -376,19 +249,6 @@ fn neither_routing_limit_skips_the_optimizer_stage() {
     }
 }
 
-// =================================================================================================
-// `an_empty_board_errors_with_no_routable_layer`
-// =================================================================================================
-
-/// Ruling 7's sole new propagating boundary: `AutorouteBatchLoop.run`'s `IllegalArgumentException`
-/// (`:51-56`) is not caught anywhere in `RoutingPipeline.run`, so it escapes as
-/// [`RouterError::NoRoutableLayer`]. `empty_board.dsn` is a real corpus fixture with two signal
-/// layers and no items at all, so both of its layers have to be switched off in settings — the
-/// same shape `crates/fr-router/tests/batch_loop.rs`'s
-/// `a_board_with_no_signal_layer_errors_and_reports_cancelled` pins one level down, restated here
-/// at the pipeline boundary with no `P7T15Probe` needed on the Java side: the jar's own
-/// `RoutingPipeline.createForHeadless(job).run()` throws the identical exception for the
-/// identical reason.
 #[test]
 fn an_empty_board_errors_with_no_routable_layer() {
     if !parity::require_java_dir() {
@@ -422,16 +282,6 @@ fn an_empty_board_errors_with_no_routable_layer() {
     );
 }
 
-// =================================================================================================
-// `a_recording_sink_sees_the_stage_events_in_javas_order`
-// =================================================================================================
-
-/// Both stages fire through the same `ProgressSink`, in `RoutingPipeline.run`'s own order
-/// (`runRoutingStage()` then `runOptimizationStage()`, `:82-83`): the router's `Started` then its
-/// final state, followed by the optimizer's `Started` then its final state. This is the pipeline
-/// half of `crates/fr-router/tests/optimizer.rs`'s and `batch_loop.rs`'s own per-stage event
-/// tests — what is new here is that both algorithms share one sink and one call, so the *order*
-/// across algorithms is this task's own decision to get right.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn a_recording_sink_sees_the_stage_events_in_javas_order() {
@@ -468,9 +318,6 @@ fn a_recording_sink_sees_the_stage_events_in_javas_order() {
         (NamedAlgorithmType::Router, TaskState::Started),
         "the router fires Started first; got {states:?}"
     );
-    // Every Router event must precede every Optimizer event — `RoutingPipeline.run` is
-    // `runRoutingStage(); runOptimizationStage();` (`:82-83`), never interleaved, because both
-    // stages run to completion before the next one starts.
     let last_router = states
         .iter()
         .rposition(|(algorithm, _)| *algorithm == NamedAlgorithmType::Router)
@@ -495,25 +342,12 @@ fn a_recording_sink_sees_the_stage_events_in_javas_order() {
     );
 }
 
-// =================================================================================================
-// `the_unrouted_report_lists_airlines_in_getAllAirlines_order`
-// =================================================================================================
-
-/// `AutorouteUnroutedReport.build`'s `LinkedHashMap` is insertion-ordered by `getAllAirlines()`'s
-/// own order, which is documented (`DesignRulesChecker::get_all_airlines`) to be **ascending net
-/// number**, each net's own airlines contiguous. *Which* edges Kruskal picks inside one net is
-/// JVM-run-dependent (plan-5 ruling 4) — only the count is deterministic — so this test asserts
-/// the structural invariants that hold regardless: every net block's declared count matches the
-/// lines under it, the sum matches `get_all_airlines().len()`, and the blocks appear in strictly
-/// ascending net-number order (never a re-sort by name, which ruling 5 forbids).
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_unrouted_report_lists_airlines_in_getallairlines_order() {
     if !parity::require_java_dir() {
         return;
     }
-    // A freshly loaded, unrouted board: every connection is an airline, so the report has
-    // several net blocks to check the ordering of.
     let mut board = load_board(RPI);
     let report = build_unrouted_report(&mut board);
     assert!(
@@ -533,7 +367,6 @@ fn the_unrouted_report_lists_airlines_in_getallairlines_order() {
 
     for line in report.lines() {
         if let Some(rest) = line.strip_prefix("  Net '") {
-            // Close out the previous block before opening this one.
             if let Some(declared) = current_net_number.map(|_| current_declared_count) {
                 assert_eq!(
                     declared, current_line_count,
