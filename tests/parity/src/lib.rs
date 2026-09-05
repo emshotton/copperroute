@@ -251,27 +251,28 @@ pub fn normalize_drc_doc(doc: &mut DrcReportDoc) -> Result<String, serde_json::E
 pub struct DrcReportDoc {
     #[serde(rename = "$schema")]
     pub schema: String,
-    #[serde(rename = "coordinateUnits")]
+    #[serde(rename = "coordinateUnits", alias = "coordinate_units")]
     pub coordinate_units: String,
     /// Read so `deny_unknown_fields` accepts a real report, then dropped by rule 1 — the
     /// `skip_serializing` is the rule. A caller that wants the JVM run's timestamp (to inject it
     /// into the port, ruling 5) reads it off the parsed document.
     #[serde(default, skip_serializing)]
     pub date: Option<String>,
-    #[serde(rename = "kicadVersion")]
+    #[serde(rename = "kicadVersion", alias = "kicad_version")]
     pub kicad_version: String,
-    #[serde(rename = "freeroutingVersion")]
+    #[serde(rename = "freeroutingVersion", alias = "freerouting_version")]
     pub freerouting_version: String,
     pub source: String,
-    #[serde(rename = "unconnectedItems")]
+    #[serde(rename = "unconnectedItems", alias = "unconnected_items")]
     pub unconnected_items: Vec<DrcViolationDoc>,
     pub violations: Vec<DrcViolationDoc>,
-    #[serde(rename = "schematicParity")]
+    #[serde(rename = "schematicParity", alias = "schematic_parity")]
     pub schematic_parity: Vec<serde_json::Value>,
     /// Absent when Gson dropped a `null` (`serializeNulls` is off): `generateReportJson` never
     /// sets it, only the CLI does (`Freerouting.java:349`).
     #[serde(
         rename = "qualityScore",
+        alias = "quality_score",
         default,
         skip_serializing_if = "Option::is_none"
     )]
@@ -1210,4 +1211,39 @@ pub fn write_router_jsonl(path: &Path, docs: &[RouterConnectionDoc]) {
         .map(|doc| serde_json::to_string(doc).expect("a connection document serialises") + "\n")
         .collect();
     std::fs::write(path, text).unwrap_or_else(|e| panic!("cannot write {}: {e}", path.display()));
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn kicad_and_head_flavors_parse_to_the_same_document() {
+        let head = r#"{
+            "$schema": "https://schemas.kicad.org/drc.v1.json",
+            "coordinateUnits": "mm",
+            "kicadVersion": "N/A",
+            "freeroutingVersion": "Freerouting 2.3.1-SNAPSHOT",
+            "source": "board.dsn",
+            "unconnectedItems": [],
+            "violations": [],
+            "schematicParity": [],
+            "qualityScore": 100.0
+        }"#;
+        let kicad = r#"{
+            "$schema": "https://schemas.kicad.org/drc.v1.json",
+            "coordinate_units": "mm",
+            "kicad_version": "N/A",
+            "freerouting_version": "Freerouting 2.3.1-SNAPSHOT",
+            "source": "board.dsn",
+            "unconnected_items": [],
+            "violations": [],
+            "schematic_parity": [],
+            "quality_score": 100.0
+        }"#;
+        let head_doc = parse_drc_json(head).expect("the head flavour parses");
+        let kicad_doc = parse_drc_json(kicad).expect("the KiCad flavour parses");
+        assert_eq!(
+            head_doc, kicad_doc,
+            "the two flavors must alias to the same document"
+        );
+    }
 }
