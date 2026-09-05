@@ -2160,7 +2160,6 @@ pub fn write_pin(p: &mut WriteScopeParameter<'_>, pin_id: ItemId) {
     let Item::Pin(pin) = item else {
         return;
     };
-    // Java bug: Net.writePin — `FRLogger.warn("… at '" + currentComponent.name + "'")` inside the
     let component_id = item.component_id();
     if component_id < 1
         || component_id > i32::try_from(board.components.count()).unwrap_or(i32::MAX)

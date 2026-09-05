@@ -1,4 +1,3 @@
-//! (unedited, per Task 1's brief) and stays the authority for the full `RouterSettings` shape.
 use fr_dsn::format::json::to_gson_string_pretty;
 use serde::Serialize;
 use serde_json::json;

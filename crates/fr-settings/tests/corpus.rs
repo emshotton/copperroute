@@ -1,5 +1,3 @@
-//! The `.dsn` sweep is **not** `#[ignore]`d: `DsnFileSettings` goes through
-//! `#[cfg_attr(debug_assertions, ignore)]` because the plan's Task 11 brief asks for it — **not**
 use std::path::{Path, PathBuf};
 
 use fr_dsn::BoardReadResult;

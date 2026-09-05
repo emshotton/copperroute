@@ -1,4 +1,3 @@
-//! Java authority: `io/specctra/parser/Wiring.java`, `io/specctra/DsnReader.java`. The tests
 mod common;
 
 use std::time::Duration;
@@ -616,8 +615,6 @@ fn the_corpus_golden_parses_and_the_named_fixtures_read_to_its_variant() {
     }
 }
 
-/// **Deviation from the task brief, controller ruling I.** The brief asked for a *non*-`#[ignore]`d
-/// — so it stays `#[ignore]`d there and runs unconditionally in release
 #[test]
 #[cfg_attr(
     debug_assertions,

@@ -1,4 +1,3 @@
-//! Java authority: `io/kicad/KiCadJsonWriter.java:27-226` and
 use std::fmt::Write as _;
 
 use fr_board::{Board, Item};

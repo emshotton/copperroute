@@ -134,7 +134,6 @@ impl DsnScanner {
                     self.yybegin(LexicalState::YyInitial);
                     return Ok(Some(Token::Str(self.yytext())));
                 }
-                // SpecctraDsnStreamReader.java:1650 — `FRLogger.warn("Non-ansi character ...")`,
                 2 => {}
                 3 => {}
                 4 => {

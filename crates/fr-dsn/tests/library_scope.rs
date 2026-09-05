@@ -1,4 +1,3 @@
-//! Java authority: `io/specctra/parser/{Library,Package,PartLibrary}.java`.
 use std::io::Write;
 
 use fr_board::PadstackId;

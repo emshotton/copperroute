@@ -99,7 +99,6 @@ impl SesReader<'_> {
         Ok(())
     }
 
-    // not ported: the `FRLogger.warn("… unexpected end of file at '…'")` at :166-170.
     fn process_routes_scope(&mut self) -> Result<(), DsnError> {
         self.process_container_scope(Keyword::NetworkOut, Self::process_network_scope)
     }

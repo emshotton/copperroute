@@ -1,4 +1,3 @@
-//! Java authority: `io/specctra/parser/Network.java`, `io/KiCadNetClassNames.java`.
 use fr_board::{Board, Item};
 use fr_dsn::keyword::{Keyword, ScopeKeyword};
 use fr_dsn::lexer::{DsnScanner, Token};

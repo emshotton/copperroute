@@ -53,11 +53,6 @@ fn rows() -> Vec<Row> {
         .collect()
 }
 
-/// Mirrors `benchmark/vendor/kicad/strip_kicad_routing.py`'s treatment of the KiCad side of the
-/// oracle: some Java fixture DSNs (`processor.Z80.dsn`) are themselves already routed, so
-/// importing the session on top would double every trace and via the DSN and the session both
-/// carry, at identical coordinates — the reference board never sees that duplication because the
-/// generator strips its `.kicad_pcb`'s `segment`/`via`/`track` blocks before reimporting the SES.
 fn strip_existing_routing(board: &mut Board) {
     let routing: Vec<ItemId> = board
         .items_in_board_order()

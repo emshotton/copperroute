@@ -6,7 +6,6 @@ use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_settings::sources::{CliSettings, DsnFileSettings, EnvironmentVariablesSource};
 use fr_settings::{HostEnvironment, SettingsInputs, SettingsSource, resolve_headless};
 
-/// (`FR_SLOW_PARITY=1` + `#[cfg_attr(debug_assertions, ignore)]`, plan-7 ruling AM as amended by
 const DSN: &str = "fixtures/Issue143-rpi_splitter.dsn";
 const MAX_PASSES: i32 = 8;
 

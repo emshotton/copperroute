@@ -1,47 +1,3 @@
-//! Plan 8 Task 3: the corpus replay of `probes/P8T3Probe.java`.
-//!
-//! The probe walks the **whole load sequence** of `management/HeadlessBoardManager.java` on three
-//! fixtures × three `router.hole_clearance_um` values, snapshotting the board at every step, and
-//! its stdout is committed verbatim as `tests/data/p8t3-clearance-overrides.txt`. This test
-//! re-derives every one of those `[stage]` blocks from the port and compares them as text.
-//!
-//! # What the six stages pin
-//!
-//! | stage | Java | port |
-//! |---|---|---|
-//! | `after_create_board` | the itemless board `Structure.java:1268`'s `createBoard` produced, observed by re-parsing the DSN truncated to `(pcb … (structure …))` | `fr_dsn::read_board` on the same truncated bytes |
-//! | `counterfactual_create_board` | the two overrides invoked on that itemless board — what `HeadlessBoardManager.createBoard:342-343` *would* have done, had it been on the load path | `Board::apply_copper_to_edge_clearance_override` + `Board::apply_hole_clearance_override` |
-//! | `after_parser` | `DsnReader.readBoard`'s board: every item inserted, no override run | `fr_dsn::read_board` |
-//! | `after_router_settings` | after `applyRouterSettingsForLoadedBoard` (:739-749) | [`fr_core::apply_router_settings_for_loaded_board`] |
-//! | `after_post_load` | after `applyImmediatePostLoadProcessing` (:751-757) | [`fr_core::apply_immediate_post_load_processing`] |
-//! | `after_second_hole_override` | `applyHoleClearanceOverride` invoked a **second** time | `Board::apply_hole_clearance_override` again |
-//!
-//! # `the_override_runs_once_on_a_dsn_load`
-//!
-//! The Plan 8 survey (ruling AD) and quirk register row #232 assert the two overrides run twice
-//! per DSN load. The probe's `[createboard]` rows measure `headless_create_board_calls=0` through
-//! a counting subclass of the real `HeadlessBoardManager`, and the
-//! `counterfactual_create_board` stage shows what the second call site would have changed —
-//! a `board_edge` class on the itemless board, which the real `after_parser` stage does **not**
-//! have. The port therefore calls `prepare_board` exactly once, and
-//! [`the_override_runs_once_on_a_dsn_load`] pins that with a call counter.
-//!
-//! # `a_defaulted_500_and_an_explicit_500_diverge`
-//!
-//! Quirk #231 is Plan 7 Task 15b's and is asserted here rather than re-ported. Java's `:501-507`
-//! guard keyed on the *value*, so the same 500 µm behaved differently depending on whether the
-//! board's outline carried an explicit DSN clearance class. **Plan 9 Task 10 removed the guard**;
-//! the test keeps its name and inverts its assertions, so that the fix commit's diff reads as
-//! "this used to diverge, now it does not".
-//!
-//! The committed `P8T3Probe` transcript replayed by
-//! [`the_p8t3_transcript_replays_cell_for_cell`] is untouched by that fix: none of its three
-//! fixtures has an explicit, non-fallback outline clearance class, so none of them is a board
-//! Java's guard could ever stop. The corpus board that *is* — `router-rpi-splitter` — belongs to
-//! the sixteen-board `P7T15bProbe` transcript, whose replay
-//! (`crates/fr-router/tests/clearance_override.rs`) names the two diverging variants in its own
-//! `KNOWN_DIVERGENCES` table.
-
 use std::collections::BTreeMap;
 
 use fr_board::{Board, Item, ItemClass, TreeObject};
@@ -87,7 +43,6 @@ fn field<'a>(line: &'a str, key: &str) -> &'a str {
         .unwrap_or_else(|| panic!("no `{key}` in {line:?}"))
 }
 
-/// `-` is the probe's spelling of Java's `null`.
 fn parse_optional(text: &str) -> Option<f64> {
     if text == "-" {
         None
@@ -185,10 +140,6 @@ fn read_board(bytes: &[u8], design_name: &str) -> Board {
     }
 }
 
-/// `P8T3Probe.truncateAfterStructureScope`, transcribed: everything up to and including the end of
-/// the `(structure …)` scope plus the `)` that closes `(pcb`. The board this parses is the board
-/// `Structure.java:1035`'s `createBoard` produced, which is the only way to observe that point
-/// without instrumenting the parser.
 fn truncate_after_structure_scope(dsn: &[u8]) -> Vec<u8> {
     let text = String::from_utf8_lossy(dsn).into_owned();
     let start = text.find("(structure").expect("no (structure scope");
@@ -260,7 +211,6 @@ fn snapshot(board: &mut Board, name: &str, previous: Option<&State>) -> State {
         .get(default_net_class)
         .default_item_clearance_classes
         .get(ItemClass::Area);
-    // The probe prints `-1` for a board with no outline (Java's `null`).
     let outline_class = board
         .get_outline()
         .and_then(|id| board.get_item(id))
@@ -273,8 +223,6 @@ fn snapshot(board: &mut Board, name: &str, previous: Option<&State>) -> State {
         board.rules.get_hole_clearance()
     ));
 
-    // HeadlessBoardManager.java:411-423, transcribed: the exact `ObstacleArea` class, a component
-    // id above zero and a circular area. `BTreeMap` is Java's `TreeMap`.
     let mut keepout_classes: BTreeMap<usize, usize> = BTreeMap::new();
     let mut keepout_count = 0usize;
     let mut item_classes: BTreeMap<u32, usize> = BTreeMap::new();
@@ -514,19 +462,6 @@ fn the_p8t3_transcript_replays_cell_for_cell() {
     );
 }
 
-/// Survey ruling AD and quirk #232 say the overrides run **twice** per DSN load. They do not.
-///
-/// Two independent assertions:
-///
-/// * the probe measured `headless_create_board_calls=0` on all three fixtures, through a counting
-///   subclass of the real `HeadlessBoardManager` — so `createBoard:342-343` is not on the load
-///   path at all;
-/// * the port's [`apply_router_settings_for_loaded_board`] reaches
-///   `Board::apply_copper_to_edge_clearance_override` exactly once, which the class-index counter
-///   below observes: a second run would find the `board_edge`/`hole_edge` classes already there
-///   and append nothing, so the class count after two calls equals the class count after one.
-///   The observable that *would* move is the item-reclassification count, and it is zero on the
-///   second pass — which is what the `after_second_hole_override` stage of the transcript shows.
 #[test]
 fn the_override_runs_once_on_a_dsn_load() {
     let transcript = parse_transcript();
@@ -554,17 +489,6 @@ fn the_override_runs_once_on_a_dsn_load() {
         "one pass appends `board_edge` and `hole_edge`"
     );
 
-    // A second pass — what survey ruling AD says Java does. It leaves the board **exactly** where
-    // the first pass left it, which is why the double application the survey describes would have
-    // been invisible had it existed. It is not what Java does, and the port does not do it.
-    //
-    // The observable is board *state*, not the returned flag. Before quirk #231's fix the copper
-    // override's `:501-507` guard happened to early-return on the second pass — the first pass had
-    // moved the outline off the fallback AREA class, so a defaulted 500 µm was refused — and the
-    // flag came back `false` for that reason rather than because nothing would have changed.
-    // With the guard gone the second pass re-runs and rewrites the same numbers over themselves,
-    // so it reports that it ran while changing nothing at all. The state assertions below are the
-    // ones that were always carrying the claim.
     let mut twice = board.clone();
     let _ran_again = apply_router_settings_for_loaded_board(&mut twice, &mut settings);
     assert_eq!(
@@ -591,25 +515,12 @@ fn the_override_runs_once_on_a_dsn_load() {
     );
 }
 
-/// Quirk #231, through the loader rather than re-ported (scan ruling R2) — and **fixed at Plan 9
-/// Task 10**, which is what this test now asserts.
-///
-/// `applyCopperToEdgeClearanceOverride:501-507` returned early only when the configured value
-/// **was** the 500 µm default *and* the outline carried an explicit (non-fallback) DSN clearance
-/// class. `Issue143-rpi_splitter.dsn` is the one corpus board whose outline does — its `boundary`
-/// class — so it was the board on which a defaulted 500 and an explicit 500.000001 parted
-/// company. Named for the property that replaces that: they do not.
-///
-/// The test kept its shape and inverted its assertions deliberately, so the diff at the fix
-/// commit reads as "this used to diverge, now it does not" rather than as a new test appearing
-/// beside a deleted one.
 #[test]
 fn a_defaulted_500_and_an_explicit_500_diverge() {
     let (bytes, design_name) = read_dsn_bytes("fixtures/Issue143-rpi_splitter.dsn");
     let pristine = read_board(&bytes, &design_name);
     let classes = pristine.rules.clearance_matrix.get_class_count();
 
-    // The default, supplied by the ladder: it applies. Java's guard stopped exactly this.
     let mut defaulted = pristine.clone();
     let mut settings = settings_for(Some(500.0), 0.0);
     assert!(apply_router_settings_for_loaded_board(
@@ -690,17 +601,6 @@ fn a_defaulted_500_and_an_explicit_500_diverge() {
     );
 }
 
-/// Scan ruling R8's obligation, at `crates/fr-board/src/board/clearance_override.rs:60`: pin the
-/// quirk-#232 boundary — a non-default `router.hole_clearance_um > 0` on a board with **zero**
-/// circular component keepouts — with a tree-op/order pin, before Plan 8 exposes the setting on a
-/// real CLI path (Tasks 5 and 6).
-///
-/// The boundary turns out to be empty, because the premise (a second invocation, from
-/// `createBoard`) is not real. What the transcript's `after_second_hole_override` stage measures
-/// is the second invocation Java *would* have made, and it moves nothing: `changed` is false, no
-/// keepout is reclassified, so `reinsertTreeItems` is never reached and the tree order digest is
-/// byte-identical to the previous stage's. This test asserts exactly that, on both zero-keepout
-/// fixtures at both non-default values.
 #[test]
 fn the_second_hole_override_leaves_the_search_tree_alone() {
     let transcript = parse_transcript();

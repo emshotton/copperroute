@@ -200,7 +200,6 @@ mod tests {
             .to_vec()
     }
 
-    /// (quirk #142). Both switches are `#[cfg(test)]`; Java runs every step.
     #[test]
     fn adjacent_rules_reach_only_the_fields_merge_one_left_null() {
         let host = host();

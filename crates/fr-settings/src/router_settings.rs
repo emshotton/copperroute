@@ -134,10 +134,6 @@ pub struct RouterSettings {
     )]
     pub opt_changed_area_ms: Option<i32>,
 
-    /// The port's own field: no Java counterpart. `AutorouteControl.rebuildViaInfo` forces
-    /// `attachSmdAllowed` true on a pure-SMD net even where every via's own mask says false, and
-    /// scales `viaCostFactor` by 0.1. Default `true` keeps that behaviour; `false` leaves both
-    /// values exactly what the via rule says.
     #[serde(
         rename = "smd_via_relaxation",
         default,
@@ -145,10 +141,6 @@ pub struct RouterSettings {
     )]
     pub smd_via_relaxation: Option<bool>,
 
-    /// The port's own field: no Java counterpart. `RoutingFailureLog::FAILURE_THRESHOLD`'s
-    /// give-up policy is wired into the autoroute item loop only when this is `Some`; the value
-    /// is the number of recorded failures at which an item is skipped on later passes. `None`
-    /// (the default) retries every item on every pass, matching the jar's inert threshold.
     #[serde(
         rename = "failure_give_up_threshold",
         default,

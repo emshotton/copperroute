@@ -1,4 +1,3 @@
-//! Java authority: `io/specctra/parser/{Structure,Plane,PlaceControl,AutorouteSettings}.java`.
 use fr_board::{AngleRestriction, Item, Layer, LayerStructure};
 use fr_dsn::format::{DSN_RESERVED, IdentifierType, IndentFileWriter};
 use fr_dsn::keyword::{Keyword, ScopeKeyword};

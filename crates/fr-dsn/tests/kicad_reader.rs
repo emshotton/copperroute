@@ -1,4 +1,3 @@
-//! Java authority: `io/kicad/KiCadBoardJson.java` and `io/kicad/KiCadJsonReader.java:61-755`
 use std::fmt::Write as _;
 
 use fr_board::{Board, DefaultItemClearanceClasses, Item, ItemClass, NetClassId, Unit};

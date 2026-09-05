@@ -1,6 +1,3 @@
-//! `#[serde(rename)]` on every one of them: a rename attribute is a second place to get the
-//! is what the `#![allow(non_snake_case)]` below buys, and it buys nothing else — no other module
-//! | key absent | the Java field initializer survives (`new ArrayList<>()`, `UnitJson.MM`, `1.0`) | `#[serde(default = "…")]` reproducing that initializer |
 #![allow(non_snake_case)]
 
 use serde::{Deserialize, Serialize};

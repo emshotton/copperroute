@@ -1,4 +1,3 @@
-//! Java authority: `io/specctra/parser/{Placement,Component,ComponentPlacement}.java`.
 mod common;
 
 use fr_board::{FixedState, Item, PackagePin};

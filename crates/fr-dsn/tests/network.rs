@@ -1,4 +1,3 @@
-//! Java authority: `io/specctra/parser/Network.java` `createViaRule`.
 use fr_dsn::keyword::{Keyword, ScopeKeyword};
 use fr_dsn::lexer::{DsnScanner, Token};
 use fr_dsn::parser::scope_parameter::{DsnReadOptions, ReadScopeParameter, read_scope};

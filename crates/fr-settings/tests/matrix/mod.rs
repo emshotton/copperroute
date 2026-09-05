@@ -139,7 +139,6 @@ pub fn cases() -> Vec<Case> {
     cases
 }
 
-/// the wrong directory for a `#[path]` include from outside `fr-settings` — and Task 9's driver
 pub fn data_path(name: &str) -> PathBuf {
     parity::workspace_root()
         .join("crates")

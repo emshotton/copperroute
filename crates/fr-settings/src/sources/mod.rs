@@ -1,5 +1,3 @@
-//! `DsnRouterSettings` ⇄ [`RouterSettings`] conversion pair Plan 3 ruling 5 parked here.
-//! |---|---|---|
 pub mod api;
 pub mod cli;
 pub mod default_settings;

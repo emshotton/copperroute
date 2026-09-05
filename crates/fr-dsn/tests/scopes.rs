@@ -1,4 +1,3 @@
-//! Java authority: `io/specctra/parser/{Keyword,ScopeKeyword,DsnFile}.java`. The fifteen
 use fr_dsn::keyword::{Keyword, ScopeKeyword};
 use fr_dsn::lexer::{DsnScanner, LexicalState, Token};
 use fr_dsn::parser::autoroute_settings::read_autoroute_settings_scope;

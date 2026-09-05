@@ -18,7 +18,6 @@ pub fn read_on_off_scope(scanner: &mut DsnScanner) -> Result<bool, DsnError> {
 pub fn read_integer_scope(scanner: &mut DsnScanner) -> Result<Option<i32>, DsnError> {
     let value = match scanner.next_token()? {
         Some(Token::Int(i)) => i as i32,
-        // Java: `FRLogger.warn(...); return 0;` (DsnFile.java:141-146) — no second token read.
         Some(offending) => {
             skip_rest_of_scope(scanner, &offending)?;
             return Ok(None);
@@ -27,7 +26,6 @@ pub fn read_integer_scope(scanner: &mut DsnScanner) -> Result<Option<i32>, DsnEr
     };
     match scanner.next_token()? {
         Some(Token::Close) => Ok(Some(value)),
-        // Java: `FRLogger.warn(...); return 0;` (DsnFile.java:150-154) — the wrong token here
         Some(offending) => {
             skip_rest_of_scope(scanner, &offending)?;
             Ok(None)
@@ -74,7 +72,6 @@ pub fn read_string_scope(scanner: &mut DsnScanner) -> Result<String, DsnError> {
     let result = scanner.next_string_ignoring_newline(true);
     let mut next_token = scanner.next_token()?;
     if next_token != Some(Token::Close) {
-        // Java: `FRLogger.warn(...)`, dropped.
         while next_token.is_some() && next_token != Some(Token::Close) {
             next_token = scanner.next_token()?;
         }
