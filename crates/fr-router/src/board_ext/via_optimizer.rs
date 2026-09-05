@@ -863,3 +863,84 @@ enum TraceEnd {
     First,
     Last,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fr_geometry::IntBox;
+
+    fn layers() -> LayerStructure {
+        LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)])
+    }
+
+    fn board_with_trace(points: &[Point]) -> (Board, ItemId) {
+        let bounding_box = IntBox::from_coords(-100_000, -100_000, 100_000, 100_000);
+        let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 100);
+        let rules = BoardRules::new(layers(), clearance_matrix);
+        let mut board = Board::new(
+            Vec::new(),
+            0,
+            bounding_box,
+            rules,
+            BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
+            Components::new(),
+            Communication::default(),
+        );
+        let default_class = board.rules.get_default_net_class();
+        board.rules.nets.add("N1", 1, false, default_class);
+        let trace = board
+            .insert_trace_at_points(points, 0, 100, vec![1], 1, FixedState::Unfixed)
+            .expect("a trace");
+        (board, trace)
+    }
+
+    #[test]
+    fn matching_the_first_corner_returns_its_neighbour() {
+        let (board, trace) =
+            board_with_trace(&[Point::new(0, 0), Point::new(0, 100), Point::new(100, 100)]);
+        assert_eq!(
+            ViaOptimizer::from_corner(&board, trace, &Point::new(0, 0)),
+            Some(Point::new(0, 100))
+        );
+    }
+
+    #[test]
+    fn matching_the_last_corner_returns_its_neighbour() {
+        let (board, trace) =
+            board_with_trace(&[Point::new(100, 100), Point::new(0, 100), Point::new(0, 0)]);
+        assert_eq!(
+            ViaOptimizer::from_corner(&board, trace, &Point::new(0, 0)),
+            Some(Point::new(0, 100))
+        );
+    }
+
+    #[test]
+    fn a_two_corner_trace_returns_the_other_endpoint_from_either_end() {
+        let (board, trace) = board_with_trace(&[Point::new(0, 0), Point::new(0, 100)]);
+        assert_eq!(
+            ViaOptimizer::from_corner(&board, trace, &Point::new(0, 0)),
+            Some(Point::new(0, 100)),
+            "matching the first corner walks forward to the only other corner"
+        );
+        assert_eq!(
+            ViaOptimizer::from_corner(&board, trace, &Point::new(0, 100)),
+            Some(Point::new(0, 0)),
+            "matching the last corner walks backward to the only other corner"
+        );
+    }
+
+    #[test]
+    fn a_point_one_unit_off_either_end_matches_neither() {
+        let (board, trace) =
+            board_with_trace(&[Point::new(0, 0), Point::new(0, 100), Point::new(100, 100)]);
+        assert_eq!(
+            ViaOptimizer::from_corner(&board, trace, &Point::new(1, 0)),
+            None,
+            "the retired tolerance-based match would have accepted this; exact match must not"
+        );
+        assert_eq!(
+            ViaOptimizer::from_corner(&board, trace, &Point::new(99, 100)),
+            None
+        );
+    }
+}

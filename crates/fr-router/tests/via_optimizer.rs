@@ -13,14 +13,6 @@ fn never() -> bool {
     false
 }
 
-#[test]
-fn a_via_on_the_last_corner_is_matched_to_the_last_corner() {
-    let source = include_str!("../src/board_ext/via_optimizer.rs");
-    assert!(!source.contains("is_within_tolerance"));
-    assert!(source.contains("first.as_ref() == Some(via_center)"));
-    assert!(source.contains("last.as_ref() == Some(via_center)"));
-}
-
 const TRANSCRIPT: &str = include_str!("data/p7t4-via-optimizer.txt");
 const TASK_16_GOLDEN: &str = include_str!("data/p9t16-via-optimizer.txt");
 
