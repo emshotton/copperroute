@@ -1,21 +1,3 @@
-//! Port of `app.freerouting.geometry.planar.LineSegment`: implements functionality for line
-//! segments. The difference between a `LineSegment` and a [`Line`] is that a `Line` is infinite
-//! and a `LineSegment` has a start and an end point (LineSegment.java:7-10).
-//!
-//! A segment is stored as three lines: it starts at the intersection of `start` with `middle` and
-//! ends at the intersection of `middle` with `end`; `start` and `end` must not be parallel to
-//! `middle`.
-//!
-//! **Caching.** Java memoises the two end points in the transient fields
-//! `precalculatedStartPoint` / `precalculatedEndPoint` (LineSegment.java:16-17). This port drops
-//! the cache and recomputes, as [`crate::line::Line::direction`] already does: the end points are
-//! a pure function of the three lines. That has one observable consequence, in
-//! [`LineSegment::start_point_approx`] / [`LineSegment::end_point_approx`] — see their docs.
-//!
-//! **Equality.** Java does not override `equals`, so Java `LineSegment`s compare by identity.
-//! This port derives structural equality over the three lines, matching the treatment of
-//! [`Line`] itself.
-
 use std::cmp::Ordering;
 
 use crate::float_point::FloatPoint;
@@ -42,10 +24,6 @@ pub struct LineSegment {
 }
 
 impl LineSegment {
-    /// Creates a line segment from the 3 input lines. It starts at the intersection of
-    /// `start_line` and `middle_line` and ends at the intersection of `middle_line` and
-    /// `end_line`. `start_line` and `end_line` must not be parallel to `middle_line`
-    /// (LineSegment.java:19-28).
     pub fn new(start_line: Line, middle_line: Line, end_line: Line) -> LineSegment {
         LineSegment {
             start: start_line,
@@ -54,15 +32,9 @@ impl LineSegment {
         }
     }
 
-    /// Creates the `no`-th line segment of `polyline`, for `no` between 1 and
-    /// `polyline.lines().len() - 2` (LineSegment.java:30-42).
-    ///
-    /// Java stores three `null` lines when `no` is out of range (and warns), so every later call
-    /// on the result throws; this port returns `None` instead.
     pub fn from_polyline(polyline: &Polyline, no: usize) -> Option<LineSegment> {
         let lines = polyline.lines();
         if no == 0 || no + 1 >= lines.len() {
-            // Java: FRLogger.warn("LineSegment from Polyline: no out of range")
             return None;
         }
         Some(LineSegment {
@@ -72,30 +44,14 @@ impl LineSegment {
         })
     }
 
-    /// Transforms this `LineSegment` into a polyline of length 3 (LineSegment.java:125-132).
-    ///
-    /// Routes through [`Polyline::from_lines`], so it inherits its error.
     pub fn to_polyline(&self) -> Result<Polyline, PolylineError> {
         Polyline::from_lines(vec![self.start, self.middle, self.end])
     }
 
-    /// Creates the `no`-th line segment of `shape`, for `no` between 0 and
-    /// `shape.border_line_count() - 1` (LineSegment.java:44-65).
-    ///
-    /// Java takes the abstract `PolylineShape` and returns an object with three `null` lines when
-    /// `no` is out of range; this port takes the concrete [`TileShape`] and returns `None`. The
-    /// `no < 0` half of Java's range check is unrepresentable with a `usize` index.
     pub fn from_tile_shape(shape: &TileShape, no: usize) -> Option<LineSegment> {
         LineSegment::from_polyline_shape(shape, no)
     }
 
-    /// Creates the `no`-th line segment of `shape`, for `no` between 0 and
-    /// `shape.border_line_count() - 1` (LineSegment.java:44-65).
-    ///
-    /// Java's parameter is the abstract `PolylineShape`, so both [`TileShape`] and
-    /// [`crate::polygon_shape::PolygonShape`] can be passed. Java returns an object with three
-    /// `null` lines when `no` is out of range; this port returns `None`. The `no < 0` half of
-    /// Java's range check is unrepresentable with a `usize` index.
     pub fn from_polyline_shape(shape: &dyn PolylineShapeOps, no: usize) -> Option<LineSegment> {
         let line_count = shape.border_line_count();
         if no >= line_count {
@@ -115,50 +71,34 @@ impl LineSegment {
         Some(LineSegment { start, middle, end })
     }
 
-    /// Returns the intersection of the first 2 lines of this segment (LineSegment.java:67-73).
     pub fn start_point(&self) -> Point {
         self.middle.intersection(&self.start)
     }
 
-    /// Returns the intersection of the last 2 lines of this segment (LineSegment.java:75-81).
     pub fn end_point(&self) -> Point {
         self.middle.intersection(&self.end)
     }
 
-    /// Returns an approximation of the intersection of the first 2 lines of this segment
-    /// (LineSegment.java:83-92).
-    ///
-    /// Java picks between `precalculatedStartPoint.toFloat()` and
-    /// `start.intersectionApprox(middle)` depending on whether [`LineSegment::start_point`] has
-    /// already been called on this object — the two can differ in the last bits, so Java's answer
-    /// depends on the call history. Without the cache this port always takes Java's second
-    /// branch, the floating-point shortcut, which is the one a freshly built segment uses.
     pub fn start_point_approx(&self) -> FloatPoint {
         self.start.intersection_approx(&self.middle)
     }
 
-    /// Returns an approximation of the intersection of the last 2 lines of this segment
-    /// (LineSegment.java:94-103). See [`LineSegment::start_point_approx`] on the dropped cache.
     pub fn end_point_approx(&self) -> FloatPoint {
         self.end.intersection_approx(&self.middle)
     }
 
-    /// Returns the (infinite) line of this segment (LineSegment.java:105-108).
     pub fn get_line(&self) -> Line {
         self.middle
     }
 
-    /// Returns the start closing line of this segment (LineSegment.java:110-113).
     pub fn get_start_closing_line(&self) -> Line {
         self.start
     }
 
-    /// Returns the end closing line of this segment (LineSegment.java:115-118).
     pub fn get_end_closing_line(&self) -> Line {
         self.end
     }
 
-    /// Returns the line segment with the opposite direction (LineSegment.java:120-123).
     pub fn opposite(&self) -> LineSegment {
         LineSegment::new(
             self.end.opposite(),
@@ -167,11 +107,6 @@ impl LineSegment {
         )
     }
 
-    /// Creates a 1-dimensional simplex from this line segment, which has the same shape as the
-    /// line segment (LineSegment.java:134-153).
-    ///
-    /// The two side tests are Java's `Point.sideOf(Line)` — where the *point* lies relative to
-    /// the line — which is the negation of [`Line::side_of`].
     pub fn to_simplex(&self) -> Simplex {
         let mut lines: Vec<Line> = Vec::with_capacity(4);
         lines.push(
@@ -193,10 +128,6 @@ impl LineSegment {
         Simplex::from_lines(lines)
     }
 
-    /// Checks if `point` is contained in this line segment (LineSegment.java:155-171).
-    ///
-    /// Java warns "currently only implemented for IntPoints" and answers `false` for any other
-    /// `Point`; kept verbatim, minus the log.
     pub fn contains(&self, point: &Point) -> bool {
         let Point::Int(int_point) = point else {
             return false;
@@ -213,7 +144,6 @@ impl LineSegment {
         start_point_side != end_point_side || start_point_side == Side::Collinear
     }
 
-    /// Calculates the smallest surrounding box of this line segment (LineSegment.java:173-184).
     pub fn bounding_box(&self) -> IntBox {
         let start_corner = self.middle.intersection_approx(&self.start);
         let end_corner = self.middle.intersection_approx(&self.end);
@@ -226,8 +156,6 @@ impl LineSegment {
         IntBox::new(lower_left, upper_right)
     }
 
-    /// Calculates the smallest surrounding octagon of this line segment
-    /// (LineSegment.java:186-206).
     pub fn bounding_octagon(&self) -> IntOctagon {
         let start_corner = self.middle.intersection_approx(&self.start);
         let end_corner = self.middle.intersection_approx(&self.end);
@@ -243,8 +171,6 @@ impl LineSegment {
         let end_x_plus_y = end_corner.x + end_corner.y;
         let llx = java_min(start_x_plus_y, end_x_plus_y).floor();
         let urx = java_max(start_x_plus_y, end_x_plus_y).ceil();
-        // Java's `(int)` narrowing of a double saturates at Integer.MIN_VALUE/MAX_VALUE and maps
-        // NaN to 0; Rust's `as i32` on an `f64` does exactly the same.
         let result = IntOctagon::new(
             lx as i32, ly as i32, rx as i32, uy as i32, ulx as i32, lrx as i32, llx as i32,
             urx as i32,
@@ -252,8 +178,6 @@ impl LineSegment {
         result.normalize()
     }
 
-    /// Creates a new line segment with the same start and middle line and an end line, so that
-    /// the length of the new line segment is about `new_length` (LineSegment.java:208-217).
     pub fn change_length_approx(&self, new_length: f64) -> LineSegment {
         let new_end_point = self
             .start_point_approx()
@@ -263,15 +187,6 @@ impl LineSegment {
         LineSegment::new(self.start, self.middle, new_end_line)
     }
 
-    /// Looks up the intersections of this line segment with `other` (LineSegment.java:219-278).
-    ///
-    /// The result may have length 0, 1 or 2. If the segments do not intersect the result is
-    /// empty. The result lines are so that the intersections of the result lines with this line
-    /// segment will deliver the intersection points. If the segments overlap, the result has
-    /// length 2 and the intersection points are the first and the last overlap point. Otherwise,
-    /// the result has length 1 and the intersection point is the unique intersection or touching
-    /// point. The result is not symmetric in `self` and `other`, because intersecting lines and
-    /// not the intersection points are returned.
     pub fn intersection(&self, other: &LineSegment) -> Vec<Line> {
         if !self.bounding_box().intersects(&other.bounding_box()) {
             return Vec::new();
@@ -320,24 +235,14 @@ impl LineSegment {
         vec![other.middle]
     }
 
-    /// Checks if this LineSegment and `other` contain a common point (LineSegment.java:280-284).
     pub fn intersects(&self, other: &LineSegment) -> bool {
         !self.intersection(other).is_empty()
     }
 
-    /// Checks if this LineSegment and `other` contain a common LineSegment, which is not reduced
-    /// to a point (LineSegment.java:286-293).
     pub fn overlaps(&self, other: &LineSegment) -> bool {
         self.intersection(other).len() > 1
     }
 
-    /// Constructs an approximation of this line segment by orthogonal stairs with integer
-    /// coordinates (LineSegment.java:295-377). The length of the stairs will be at most `width`.
-    /// If `to_the_right`, the stairs will be to the right of this line segment, else to the left.
-    ///
-    /// # Panics
-    /// When the computed stair width rounds to 0, exactly where Java throws
-    /// `ArithmeticException: / by zero`.
     pub fn stair_approximation(&self, width: f64, to_the_right: bool) -> Vec<IntPoint> {
         let start_point = self.start_point().to_float().round();
         let end_point = self.end_point().to_float().round();
@@ -414,13 +319,6 @@ impl LineSegment {
         result
     }
 
-    /// Constructs an approximation of this line segment by 45 degree stairs with integer
-    /// coordinates (LineSegment.java:379-474). The length of the stairs will be at most `width`.
-    /// If `to_the_right`, the stairs will be to the right of this line segment, else to the left.
-    ///
-    /// # Panics
-    /// When the computed stair width rounds to 0, exactly where Java throws
-    /// `ArithmeticException: / by zero`.
     pub fn stair_approximation_45(&self, width: f64, to_the_right: bool) -> Vec<IntPoint> {
         let start_point = self.start_point().to_float().round();
         let end_point = self.end_point().to_float().round();
@@ -466,16 +364,6 @@ impl LineSegment {
                         java_round(self.get_line().function_value_approx(current_x as f64)) as i32;
                 } else {
                     current_y = start_point.y + i * stair_width;
-                    // Java bug (LineSegment.java:432): the function-of-y branch calls
-                    // `functionValueApprox` — the x -> y function — on a y coordinate, where
-                    // `functionInYValueApprox` is meant and is what the non-45 sibling
-                    // `stairApproximation` uses. See docs/java-quirks.md #13.
-                    //
-                    // fixed: T11 (#13). Measured before: `(0,0) -> (7,20)` at width 2 produced
-                    // `[(0,0) (17,17) (17,6) (34,23) (34,12) (51,29) (51,18) (7,62) (7,20)]` — x
-                    // reaching 51 on a segment whose x never exceeds 7. The corrected branch is
-                    // the transpose of the healthy function-of-x one at the opposite handedness,
-                    // which is what `crates/fr-geometry/tests/nearest_and_stairs.rs` asserts.
                     current_x =
                         java_round(self.get_line().function_in_y_value_approx(current_y as f64))
                             as i32;
@@ -520,17 +408,6 @@ impl LineSegment {
         result
     }
 
-    /// Returns the border line numbers of `shape` which are intersected by this line segment
-    /// (LineSegment.java:476-645).
-    ///
-    /// Intersections at an endpoint of this line segment are only counted if the line segment
-    /// intersects with the interior of `shape`. The result may have length 0, 1 or 2. With 2
-    /// intersections the one nearest to the start point of the line segment comes first.
-    ///
-    /// Java's two `FRLogger.warn` calls are dropped per the porting conventions. The first
-    /// guards a real truncation — a third intersection is *discarded* — which is kept. The
-    /// second is unreachable: `result` is a `int[2]`, so a count that is neither 0 nor 2 is
-    /// necessarily 1.
     pub fn border_intersections(&self, shape: &TileShape) -> Vec<usize> {
         if !self.bounding_box().intersects(&shape.bounding_box()) {
             return Vec::new();
@@ -538,8 +415,6 @@ impl LineSegment {
 
         let edge_count = shape.border_line_count();
         if edge_count == 0 {
-            // The empty simplex. Java reads `borderLine(-1)`, gets `null` back and then falls
-            // straight out of the `edgeCount == 0` loop with an empty result.
             return Vec::new();
         }
         // `border_line` is `None` only for the empty simplex, excluded just above.
@@ -663,8 +538,6 @@ impl LineSegment {
                         intersection[intersection_count] = Some(is);
                         intersection_count += 1;
                     }
-                    // else: Java warns "intersection_count is too big" and drops the
-                    // intersection; the drop is kept, the log is not.
                 }
             }
 
@@ -698,13 +571,6 @@ impl LineSegment {
         vec![result[0]]
     }
 
-    /// Inverts the direction of `self.middle`, if `start_point()` has a bigger x coordinate than
-    /// `end_point()`, or an equal x coordinate and a bigger y coordinate
-    /// (LineSegment.java:647-665).
-    ///
-    /// Java swaps the two *closing* lines and leaves `middle` alone, despite the doc comment;
-    /// ported verbatim. Java also hands the memoised end points over to the swapped result — a
-    /// no-op here, where nothing is memoised.
     pub fn sort_endpoints_in_xy(&self) -> LineSegment {
         let swap_endlines = self.start_point().compare_xy(&self.end_point()) == Ordering::Greater;
 
@@ -785,7 +651,6 @@ mod tests {
         assert_eq!(s.get_line(), Line::from_coords(0, 0, 10, 0));
         assert_eq!(s.get_start_closing_line(), Line::from_coords(0, 0, 0, 1));
         assert_eq!(s.get_end_closing_line(), Line::from_coords(10, 0, 10, 1));
-        // opposite() swaps and reverses all three lines (LineSegment.java:120-123).
         let o = s.opposite();
         assert_eq!(o.get_line(), Line::from_coords(10, 0, 0, 0));
         assert_eq!(o.get_start_closing_line(), Line::from_coords(10, 1, 10, 0));
@@ -795,8 +660,6 @@ mod tests {
 
     #[test]
     fn contains_rejects_non_int_points() {
-        // Java warns "only implemented for IntPoints" and answers false, even for a rational
-        // point that is geometrically on the segment (LineSegment.java:155-160).
         let s = seg(0, 0, 10, 0);
         let on_the_segment = Point::Rational(crate::rational_point::RationalPoint::from_int(
             &IntPoint::new(4, 0),
@@ -819,19 +682,9 @@ mod tests {
         assert_eq!(last.get_end_closing_line(), b.border_line(0).unwrap());
         assert_eq!(last.start_point(), Point::Int(IntPoint::new(0, 10)));
         assert_eq!(last.end_point(), Point::Int(IntPoint::new(0, 0)));
-        // Out of range: Java builds an object with three null lines, this port returns None.
         assert_eq!(LineSegment::from_tile_shape(&b, 4), None);
     }
 
-    /// fixed: T11 (#17) — this test used to ask `contains_float`, and passed only because
-    /// `IntOctagon` answered *inclusively* where the box and the simplex answer exclusively.
-    ///
-    /// The bounding octagon of a horizontal segment is `[0,0 .. 10,0]`: **degenerate**, with no
-    /// interior at all, so under the exclusive convention no point is strictly inside it and the
-    /// old assertions were beneficiaries of the quirk rather than casualties of the fix — a
-    /// bounding *box* asked the same way has always answered `false`. The property the test is
-    /// for — the bounding shape covers the segment — is border-inclusive containment, which is
-    /// `TileShape::contains(&Point)` (`!is_outside`), and that is what it now asks.
     #[test]
     fn bounding_octagon_covers_the_segment() {
         let s = seg(0, 0, 10, 0);
@@ -868,8 +721,6 @@ mod tests {
         let sorted = backward.sort_endpoints_in_xy();
         assert_eq!(sorted.start_point(), Point::Int(IntPoint::new(0, 0)));
         assert_eq!(sorted.end_point(), Point::Int(IntPoint::new(10, 0)));
-        // Java swaps `start` and `end` and leaves `middle` alone, despite its doc comment
-        // (LineSegment.java:647-665): the middle line still points to the left.
         assert_eq!(sorted.get_line(), backward.get_line());
     }
 
@@ -928,8 +779,6 @@ mod tests {
         assert_eq!(seg(5, 5, 15, 5).border_intersections(&b), vec![1]);
         // Wholly inside: no border line is crossed.
         assert!(seg(2, 5, 8, 5).border_intersections(&b).is_empty());
-        // Merely touching the upper right corner is not an intersection
-        // (LineSegment.java:568-591).
         let corner_touch = seg(0, 20, 20, 0);
         assert!(corner_touch.border_intersections(&b).is_empty());
         assert!(!b.is_intersected_interior_by(&corner_touch));
@@ -945,7 +794,6 @@ mod tests {
 
     #[test]
     fn from_polyline_and_to_polyline() {
-        // LineSegment.java:30-42 and 125-132, values taken from the Java original.
         let polyline = Polyline::from_points(&[
             Point::Int(IntPoint::new(0, 0)),
             Point::Int(IntPoint::new(10, 0)),
@@ -966,7 +814,6 @@ mod tests {
                 .lines(),
             &polyline.lines()[1..4]
         );
-        // Java's range is 1 ..= lineCount - 2; outside it the segment gets three null lines.
         assert_eq!(LineSegment::from_polyline(&polyline, 0), None);
         assert_eq!(LineSegment::from_polyline(&polyline, 3), None);
     }

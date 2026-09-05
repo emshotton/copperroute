@@ -18,8 +18,6 @@ impl IntPoint {
         IntPoint { x, y }
     }
 
-    // not ported: `equals`/`hashCode` — replaced by `#[derive(PartialEq, Eq, Hash)]` (structural
-
     pub fn get_id(&self) -> i32 {
         31i32.wrapping_mul(self.x).wrapping_add(self.y)
     }

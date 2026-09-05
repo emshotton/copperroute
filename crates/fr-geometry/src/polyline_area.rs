@@ -131,7 +131,6 @@ impl PolylineArea {
         let mut current_piece_list: Vec<TileShape> = convex_border_pieces;
         for hole in &self.hole_arr {
             if hole.as_ops().dimension() < 2 {
-                // Java: FRLogger.warn("PolylineArea. split_to_convex: dimension 2 for hole
                 continue;
             }
             let convex_hole_pieces = hole.split_to_convex()?;

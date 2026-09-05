@@ -1,14 +1,3 @@
-//! Port of `app.freerouting.geometry.planar.PolygonShape`: "Shape described bei a closed polygon
-//! of corner points. The corners are ordered in counterclock sense around the border of the
-//! shape. The corners are normalised, so that the corner with the lowest y-value comes first. In
-//! case of equal y-value the corner with the lowest x-value comes first."
-//! (PolygonShape.java:9-14).
-//!
-//! The three `transient precalculated*` memo fields are dropped, as everywhere else in this port.
-//! For `splitToConvex` that is observationally free: Java reseeds its static `Random` with the
-//! fixed seed 99 at the top of every non-memoised call (PolygonShape.java:534), so recomputing
-//! reproduces the identical division sequence.
-
 use crate::float_line::FloatLine;
 use crate::float_point::FloatPoint;
 use crate::int_box::IntBox;
@@ -24,8 +13,6 @@ use crate::side::Side;
 use crate::tile_shape::TileShape;
 use crate::vector::Vector;
 
-/// The fixed seed of the `Random` that picks the first corner of the concavity search
-/// (PolygonShape.java:17).
 const SEED: i64 = 99;
 
 /// A shape described by a closed polygon of corner points.
@@ -34,10 +21,6 @@ pub struct PolygonShape {
     corners: Vec<Point>,
 }
 
-/// The `IntPoint` behind a corner. Java's `PolygonShape` stores abstract `Point`s but feeds them
-/// straight into `new Line(Point, Point)`, which warns "only implemented for IntPoints till now"
-/// (Line.java:19-27) and then breaks in every arithmetic method. This port panics at the point of
-/// use, as [`crate::polyline::Polyline`] does.
 fn int_point_of(point: &Point) -> IntPoint {
     match point {
         Point::Int(p) => *p,
@@ -48,15 +31,6 @@ fn int_point_of(point: &Point) -> IntPoint {
 }
 
 impl PolygonShape {
-    /// Creates a new instance of `PolygonShape` (PolygonShape.java:27-92).
-    ///
-    /// The constructor reverses a clockwise polygon, drops a closing duplicate corner and a
-    /// collinear first/last corner, and finally rotates the corner list so that the corner with
-    /// the lowest y (then lowest x) comes first.
-    ///
-    /// # Panics
-    /// On a corner-less polygon, exactly as Java does: `currentCorners[startCornerNo].toFloat()`
-    /// indexes an empty array (PolygonShape.java:71).
     pub fn from_polygon(polygon: &Polygon) -> PolygonShape {
         let current_polygon = if polygon.winding_number_after_closing() < 0 {
             // the corners of the polygon are in clockwise sense
@@ -122,21 +96,14 @@ impl PolygonShape {
         PolygonShape { corners: result }
     }
 
-    /// Creates a polygon shape from an array of corner points (PolygonShape.java:94-97).
     pub fn from_points(corners: &[Point]) -> PolygonShape {
         PolygonShape::from_polygon(&Polygon::new(corners.to_vec()))
     }
 
-    /// The normalised corners of this shape (Java's `public final Point[] corners`).
     pub fn corners(&self) -> &[Point] {
         &self.corners
     }
 
-    /// Returns the `no`-th corner (PolygonShape.java:99-106).
-    ///
-    /// # Panics
-    /// For an out-of-range index. Java warns and returns `null`, which every caller then
-    /// dereferences.
     pub fn corner(&self, no: usize) -> Point {
         assert!(
             no < self.corners.len(),
@@ -145,46 +112,36 @@ impl PolygonShape {
         self.corners[no].clone()
     }
 
-    /// Returns the number of border lines of the shape (PolygonShape.java:108-111).
     pub fn border_line_count(&self) -> usize {
         self.corners.len()
     }
 
-    /// A polygon shape is bounded at every corner (PolygonShape.java:113-116).
     pub fn corner_is_bounded(&self, _no: usize) -> bool {
         true
     }
 
-    /// Checks if this shape and `shape` have a nonempty intersection (PolygonShape.java:118-121;
-    /// Java double-dispatches through `shape.intersects(this)`).
     pub fn intersects(&self, shape: &crate::shape::Shape) -> bool {
         shape.intersects_polygon(self)
     }
 
-    /// Checks if this shape and `circle` have a nonempty intersection
-    /// (PolygonShape.java:123-132).
     pub fn intersects_circle(&self, circle: &crate::circle::Circle) -> bool {
         self.convex_pieces()
             .iter()
             .any(|piece| circle.intersects_tile(piece))
     }
 
-    /// Checks if this shape and `simplex` have a nonempty intersection
-    /// (PolygonShape.java:134-143).
     pub fn intersects_simplex(&self, simplex: &crate::simplex::Simplex) -> bool {
         self.convex_pieces()
             .iter()
             .any(|piece| piece.intersects_simplex(simplex))
     }
 
-    /// Checks if this shape and `oct` have a nonempty intersection (PolygonShape.java:145-154).
     pub fn intersects_octagon(&self, oct: &IntOctagon) -> bool {
         self.convex_pieces()
             .iter()
             .any(|piece| piece.intersects_octagon(oct))
     }
 
-    /// Checks if this shape and `b` have a nonempty intersection (PolygonShape.java:156-165).
     pub fn intersects_box(&self, b: &IntBox) -> bool {
         self.convex_pieces()
             .iter()
@@ -261,16 +218,12 @@ impl PolygonShape {
         self.border_distance(&PolylineShapeOps::centre_of_gravity(self))
     }
 
-    /// Returns true if `point` is contained in this shape, but not inside a hole
-    /// (PolygonShape.java:193-202).
     pub fn contains_float(&self, point: &FloatPoint) -> bool {
         self.convex_pieces()
             .iter()
             .any(|piece| piece.contains_float(point))
     }
 
-    /// Returns true if `point` is inside or on the border of this shape
-    /// (PolygonShape.java:204-207).
     pub fn contains(&self, point: &Point) -> bool {
         !self.is_outside(point)
     }
@@ -282,8 +235,6 @@ impl PolygonShape {
         !self.is_outside(point)
     }
 
-    /// Returns true if `point` is not contained in the inside or the boundary of the shape
-    /// (PolygonShape.java:217-226).
     pub fn is_outside(&self, point: &Point) -> bool {
         !self
             .convex_pieces()
@@ -316,7 +267,6 @@ impl PolygonShape {
         }
     }
 
-    /// Returns the affine translation of the shape by `vector` (PolygonShape.java:240-250).
     pub fn translate_by(&self, vector: &Vector) -> PolygonShape {
         if *vector == Vector::ZERO {
             return self.clone();
@@ -329,8 +279,6 @@ impl PolygonShape {
         PolygonShape::from_points(&new_corners)
     }
 
-    /// Returns the bounding `RegularTileShape` with the fixed directions `dirs`
-    /// (PolygonShape.java:252-255).
     pub fn bounding_shape(
         &self,
         dirs: crate::bounding_directions::ShapeBoundingDirections,
@@ -338,7 +286,6 @@ impl PolygonShape {
         dirs.bounds_polygon(self)
     }
 
-    /// The smallest surrounding box of this shape (PolygonShape.java:257-276).
     pub fn bounding_box(&self) -> IntBox {
         let mut llx = i32::MAX as f64;
         let mut lly = i32::MAX as f64;
@@ -356,7 +303,6 @@ impl PolygonShape {
         IntBox::new(lower_left, upper_right)
     }
 
-    /// The smallest surrounding octagon of this shape (PolygonShape.java:278-316).
     pub fn bounding_octagon(&self) -> IntOctagon {
         let mut lx = i32::MAX as f64;
         let mut ly = i32::MAX as f64;
@@ -393,8 +339,6 @@ impl PolygonShape {
         )
     }
 
-    /// Checks whether every line segment between 2 points of the shape is contained completely in
-    /// the shape (PolygonShape.java:318-363).
     pub fn is_convex(&self) -> bool {
         let corners = &self.corners;
         let len = corners.len();
@@ -440,7 +384,6 @@ impl PolygonShape {
         true
     }
 
-    /// Returns the convex hull of this polygon shape (PolygonShape.java:365-394).
     pub fn convex_hull(&self) -> PolygonShape {
         let corners = &self.corners;
         let len = corners.len();
@@ -468,7 +411,6 @@ impl PolygonShape {
         self.clone()
     }
 
-    /// Returns a bounding `TileShape` of this shape (PolygonShape.java:396-406).
     pub fn bounding_tile(&self) -> TileShape {
         let hull = self.convex_hull();
         let len = hull.corners.len();
@@ -486,18 +428,6 @@ impl PolygonShape {
         TileShape::get_instance_from_lines(bounding_lines)
     }
 
-    /// The content of the area of the shape (PolygonShape.java:408-428).
-    ///
-    // Java bug: the guard is `if (dimension() <= 2) return 0;`, but `PolygonShape.dimension()`
-    // returns at most 2 (PolygonShape.java:430-442), so the guard is always true and the shoelace
-    // sum below is dead code — `area()` always answers 0. It is reached from `DsnFile.java:70,89`
-    // through `Shape.area()`, so the plane autoroute settings derived from a board area were
-    // derived from zero. See docs/java-quirks.md #26.
-    //
-    // fixed: T11 (#26) — `<= 2` becomes `< 2`, which is the one-character change the shoelace body
-    // was kept for, plus the `corners[len - 2]` guard the register's column asks for: a 1-corner
-    // polygon has `dimension() == 0`, so it no longer returns early, and `len - 2` would underflow.
-    // A polygon with fewer than 3 corners encloses no area, which is what `0.0` says.
     pub fn area(&self) -> f64 {
         if self.dimension() < 2 || self.corners.len() < 3 {
             return 0.0;
@@ -518,8 +448,6 @@ impl PolygonShape {
         0.5 * result.abs()
     }
 
-    /// 2 for a polygon, 1 for a segment, 0 for a point and -1 for the empty shape
-    /// (PolygonShape.java:430-442).
     pub fn dimension(&self) -> i32 {
         match self.corners.len() {
             0 => -1,
@@ -529,21 +457,16 @@ impl PolygonShape {
         }
     }
 
-    /// A polygon shape is always bounded (PolygonShape.java:444-447).
     pub fn is_bounded(&self) -> bool {
         true
     }
 
-    /// Returns true if this shape has no corners (PolygonShape.java:449-452).
     pub fn is_empty(&self) -> bool {
         self.corners.is_empty()
     }
 
-    /// Returns the `no`-th border line of this shape (PolygonShape.java:454-467). `None` where
-    /// Java warns and returns `null`, i.e. for an out-of-range index.
     pub fn border_line(&self, no: usize) -> Option<Line> {
         if no >= self.corners.len() {
-            // Java: FRLogger.warn("PolygonShape.borderLine: no out of range")
             return None;
         }
         let next_corner = if no == self.corners.len() - 1 {
@@ -557,19 +480,10 @@ impl PolygonShape {
         ))
     }
 
-    /// An approximation of the nearest point of the shape to `from_point`
-    /// (PolygonShape.java:469-483). `None` where Java returns the `null` it starts from, i.e.
-    /// when the shape has no convex pieces.
-    ///
-    /// # Panics
-    /// When the convex split fails, or when a convex piece has no border lines — both are
-    /// NullPointerExceptions in Java.
     pub fn nearest_point_approx(&self, from_point: &FloatPoint) -> Option<FloatPoint> {
         let mut min_dist = f64::MAX;
         let mut result = None;
         for piece in self.convex_pieces() {
-            // Java reads `currentNearestPoint.distanceSquare(...)` without a null check
-            // (PolygonShape.java:475-476), so a line-less convex piece is a NullPointerException.
             let current_nearest_point = piece.nearest_point_approx(from_point).expect(
                 "TileShape.nearestPointApprox returned null for a convex piece with no border lines",
             );
@@ -582,7 +496,6 @@ impl PolygonShape {
         result
     }
 
-    /// Turns this shape by `factor` times 90 degree around `pole` (PolygonShape.java:485-492).
     pub fn turn_90_degree(&self, factor: i32, pole: &IntPoint) -> PolygonShape {
         let pole = Point::Int(*pole);
         let new_corners: Vec<Point> = self
@@ -593,7 +506,6 @@ impl PolygonShape {
         PolygonShape::from_points(&new_corners)
     }
 
-    /// Rotates this shape around `pole` by `angle` (PolygonShape.java:494-504).
     pub fn rotate_approx(&self, angle: f64, pole: &FloatPoint) -> PolygonShape {
         if angle == 0.0 {
             return self.clone();
@@ -606,7 +518,6 @@ impl PolygonShape {
         PolygonShape::from_points(&new_corners)
     }
 
-    /// Mirrors this shape at the vertical line through `pole` (PolygonShape.java:506-513).
     pub fn mirror_vertical(&self, pole: &IntPoint) -> PolygonShape {
         let pole = Point::Int(*pole);
         let new_corners: Vec<Point> = self
@@ -617,7 +528,6 @@ impl PolygonShape {
         PolygonShape::from_points(&new_corners)
     }
 
-    /// Mirrors this shape at the horizontal line through `pole` (PolygonShape.java:515-522).
     pub fn mirror_horizontal(&self, pole: &IntPoint) -> PolygonShape {
         let pole = Point::Int(*pole);
         let new_corners: Vec<Point> = self
@@ -628,14 +538,6 @@ impl PolygonShape {
         PolygonShape::from_points(&new_corners)
     }
 
-    /// Splits this polygon shape into convex pieces (PolygonShape.java:524-548).
-    ///
-    /// "The result is not exact, because rounded intersections of lines are used in the result
-    /// pieces. It can be made exact, if Polylines are returned instead of Polygons, so that no
-    /// intersection points are needed in the result."
-    ///
-    /// `None` where Java returns `null`: the split failed, maybe the polygon has
-    /// self-intersections.
     pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
         // use a fixed seed to get reproducible result
         let mut random_generator = JavaRandom::new(SEED);
@@ -652,19 +554,11 @@ impl PolygonShape {
         )
     }
 
-    /// The convex pieces of this shape, for the methods that dereference `splitToConvex()`
-    /// without a null check.
-    ///
-    /// # Panics
-    /// When the split fails, exactly where Java raises a `NullPointerException` on
-    /// `convexPieces.length` (PolygonShape.java:126, 137, 148, 159, 196, 220, 474).
     fn convex_pieces(&self) -> Vec<TileShape> {
         self.split_to_convex()
             .expect("PolygonShape.splitToConvex failed: the polygon may have selfintersections")
     }
 
-    /// Private recursive part of `split_to_convex`. Returns a collection of polygon shape pieces
-    /// (PolygonShape.java:550-633).
     fn split_to_convex_recu(&self, random_generator: &mut JavaRandom) -> Option<Vec<PolygonShape>> {
         let corners = &self.corners;
         let len = corners.len();
@@ -741,8 +635,6 @@ impl PolygonShape {
     }
 }
 
-/// At a concave corner of the closed polygon, a minimal axis parallel division line is
-/// constructed, to divide the closed polygon into two (PolygonShape.java:635-776).
 struct DivisionPoint {
     corner_no_after_projection: usize,
     projection: Option<FloatPoint>,
@@ -789,8 +681,6 @@ impl DivisionPoint {
         };
         let mut corner_before_projection_approx = corner_before_curr_projection.to_float();
 
-        // Java: `int loopEnd = corners.length - 2;` — negative for a 1-corner polygon, where the
-        // loop simply does not run.
         let loop_end = len.saturating_sub(2);
 
         for _ in 0..loop_end {
@@ -880,8 +770,6 @@ impl DivisionPoint {
                 corner_no_after_curr_projection += 1;
             }
         }
-        // Java: FRLogger.warn("PolygonShape.DivisionPoint: projection not found") when
-        // `minProjectionDist == Integer.MAX_VALUE`; a pure diagnostic, dropped here.
 
         DivisionPoint {
             corner_no_after_projection: corner_no_after_min_projection,
@@ -948,13 +836,6 @@ mod tests {
     #[test]
     fn convexity_area_and_split() {
         assert!(square().is_convex());
-        // Java bug (PolygonShape.java:411): `dimension() <= 2` is always true, so `area()` was
-        // always 0 and the shoelace sum below it unreachable. fixed: T11 (#26) — both literals
-        // below were `0.0`. `square()` is 10 x 10 = 100; `l_shape()` is a 20 x 10 arm plus a
-        // 10 x 10 one = 300, which the shoelace confirms: the cross terms are
-        // 0 + 200 + 100 + 100 + 200 + 0 = 600, halved. The 100 x 100 square and the notched
-        // L the answer key hand-computes (10000 and 8400) are in
-        // `crates/fr-geometry/tests/tail.rs::area_is_not_always_zero`.
         assert_eq!(square().area(), 100.0);
         assert_eq!(square().split_to_convex().unwrap().len(), 1);
         assert!(!l_shape().is_convex());
@@ -963,9 +844,6 @@ mod tests {
         assert_eq!(parts.len(), 2);
         // The convex pieces are ordinary TileShapes, so their `area()` is the real one.
         assert!((parts.iter().map(|t| t.area()).sum::<f64>() - 300.0).abs() < 1e-9);
-        // fixed: T11 (#26) — was `0.0`. The hull is the 20 x 20 square with the triangle
-        // (20,10)-(10,20)-(20,20) cut off, so 400 − ½·10·10 = 350; the shoelace agrees
-        // (0 + 200 + 300 + 200 + 0 = 700, halved).
         assert_eq!(l_shape().convex_hull().area(), 350.0);
         assert_eq!(
             l_shape().convex_hull().corners().to_vec(),
@@ -977,7 +855,6 @@ mod tests {
     #[test]
     fn orientation_is_normalised_to_counterclockwise() {
         let cw = PolygonShape::from_points(&pts(&[(0, 0), (0, 10), (10, 10), (10, 0)]));
-        // Java's constructor reverses clockwise input; both must then be equal corner sequences.
         let a = square().corner_approx_arr();
         let b = cw.corner_approx_arr();
         assert_eq!(a.len(), b.len());
@@ -992,8 +869,6 @@ mod tests {
         assert!(!l_shape().contains(&Point::Int(IntPoint::new(15, 15))));
         assert!(l_shape().contains_float(&FloatPoint::new(15.0, 5.0)));
         assert!(l_shape().is_outside(&Point::Int(IntPoint::new(25, 5))));
-        // Pinned against Java: the two convex pieces of the L touch the box only in the corner
-        // (10, 20) resp. (20, 10), and `IntBox.intersects` is exclusive there.
         assert!(!l_shape().intersects_box(&IntBox::from_coords(15, 15, 30, 30)));
         assert!(square().intersects_box(&IntBox::from_coords(5, 5, 30, 30)));
     }

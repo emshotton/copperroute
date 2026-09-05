@@ -1,24 +1,3 @@
-//! Plan 9 Task 11, quirks #15, #16 and #13 — three ways of asking "which is nearest" and
-//! "what does the staircase look like", each broken differently.
-//!
-//! #9's `FloatPoint.circleCenter` divide-by-zero is **deliberately not here**: it is the mechanism
-//! of #82 and must be measured with it, so it lands in Task 13. See
-//! [`circle_center_is_deferred_to_task_13`] at the bottom of this file, which records what it does
-//! today so that the deferral is a measurement rather than a promise.
-//!
-//! # The survey's #15 sentence is backwards, and the plan's test name inherits it
-//!
-//! The survey says `indexOfNearestCorner` seeds with `Double.MIN_VALUE` "so a corner at distance
-//! exactly 0 is never nearest". The opposite is true. `Double.MIN_VALUE` is `4.9E-324`, the
-//! smallest positive **subnormal**, and the loop tests `currentDistance < minDist` — so
-//! `0.0 < 4.9E-324` is the *only* comparison that can ever fire, and every corner at a non-zero
-//! distance is skipped.
-//!
-//! So the plan's `nearest_corner_at_distance_zero_is_nearest` names a case that **already
-//! passed**. It is kept below, because it is a true statement worth pinning, and
-//! [`nearest_corner_at_non_zero_distance_is_nearest`] is added beside it as the case that actually
-//! inverts.
-
 use fr_geometry::{FloatPoint, IntBox, IntPoint, Line, LineSegment, Point, TileShape};
 
 fn bx() -> TileShape {
@@ -44,11 +23,6 @@ fn nearest_corner_at_distance_zero_is_nearest() {
     );
 }
 
-/// **fixed: T11 (#15)** — the case that actually inverts. Seeded with `Double.MIN_VALUE`, every
-/// non-zero distance failed `currentDistance < minDist` and the method answered `0` for any point
-/// that was not exactly on a corner. Seeded with `f64::MAX` it answers the nearest corner.
-///
-/// The rows are the answer key's measured table for the box `[0,0 .. 10,10]`.
 #[test]
 fn nearest_corner_at_non_zero_distance_is_nearest() {
     // (point, the corner it is nearest to). Every one of these answered 0 before the fix.
@@ -82,15 +56,6 @@ fn a_tie_between_corners_keeps_the_first() {
 // #16 — the upward insertion shift copied the wrong element
 // =================================================================================================
 
-/// **fixed: T11 (#16).** The insertion step shared by `nearestBorderPointsApprox` and
-/// `nearestRelativeOutsideLocations` shifted **upward**: `values[k] = values[k - 1]` for `k` from
-/// `j + 1` ascending. After `values[j+1] = values[j]`, the next iteration reads the slot it has
-/// just written, so `values[j]` is smeared across every later slot instead of each entry moving
-/// down by one. An element inserted above position 0 therefore overwrote its neighbour.
-///
-/// The invariant: `nearest_border_points_approx(p, k)` returns `k` points, **all distinct**,
-/// sorted by ascending distance from `p`. `k == 1` never enters the shift, which is why every
-/// caller passing 1 was unaffected and the defect stayed latent.
 #[test]
 fn the_insertion_shift_copies_the_right_element() {
     let shape = bx();
@@ -138,19 +103,6 @@ fn a_single_nearest_border_point_is_unchanged() {
 // #13 — `stairApproximation45` called a function of x with a y coordinate
 // =================================================================================================
 
-/// **fixed: T11 (#13).** The `function_of_y` branch (`abs_delta.x < abs_delta.y`) computed
-/// `current_y` and then fed it to `function_value_approx` — the **x -> y** function — where
-/// `function_in_y_value_approx`, the y -> x function, is meant and is what the non-45 sibling
-/// `stair_approximation` uses. The bug is visible by comparison with that sibling in the same
-/// file.
-///
-/// **Invariant 1, containment.** Every point of a staircase approximation of a segment lies within
-/// the segment's bounding box grown by the stair width. A staircase cannot leave the
-/// neighbourhood of the segment it approximates.
-///
-/// Measured before the fix, from the answer key: `(0,0) -> (7,20)` at width 2 produced
-/// `[(0,0) (17,17) (17,6) (34,23) (34,12) (51,29) (51,18) (7,62) (7,20)]` — `x` reached 51 on a
-/// segment whose `x` never exceeds 7, and `y` reached 62 on one whose `y` never exceeds 20.
 #[test]
 fn stair_approximation_45_uses_the_y_function() {
     let width = 2.0;
@@ -220,8 +172,6 @@ fn the_function_of_x_branch_is_unchanged() {
     );
 }
 
-/// A 45-degree segment short-circuits to its two end points, which is the output the register's
-/// "verify against 45-degree output" column asks about: the fix must not disturb it.
 #[test]
 fn a_forty_five_degree_segment_is_still_its_two_end_points() {
     assert_eq!(

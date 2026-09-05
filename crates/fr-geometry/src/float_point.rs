@@ -1,7 +1,3 @@
-//! Port of `app.freerouting.geometry.planar.FloatPoint`: a point in the plane as a tuple of
-//! `f64`s. Because arithmetic with doubles is in general not exact, Java does not derive
-//! `FloatPoint` from the abstract `Point` class, and neither does this port.
-
 use std::fmt;
 
 use crate::direction::Direction;
@@ -20,11 +16,6 @@ pub struct FloatPoint {
     pub y: f64,
 }
 
-/// The signs of a `Vector`'s coordinates, used by `round_to_the_right`/`round_to_the_left`.
-/// For `Vector::Rational`, Java reads `dir.getVector().toFloat()` and inspects the signs of the
-/// resulting doubles; since a `RationalVector`'s denominator `z` is always `>= 0` (enforced by
-/// `RationalVector::new`), the sign of the numerator alone gives the same answer without the
-/// intermediate float division.
 fn vector_signs(v: &Vector) -> (i32, i32) {
     match v {
         Vector::Int(iv) => (iv.x.signum(), iv.y.signum()),
@@ -45,12 +36,6 @@ impl FloatPoint {
     pub fn from_int(pt: &IntPoint) -> FloatPoint {
         FloatPoint::new(pt.x as f64, pt.y as f64)
     }
-
-    // not ported: `boundingOctagon(FloatPoint[])` — depends on `IntOctagon` (Task 12).
-    // not ported: `toString(Locale)` (FloatPoint.java:469-473) — GUI-only locale variant of
-    // the hard-coded English `Display` impl below, unused outside `geometry/planar`.
-    // not ported: `toString(Locale, int, int)` (FloatPoint.java:476-484) — padded GUI display
-    // string, unused outside `geometry/planar`.
 
     /// Returns the square of the distance from this point to the zero point.
     pub fn size_square(&self) -> f64 {
@@ -119,12 +104,6 @@ impl FloatPoint {
         IntPoint::new(rounded_x, rounded_y)
     }
 
-    /// Round this point so the x coordinate of the result will be a multiple of
-    /// `horizontal_grid` and the y coordinate a multiple of `vertical_grid`.
-    ///
-    /// Java uses `Math.rint` here (round-half-to-even), unlike the `Math.round`-based (round
-    /// half up) methods elsewhere in this file — reproduced with `f64::round_ties_even`, not
-    /// `java_round`.
     pub fn round_to_grid(&self, horizontal_grid: i32, vertical_grid: i32) -> IntPoint {
         let rounded_x = if horizontal_grid > 0 {
             (self.x / horizontal_grid as f64).round_ties_even() * horizontal_grid as f64
@@ -178,10 +157,6 @@ impl FloatPoint {
         float_line.perpendicular_projection(self)
     }
 
-    /// Calculates the scalar product of (p1 - this) with (p2 - this).
-    ///
-    /// Java null-checks `p1`/`p2` and logs a warning, returning 0 for a null argument
-    /// (FloatPoint.java:207-214) — not applicable here, since Rust references cannot be null.
     pub fn scalar_product(&self, p1: &FloatPoint, p2: &FloatPoint) -> f64 {
         let dx1 = p1.x - self.x;
         let dx2 = p2.x - self.x;
@@ -203,12 +178,6 @@ impl FloatPoint {
         FloatPoint::new(new_x, new_y)
     }
 
-    /// Approximates a FloatPoint on the line from this point to to_point with distance
-    /// new_length from this point.
-    ///
-    /// Java logs a warning and returns `to_point` unchanged when the two points are equal
-    /// (FloatPoint.java:239-246); the returned value is reproduced, the log is not (`fr-geometry`
-    /// has no `tracing` dependency).
     pub fn change_length(&self, to_point: &FloatPoint, new_length: f64) -> FloatPoint {
         let dx = to_point.x - self.x;
         let dy = to_point.y - self.y;
@@ -221,11 +190,6 @@ impl FloatPoint {
         FloatPoint::new(new_x, new_y)
     }
 
-    /// Returns the middle point between this point and to_point.
-    ///
-    /// Java's `toPoint == this` reference-equality short-circuit (FloatPoint.java:252-254) is not
-    /// reproduced: `FloatPoint` is `Copy` value type here, so there is no object identity to
-    /// compare, and the plain formula below already returns the same value for equal points.
     pub fn middle_point(&self, to_point: &FloatPoint) -> FloatPoint {
         let middle_x = 0.5 * (self.x + to_point.x);
         let middle_y = 0.5 * (self.y + to_point.y);
@@ -269,8 +233,6 @@ impl FloatPoint {
         }
     }
 
-    /// Turns this FloatPoint by factor times 90 degrees around pole. Java overload
-    /// `turn90Degree(int, FloatPoint)`.
     pub fn turn_90_degree_pole(&self, factor: i32, pole: &FloatPoint) -> FloatPoint {
         let v = self.subtract(pole);
         let v = v.turn_90_degree(factor);
@@ -296,8 +258,6 @@ impl FloatPoint {
         self.y >= min_y - tolerance && self.y <= max_y + tolerance
     }
 
-    /// Creates the smallest IntBox with integer coordinates containing this point, rounding
-    /// outward. Java `FloatPoint.boundingBox()`.
     pub fn bounding_box(&self) -> crate::int_box::IntBox {
         crate::int_box::IntBox::from_coords(
             self.x.floor() as i32,
@@ -307,15 +267,6 @@ impl FloatPoint {
         )
     }
 
-    /// Calculates the touching points of the tangents from this point to a circle around
-    /// to_point with radius distance. Solves the quadratic equation which results by
-    /// substituting x by the term in y from the equation of the polar line of a circle with
-    /// center to_point and radius distance and putting it into the circle equation. The polar
-    /// line is the line through the 2 tangential points of the circle looked at from this point
-    /// and has the equation `(this.x - toPoint.x) * (x - toPoint.x) + (this.y - toPoint.y) * (y -
-    /// toPoint.y) = distance**2`.
-    ///
-    /// Returns `None` if this point is inside the circle (Java returns an empty array there).
     pub fn tangential_points(
         &self,
         to_point: &FloatPoint,
@@ -408,37 +359,6 @@ impl FloatPoint {
         )
     }
 
-    /// Calculates the center of the circle through this point, p1 and p2 by calculating the
-    /// intersection of the two lines perpendicular to and passing through the midpoints of the
-    /// lines (this, p1) and (p1, p2).
-    ///
-    /// Java's `circleCenter` (FloatPoint.java:409-417) never returns `null`: for collinear
-    /// input, or when the segment from `this` to `p1` happens to be horizontal, the slope-based
-    /// formula divides by zero and Java returns a `FloatPoint` with a `NaN`/infinite coordinate
-    /// instead. This port surfaces that as `None` (checked with `f64::is_finite`), which is the
-    /// only sensible outcome for a caller — a `FloatPoint` full of `NaN` cannot denote a circle
-    /// center.
-    ///
-    /// # deferred to Task 13 (#82) — quirk #9, and why it is not fixed with #15/#16/#13
-    ///
-    /// The horizontal case is quirk **#9**, and Plan 9 Task 11 fixes the other three of
-    /// #15/#16/#9/#13 and deliberately leaves this one. It is the *mechanism* of **#82**, so
-    /// fixing it here would move #82's behaviour without #82's measurement; both ends of the split
-    /// name each other, and this arm lands with #82 in **Task 13**.
-    ///
-    /// The remedy is "swap the point roles for the horizontal case", and the reason that works is
-    /// worth recording where the fix will happen: the circumcentre **exists and is computable**,
-    /// and only the argument order decides whether it is found. Measured —
-    ///
-    /// ```text
-    /// circle_center((0,0), (1000,0), (1000,1000))   -> None            first pair horizontal
-    /// circle_center((1000,0), (1000,1000), (0,0))   -> None            first pair vertical
-    /// circle_center((1000,1000), (0,0), (1000,0))   -> Some((500,500)) the correct answer
-    /// ```
-    ///
-    /// — three of the six orders find the same circle the other three refuse.
-    /// `crates/fr-geometry/tests/nearest_and_stairs.rs::circle_center_is_deferred_to_task_13`
-    /// pins those three rows, so Task 13 inherits a before-picture rather than a promise.
     pub fn circle_center(&self, p1: &FloatPoint, p2: &FloatPoint) -> Option<FloatPoint> {
         let denominator =
             2.0 * (self.x * (p1.y - p2.y) + p1.x * (p2.y - self.y) + p2.x * (self.y - p1.y));
@@ -461,12 +381,6 @@ impl FloatPoint {
         }
     }
 
-    /// Returns true, if this point is contained in the circle through p1, p2 and p3.
-    ///
-    /// Java computes `p1.circleCenter(p2, p3)` unconditionally and lets a `NaN` center make the
-    /// final comparison `false` (any comparison against `NaN` is `false` in both Java and Rust).
-    /// Since `circle_center` returns `None` in exactly that situation, mapping `None` to `false`
-    /// reproduces the same observable result.
     pub fn inside_circle(&self, p1: &FloatPoint, p2: &FloatPoint, p3: &FloatPoint) -> bool {
         match p1.circle_center(p2, p3) {
             Some(center) => {
@@ -478,19 +392,6 @@ impl FloatPoint {
         }
     }
 
-    /// Formats one coordinate the way Java's `NumberFormat.getInstance(Locale.ENGLISH)` does with
-    /// `setMaximumFractionDigits(4)`: up to 4 fraction digits (trailing zeros dropped), and
-    /// thousands grouped with commas. Java's `toString()` always uses `Locale.ENGLISH`
-    /// regardless of the platform default, so this hard-codes the same formatting rather than
-    /// taking a locale parameter (Java's `toString(Locale)` overload, used only by other
-    /// locales, is not ported — GUI-only, unused outside `geometry/planar`).
-    ///
-    /// `NumberFormat.format` handles non-finite doubles specially rather than throwing: `NaN`
-    /// prints as `"NaN"`, and the infinities print as `"\u{221e}"`/`"-\u{221e}"` (verified against
-    /// a standalone `javac`/`java` run of `NumberFormat.getInstance(Locale.ENGLISH).format(...)`).
-    /// Handled before the fixed-precision path below, which would otherwise panic: `format!("{:.4}",
-    /// _)` renders non-finite values as `"NaN"`/`"inf"`/`"-inf"`, none of which contain a `.` for
-    /// `split_once` to find.
     fn format_component(value: f64) -> String {
         if value.is_nan() {
             return "NaN".to_string();
@@ -534,27 +435,6 @@ fn group_thousands(digits: &str) -> String {
 }
 
 impl fmt::Display for FloatPoint {
-    /// Java `toString()` (FloatPoint.java:486-489) always delegates to `toString(Locale.ENGLISH)`
-    /// (FloatPoint.java:469-473): `"(" + nf.format(x) + " , " + nf.format(y) + ")"` with
-    /// `NumberFormat.getInstance(Locale.ENGLISH)` and `setMaximumFractionDigits(4)`.
-    ///
-    /// Java's `toString(Locale)` (FloatPoint.java:469-473) and `toString(Locale, int, int)`
-    /// (FloatPoint.java:476-484) overloads — used only for other locales / GUI padded display —
-    /// are not ported.
-    ///
-    /// Two known deviations, both from Rust's `{:.4}` formatting the *exact binary expansion* of
-    /// the double where Java's `NumberFormat` formats its *shortest round-trip decimal digits*:
-    /// * doubles that are exact decimal ties at the 4th fraction digit round differently (e.g.
-    ///   `5.0E-5`, whose true binary value sits a hair above the decimal midpoint, rounds to
-    ///   `"0"` in Java's `HALF_EVEN` but `"0.0001"` here);
-    /// * doubles at or beyond `2^53` (`CRIT_DOUBLE`, e.g. `f32::MAX as f64`, which
-    ///   `RationalPoint::to_float` returns for a point at infinity) can render different digits
-    ///   entirely, since the exact binary expansion of such a magnitude no longer matches its
-    ///   shortest round-trip decimal representation.
-    ///
-    /// Neither arises from any finite PCB coordinate computed in this crate, so reproducing
-    /// Java's shortest-round-trip-then-round-half-even algorithm exactly was judged not worth the
-    /// complexity for a diagnostic `Display` impl.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -580,7 +460,6 @@ mod tests {
 
     #[test]
     fn round_to_the_right_of_direction() {
-        // Java: for dir UP (x==0, y>0): x is ceil'd, y is Math.round'd.
         let p = FloatPoint::new(1.2, 3.7);
         let r = p.round_to_the_right(&Direction::Int(IntDirection::UP));
         assert_eq!(r, IntPoint::new(2, 4));
@@ -614,12 +493,6 @@ mod tests {
 
     #[test]
     fn circle_center_and_inside_circle() {
-        // Corrected per Java (FloatPoint.java:409-416): the brief's original a=(0,0), b=(2,0),
-        // c=(0,2) makes slope1 == 0 (the segment `this`->p1 is horizontal), so Java's
-        // `centerY = (...)/ slope1 + ...` divides by zero and the *real* Java output for that
-        // input is (1.0, NaN), not (1.0, 1.0) — verified by running the formula standalone.
-        // Using a well-conditioned (non-axis-aligned) triangle instead; center and radius
-        // cross-checked by confirming a, b, c are equidistant from the computed center.
         let a = FloatPoint::new(1.0, 1.0);
         let b = FloatPoint::new(4.0, 2.0);
         let c = FloatPoint::new(2.0, 5.0);
@@ -648,11 +521,6 @@ mod tests {
         );
         let to_point = FloatPoint::new(10.0, 0.0);
         let t = origin.tangential_points(&to_point, 5.0).unwrap();
-        // Corrected per Java (FloatPoint.java:319-327): the tangential points lie on the circle
-        // *around to_point*, so their distance from to_point (not from the zero point / origin)
-        // is the radius. The brief's `p.size()` checks distance from the zero point, which here
-        // happens to equal `origin`, but that is the tangent *length* (sqrt(10^2 - 5^2) ≈ 8.66),
-        // not the radius — verified against the Java algorithm directly.
         for p in t {
             assert!((p.distance(&to_point) - 5.0).abs() < 1e-9);
         }
@@ -660,8 +528,6 @@ mod tests {
 
     #[test]
     fn display_matches_java_number_format() {
-        // Java `toString()`: "(" + nf.format(x) + " , " + nf.format(y) + ")", with
-        // NumberFormat.getInstance(Locale.ENGLISH), setMaximumFractionDigits(4), grouping on.
         assert_eq!(FloatPoint::new(1.5, -2.0).to_string(), "(1.5 , -2)");
         assert_eq!(
             FloatPoint::new(1_234_567.891_234, -0.0).to_string(),

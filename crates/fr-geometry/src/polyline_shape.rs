@@ -124,7 +124,6 @@ pub trait PolylineShapeOps {
 
     fn polar_line_segment(&self, from_point: &FloatPoint) -> Option<FloatLine> {
         if self.is_empty() {
-            // Java: FRLogger.warn("PolylineShape.polarLineSegment: shape is empty")
             return None;
         }
         let mut left_most_corner = self.corner_approx_at(0);

@@ -1,36 +1,3 @@
-//! Plan 9 Task 11, quirk #7: `IntBox.borderLineIndex` and `IntOctagon.borderLineIndex` were
-//! stubs that logged a warning and returned `-1` — for **any** line, including the shape's own
-//! border lines.
-//!
-//! The specification was already in the same file. `borderLine(i)` says exactly which line each
-//! index names, so `borderLineIndex` is its inverse and needs no external oracle:
-//!
-//! ```text
-//! IntBox b = [ll .. ur]
-//!   border_line(0) = Line((0, ll.y),  (1, ll.y))     lower, directed +x
-//!   border_line(1) = Line((ur.x, 0),  (ur.x, 1))     right, directed +y
-//!   border_line(2) = Line((0, ur.y),  (-1, ur.y))    upper, directed −x
-//!   border_line(3) = Line((ll.x, 0),  (ll.x, −1))    left,  directed −y
-//! ```
-//!
-//! `Simplex::border_line_index` (Simplex.java:668) has always been implemented, and it is
-//! implemented **geometrically**: `Line::equals_geometric`, i.e. Java's own `Line.equals`. The
-//! box and the octagon now answer the same way, so the three arms of
-//! `TileShape::border_line_index` finally agree about what an index means.
-//!
-//! ## The two traps
-//!
-//! **Orientation.** The freerouting tile convention is *the shape lies on the RIGHT of every
-//! border line*. The **reversed** line — the same point set, the opposite direction — is
-//! therefore not that border line, and must answer `None`. An implementation that only tests
-//! collinearity passes the round trip and is still wrong at the caller, because
-//! `ShapeAndEntrySide` uses the index to decide which side the trace enters from.
-//!
-//! **Shared points.** For a box anchored at the origin, `border_line(0)` and `border_line(3)`
-//! both pass through `(0,0)`. Equality by defining points alone is therefore not enough either.
-//! `equals_geometric` is collinearity of *both* end points **plus** a positive direction
-//! projection, which settles both traps at once.
-
 use fr_geometry::{IntBox, IntOctagon, IntPoint, Line, TileShape};
 
 fn box_() -> IntBox {
