@@ -523,12 +523,11 @@ fn a_user_fixed_contact_never_reaches_the_ripped_connections() {
     );
 }
 
-const RPI_SEQUENCE: [(u32, &str, f64, f64, usize); 5] = [
-    (86, "Via", 531_001.0, 2_346_089.0, 0),
-    (92, "Via", 546_813.0, 2_253_860.0, 0),
-    (41, "Via", 552_083.0, 1_806_420.0, 0),
-    (46, "Via", 666_000.0, 1_432_720.0, 0),
-    (127, "Via", 1_366_000.0, 1_007_139.0, 0),
+const RPI_SEQUENCE: [(u32, &str, f64, f64, usize); 4] = [
+    (47, "PolylineTrace", 666_000.0, 1_003_017.0, 0),
+    (91, "PolylineTrace", 856_000.0, 2_978_225.0, 0),
+    (90, "PolylineTrace", 856_000.0, 3_130_183.0, 0),
+    (92, "PolylineTrace", 1_366_000.0, 1_003_017.0, 0),
 ];
 
 #[test]
@@ -602,9 +601,11 @@ fn an_unimproved_item_restores_the_clone_byte_for_byte() {
     let optimizer_stop = RouterStop::new();
     let mut reader = ReadSortedRouteItems::new();
 
+    let before = board.structural_hash();
+    let id_before = board.communication.id_gen.max_generated_id();
     let first = reader.next(&board).expect("item 0");
-    assert_eq!(first.0, 86);
-    let improved = optimizer
+    assert_eq!(first.0, 47);
+    let unimproved = optimizer
         .opt_route_item(
             &mut board,
             first,
@@ -615,31 +616,14 @@ fn an_unimproved_item_restores_the_clone_byte_for_byte() {
             &mut sink,
         )
         .expect("optRouteItem answers Ok");
-    assert!(improved.improved(), "item 0 is improved=true");
-    let hash_after_first = board.structural_hash();
-    let id_after_first = board.communication.id_gen.max_generated_id();
-
-    let second = reader.next(&board).expect("item 1");
-    assert_eq!(second.0, 92);
-    let unimproved = optimizer
-        .opt_route_item(
-            &mut board,
-            second,
-            true,
-            false,
-            &optimizer_stop,
-            RouterBudget::disabled(),
-            &mut sink,
-        )
-        .expect("optRouteItem answers Ok");
-    assert!(!unimproved.improved(), "item 1 is improved=false");
+    assert!(!unimproved.improved(), "item 0 is improved=false");
     assert_eq!(
         board.structural_hash(),
-        hash_after_first,
+        before,
         "the clone restores the board the failed item started from"
     );
     assert!(
-        board.communication.id_gen.max_generated_id() > id_after_first,
+        board.communication.id_gen.max_generated_id() > id_before,
         "…but the ids the failed attempt burned stay burned (BasicBoard.undo:1233-1240)"
     );
 }

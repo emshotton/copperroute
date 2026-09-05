@@ -208,6 +208,8 @@ fn a_fully_routed_board_still_gets_an_optimizer_pass() {
     }
     let mut board = load_rpi();
     let mut settings = rpi_settings(&board);
+    settings.max_passes = Some(8);
+    settings.fanout.get_or_insert_with(Default::default).enabled = Some(true);
     AutorouteBatchLoop::run(
         &mut board,
         &settings,

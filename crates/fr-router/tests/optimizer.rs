@@ -98,7 +98,8 @@ fn build_settings(board: &Board) -> RouterSettings {
 fn routed_rpi() -> (Board, RouterSettings) {
     let mut board = load_board(RPI);
     let mut settings = build_settings(&board);
-    settings.max_passes = Some(1);
+    settings.fanout.get_or_insert_with(Default::default).enabled = Some(true);
+    settings.max_passes = Some(8);
     let stop = RouterStop::new();
     let mut sink = NoopProgressSink;
     AutorouteBatchLoop::run(
@@ -545,7 +546,7 @@ fn consecutive_failures_break_the_pass() {
             &mut sink,
         )
         .expect("the pass runs");
-    assert_eq!(optimizer.total_items_optimized, 6);
+    assert_eq!(optimizer.total_items_optimized, 9);
 }
 
 #[test]
@@ -572,7 +573,7 @@ fn an_auto_router_only_stop_still_runs_the_optimizer() {
         "the stage is not disabled — `:171` reads `ALL`"
     );
     assert_eq!(
-        result.items_optimized, 6,
+        result.items_optimized, 9,
         "it visits every item the reader offers, all of them `improved=false`"
     );
     assert_eq!(
@@ -605,7 +606,7 @@ fn an_auto_router_only_stop_still_runs_the_optimizer() {
         .run_batch_loop(&mut board, &stop, RouterBudget::disabled(), &mut sink)
         .expect("the stage runs");
 
-    assert_eq!(result.items_optimized, 6, "the same six items are visited");
+    assert_eq!(result.items_optimized, 9, "the same nine items are visited");
     assert!(
         result
             .per_pass
@@ -679,9 +680,13 @@ fn the_optimizer_stage_is_pinned_on_the_routed_rpi() {
     assert_eq!(result.state, TaskState::Finished);
     assert_eq!(
         result.passes_run, 2,
-        "pass 1 completed the board's last connection; pass 2 found nothing and ended the loop"
+        "pass 1 strips the fanout vias the router never needed; pass 2 finds nothing and ends \
+         the loop"
     );
-    assert_eq!(result.items_optimized, 12);
+    assert_eq!(
+        result.items_optimized, 15,
+        "nine items in pass 1, six in pass 2"
+    );
     assert!(!result.timed_out);
     assert!(
         !optimizer.use_increased_ripup_costs,
@@ -694,14 +699,16 @@ fn the_optimizer_stage_is_pinned_on_the_routed_rpi() {
     assert!(first.with_preferred_directions, ":200 — pass 1 is odd");
     assert_eq!(first.record.incomplete_count, 0);
     assert_eq!(first.record.clearance_violations, 0);
-    assert_eq!(first.record.via_count, 4);
-    assert_eq!(first.record.trace_count, 15);
-    assert_eq!(
-        first.pass_improvement, 1.0,
-        "a completed connection outranks any cost change"
+    assert_eq!(first.record.via_count, 2, "nine fanout vias down to two");
+    assert_eq!(first.record.trace_count, 14);
+    assert!(
+        first.pass_improvement > 0.5,
+        "seven vias at 50 mm each are most of the board's cost: {}",
+        first.pass_improvement
     );
     assert!(!first.force_another_pass);
     assert!(first.use_increased_ripup_costs);
+    assert!(first.route_improved > 0.0);
 
     let second = result.per_pass[1];
     assert_eq!(second.pass, 2);
@@ -710,8 +717,8 @@ fn the_optimizer_stage_is_pinned_on_the_routed_rpi() {
     assert_eq!(second.route_improved, -1.0, ":365-368's sentinel");
     assert!(!second.use_increased_ripup_costs);
     assert_eq!(second.record.incomplete_count, 0);
-    assert_eq!(second.record.via_count, 4);
-    assert_eq!(second.record.trace_count, 15);
+    assert_eq!(second.record.via_count, 2);
+    assert_eq!(second.record.trace_count, 14);
 }
 
 /// `sum of incompleteCount * passesRun` per item -- at [`PORT_OPTIMIZER_ROUTE_WORK_BUDGET`], and
