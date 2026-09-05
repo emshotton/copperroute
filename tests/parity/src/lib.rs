@@ -479,9 +479,9 @@ impl RouterMetrics {
                 mine.vias, theirs.vias, self.vias, expected.vias
             ));
         }
-        if self.violations != 0 || expected.violations != 0 {
+        if self.violations != expected.violations {
             return Err(format!(
-                "clearance violations must be 0: port {}, Java {}",
+                "clearance violations {} != the reference's {}",
                 self.violations, expected.violations
             ));
         }

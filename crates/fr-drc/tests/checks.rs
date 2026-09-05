@@ -1,6 +1,7 @@
 mod common;
 
 use common::synthetic::{PadSpec, SyntheticBoard};
+use fr_board::prelude::FixedState;
 use fr_board::{DrcConstraints, ItemId};
 use fr_drc::checks::edge;
 use fr_drc::checks::geometry::{gap_below, hole_of, is_microvia, is_through_hole_pin, item_shapes};
@@ -599,4 +600,23 @@ fn statistics_sum_the_shortfall_in_micrometres() {
     assert_eq!(stats.min_violation_um, Some(40.0));
     assert_eq!(stats.max_violation_um, Some(150.0));
     assert_eq!(stats.avg_violation_um, Some(95.0));
+}
+
+#[test]
+fn a_trace_crossing_a_conduction_area_on_another_net_reports_nothing() {
+    let mut synthetic = SyntheticBoard::new(&[], 2, 2000);
+    synthetic.board.insert_conduction_area(
+        fr_geometry::Area::Shape(fr_geometry::Shape::Tile(TileShape::Box(
+            IntBox::from_coords(-20_000, -20_000, 20_000, 20_000),
+        ))),
+        0,
+        vec![2],
+        1,
+        false,
+        FixedState::Unfixed,
+    );
+    synthetic.trace(&[(-30_000, 0), (30_000, 0)], 0, 500, 1);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
+    assert!(out.is_empty(), "{out:?}");
 }

@@ -39,10 +39,7 @@ pub fn gap_below(a: &TileShape, b: &TileShape, clearance: i32) -> Option<(f64, F
 
 #[must_use]
 pub fn is_copper(item: &Item) -> bool {
-    matches!(
-        item.kind(),
-        ItemKind::Trace | ItemKind::Via | ItemKind::Pin | ItemKind::ConductionArea
-    )
+    matches!(item.kind(), ItemKind::Trace | ItemKind::Via | ItemKind::Pin)
 }
 
 #[must_use]
