@@ -1,37 +1,3 @@
-// Plan 5 Task 6 JVM probe: `DesignRulesChecker.calculateAllIncompletes` and the eight lazy
-// accessors that hang off it, plus `BoardStatistics`' clearance-statistics block.
-//
-// The companion of `NetIncompletesProbe.java`, which dumps the *per net* `NetIncompletes` state.
-// This one dumps the parts Task 6 owns and that probe does not print:
-//
-//   * `maxConnections` (DesignRulesChecker.java:567-577) — the public field
-//     `calculateAllIncompletes` writes, read by `BoardStatistics.connections.maximumCount`;
-//   * `getIncompleteCount()` (`:663-706`), `getAllAirlines().length` (`:780-798`) and the per-net
-//     `getIncompleteCount(int)` (`:708-734`), whose sum the Java test asserts equals the total
-//     (`RatsnestClearanceHeadlessTest.java:69-74`);
-//   * `getLengthViolationCount()` (`:736-748`), `getLengthViolation(int)` (`:750-763`) and
-//     `recalculateLengthViolations()` (`:765-778`);
-//   * the clearance block of `BoardStatistics` (`BoardStatistics.java:338-367`) —
-//     `clearanceViolations.{totalCount,minViolationUm,maxViolationUm,avgViolationUm}` — computed
-//     here from `getAllClearanceViolations()` and `boardUnitToUmFactor` (`BoardStatistics.java:200`)
-//     exactly as that block does, because `BoardStatistics` itself is Plan 8's (plan-5 ruling 5).
-//
-// All of these are **hash-independent** (plan-5 ruling 4): they are counts and lengths, not the
-// airline endpoints. Verified by the `-XX:hashCode=0..4` sweep recorded in `README.md`.
-//
-// Transcript format (`<stem>.incompletes.txt`):
-//
-//   maxConnections <int>
-//   incompleteCount <int>
-//   airlines <int>
-//   lengthViolationCount <int>
-//   recalculateLengthViolations <true|false>
-//   perNetIncompleteSum <int>
-//   net=<n> incompleteCount=<int> lengthViolation=<Double.toString>      (one per net, ascending)
-//   boardUnitToUmFactor <Double.toString>
-//   clearanceViolations totalCount=<int> min=<D> max=<D> avg=<D>
-//
-// Usage: java -Djava.awt.headless=true -cp <jar>:. IncompletesProbe <board.dsn> <out-stem>
 import app.freerouting.board.facade.BasicBoard;
 import app.freerouting.board.model.structure.Unit;
 import app.freerouting.drc.ClearanceViolation;
@@ -85,7 +51,6 @@ public class IncompletesProbe {
     sb.append("perNetIncompleteSum ").append(sumPerNet).append('\n');
     sb.append(perNet);
 
-    // BoardStatistics.java:200-202 and :338-367, transcribed.
     double boardUnitToUmFactor =
         Unit.scale(1.0, board.communication.unit, Unit.UM)
             / (board.communication.resolution > 0 ? board.communication.resolution : 1);

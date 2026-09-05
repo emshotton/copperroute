@@ -1,37 +1,3 @@
-//! Plan 7 Task 15b: the corpus replay of `probes/P7T15bProbe.java`.
-//!
-//! The probe loads each of the sixteen parity-corpus DSNs through the **real**
-//! `HeadlessBoardManager.loadFromSpecctraDsn`, nine times per board, with
-//! `router.copper_to_edge_clearance_um` / `router.hole_clearance_um` forced to a different pair
-//! each time, and prints the resulting clearance-matrix, outline-class, `holeClearance` and
-//! hole-keepout state. Its stdout is committed verbatim as
-//! `tests/data/p7t15b-clearance-overrides.txt`.
-//!
-//! This test re-derives every one of those blocks from the port: it loads the same DSN once
-//! through `fr_dsn::read_board` (which answers the pristine board, i.e. the probe's variant A),
-//! clones it per variant, runs [`fr_router::pipeline::prepare_board`] with the variant's two
-//! settings values, and renders the probe's own line format from the resulting `Board`. A
-//! mismatch prints the two blocks side by side.
-//!
-//! # What each variant proves
-//!
-//! * **A** — the port's loader and Java's agree on the pristine board, so every later diff is
-//!   the override's and not the reader's.
-//! * **B** / **D** — `applyCopperToEdgeClearanceOverride` at the real merged 500 µm: the
-//!   `board_edge` class, its row *and* column on every layer, and the re-pointed outline. It
-//!   fires on 15 of the 16 boards; `router-rpi-splitter` early-returns through the `:501-507`
-//!   guard because its outline carries an explicit `boundary` class (quirk #231).
-//! * **C** — `applyHoleClearanceOverride` at the real merged 0 µm: fires on all 16 and changes
-//!   nothing, which is why the gap went unnoticed for six plans.
-//! * **E** / **F** — the non-default hole path at 100 µm and 500 µm, i.e. the µm → board-unit
-//!   conversion (board-resolution dependent: 100 µm is 1 000 units on five boards and 10 000 on
-//!   `router-rpi-splitter`), the `hole_edge` class, the `Math.max` floor, and the reclassified
-//!   circular component keepouts.
-//! * **G** / **H** — the two negative early returns.
-//! * **I** — a **non-default** copper value (0.0), which the `:501-507` guard cannot stop: it
-//!   mutates even `router-rpi-splitter`. This is the arm that shows the guard keys on the
-//!   *value*, not on the board.
-
 use std::collections::BTreeMap;
 
 use fr_board::{Board, Item, ItemClass};
@@ -44,17 +10,6 @@ use fr_settings::{HostEnvironment, SettingsSource};
 
 const TRANSCRIPT: &str = include_str!("data/p7t15b-clearance-overrides.txt");
 
-/// The stems this test replays in CI. The other seven are heavy enough in a debug build to
-/// dominate `cargo test`, so they run under `FR_SLOW_PARITY=1` like the rest of the corpus-wide
-/// parity tests (ruling AM).
-///
-/// The five are chosen for coverage, not for size: `router-rpi-splitter` is the one board the
-/// copper override early-returns on *and* the one imperial-resolution board (100 µm = 10 000
-/// units), `router-dac2020-bm01` is the 13 000 → 63 000 matrix-sum row from the banked evidence,
-/// `router-j2-reference` is the board the 15 254 B / 14 644 B SES measurement was taken on,
-/// `drc-dev-board` has both a named non-default clearance class (`Power`) and four circular
-/// keepouts, and `batch-empty-board` is the all-zero matrix that becomes a pure 500 µm edge
-/// keep-out.
 const CI_STEMS: &[&str] = &[
     "router-rpi-splitter",
     "router-dac2020-bm01",
@@ -82,7 +37,6 @@ struct BoardBlock {
     variants: Vec<Variant>,
 }
 
-/// `-` is the probe's spelling of Java's `null`.
 fn parse_optional(field: &str) -> Option<f64> {
     if field == "-" {
         None
@@ -130,8 +84,6 @@ fn parse_transcript() -> Vec<BoardBlock> {
 // The port's side of the same block
 // =================================================================================================
 
-/// The headless ladder's priority-0 source, the same one `P6T1.java` and
-/// `crates/fr-router/tests/fixtures.rs` use.
 fn default_settings() -> RouterSettings {
     DefaultSettings::new(&HostEnvironment::detect())
         .get_settings()
@@ -196,7 +148,6 @@ fn render(board: &mut Board, name: &str, copper: Option<f64>, hole: Option<f64>)
         .get(default_net_class)
         .default_item_clearance_classes
         .get(ItemClass::Area);
-    // The probe prints `-1` for a board with no outline (Java's `null`).
     let outline_class = board
         .get_outline()
         .and_then(|id| board.get_item(id))
@@ -209,9 +160,6 @@ fn render(board: &mut Board, name: &str, copper: Option<f64>, hole: Option<f64>)
         board.rules.get_hole_clearance()
     ));
 
-    // HeadlessBoardManager.java:411-423, transcribed: the exact `ObstacleArea` class, a component
-    // id above zero and a circular area. `BTreeMap` is Java's `TreeMap`, i.e. ordered by class
-    // index.
     let mut keepout_classes: BTreeMap<usize, usize> = BTreeMap::new();
     let mut keepout_count = 0usize;
     {
@@ -269,8 +217,6 @@ fn render(board: &mut Board, name: &str, copper: Option<f64>, hole: Option<f64>)
     out
 }
 
-/// `Double.toString` for the two values the probe prints back — both are whole numbers here, so
-/// Java's shortest round-tripping form is `<n>.0`.
 fn format_optional(value: Option<f64>) -> String {
     match value {
         None => "-".to_string(),
@@ -283,6 +229,32 @@ fn format_optional(value: Option<f64>) -> String {
 // The tests
 // =================================================================================================
 
+/// The `(stem, variant)` pairs on which the port deliberately disagrees with the committed jar
+/// transcript, each with its register row and its reason.
+///
+/// Both directions are checked by [`replay`]: a pair that differs without an entry fails, and an
+/// entry whose pair no longer differs fails.
+const KNOWN_DIVERGENCES: &[(&str, &str, &str, &str)] = &[
+    (
+        "router-rpi-splitter",
+        "B",
+        "#231",
+        "the one corpus board whose outline (`boundary`) carries an explicit, non-fallback DSN \
+         clearance class, and so the only one Java's `:501-507` guard could stop. The jar \
+         early-returns at the default 500 µm and leaves the board pristine; the port applies it, \
+         appending `board_edge`, writing 500 µm into its row and column on every layer and \
+         re-pointing the outline — the same thing it does on the other fifteen. Quirk #231's fix \
+         made the option continuous, so this board is no longer the exception.",
+    ),
+    (
+        "router-rpi-splitter",
+        "D",
+        "#231",
+        "B's divergence with the 0 µm hole override beside it; the hole half is identical on both \
+         sides and contributes nothing to the diff.",
+    ),
+];
+
 fn replay(stems: &[&str]) {
     let transcript = parse_transcript();
     assert_eq!(
@@ -291,6 +263,7 @@ fn replay(stems: &[&str]) {
         "the committed transcript should carry the whole sixteen-board corpus"
     );
     let mut replayed = 0usize;
+    let mut diverged: Vec<(String, String)> = Vec::new();
     for board_block in &transcript {
         if !stems.contains(&board_block.stem.as_str()) {
             continue;
@@ -309,15 +282,29 @@ fn replay(stems: &[&str]) {
             settings.hole_clearance_um = variant.hole;
             prepare_board(&mut board, &settings);
             let actual = render(&mut board, &variant.name, variant.copper, variant.hole);
-            assert_eq!(
-                actual.trim_end(),
-                variant.block.trim_end(),
-                "{} variant {}: the port's board disagrees with the jar's\n--- port ---\n{}\n--- jar ---\n{}",
+            let known = KNOWN_DIVERGENCES
+                .iter()
+                .find(|(stem, name, _, _)| *stem == board_block.stem && *name == variant.name);
+            if actual.trim_end() == variant.block.trim_end() {
+                if let Some((stem, name, row, reason)) = known {
+                    panic!(
+                        "`{stem}` variant {name} now MATCHES the jar — delete its \
+                         KNOWN_DIVERGENCES entry ({row}: {reason})"
+                    );
+                }
+                continue;
+            }
+            assert!(
+                known.is_some(),
+                "{} variant {}: the port's board disagrees with the jar's and no \
+                 KNOWN_DIVERGENCES entry names it — add one with the register row that \
+                 authorises it\n--- port ---\n{}\n--- jar ---\n{}",
                 board_block.stem,
                 variant.name,
                 actual,
                 variant.block
             );
+            diverged.push((board_block.stem.clone(), variant.name.clone()));
         }
         replayed += 1;
     }
@@ -326,6 +313,18 @@ fn replay(stems: &[&str]) {
         stems.len(),
         "every requested stem must be present in the transcript"
     );
+    // The other direction, for the stems this call actually replayed: every entry whose stem was
+    // in scope must have been exercised.
+    for (stem, name, row, reason) in KNOWN_DIVERGENCES {
+        if !stems.contains(stem) {
+            continue;
+        }
+        assert!(
+            diverged.iter().any(|(s, n)| s == stem && n == name),
+            "`{stem}` variant {name} was replayed and did not diverge — delete its \
+             KNOWN_DIVERGENCES entry ({row}: {reason})"
+        );
+    }
 }
 
 #[test]
@@ -351,9 +350,10 @@ fn p7t15b_transcript_matches_on_the_whole_corpus() {
 }
 
 /// `fr-board` cannot depend on `fr-settings`, so
-/// [`fr_board::DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM`] — which the `:501-507` guard compares
-/// against — is a second copy of `DefaultSettings.DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM`. This is
-/// the assertion that keeps the two from drifting apart.
+/// [`fr_board::DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM`] is a second copy of
+/// `DefaultSettings.DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM`. Quirk #231's fix removed the
+/// `:501-507` comparison that used to read it, but the constant is still the default a CLI run
+/// carries; this is the assertion that keeps the two from drifting apart.
 #[test]
 fn the_two_copies_of_the_default_copper_to_edge_clearance_agree() {
     assert_eq!(
@@ -362,9 +362,6 @@ fn the_two_copies_of_the_default_copper_to_edge_clearance_agree() {
     );
 }
 
-/// The headless ladder's priority-0 source fills both knobs, so a real CLI run reaches both
-/// overrides — `DefaultSettings.java:78, :81`. Without this, `prepare_board` would be a
-/// no-op-by-omission rather than by design.
 #[test]
 fn the_default_settings_ladder_fills_both_override_knobs() {
     let settings: RouterSettings = default_settings();
@@ -372,10 +369,6 @@ fn the_default_settings_ladder_fills_both_override_knobs() {
     assert_eq!(settings.hole_clearance_um, Some(0.0));
 }
 
-/// `prepare_board` skips an override whose setting is `None`, which is Java's
-/// `routerSettings.copperToEdgeClearanceUm == null` guard (HeadlessBoardManager.java:470-471,
-/// :350-351) — and it applies copper **before** hole, which is what makes `board_edge` take the
-/// lower class index when both fire.
 #[test]
 fn prepare_board_skips_a_none_setting_and_orders_copper_before_hole() {
     if !parity::require_java_dir() {

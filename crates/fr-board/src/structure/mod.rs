@@ -1,10 +1,3 @@
-//! Board structural model: layers, the layer stack, the small structural enums that describe
-//! them, and the board's components.
-//!
-//! Java: `board/model/structure/*.java`. `BoardOutline` is an `Item` — one of the nine
-//! [`crate::items::Item`] variants — but it lives here, in [`board_outline`], to match its Java
-//! package; [`crate::items`] re-exports it.
-
 pub mod board_outline;
 pub mod component;
 pub mod layer;

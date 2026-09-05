@@ -1,19 +1,3 @@
-//! `Library.readScope`/`writeScope`, `Package` and `PartLibrary`.
-//!
-//! Java authority: `io/specctra/parser/{Library,Package,PartLibrary}.java`.
-//! Every expected number and string below was produced by running the pinned 2.3.0 jar once (or
-//! read out of `tests/reference/`, itself generated with that jar); the command that produced it
-//! is recorded on the test.
-//!
-//! The probe the read tests cite is `LibProbe.java` — a throwaway `DsnReader.readBoard` +
-//! `board.library` dump, compiled and run as
-//! ```text
-//! javac -cp tools/freerouting-2.3.0.jar -d <dir> LibProbe.java
-//! java -Djava.awt.headless=true -cp <dir>:tools/freerouting-2.3.0.jar LibProbe <file.dsn>
-//! ```
-//! with `/opt/homebrew/opt/openjdk@25/bin/{javac,java}`. Its body is reproduced in
-//! `.superpowers/sdd/2026-08-28-plan-3-dsn/task-7-report.md`.
-
 use std::io::Write;
 
 use fr_board::PadstackId;
@@ -25,7 +9,6 @@ use fr_dsn::parser::scope_parameter::{
     DsnReadOptions, ReadScopeParameter, WriteScopeParameter, read_scope,
 };
 
-/// Reads a whole `(pcb …)` file the way a later task's `DsnReader::read_board` will.
 fn read_pcb<T>(text: &str, f: impl FnOnce(bool, &mut ReadScopeParameter<'_>) -> T) -> T {
     let options = DsnReadOptions::default();
     let scanner = DsnScanner::new(text);
@@ -39,17 +22,11 @@ fn read_pcb<T>(text: &str, f: impl FnOnce(bool, &mut ReadScopeParameter<'_>) -> 
     f(ok, &mut p)
 }
 
-/// A fixture out of the sibling Java checkout, located through [`parity::fixture`] — so
-/// `FREEROUTING_JAVA_DIR` is honoured and the suite works in a `git worktree`, where the
-/// hard-coded `../../../freerouting` this used to spell resolves to nothing.
 fn fixture(name: &str) -> String {
     let path = parity::fixture(name);
     std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("fixture {}: {e}", path.display()))
 }
 
-/// The `(library …)` block of a committed 2.3.0 reference round-trip, dedented by the two
-/// spaces the enclosing `(pcb …)` scope adds, so it can be compared against a writer run at
-/// indent level 0.
 fn reference_scope(design: &str, header: &str) -> String {
     let path = parity::reference(design, "roundtrip.dsn");
     let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
@@ -69,13 +46,10 @@ fn reference_scope(design: &str, header: &str) -> String {
         }
     }
     assert!(inside, "no `{header}` scope in {}", path.display());
-    // The writers emit no trailing newline after the closing bracket.
     out.pop();
     out
 }
 
-/// Runs `write` against the board a read of `text` produced, returning the bytes, with the
-/// leading newline `IndentFileWriter.startScope()` always emits stripped.
 fn write_with(text: &str, write: impl FnOnce(&mut WriteScopeParameter<'_>)) -> String {
     read_pcb(text, |ok, p| {
         assert!(ok);
@@ -94,7 +68,6 @@ fn write_with(text: &str, write: impl FnOnce(&mut WriteScopeParameter<'_>)) -> S
     })
 }
 
-/// The two-layer preamble the synthetic fixtures below share.
 fn synthetic(body: &str) -> String {
     format!(
         "(pcb synthetic.dsn\n  (parser\n    (string_quote \")\n  )\n  (resolution um 10)\n  \
@@ -104,19 +77,8 @@ fn synthetic(body: &str) -> String {
     )
 }
 
-// ------------------------------------------------------------------- Library.readScope
-
 #[test]
 fn issue026_library_scope_reads_five_padstacks_and_two_packages() {
-    // LibProbe on ../freerouting/fixtures/Issue026-J2_reference.dsn:
-    //   padstackCount=5
-    //   padstack 1 name='Round[A]Pad_1358_um' from_layer=0 to_layer=1 attach_allowed=false
-    //             placed_absolute=false
-    //   padstack 2 name='Rect[T]Pad_2680x3600_um' from_layer=0 to_layer=0
-    //   packageCount=2
-    //   package 1 name='TE_1888019-6:TE_1888019-6' pinCount=42 isFront=true outlines=17
-    //             keepouts=4 viaKeepouts=0 placeKeepouts=0
-    //   package 2 name='TE_1-84953-5:TE_1-84953-5' pinCount=17 isFront=true outlines=0
     let text = fixture("Issue026-J2_reference.dsn");
     read_pcb(&text, |ok, p| {
         assert!(ok);
@@ -151,11 +113,6 @@ fn issue026_library_scope_reads_five_padstacks_and_two_packages() {
 
 #[test]
 fn issue026_pin_padstacks_and_relative_locations_match_java() {
-    // LibProbe, same command:
-    //   pin 0 name='S1' padstack=1 rel=(-89000.0,-57200.0) rot=0.0
-    //   pin 16 name='A6' padstack=3 rel=(-26000.0,51800.0) rot=0.0
-    //   pin 41 name='B18' padstack=3 rel=(66000.0,76900.0) rot=0.0
-    //   package 2: pin 16 name='PAD.' padstack=2 rel=(99891.0,1980.0) rot=0.0
     let text = fixture("Issue026-J2_reference.dsn");
     read_pcb(&text, |ok, p| {
         assert!(ok);
@@ -185,11 +142,6 @@ fn issue026_pin_padstacks_and_relative_locations_match_java() {
 
 #[test]
 fn issue026_keepout_names_are_generated_when_the_dsn_leaves_them_empty() {
-    // LibProbe, same command:
-    //   keepout 0 name='keepout_1' layer=0 area=Circle: center (-80000,0)radius 7,950
-    //   keepout 1 name='keepout_2' layer=1
-    //   keepout 2 name='keepout_3' layer=0 area=Circle: center (80000,0)radius 7,950
-    //   keepout 3 name='keepout_4' layer=1
     let text = fixture("Issue026-J2_reference.dsn");
     read_pcb(&text, |ok, p| {
         assert!(ok);
@@ -205,9 +157,6 @@ fn issue026_keepout_names_are_generated_when_the_dsn_leaves_them_empty() {
 
 #[test]
 fn a_padstack_with_no_shape_on_the_top_layer_starts_at_layer_one() {
-    // LibProbe on the synthetic file below (written to a temp path and read the same way):
-    //   padstack 1 name='BOTTOMONLY' from_layer=1 to_layer=1 attach_allowed=true
-    //             placed_absolute=true shape0=null shape1=IntBox
     let text = synthetic(
         "  (library\n    (padstack BOTTOMONLY\n      (shape (rect B.Cu -100 -100 100 100))\n      \
          (absolute on)\n    )\n  )",
@@ -220,7 +169,6 @@ fn a_padstack_with_no_shape_on_the_top_layer_starts_at_layer_one() {
         assert_eq!(padstack.name, "BOTTOMONLY");
         assert_eq!(padstack.from_layer(), 1);
         assert_eq!(padstack.to_layer(), 1);
-        // `(attach off)` absent -> Java's `isDrilllable` stays true.
         assert!(padstack.attach_allowed);
         assert!(padstack.placed_absolute);
         assert!(padstack.get_shape(0).is_none());
@@ -230,10 +178,6 @@ fn a_padstack_with_no_shape_on_the_top_layer_starts_at_layer_one() {
 
 #[test]
 fn pin_coordinates_are_rounded_with_javas_half_up_rule() {
-    // LibProbe on the same synthetic file: `(pin BOTTOMONLY 1 100.55 -200.55)` at resolution 10
-    // gives `pin 0 name='1' padstack=1 rel=(1006.0,-2005.0) rot=0.0` — `Math.round` is half-up
-    // *towards positive infinity*, so -2005.5 rounds to -2005, not -2006 (Library.java:317,319).
-    // `(pin BOTTOMONLY (rotate 90) 2 0 0)` gives `pin 1 name='2' rel=(0.0,0.0) rot=90.0`.
     let text = synthetic(
         "  (library\n    (image IMG\n      (side back)\n      (pin BOTTOMONLY 1 100.55 \
          -200.55)\n      (pin BOTTOMONLY (rotate 90) 2 0 0)\n    )\n    (padstack BOTTOMONLY\n   \
@@ -256,14 +200,6 @@ fn pin_coordinates_are_rounded_with_javas_half_up_rule() {
 
 #[test]
 fn package_outlines_keepouts_and_side_match_java() {
-    // LibProbe on the synthetic file below:
-    //   package 1 name='IMG' pinCount=1 isFront=false outlines=2 keepouts=1 viaKeepouts=1
-    //             placeKeepouts=1
-    //   keepout 0 name='keepout_1' layer=0
-    //   viaKeepout 0 name='vk' layer=1
-    //   placeKeepout 0 name='pk' layer=0
-    //   outline 0 width=100.0 closed=true
-    //   outline 1 width=0.0 closed=true
     let text = synthetic(
         "  (library\n    (image IMG\n      (side back)\n      (pin BOTTOMONLY 1 0 0)\n      \
          (outline (path signal 100  0 0  1000 0  1000 1000  0 0))\n      (outline (rect signal \
@@ -299,8 +235,6 @@ fn package_outlines_keepouts_and_side_match_java() {
 
 #[test]
 fn an_open_path_outline_is_not_closed() {
-    // The control for the `closed=true` case above: LibProbe on the same file with the path's
-    // last corner moved off its first prints `outline 0 width=100.0 closed=false`.
     let text = synthetic(
         "  (library\n    (image IMG\n      (outline (path signal 100  0 0  1000 0  1000 \
          1000))\n    )\n  )",
@@ -317,11 +251,6 @@ fn an_open_path_outline_is_not_closed() {
 
 #[test]
 fn a_second_image_with_the_same_name_and_the_same_pins_is_deduplicated() {
-    // Library.readScope's `::<n>` loop (Library.java:409-449): an identical repeat is dropped,
-    // a differing one is added as `<name>::1`. LibProbe on the file below prints
-    //   packageCount=2
-    //   package 1 name='IMG' pinCount=1
-    //   package 2 name='IMG::1' pinCount=1
     let text = synthetic(
         "  (library\n    (image IMG\n      (pin PS 1 0 0)\n    )\n    (image IMG\n      (pin PS 1 \
          0 0)\n    )\n    (image IMG\n      (pin PS 1 100 0)\n    )\n    (padstack PS\n      \
@@ -338,8 +267,6 @@ fn a_second_image_with_the_same_name_and_the_same_pins_is_deduplicated() {
 
 #[test]
 fn a_repeated_padstack_name_keeps_the_first_definition() {
-    // Library.readPadstackScope:158-161 — `if (boardPadstacks.get(name) != null) return true;`.
-    // LibProbe on the file below prints `padstackCount=1` with `from_layer=0 to_layer=0`.
     let text = synthetic(
         "  (library\n    (padstack PS\n      (shape (rect F.Cu -100 -100 100 100))\n    )\n    \
          (padstack PS\n      (shape (rect B.Cu -100 -100 100 100))\n    )\n  )",
@@ -353,14 +280,8 @@ fn a_repeated_padstack_name_keeps_the_first_definition() {
     });
 }
 
-// ------------------------------------------------------------------ Library.writeScope
-
 #[test]
 fn write_padstack_scope_emits_the_2_3_0_bytes_for_a_round_via_pad() {
-    // `tests/reference/tutorial_board/roundtrip.dsn:50-58`, generated by
-    // `./scripts/gen-reference.sh` against tools/freerouting-2.3.0.jar. `Circle.writeScope`
-    // writes all three `coor` entries, so the diameter is followed by the centre — the plan
-    // brief's `(shape (circle F.Cu 600.0))` is one datum short (Java wins).
     let text = synthetic(
         "  (library\n    (padstack VIA\n      (shape (circle F.Cu 600 0 0))\n      (shape (circle \
          B.Cu 600 0 0))\n      (attach off)\n    )\n  )",
@@ -384,37 +305,13 @@ fn write_padstack_scope_emits_the_2_3_0_bytes_for_a_round_via_pad() {
 
 #[test]
 fn write_library_scope_reproduces_the_2_3_0_reference_bytes() {
-    // Bit-parity against `tests/reference/Issue026-J2_reference/roundtrip.dsn`'s `(library …)`
-    // block (lines 118-444), generated by `./scripts/gen-reference.sh` against
-    // tools/freerouting-2.3.0.jar. Nothing after `Library.readScope` mutates
-    // `board.library.padstacks`/`.packages` in the DSN reader, so a library-only read is enough
-    // to reproduce the block byte for byte.
     let text = fixture("Issue026-J2_reference.dsn");
     let out = write_with(&text, write_library_scope);
     assert_eq!(out, reference_scope("Issue026-J2_reference", "library"));
 }
 
-// ------------------------------------------------------------------------- PartLibrary
-
 #[test]
 fn part_library_scope_reads_logical_parts_and_mappings() {
-    // LibProbe on a synthetic file with the same `part_library` scope (plus the `placement`,
-    // `library` and `network` scopes `Network.insertLogicalParts` needs) prints
-    //   logicalPartCount=1
-    //   logicalPart 1 name='LP1' pinCount=2
-    //     partPin 0 index=0 pin='1' gate='GATEA' gateSwap=3 gatePin='A' gatePinSwap=4
-    //     partPin 1 index=1 pin='2' gate='GATEA' gateSwap=3 gatePin='B' gatePinSwap=4
-    // That probe output is the **board-side** `LogicalPart`, i.e. the state *after*
-    // `Network.insertLogicalParts` has run and `LogicalParts.add` has sorted the pins by index —
-    // which is why it reads `1`, `2` where the file says `2`, `1`. It is therefore evidence for
-    // Task 9's stage, not this one, and is quoted only to show the field values.
-    //
-    // This test observes the stage before that sort: `PartLibrary.readScope` appends each
-    // `LogicalPart` to `scopeParameter.logicalParts` in *file* order (PartLibrary.java:117) and
-    // builds its `partPinArr` straight from the `(pin …)` sub-scopes in the order it reads them,
-    // with nothing in the method reordering them. So the assertions below are file order,
-    // `2` then `1`. The sorted board-side order belongs to `Network.insertLogicalParts`
-    // (Plan 3 Task 9) and is not pinned by any test here.
     let text = synthetic(
         "  (part_library\n    (logical_part_mapping LP1\n      (comp U2 U1)\n    )\n    \
          (logical_part LP1\n      (pin 2 0 GATEA 3 B 4)\n      (pin 1 0 GATEA 3 A 4)\n    )\n  )",
@@ -436,46 +333,16 @@ fn part_library_scope_reads_logical_parts_and_mappings() {
         assert_eq!(p.logical_part_mappings.len(), 1);
         let mapping = &p.logical_part_mappings[0];
         assert_eq!(mapping.name, "LP1");
-        // Java's `SortedSet<String>` (a `TreeSet`) — sorted, not file order.
         assert_eq!(mapping.components, ["U1", "U2"]);
     });
 }
 
 #[test]
 fn write_part_library_scope_emits_the_2_3_0_logical_part_literal() {
-    // Plan ruling 1: `PartLibrary.writeScope` at the clone's HEAD writes `"logicalPart "`
-    // (PartLibrary.java:58), one of the fifteen camelCased regressions; 2.3.0 writes
-    // `"logical_part "`, and that is what the port emits. Verified against the pinned jar:
-    //   javap -c -p -cp tools/freerouting-2.3.0.jar \
-    //       app.freerouting.io.specctra.parser.PartLibrary | grep -A2 'ldc.*logical'
-    // shows `String logical_part_mapping ` and `String logical_part `.
-    //
-    // No fixture in ../freerouting/fixtures carries a `part_library` scope, so the bytes were
-    // pinned by round-tripping a synthetic one through the 2.3.0 writer:
-    //   javac -cp tools/freerouting-2.3.0.jar -d <dir> scripts/gen-reference/RefWriter.java
-    //   java -Djava.awt.headless=true -cp <dir>:tools/freerouting-2.3.0.jar RefWriter \
-    //        parts.dsn parts.out.dsn parts.out.ses
-    // whose `parts.out.dsn:56-65` reads (the `logical_part` line is followed by a blank line
-    // carrying the scope's four-space indent, from `writeScope`'s `newLine()` + the per-pin
-    // `newLine()`):
-    //   (part_library
-    //     (logical_part_mapping LP1
-    //       (comp U1)
-    //     )
-    //     (logical_part LP1
-    //
-    //       (pin "1" 0 GATEA 3 A 4)
-    //       (pin "2" 0 GATEA 3 B 4)
-    //     )
-    //   )
-    // The pin *name* goes through `IdentifierType.write`, which quotes anything matching
-    // `^-?\d.*`; the two swap codes go through `String.valueOf(int)` and stay bare.
     let text = synthetic(
         "  (part_library\n    (logical_part_mapping LP1\n      (comp U1)\n    )\n    \
          (logical_part LP1\n      (pin 1 0 GATEA 3 A 4)\n    )\n  )",
     );
-    // The board has no components (the `placement` reader is Task 8's), so the `(comp …)` list
-    // is empty; the logical parts themselves come from the read.
     read_pcb(&text, |ok, p| {
         assert!(ok);
         let coordinate_transform = p.coordinate_transform.expect("coordinate transform");
@@ -519,7 +386,6 @@ fn write_part_library_scope_emits_the_2_3_0_logical_part_literal() {
 
 #[test]
 fn an_empty_part_library_writes_nothing() {
-    // `PartLibrary.writeScope:25-27` — `if (logicalParts.count() <= 0) return;`.
     let text = synthetic("  (library\n  )");
     let out = write_with(&text, write_part_library_scope);
     assert_eq!(out, "");

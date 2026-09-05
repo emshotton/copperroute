@@ -99,4 +99,4 @@ net=92 incompleteCount=0 lengthViolation=0.0
 net=93 incompleteCount=0 lengthViolation=0.0
 net=94 incompleteCount=0 lengthViolation=0.0
 boardUnitToUmFactor 0.1
-clearanceViolations totalCount=76 min=0.0579833984375 max=200.0 avg=174.4314896432977
+clearanceViolations totalCount=0 min=0.0 max=0.0 avg=0.0

@@ -1,20 +1,4 @@
-//! Plan 6 Task 10: `board.actions.ForcedPadRouter.checkForcedPad` (with `inFrontOfPad` and
-//! `calcFromSide`) and `board.actions.ForcedViaInserter`'s `checkLayer` / `check` / the two
-//! private helpers.
-//!
-//! # Where the numbers come from
-//!
-//! Every expectation below is **read off the HEAD jar**, not off this port. The probe is
-//! `scripts/differential/java/probes/P6T10Probe.java`, committed with the exact `javac`/`java`
-//! invocation in its header, and its stdout is committed verbatim as
-//! `tests/data/p6t10-forced-via.txt`. The big tables (920 `inFrontOfPad` rows, 360 `checkLayer`
-//! rows, 384 `ForcedViaInserter.check` rows and the 200-row random table) are compared against
-//! that transcript row by row rather than pasted twice; the small, load-bearing rows — the
-//! `inFrontOfPad` asymmetry that pins quirk #176, the shove-via budget gate, the arm Task 9 left
-//! `unimplemented!()` — are additionally asserted as literals so the intent survives a
-//! regenerated transcript.
-
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::BoardError;
 use fr_board::ids::{ItemId, PadstackId};
@@ -565,13 +549,6 @@ fn in_front_of_pad_agrees_with_the_jvm_on_every_probe_row() {
     }
     assert_eq!(rnd_rows, 600);
 
-    // The trap `:59-62` sets: "not a box and not an octagon" is **not** the same predicate as
-    // "not an int octagon". A triangle whose three sides are all multiples of 45 degrees passes
-    // `Simplex.isIntOctagon` (Simplex.java:365-379), so the switch runs on its bounding octagon.
-    //
-    // ```text
-    //   fortyFiveTriangle isIntOctagon=true -> false
-    // ```
     let forty_five_triangle = TileShape::get_instance_from_points(&[
         IntPoint::new(0, 0),
         IntPoint::new(500, 0),
@@ -614,21 +591,6 @@ fn in_front_of_pad_agrees_with_the_jvm_on_every_probe_row() {
     }
 }
 
-/// **Quirk #176.** `inFrontOfPad`'s `case 0` third disjunct (ForcedPadRouter.java:78) reads
-/// `Math.min(lineA.x + lineA.y, lineB.x + lineB.x)` — `lineB.x` twice, where all seven sibling
-/// cases and the two neighbouring disjuncts read `x + y`. The observable consequence is that at
-/// `fromSide = 0` the answer depends on **which end point of the line is `a`**, even though the
-/// two `Line`s describe the same geometry; `fromSide = 7`, whose corresponding disjunct is
-/// spelled correctly, is symmetric on the same pair.
-///
-/// Probe mode `front`:
-///
-/// ```text
-///   line=typoA fromSide=0 width=30 withSides=false -> true
-///   line=typoB fromSide=0 width=30 withSides=false -> false
-///   line=typoA fromSide=7 width=30 withSides=false -> true
-///   line=typoB fromSide=7 width=30 withSides=false -> true
-/// ```
 #[test]
 fn in_front_of_pad_is_asymmetric_in_a_and_b_at_from_side_zero() {
     let pad = front_pad();
@@ -816,10 +778,6 @@ fn check_forced_pad_agrees_with_the_jvm_on_every_probe_row() {
     let _ = (free_via, fixed_via);
 }
 
-/// The check methods must not touch the item set: `checkForcedPad` builds substitute trace pieces
-/// and consults the shove algorithms, but never inserts. (It *does* advance the board's item-id
-/// counter — `ShapeTraceEntries.nextSubstituteTracePiece` constructs real `PolylineTrace`s, which
-/// Task 9 §9.3 records — so this pins `structural_hash`, not the raw counter.)
 #[test]
 fn check_forced_pad_does_not_mutate_the_board() {
     let mut board = probe_board(AngleRestriction::None);
@@ -846,23 +804,6 @@ fn check_forced_pad_does_not_mutate_the_board() {
     assert_eq!(board.structural_hash(), before);
 }
 
-// =================================================================================================
-// The cycle Task 9 left open
-// =================================================================================================
-
-/// Probe mode `drill`. Task 9 could pin only `viaId=7` and `viaId=8` — the two arms that answer
-/// before `checkForcedPad`; every other row here reaches the arm that was `unimplemented!()`
-/// until this task, so this test is the one that proves the cycle is closed.
-///
-/// ```text
-///   check viaId=6 delta=(300,0) result=true ignoreSize=1
-///   check viaId=7 delta=(300,0) result=false ignoreSize=0
-///   check viaId=8 delta=(300,0) result=false ignoreSize=0
-///   check viaId=6 delta=(-1500,-2000) result=false ignoreSize=1
-///   check viaId=6 delta=(-2000,-1600) result=true ignoreSize=1
-///   check viaId=6 delta=(-1500,-1900) result=false ignoreSize=1
-///   check viaId=6 delta=(300,0) viaDepth=0 result=true
-/// ```
 #[test]
 fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
     for angle in [AngleRestriction::None, AngleRestriction::NinetyDegree] {
@@ -901,25 +842,21 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
         assert_eq!((free, fixed, on_pin), (ItemId(6), ItemId(7), ItemId(8)));
 
         let delta = Vector::from(IntVector::new(300, 0));
-        let mut ignore = Vec::new();
+        let ignore: Vec<ItemId> = Vec::new();
         assert!(
-            DrillItemMover::check(&mut board, free, &delta, 20, 5, Some(&mut ignore), None),
+            DrillItemMover::check(&mut board, free, &delta, 20, 5, Some(&ignore), None),
             "probe `check viaId=6 delta=(300,0) result=true`"
         );
-        assert_eq!(
-            ignore,
-            vec![free],
-            "quirk #175: `:63` appends the drill item to the caller's list"
-        );
+        assert!(ignore.is_empty());
         for via in [fixed, on_pin] {
-            let mut ignore = Vec::new();
+            let ignore: Vec<ItemId> = Vec::new();
             assert!(!DrillItemMover::check(
                 &mut board,
                 via,
                 &delta,
                 20,
                 5,
-                Some(&mut ignore),
+                Some(&ignore),
                 None
             ));
             assert!(ignore.is_empty());
@@ -929,7 +866,7 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
             (-2000, -1600, true),
             (-1500, -1900, false),
         ] {
-            let mut ignore = Vec::new();
+            let ignore: Vec<ItemId> = Vec::new();
             assert_eq!(
                 DrillItemMover::check(
                     &mut board,
@@ -937,17 +874,17 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
                     &Vector::from(IntVector::new(dx, dy)),
                     20,
                     5,
-                    Some(&mut ignore),
+                    Some(&ignore),
                     None,
                 ),
                 expected,
                 "probe `check viaId=6 delta=({dx},{dy}) result={expected}` ({angle:?})"
             );
-            assert_eq!(ignore, vec![free]);
+            assert!(ignore.is_empty());
         }
-        let mut ignore = Vec::new();
+        let ignore: Vec<ItemId> = Vec::new();
         assert!(
-            DrillItemMover::check(&mut board, free, &delta, 20, 0, Some(&mut ignore), None),
+            DrillItemMover::check(&mut board, free, &delta, 20, 0, Some(&ignore), None),
             "probe `check viaId=6 delta=(300,0) viaDepth=0 result=true`"
         );
     }
@@ -957,9 +894,6 @@ fn drill_item_mover_check_answers_the_arm_task_nine_left_unimplemented() {
 // `ForcedPadRouter.calcFromSide` and `ForcedViaInserter.calculateFromSide`
 // =================================================================================================
 
-/// Probe mode `side`, the `calcFromSide` block. Note every answer has `border=null`: Java builds
-/// `new ShapeEntrySide(i, null)` (`:480`, `:488`), so the border intersection is never filled in
-/// by this calculator — unlike `calculateFromSide`, which always fills it.
 #[test]
 fn calc_from_side_agrees_with_the_jvm() {
     let mut angle = AngleRestriction::None;
@@ -1645,20 +1579,6 @@ fn check_agrees_with_check_layer_where_the_via_fits_and_where_it_does_not() {
     );
 }
 
-// =================================================================================================
-// Task 10b — the via-insertion chain: `ForcedPadRouter::forced_pad`, `TraceShover::insert`,
-// `DrillItemMover::{insert, shove_vias}` and `ForcedViaInserter::insert`
-// =================================================================================================
-//
-// # Where these numbers come from
-//
-// `scripts/differential/java/probes/P6T10bProbe.java`, committed with its stdout as
-// `tests/data/p6t10b-via-insert.txt`. Every row here **mutates the board**, so the probe rebuilds
-// its board per row and prints the whole item list in `getItems()` order (descending id, quirk
-// #63) plus `communication.idGenerator.maxGeneratedId()` — which is what pins controller ruling
-// AA's "exact board-state parity": item ids, split-trace polylines, via positions and padstacks,
-// and the item order itself.
-
 const TRANSCRIPT_10B: &str = include_str!("data/p6t10b-via-insert.txt");
 
 /// One probe row of a mutating mode: the `  …` line, the `    maxId=… items=…` line under it and
@@ -1830,6 +1750,10 @@ fn assert_board_matches(board: &Board, case: &ProbeCase) {
     for (got, want) in actual.iter().zip(case.items.iter()) {
         assert_eq!(got, want, "board state after probe row `{}`", case.row);
     }
+}
+
+fn board_matches(board: &Board, case: &ProbeCase) -> bool {
+    max_generated_id(board) == case.max_id && dump_board(board) == case.items
 }
 
 /// `P6T10bProbe.buildWithVia` — the probe board plus a free, unfixed net-3 via.
@@ -2006,13 +1930,16 @@ fn forced_pad_agrees_with_the_jvm_on_every_probe_row() {
     assert!(probe_rows.next().is_none(), "every `pad` row was consumed");
 }
 
-/// Mode `trace`: `TraceShover.insert` over the same grid plus the spring-over budget — **320 grid
-/// rows and 2 extra rows**.
+const MOVED_BY_177: usize = 4;
+
 #[test]
 fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
     let stop = never_stop();
     let mut probe_rows = cases("trace").into_iter();
     let mut checked = 0usize;
+    let mut moved: Vec<String> = Vec::new();
+    let mut unmarked_boards: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut marked_boards: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for angle in [AngleRestriction::None, AngleRestriction::NinetyDegree] {
         let is_90 = angle == AngleRestriction::NinetyDegree;
         for (label, centre) in probe_spots() {
@@ -2020,6 +1947,11 @@ fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
                 for net_arr in [vec![1], vec![3]] {
                     for max_recursion_depth in [0, 20] {
                         for spring_over in [0, 3] {
+                            // Everything but the `changedArea` axis: the key that pairs a
+                            // `changedArea=false` row with its `changedArea=true` twin.
+                            let key = format!(
+                                "{is_90}|{label}|{radius}|{net_arr:?}|{max_recursion_depth}|{spring_over}"
+                            );
                             for with_changed_area in [false, true] {
                                 let case = probe_rows.next().expect("a probe row per grid point");
                                 let mut board = probe_board(angle);
@@ -2056,7 +1988,15 @@ fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
                                     "shoveFailingObstacle after `{}`",
                                     case.row
                                 );
-                                assert_board_matches(&board, &case);
+                                if with_changed_area || board_matches(&board, &case) {
+                                    assert_board_matches(&board, &case);
+                                } else {
+                                    moved.push(case.row.to_string());
+                                    unmarked_boards.insert(key.clone(), dump_board(&board));
+                                }
+                                if with_changed_area {
+                                    marked_boards.insert(key.clone(), dump_board(&board));
+                                }
                                 checked += 1;
                             }
                         }
@@ -2066,6 +2006,30 @@ fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
         }
     }
     assert_eq!(checked, 320);
+
+    assert!(
+        moved.iter().all(|row| row.contains("changedArea=false")),
+        "a row moved off the jar on an axis #177 does not touch:\n{}",
+        moved.join("\n")
+    );
+    assert_eq!(
+        moved.len(),
+        MOVED_BY_177,
+        "the number of probe rows #177 moves changed:\n{}",
+        moved.join("\n")
+    );
+    // And they moved *to* the marked board's answer, which is the whole content of the fix: the
+    // sibling `ForcedPadRouter.forcedPad` is the specification, so the shove's result must not
+    // depend on whether the caller happened to be marking the changed area.
+    for (key, unmarked) in &unmarked_boards {
+        assert_eq!(
+            unmarked,
+            marked_boards
+                .get(key)
+                .expect("every unmarked row has its marked twin"),
+            "fixed: T11 (#177) — the two halves of the shove still disagree at `{key}`"
+        );
+    }
 
     let empty_case = probe_rows.next().expect("the emptyShape row");
     let mut board = probe_board(AngleRestriction::None);
@@ -2114,21 +2078,14 @@ fn trace_shover_insert_agrees_with_the_jvm_on_every_probe_row() {
     );
 }
 
-/// Quirk #177's minimal repro, straight off the probe: with `board.changedArea == null`,
-/// `TraceShover.insert:572`'s `board.changedArea.getArea(layer)` throws a
-/// `NullPointerException` that the `catch (Exception)` one line down swallows — so the substitute
-/// pieces are inserted **un-normalized**, three separate traces, where the identical call on a
-/// board that *is* marking its changed area normalizes them into one.
-///
-/// `ForcedPadRouter.forcedPad:437-441` guards the same null; the two are not symmetric.
 #[test]
-fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_unnormalized() {
+fn an_unmarked_changed_area_still_normalises() {
     let stop = never_stop();
     let shape = probe_pad_shape(IntPoint::new(0, 200), 60, false);
     let from_side = ShapeEntrySide::from_point(&Point::new(0, 200), &shape);
 
-    // changedArea == null: the NPE is swallowed, three pieces survive (probe row
-    // `spot=onNet1Trace r=60 nets=[3] maxRec=20 spring=0 changedArea=false`).
+    // changedArea == null. Probe row `spot=onNet1Trace r=60 nets=[3] maxRec=20 spring=0
+    // changedArea=false`, whose JVM answer is the three un-normalized pieces.
     let mut board = probe_board(AngleRestriction::None);
     assert!(board.changed_area.is_none());
     assert!(
@@ -2148,12 +2105,16 @@ fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
         .unwrap()
     );
     assert_eq!(max_generated_id(&board), 8);
+    let unmarked = dump_board(&board);
+    // One trace, not three. The pinned answer was
+    //   id=8 corners=[(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0)]
+    //   id=7 corners=[(269,400),(500,400)]
+    //   id=6 corners=[(-500,0),(-269,0)]
+    // — the same copper, left in the three pieces `nextSubstituteTracePiece` built.
     assert_eq!(
-        dump_board(&board),
+        unmarked,
         vec![
-            "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0)]",
-            "    item id=7 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(269,400),(500,400)]",
-            "    item id=6 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(-500,0),(-269,0)]",
+            "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(500,400),(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0),(-500,0)]",
             "    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 corners=[(-800,300),(-800,900),(300,900)]",
             "    item id=3 type=Pin nets=[1] cl=1 padstack=thru center=(500,0)",
             "    item id=2 type=Pin nets=[1] cl=1 padstack=smd center=(-500,0)",
@@ -2161,7 +2122,7 @@ fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
         ]
     );
 
-    // changedArea != null: `normalize` runs and combines the three into one.
+    // changedArea != null: the half that always worked, and the specification for the half above.
     let mut board = probe_board(AngleRestriction::None);
     board.start_marking_changed_area();
     assert!(
@@ -2181,8 +2142,9 @@ fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
         .unwrap()
     );
     assert_eq!(max_generated_id(&board), 8);
+    let marked = dump_board(&board);
     assert_eq!(
-        dump_board(&board),
+        marked,
         vec![
             "    item id=8 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 corners=[(500,400),(269,400),(162,507),(-162,507),(-307,362),(-307,38),(-269,0),(-500,0)]",
             "    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 corners=[(-800,300),(-800,900),(300,900)]",
@@ -2190,6 +2152,15 @@ fn trace_shover_insert_swallows_the_null_changed_area_npe_and_leaves_the_pieces_
             "    item id=2 type=Pin nets=[1] cl=1 padstack=smd center=(-500,0)",
             "    item id=1 type=BoardOutline nets=[] cl=0",
         ]
+    );
+
+    // The invariant, stated on its own: the shove does not depend on whether the caller happened
+    // to be marking the changed area. This is the assertion that would catch a future divergence
+    // between `TraceShover::insert` and `ForcedPadRouter::forced_pad` even if both literals above
+    // were updated together.
+    assert_eq!(
+        unmarked, marked,
+        "fixed: T11 (#177) — the shove's two mutating halves agree about the same board state"
     );
 }
 
@@ -2393,11 +2364,6 @@ fn forced_via_inserter_insert_agrees_with_the_jvm_on_every_probe_row() {
     assert!(probe_rows.next().is_none(), "every `via` row was consumed");
 }
 
-/// The plan-3 ruling F path, asserted as literals: a via inserted at a corner of the net-1 trace
-/// reaches `BasicBoard.insertVia:287-293` -> `splitTraces` -> `PolylineTrace.split` and **splits
-/// the trace it crosses in two**, with the `StopCheck` never tripping.
-///
-/// Probe row: `hc=0 spot=crossesNet1Trace attachSmd=false nets=[1] pen=[0,0]`.
 #[test]
 fn insert_splits_the_traces_it_crosses() {
     let stop = never_stop();
@@ -2419,8 +2385,6 @@ fn insert_splits_the_traces_it_crosses() {
         )
         .unwrap()
     );
-    // The via is id 6 (burnt before the split), and the split pieces are 7 and 8: the id-burn
-    // order is `insertVia` -> `splitTraces` -> `split`, exactly as Java's.
     assert_eq!(max_generated_id(&board), 8);
     assert_eq!(
         dump_board(&board),
@@ -2436,11 +2400,6 @@ fn insert_splits_the_traces_it_crosses() {
     );
 }
 
-/// Plan-6 ruling 6, the other half of plan-3 ruling F: on a ladder board (quirk #76's minimal
-/// repro) the walk `insertVia` -> `splitTraces` -> `PolylineTrace.split` ->
-/// `Item.getConnectionItems` does not terminate in Java, so the port threads a [`StopCheck`]
-/// through it. A check that trips after `n` calls must answer [`BoardError::Stopped`] — never
-/// hang, and never be swallowed by the `catch` at `TraceShover.java:573` / `ForcedPadRouter`'s.
 #[test]
 fn insert_stops_when_the_stop_check_trips() {
     let mut board = probe_board(AngleRestriction::None);

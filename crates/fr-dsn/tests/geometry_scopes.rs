@@ -1,8 +1,3 @@
-//! Black-box tests for Plan 3 Task 5: `io/CoordinateTransform.java`, the DSN geometry scopes
-//! (`io/specctra/parser/{Shape,Rectangle,Circle,Polygon,PolygonPath,PolylinePath,Path,Layer,
-//! LayerStructure}.java`) and the header scopes
-//! (`io/specctra/parser/{Parser,Resolution,Unit}.java`).
-
 use fr_board::{
     Communication, ItemIdGenerator, Layer as BoardLayer, LayerStructure, Unit, WriteResolution,
 };
@@ -45,8 +40,6 @@ fn scan(input: &str) -> DsnScanner {
     DsnScanner::new(input)
 }
 
-// ---------------------------------------------------------------- CoordinateTransform
-
 #[test]
 fn coordinate_transform_scales_both_ways() {
     let transform = CoordinateTransform::new(10.0, 0.0, 0.0).expect("a valid scale");
@@ -54,14 +47,6 @@ fn coordinate_transform_scales_both_ways() {
     assert_eq!(transform.dsn_to_board(100.0), 1000.0);
 }
 
-/// fixed: T4 (#89) — replaces `coordinate_transform_with_a_zero_scale_factor_gives_infinity`.
-///
-/// Java's `value / scaleFactor` on `double`s is IEEE division, not the integer division that
-/// throws, so `new CoordinateTransform(0, 0, 0)` is built without complaint and every coordinate
-/// it writes afterwards is `Infinity` (or `NaN`, for a value of `0`). `Structure.createBoard`
-/// reaches that constructor for real — quirk #94, JVM-verified to report `Success` — so the state
-/// is not hypothetical. It is now unrepresentable: the constructor refuses a scale factor that is
-/// zero, infinite or `NaN`, and there is no other way to build the type.
 #[test]
 fn a_zero_scale_is_refused_loudly() {
     for bad in [0.0_f64, -0.0, f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
@@ -71,7 +56,6 @@ fn a_zero_scale_is_refused_loudly() {
             "a scale factor of {bad} must be refused, not divided by"
         );
     }
-    // The neighbouring legal values are still accepted, so the guard is a guard and not a wall.
     for good in [1.0_f64, 0.1, -10.0, f64::MIN_POSITIVE] {
         assert!(
             CoordinateTransform::new(good, 0.0, 0.0).is_ok(),
@@ -126,12 +110,8 @@ fn board_to_dsn_shape_maps_a_box_to_a_rectangle() {
     assert_eq!(rect.coor, [0.0, 0.0, 10.0, 20.0]);
 }
 
-// ---------------------------------------------------------------- geometry writers
-
 #[test]
 fn rectangle_write_scope_matches_the_reference_fixture_line() {
-    // tests/reference/Issue143-rpi_splitter/roundtrip.dsn:19 — also a live
-    // `java_double_to_string` test (`1650.0`, not `1650`).
     let rect = DsnRectangle::new(
         pcb_layer(),
         [
@@ -170,34 +150,17 @@ fn circle_write_scope_and_write_scope_int() {
         render(|f| circle.write_scope(f, &identifier())),
         "\n(circle signal 4.5 1.5 2.5)"
     );
-    // Java `(int) Math.round(2.5)` is 3 (half-up), and `Math.round(1.5)` is 2.
     assert_eq!(
         render(|f| circle.write_scope_int(f, &identifier())),
         "\n(circle signal 5 2 3)"
     );
 }
 
-/// fixed: T4 (#93) — replaces `circle_bounding_box_is_javas_doubled_box`.
-///
-/// Java bug (register row 93): `Circle.boundingBox` (Circle.java:56-64) spends the whole of
-/// `coor[0]` on each side, though `coor[0]` is a **diameter** everywhere else in the same class
-/// and at its only producer (Circle.java:40,48; CoordinateTransform.java:99).
-///
-/// Hand-computed, all four bounds, for a diameter-4 circle centred on `(10, 20)`:
-/// radius = 4 / 2 = 2, so `[10 - 2, 20 - 2, 10 + 2, 20 + 2] == [8, 18, 12, 22]`.
-/// Java's answer was `[6, 16, 14, 24]` — twice as wide and twice as tall.
-///
-/// The second case is the round trip that makes the reading unambiguous: a board `Circle` of
-/// radius 25 becomes, through `CoordinateTransform::board_to_dsn_shape`, a `DsnCircle` whose
-/// `coor[0]` is `2 * board_to_dsn(25)`, and the bounding box of *that* must be the box of the
-/// circle we started from.
 #[test]
 fn a_circle_bounding_box_is_not_twice_too_wide() {
     let circle = DsnCircle::new(DsnLayer::signal(), [4.0, 10.0, 20.0]);
     assert_eq!(circle.bounding_box().coor, [8.0, 18.0, 12.0, 22.0]);
 
-    // Round trip: radius 25 at (100, 200) on a scale factor of 10 is a DSN circle of diameter
-    // 5 centred on (10, 20), whose box is [10 - 2.5, 20 - 2.5, 10 + 2.5, 20 + 2.5].
     let transform = CoordinateTransform::new(10.0, 0.0, 0.0).expect("a valid scale");
     let board_circle =
         fr_geometry::Shape::Circle(fr_geometry::Circle::new(IntPoint::new(100, 200), 25));
@@ -263,8 +226,6 @@ fn write_hole_scope_wraps_the_shape_in_a_window_scope() {
     );
 }
 
-// ---------------------------------------------------------------- geometry readers
-
 #[test]
 fn read_shape_scope_reads_a_rectangle() {
     let mut scanner = scan("(rect signal 0 0 10 20)");
@@ -306,7 +267,6 @@ fn read_shape_scope_reads_a_path_and_its_width() {
 
 #[test]
 fn read_shape_scope_skips_a_path_with_too_few_coordinates() {
-    // Shape.java:470-478 — fewer than five numbers (width + two corners) is dropped.
     let mut scanner = scan("(path signal 10 0 0)");
     assert!(
         read_shape_scope(&mut scanner, None)
@@ -363,8 +323,6 @@ fn read_area_scope_skips_window_scopes_when_asked() {
     assert_eq!(area.shape_list.len(), 1);
 }
 
-// ---------------------------------------------------------------- Layer / LayerStructure
-
 #[test]
 fn layer_structure_get_no_finds_a_named_layer() {
     let layers = DsnLayerStructure::new(vec![
@@ -380,8 +338,6 @@ fn layer_structure_get_no_finds_a_named_layer() {
 
 #[test]
 fn layer_structure_get_no_has_the_electra_top_bottom_fallbacks() {
-    // LayerStructure.java:37-43 — a name merely *containing* "Top"/"Bottom" maps to the first
-    // resp. last layer, for Electra-written outlines.
     let layers = DsnLayerStructure::new(vec![
         DsnLayer::new("F.Cu", 0, true),
         DsnLayer::new("In1.Cu", 1, true),
@@ -389,8 +345,6 @@ fn layer_structure_get_no_has_the_electra_top_bottom_fallbacks() {
     ]);
     assert_eq!(layers.get_no("Outline_Top"), Some(0));
     assert_eq!(layers.get_no("Outline_Bottom"), Some(2));
-    // `layers.length - 1` is -1 for an empty structure, which every Java caller tests as
-    // "not found".
     assert_eq!(DsnLayerStructure::new(Vec::new()).get_no("Bottom"), None);
 }
 
@@ -428,8 +382,6 @@ fn the_two_shared_layer_constants_have_the_java_names_and_numbers() {
     assert_eq!(DsnLayer::signal().no, -1);
     assert!(DsnLayer::signal().is_signal);
 }
-
-// ---------------------------------------------------------------- header scopes
 
 #[test]
 fn write_parser_scope_uses_the_2_3_0_snake_case_literals() {
@@ -482,10 +434,6 @@ fn read_parser_scope_reads_the_quote_char_host_and_freerouting_marker() {
     let write_resolution = p.write_resolution.as_ref().expect("a write resolution");
     assert_eq!(write_resolution.char_name, "mil");
     assert_eq!(write_resolution.positive_int, 10);
-    // Java bug (JVM-verified against tools/freerouting-2.3.0.jar): the scanner never returns
-    // `Keyword.GENERATED_BY_FREEROUTING` — `generated_by_freerouting` comes back as a plain
-    // String, so `Parser.readScope`'s branch for it is dead and `dsnFileGeneratedByHost` stays
-    // `true` even for a file freerouting itself wrote. See docs/java-quirks.md.
     assert!(p.dsn_file_generated_by_host);
 }
 
@@ -518,7 +466,6 @@ fn read_resolution_scope_rejects_an_unknown_unit() {
 
 #[test]
 fn write_resolution_and_unit_scopes_match_the_reference_fixture() {
-    // tests/reference/Issue143-rpi_splitter/roundtrip.dsn:9-10.
     let communication = Communication::new(Unit::Mil, 2540, ItemIdGenerator::new(), None, None);
     assert_eq!(
         render(|f| write_resolution_scope(f, &communication)),
@@ -529,9 +476,28 @@ fn write_resolution_and_unit_scopes_match_the_reference_fixture() {
 
 #[test]
 fn read_unit_scope_is_javas_dead_always_false_override() {
-    // Unit.java:23-26 — `Unit` is never registered as a `Keyword`, so this override is
-    // unreachable in Java and returns `false` unconditionally.
     let options = DsnReadOptions::default();
     let mut p = ReadScopeParameter::new(scan("mil)"), &options);
     assert!(!read_unit_scope(&mut p).expect("no scan error"));
+}
+
+#[test]
+fn bounding_box_is_square_for_a_square_path() {
+    let path = DsnPolygonPath::new(
+        DsnLayer::signal(),
+        200.0,
+        vec![0.0, 0.0, 1000.0, 0.0, 1000.0, 1000.0, 0.0, 1000.0],
+    );
+    let b = path.bounding_box();
+    assert_eq!(b.coor[0], -100.0);
+    assert_eq!(b.coor[1], -100.0);
+    assert_eq!(b.coor[3], 1100.0);
+    assert_eq!(b.coor[2], 1100.0, "fixed: T11 (#88) — was 1300.0");
+    // The path is a square, so its bounding box must be one. That statement survives a change of
+    // fixture where the four literals above would not.
+    assert_eq!(
+        b.coor[2] - b.coor[0],
+        b.coor[3] - b.coor[1],
+        "a square path has a square bounding box"
+    );
 }

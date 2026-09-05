@@ -1,9 +1,3 @@
-//! Port of the abstract class `app.freerouting.geometry.planar.Point`.
-//!
-//! As in [`crate::vector`], Java's two-level dispatch (`compareX(Point)` → `other.compareX(this)`
-//! → concrete overload) collapses into one `match (self, other)` with four arms. Each arm names
-//! the Java overload chain it stands for.
-
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 
@@ -28,14 +22,55 @@ pub enum Point {
 }
 
 impl Point {
-    /// Standard implementation of the zero point (an `IntPoint`, as in Java).
     pub const ZERO: Point = Point::Int(IntPoint::ZERO);
 
-    /// Creates an IntPoint from x and y. If x or y is too big for an IntPoint, a RationalPoint is
-    /// created. Java `Point.getInstance(int, int)`.
-    ///
-    /// `wrapping_abs` rather than `abs`, to reproduce Java's `Math.abs(Integer.MIN_VALUE) ==
-    /// Integer.MIN_VALUE`: that value does *not* trip the range check in Java either.
+    pub fn inside_circumcircle(&self, a: &Point, b: &Point, c: &Point) -> bool {
+        fn row(point: &Point) -> [BigInt; 4] {
+            let (x, y, z) = match point {
+                Point::Int(point) => (BigInt::from(point.x), BigInt::from(point.y), BigInt::one()),
+                Point::Rational(point) => (point.x.clone(), point.y.clone(), point.z.clone()),
+            };
+            [&x * &z, &y * &z, &x * &x + &y * &y, &z * &z]
+        }
+
+        fn determinant(mut matrix: [[BigInt; 4]; 4]) -> BigInt {
+            let mut previous = BigInt::one();
+            let mut sign = 1_i8;
+            for pivot_index in 0..3 {
+                let Some(pivot_row) =
+                    (pivot_index..4).find(|&row| !matrix[row][pivot_index].is_zero())
+                else {
+                    return BigInt::zero();
+                };
+                if pivot_row != pivot_index {
+                    matrix.swap(pivot_row, pivot_index);
+                    sign = -sign;
+                }
+                let pivot = matrix[pivot_index][pivot_index].clone();
+                for row in pivot_index + 1..4 {
+                    for column in pivot_index + 1..4 {
+                        matrix[row][column] = (&matrix[row][column] * &pivot
+                            - &matrix[row][pivot_index] * &matrix[pivot_index][column])
+                            / &previous;
+                    }
+                }
+                previous = pivot;
+            }
+            if sign < 0 {
+                -matrix[3][3].clone()
+            } else {
+                matrix[3][3].clone()
+            }
+        }
+
+        let value = determinant([row(a), row(b), row(c), row(self)]);
+        match c.side_of(a, b) {
+            Side::OnTheLeft => value.is_positive(),
+            Side::OnTheRight => value.is_negative(),
+            Side::Collinear => false,
+        }
+    }
+
     pub fn new(x: i32, y: i32) -> Point {
         let result = IntPoint::new(x, y);
         if x.wrapping_abs() > CRIT_INT || y.wrapping_abs() > CRIT_INT {
@@ -45,13 +80,6 @@ impl Point {
         }
     }
 
-    /// Factory method for creating a Point from 3 BigIntegers. Java
-    /// `Point.getInstance(BigInteger, BigInteger, BigInteger)`.
-    ///
-    /// Java quirk kept verbatim (Point.java:32-37): the divisibility test looks at `x.mod(z)`
-    /// **only**, but then divides both `x` and `y` by `z`. When `y` is not a multiple of `z` the
-    /// integer division truncates and the result is a different point than the input. Panics on
-    /// `z == 0`, as `BigInteger.mod` throws `ArithmeticException` there.
     pub fn from_big(x: BigInt, y: BigInt, z: BigInt) -> Point {
         let (mut x, mut y, mut z) = if z.is_negative() {
             // the dominator z of a RationalPoint is expected to be positive
@@ -59,7 +87,6 @@ impl Point {
         } else {
             (x, y, z)
         };
-        // Java `BigInteger.mod` is the non-negative remainder => `mod_floor` (z > 0 here).
         if x.mod_floor(&z).is_zero() {
             // x and y can be divided by z
             x = &x / &z;
@@ -82,7 +109,6 @@ impl Point {
     /// Returns true, if this Point is a RationalPoint with denominator z = 0.
     pub fn is_infinite(&self) -> bool {
         match self {
-            // Java `IntPoint.isInfinite()` returns false unconditionally.
             Point::Int(_) => false,
             Point::Rational(p) => p.is_infinite(),
         }
@@ -90,9 +116,6 @@ impl Point {
 
     /// Returns the translation of this point by vector.
     pub fn translate_by(&self, vector: &Vector) -> Point {
-        // Java: `if (vector.equals(Vector.ZERO)) return this;`. `Vector.ZERO` is an `IntVector`,
-        // and Java's `equals` is class-sensitive, so a *rational* zero vector misses this
-        // shortcut and goes the long way round — same here (see `Vector`'s `PartialEq`).
         if *vector == Vector::ZERO {
             return self.clone();
         }
@@ -182,13 +205,6 @@ impl Point {
         pole.translate_by(&v)
     }
 
-    /// Returns a deterministic tie-breaking id for this point. Java `Point.getId()`
-    /// (Point.java:66) is abstract; both concrete overrides are unfolded here — `31 * x + y` for
-    /// an [`IntPoint`] (IntPoint.java:126-128) and the three-`BigInteger` fold for a
-    /// [`RationalPoint`] (RationalPoint.java:66-70).
-    ///
-    /// The one consumer in the port is `autoroute.drill.ExpansionDrill.getId`
-    /// (ExpansionDrill.java:127-130), which hashes the drill's location.
     pub fn get_id(&self) -> i32 {
         match self {
             Point::Int(p) => p.get_id(),
@@ -196,7 +212,6 @@ impl Point {
         }
     }
 
-    /// Approximates the coordinates of this point by float coordinates. Java `Point.toFloat()`.
     pub fn to_float(&self) -> FloatPoint {
         match self {
             Point::Int(p) => p.to_float(),
@@ -204,8 +219,6 @@ impl Point {
         }
     }
 
-    /// Returns the side of a line on which this point lies. Java `Point.sideOf(Line)` is
-    /// abstract; both concrete overrides are unfolded here.
     pub fn side_of_line(&self, line: &crate::line::Line) -> Side {
         match self {
             Point::Int(p) => p.side_of_line(line),
@@ -213,9 +226,6 @@ impl Point {
         }
     }
 
-    /// Returns the nearest point to this point on line. Java `Point.perpendicularProjection` is
-    /// abstract; the two overrides differ in more than the representation — see
-    /// [`RationalPoint::perpendicular_projection`] for the sign bug the rational one carries.
     pub fn perpendicular_projection(&self, line: &crate::line::Line) -> Point {
         match self {
             Point::Int(p) => p.perpendicular_projection(line),
@@ -223,13 +233,6 @@ impl Point {
         }
     }
 
-    /// Calculates the perpendicular direction from this point to line. Returns `Direction::NULL`
-    /// (i.e. `Direction::Int(IntDirection::NULL)`), if this point lies on line.
-    ///
-    /// This is Java's `Point.perpendicularDirection(Line)`, a concrete method of the abstract
-    /// class inherited by both `IntPoint` and `RationalPoint`. It is a different function from
-    /// `Line::perpendicular_direction(&Point)`, which searches for the nearest side and returns
-    /// `null` for a point on the line.
     pub fn perpendicular_direction(&self, line: &crate::line::Line) -> crate::direction::Direction {
         let side = self.side_of_line(line);
         if side == Side::Collinear {
@@ -242,8 +245,6 @@ impl Point {
         }
     }
 
-    /// Creates the smallest Box with integer coordinates containing this point. Java
-    /// `Point.surroundingBox()` is abstract; both concrete overrides are unfolded here.
     pub fn surrounding_box(&self) -> crate::int_box::IntBox {
         match self {
             Point::Int(p) => p.surrounding_box(),
@@ -251,8 +252,6 @@ impl Point {
         }
     }
 
-    /// Returns true, if this point lies in the interior or on the border of box. Java
-    /// `Point.isContainedIn(IntBox)` is abstract; both concrete overrides are unfolded here.
     pub fn is_contained_in(&self, box_: &crate::int_box::IntBox) -> bool {
         match self {
             Point::Int(p) => p.is_contained_in(box_),
@@ -260,8 +259,6 @@ impl Point {
         }
     }
 
-    /// Creates the smallest `IntOctagon` containing this point. Java
-    /// `Point.surroundingOctagon()` is abstract; both concrete overrides are unfolded here.
     pub fn surrounding_octagon(&self) -> crate::int_octagon::IntOctagon {
         match self {
             Point::Int(p) => p.surrounding_octagon(),
@@ -283,10 +280,6 @@ impl From<RationalPoint> for Point {
 }
 
 impl PartialEq for Point {
-    /// Java's `IntPoint.equals` and `RationalPoint.equals` both start with a
-    /// `getClass() != other.getClass()` test, so an `IntPoint` is **never** equal to a
-    /// `RationalPoint`, even when both denote the same point of the plane. `Direction.getInstance
-    /// (Point from, Point to)` relies on this exact relation for its `null` result.
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Point::Int(a), Point::Int(b)) => a == b,
@@ -332,6 +325,24 @@ mod tests {
     }
 
     #[test]
+    fn circumcircle_membership_is_exact_and_orientation_independent() {
+        let a = Point::new(0, 0);
+        let b = Point::new(CRIT_INT, 0);
+        let c = Point::new(0, CRIT_INT);
+        let inside = Point::new(1, 1);
+        let boundary = Point::new(CRIT_INT, CRIT_INT);
+        let outside = Point::new(CRIT_INT * 2, CRIT_INT * 2);
+
+        assert!(inside.inside_circumcircle(&a, &b, &c));
+        assert!(inside.inside_circumcircle(&a, &c, &b));
+        assert!(!boundary.inside_circumcircle(&a, &b, &c));
+        assert!(!outside.inside_circumcircle(&a, &b, &c));
+
+        let rational_inside = Point::from_big(BigInt::from(1), BigInt::from(1), BigInt::from(2));
+        assert!(rational_inside.inside_circumcircle(&a, &b, &c));
+    }
+
+    #[test]
     fn from_big_reduces_and_demotes() {
         let p = Point::from_big(BigInt::from(100), BigInt::from(200), BigInt::from(50));
         assert_eq!(p, Point::Int(IntPoint::new(2, 4)));
@@ -369,12 +380,6 @@ mod tests {
             Point::from_big(BigInt::from(3), BigInt::from(3), BigInt::from(2))
         );
         let d = moved.difference_by(&half);
-        // Corrected per Java: `RationalPoint.differenceBy(RationalPoint)` (RationalPoint.java:206-218)
-        // builds the result with `new RationalVector(result[0], result[1], result[2])` — it does NOT
-        // route through `Vector.getInstance(BigInteger,BigInteger,BigInteger)`, so nothing reduces
-        // the (2, 2, 2) triple back to an IntVector. The brief's "reduced back to Int" expectation
-        // disagrees with Java; Java wins. (And `RationalVector.equals` checks `getClass()`
-        // (RationalVector.java:63-65), so a RationalVector never equals an IntVector anyway.)
         assert!(matches!(d, Vector::Rational(_)));
         assert_eq!(
             d,
@@ -447,9 +452,6 @@ mod cross_representation_tests {
         );
     }
 
-    /// Every dispatch arm must agree with the plain `IntPoint` result whenever the operands are
-    /// small enough for both representations — the check that Java's two-level dispatch was
-    /// unfolded correctly.
     #[test]
     fn representations_agree_on_binary_operations() {
         for a in &SAMPLES {
@@ -520,8 +522,6 @@ mod cross_representation_tests {
 
     #[test]
     fn from_big_only_tests_x_for_divisibility() {
-        // Java quirk (Point.java:32-37): `x.mod(z) == 0` is the only test, yet BOTH x and y are
-        // divided by z; 5 / 2 truncates to 2, so the y coordinate silently changes.
         assert_eq!(
             Point::from_big(b(6), b(5), b(2)),
             Point::Int(IntPoint::new(3, 2))
@@ -539,8 +539,6 @@ mod cross_representation_tests {
             h.finish()
         }
 
-        // Java's `equals` starts with a `getClass()` test, so these two are NOT equal even though
-        // they denote the same point.
         let int_point = Point::Int(IntPoint::new(2, 4));
         let rational_point = Point::from_big(b(2), b(4), b(1));
         assert_eq!(rational_point, int_point); // from_big demoted it back to an IntPoint
@@ -568,7 +566,6 @@ mod cross_representation_tests {
     #[test]
     #[should_panic(expected = "RationalPoint: z is expected to be >= 0")]
     fn rational_point_rejects_a_negative_denominator() {
-        // Java throws IllegalArgumentException here (RationalPoint.java:36-38).
         let _ = RationalPoint::new(b(1), b(1), b(-1));
     }
 
@@ -605,33 +602,28 @@ mod cross_representation_tests {
             Point::Int(IntPoint::new(3, -4)).perpendicular_direction(&line),
             Direction::Int(IntDirection::UP)
         );
-        // Java returns Direction.NULL for a point on the line.
         assert_eq!(
             Point::Int(IntPoint::new(3, 0)).perpendicular_direction(&line),
             Direction::Int(IntDirection::NULL)
         );
     }
 
-    /// Java quirk, reproduced verbatim: `RationalPoint.perpendicularProjection` (RationalPoint
-    /// .java:262) computes `projY = tmp1.add(tmp2)` where `IntPoint.perpendicularProjection`
-    /// (IntPoint.java:160) computes `projY = tmp1.subtract(tmp2)`. The `IntPoint` version is the
-    /// mathematically correct perpendicular projection; the `RationalPoint` version is not,
-    /// whenever the line does not pass through the origin (i.e. `det != 0`).
     #[test]
-    fn rational_perpendicular_projection_keeps_javas_sign_bug() {
+    fn rational_perpendicular_projection_agrees_with_the_int_point_one() {
         use crate::line::Line;
-        // Line y = x + 1 through (0,1) and (1,2): v = (1,1), det = a.determinant(b) = -1.
+        // Line y = x + 1 through (0,1) and (1,2): v = (1,1), det = a.determinant(b) = -1, D = 2.
         let line = Line::from_coords(0, 1, 1, 2);
         let point = IntPoint::new(2, 0);
-        // Correct projection of (2,0) onto y = x + 1 is (0.5, 1.5) = (1, 3, 2).
+        // The projection of (2,0) onto y = x + 1 is (0.5, 1.5) = (1, 3, 2) — and (0.5, 1.5) does
+        // lie on the line, which the old rational answer (0.5, 0.5) did not.
         assert_eq!(
             Point::Int(point).perpendicular_projection(&line),
             Point::Rational(RationalPoint::new(b(1), b(3), b(2)))
         );
-        // The same point in rational form takes Java's buggy branch and lands on (0.5, 0.5).
         assert_eq!(
             Point::Rational(RationalPoint::new(b(2), b(0), b(1))).perpendicular_projection(&line),
-            Point::Rational(RationalPoint::new(b(1), b(1), b(2)))
+            Point::Rational(RationalPoint::new(b(1), b(3), b(2))),
+            "(1, 1, 2), i.e. (0.5, 0.5), would be off the line"
         );
     }
 }

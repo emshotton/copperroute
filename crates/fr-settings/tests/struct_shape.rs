@@ -1,22 +1,8 @@
-//! Task 1's TDD tests for the `fr-settings` data model: `RouterSettings::default()` vs `::new()`,
-//! serde key renames/aliases, and `HostEnvironment`'s machine-dependent default.
-//!
-//! Every serde expectation here was independently verified against the real JVM (JDK 25,
-//! `freerouting-current-executable.jar` built 2026-08-27, `-Djava.awt.headless=true`) via two
-//! small driver programs compiled against that jar's classpath — see task-1-report.md for the
-//! full source and transcripts (`Probe.java`, `Probe2.java`).
-
 use fr_settings::prelude::*;
 use fr_settings::{BoardUpdateStrategy, HostEnvironment};
 
-// --- RouterSettings::default() vs RouterSettings::new() -------------------------------------
-
 #[test]
 fn default_has_every_field_none() {
-    // `SettingsMergerTest.java:34-41` (`emptySourcesList`) pins that `new SettingsMerger().merge()`
-    // gives `merged.maxPasses == null` for an empty source list. `RouterSettings::default()` (all
-    // `None`) is the Rust value that condition is checked against once the merge engine exists
-    // (Task 2); this test pins the shape of `default()` itself.
     let rs = RouterSettings::default();
     assert_eq!(rs.enabled, None);
     assert_eq!(rs.algorithm, None);
@@ -42,9 +28,6 @@ fn default_has_every_field_none() {
 
 #[test]
 fn new_allocates_the_three_nested_objects_like_javas_no_arg_constructor() {
-    // RouterSettings.java:119-124: `new RouterSettings()` allocates `fanout`, `optimizer` and
-    // `scoring` (each via their own no-arg constructor, i.e. all-None nested fields) and leaves
-    // every other field null.
     let rs = RouterSettings::new();
     assert_eq!(rs.fanout, Some(FanoutSettings::default()));
     assert_eq!(rs.optimizer, Some(OptimizerSettings::default()));
@@ -74,13 +57,8 @@ fn new_and_default_disagree() {
     assert_ne!(RouterSettings::new(), RouterSettings::default());
 }
 
-// --- serde rename / alias round trip ----------------------------------------------------------
-
 #[test]
 fn renamed_keys_appear_in_serialized_output() {
-    // JVM-verified (Probe2.java): serialising a RouterSettings with these six fields set produces
-    // exactly the renamed keys below (plus "fanout"/"optimizer"/"scoring" for the nested
-    // objects), never the Rust/Java field name.
     let mut rs = RouterSettings::new();
     rs.vias_allowed = Some(true);
     rs.job_timeout_string = Some("5m".to_string());
@@ -101,7 +79,6 @@ fn renamed_keys_appear_in_serialized_output() {
         obj.get("result_json"),
         Some(&serde_json::json!("/tmp/x.json"))
     );
-    // Neither the plain Rust field name nor the Java field name should appear.
     assert!(!obj.contains_key("vias_allowed"));
     assert!(!obj.contains_key("jobTimeoutString"));
     assert!(!obj.contains_key("resultJsonPath"));
@@ -125,7 +102,6 @@ fn renamed_keys_appear_in_serialized_output() {
 
 #[test]
 fn trace_pull_tight_accuracy_accepts_both_the_current_key_and_its_alternate() {
-    // JVM-verified (Probe2.java): both keys deserialize to the same field.
     let a: RouterSettings = serde_json::from_str(r#"{"trace_pull_tight_accuracy":7}"#).unwrap();
     let b: RouterSettings = serde_json::from_str(r#"{"tracePullTightAccuracy":7}"#).unwrap();
     assert_eq!(a.trace_pull_tight_accuracy, Some(7));
@@ -142,7 +118,6 @@ fn automatic_neckdown_accepts_both_the_current_key_and_its_alternate() {
 
 #[test]
 fn scoring_via_costs_accepts_both_the_current_key_and_its_alternate() {
-    // JVM-verified (Probe2.java): ScoringSettings{"via_costs":9} and {"viaCosts":9} both give 9.
     let a: ScoringSettings = serde_json::from_str(r#"{"via_costs":9}"#).unwrap();
     let b: ScoringSettings = serde_json::from_str(r#"{"viaCosts":9}"#).unwrap();
     assert_eq!(a.via_costs, Some(9));
@@ -151,7 +126,6 @@ fn scoring_via_costs_accepts_both_the_current_key_and_its_alternate() {
 
 #[test]
 fn scoring_start_ripup_costs_accepts_both_the_current_key_and_its_alternate() {
-    // JVM-verified (Probe2.java): {"start_ripup_costs":11} and {"startRipupCosts":11} both give 11.
     let a: ScoringSettings = serde_json::from_str(r#"{"start_ripup_costs":11}"#).unwrap();
     let b: ScoringSettings = serde_json::from_str(r#"{"startRipupCosts":11}"#).unwrap();
     assert_eq!(a.start_ripup_costs, Some(11));
@@ -166,13 +140,8 @@ fn fanout_ripup_allowed_accepts_both_the_current_key_and_its_alternate() {
     assert_eq!(b.ripup_allowed, Some(true));
 }
 
-// --- transient-field serde treatment (JVM-verified, see router_settings.rs module doc) --------
-
 #[test]
 fn transient_fields_never_appear_in_serialized_output() {
-    // JVM-verified (Probe.java): serialising a RouterSettings with max_items, layers,
-    // save_intermediate_stages and ignore_net_classes all set produces JSON containing none of
-    // their keys.
     let mut rs = RouterSettings::new();
     rs.max_items = Some(42);
     rs.layers = Some(vec![LayerSettings::with_bend_cost(
@@ -193,9 +162,6 @@ fn transient_fields_never_appear_in_serialized_output() {
 
 #[test]
 fn layers_is_deserialized_even_though_its_never_serialized() {
-    // JVM-verified (Probe.java): RouterSettingsTypeAdapterFactory.read() explicitly re-reads
-    // "layers" from the raw JSON tree even though the field is `transient`; max_items,
-    // save_intermediate_stages and ignore_net_classes get no such special-case and stay null.
     let input = serde_json::json!({
         "max_items": 99,
         "layers": [{"routable": true, "preferred_direction_horizontal": false, "bend_cost": 2.5}],
@@ -219,9 +185,6 @@ fn layers_is_deserialized_even_though_its_never_serialized() {
 
 #[test]
 fn optimizer_transient_fields_never_appear_in_serialized_output() {
-    // JVM-verified (Probe2.java): OptimizerSettings has no custom TypeAdapterFactory of its own,
-    // so board_update_strategy/hybrid_ratio/item_selection_strategy are excluded in both
-    // directions, unlike RouterSettings.layers.
     let mut rs = RouterSettings::new();
     rs.optimizer.as_mut().unwrap().board_update_strategy = Some(BoardUpdateStrategy::Hybrid);
 
@@ -235,11 +198,8 @@ fn optimizer_transient_fields_never_appear_in_serialized_output() {
     assert!(!optimizer.contains_key("board_update_strategy"));
 }
 
-// --- field order pins -------------------------------------------------------------------------
-
 #[test]
 fn field_names_pin_javas_declaration_order() {
-    // Java's names, in Java's order, followed by the port's own. See `RouterSettings::FIELD_NAMES`.
     assert_eq!(
         RouterSettings::FIELD_NAMES,
         &[
@@ -264,11 +224,9 @@ fn field_names_pin_javas_declaration_order() {
             "max_threads",
             "result_json_path",
             "board_specific_trace_costs_applied",
-            // The port's own, appended after every Java name so that none of the twenty-one above
-            // moves: `opt_changed_area_ms` (Plan 9 Task 1, #234). Java's counterpart is the
-            // javac-inlined `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP`, which is not a field
-            // `getDeclaredFields()` can reach — which is precisely why the port needs one.
             "opt_changed_area_ms",
+            "smd_via_relaxation",
+            "failure_give_up_threshold",
         ]
     );
     assert_eq!(
@@ -289,6 +247,7 @@ fn field_names_pin_javas_declaration_order() {
             "clearance_violation_penalty",
             "bend_penalty",
             "default_bend_cost",
+            "smd_via_cost_factor",
         ]
     );
     assert_eq!(
@@ -304,6 +263,7 @@ fn field_names_pin_javas_declaration_order() {
             "additional_ripup_cost_factor_at_start",
             "trace_ripup_cost_factor",
             "max_autoroute_passes",
+            "max_search_steps",
             "board_update_strategy",
             "hybrid_ratio",
             "item_selection_strategy",
@@ -343,17 +303,12 @@ fn field_names_pin_javas_declaration_order() {
     );
 }
 
-// --- HostEnvironment ----------------------------------------------------------------------------
-
 #[test]
 fn host_environment_default_max_threads_matches_java_formula() {
-    // RouterSettings.java:133-135: `Math.max(1, Runtime.getRuntime().availableProcessors() - 1)`.
     assert_eq!(HostEnvironment::with_processors(1).default_max_threads(), 1);
     assert_eq!(HostEnvironment::with_processors(8).default_max_threads(), 7);
     assert_eq!(HostEnvironment::with_processors(0).default_max_threads(), 1);
 }
-
-// --- DesignRulesCheckerSettings / DebugSettings ------------------------------------------------
 
 #[test]
 fn design_rules_checker_settings_default_matches_javas_field_initializers() {
@@ -388,7 +343,6 @@ fn debug_settings_default_matches_javas_field_initializers() {
 #[test]
 fn debug_settings_is_net_permitted_matches_java() {
     let mut d = DebugSettings::default();
-    // Empty filter: everything permitted.
     assert!(d.is_net_permitted(1, None));
 
     d.filter_by_net.insert("1".to_string());

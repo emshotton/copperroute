@@ -1,0 +1,42 @@
+# gate-version: g2
+# task: T13
+# port-sha: aa15a2a0c7b6 (the tree the numbers came out of; it may since have been rewritten by an amend or a rebase, so it is not necessarily an ancestor of the commit carrying this file)
+# repeats: 3
+# port-baseline: benchmark/baselines/ab/quality-ab-T11.tsv  [T12 has not landed; this is the newest committed tsv at or below it]
+# jar-baseline: benchmark/baselines/quality-baseline-java-head.tsv  [read; rendered in the jar_* columns as context, never a gate; 29 stems]
+# time-baseline: benchmark/baselines/stem-times.tsv
+# corpus-median-cpu-ratio: 1.186
+# source-of-incomplete-and-violations: the referee's DRC document (`-de <board> <ses> -drc <report>`), NEVER the manifest (survey §4.1)
+# forbidden-inputs: traces.total_{vertical,horizontal,angled}_length (#195), board.bounding_box.width/height (#196)
+# quality-lane-budget: RouterBudget::disabled() (ruling AI); cpu_s lane: RouterBudget::default()
+# connectivity-claim: not declared — the must-fall rule was a NOTE (ruling BZ(a): it binds only a task that declares a connectivity claim)
+# cols:family	stem	mp_cap	incomplete	violations	clearance_violations	hole_clearance_violations	normalized_score	trace_length_mm	via_total	via_through	via_blind	via_buried	bend_count	neckdown_below_class_width	cpu_s	cpu_spread_s	jar_incomplete	jar_violations	jar_clearance_violations	jar_normalized_score	flag
+batch	router-rpi-splitter	8	0	0	0	0	999.97314	112.37296	9	9	0	0	11	0	0.070	0.000	0	0	0	999.9719	SLOWER
+batch	router-dac2020-bm01	2	4	0	0	0	979.4647	4487.2583	127	127	0	0	1109	0	104.545	0.486	31	0	0	825.6295	ok
+batch	router-j2-reference	99	0	0	0	0	999.9899	379.865	18	18	0	0	38	0	0.346	0.005	0	0	0	999.9895	ok
+batch	router-tutorial-board	8	0	0	0	0	0.0	0.0	0	0	0	0	0	0	9.102	0.043	0	0	0	0.0	SLOWER
+batch	router-ecc83-input	8	0	0	0	0	999.997	161.85194	0	0	0	0	15	0	0.035	0.001	0	0	0	999.997	ok
+batch	router-fanout-bm11	2	6	5	0	0	906.24097	1611.5262	60	60	0	0	266	0	3.395	0.016	2	5	0	987.4912	ok
+batch	router-strict-drc-cnh	2	2	17	0	16	974.3734	6570.107	0	0	0	0	440	1	164.873	2.784	11	17	0	930.0412	ok
+batch	router-empty-board	1	0	0	0	0	0.0	0.0	0	0	0	0	0	0	0.002	0.000	0	0	0	0.0	ok
+cli	router-rpi-splitter	8	0	0	0	0	999.97314	112.37296	9	9	0	0	11	0	0.071	0.004	0	0	0	999.9719	SLOWER
+cli	router-j2-reference	99	0	0	0	0	999.9899	379.865	18	18	0	0	38	0	0.347	0.001	0	0	0	999.9895	ok
+cli	router-ecc83-input	8	0	0	0	0	999.997	161.85194	0	0	0	0	15	0	0.036	0.001	0	0	0	999.997	SLOWER
+cli	router-empty-board	1	0	0	0	0	0.0	0.0	0	0	0	0	0	0	0.002	0.000	0	0	0	0.0	ok
+cli	router-dac2020-bm01	2	4	0	0	0	979.4647	4487.2583	127	127	0	0	1109	0	105.195	0.622	31	0	0	825.6295	ok
+cli	router-tutorial-board	8	0	0	0	0	0.0	0.0	0	0	0	0	0	0	9.110	0.018	0	0	0	0.0	SLOWER
+cli	router-fanout-bm11	2	6	5	0	0	906.24097	1611.5262	60	60	0	0	266	0	3.414	0.015	2	5	0	987.4912	ok
+cli	router-strict-drc-cnh	2	2	17	0	16	974.3734	6570.107	0	0	0	0	440	1	165.017	1.422	11	17	0	930.0412	ok
+cli	tutorial_board	default	0	0	0	0	0.0	0.0	0	0	0	0	0	0	9.126	0.031	0	0	0	0.0	SLOWER
+cli	Issue026-J2_reference	default	0	0	0	0	999.9899	379.865	18	18	0	0	38	0	0.350	0.007	0	0	0	999.9895	ok
+cli	large-outline	2	8	422	0	400	831.65173	4563.373	167	167	0	0	498	0	5.930	0.112	8	415	0	823.31805	ok
+cli	kicad-ecc83-json	3	6	14	0	14	309.9979	113.13035	0	0	0	0	10	0	7.413	0.044	6	14	0	309.99774	SLOWER
+cli	kicad-complex-hierarchy-json	default	0	36	0	36	935.7093	1337.2172	0	0	0	0	145	0	8.364	0.135	0	36	0	935.709	SLOWER
+drc	drc-dev-board	n/a	4	10	0	2	-	-	-	-	-	-	-	-	0.054	0.002	4	10	0	-	SLOWER
+drc	drc-bbd-mars-64	n/a	3	96	12	64	-	-	-	-	-	-	-	-	0.067	0.000	3	96	12	-	SLOWER
+drc	drc-natural-tone-preamp	n/a	44	112	0	0	-	-	-	-	-	-	-	-	0.149	0.005	44	115	0	-	SLOWER
+drc	drc-issue593-rules	n/a	74	0	0	0	-	-	-	-	-	-	-	-	0.010	0.000	74	0	0	-	ok
+drc	drc-issue593-ses	n/a	45	13	0	0	-	-	-	-	-	-	-	-	0.032	0.002	45	13	0	-	ok
+drc	drc-issue753-cpu85	n/a	169	107	0	78	-	-	-	-	-	-	-	-	0.162	0.010	169	107	0	-	SLOWER
+drc	drc-issue110-relay	n/a	44	26	0	4	-	-	-	-	-	-	-	-	0.011	0.001	44	26	0	-	ok
+drc	drc-tutorial-board	n/a	0	0	0	0	-	-	-	-	-	-	-	-	1.076	0.012	0	0	0	-	SLOWER

@@ -4,8 +4,6 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
-# The library half: `legacy::rewrite`, `logging` and the subcommand table, so that the `p8t5`
-# differential driver and the integration tests exercise the same code the binary runs.
 [lib]
 name = "freerouting"
 path = "src/lib.rs"
@@ -16,20 +14,10 @@ path = "src/main.rs"
 
 [dependencies]
 fr-geometry = { path = "../fr-geometry" }
-# Plan 8 Task 5: `fr_settings::prelude::{classify_de_arguments_reporting,
-# apply_command_line_arguments}` (the legacy parse) and `JsonFileSettings` (`--settings <file>`).
 fr-settings = { path = "../fr-settings" }
-# Plan 8 Task 5: the composition layer Task 6 wires the route/drc/info runners to.
-# Plan 8 Task 6: `commands::route` drives `fr-core`'s parse/pipeline/save/manifest sequence and
-# reaches `fr-dsn` directly for the two halves `fr-core` deliberately does not own — the board
-# half of `RulesReader.read` (`RoutingJobScheduler.java:173-184`) and `SesReader.read`
-# (`:213-227`), both of which need the `&mut Board` the CLI holds.
 fr-core = { path = "../fr-core" }
 fr-dsn = { path = "../fr-dsn" }
 fr-board = { path = "../fr-board" }
-# Plan 8 Task 7: `commands::drc` drives `DesignRulesChecker::{new, generate_report}` and
-# `KiCadDrcReport::to_json` directly — `fr-core` deliberately does not re-export them, because the
-# DRC report is a CLI/MCP output surface rather than part of the routing composition.
 fr-drc = { path = "../fr-drc" }
 clap.workspace = true
 serde.workspace = true
@@ -39,7 +27,4 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 
 [dev-dependencies]
-# Plan 8 Task 6: ruling 13's process runners and normalisers, which `tests/cli_e2e.rs` drives the
-# committed `tests/reference/cli-*` references through. See `tests/parity/Cargo.toml` for the
-# dev-dependency cycle this closes.
 parity = { path = "../../tests/parity" }

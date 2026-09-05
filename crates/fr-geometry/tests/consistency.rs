@@ -1,9 +1,3 @@
-//! Cross-representation consistency tests (Plan 1, Task 19).
-//!
-//! These are cheap property-style checks over deterministic pseudo-random inputs (a tiny LCG —
-//! no `rand` dependency) that catch the class of bug a behavioral port is most prone to: two code
-//! paths that Java keeps in agreement diverging in the port.
-
 use fr_geometry::prelude::*;
 
 struct Lcg(u64);
@@ -39,7 +33,6 @@ fn line_intersection_exact_matches_approx_when_integral() {
             (f.x - approx.x).abs() < 1e-6 && (f.y - approx.y).abs() < 1e-6,
             "{l1:?} {l2:?}"
         );
-        // the exact point lies on both lines
         assert_eq!(l1.side_of(&exact), Side::Collinear);
         assert_eq!(l2.side_of(&exact), Side::Collinear);
     }
@@ -88,10 +81,6 @@ fn polyline_offset_shapes_contain_their_segments() {
         let n = 2 + (rng.next() % 5) as usize;
         let pts: Vec<Point> = (0..n).map(|_| Point::Int(rng.point(2000))).collect();
         let pl = Polyline::from_points(&pts);
-        // Polygon::new (which from_points funnels through) removes duplicate consecutive points
-        // and collinear middle points (docs/java-quirks.md row 25 covers the resulting empty
-        // polyline reporting corner_count() == 0, vs. Java's -1); either collapse leaves fewer
-        // than 2 corners, which this guard skips exactly as the brief specifies.
         if pl.corner_count() < 2 {
             continue;
         }
@@ -125,21 +114,7 @@ fn rational_and_int_points_compare_consistently() {
         let pb = Point::Int(b);
         let ra = Point::Rational(RationalPoint::from_int(&a));
         assert_eq!(pa.compare_xy(&pb), ra.compare_xy(&pb));
-        // Not `assert_eq!(pa, ra)`: Java's `IntPoint.equals`/`RationalPoint.equals` both open with
-        // `getClass() != other.getClass()` (verified against
-        // freerouting/src/main/java/.../IntPoint.java:40 and RationalPoint.java:80), so an
-        // `IntPoint` is never `equals` to a `RationalPoint` even when they denote the same point;
-        // `point.rs`'s `PartialEq for Point` deliberately reproduces that (its doc comment notes
-        // `Direction.getInstance` relies on the relation). `compare_xy`, which *is* a value-level
-        // comparison in both Java and this port, is the right way to assert the two
-        // representations agree on the point they denote.
         assert_eq!(pa.compare_xy(&ra), std::cmp::Ordering::Equal);
-        // Same reasoning applies to the `Vector` that `difference_by` returns: `pa.difference_by`
-        // (Int, Int) is a `Vector::Int`, `ra.difference_by` (Rational, Int) is a
-        // `Vector::Rational` (see `point.rs::difference_by`'s match arms), and Java's
-        // `IntVector.equals`/`RationalVector.equals` carry the identical `getClass()` guard
-        // (verified against IntVector.java:34), so `==` is never true across the two. Compare the
-        // values they denote via `to_float()` instead.
         let fa = pa.difference_by(&pb).to_float();
         let fb = ra.difference_by(&pb).to_float();
         assert_eq!(fa.x, fb.x);

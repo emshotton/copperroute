@@ -1,49 +1,3 @@
-//! Part B of `autoroute.maze.MazeSearchEngine` (MazeSearchEngine.java:390-966, `:1105-1215`) —
-//! the room-door expansion and the cost model that scores it.
-//!
-//! Task 11's `search.rs` owns the frame: the struct, `init`, and the pop loop that dispatches
-//! here. This file is the body of one pop: `expandToRoomDoors` (`:390-626`) decides whether the
-//! room behind the popped door section may be crossed at all, `expandToTargetDoors` (`:629-705`)
-//! reaches the start and destination items inside it, `expandToDoor` (`:707-761`) walks the room's
-//! other doors, and `expandToDoorSection` (`:791-966`) is where every new queue element and every
-//! number in it is made. Three helpers round it out: `roomShapeIsThick` (`:1105-1123`),
-//! `shoveTraceRoom` (`:1130-1201`) and `checkNeckDownAtDestPin` (`:1207-1215`).
-//!
-//! # The cost model, in one place
-//!
-//! `expandToDoorSection` is the only producer of `MazeListElement`s outside `init`, so it is the
-//! only place the A\* costs are formed (`:855-887`):
-//!
-//! * a **bend penalty** of `ctrl.bendCosts[layer]`, charged when the cross product of the incoming
-//!   and outgoing directions satisfies `sin² > 0.01` (about 5.7°) — a *normalised* test, so it is
-//!   scale-independent;
-//! * `expansionValue = from.expansionValue + addCosts + bend + weightedDistance(from.mid, to.mid)`
-//!   under the layer's horizontal/vertical trace costs;
-//! * `sortingValue = expansionValue + destinationDistance.calculate(mid, layer)` — the admissible
-//!   lower bound that makes the queue an A\* frontier;
-//! * `roomRipped` is set by a **positive `addCosts` with no adjustment**, or inherited from an
-//!   already-checked parent that was itself ripped; `ripupCost` records only the former.
-//!
-//! # What Task 13 filled in
-//!
-//! Four call sites here were `unimplemented!` markers until Task 13:
-//! `MazeRipupResolver.checkLeavingRippedItem` / `.checkRipup` (`:506`, `:519`) and
-//! `MazeExpansionEngine.expandToDrillPage` / `.expandToDrill` (`:611`, `:620`, the second through
-//! `Via.getAutorouteDrillInfo`). They now dispatch to
-//! [`MazeRipupResolver`] and [`MazeExpansionEngine`]. Their branches are
-//! guarded by `ctrl.ripupAllowed`, `currentDoorIsSmall` and `ctrl.viasAllowed`, so a control with
-//! vias and ripup switched off still runs the whole of this file — which is what
-//! `crates/fr-router/tests/maze_expand.rs` does.
-//!
-//! # Visibility
-//!
-//! All seven of this file's Java methods are `private`, and all seven are `pub` here, for the
-//! reason `search.rs`' module docs give for its four: Java's own test for them is a reflective
-//! probe (`scripts/differential/java/probes/P6T12Probe.java` calls `setAccessible(true)` on
-//! exactly these), Rust integration tests have no reflection, and the branches that matter — the
-//! layer-active gate, the small-door refusal, the bend threshold, the stale-index `continue`s —
-//! are not separable through `occupyNextElement` alone.
-
 use fr_board::{Board, Item, ObstacleRoomId};
 use fr_geometry::{FloatLine, FloatPoint, Point, Polyline, java_min};
 
@@ -64,18 +18,6 @@ impl MazeSearchEngine<'_> {
     // expandToRoomDoors (:390-626)
     // =============================================================================================
 
-    /// Port of `expandToRoomDoors(MazeListElement)` (MazeSearchEngine.java:390-626): "expands the
-    /// other door section of the room. Returns true, if the from door section has to be occupied,
-    /// and false, if the occupation is delayed."
-    ///
-    /// Java takes no `Stoppable` here — `occupyNextElement`'s check at `:323` is the last one
-    /// before this runs — so the port's parameter list has no `stop` either.
-    ///
-    /// Every `FRLogger.trace` payload (`:421-438`, `:560-588`) is dropped, and with it the
-    /// `doorCountBeforeCompletion` / `doorCountAfterCompletion` pair that exists only to fill one
-    /// in.
-    /// Plan 7 Task 14b's level-8 room label: `obst<item id>:<index in item>` for an obstacle
-    /// room, `free` for anything else — Java's `p7t14bRoom`. Instrumentation only.
     fn p7t14b_room(&self, room: RoomRef) -> String {
         match room {
             RoomRef::Obstacle(id) => self.engine.rooms.obstacle_room(id).map_or_else(
@@ -94,11 +36,9 @@ impl MazeSearchEngine<'_> {
         // :392-394. "Complete the neighbour rooms to make sure, that the doors of this room will
         // not change later on."
         let Some(next_room) = list_element.next_room else {
-            // Java's caller (`:375`) has already tested `nextRoom != null`.
             return true;
         };
         let Some(layer_index) = self.engine.rooms.room_layer(board, next_room) else {
-            // Java would NPE on `nextRoom.getLayer()`.
             return true;
         };
 
@@ -197,15 +137,6 @@ impl MazeSearchEngine<'_> {
                 .get(drill.0)
                 .map(|drill| drill.location.clone());
             if let Some(drill_location) = drill_location {
-                // `new ItemSelectionFilter(SelectableChoices.CONDUCTION)` also selects both
-                // FIXED and UNFIXED (ItemSelectionFilter.java:27-32), so the fixed half of
-                // `Item.isSelectedByFilter` never rejects anything and the filter reduces to
-                // "is a ConductionArea" (ConductionArea.java:407-413).
-                //
-                // Java's `pickItems` answers a `TreeSet<Item>`, i.e. **descending** id
-                // (`Item.compareTo`, Item.java:95-101), so the walk is `.rev()`. The order is
-                // not observable — the loop answers `true` for *any* foreign-net member —
-                // but the convention is to walk Java's order regardless.
                 let picked_items = board.pick_items(&drill_location, Some(layer_index));
                 for current_item in picked_items.into_iter().rev() {
                     let is_foreign_conduction =
@@ -238,9 +169,6 @@ impl MazeSearchEngine<'_> {
         let mut ripup_costs: i32 = 0;
 
         match next_room {
-            // :499-512. A `CompleteFreeSpaceExpansionRoom` is Java's `FreeSpaceExpansionRoom`
-            // here: an incomplete one can never be a `MazeListElement.nextRoom`, which is typed
-            // `CompleteExpansionRoom`.
             RoomRef::Complete(_) if !list_element.already_checked && current_door_is_small => {
                 let mut enter_through_small_door = false;
                 if next_room_is_thick {
@@ -311,7 +239,6 @@ impl MazeSearchEngine<'_> {
                                     room_ripped: true,
                                     adjustment: list_element.adjustment,
                                     already_checked: true,
-                                    // :546. Java writes the field after construction.
                                     ripup_cost: ripup_costs,
                                 };
                                 self.push(new_element, board);
@@ -333,8 +260,6 @@ impl MazeSearchEngine<'_> {
         // `completeNeighbourRooms` (`:419`) has already rewritten the list — it guards the
         // iteration below, not the completion above.
         let room_doors_snapshot = self.engine.rooms.room_doors(next_room).to_vec();
-        // Plan 7 Task 14b's level-8 `EXPROOM` ledger (quirk #229) — the room's door list in
-        // iteration order; see [`crate::autoroute::maze::queue::p7t14b_maze_ledger`].
         if p7t14b_maze_ledger() {
             let mut line = format!(
                 "EXPROOM room={} n={}",
@@ -357,8 +282,6 @@ impl MazeSearchEngine<'_> {
 
         // :590-598.
         for to_door in room_doors_snapshot {
-            // :591-593. Java's `==` on the two `ExpandableObject`s is reference identity, which
-            // is `ExpandableRef` equality here: a target door is never equal to an expansion door.
             if list_element.door == ExpandableRef::Door(to_door) {
                 continue;
             }
@@ -408,8 +331,6 @@ impl MazeSearchEngine<'_> {
                     .and_then(|item| board.items.get(&item))
                     .is_some_and(|item| matches!(item, Item::Via(_)));
                 if let (Some(current_via), true) = (obstacle_item, is_via) {
-                    // :618-619. `Via.getAutorouteDrillInfo(autorouteSearchTree)` — a `None` is
-                    // the port's stale-item read, where Java holds the live `Via`.
                     if let Some(via_drill_info) =
                         via_autoroute_drill_info(self.engine, board, current_via)
                     {
@@ -434,14 +355,6 @@ impl MazeSearchEngine<'_> {
     // expandToTargetDoors (:629-705)
     // =============================================================================================
 
-    /// Port of `expandToTargetDoors(MazeListElement, boolean, boolean, FloatPoint)`
-    /// (MazeSearchEngine.java:629-704): "expand the target doors of the room. Returns true, if at
-    /// least 1 target door was expanded."
-    ///
-    /// The two `continue`s at `:653-668` are the stale-index guard the comment there calls
-    /// "prevents warning when indices become stale during routing": an item's tree shapes can be
-    /// rebuilt underneath a `TargetItemExpansionDoor` that keeps its `treeEntryNo`. Both are
-    /// silent, and both are transcribed verbatim.
     pub fn expand_to_target_doors(
         &mut self,
         board: &mut Board,
@@ -474,9 +387,6 @@ impl MazeSearchEngine<'_> {
         }
         // :648.
         let mut result = false;
-        // :649. A snapshot, because `expandToDoorSection` can append to the queue but not to the
-        // room — Java iterates the live `List` and the port needs an owned copy to satisfy the
-        // borrow checker; the two agree because nothing in the loop touches the room's doors.
         let target_doors = self.engine.rooms.room_target_doors(next_room).to_vec();
         for to_door in target_doors {
             // :650-652.
@@ -487,9 +397,6 @@ impl MazeSearchEngine<'_> {
                 continue;
             };
             let (item, tree_entry_no) = (door.item, door.tree_entry_no);
-            // :653-659. "Validate index before calling - prevents warning when indices become
-            // stale during routing". `treeEntryNo` is a `usize` here, so Java's `< 0` arm is
-            // unrepresentable.
             let tree_shape_count = board.item_tree_shape_count(item, self.search_tree);
             // T17: the denominator — a zero fire count only means something if the test ran.
             crate::autoroute::instrument::record_visit(
@@ -544,7 +451,6 @@ impl MazeSearchEngine<'_> {
             // :669.
             let Some(connection_point) = target_shape.nearest_point_approx(shape_entry_middle)
             else {
-                // Java would NPE; an empty target shape has no connection point either way.
                 continue;
             };
             // :670-694.
@@ -600,14 +506,6 @@ impl MazeSearchEngine<'_> {
     // expandToDoor (:707-760)
     // =============================================================================================
 
-    /// Port of `expandToDoor(ExpansionDoor, MazeListElement, int, boolean, Adjustment)`
-    /// (MazeSearchEngine.java:707-759): "return true, if at least 1 door section was expanded."
-    ///
-    /// `:715` is one of the three `getSectionSegments` calls that can **reallocate** the door's
-    /// section array (Task 11 review S2). Java reads `toDoor.sectionArr[i]` at `:718` through the
-    /// field, i.e. through the array that call has just installed, and `expandToDoorSection` reads
-    /// it again through `getMazeSearchElement`. The port resolves the door out of the arena at
-    /// both points for exactly that reason: nothing is cached across the call.
     pub fn expand_to_door(
         &mut self,
         board: &mut Board,
@@ -715,15 +613,6 @@ impl MazeSearchEngine<'_> {
     // expandToDoorSection (:791-966) — the cost model
     // =============================================================================================
 
-    /// Port of `expandToDoorSection(ExpandableObject, int, FloatLine, MazeListElement, int,
-    /// Adjustment)` (MazeSearchEngine.java:791-965): "return true, if the door section was
-    /// successfully expanded."
-    ///
-    /// `shape_entry` is an `Option` because Java's parameter is nullable and `:799` tests it:
-    /// `expandToDoor`'s `segmentProjection` can answer `null`, and so can a caller in Task 13.
-    ///
-    /// Both `FRLogger.trace` blocks (`:800-848`, `:907-963`) are dropped; the `return false` the
-    /// first guards and the `mazeExpansionList.add` the second precedes are not.
     #[allow(clippy::too_many_arguments)]
     pub fn expand_to_door_section(
         &mut self,
@@ -735,9 +624,6 @@ impl MazeSearchEngine<'_> {
         add_costs: i32,
         adjustment: MazeAdjustment,
     ) -> bool {
-        // :798-799. Java evaluates `door.getMazeSearchElement(sectionIndex).isOccupied` *before*
-        // the null test on `shapeEntry`, so an unallocated section array throws even for a null
-        // entry; the port resolves it in the same order.
         let door_section_occupied = self
             .engine
             .maze_search_element(door, section_index)
@@ -756,7 +642,6 @@ impl MazeSearchEngine<'_> {
             return false;
         }
         let Some(from_next_room) = from_element.next_room else {
-            // Java's `door.otherRoom(null)` answers null, and `getLayer()` on it throws.
             return false;
         };
         // :851-853.
@@ -839,7 +724,6 @@ impl MazeSearchEngine<'_> {
                 0
             },
         };
-        // :964. The guarded `add`, whose answer Java discards (quirk #178's sibling site).
         self.push(new_element, board);
         // :965.
         true
@@ -849,19 +733,6 @@ impl MazeSearchEngine<'_> {
     // roomShapeIsThick (:1105-1123)
     // =============================================================================================
 
-    /// Port of `roomShapeIsThick(ObstacleExpansionRoom)` (MazeSearchEngine.java:1105-1123).
-    ///
-    /// The `FRLogger.warn` at `:1119` is dropped; its `obstacleHalfWidth = 0` is not, and it is
-    /// reachable — an `ObstacleArea` room and a `Pin` room both take it (the pin is a `DrillItem`
-    /// but not a `Via`), and `0 >= compensatedTraceHalfWidth` is false for every positive trace.
-    ///
-    /// **The `Via` arm (`:1115-1117`) is reached, and Task 17 measured it.** The controller's
-    /// Task 12 note listed it among the arms no unit fixture discriminates; Task 17's acceptance
-    /// corpus enters it **33** times on `router-rpi-splitter`, **163** on `router-j2-reference`
-    /// and **6 564** on `router-dac2020-bm01` (`tests/reference/router-fixtures.txt`), and every
-    /// connection of all three matches the HEAD jar byte for byte. `router-ecc83-input` and
-    /// `router-tutorial-board` never reach it. This is a coverage note rather than an obligation
-    /// marker: the arm was transcribed and is now exercised, so there is nothing left to close.
     pub fn room_shape_is_thick(&self, board: &Board, obstacle_room: ObstacleRoomId) -> bool {
         let Some(room) = self.engine.rooms.obstacle_room(obstacle_room) else {
             return false;
@@ -890,7 +761,6 @@ impl MazeSearchEngine<'_> {
                 let ctx = board.ctx();
                 match via.get_tree_shape_on_layer(self.search_tree, layer, &ctx) {
                     Some(via_shape) => 0.5 * via_shape.max_width(),
-                    // Java would NPE on a via with no shape on this layer.
                     None => return false,
                 }
             }
@@ -905,22 +775,12 @@ impl MazeSearchEngine<'_> {
     // shoveTraceRoom (:1130-1201)
     // =============================================================================================
 
-    /// Port of `shoveTraceRoom(MazeListElement, ObstacleExpansionRoom)`
-    /// (MazeSearchEngine.java:1130-1201): "shoves a trace room and expands the corresponding
-    /// doors. Return false, if no door was expanded. In this case occupation of the door_section
-    /// by ripup can be delayed to allow shoving the room from a different door section."
-    ///
-    /// It is check-only — see [`MazeTraceShover`]'s module docs. The two halves are symmetric: the
-    /// left one is skipped for an element already adjusted `RIGHT` and vice versa, and each turns
-    /// its collected [`DoorSection`]s into queue elements whose adjustment is `LEFT`/`RIGHT` for a
-    /// 2-dimensional link door and `NONE` otherwise (`:1153-1159`, `:1184-1190`).
     pub fn shove_trace_room(
         &mut self,
         board: &mut Board,
         list_element: &MazeListElement,
         obstacle_room: ObstacleRoomId,
     ) -> bool {
-        // Plan 7 Task 14b's level-8 `SHOVEROOM` ledger (quirk #229).
         if p7t14b_maze_ledger() {
             eprintln!(
                 "SHOVEROOM item={} sec={} cnt={} adj={:?}",
@@ -935,11 +795,6 @@ impl MazeSearchEngine<'_> {
                 list_element.adjustment
             );
         }
-        // :1131-1137. "No delay of occupation necessary because inner sections of a door are
-        // currently not shoved."
-        // `listElement.door.mazeSearchElementCount()` (`:1132`). `None` is the still-null
-        // `sectionArr` Java throws on (ExpansionDoor.java:95-97); `occupyNextElement` has already
-        // resolved a section of this door, so it is unreachable here.
         let section_count = i32::try_from(
             self.engine
                 .maze_search_element_count(list_element.door)
@@ -1043,33 +898,31 @@ impl MazeSearchEngine<'_> {
     // checkNeckDownAtDestPin (:1207-1215)
     // =============================================================================================
 
-    /// Port of `checkNeckDownAtDestPin(CompleteExpansionRoom)` (MazeSearchEngine.java:1207-1215):
-    /// "checks, if the next room contains a destination pin, where evtl. neckdown is necessary.
-    /// Return the neck down width in this case, or 0, if no such pin was found."
-    ///
-    /// # Java bug: `MazeSearchEngine.checkNeckDownAtDestPin`
-    ///
-    /// The name and the javadoc both say *destination* pin; the loop (`:1209-1213`) never calls
-    /// `isDestinationDoor()`. It answers the neckdown half width of the **first** target door
-    /// whose item is a `Pin` — start pin or destination pin, whichever the room lists first — and
-    /// `return`s from inside the loop, so a room whose first pin has no neckdown answers `0`
-    /// without looking at the rest. `docs/java-quirks.md` #179, JVM-pinned by `P6T12Probe` mode
-    /// `neck`: room 2's target doors are `(item 2 = the start pin, item 3 = the destination pin)`
-    /// and the answer is the *start* pin's `49.0`.
-    pub fn check_neck_down_at_dest_pin(&self, board: &Board, room: RoomRef) -> f64 {
+    pub fn check_neck_down_at_dest_pin(&self, board: &mut Board, room: RoomRef) -> f64 {
         // :1208.
         let target_doors = self.engine.rooms.room_target_doors(room);
-        let ctx = board.ctx();
         // :1209-1213.
         for current_target_door in target_doors {
             let Some(door) = self.engine.rooms.target_door(*current_target_door) else {
                 continue;
             };
-            if let Some(Item::Pin(pin)) = board.items.get(&door.item) {
-                let Some(layer) = self.engine.rooms.room_layer(board, room) else {
-                    return 0.0;
-                };
-                return f64::from(pin.get_trace_neckdown_halfwidth(layer, &ctx));
+            let item = door.item;
+            if !matches!(board.items.get(&item), Some(Item::Pin(_))) {
+                continue;
+            }
+            if !door.is_destination_door(board) {
+                continue;
+            }
+            let Some(layer) = self.engine.rooms.room_layer(board, room) else {
+                continue;
+            };
+            let ctx = board.ctx();
+            let Some(Item::Pin(pin)) = board.items.get(&item) else {
+                continue;
+            };
+            let neckdown_half_width = f64::from(pin.get_trace_neckdown_halfwidth(layer, &ctx));
+            if neckdown_half_width > 0.0 {
+                return neckdown_half_width;
             }
         }
         // :1214.
@@ -1080,14 +933,10 @@ impl MazeSearchEngine<'_> {
     // The two `ExpandableObject` reads this file needs
     // =============================================================================================
 
-    /// `ExpandableObject.getDimension()` (ExpandableObject.java:13) over the four implementors —
-    /// `MazeSearchEngine.java:461`'s virtual call.
     fn expandable_dimension(&self, object: ExpandableRef) -> i32 {
         self.engine.expandable_dimension(object)
     }
 
-    /// `ExpandableObject.getShape().centreOfGravity()` (`MazeSearchEngine.java:859`) over the four
-    /// implementors. `None` is Java's `NullPointerException` on a door whose rooms have no shape.
     fn expandable_shape_centre(&self, object: ExpandableRef) -> Option<FloatPoint> {
         Some(self.engine.expandable_shape(object)?.centre_of_gravity())
     }

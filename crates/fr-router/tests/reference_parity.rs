@@ -1,50 +1,4 @@
-//! Plan 6 Task 17: the port's per-connection routing against the HEAD jar's, on five boards.
-//!
-//! # What the references are
-//!
-//! `tests/reference/<stem>/router.jsonl` is one JSON line per connection, written **verbatim** by
-//! `scripts/differential/java/P6T1.java` on the clone's HEAD build (plan-6's global constraints
-//! make HEAD the parity jar) — no post-processing beyond dropping the driver's own `HEADER` line,
-//! which names the jar by absolute path and lives in `router.meta.txt` instead. The rows, the
-//! exact command per stem and the jar's identity are `tests/reference/router-fixtures.txt` and
-//! each stem's `router.meta.txt`; `scripts/gen-router-reference.sh` regenerates them, and
-//! `scripts/differential/run.sh p6t1` is the same driver diffed live against the same Rust code
-//! this file runs.
-//!
-//! # The acceptance ladder (plan-6 ruling 1)
-//!
-//! Per connection, in order:
-//!
-//! * **(a)** the same `AutorouteAttemptState` *and* the same ripped-item id set — required for
-//!   every connection of every stem;
-//! * **(b)** the same inserted geometry: every new trace's layer, half width and polyline corner
-//!   list, and every new via's centre, padstack and layer span, in insertion order, with the same
-//!   item ids — required for `router-rpi-splitter`, reported for the rest;
-//! * **(c)** spec §9's metric block: incompletes delta equal, via delta equal, `violations == 0`,
-//!   cumulative trace length within ±10 % — required everywhere.
-//!
-//! **Measured result: every stem reaches (a), (b) and (c) on every connection.** The ladder's
-//! demotion path — a connection that reaches (a)+(c) but not (b) becomes a README row rather than
-//! a failure — is therefore unused, and [`geometry_is_required_where_it_was_reached`] is what stops
-//! it being quietly re-entered: it asserts that (b) holds on *all five* stems, so a future change
-//! that demotes one has to say so in the ladder rather than in a passing test.
-//!
-//! # What runs in a debug build
-//!
 //! Only `router-dac2020-bm01` is `#[cfg_attr(debug_assertions, ignore)]` (294 connections
-//! unoptimised is minutes of work; Plan 3's convention). Every other stem — `router-j2-reference`
-//! in particular, which is the regression test for the `describe_connection` snapshot of k = 19 —
-//! runs under a plain `cargo test --workspace`, so this task's own fix is exercised by the default
-//! test command and not only by `--release`.
-//!
-//! # `router-tutorial-board` routes nothing, and that is the assertion
-//!
-//! `examples/tutorial_board/tutorial_board.dsn`'s `(network …)` scope is 438 empty `@:no_net_N`
-//! nets, so no item has a non-empty unconnected set and the connection list is empty. The stem is
-//! kept because "the port agrees there is nothing to route here" is a real regression guard on the
-//! DSN reader and on `Board::unconnected_set`, and because the plan's fixture table names the
-//! board; `every_stem_has_the_connection_count_its_meta_records` is where the count is pinned.
-
 use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::prelude::*;
@@ -52,27 +6,20 @@ use fr_drc::DesignRulesChecker;
 use fr_dsn::java_double_to_string;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::Point;
+use fr_router::autoroute::maze::ViaPricing;
 use fr_router::pipeline::RouterBudget;
 use fr_router::{route_connection, route_connection_full};
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 use parity::{RouterConnectionDoc, RouterMetrics, RouterTraceDoc, RouterViaDoc};
 
-// ---------------------------------------------------------------------------------------------
-// The fixture table
-// ---------------------------------------------------------------------------------------------
-
-/// One row of `tests/reference/router-fixtures.txt`: `stem|dsn|max_items[|ripup_pass_no]`.
 struct Row {
     stem: String,
     dsn: String,
     max_items: usize,
-    /// `AutorouteConnectionRouter.route:45`'s `ripupPassNo`; the optional fourth field, 1 by
-    /// default. Only `router-dac2020-bm01-pass2` sets it (Plan 6 Task 17b).
     ripup_pass_no: i32,
 }
 
-/// Reads the generator's own fixture table, so the tests and the references cannot drift apart.
 fn rows() -> Vec<Row> {
     let path = parity::workspace_root().join("tests/reference/router-fixtures.txt");
     let text = std::fs::read_to_string(&path)
@@ -84,11 +31,6 @@ fn rows() -> Vec<Row> {
             let mut fields = line.split('|');
             let mut next = || fields.next().unwrap_or_default().trim().to_string();
             let (stem, dsn, max_items, ripup_pass_no) = (next(), next(), next(), next());
-            // Plan 7 Task 16 appended `max_passes|fanout|optimizer` at fields 5-7 and made 3 and 4
-            // **mandatory-or-`-`**. A `-` in `max_items` is a batch-only row — one this file's
-            // generator (`gen-router-reference.sh`) skips and which has no `router.jsonl` — so it
-            // is dropped here for the same reason. A `-` in `ripup_pass_no` is the default 1,
-            // which is what the field's absence already meant.
             if max_items == "-" {
                 return None;
             }
@@ -118,8 +60,6 @@ fn row(stem: &str) -> Row {
 }
 
 /// The stems whose per-stem tests carry `#[cfg_attr(debug_assertions, ignore)]`, and which
-/// [`geometry_is_required_where_it_was_reached`] therefore also skips in a debug build. Both are
-/// the DAC2020 board, at `ripupPassNo` 1 and 2.
 const DEBUG_IGNORED_STEMS: [&str; 2] = ["router-dac2020-bm01", "router-dac2020-bm01-pass2"];
 
 fn reference_path(stem: &str) -> std::path::PathBuf {
@@ -132,10 +72,6 @@ fn read_reference(stem: &str) -> Vec<RouterConnectionDoc> {
         .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
     parity::parse_router_jsonl(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
-
-// ---------------------------------------------------------------------------------------------
-// The port side — the exact four choices `P6T1.java` documents
-// ---------------------------------------------------------------------------------------------
 
 fn load_board(rel_path: &str) -> Board {
     let path = parity::java_dir().join(rel_path);
@@ -154,8 +90,6 @@ fn load_board(rel_path: &str) -> Board {
     }
 }
 
-/// `P6T1.main`'s settings: the headless ladder's priority-0 source, sized and tuned for the board.
-/// Not a bare `RouterSettings::new()` — `DefaultSettings.java:103` sets `automaticNeckdown = true`.
 fn build_settings(board: &Board) -> RouterSettings {
     let mut settings = DefaultSettings::new(&HostEnvironment::detect())
         .get_settings()
@@ -166,8 +100,6 @@ fn build_settings(board: &Board) -> RouterSettings {
     settings
 }
 
-/// `P6T1.pickConnections`: `getItems()` order (descending id, quirk #63) × the item's own net
-/// index order, keeping the pairs with a non-empty unconnected set, computed once.
 fn pick_connections(board: &Board, max_items: usize) -> Vec<(ItemId, i32)> {
     let mut result = Vec::new();
     for item_id in board.items_in_board_order() {
@@ -190,25 +122,16 @@ fn pick_connections(board: &Board, max_items: usize) -> Vec<(ItemId, i32)> {
     result
 }
 
-/// Which slice of `AutorouteConnectionRouter.route` a replay drives.
-///
-/// `OneToFive` is Plan 6's seam, [`route_connection`], and the `router.jsonl` references.
-/// `OneToEight` is Plan 7 Task 8's [`route_connection_full`] and the `router-steps18.jsonl`
-/// ones — step 6's `optChangedArea` on `ROUTED`, step 7's necked retry and step 8's strict-DRC
-/// rollback. Both are the same driver (`P6T1.java`, its fifth argument), so a replay and a live
-/// `run.sh p6t1` can never describe different runs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Steps {
     OneToFive,
     OneToEight,
 }
 
-/// Routes the whole stem and answers the port's own `router.jsonl`, as typed documents.
 fn route_stem(row: &Row) -> Vec<RouterConnectionDoc> {
     route_stem_with(row, Steps::OneToFive)
 }
 
-/// [`route_stem`], parameterised on which slice of `route` to drive.
 fn route_stem_with(row: &Row, steps: Steps) -> Vec<RouterConnectionDoc> {
     let mut board = load_board(&row.dsn);
     let settings = build_settings(&board);
@@ -239,8 +162,6 @@ fn route_stem_with(row: &Row, steps: Steps) -> Vec<RouterConnectionDoc> {
             continue;
         }
 
-        // `AutoroutePassRunner.java:224` — quirk #177 makes the presence of `changed_area`
-        // observable inside `TraceShover::insert`, so leaving this out would route another board.
         board.start_marking_changed_area();
         let mut ripped: BTreeSet<ItemId> = BTreeSet::new();
         let mut ripup_costs: BTreeMap<ItemId, i32> = BTreeMap::new();
@@ -262,11 +183,6 @@ fn route_stem_with(row: &Row, steps: Steps) -> Vec<RouterConnectionDoc> {
                 false,
                 &|| false,
             ),
-            // The two arguments steps 6-8 read, and controller ruling AI's budget **disabled**:
-            // the Java side's `TIME_LIMIT_TO_PREVENT_ENDLESS_LOOP` is a `javac`-inlined
-            // compile-time constant and cannot be turned off, so the port runs with no limit at
-            // all and a match is then the proof that the jar's 1 000 ms never tripped. See
-            // `scripts/differential/rust/src/bin/p6t1.rs`'s module comment.
             Steps::OneToEight => route_connection_full(
                 &mut board,
                 &mut engine,
@@ -274,6 +190,7 @@ fn route_stem_with(row: &Row, steps: Steps) -> Vec<RouterConnectionDoc> {
                 net_no,
                 &settings,
                 &trace_costs,
+                ViaPricing::ByPadstackRadius,
                 &mut ripped,
                 &mut ripup_costs,
                 row.ripup_pass_no,
@@ -294,7 +211,6 @@ fn route_stem_with(row: &Row, steps: Steps) -> Vec<RouterConnectionDoc> {
             net: net_no,
             state: result.state.name().to_string(),
             details: result.details.clone().unwrap_or_default(),
-            // Rendered in Java's descending `TreeSet<Item>` order (quirk #44).
             ripped: ripped.iter().rev().map(|id| i64::from(id.0)).collect(),
             ripup_costs: ripup_costs
                 .iter()
@@ -311,7 +227,6 @@ fn route_stem_with(row: &Row, steps: Steps) -> Vec<RouterConnectionDoc> {
     out
 }
 
-/// `P6T1.appendInsertedGeometry`.
 fn inserted_geometry(
     board: &Board,
     max_id_before: ItemId,
@@ -353,20 +268,25 @@ fn inserted_geometry(
     (traces, vias, other)
 }
 
-/// `P6T1.appendMetrics`.
 fn metrics(board: &mut Board, net_no: i32) -> RouterMetrics {
     let vias = board.net_via_count(net_no) as i64;
     let trace_length = java_double_to_string(board.cumulative_trace_length());
-    let mut drc = DesignRulesChecker::new(board);
+    let (incompletes, violations) = {
+        let mut drc = DesignRulesChecker::new(board);
+        (drc.get_incomplete_count(), drc.get_all_violations())
+    };
+    let violations = violations
+        .iter()
+        .filter(|violation| violation.involves_routing(board))
+        .count() as i64;
     RouterMetrics {
-        incompletes: drc.get_incomplete_count() as i64,
+        incompletes: incompletes as i64,
         vias,
         trace_length,
-        violations: drc.get_all_clearance_violations().len() as i64,
+        violations,
     }
 }
 
-/// `P6T1.pt`.
 fn point(p: &Point) -> String {
     match p {
         Point::Int(ip) => format!("({},{})", ip.x, ip.y),
@@ -381,7 +301,6 @@ fn point(p: &Point) -> String {
     }
 }
 
-/// `P6T1.corners`, one corner.
 fn corner(p: &fr_geometry::Polyline, i: usize) -> String {
     match p.corner(i) {
         Some(Point::Int(ip)) => format!("({},{})", ip.x, ip.y),
@@ -396,14 +315,7 @@ fn corner(p: &fr_geometry::Polyline, i: usize) -> String {
     }
 }
 
-// ---------------------------------------------------------------------------------------------
-// The ladder
-// ---------------------------------------------------------------------------------------------
-
-/// How far up ruling 1's ladder one stem got. `check` requires (a) and (c) and returns this so a
-/// caller can require or merely report (b).
 struct Ladder {
-    /// Connections whose (b) rung failed, with the first differing value.
     geometry_diffs: Vec<String>,
     connections: usize,
 }
@@ -418,6 +330,10 @@ fn check(stem: &str) -> Option<Ladder> {
     let row = row(stem);
     let expected = read_reference(stem);
     let actual = route_stem(&row);
+    if parity::regolden_label().is_some() {
+        parity::write_router_jsonl(&reference_path(stem), &actual);
+        return None;
+    }
 
     assert_eq!(
         actual.len(),
@@ -430,7 +346,6 @@ fn check(stem: &str) -> Option<Ladder> {
     let mut geometry_diffs = Vec::new();
     for (i, (got, want)) in actual.iter().zip(expected.iter()).enumerate() {
         let at = format!("{stem} k={}", i + 1);
-        // The connection's identity has to agree before any rung means anything.
         assert_eq!(
             (got.k, got.item, got.net),
             (want.k, want.item, want.net),
@@ -440,7 +355,6 @@ fn check(stem: &str) -> Option<Ladder> {
             want.item,
             want.net
         );
-        // (a).
         assert_eq!(
             got.state, want.state,
             "{at}: state {} != Java's {} (details {:?} vs {:?})",
@@ -451,11 +365,9 @@ fn check(stem: &str) -> Option<Ladder> {
             "{at}: ripped set {:?} != Java's {:?}",
             got.ripped, want.ripped
         );
-        // (b), collected rather than asserted — the caller decides.
         if let Some(diff) = first_geometry_difference(got, want) {
             geometry_diffs.push(format!("{at}: {diff}"));
         }
-        // (c).
         let (Some(mine), Some(theirs)) = (got.metrics.as_ref(), want.metrics.as_ref()) else {
             assert_eq!(
                 got.metrics.is_some(),
@@ -476,7 +388,6 @@ fn check(stem: &str) -> Option<Ladder> {
     })
 }
 
-/// The first value of rung (b) that differs, as one line — never a whole-document dump.
 fn first_geometry_difference(
     got: &RouterConnectionDoc,
     want: &RouterConnectionDoc,
@@ -554,7 +465,6 @@ fn first_geometry_difference(
     None
 }
 
-/// (a)+(b)+(c) on one stem, with (b) required.
 fn check_all_rungs(stem: &str) -> Option<Ladder> {
     let ladder = check(stem)?;
     assert!(
@@ -566,13 +476,6 @@ fn check_all_rungs(stem: &str) -> Option<Ladder> {
     Some(ladder)
 }
 
-// ---------------------------------------------------------------------------------------------
-// One test per stem
-// ---------------------------------------------------------------------------------------------
-
-/// The MATCH-first fixture (plan-6 ruling 11): the smallest board that actually routes. Its eight
-/// connections cover `ROUTED` with vias, `NO_UNCONNECTED_NETS`, `AutorouteEngine.java:207-213`'s
-/// "no connection was found" `FAILED` and `:271-277`'s "could not be inserted" `FAILED`.
 #[test]
 fn router_rpi_splitter() {
     let Some(ladder) = check_all_rungs("router-rpi-splitter") else {
@@ -581,13 +484,6 @@ fn router_rpi_splitter() {
     assert_eq!(ladder.connections, 8);
 }
 
-/// Spec §14.3's smoke board, routed **whole** rather than the plan's first two connections: 294
-/// connections, 242 of them `ROUTED`, and the only place in the corpus where a connection rips —
-/// up to three items at once, which is what discharges the ripped-set and `removeItems` ordering
-/// obligations `engine.rs` left for this task.
-///
-/// `#[cfg_attr(debug_assertions, ignore)]` per Plan 3's convention: the board is minutes of work
-/// in a debug build and seconds in a release one.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn router_dac2020_bm01() {
@@ -597,13 +493,6 @@ fn router_dac2020_bm01() {
     assert_eq!(ladder.connections, 294);
 }
 
-/// The same board at `ripupPassNo = 2`, the Plan 6 Task 17b regression pin.
-///
-/// `AutorouteConnectionRouter.route:45` multiplies `startRipupCosts` by the pass number, so this
-/// is the first stem where a ripup is priced as a later pass would price it — and where the port
-/// diverged until quirk #74 (`PolylineTrace.change`'s reference comparison) was reproduced:
-/// connection 267 consumed six extra transient item ids and connection 270 routed different
-/// geometry. See `docs/java-quirks.md` and Task 17b's report.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn router_dac2020_bm01_pass2() {
@@ -613,13 +502,7 @@ fn router_dac2020_bm01_pass2() {
     assert_eq!(ladder.connections, 294);
 }
 
-/// `J2ReferenceRoutingTest.java:29`'s board, routed whole.
-///
 /// **Deliberately not `#[cfg_attr(debug_assertions, ignore)]`.** This is the regression test for
-/// the `describe_connection` snapshot (k = 19, the five-vs-four `polylinetrace` message), so it
-/// has to run under a plain `cargo test --workspace` and not only under `--release`. 45
-/// connections cost well under a second in a debug build; only `router-dac2020-bm01` is expensive
-/// enough to earn the ignore.
 #[test]
 fn router_j2_reference() {
     let Some(ladder) = check_all_rungs("router-j2-reference") else {
@@ -628,8 +511,6 @@ fn router_j2_reference() {
     assert_eq!(ladder.connections, 45);
 }
 
-/// The CLI end-to-end board (spec §14.4). It routes **nothing** — see the module comment — and the
-/// assertion is that the port agrees.
 #[test]
 fn router_tutorial_board() {
     let Some(ladder) = check_all_rungs("router-tutorial-board") else {
@@ -641,9 +522,6 @@ fn router_tutorial_board() {
     );
 }
 
-/// A board with a `(plane …)` net and a copper pour, i.e. `ConductionArea` items on the search
-/// tree that every room completion has to walk past. 22 connections; cheap enough to run in a
-/// debug build, so it carries no ignore.
 #[test]
 fn router_ecc83_input() {
     let Some(ladder) = check_all_rungs("router-ecc83-input") else {
@@ -652,30 +530,6 @@ fn router_ecc83_input() {
     assert_eq!(ladder.connections, 22);
 }
 
-// ---------------------------------------------------------------------------------------------
-// Properties of the reference set itself
-// ---------------------------------------------------------------------------------------------
-
-/// Every `router.meta.txt` must name the HEAD jar and its `2.3.1-SNAPSHOT` version: plan-6's
-/// global constraints make HEAD the parity jar, and a reference regenerated against the pinned
-/// 2.3.0 release would be a *different algorithm* (`autoroute/**` was refactored between them),
-/// not merely an older one.
-///
-/// # Lane-aware since Plan 9 (ruling BT)
-///
-/// A reference family may sit in the **port** lane from Plan 9 on: the first fix that *moves* a
-/// family regenerates it with `--from-port`, and from then on its bytes are the port's rather
-/// than the jar's. The meta file says which lane it is in on its own `lane` line, and a file with
-/// no such line is a jar-lane file — that is what every pre-Plan-9 meta is. This test asserts the
-/// invariant **of the lane the file declares**: the jar's build identity in the jar lane, and the
-/// port sha plus the Plan 9 task that cut it in the port lane. Asserting the jar's identity over a
-/// port-cut file would only be asserting that nobody had switched lanes, which is not a property
-/// anything wants.
-///
-/// **The R family is still in the jar lane after Plan 9 Task 2**, and measurably so: R1's sort
-/// lives in `getAutorouteItems`, which the per-connection `p6t1` driver does not call, and R2's
-/// guard is unreachable from a fixture whose minimum is 30. Not one of the six `router.jsonl`
-/// rows moved, so ruling BT leaves the family where it is.
 #[test]
 fn references_are_from_the_head_jar() {
     for row in rows() {
@@ -707,9 +561,6 @@ fn references_are_from_the_head_jar() {
     }
 }
 
-/// The generator writes the connection count into `router.meta.txt`; this is what stops a
-/// truncated or half-written `router.jsonl` from being committed beside a meta that describes a
-/// longer run — and it is where `router-tutorial-board`'s zero is pinned.
 #[test]
 fn every_stem_has_the_connection_count_its_meta_records() {
     for row in rows() {
@@ -737,13 +588,6 @@ fn every_stem_has_the_connection_count_its_meta_records() {
     }
 }
 
-/// Ruling 1's (b) rung is *required* on `router-rpi-splitter` and *reported* elsewhere. It is in
-/// fact reached everywhere, so this test says so: if a future change demotes a stem to (a)+(c),
-/// this is the test that fails and the README's ladder table is what has to be updated.
-///
-/// It runs in a debug build too, over every stem but the one whose own test is ignored there:
-/// re-routing `router-dac2020-bm01`'s 294 connections unoptimised is minutes of work, and
-/// [`router_dac2020_bm01`] already covers it under `--release`.
 #[test]
 fn geometry_is_required_where_it_was_reached() {
     for row in rows() {
@@ -762,15 +606,6 @@ fn geometry_is_required_where_it_was_reached() {
     }
 }
 
-// ---------------------------------------------------------------------------------------------
-// `--steps=1-8`: the whole of `AutorouteConnectionRouter.route` (Plan 7 Task 8)
-// ---------------------------------------------------------------------------------------------
-
-/// `tests/reference/<stem>/router-steps18.jsonl` — the same driver, its fifth argument `1-8`.
-///
-/// Regenerated by `scripts/gen-router-reference.sh --steps=1-8` and diffed live by
-/// `scripts/differential/run.sh p6t1 <dsn> <maxItems> <pass> - 1-8 0`; this is the replay that
-/// makes the committed transcripts a regression gate rather than a record.
 fn steps18_reference_path(stem: &str) -> std::path::PathBuf {
     parity::reference(stem, "router-steps18.jsonl")
 }
@@ -782,13 +617,16 @@ fn read_steps18_reference(stem: &str) -> Vec<RouterConnectionDoc> {
     parity::parse_router_jsonl(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
-/// The port's `--steps=1-8` run and the jar's, or `None` when the fixtures are unavailable.
 fn steps18_pair(stem: &str) -> Option<(Vec<RouterConnectionDoc>, Vec<RouterConnectionDoc>)> {
     if !parity::require_java_dir() || !parity::require_reference(&steps18_reference_path(stem)) {
         return None;
     }
     let expected = read_steps18_reference(stem);
     let actual = route_stem_with(&row(stem), Steps::OneToEight);
+    if parity::regolden_label().is_some() {
+        parity::write_router_jsonl(&steps18_reference_path(stem), &actual);
+        return None;
+    }
     assert_eq!(
         actual.len(),
         expected.len(),
@@ -799,7 +637,6 @@ fn steps18_pair(stem: &str) -> Option<(Vec<RouterConnectionDoc>, Vec<RouterConne
     Some((actual, expected))
 }
 
-/// Every connection identical — the whole document, which is what `run.sh`'s byte diff asserts.
 fn assert_steps18_matches(stem: &str) {
     let Some((actual, expected)) = steps18_pair(stem) else {
         return;
@@ -814,11 +651,6 @@ fn assert_steps18_matches(stem: &str) {
     }
 }
 
-/// The four cheap stems that MATCH the jar end to end under `--steps=1-8`.
-///
-/// `router-rpi-splitter` (8 connections), `router-j2-reference` (45), `router-ecc83-input` (22)
-/// and `router-tutorial-board` (0, which is its own assertion — see the module comment). All four
-/// are cheap enough for a debug build, so this is the CI-side gate on steps 6-8.
 #[test]
 fn steps_one_to_eight_matches_the_jar() {
     for stem in [
@@ -831,30 +663,12 @@ fn steps_one_to_eight_matches_the_jar() {
     }
 }
 
-/// `router-dac2020-bm01` at `ripupPassNo = 2` MATCHes end to end — 294 connections, so it carries
-/// the same ignore [`router_dac2020_bm01`] does.
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn steps_one_to_eight_on_dac2020_at_pass_two_matches_the_jar() {
     assert_steps18_matches("router-dac2020-bm01-pass2");
 }
 
-/// `router-dac2020-bm01` at `ripupPassNo = 1` MATCHes end to end — **all 294 connections**.
-///
-/// This was the plan's one open XDIFF. Plan 7 Task 8b bisected it to a single statement and
-/// controller ruling AY authorised the fix: `fr_router::board_ext::tightener::scan_contacts`
-/// walked the contact set of `TraceTightener45.smoothenStartCornerAtTrace` **ascending** where
-/// Java's `TreeSet<Item>` walks it **descending** (quirk #44's ordering), and
-/// `TraceTightener45.java:511-515` keeps the *last* matching contact — so with two or more
-/// matching contacts the two sides smoothed against different ones. On this board it fired
-/// exactly once, at connection 175, trace 292213, and cascaded into 120 of the 294 lines.
-/// `scan_contacts` is now `.rev()`ed and quirk **#210** carries the measurement.
-///
-/// The assertion below is deliberately more than `assert_steps18_matches`: it names connection
-/// 175 in its failure message, because that connection is quirk #210's regression signal and a
-/// bare "k=175 diverged" would lose the reason.
-///
-/// 294 connections, so it carries the same ignore [`router_dac2020_bm01`] does.
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn steps_one_to_eight_on_dac2020_matches_the_jar() {

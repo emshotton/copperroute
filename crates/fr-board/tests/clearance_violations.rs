@@ -1,30 +1,9 @@
-//! Plan 5 Task 2: `Item.clearanceViolations`, `clearanceViolationCount`, the private
-//! `calculateClearanceBetweenTwoShapes` bisection, `Via`'s escape-via override, and the two
-//! headless statics of `drc.ClearanceViolation`.
-//!
-//! # Provenance
-//!
-//! The bisection goldens in [`the_bisection_matches_the_jvm`] and
-//! [`bisection_returns_low_after_sixteen_halvings`] are block `D` of
-//! `crates/fr-board/tests/data/DrcProbe.java`, which invokes the **real** private
-//! `Item.calculateClearanceBetweenTwoShapes` by reflection on the clone's HEAD jar (JDK 25); see
-//! that file's header for the recorded command. Everything else is transcribed from the Java
-//! source lines named in each test.
-
 mod board_builder;
 
 use board_builder::{BOUNDING_BOX, layers};
 use fr_board::prelude::*;
 use fr_geometry::{IntBox, IntVector, Point, Polyline, Shape, TileShape};
 
-// ---------------------------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------------------------
-
-/// `ClearanceMatrix.getDefaultInstance(ls, 200)` plus the `"wide"` class (index 2) and the two
-/// **asymmetric** entries `board_builder` uses: `setValue(2, 1, 600)` writes
-/// `row[1].column[2]`, so `getValue(2, 1, …) == 600` while `getValue(1, 2, …) == 200`
-/// (ClearanceMatrix.java:100-101, quirk #83).
 fn asymmetric_matrix() -> ClearanceMatrix {
     let ls = layers();
     let mut matrix = ClearanceMatrix::get_default_instance(&ls, 200);
@@ -34,7 +13,6 @@ fn asymmetric_matrix() -> ClearanceMatrix {
     matrix
 }
 
-/// A two-layer board with no outline polygon, `n` nets, and the caller's library/components.
 fn board_with(
     matrix: ClearanceMatrix,
     library: BoardLibrary,
@@ -62,7 +40,6 @@ fn board_with(
     board
 }
 
-/// An SMD pad on layer 0 only, `size` half-width square, at `offset` in its package.
 fn smd_library(pads: &[(&str, i32, IntVector)]) -> (BoardLibrary, Components) {
     let mut padstacks = Padstacks::new(layers());
     let mut pins = Vec::new();
@@ -97,9 +74,6 @@ fn smd_library(pads: &[(&str, i32, IntVector)]) -> (BoardLibrary, Components) {
     (BoardLibrary::new(padstacks, packages), components)
 }
 
-/// Two overlapping SMD pads of **different nets and different clearance classes**: item 2 is net
-/// 1 / class 1, item 3 is net 2 / class 2 (`"wide"`). Their raw shapes overlap, so the bisection
-/// takes its early return (Item.java:472-474).
 fn two_overlapping_pins() -> Board {
     let (library, components) = smd_library(&[
         ("a", 50, IntVector::new(0, 0)),
@@ -111,7 +85,6 @@ fn two_overlapping_pins() -> Board {
     board
 }
 
-/// `(second_item, layer, expected, actual)` for each violation — everything but the shape.
 fn rows(violations: &[ClearanceViolation]) -> Vec<(u32, usize, f64, f64)> {
     violations
         .iter()
@@ -126,14 +99,8 @@ fn rows(violations: &[ClearanceViolation]) -> Vec<(u32, usize, f64, f64)> {
         .collect()
 }
 
-// ---------------------------------------------------------------------------------------------
-// Item.clearanceViolations (Item.java:363-469)
-// ---------------------------------------------------------------------------------------------
-
 #[test]
 fn two_overlapping_pins_of_different_nets_violate() {
-    // Item.java:424-425 for the expected clearance, :472-474 for the actual: two shapes that
-    // already intersect in dimension 2 have zero clearance.
     let mut board = two_overlapping_pins();
     let violations = board.clearance_violations(ItemId(2));
     assert_eq!(violations.len(), 1);
@@ -144,13 +111,11 @@ fn two_overlapping_pins_of_different_nets_violate() {
         .get_value(2, 1, 0, false)
         .into();
     assert_eq!(rows(&violations), vec![(3, 0, expected, 0.0)]);
-    // Item.java:445: the stored shape is the *intersection* of the two enlarged shapes.
     assert_eq!(violations[0].shape.dimension(), 2);
 }
 
 #[test]
 fn the_violation_count_is_the_length_of_the_violation_list() {
-    // Item.java:358-361.
     let mut board = two_overlapping_pins();
     assert_eq!(board.clearance_violation_count(ItemId(2)), 1);
     assert_eq!(board.clearance_violation_count(ItemId(3)), 1);
@@ -159,9 +124,6 @@ fn the_violation_count_is_the_length_of_the_violation_list() {
 
 #[test]
 fn clearance_matrix_argument_order_is_other_then_this() {
-    // Item.java:424-425: `getValue(currentItem.clearanceClassIndex, this.clearanceClassIndex,
-    // shapeLayer(i), false)` — the *other* item's class first. The fixture's matrix is
-    // asymmetric, so transposing the two is observable.
     let mut board = two_overlapping_pins();
     let matrix = board.rules.clearance_matrix.clone();
     assert_ne!(
@@ -169,13 +131,11 @@ fn clearance_matrix_argument_order_is_other_then_this() {
         matrix.get_value(1, 2, 0, false),
         "the fixture matrix must be asymmetric for this test to mean anything"
     );
-    // Querying item 2 (class 1) about item 3 (class 2): `getValue(2, 1)`.
     let from_2 = board.clearance_violations(ItemId(2));
     assert_eq!(
         from_2[0].expected_clearance,
         f64::from(matrix.get_value(2, 1, 0, false))
     );
-    // …and the other way round: `getValue(1, 2)`.
     let from_3 = board.clearance_violations(ItemId(3));
     assert_eq!(
         from_3[0].expected_clearance,
@@ -186,9 +146,6 @@ fn clearance_matrix_argument_order_is_other_then_this() {
 
 #[test]
 fn same_net_items_are_not_obstacles() {
-    // Item.java:379: `currentItem.isObstacle(this)` — Trace.java:101 answers false for a trace of
-    // the same net. The tree query itself passes an **empty** ignore-net array (Item.java:377),
-    // so the filtering is `isObstacle`'s, not the query's.
     let (library, components) = smd_library(&[("a", 50, IntVector::new(-5000, -5000))]);
     let mut board = board_with(asymmetric_matrix(), library, components, 2);
     for _ in 0..2 {
@@ -202,7 +159,6 @@ fn same_net_items_are_not_obstacles() {
         );
     }
     assert!(board.clearance_violations(ItemId(3)).is_empty());
-    // The same two traces on different nets do violate.
     let (library, components) = smd_library(&[("a", 50, IntVector::new(-5000, -5000))]);
     let mut board = board_with(asymmetric_matrix(), library, components, 2);
     for net in [1, 2] {
@@ -218,13 +174,10 @@ fn same_net_items_are_not_obstacles() {
     assert_eq!(board.clearance_violations(ItemId(3)).len(), 1);
 }
 
-/// Two traces of different nets meeting at `(0, 0)`, with or without a pin there that carries
-/// both nets.
 fn tie_pin_board(with_pin: bool) -> Board {
     let (library, components) = smd_library(&[("tie", 60, IntVector::new(0, 0))]);
     let mut board = board_with(asymmetric_matrix(), library, components, 2);
     if with_pin {
-        // The tie pin: on both nets, so it "shares net" with each trace (Item.java:405).
         board.insert_pin(1, 0, vec![1, 2], 1, FixedState::Unfixed);
     }
     board.insert_trace_without_cleaning(
@@ -248,28 +201,21 @@ fn tie_pin_board(with_pin: bool) -> Board {
 
 #[test]
 fn tie_pin_exemption_suppresses_a_trace_pair() {
-    // Item.java:383-411: two traces connected to the same pin may overlap without sharing a net.
     let mut board = tie_pin_board(true);
-    // ids: 1 outline, 2 pin, 3 and 4 the traces.
     assert!(matches!(board.get_item(ItemId(2)), Some(Item::Pin(_))));
     assert!(board.clearance_violations(ItemId(3)).is_empty());
     assert!(board.clearance_violations(ItemId(4)).is_empty());
-    // Without the pin the same pair violates: ids 1 outline, 2 and 3 the traces.
     let mut board = tie_pin_board(false);
     let violations = board.clearance_violations(ItemId(2));
     assert_eq!(rows(&violations), vec![(3, 0, 200.0, 0.0)]);
 }
 
-/// The mirror image of [`tie_pin_board`]: the candidate meets the queried trace at its **last**
-/// corner, `(1000, 0)`, and nothing at all sits at its first corner. Item 2 is the tie pin (both
-/// nets) when `with_pin`, then the queried trace and the candidate.
 fn tie_pin_board_at_last_corner(with_pin: bool) -> Board {
     let (library, components) = smd_library(&[("tie", 60, IntVector::new(1000, 0))]);
     let mut board = board_with(asymmetric_matrix(), library, components, 2);
     if with_pin {
         board.insert_pin(1, 0, vec![1, 2], 1, FixedState::Unfixed);
     }
-    // The queried trace: its *last* corner is the meeting point.
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(0, 0), Point::new(1000, 0)]),
         0,
@@ -291,14 +237,9 @@ fn tie_pin_board_at_last_corner(with_pin: bool) -> Board {
 
 #[test]
 fn tie_pin_exemption_also_fires_at_the_last_corner() {
-    // Item.java:391-397: when the first-corner contacts do not contain the candidate, Java
-    // re-runs the test at `lastCorner()` — and the pin scan at :399-408 then walks *that* set,
-    // because `currentContacts` was reassigned. This board reaches the exemption only through
-    // that second arm.
     let mut board = tie_pin_board_at_last_corner(true);
     let (pin, trace_a, trace_b) = (ItemId(2), ItemId(3), ItemId(4));
     assert!(matches!(board.get_item(pin), Some(Item::Pin(_))));
-    // Nothing sits at the queried trace's first corner, so only the last-corner set can match.
     assert!(
         board
             .trace_normal_contacts_at(trace_a, &Point::new(0, 0), true)
@@ -309,7 +250,6 @@ fn tie_pin_exemption_also_fires_at_the_last_corner() {
 
     assert!(board.clearance_violations(trace_a).is_empty());
     assert!(board.clearance_violations(trace_b).is_empty());
-    // Without the pin the same pair violates: ids 1 outline, 2 and 3 the traces.
     let mut board = tie_pin_board_at_last_corner(false);
     assert_eq!(
         rows(&board.clearance_violations(ItemId(2))),
@@ -317,25 +257,12 @@ fn tie_pin_exemption_also_fires_at_the_last_corner() {
     );
 }
 
-// ---------------------------------------------------------------------------------------------
-// calculateClearanceBetweenTwoShapes (Item.java:471-493)
-// ---------------------------------------------------------------------------------------------
-
 fn bx(llx: i32, lly: i32, urx: i32, ury: i32) -> TileShape {
     TileShape::Box(IntBox::from_coords(llx, lly, urx, ury))
 }
 
 #[test]
 fn bisection_returns_low_after_sixteen_halvings() {
-    // `DrcProbe.java` block D, rows `D1 gap=200 min=1000 comp=500/500 -> 200.98876953125` and
-    // `D4 gap=2000 min=1000 comp=500/500 -> 999.9847412109375`.
-    //
-    // The answer is the last `low`, never `mid` (Item.java:492). D1 sits *above* the 200-unit
-    // gap because `IntBox.enlarge` goes through `IntOctagon.offset`, whose width is
-    // `(int) Math.round(distance)` — half-up **rounding**, not truncation — so the two shapes
-    // first overlap in dimension 2 once `2 * round(mid / 2) > 200`, i.e. at `mid >= 201`
-    // (`round(100.5) == 101`). `low` converges to that integer threshold from below, and
-    // `200.98876953125 < 201`.
     let answer = Board::calculate_clearance_between_two_shapes(
         &bx(0, 0, 100, 100),
         &bx(300, 0, 400, 100),
@@ -349,11 +276,6 @@ fn bisection_returns_low_after_sixteen_halvings() {
         "the returned `low` never reaches the threshold"
     );
 
-    // D1 alone does **not** pin the iteration count: 14, 15 and 16 halvings all land on
-    // `200.98876953125` (only the 17th moves it, to `200.99639892578125`). D4 does — the two
-    // shapes never meet inside `minimumClearance`, so every iteration sets `low = mid` and the
-    // answer is exactly `1000 * (1 - 2^-n)`: `999.969482421875` at 15, `999.9847412109375` at
-    // 16, `999.9923706054688` at 17. This row is what makes the test's name true.
     let never_meets = Board::calculate_clearance_between_two_shapes(
         &bx(0, 0, 100, 100),
         &bx(2100, 0, 2200, 100),
@@ -369,7 +291,6 @@ fn bisection_returns_low_after_sixteen_halvings() {
 
 #[test]
 fn the_bisection_matches_the_jvm() {
-    // Every row of `DrcProbe.java` block D, verbatim.
     let a = bx(0, 0, 100, 100);
     let far = bx(300, 0, 400, 100);
     assert_eq!(
@@ -382,13 +303,11 @@ fn the_bisection_matches_the_jvm() {
         200.653076171875,
         "D2"
     );
-    // D3: the raw shapes already intersect in dimension 2 (Item.java:472-474).
     assert_eq!(
         Board::calculate_clearance_between_two_shapes(&a, &bx(50, 0, 150, 100), 1000.0, 500, 500),
         0.0,
         "D3"
     );
-    // D4: they never meet inside `minimumClearance`, so `low` climbs to one step below `high`.
     assert_eq!(
         Board::calculate_clearance_between_two_shapes(
             &a,
@@ -400,14 +319,11 @@ fn the_bisection_matches_the_jvm() {
         999.9847412109375,
         "D4"
     );
-    // D5: touching boxes intersect in dimension *1*, so the early return does not fire.
     assert_eq!(
         Board::calculate_clearance_between_two_shapes(&a, &bx(100, 0, 200, 100), 1000.0, 500, 500),
         0.9918212890625,
         "D5"
     );
-    // D6: `sumComp == 0` makes both factors 0.5 (Item.java:481-482), which for equal components
-    // is the same split as D1.
     assert_eq!(
         Board::calculate_clearance_between_two_shapes(&a, &far, 1000.0, 0, 0),
         200.98876953125,
@@ -420,15 +336,6 @@ fn the_bisection_matches_the_jvm() {
     );
 }
 
-// ---------------------------------------------------------------------------------------------
-// smallestClearance (Item.java:47, :451-453)
-// ---------------------------------------------------------------------------------------------
-
-/// Item 2 (an SMD pad at the origin, net 1) violates item 3 (a trace of net 2 straight through
-/// it, so the bisection returns `0.0`) and item 4 (a trace of net 3 well clear of it, so the
-/// bisection returns a positive clearance). Item 3 is a trace rather than a second pin because
-/// `BoardItemRepository.removeItem` refuses to delete a component pin
-/// (`Item.isDeletionForbidden`), and the test needs to drop it between the two calls.
 fn two_partner_board() -> Board {
     let (library, components) = smd_library(&[("a", 50, IntVector::new(0, 0))]);
     let mut board = board_with(asymmetric_matrix(), library, components, 3);
@@ -454,10 +361,7 @@ fn two_partner_board() -> Board {
 
 #[test]
 fn smallest_clearance_only_ever_falls_and_is_never_reset() {
-    // Item.java:451-453 lowers the field and never raises it; nothing in Java ever resets it to
-    // the `-1.0` of Item.java:47 (quirk #153).
     let mut board = two_partner_board();
-    // A fresh item carries the sentinel.
     assert_eq!(
         board
             .get_item(ItemId(2))
@@ -476,12 +380,10 @@ fn smallest_clearance_only_ever_falls_and_is_never_reset() {
             .smallest_clearance,
         0.0
     );
-    // Drop the overlapping partner: the second call finds only the *larger* clearance…
     assert!(board.remove_item(ItemId(3)));
     let second = board.clearance_violations(ItemId(2));
     assert_eq!(second.len(), 1);
     assert!(second[0].actual_clearance > 0.0);
-    // …and the field stays at the first call's minimum.
     assert_eq!(
         board
             .get_item(ItemId(2))
@@ -494,24 +396,16 @@ fn smallest_clearance_only_ever_falls_and_is_never_reset() {
 
 #[test]
 fn smallest_clearance_over_the_board_is_max_value_until_something_is_computed() {
-    // ClearanceViolation.java:86-94: `Double.MAX_VALUE` when no item has a non-negative value.
     let mut board = two_partner_board();
     assert_eq!(board.smallest_clearance(), f64::MAX);
     board.clearance_violations(ItemId(2));
     assert_eq!(board.smallest_clearance(), 0.0);
 }
 
-// ---------------------------------------------------------------------------------------------
-// aggregateSortedBySeverity (ClearanceViolation.java:64-75)
-// ---------------------------------------------------------------------------------------------
-
 #[test]
 fn aggregate_is_sorted_by_shortfall_descending_and_double_counts() {
-    // ClearanceViolation.java:70-74, and the class doc's "reported once on each item" note; the
-    // shape of `RatsnestClearanceHeadlessTest.java:96-110`.
     let mut board = two_overlapping_pins();
     let aggregated = board.aggregate_violations_sorted_by_severity();
-    // One violating pair, reported on both items.
     assert_eq!(aggregated.len(), 2);
     let mut pairs: Vec<(u32, u32)> = aggregated
         .iter()
@@ -519,7 +413,6 @@ fn aggregate_is_sorted_by_shortfall_descending_and_double_counts() {
         .collect();
     pairs.sort_unstable();
     assert_eq!(pairs, vec![(2, 3), (3, 2)]);
-    // Descending shortfall: item 2 sees `getValue(2, 1) = 600`, item 3 sees `getValue(1, 2) = 200`.
     let shortfall = |v: &ClearanceViolation| v.expected_clearance - v.actual_clearance;
     assert_eq!(
         aggregated.iter().map(shortfall).collect::<Vec<_>>(),
@@ -530,7 +423,6 @@ fn aggregate_is_sorted_by_shortfall_descending_and_double_counts() {
 
 #[test]
 fn aggregate_over_a_clean_board_is_empty() {
-    // `RatsnestClearanceHeadlessTest.emptyBoardHasNoIncompletesAndNoViolations` (:116-129).
     let (library, components) = smd_library(&[("a", 50, IntVector::new(-5000, -5000))]);
     let mut board = board_with(asymmetric_matrix(), library, components, 1);
     board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
@@ -538,18 +430,6 @@ fn aggregate_over_a_clean_board_is_empty() {
     assert_eq!(board.smallest_clearance(), f64::MAX);
 }
 
-// ---------------------------------------------------------------------------------------------
-// The Via escape-via override (Via.java:88-112)
-// ---------------------------------------------------------------------------------------------
-
-/// An escape via at the origin, sitting inside a **through** pad of its own net (item 2, net 1,
-/// both layers) and overlapping a foreign-net SMD pad (item 3, net 2, layer 0).
-///
-/// The same-net partner has to span both layers: `Pin.isObstacle` answers false for a same-net
-/// via unless `drillAllowed()` is false (Pin.java:365), and `DrillItem.drillAllowed` is
-/// `firstLayer() == lastLayer()` — so a single-layer SMD pad of the via's own net is not an
-/// obstacle at all and would produce nothing for `Via`'s override to filter. A two-layer pad
-/// produces one violation per layer, which is exactly the pair the override separates.
 fn escape_via_board(smd_layer: usize) -> (Board, ItemId) {
     let mut padstacks = Padstacks::new(layers());
     let pad_shape = Shape::Tile(TileShape::Box(IntBox::from_coords(-50, -50, 50, 50)));
@@ -617,8 +497,6 @@ fn escape_via_board(smd_layer: usize) -> (Board, ItemId) {
 
 #[test]
 fn escape_via_drops_same_net_violations_on_its_smd_layer() {
-    // Via.java:93-110: a violation is dropped only when *both* halves hold — the layer is the
-    // escape via's SMD layer, and the other item shares a net with the via.
     let (mut board, via) = escape_via_board(0);
     let violations = board.clearance_violations(via);
     let mut seen: Vec<(u32, usize)> = violations
@@ -626,14 +504,12 @@ fn escape_via_drops_same_net_violations_on_its_smd_layer() {
         .map(|v| (v.second_item.0, v.layer))
         .collect();
     seen.sort_unstable();
-    // The same-net pad's layer-0 violation is gone; its layer-1 one and the foreign net's are not.
     assert_eq!(seen, vec![(2, 1), (3, 0)]);
     assert!(violations.iter().all(|v| v.first_item == via));
 }
 
 #[test]
 fn escape_via_keeps_same_net_violations_on_other_layers() {
-    // Via.java:94: the layer test comes first, so the same pair on any other layer survives.
     let (mut board, via) = escape_via_board(1);
     let mut seen: Vec<(u32, usize)> = board
         .clearance_violations(via)
@@ -646,7 +522,6 @@ fn escape_via_keeps_same_net_violations_on_other_layers() {
 
 #[test]
 fn a_plain_via_keeps_every_violation() {
-    // Via.java:90-92: the override is a no-op unless `isEscapeVia && escapeViaSmdLayer >= 0`.
     let (mut board, via) = escape_via_board(0);
     let Some(Item::Via(v)) = board.get_item_mut(via) else {
         panic!("the escape via")
@@ -659,7 +534,6 @@ fn a_plain_via_keeps_every_violation() {
         .collect();
     seen.sort_unstable();
     assert_eq!(seen, vec![(2, 0), (2, 1), (3, 0)]);
-    // …and the same is true of an escape via whose SMD layer was never set (Via.java:44).
     let (mut board, via) = escape_via_board(0);
     let Some(Item::Via(v)) = board.get_item_mut(via) else {
         panic!("the escape via")

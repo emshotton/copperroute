@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-03T06:49:04.073344Z",
+  "generated_at": "2026-09-05T06:50:46.020888Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -53,16 +53,17 @@
       "unrouted_net_penalty": 5000000.0,
       "clearance_violation_penalty": 1000000.0,
       "bend_penalty": 10.0,
-      "default_bend_cost": 0.0
+      "default_bend_cost": 0.0,
+      "smd_via_cost_factor": 0.1
     },
     "max_threads": 7,
-    "result_json": "<OUT>/kicad-ecc83-json.manifest.json"
+    "result_json": "/var/folders/w3/ts5st7dx3n9byscpknnt1fh00000gn/T/fr-cli-e2e/ref-kicad-ecc83-json/manifest.json"
   },
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 0.266,
-      "passes_completed": 1
+      "duration_seconds": 40.15,
+      "passes_completed": 3
     },
     "optimizer": {}
   },
@@ -119,8 +120,8 @@
       "total_weighted_length": 3.9776632E9,
       "average_length": 125700.39,
       "total_vertical_length": 353940.0,
-      "total_horizontal_length": 203921.0,
-      "total_angled_length": 297720.28
+      "total_horizontal_length": 204771.0,
+      "total_angled_length": 242072.39
     },
     "bends": {
       "total_count": 10,
@@ -135,10 +136,10 @@
       "buried_count": 0
     },
     "clearance_violations": {
-      "total_count": 14,
-      "min_violation_um": 140.9027099609375,
-      "max_violation_um": 500.0,
-      "avg_violation_um": 405.84324428013394
+      "total_count": 0,
+      "min_violation_um": 0.0,
+      "max_violation_um": 0.0,
+      "avg_violation_um": 0.0
     },
     "fanout": {
       "total_smd_pins": 0,
@@ -146,7 +147,7 @@
       "escaped_count": 0
     }
   },
-  "normalized_score": 309.9979,
+  "normalized_score": 449.99786,
   "resource_usage": {
     "cpu_time": 0.0,
     "max_memory": 0.0,

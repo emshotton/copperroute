@@ -1,22 +1,3 @@
-//! Plan 6 Task 8: the port of `src/test/java/app/freerouting/autoroute/maze/MazeListElementTest`
-//! (plan-6 ruling 12), plus the two quirk tests ruling 4 asks for.
-//!
-//! **The two Java test methods themselves moved to `crates/fr-router/tests/java_ports.rs`** in
-//! Task 18, which is ruling 12's single named home for the three ported suites; what stays here is
-//! the tie-break, NaN and dropped-element family that suite does not cover.
-//!
-//! # What the Java test does, and what the port has to do instead
-//!
-//! `MazeListElementTest` builds a `TestDoor implements ExpandableObject` whose only live method is
-//! `getId()`, and compares two `MazeListElement`s. The port cannot: `ExpandableObject.getId()` is
-//! **not** a property of the reference the element holds — for an `ExpansionDoor` it is a hash of
-//! the two rooms' ids (`ExpansionDoor.java:184-190`), for a `DrillPage` a hash of its shape and
-//! its *mutable* `netNumber` (`DrillPage.java:189-193`, quirk #167). The port's
-//! [`fr_router::autoroute::maze::MazeListElement`] therefore holds an
-//! [`ExpandableRef`](fr_router::autoroute::expansion::ExpandableRef) (an arena index) and
-//! `compare_to` takes a **resolver**, exactly where Java performs a virtual call. The resolver
-//! here is the test's `TestDoor.getId()`: a map from index to id.
-
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
@@ -24,17 +5,8 @@ use fr_geometry::{FloatLine, FloatPoint};
 use fr_router::JavaTreeSet;
 use fr_router::arena::DoorId;
 use fr_router::autoroute::expansion::ExpandableRef;
-use fr_router::autoroute::maze::{MazeAdjustment, MazeListElement};
+use fr_router::autoroute::maze::{MazeAdjustment, MazeListElement, ViaPricing};
 
-// =================================================================================================
-// `MazeListElementTest.TestDoor` (:37-78): an ExpandableObject whose only live method is getId()
-// =================================================================================================
-
-/// The `door.getId()` resolver `compare_to` consults, standing in for the Java test's `TestDoor`.
-///
-/// `TestDoor(id)` becomes `ExpandableRef::Door(DoorId(id))` plus a row here, so that a door's id
-/// stays a *lookup at comparison time* rather than a field of the element — which is what quirk
-/// #167's moving `DrillPage.getId` needs.
 fn test_doors(ids: &[i32]) -> impl Fn(ExpandableRef) -> i32 + use<> {
     let map: HashMap<ExpandableRef, i32> = ids
         .iter()
@@ -43,9 +15,6 @@ fn test_doors(ids: &[i32]) -> impl Fn(ExpandableRef) -> i32 + use<> {
     move |door| *map.get(&door).expect("a TestDoor the test registered")
 }
 
-/// `new MazeListElement(new TestDoor(door), 0, null, 0, expansion, sorting, null, null, false,
-/// null, false)` — the Java test's constructor call, with the two arguments it passes `null`
-/// that the port makes non-optional (`shapeEntry`, `adjustment`) at their production values.
 fn element(door: i32, section_no: i32, expansion: f64, sorting: f64) -> MazeListElement {
     MazeListElement {
         door: ExpandableRef::Door(DoorId(door as u32)),
@@ -63,105 +32,147 @@ fn element(door: i32, section_no: i32, expansion: f64, sorting: f64) -> MazeList
     }
 }
 
-// =================================================================================================
-// The two Java test methods, ported one for one — moved to `tests/java_ports.rs` (Task 18)
-// =================================================================================================
-//
-// `MazeListElementTest.compareToReturnsZeroForSameInstance` (:14-20) and
-// `compareToSortsBySortingValue` (:22-35) live in `crates/fr-router/tests/java_ports.rs`, which
-// plan-6 ruling 12 makes the one named home of every ported Java suite, so that
-// `grep -rn MazeListElementTest crates/` gives one answer. Everything below is the quirk family
-// this task added around them, which stays here.
+fn push_for_test(element: MazeListElement) -> bool {
+    use fr_board::prelude::*;
+    use fr_geometry::{IntBox, TileShape};
+    use fr_router::autoroute::expansion::RoomRef;
+    use fr_router::autoroute::maze::{AutorouteControl, AutorouteEngine, MazeQueue};
+    use fr_settings::RouterSettings;
 
-// =================================================================================================
-// The four tie-breaks, in Java's order (MazeListElement.java:80-113)
-// =================================================================================================
+    let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
+    let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
+    let mut rules = BoardRules::new(layers(), clearance_matrix);
+    rules.trace_angle_restriction = AngleRestriction::None;
+    let class = rules.net_classes.append("default", &layers(), false);
+    rules.nets.add("n1", 1, false, class);
+    let mut board = Board::new(
+        Vec::new(),
+        0,
+        IntBox::from_coords(-100_000, -100_000, 100_000, 100_000),
+        rules,
+        BoardLibrary::new(Padstacks::new(layers()), Packages::new()),
+        Components::new(),
+        Communication::default(),
+    );
+    let settings = RouterSettings::new();
+    let ctrl = AutorouteControl {
+        trace_costs: settings.get_trace_costs(),
+        bend_costs: vec![0.0, 0.0],
+        with_neckdown: false,
+        layer_active: vec![true, true],
+        layer_count: 2,
+        trace_half_width: vec![100, 100],
+        compensated_trace_half_width: vec![100, 100],
+        via_radii: vec![0.0, 0.0],
+        add_via_costs: vec![vec![0, 0], vec![0, 0]],
+        trace_clearance_class_index: 1,
+        vias_allowed: true,
+        attach_smd_allowed: false,
+        min_normal_via_cost: 0.0,
+        ripup_allowed: false,
+        ripup_costs: 1000,
+        ripup_pass_no: 1,
+        is_fanout: false,
+        fanout_start_pin_name: None,
+        fanout_start_pin_center: None,
+        fanout_start_pin_layer: -1,
+        remove_unconnected_vias: true,
+        via_rule: None,
+        net_number: 1,
+        via_clearance_class: 1,
+        via_infos: Vec::new(),
+        via_lower_bound: 0,
+        via_upper_bound: 2,
+        max_via_radius: 0.0,
+        tidy_region_width: i32::MAX,
+        pull_tight_accuracy: 500,
+        max_shove_trace_recursion_depth: 20,
+        max_shove_via_recursion_depth: 5,
+        max_spring_over_recursion_depth: 5,
+        min_cheap_via_cost: 0.0,
+        fanout_max_escape_length: 3000.0,
+        fanout_min_escape_length: 500.0,
+        start_ripup_costs: 1,
+        smd_via_relaxation: true,
+        units_per_mm: 1.0,
+        trace_cost_per_mm: 1.0,
+        smd_via_cost_factor: 0.1,
+        via_pricing: ViaPricing::ByPadstackRadius,
+    };
+    let mut engine = AutorouteEngine::new(&mut board, 1, false);
+    let room = engine.rooms.new_complete_room(
+        Some(TileShape::Box(IntBox::from_coords(0, 0, 10, 10))),
+        0,
+        1,
+    );
+    let mut element = element;
+    element.next_room = Some(RoomRef::Complete(room));
+    let mut queue = MazeQueue::new();
+    queue.push(element, &ctrl, &engine, &board)
+}
 
-/// `:81-86` then `:88-93` then `:95-102` then `:104-109` then `:112`.
 #[test]
 fn the_four_tie_breaks_are_taken_in_javas_order() {
     let ids = test_doors(&[1, 2]);
 
-    // sortingValue first (:81-86)
     assert_eq!(
         element(1, 0, 9.0, 1.0).compare_to(&element(2, 5, 0.0, 2.0), &ids),
         Ordering::Less
     );
-    // then expansionValue (:88-93)
     assert_eq!(
         element(1, 0, 5.0, 1.0).compare_to(&element(2, 5, 4.0, 1.0), &ids),
         Ordering::Greater
     );
-    // then the door id (:95-102)
     assert_eq!(
         element(1, 7, 1.0, 1.0).compare_to(&element(2, 0, 1.0, 1.0), &ids),
         Ordering::Less
     );
-    // then sectionNoOfDoor (:104-109)
     assert_eq!(
         element(1, 7, 1.0, 1.0).compare_to(&element(1, 0, 1.0, 1.0), &ids),
         Ordering::Greater
     );
-    // and then Equal (:112)
     assert_eq!(
         element(1, 3, 1.0, 1.0).compare_to(&element(1, 3, 1.0, 1.0), &ids),
         Ordering::Equal
     );
 }
 
-// =================================================================================================
-// The two quirks plan-6 ruling 4 names
-// =================================================================================================
-
-/// Quirk #170: `compareTo` compares two `double`s with raw `<`/`>`, so a `NaN` makes **both**
-/// tests false and the comparison **falls through to the next key** instead of ordering.
-///
-/// `f64::total_cmp` (NaN sorts after every number) and `partial_cmp().unwrap()` (a panic) both
-/// get this wrong; the port transcribes the fall-through.
 #[test]
-fn nan_sorting_value_falls_through_to_the_next_key() {
+fn a_non_finite_sorting_value_is_refused_at_add() {
     let ids = test_doors(&[1, 2]);
 
-    // A NaN sortingValue against a number: `<` and `>` are both false, so `expansionValue`
-    // decides — and it decides *for* the NaN element, which a NaN-sorts-last comparator would
-    // put at the end of the queue instead.
     let nan = element(1, 0, 1.0, f64::NAN);
     let number = element(2, 0, 5.0, 1.0);
     assert_eq!(nan.compare_to(&number, &ids), Ordering::Less);
     assert_eq!(number.compare_to(&nan, &ids), Ordering::Greater);
 
-    // Two NaN sorting values fall through to expansionValue as well.
+    let a = element(1, 0, 1.0, f64::NAN);
+    let b = element(2, 0, 2.0, 5.0);
+    let c = element(1, 1, 9.0, 3.0);
+    assert_eq!(a.compare_to(&b, &ids), Ordering::Less);
+    assert_eq!(b.compare_to(&c, &ids), Ordering::Greater);
+    assert_eq!(a.compare_to(&c, &ids), Ordering::Less);
     assert_eq!(
-        element(1, 0, 1.0, f64::NAN).compare_to(&element(2, 0, 2.0, f64::NAN), &ids),
-        Ordering::Less
+        c.compare_to(&b, &ids),
+        Ordering::Less,
+        "so A < B, C < B and A < C — and nothing says where A and C sit relative to each other \
+         in a way B agrees with"
     );
 
-    // A NaN expansionValue falls through one further, to the door id.
-    assert_eq!(
-        element(1, 0, f64::NAN, 1.0).compare_to(&element(2, 0, 3.0, 1.0), &ids),
-        Ordering::Less
+    for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        assert!(
+            !push_for_test(element(1, 0, 1.0, bad)),
+            "a sorting value of {bad} is an upstream bug and is refused"
+        );
+    }
+    assert!(
+        push_for_test(element(1, 0, 1.0, 4.0)),
+        "a finite one is accepted"
     );
-
-    // And a NaN on both keys leaves the door id and section number as the whole order.
-    assert_eq!(
-        element(2, 0, f64::NAN, f64::NAN).compare_to(&element(1, 0, f64::NAN, f64::NAN), &ids),
-        Ordering::Greater
-    );
-
-    // The comparator is therefore *not* reflexive on NaN in the total-order sense — but it does
-    // answer `Equal` for a NaN element against itself, because every key falls through.
-    let n = element(1, 4, f64::NAN, f64::NAN);
-    assert_eq!(n.compare_to(&n, &ids), Ordering::Equal);
 }
 
-/// Quirk #171: a full tie answers `0` (`:110-112`) and `TreeMap.put` then **keeps the element
-/// already in the tree** and answers `false` — the new one is silently dropped, values and all.
-///
-/// Two elements can tie on all four keys while differing in `expansionValue`'s *consumers*:
-/// `backtrackDoor`, `nextRoom`, `shapeEntry`, `roomRipped`, `adjustment` and `ripupCost` are not
-/// compared at all, so the queue can drop the cheaper backtrack path.
 #[test]
-fn a_full_tie_is_dropped_by_the_set() {
+fn two_paths_at_the_same_cost_are_both_kept() {
     let ids = test_doors(&[1]);
 
     let first = element(1, 2, 3.0, 4.0);
@@ -171,28 +182,52 @@ fn a_full_tie_is_dropped_by_the_set() {
     second.adjustment = MazeAdjustment::Left;
     second.backtrack_door = Some(ExpandableRef::Door(DoorId(1)));
 
+    assert_eq!(first.sorting_value, second.sorting_value);
+    assert_eq!(first.expansion_value, second.expansion_value);
+    assert_eq!(first.door, second.door);
+    assert_eq!(first.section_no_of_door, second.section_no_of_door);
+    assert_ne!(first.compare_to(&second, &ids), Ordering::Equal);
+    assert_eq!(
+        first.compare_to(&second, &ids).reverse(),
+        second.compare_to(&first, &ids)
+    );
+
     let mut queue: JavaTreeSet<MazeListElement> = JavaTreeSet::new();
     assert!(queue.add_by(first.clone(), |a, b| a.compare_to(b, &ids)));
     assert!(
-        !queue.add_by(second, |a, b| a.compare_to(b, &ids)),
-        "TreeSet.add answers false for a key that compares Equal"
+        queue.add_by(second.clone(), |a, b| a.compare_to(b, &ids)),
+        "the jar's TreeSet answers false here and drops the element whole, ripupCost and all"
     );
+    assert_eq!(queue.len(), 2, "both paths are in the queue");
+    let held: Vec<&MazeListElement> = queue.iter().collect();
+    assert!(held.contains(&&first) && held.contains(&&second));
 
-    assert_eq!(queue.len(), 1);
-    let kept = queue.iter().next().expect("the one element");
+    assert_eq!(first.compare_to(&first, &ids), Ordering::Equal);
+    assert!(
+        !queue.add_by(first.clone(), |a, b| a.compare_to(b, &ids)),
+        "a genuine duplicate is still a duplicate"
+    );
+    assert_eq!(queue.len(), 2);
+
     assert_eq!(
-        kept, &first,
-        "the element already in the tree is kept; the new one is dropped whole"
+        fr_router::autoroute::expansion::ExpansionDoor::id(1, 63),
+        fr_router::autoroute::expansion::ExpansionDoor::id(2, 32),
+        "1 * 31 + 63 == 2 * 31 + 32 == 94"
+    );
+    let ids2 = |door: ExpandableRef| {
+        let _ = door;
+        94
+    };
+    let door_a = element(7, 0, 1.0, 1.0);
+    let mut door_b = element(8, 0, 1.0, 1.0);
+    door_b.section_no_of_door = 0;
+    assert_ne!(
+        door_a.compare_to(&door_b, ids2),
+        Ordering::Equal,
+        "two different doors that collide on the hash are still two doors"
     );
 }
 
-// =================================================================================================
-// The queue is a queue: pop-first removes, and the order survives removal
-// =================================================================================================
-
-/// `MazeSearchEngine.occupyNextElement` (`MazeSearchEngine.java:327-329`) pops through
-/// `iterator().next()` + `it.remove()`, which is `TreeMap.deleteEntry` — not a `BinaryHeap` pop,
-/// and not a `BTreeSet::pop_first`.
 #[test]
 fn pop_first_walks_the_queue_in_sorting_value_order() {
     let ids = test_doors(&[1, 2, 3, 4, 5]);
@@ -211,8 +246,6 @@ fn pop_first_walks_the_queue_in_sorting_value_order() {
     assert!(queue.is_empty());
 }
 
-/// Java re-inserts mutated elements while popping (plan-6 ruling 4), so the tree has to stay
-/// correct across interleaved `add`/`remove`. 200 rounds of pop-two, push-three.
 #[test]
 fn interleaved_pops_and_pushes_keep_the_tree_sorted() {
     let ids: HashMap<ExpandableRef, i32> = (0..2000)
@@ -225,7 +258,6 @@ fn interleaved_pops_and_pushes_keep_the_tree_sorted() {
     let mut value = 0.0f64;
     for _ in 0..200 {
         for _ in 0..3 {
-            // A cheap deterministic spread, so the tree is not built in sorted order.
             value = (value * 7.0 + 13.0) % 1000.0;
             queue.add_by(element(door as i32, 0, 0.0, value), |a, b| {
                 a.compare_to(b, resolve)

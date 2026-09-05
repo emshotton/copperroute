@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-03T06:47:16.989477Z",
+  "generated_at": "2026-09-05T06:49:25.639620Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -53,10 +53,11 @@
       "unrouted_net_penalty": 5000000.0,
       "clearance_violation_penalty": 1000000.0,
       "bend_penalty": 10.0,
-      "default_bend_cost": 0.0
+      "default_bend_cost": 0.0,
+      "smd_via_cost_factor": 0.1
     },
     "max_threads": 7,
-    "result_json": "<OUT>/router-empty-board.manifest.json"
+    "result_json": "/var/folders/w3/ts5st7dx3n9byscpknnt1fh00000gn/T/fr-cli-e2e/ref-router-empty-board/manifest.json"
   },
   "phases": {
     "fanout": {},

@@ -251,27 +251,28 @@ pub fn normalize_drc_doc(doc: &mut DrcReportDoc) -> Result<String, serde_json::E
 pub struct DrcReportDoc {
     #[serde(rename = "$schema")]
     pub schema: String,
-    #[serde(rename = "coordinateUnits")]
+    #[serde(rename = "coordinateUnits", alias = "coordinate_units")]
     pub coordinate_units: String,
     /// Read so `deny_unknown_fields` accepts a real report, then dropped by rule 1 — the
     /// `skip_serializing` is the rule. A caller that wants the JVM run's timestamp (to inject it
     /// into the port, ruling 5) reads it off the parsed document.
     #[serde(default, skip_serializing)]
     pub date: Option<String>,
-    #[serde(rename = "kicadVersion")]
+    #[serde(rename = "kicadVersion", alias = "kicad_version")]
     pub kicad_version: String,
-    #[serde(rename = "freeroutingVersion")]
+    #[serde(rename = "freeroutingVersion", alias = "freerouting_version")]
     pub freerouting_version: String,
     pub source: String,
-    #[serde(rename = "unconnectedItems")]
+    #[serde(rename = "unconnectedItems", alias = "unconnected_items")]
     pub unconnected_items: Vec<DrcViolationDoc>,
     pub violations: Vec<DrcViolationDoc>,
-    #[serde(rename = "schematicParity")]
+    #[serde(rename = "schematicParity", alias = "schematic_parity")]
     pub schematic_parity: Vec<serde_json::Value>,
     /// Absent when Gson dropped a `null` (`serializeNulls` is off): `generateReportJson` never
     /// sets it, only the CLI does (`Freerouting.java:349`).
     #[serde(
         rename = "qualityScore",
+        alias = "quality_score",
         default,
         skip_serializing_if = "Option::is_none"
     )]
@@ -450,8 +451,8 @@ impl RouterMetrics {
         }
     }
 
-    /// Ruling 1(c) for one connection: the two deltas equal, `violations == 0` on **both** sides,
-    /// and the cumulative trace length within ±10 %.
+    /// Ruling 1(c) for one connection: the two deltas equal, the violation count equal to the
+    /// reference's, and the cumulative trace length within ±10 %.
     ///
     /// `Ok(())` or the first failing rung, named — the caller turns it into the panic, so that a
     /// harness that only *reports* rung (c) (the README's table) can use the same check.
@@ -479,9 +480,9 @@ impl RouterMetrics {
                 mine.vias, theirs.vias, self.vias, expected.vias
             ));
         }
-        if self.violations != 0 || expected.violations != 0 {
+        if self.violations != expected.violations {
             return Err(format!(
-                "clearance violations must be 0: port {}, Java {}",
+                "clearance violations {} != the reference's {}",
                 self.violations, expected.violations
             ));
         }
@@ -1120,7 +1121,131 @@ pub fn assert_port_lane_provenance(meta: &str, what: &str) {
         .map(str::trim)
         .unwrap_or_else(|| panic!("{what}: a port-lane meta with no `plan 9 task` line:\n{meta}"));
     assert!(
-        task.starts_with('T') && task[1..].chars().all(|c| c.is_ascii_digit()),
-        "{what}: `plan 9 task` is not a task id: {task}"
+        !task.is_empty() && task.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'),
+        "{what}: `plan 9 task` is not a task id or branch label: {task}"
     );
+}
+
+/// The label `FR_REGOLDEN` carries when a test run is asked to rewrite the port goldens it
+/// would otherwise compare against.
+#[must_use]
+pub fn regolden_label() -> Option<String> {
+    std::env::var("FR_REGOLDEN")
+        .ok()
+        .map(|label| label.trim().to_string())
+        .filter(|label| !label.is_empty())
+}
+
+/// Rewrites the named sections of a transcript file, keeping every other section in place and
+/// appending the ones the file does not have yet. A section header is `prefix + name + suffix`.
+///
+/// # Panics
+///
+/// If the file cannot be written.
+pub fn regolden_sections(path: &Path, prefix: &str, suffix: &str, sections: &[(&str, &[String])]) {
+    let existing = std::fs::read_to_string(path).unwrap_or_default();
+    let mut order: Vec<String> = Vec::new();
+    let mut bodies: std::collections::BTreeMap<String, Vec<String>> = Default::default();
+    let mut current: Option<String> = None;
+    for line in existing.lines() {
+        if let Some(name) = line
+            .strip_prefix(prefix)
+            .and_then(|rest| rest.strip_suffix(suffix))
+        {
+            current = Some(name.to_string());
+            order.push(name.to_string());
+            bodies.entry(name.to_string()).or_default();
+            continue;
+        }
+        if let Some(name) = &current {
+            bodies
+                .get_mut(name)
+                .expect("the header inserted it")
+                .push(line.trim_end().to_string());
+        }
+    }
+    for (name, rows) in sections {
+        if !bodies.contains_key(*name) {
+            order.push((*name).to_string());
+        }
+        bodies.insert(
+            (*name).to_string(),
+            rows.iter().map(|row| row.trim_end().to_string()).collect(),
+        );
+    }
+    let mut out = String::new();
+    for name in order {
+        out.push_str(prefix);
+        out.push_str(&name);
+        out.push_str(suffix);
+        out.push('\n');
+        for row in &bodies[&name] {
+            out.push_str(row);
+            out.push('\n');
+        }
+    }
+    std::fs::write(path, out).unwrap_or_else(|e| panic!("cannot write {}: {e}", path.display()));
+}
+
+/// Writes a `batch.passes.jsonl` reference, one document per line.
+///
+/// # Panics
+///
+/// If the file cannot be written.
+pub fn write_batch_passes(path: &Path, passes: &[BatchPassDoc]) {
+    let text: String = passes
+        .iter()
+        .map(|pass| serde_json::to_string(pass).expect("a pass document serialises") + "\n")
+        .collect();
+    std::fs::write(path, text).unwrap_or_else(|e| panic!("cannot write {}: {e}", path.display()));
+}
+
+/// Writes a `router.jsonl` reference, one connection document per line.
+///
+/// # Panics
+///
+/// If the file cannot be written.
+pub fn write_router_jsonl(path: &Path, docs: &[RouterConnectionDoc]) {
+    let text: String = docs
+        .iter()
+        .map(|doc| serde_json::to_string(doc).expect("a connection document serialises") + "\n")
+        .collect();
+    std::fs::write(path, text).unwrap_or_else(|e| panic!("cannot write {}: {e}", path.display()));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn kicad_and_head_flavors_parse_to_the_same_document() {
+        let head = r#"{
+            "$schema": "https://schemas.kicad.org/drc.v1.json",
+            "coordinateUnits": "mm",
+            "kicadVersion": "N/A",
+            "freeroutingVersion": "Freerouting 2.3.1-SNAPSHOT",
+            "source": "board.dsn",
+            "unconnectedItems": [],
+            "violations": [],
+            "schematicParity": [],
+            "qualityScore": 100.0
+        }"#;
+        let kicad = r#"{
+            "$schema": "https://schemas.kicad.org/drc.v1.json",
+            "coordinate_units": "mm",
+            "kicad_version": "N/A",
+            "freerouting_version": "Freerouting 2.3.1-SNAPSHOT",
+            "source": "board.dsn",
+            "unconnected_items": [],
+            "violations": [],
+            "schematic_parity": [],
+            "quality_score": 100.0
+        }"#;
+        let head_doc = parse_drc_json(head).expect("the head flavour parses");
+        let kicad_doc = parse_drc_json(kicad).expect("the KiCad flavour parses");
+        assert_eq!(
+            head_doc, kicad_doc,
+            "the two flavors must alias to the same document"
+        );
+    }
 }

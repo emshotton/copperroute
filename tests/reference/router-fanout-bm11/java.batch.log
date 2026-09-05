@@ -7,6 +7,6 @@ BOARD-PREPARED classes=4 outlineClass=3 holeClearance=0
 EVENT algorithm=ROUTER state=STARTED
 EVENT algorithm=ROUTER state=RUNNING
 EVENT algorithm=ROUTER state=RUNNING
-EVENT algorithm=ROUTER state=CANCELLED
-RESULT passesRun=3 optimizerPresent=false fanoutTimedOut=false optimizerTimedOut=false items=547 traces=258 vias=55 incompletes=17 traceLength="1.6308813285283038E7"
+EVENT algorithm=ROUTER state=FINISHED
+RESULT passesRun=2 optimizerPresent=false fanoutTimedOut=false optimizerTimedOut=false items=548 traces=257 vias=57 incompletes=18 traceLength="1.5563329101249386E7"
 [board] (elided — the board is batch.ses)

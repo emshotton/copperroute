@@ -1,0 +1,9 @@
+kicad-cli    10.0.3
+generated    2026-09-05T05:48:07Z
+dsn          java:fixtures/Issue742-tastexx-pcb/tastexx-pcb.dsn
+ses          java:fixtures/Issue742-tastexx-pcb/tastexx-pcb.ses
+kicad_pcb    java:fixtures/Issue742-tastexx-pcb/tastexx-pcb.kicad_pcb
+kicad_pro    java:fixtures/Issue742-tastexx-pcb/tastexx-pcb.kicad_pro
+import       {"wires": 85, "vias": 6, "skipped": []}
+refill       {"zones": 0}
+command      kicad-cli pcb drc --format json --all-track-errors --units mm

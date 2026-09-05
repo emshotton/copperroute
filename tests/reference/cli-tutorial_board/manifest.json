@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-03T06:48:52.760662Z",
+  "generated_at": "2026-09-05T02:17:31.044709Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -53,15 +53,16 @@
       "unrouted_net_penalty": 5000000.0,
       "clearance_violation_penalty": 1000000.0,
       "bend_penalty": 10.0,
-      "default_bend_cost": 0.0
+      "default_bend_cost": 0.0,
+      "smd_via_cost_factor": 0.1
     },
     "max_threads": 7,
-    "result_json": "<OUT>/tutorial_board.manifest.json"
+    "result_json": "/var/folders/w3/ts5st7dx3n9byscpknnt1fh00000gn/T/fr-cli-e2e/ref-tutorial_board/manifest.json"
   },
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 6.802,
+      "duration_seconds": 5.206,
       "passes_completed": 1
     },
     "optimizer": {}

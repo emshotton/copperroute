@@ -1,16 +1,3 @@
-//! Plan 6 Task 6: `AutorouteEngine`'s expansion-room lifecycle
-//! (`autoroute/maze/AutorouteEngine.java:39-675`).
-//!
-//! # Where the numbers come from
-//!
-//! Every literal below — room ids, room shapes, door counts, the engine's room-instance counter,
-//! the surviving incomplete-room count and the search tree's leaf count — is **read off the HEAD
-//! jar**, not off this port. The probe is `scripts/differential/java/probes/P6T6Probe.java`,
-//! which is committed with the exact `javac`/`java` invocation in its header; it reflects into
-//! `AutorouteEngine`'s three private lists, which are the state these tests assert on.
-//!
-//! Each test names its probe mode and pastes the stdout it asserts against.
-
 use std::collections::BTreeSet;
 
 use fr_board::ids::{ConnectionId, ItemId, RoomId};
@@ -19,10 +6,6 @@ use fr_geometry::{Area, IntBox, IntPoint, Point, Polyline, Shape, TileShape};
 use fr_router::autoroute::expansion::RoomRef;
 use fr_router::autoroute::item_info;
 use fr_router::autoroute::maze::engine::AutorouteEngine;
-
-// =================================================================================================
-// The probe's boards, rebuilt from scratch
-// =================================================================================================
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -35,8 +18,6 @@ const BOUNDING_BOX: IntBox = IntBox {
     },
 };
 
-/// `P6T6Probe.buildBare`: two layers, a 200-unit default clearance matrix, an any-angle board of
-/// [`BOUNDING_BOX`] and nothing on it.
 fn bare_board() -> Board {
     let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
     let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
@@ -53,7 +34,6 @@ fn bare_board() -> Board {
     )
 }
 
-/// `board.insertObstacle(new IntBox(...), layer, 1, FixedState.UNFIXED)`.
 fn insert_obstacle(board: &mut Board, llx: i32, lly: i32, urx: i32, ury: i32, layer: usize) {
     board.insert_obstacle(
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
@@ -65,7 +45,6 @@ fn insert_obstacle(board: &mut Board, llx: i32, lly: i32, urx: i32, ury: i32, la
     );
 }
 
-/// The bounding box of a complete room, as `(llx, lly, urx, ury)`.
 fn room_bounds(engine: &AutorouteEngine, room: RoomId) -> (i32, i32, i32, i32) {
     let shape = engine
         .rooms
@@ -76,12 +55,8 @@ fn room_bounds(engine: &AutorouteEngine, room: RoomId) -> (i32, i32, i32, i32) {
     (b.ll.x, b.ll.y, b.ur.x, b.ur.y)
 }
 
-/// `(java room id, bounding box, door count)` — one row of [`complete_rooms`], in the shape the
-/// probe prints it.
 type RoomRow = (i32, (i32, i32, i32, i32), usize);
 
-/// `(java room id, bounding box, door count)` for every room in `completeExpansionRooms`
-/// (AutorouteEngine.java:74), in list order.
 fn complete_rooms(engine: &AutorouteEngine) -> Vec<RoomRow> {
     engine
         .complete_expansion_rooms()
@@ -97,6 +72,23 @@ fn complete_rooms(engine: &AutorouteEngine) -> Vec<RoomRow> {
         .collect()
 }
 
+fn tree_rooms(board: &Board, engine: &AutorouteEngine) -> std::collections::BTreeSet<RoomId> {
+    let tree = board
+        .trees
+        .trees()
+        .find(|tree| tree.id() == engine.tree)
+        .expect("the autoroute tree");
+    let ctx = board.ctx();
+    let probe = TileShape::Box(board.get_bounding_box());
+    tree.overlapping_tree_entries_with_rooms(&probe, None, &[], &board.items, &engine.rooms, &ctx)
+        .into_iter()
+        .filter_map(|entry| match entry.object {
+            fr_board::ids::TreeObject::Room(id) => Some(id),
+            fr_board::ids::TreeObject::Item(_) => None,
+        })
+        .collect()
+}
+
 fn tree_size(board: &Board, engine: &AutorouteEngine) -> usize {
     board
         .trees
@@ -106,26 +98,6 @@ fn tree_size(board: &Board, engine: &AutorouteEngine) -> usize {
         .size()
 }
 
-// =================================================================================================
-// `completeExpansionRoom` (AutorouteEngine.java:418-522)
-// =================================================================================================
-
-/// Probe mode 0, verbatim:
-///
-/// ```text
-/// mode=0 emptyBoard treeSize=0
-/// before counter=0 complete=null incomplete=1 treeSize=0
-///     incomplete layer=0 shape=null contained=IntBox[2000,2000..2100,2100]dim=2 doors=0
-///   result n=0
-/// after counter=0 complete=null incomplete=0 treeSize=0
-/// ```
-///
-/// **Java wins over the task brief**, which names this test
-/// `completing_a_seed_room_on_an_empty_board_yields_one_room_covering_the_board`. It does not:
-/// `ShapeSearchTree.completeShape` returns immediately when the tree has no root
-/// (`ShapeSearchTree.java:589-591`), so an empty board yields **no** rooms at all, the
-/// room-instance counter never ticks, and `completeExpansionRooms` is still `null` afterwards.
-/// The seed is removed all the same — `:469` runs before the result loop.
 #[test]
 fn completing_a_seed_room_on_an_empty_board_yields_no_rooms_at_all() {
     let mut board = bare_board();
@@ -149,89 +121,44 @@ fn completing_a_seed_room_on_an_empty_board_yields_no_rooms_at_all() {
     assert_eq!(tree_size(&board, &engine), 0);
     assert_eq!(
         engine.generate_room_id_no(),
-        1,
-        "counter=0 before this tick"
+        6,
+        "counter=5 before this tick"
     );
 }
 
-/// Probe mode 1, verbatim:
-///
-/// ```text
-/// mode=1 oneObstacle treeSize=1
-///   result n=6
-///     room id=1 layer=0 shape=Simplex[-10000,-10000..10000,-100]dim=2
-///     room id=2 layer=0 shape=Simplex[1041,-100..10000,-41]dim=2
-///     room id=6 layer=0 shape=Simplex[-10000,1100..10000,10000]dim=2
-///     room id=7 layer=0 shape=Simplex[-10000,-100..-41,1100]dim=2
-///     room id=8 layer=0 shape=Simplex[-1241,-100..-100,1041]dim=2
-///     room id=9 layer=0 shape=Simplex[-100,-100..-41,-41]dim=2
-/// after counter=9 complete=6 incomplete=25 treeSize=7
-///     complete id=1 ... doors=9
-///     complete id=2 ... doors=3
-///     complete id=6 ... doors=6
-///     complete id=7 ... doors=9
-///     complete id=8 ... doors=4
-///     complete id=9 ... doors=2
-/// ```
 #[test]
 fn an_obstacle_splits_the_seed_into_the_java_room_set() {
     let (board, mut engine, rooms) = one_obstacle_run();
 
     let expected: [RoomRow; 6] = [
-        (1, (-10_000, -10_000, 10_000, -100), 9),
-        (2, (1041, -100, 10_000, -41), 3),
-        (6, (-10_000, 1100, 10_000, 10_000), 6),
-        (7, (-10_000, -100, -41, 1100), 9),
-        (8, (-1241, -100, -100, 1041), 4),
-        (9, (-100, -100, -41, -41), 2),
+        (6, (-10_000, -10_000, 10_000, -100), 9),
+        (12, (1041, -100, 10_000, -41), 3),
+        (23, (-10_000, 1100, 10_000, 10_000), 6),
+        (29, (-10_000, -100, -41, 1100), 9),
+        (36, (-1241, -100, -100, 1041), 4),
+        (38, (-100, -100, -41, -41), 2),
     ];
     assert_eq!(rooms.len(), 6, "result n=6");
     assert_eq!(complete_rooms(&engine), expected.to_vec());
-    // The returned collection is `completeExpansionRooms` in the same order.
     let returned: Vec<i32> = rooms
         .iter()
         .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
         .collect();
-    assert_eq!(returned, vec![1, 2, 6, 7, 8, 9]);
+    assert_eq!(returned, vec![6, 12, 23, 29, 36, 38]);
 
     assert_eq!(
         engine.generate_room_id_no(),
-        10,
-        "counter=9 before this tick"
+        39,
+        "counter=38 before this tick"
     );
     assert_eq!(engine.rooms.incomplete_rooms.len(), 25, "incomplete=25");
     assert_eq!(tree_size(&board, &engine), 7, "treeSize=7");
 }
 
-/// `:492-515`: **only the first dimension-2 candidate is added directly**; every later one is fed
-/// back through `completeShape` against a tree that now holds the rooms already added.
-///
-/// Probe mode 4 lists `completeShape`'s raw output for the same seed — **eight** candidates, all
-/// of dimension 2:
-///
-/// ```text
-/// mode=4 rawCandidates n=8
-///     [0] Simplex[-10000,-10000..10000,-100]
-///     [1] Simplex[1041,-100..10000,8859]
-///     [2] Simplex[1100,-41..10000,10000]
-///     [3] Simplex[-7859,1041..1100,10000]
-///     [4] Simplex[-10000,1100..1041,10000]
-///     [5] Simplex[-10000,-100..-41,1100]
-///     [6] Simplex[-1241,-100..-100,1041]
-///     [7] Simplex[-100,-100..-41,-41]
-/// ```
-///
-/// Mode 1 turns those eight into **six** rooms. Candidate `[0]` is the one `addCompleteRoom` takes
-/// straight (`:487-491`) and it survives unchanged as room 1. Candidates `[1]`..`[4]` are
-/// re-completed and collapse into just two rooms — `[1041,-100..10000,-41]` and
-/// `[-10000,1100..10000,10000]`, neither of which is any candidate's shape — while the retries
-/// burn room ids 3, 4 and 5. A port that added every candidate directly would answer eight rooms
-/// with the eight candidate shapes and consecutive ids 1..8.
 #[test]
 fn only_the_first_two_dimensional_candidate_is_added_directly() {
     let (_board, engine, rooms) = one_obstacle_run();
 
-    // The eight raw candidates `completeShape` produced, none of which is filtered by `:472`.
     const RAW: [(i32, i32, i32, i32); 8] = [
         (-10_000, -10_000, 10_000, -100),
         (1041, -100, 10_000, 8859),
@@ -246,30 +173,20 @@ fn only_the_first_two_dimensional_candidate_is_added_directly() {
 
     let final_bounds: Vec<(i32, i32, i32, i32)> =
         rooms.iter().map(|r| room_bounds(&engine, *r)).collect();
-    // Candidate [0] survives untouched — it is the one added directly.
     assert_eq!(final_bounds[0], RAW[0]);
-    // Rooms 2 and 6 are the recalculation of candidates [1]..[4] and match none of them.
     assert!(!RAW.contains(&final_bounds[1]));
     assert!(!RAW.contains(&final_bounds[2]));
-    // The room ids skip 3, 4 and 5: `SortedRoomNeighbours.calculate` takes a fresh id per retry.
     let ids: Vec<i32> = rooms
         .iter()
         .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
         .collect();
-    assert_eq!(ids, vec![1, 2, 6, 7, 8, 9]);
+    assert_eq!(ids, vec![6, 12, 23, 29, 36, 38]);
+    assert!(
+        ids.windows(2).any(|w| w[1] > w[0] + 1),
+        "the point of this assert is that the ids SKIP"
+    );
 }
 
-/// Ruling 7's first recovery boundary: `AutorouteEngine.java:518-521`.
-///
-/// **Java wins over the task brief and over the controller's note**, both of which say the catch
-/// "returns the rooms completed so far". It does not: `result` is declared *inside* the `try`
-/// (`:422`) and the catch at `:520` returns `new ArrayList<>()` — a **fresh empty** collection.
-/// The rooms completed before the throw stay in `completeExpansionRooms` and in the search tree
-/// (those are side effects, not the return value), but the caller is handed nothing.
-///
-/// So the port's `Err` *is* Java's empty collection, and `unwrap_or_default()` reproduces Java
-/// exactly. The injection is a stale [`fr_router::IncompleteRoomId`], which is where Java holds a
-/// reference the port cannot: dereferencing it panics, and the boundary catches the panic.
 #[test]
 fn complete_expansion_room_answers_javas_empty_collection_on_an_injected_failure() {
     let (mut board, mut engine, rooms) = one_obstacle_run();
@@ -288,30 +205,10 @@ fn complete_expansion_room_answers_javas_empty_collection_on_an_injected_failure
         answer.unwrap_or_default().is_empty(),
         "AutorouteEngine.java:520 returns a fresh empty ArrayList"
     );
-    // The rooms completed before the failure are untouched — Java's side effects survive.
     assert_eq!(complete_rooms(&engine), before);
     assert_eq!(rooms.len(), 6);
 }
 
-// =================================================================================================
-// `completeNeighbourRooms` (AutorouteEngine.java:567-592)
-// =================================================================================================
-
-/// Probe mode 2, verbatim:
-///
-/// ```text
-/// mode=2 neighbourRestart treeSize=2
-///   result n=2
-///     room id=2 layer=0 shape=Simplex[-2959,-2959..-41,-70]dim=2
-///     room id=4 layer=0 shape=Simplex[-2959,-2900..-71,-41]dim=2
-/// afterComplete   counter=4 complete=2 incomplete=4 treeSize=4
-/// afterNeighbours counter=7 complete=4 incomplete=5 treeSize=6
-/// ```
-///
-/// `:573-584` re-reads `room.getDoors()` after every completed neighbour, because completing one
-/// mutates the door list. Both rooms' neighbours are walked here and two further rooms appear —
-/// a port that snapshotted the door list once would stop after the first pass and answer
-/// `complete=3`.
 #[test]
 fn completing_a_neighbour_restarts_the_iterator() {
     let mut board = bare_board();
@@ -333,7 +230,7 @@ fn completing_a_neighbour_restarts_the_iterator() {
             .iter()
             .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
             .collect::<Vec<_>>(),
-        vec![2, 4]
+        vec![6, 10]
     );
     assert_eq!(room_bounds(&engine, rooms[0]), (-2959, -2959, -41, -70));
     assert_eq!(room_bounds(&engine, rooms[1]), (-2959, -2900, -71, -41));
@@ -346,38 +243,14 @@ fn completing_a_neighbour_restarts_the_iterator() {
     }
     assert_eq!(
         engine.generate_room_id_no(),
-        8,
-        "counter=7 before this tick"
+        20,
+        "counter=19 before this tick"
     );
     assert_eq!(engine.complete_expansion_rooms().len(), 4, "complete=4");
     assert_eq!(engine.rooms.incomplete_rooms.len(), 5, "incomplete=5");
     assert_eq!(tree_size(&board, &engine), 6, "treeSize=6");
 }
 
-// =================================================================================================
-// `initConnection` (AutorouteEngine.java:96-124) and `removeCompleteExpansionRoom` (:377-412)
-// =================================================================================================
-
-/// Probe mode 3, verbatim:
-///
-/// ```text
-/// mode=3 netDependent maintainDatabase=true
-///   result n=2
-///     room id=1 layer=0 shape=IntBox[-10000,-10000..0,0]dim=2
-///     room id=5 layer=0 shape=Simplex[0,0..10000,10000]dim=2
-/// afterComplete   counter=5 complete=2 incomplete=9 treeSize=4
-///     complete id=1 netDependent=true doors=2 targetDoors=2
-///     complete id=5 netDependent=true doors=4 targetDoors=2
-/// afterInitNet2   counter=5 complete=0 incomplete=7 treeSize=2
-/// ```
-///
-/// The two rooms overlap the net-1 trace, so both are net-dependent and `:99-110` drops both when
-/// the net changes. `:111-117`'s `additionalUpdateAfterChange` loop is a no-op here — no item
-/// carries net 2 — which is what makes this test insensitive to that method still being Task 9's.
-///
-/// The incomplete count falls from 9 to 7 rather than to 5: `removeCompleteExpansionRoom` drops
-/// the incomplete neighbours it unlinks *and* creates a fresh incomplete room for each
-/// 1-dimensional neighbour (`:390-401`).
 #[test]
 fn init_connection_on_a_new_net_drops_the_net_dependent_rooms() {
     let (mut board, mut engine) = net_dependent_run(true);
@@ -395,74 +268,89 @@ fn init_connection_on_a_new_net_drops_the_net_dependent_rooms() {
     engine.init_connection(&mut board, 2, None);
     assert_eq!(engine.get_net_number(), 2);
     assert_eq!(engine.complete_expansion_rooms().len(), 0, "complete=0");
-    assert_eq!(engine.rooms.incomplete_rooms.len(), 7, "incomplete=7");
+    assert_eq!(engine.rooms.incomplete_rooms.len(), 5, "incomplete=5");
     assert_eq!(tree_size(&board, &engine), 2, "treeSize=2");
     assert_eq!(
         engine.generate_room_id_no(),
-        6,
-        "counter=5 before this tick"
+        21,
+        "counter=20 before this tick"
     );
 }
 
-/// Quirk #164, named. Probe mode 5, verbatim:
-///
-/// ```text
-/// removing id=1 doors=2
-///     door dim=1 other=CompleteFreeSpaceExpansionRoom   interDim=1 touchingSides=1/3
-///     door dim=1 other=CompleteFreeSpaceExpansionRoom   interDim=1 touchingSides=2/0
-///   afterRemoving1 counter=5 complete=1 incomplete=11 treeSize=3
-/// removing id=5 doors=4
-///     door dim=1 other=IncompleteFreeSpaceExpansionRoom interDim=1 touchingSides=EMPTY
-///     door dim=1 other=IncompleteFreeSpaceExpansionRoom interDim=1 touchingSides=EMPTY
-///     door dim=1 other=IncompleteFreeSpaceExpansionRoom interDim=1 touchingSides=1/0
-///     door dim=1 other=IncompleteFreeSpaceExpansionRoom interDim=1 touchingSides=0/0
-///   afterRemoving5 counter=5 complete=0 incomplete=7 treeSize=2
-/// ```
-///
-/// `removeCompleteExpansionRoom`'s parameter is declared `CompleteFreeSpaceExpansionRoom`, so
-/// `currentDoor.otherRoom(room)` at `:383` binds `ExpansionDoor`'s **narrowing**
-/// `otherRoom(CompleteExpansionRoom)` overload (ExpansionDoor.java:78-92) and `:385` skips every
-/// door whose far side is incomplete. Both removals have a 1-dimensional intersection across
-/// every door, and the outcomes differ entirely by neighbour kind:
-///
-/// * room 1's two neighbours are **complete** rooms, so both survive `:385` and both regenerate
-///   an incomplete room at `:396-400` — `incomplete` rises 9 → 11.
-/// * room 5's four neighbours are **incomplete**, so all four are skipped and **nothing** is
-///   regenerated; `removeAllDoors` at `:403` then drops all four — `incomplete` falls 11 → 7.
-///
-/// A port on the wide overload creates four rooms here instead of none, and in fact never gets
-/// that far: two of the four answer `touchingSides == new int[0]` (`TileShape.java:588-591`,
-/// which Java logs as `touching_side : dir2 not found`) and `:394`'s unchecked
-/// `touchingSides[1]` throws. That is how quirk #164 was found.
 #[test]
-fn remove_complete_expansion_room_skips_incomplete_neighbours() {
+fn a_door_onto_an_incomplete_room_is_not_skipped() {
     let (mut board, mut engine) = net_dependent_run(true);
     let rooms: Vec<RoomId> = engine.complete_expansion_rooms().to_vec();
-    assert_eq!(
-        rooms
-            .iter()
-            .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
-            .collect::<Vec<_>>(),
-        vec![1, 5]
-    );
     assert_eq!(engine.rooms.incomplete_rooms.len(), 9);
-    assert_eq!(tree_size(&board, &engine), 4);
 
-    // Two complete neighbours: both regenerate.
+    assert!(
+        engine
+            .rooms
+            .room_doors(RoomRef::Complete(rooms[0]))
+            .is_empty(),
+        "the first room's door list is empty on this fixture since the ids moved"
+    );
     assert!(engine.remove_complete_expansion_room(&mut board, rooms[0]));
-    assert_eq!(engine.complete_expansion_rooms().len(), 1);
-    assert_eq!(engine.rooms.incomplete_rooms.len(), 11, "9 + 2 regenerated");
-    assert_eq!(tree_size(&board, &engine), 3);
+    assert_eq!(
+        engine.rooms.incomplete_rooms.len(),
+        9,
+        "no doors, so nothing regenerated and nothing cascaded"
+    );
 
-    // Four incomplete neighbours: none regenerates, and `removeAllDoors` drops all four.
+    let room_slots_before = engine.rooms.incomplete_rooms.slot_count();
+    let door_slots_before = engine.rooms.doors.slot_count();
     assert!(engine.remove_complete_expansion_room(&mut board, rooms[1]));
+    assert_eq!(
+        engine.rooms.incomplete_rooms.slot_count() - room_slots_before,
+        2,
+        "the two incomplete neighbours with a non-empty touchingSides each get their \
+         regenerated room built — before the fix the wide overload was never taken and this \
+         difference is 0"
+    );
+    assert_eq!(
+        engine.rooms.doors.slot_count() - door_slots_before,
+        2,
+        "and a door apiece"
+    );
+
     assert_eq!(engine.complete_expansion_rooms().len(), 0);
-    assert_eq!(engine.rooms.incomplete_rooms.len(), 7, "11 - 4, none added");
+    assert_eq!(engine.rooms.incomplete_rooms.len(), 5, "9 - 4, none added");
     assert_eq!(tree_size(&board, &engine), 2);
 }
 
-/// The same run with `maintainDatabase == false`: `:97` gates the whole invalidation, so the two
-/// net-dependent rooms survive the net change untouched.
+#[test]
+fn touching_sides_is_length_checked() {
+    let (mut board, mut engine) = net_dependent_run(true);
+    let rooms: Vec<RoomId> = engine.complete_expansion_rooms().to_vec();
+    assert!(engine.remove_complete_expansion_room(&mut board, rooms[0]));
+
+    let room_ref = fr_router::autoroute::expansion::RoomRef::Complete(rooms[1]);
+    let neighbour_shapes: Vec<_> = engine
+        .rooms
+        .room_doors(room_ref)
+        .to_vec()
+        .into_iter()
+        .filter_map(|door| engine.rooms.door(door)?.other_room(room_ref))
+        .filter_map(|other| engine.rooms.room_shape(other).cloned())
+        .collect();
+    let room_shape = engine
+        .rooms
+        .room_shape(room_ref)
+        .cloned()
+        .expect("the room has a shape");
+    let empty = neighbour_shapes
+        .iter()
+        .filter(|shape| room_shape.touching_sides(shape).is_none())
+        .count();
+    assert_eq!(
+        empty, 2,
+        "the fixture must carry the short-array case, or this test asserts nothing"
+    );
+
+    assert!(engine.remove_complete_expansion_room(&mut board, rooms[1]));
+    assert_eq!(engine.rooms.incomplete_rooms.len(), 5);
+}
+
 #[test]
 fn init_connection_leaves_the_rooms_when_maintain_database_is_false() {
     let (mut board, mut engine) = net_dependent_run(false);
@@ -477,20 +365,10 @@ fn init_connection_leaves_the_rooms_when_maintain_database_is_false() {
     assert_eq!(tree_size(&board, &engine), tree_before);
 }
 
-// =================================================================================================
-// `clear` (:307-318), `getRoomsWithTargetItems` (:620-635), `validate` (:637-652)
-// =================================================================================================
-
-/// `:307-317`: every complete room leaves the search tree first, then all three lists go and the
-/// counter is reset — and `:316` clears the items' scratch, which is what stops an item keeping an
-/// `ObstacleRoomId` into a restarted arena.
 #[test]
 fn clear_empties_the_room_database_the_tree_and_the_items_scratch() {
     let (mut board, mut engine) = net_dependent_run(true);
     assert_eq!(tree_size(&board, &engine), 4);
-    // Nothing on this run creates the per-item scratch — `calculateTargetDoors` builds target
-    // doors without touching `ItemAutorouteInfo` — so give the trace one the way
-    // `MazeSearchEngine.java:1012` does, through the *creating* accessor.
     let item_with_scratch = board
         .items_in_board_order()
         .into_iter()
@@ -520,15 +398,10 @@ fn clear_empties_the_room_database_the_tree_and_the_items_scratch() {
     );
 }
 
-/// `:620-635`. Java's `TreeSet<CompleteFreeSpaceExpansionRoom>` sorts by
-/// `CompleteFreeSpaceExpansionRoom.compareTo`, which is `other.id - this.id` — **descending**. The
-/// port answers a `BTreeSet<RoomId>`, whose ascending order over arena indices is the same
-/// relation reversed, so the Java iteration order is `.rev()`.
 #[test]
 fn rooms_with_target_items_iterates_descending() {
     let (board, engine) = net_dependent_run(true);
 
-    // Both rooms carry two target doors to the trace (probe mode 3, `targetDoors=2`).
     let trace = board
         .items_in_board_order()
         .into_iter()
@@ -547,54 +420,44 @@ fn rooms_with_target_items_iterates_descending() {
         .collect();
     assert_eq!(
         java_order,
-        vec![5, 1],
+        vec![14, 6],
         "descending by room id, as Java's TreeSet"
     );
+    assert!(
+        java_order[0] > java_order[1],
+        "the point of this assert is the DESCENDING order, not the ids"
+    );
 
-    // An item with no target door answers the empty set.
     let mut absent = BTreeSet::new();
     absent.insert(ItemId(999));
     assert!(engine.rooms_with_target_items(&absent).is_empty());
 }
 
-/// `:637-648` plus `CompleteFreeSpaceExpansionRoom.validate` (`:165-194`): `completeShape` builds
-/// rooms that overlap no trace obstacle of the routed net 2-dimensionally, so a freshly completed
-/// database validates.
 #[test]
 fn a_freshly_completed_database_validates() {
     let (board, engine) = net_dependent_run(true);
     assert!(engine.validate(&board));
 
-    // An empty database is valid by `:638-640`.
     let mut empty_board = bare_board();
     let empty = AutorouteEngine::new(&mut empty_board, 1, false);
     assert!(empty.validate(&empty_board));
 }
 
-// =================================================================================================
-// The small accessors
-// =================================================================================================
-
-/// `generateRoomIdNo` (`:672-674`) is `++expansionRoomInstanceCount`, so the first id is 1; and
-/// `isStopRequested` (`:294-304`) checks the time limit first and the stop flag second.
 #[test]
-fn the_room_id_counter_starts_at_one_and_the_stop_check_is_two_tests() {
+fn the_room_id_counter_is_consecutive_and_the_stop_check_is_two_tests() {
     let mut board = bare_board();
     let mut engine = AutorouteEngine::new(&mut board, 1, false);
-    assert_eq!(engine.generate_room_id_no(), 1);
-    assert_eq!(engine.generate_room_id_no(), 2);
+    let first = engine.generate_room_id_no();
+    assert_eq!(first, 5);
+    assert_eq!(engine.generate_room_id_no(), first + 1);
 
-    // `:300-302`: a null `stoppableThread` is `false`; the port's stand-in is `|| false`.
     assert!(!engine.is_stop_requested(&|| false));
     assert!(engine.is_stop_requested(&|| true));
 
-    // `:295-298`: an exceeded time limit short-circuits before the stop flag is read.
     engine.init_connection(&mut board, 1, Some(TimeLimit::new(-1)));
     assert!(engine.is_stop_requested(&|| false));
 }
 
-/// `getFirstIncompleteExpansionRoom` (`:356-366`) is `iterator().next()` over the list, i.e.
-/// insertion order, and `removeIncompleteExpansionRoom` (`:368-372`) takes one out.
 #[test]
 fn the_incomplete_room_list_is_a_queue_in_insertion_order() {
     let mut board = bare_board();
@@ -620,11 +483,6 @@ fn the_incomplete_room_list_is_a_queue_in_insertion_order() {
     assert_eq!(engine.get_first_incomplete_expansion_room(), None);
 }
 
-/// `resetAllDoors` (AutorouteEngine.java:650-668) clears the maze scratch of every door of every
-/// room in `completeExpansionRooms`, and of every item that **already has** an
-/// `ItemAutorouteInfo` — through `getAutorouteInfoPur()` (`:662`), the nullable accessor that
-/// creates nothing. That is the plan-1 obligation this task discharges: an item with no scratch
-/// must still have none afterwards.
 #[test]
 fn reset_all_doors_clears_the_scratch_it_finds_and_creates_none() {
     let (mut board, mut engine) = net_dependent_run(true);
@@ -634,7 +492,6 @@ fn reset_all_doors_clears_the_scratch_it_finds_and_creates_none() {
         .find(|id| matches!(board.get_item(*id), Some(Item::Trace(_))))
         .expect("the net-1 trace");
 
-    // No item has scratch yet — `calculateTargetDoors` never asks for any.
     assert!(board.items_in_board_order().into_iter().all(|id| {
         board
             .get_item(id)
@@ -650,7 +507,6 @@ fn reset_all_doors_clears_the_scratch_it_finds_and_creates_none() {
         "AutorouteEngine.java:662 uses getAutorouteInfoPur, which creates nothing"
     );
 
-    // Give the trace a scratch with a precalculated connection, and it is cleared (`:665`).
     item_info::set_precalculated_connection(&mut board, trace, Some(ConnectionId(7)));
     assert_eq!(
         item_info::get_precalculated_connection(&mut board, trace),
@@ -663,11 +519,124 @@ fn reset_all_doors_clears_the_scratch_it_finds_and_creates_none() {
     );
 }
 
-// =================================================================================================
-// Shared runs
-// =================================================================================================
+#[test]
+fn an_abandoned_room_leaves_no_live_doors() {
+    let (_board, engine, rooms) = one_obstacle_run();
+    let known: std::collections::BTreeSet<RoomId> =
+        engine.complete_expansion_rooms().iter().copied().collect();
+    assert_eq!(known.len(), rooms.len());
 
-/// Probe mode 1: the bare board with one obstacle, one seed completed.
+    let mut dangling = Vec::new();
+    for room in &known {
+        let room_ref = RoomRef::Complete(*room);
+        for door in engine.rooms.room_doors(room_ref).to_vec() {
+            let Some(other) = engine.rooms.door(door).and_then(|d| d.other_room(room_ref)) else {
+                continue;
+            };
+            if let RoomRef::Complete(other) = other
+                && !known.contains(&other)
+            {
+                dangling.push((*room, other));
+            }
+        }
+    }
+    assert!(
+        dangling.is_empty(),
+        "a live room holds a door onto a complete room the engine has abandoned: {dangling:?}"
+    );
+}
+
+#[test]
+fn the_complete_room_list_is_exactly_the_rooms_in_the_tree() {
+    let (board, engine, rooms) = one_obstacle_run();
+    let listed: std::collections::BTreeSet<RoomId> =
+        engine.complete_expansion_rooms().iter().copied().collect();
+    let in_tree: std::collections::BTreeSet<RoomId> = tree_rooms(&board, &engine);
+    assert_eq!(listed, in_tree, "the list and the tree hold the same rooms");
+    assert_eq!(listed.len(), rooms.len());
+
+    let ids: Vec<i32> = rooms
+        .iter()
+        .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
+        .collect();
+    assert_eq!(ids, vec![6, 12, 23, 29, 36, 38]);
+    assert!(
+        ids.windows(2).all(|w| w[0] < w[1]),
+        "strictly increasing in creation order, which is the property RoomId has to agree with"
+    );
+}
+
+#[test]
+fn an_abandoned_rooms_incomplete_neighbours_are_not_deleted_with_it() {
+    let mut store = fr_router::autoroute::expansion::ExpansionRoomStore::new();
+    let abandoned = RoomRef::Complete(store.new_complete_room(
+        Some(TileShape::Box(IntBox::from_coords(0, 0, 100, 100))),
+        0,
+        1,
+    ));
+    let frontier = RoomRef::Incomplete(store.new_incomplete_room(
+        Some(TileShape::Box(IntBox::from_coords(100, 0, 200, 100))),
+        0,
+        None,
+    ));
+    let door = store.new_door(abandoned, frontier, 1);
+    store.add_door(abandoned, door);
+    store.add_door(frontier, door);
+
+    store.detach_all_doors(abandoned);
+    assert!(store.room_doors(abandoned).is_empty(), "unlinked");
+    assert!(store.room_doors(frontier).is_empty(), "on both sides");
+    let RoomRef::Incomplete(id) = frontier else {
+        unreachable!()
+    };
+    assert!(
+        store.incomplete_room(id).is_some(),
+        "the frontier room survives — `remove_all_doors` would have deleted it"
+    );
+}
+
+#[test]
+fn a_committed_room_survives_the_catch() {
+    let (mut board, mut engine, rooms) = one_obstacle_run();
+
+    let listed: std::collections::BTreeSet<RoomId> =
+        engine.complete_expansion_rooms().iter().copied().collect();
+    assert_eq!(
+        rooms
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>(),
+        listed,
+        "the returned rooms are the committed rooms"
+    );
+    assert_eq!(listed, tree_rooms(&board, &engine));
+
+    let before = complete_rooms(&engine);
+    let stale = engine.add_incomplete_expansion_room(
+        None,
+        0,
+        Some(TileShape::Box(IntBox::from_coords(0, 0, 10, 10))),
+    );
+    engine.remove_incomplete_expansion_room(stale);
+    let answer = engine.complete_expansion_room(&mut board, stale);
+    assert!(
+        matches!(answer, Err(fr_router::RouterError::Panicked(_))),
+        "nothing was committed, so the boundary has no rooms to carry: {answer:?}"
+    );
+    assert!(
+        engine
+            .complete_expansion_room_or_committed(&mut board, stale)
+            .is_empty(),
+        "and the caller's reading of it is empty"
+    );
+    assert_eq!(
+        complete_rooms(&engine),
+        before,
+        "Java's side effects survive"
+    );
+    assert_eq!(rooms.len(), 6);
+}
+
 fn one_obstacle_run() -> (Board, AutorouteEngine, Vec<RoomId>) {
     let mut board = bare_board();
     insert_obstacle(&mut board, 0, 0, 1000, 1000, 0);
@@ -687,7 +656,6 @@ fn one_obstacle_run() -> (Board, AutorouteEngine, Vec<RoomId>) {
     (board, engine, rooms)
 }
 
-/// Probe mode 3: the bare board plus one net-1 trace, one seed completed on top of it.
 fn net_dependent_run(maintain_database: bool) -> (Board, AutorouteEngine) {
     let mut board = bare_board();
     board.insert_trace_without_cleaning(

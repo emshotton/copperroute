@@ -1,0 +1,9 @@
+kicad-cli    10.0.3
+generated    2026-09-05T05:47:55Z
+dsn          java:fixtures/Issue269-NoViasOnPowerPlanes/Issue269-NoViasOnPowerPlanes.dsn
+ses          java:fixtures/Issue269-NoViasOnPowerPlanes/Issue269-NoViasOnPowerPlanes.ses
+kicad_pcb    java:fixtures/Issue269-NoViasOnPowerPlanes/Issue269-NoViasOnPowerPlanes.kicad_pcb
+kicad_pro    java:fixtures/Issue269-NoViasOnPowerPlanes/Issue269-NoViasOnPowerPlanes.kicad_pro
+import       {"wires": 28, "vias": 3, "skipped": []}
+refill       {"zones": 0}
+command      kicad-cli pcb drc --format json --all-track-errors --units mm

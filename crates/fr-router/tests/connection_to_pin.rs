@@ -1,29 +1,3 @@
-//! Plan 7 Task 5: `PolylineTrace`'s `ConnectionToPin` trio —
-//! `checkConnectionToPin(boolean)` (`board/trace/PolylineTrace.java:1013-1076`),
-//! `correctConnectionToPin(boolean, AngleRestriction)` (`:1082-1245`) and
-//! `swapConnectionToPin(boolean)` (`:1252-1313`) — plus the four call sites of
-//! `pullTight:844-860` that drive them.
-//!
-//! # Where the numbers come from
-//!
-//! Every expectation below is read off the HEAD jar through
-//! `scripts/differential/java/P7T6.java`, whose stdout is committed verbatim as
-//! `tests/data/p7t6-connection-to-pin.txt`; `scripts/differential/run.sh p7t6 <mode>` diffs the
-//! two implementations byte for byte on all five modes. The transcript is compared row by row
-//! here rather than pasted twice, and the load-bearing rows — the three `checkConnectionToPin`
-//! outcomes, the two `pullTight:841-842` skips and the reordering `swapConnectionToPin` performs
-//! — are additionally asserted as literals so the intent survives a regenerated transcript.
-//!
-//! # `check_connection_to_pin` is **new** in this task
-//!
-//! The plan's scan ruling 5 records `checkConnectionToPin` as landed in Plan 6 and tells Task 5
-//! to reuse it. It had not landed: a workspace search for the name, for `TraceExitRestriction` in
-//! `fr-router` and for the method's body found only two forward-deferral markers in
-//! `crates/fr-board/src/items/trace.rs` (both now `// renamed:` lines pointing at this crate).
-//! So the "regression test against `p7t6` mode 0" the brief
-//! asks for is, in fact, this port's **first** evidence for the method, and it is written as
-//! such.
-
 use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_dsn::format::double::java_double_to_string;
@@ -31,18 +5,19 @@ use fr_geometry::{IntBox, IntPoint, IntVector, Line, Point, Polyline, Shape, Til
 use fr_router::autoroute::maze::engine::AutorouteEngine;
 use fr_router::board_ext::{PolylineTraceExt, TraceTightener};
 
-// =================================================================================================
-// The committed JVM transcript
-// =================================================================================================
-
 const TRANSCRIPT: &str = include_str!("data/p7t6-connection-to-pin.txt");
+const TASK_16_GOLDEN: &str = include_str!("data/p9t16-connection-to-pin.txt");
 
-/// The rows of one `######## <mode>` section of the transcript, trailing blanks trimmed.
 fn section(mode: &str) -> Vec<&'static str> {
+    let transcript = if matches!(mode, "check" | "correct") {
+        TASK_16_GOLDEN
+    } else {
+        TRANSCRIPT
+    };
     let header = format!("######## {mode}");
     let mut rows = Vec::new();
     let mut inside = false;
-    for line in TRANSCRIPT.lines() {
+    for line in transcript.lines() {
         if line.starts_with("######## ") {
             inside = line == header;
             continue;
@@ -54,10 +29,6 @@ fn section(mode: &str) -> Vec<&'static str> {
     assert!(!rows.is_empty(), "transcript section `{mode}` is empty");
     rows
 }
-
-// =================================================================================================
-// `P7T6.build` — a four-pin component with a 400 x 100 SMD pad per pin
-// =================================================================================================
 
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -82,14 +53,6 @@ fn layers() -> LayerStructure {
     LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)])
 }
 
-/// `P7T6.build(angleRestriction, pinEdgeToTurnDist)`.
-///
-/// The pad is 400 x 100 and the package has **four** pins, so `Pin.java:274-276` leaves
-/// `padXyFactor` at 1.5 and `Padstack.getTraceExitDirections:182-193` answers only the long side's
-/// two directions — RIGHT and LEFT, each with a minimal length of 200. That restrictive,
-/// non-empty set is what makes `checkConnectionToPin:1038-1040` able to refuse; `P6T9Probe`'s
-/// square 100 x 100 pad on a two-pin package answers all four directions and refuses nothing,
-/// which is why the Plan 6 `p6t15a` `pinedge` transcript shows the whole branch answering `false`.
 fn probe_board(angle: AngleRestriction, pin_edge_to_turn_dist: f64) -> Board {
     let mut clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
     assert!(clearance_matrix.append_class("wide"));
@@ -160,7 +123,6 @@ struct Case {
     clearance_class: usize,
 }
 
-/// `P7T6.table()`.
 fn table() -> Vec<Case> {
     vec![
         Case {
@@ -231,14 +193,9 @@ struct SwapCase {
     stub_end: Point,
     main_corners: Vec<Point>,
     half_width: i32,
-    /// The stub's own half width, normally the main trace's. `wide-stub` makes them differ:
-    /// `swapConnectionToPin` never compares widths, but `combineAtStart` does
-    /// (`PolylineTrace.java:239-244`), so that row is a `swap` that succeeds and whose
-    /// `combine()` then merges **nothing**.
     stub_half_width: i32,
 }
 
-/// `P7T6.swapTable()`.
 fn swap_table() -> Vec<SwapCase> {
     vec![
         SwapCase {
@@ -320,10 +277,6 @@ fn regime_name(angle: AngleRestriction) -> &'static str {
         AngleRestriction::None => "NONE",
     }
 }
-
-// =================================================================================================
-// Dumps — `P7T6`'s, so the transcript can be compared row by row
-// =================================================================================================
 
 fn dump_line(line: &Line) -> String {
     format!("({},{})->({},{})", line.a.x, line.a.y, line.b.x, line.b.y)
@@ -420,15 +373,8 @@ fn dump_board(board: &Board) -> Vec<String> {
     out
 }
 
-// =================================================================================================
-// `checkConnectionToPin` — the transcript's `check` section, and three literal rows
-// =================================================================================================
-
-/// The whole of `p7t6 check`: 3 regimes x 4 `pinEdgeToTurnDist` values x 10 traces, both ends.
-///
-/// This is the port's first evidence for `check_connection_to_pin` (see the module docs).
 #[test]
-fn check_connection_to_pin_matches_the_jvm_over_the_whole_table() {
+fn check_connection_to_pin_matches_the_task_16_golden_over_the_whole_table() {
     let rows = section("check");
     let mut i = 0;
     for angle in REGIMES {
@@ -456,14 +402,8 @@ fn check_connection_to_pin_matches_the_jvm_over_the_whole_table() {
     );
 }
 
-/// The three outcomes of `checkConnectionToPin`, as literals rather than as transcript rows.
-///
-/// The pad's restrictions are RIGHT and LEFT with `minLength = 200`, the clearance of class 1
-/// against class 1 is 200 and the half width is 30, so `:1074-1076` preserves
-/// `200 + 30 + max(edgeToTurnDist, 201)` — 431 while `edgeToTurnDist <= 201`, 730 at 500.
 #[test]
-fn check_connection_to_pin_answers_javas_three_outcomes() {
-    // A 300-long first segment is shorter than 431: refused at both distances.
+fn check_connection_to_pin_answers_the_corrected_outcomes() {
     let short = &table()[0];
     for edge in [0.0, 500.0] {
         let mut board = probe_board(AngleRestriction::None, edge);
@@ -472,9 +412,8 @@ fn check_connection_to_pin_answers_javas_three_outcomes() {
             &board, trace, true
         ));
     }
-    // A 600-long one clears 431 but not 730.
     let mid = &table()[1];
-    let mut board = probe_board(AngleRestriction::None, 0.0);
+    let mut board = probe_board(AngleRestriction::None, 100.0);
     let trace = insert(&mut board, mid);
     assert!(<Board as PolylineTraceExt>::check_connection_to_pin(
         &board, trace, true
@@ -485,7 +424,6 @@ fn check_connection_to_pin_answers_javas_three_outcomes() {
         &board, trace, true
     ));
 
-    // `:1063-1065`: no restriction names UP, so the answer is `false` whatever the length.
     let up = &table()[3];
     let mut board = probe_board(AngleRestriction::None, 0.0);
     let trace = insert(&mut board, up);
@@ -493,8 +431,6 @@ fn check_connection_to_pin_answers_javas_three_outcomes() {
         &board, trace, true
     ));
 
-    // `:1066-1069`: a negative `pinEdgeToTurnDist` refuses even a matching direction of any
-    // length — the `long-right` row, whose first segment is 1000.
     let long = &table()[2];
     let mut board = probe_board(AngleRestriction::None, -1.0);
     let trace = insert(&mut board, long);
@@ -503,14 +439,10 @@ fn check_connection_to_pin_answers_javas_three_outcomes() {
     ));
     let mut board = probe_board(AngleRestriction::None, 0.0);
     let trace = insert(&mut board, long);
-    assert!(<Board as PolylineTraceExt>::check_connection_to_pin(
+    assert!(!<Board as PolylineTraceExt>::check_connection_to_pin(
         &board, trace, true
     ));
 }
-
-// =================================================================================================
-// `correctConnectionToPin` and `swapConnectionToPin` — one test per regime, from the transcript
-// =================================================================================================
 
 fn correct_rows_for(angle: AngleRestriction) -> Vec<String> {
     let mut out = Vec::new();
@@ -558,7 +490,7 @@ fn transcript_rows_for(mode: &str, angle: AngleRestriction) -> Vec<&'static str>
 }
 
 #[test]
-fn correct_connection_to_pin_matches_the_jvm_at_ninety_degrees() {
+fn correct_connection_to_pin_matches_the_task_16_golden_at_ninety_degrees() {
     assert_eq!(
         correct_rows_for(AngleRestriction::NinetyDegree),
         transcript_rows_for("correct", AngleRestriction::NinetyDegree)
@@ -566,7 +498,7 @@ fn correct_connection_to_pin_matches_the_jvm_at_ninety_degrees() {
 }
 
 #[test]
-fn correct_connection_to_pin_matches_the_jvm_at_fortyfive_degrees() {
+fn correct_connection_to_pin_matches_the_task_16_golden_at_fortyfive_degrees() {
     assert_eq!(
         correct_rows_for(AngleRestriction::FortyFiveDegree),
         transcript_rows_for("correct", AngleRestriction::FortyFiveDegree)
@@ -574,7 +506,7 @@ fn correct_connection_to_pin_matches_the_jvm_at_fortyfive_degrees() {
 }
 
 #[test]
-fn correct_connection_to_pin_matches_the_jvm_at_any_angle() {
+fn correct_connection_to_pin_matches_the_task_16_golden_at_any_angle() {
     assert_eq!(
         correct_rows_for(AngleRestriction::None),
         transcript_rows_for("correct", AngleRestriction::None)
@@ -649,10 +581,6 @@ fn swap_connection_to_pin_matches_the_jvm_at_any_angle() {
     );
 }
 
-/// `swapConnectionToPin:1312-1313` is a **reordering**, not a geometry change: the `SHOVE_FIXED`
-/// stub takes on the main trace's own fixed state and `combine()` then swallows it, so the two
-/// items become one and the stub's id disappears. Pinned as a literal because the transcript
-/// comparison above would still pass if the port merged the wrong pair.
 #[test]
 fn a_successful_swap_reorders_the_stub_into_the_trace() {
     let case = &swap_table()[0];
@@ -686,8 +614,6 @@ fn a_successful_swap_reorders_the_stub_into_the_trace() {
             .expect("swapConnectionToPin cannot fail in Java")
     );
 
-    // `combine()` merged the released stub into the main trace, so exactly one of the two ids
-    // survives and it spans the pin centre.
     let survivors: Vec<ItemId> = board
         .get_items()
         .filter(|item| matches!(item, Item::Trace(_)))
@@ -701,13 +627,6 @@ fn a_successful_swap_reorders_the_stub_into_the_trace() {
     assert_eq!(trace.last_corner(), Some(p(-200, 300)));
 }
 
-// =================================================================================================
-// The two skips of `PolylineTrace.pullTight:841-842`
-// =================================================================================================
-
-/// The `edge` transcript section drives `pullTight` itself rather than the three methods, which is
-/// what makes the two skips observable: a port that wired the four calls unconditionally would
-/// still match `check`/`correct`/`swap` and diff here.
 fn edge_rows_for(angle: AngleRestriction) -> Vec<String> {
     let mut out = Vec::new();
     for edge in EDGE_DISTS {
@@ -742,14 +661,10 @@ fn pull_tight_matches_the_jvm_in_every_regime_at_every_pin_edge_to_turn_dist() {
     }
 }
 
-/// `pullTight:841-842`'s first conjunct. At 90 degrees the branch is skipped whatever
-/// `pinEdgeToTurnDist` is, so the two `correctConnectionToPin` calls that *would* have fired do
-/// not — asserted by running the method directly and finding it would have changed the board.
 #[test]
 fn the_pair_is_skipped_at_ninety_degrees() {
     let case = &table()[0];
 
-    // Directly: the correction fires.
     let mut board = probe_board(AngleRestriction::NinetyDegree, 500.0);
     let trace = insert(&mut board, case);
     assert!(
@@ -764,7 +679,6 @@ fn the_pair_is_skipped_at_ninety_degrees() {
         "the fixture is one the correction would change"
     );
 
-    // Through `pullTight`: the branch is not entered, so the board is untouched.
     let mut board = probe_board(AngleRestriction::NinetyDegree, 500.0);
     let trace = insert(&mut board, case);
     let before = dump_board(&board);
@@ -776,20 +690,8 @@ fn the_pair_is_skipped_at_ninety_degrees() {
     assert_eq!(dump_board(&board), before);
 }
 
-/// `pullTight:842`'s second conjunct, `board.rules.getPinEdgeToTurnDist() > 0`. Note that `0.0`
-/// skips the branch while `checkConnectionToPin:1067` only refuses **below** zero, so a board with
-/// `pinEdgeToTurnDist == 0` has a correction available that `pullTight` never asks for — which is
-/// exactly what this test pins.
-///
-/// The witness is the `SHOVE_FIXED` exit stub `correctConnectionToPin:1239-1244` always inserts:
-/// the tightener's own steps never insert an item, so a stub on the board after `pullTight` can
-/// only have come from the correction. Comparing whole board dumps would not work — at any angle
-/// `pullTight` legitimately straightens this trace on its own.
 #[test]
-fn the_pair_is_skipped_when_pin_edge_to_turn_dist_is_not_positive() {
-    // `diag-out`, whose 45-degree exit from the pad the any-angle tightener cannot improve
-    // (`pullTight = false` at `edge <= 0` in the `edge` transcript) — so at `edge <= 0` the whole
-    // board is untouched and at 500 the only change is the correction's.
+fn a_zero_pin_edge_to_turn_distance_is_refused() {
     let case = &table()[4];
 
     fn shove_fixed_traces(board: &Board) -> usize {
@@ -801,24 +703,25 @@ fn the_pair_is_skipped_when_pin_edge_to_turn_dist_is_not_positive() {
             .count()
     }
 
-    // The correction is available at 0.0: `checkConnectionToPin` refuses this trace (only
-    // `edgeToTurnDist < 0` refuses at `:1067`), and running it directly inserts the stub.
     let mut board = probe_board(AngleRestriction::None, 0.0);
     let trace = insert(&mut board, case);
     assert!(
-        <Board as PolylineTraceExt>::correct_connection_to_pin(
+        !<Board as PolylineTraceExt>::check_connection_to_pin(&board, trace, true),
+        "the check refuses zero"
+    );
+    assert!(
+        !<Board as PolylineTraceExt>::correct_connection_to_pin(
             &mut board,
             None,
             trace,
             true,
             AngleRestriction::None
         )
-        .expect("cannot fail")
+        .expect("cannot fail"),
+        "the correction refuses zero"
     );
-    assert_eq!(shove_fixed_traces(&board), 1);
+    assert_eq!(shove_fixed_traces(&board), 0);
 
-    // Through `pullTight` at -1.0 and 0.0 the branch is closed, so no stub appears however much
-    // the tightener itself changes the trace.
     for edge in [-1.0, 0.0] {
         let mut board = probe_board(AngleRestriction::None, edge);
         let trace = insert(&mut board, case);
@@ -832,7 +735,6 @@ fn the_pair_is_skipped_when_pin_edge_to_turn_dist_is_not_positive() {
         assert_eq!(dump_board(&board), before, "edge={edge}");
     }
 
-    // And at 500.0, on the same trace and the same regime, it does.
     let mut board = probe_board(AngleRestriction::None, 500.0);
     let trace = insert(&mut board, case);
     let mut algo =
@@ -843,57 +745,6 @@ fn the_pair_is_skipped_when_pin_edge_to_turn_dist_is_not_positive() {
     assert_eq!(shove_fixed_traces(&board), 1);
 }
 
-// =================================================================================================
-// `combine()`'s `additionalUpdateAfterChange` (PolylineTrace.java:188) — the per-merge call
-// =================================================================================================
-
-/// `swapConnectionToPin:1313` calls `this.combine()`, whose loop is
-///
-/// ```java
-/// while (this.isOnTheBoard() && (this.combineAtStart(true) || this.combineAtEnd(true))) {
-///   somethingChanged = true;
-///   …observers…
-///   board.additionalUpdateAfterChange(this);   // :188
-/// }
-/// ```
-///
-/// so `:188` runs **once per successful merge**, **after** the merge, and **not at all** when
-/// neither end can grow. `combineAtStart`/`combineAtEnd` never call `change()` themselves, so
-/// `:188` is `combine`'s only route to it.
-///
-/// # Why this test exists, and why it needs a live engine
-///
-/// Both differential drivers pass `engine = None` — `additionalUpdateAfterChange` touches the
-/// engine's room/drill database and never the board's item list, so no `p7t3`/`p7t6` row can see
-/// it. An earlier draft of `swap_connection_to_pin` made the call **once, unconditionally, before**
-/// `combine_trace`, which agrees with Java on every driver row and diverges the moment a real
-/// engine is threaded (Tasks 8/9/10/13) — the class of divergence quirk #74 and Plan 6 Task 17b's
-/// `router-dac2020-bm01` bisect were about. So the instrument is an `AutorouteEngine` with
-/// `maintain_database = true` and a completed expansion room next to the stub: what
-/// `RoutingBoard.additionalUpdateAfterChange:103-111` does is remove the complete free-space rooms
-/// overlapping a tree shape of the item, so a removed room is a call and a surviving room is not.
-///
-/// # What each row pins
-///
-/// * **`left-stub-sharp`** — the stub and the trace have the same half width, so `combine()`
-///   merges them; one room goes and the two traces become one. Both the fixed port and the earlier
-///   draft agree here (the pre-merge and post-merge shapes both reach this room), so this row is
-///   the control.
-/// * **`wide-stub`** — the stub is 90 half-width against the trace's 30. `swapConnectionToPin`
-///   never compares widths, but `combineAtStart` does (`PolylineTrace.java:239-244`), so the swap
-///   succeeds and `combine()` merges **nothing**: Java makes **zero** `:188` calls and the room
-///   must survive. This is the row that goes red on the earlier draft — measured, by reverting the
-///   fix: it reports one room removed instead of none.
-///
-/// The premise of the second row is JVM-verified rather than assumed: `p7t6 swap`'s `wide-stub`
-/// rows answer `changed=true` with **both** traces still in the board dump (the stub released to
-/// `UNFIXED` and not absorbed), which is what "the swap succeeded and nothing merged" looks like
-/// from outside.
-///
-/// The remaining divergence of the earlier draft — the *count* on a multi-merge chain, and the
-/// pre- versus post-merge *shape* — is not separable with this instrument, because a completed
-/// room here grows large enough to touch both corridors. It is the same loop, so it stands or
-/// falls with the row above.
 #[test]
 fn combine_calls_additional_update_after_change_once_per_merge_and_never_without_one() {
     for (case_name, expect_merge) in [("left-stub-sharp", true), ("wide-stub", false)] {
@@ -920,8 +771,6 @@ fn combine_calls_additional_update_after_change_once_per_merge_and_never_without
         );
         let main = last_trace(&board);
 
-        // `maintain_database = true` is what `additionalUpdateAfterChange:100-102` tests before
-        // doing anything.
         let mut engine = AutorouteEngine::new(&mut board, 1, true);
         engine.init_connection(&mut board, 1, None);
         let seed = engine.add_incomplete_expansion_room(

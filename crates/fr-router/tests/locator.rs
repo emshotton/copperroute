@@ -1,34 +1,3 @@
-//! Plan 6 Task 14: `autoroute.path.FoundConnectionLocator` (FoundConnectionLocator.java:30-569)
-//! and its two overrides, `FoundConnectionLocator45Degree` (`:27-356`) and
-//! `FoundConnectionLocatorAnyAngle` (`:24-454`).
-//!
-//! # Where the numbers come from
-//!
-//! Every literal below is **read off the HEAD jar**. The probe is
-//! `scripts/differential/java/probes/P6T14Probe.java`, committed with the exact `javac`/`java`
-//! invocation in its header; its whole stdout is committed as
-//! `tests/data/p6t14-locator.txt`. Each test names its probe mode and pastes the lines it
-//! asserts against.
-//!
-//! # The fixtures
-//!
-//! Three boards, all `P6T13Probe`'s so that Task 13's pinned search is the input:
-//!
-//! * `simple_board` (`P6T13Probe.buildSimple`) — a 2000-unit square with two net-1 pins and
-//!   nothing else. The found connection is a single trace on layer 0, and the three regimes give
-//!   three different corner lists over the *same* maze result (modes `backtrack`, `locate`).
-//! * `probe_board` (`P6T13Probe.build`) — the 8000-unit board whose found connection crosses two
-//!   `ExpansionDrill`s, so the walk splits into three `ResultItem`s on layers 0, 1, 0 (mode
-//!   `ripup`).
-//! * `blocked_board` (`P6T14Probe.buildBlocked`) — `simple_board` plus a net-2 trace across the
-//!   channel and `viasAllowed` off, so the search rips the trace up and `backtrack` fills
-//!   `rippedItemList`/`ripupCosts` (mode `ripped`).
-//!
-//! `probe_board` is searched three ways: pin 2 to pin 3 with vias (mode `ripup`, the layer
-//! change), pin 2 to pin 3 without them (mode `around`, eight doors the long way round) and pin
-//! 3 to pin 2 both ways (mode `reverse`, which is the only one that bends far enough left to
-//! reach `FoundConnectionLocatorAnyAngle.leftTurnNextCorner`).
-
 #![allow(clippy::too_many_lines)]
 
 use std::cell::Cell;
@@ -51,10 +20,6 @@ use fr_router::autoroute::path::{
 };
 use fr_settings::RouterSettings;
 
-// =================================================================================================
-// The probe's boards, rebuilt from scratch
-// =================================================================================================
-
 const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
         x: -4_000,
@@ -71,7 +36,6 @@ const SIMPLE_BOUNDING_BOX: IntBox = IntBox {
     ur: IntPoint { x: 1_000, y: 1_000 },
 };
 
-/// The rules, library and via rule every fixture shares (`P6T13Probe.build`'s prologue).
 fn base_board(bounds: IntBox) -> Board {
     let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
     let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
@@ -150,7 +114,6 @@ fn add_package(board: &mut Board, name: &str, pins: Vec<PackagePin>) -> usize {
     )
 }
 
-/// `P6T13Probe.buildSimple` — two net-1 pins on a 2000-unit square.
 fn simple_board() -> Board {
     let mut board = base_board(SIMPLE_BOUNDING_BOX);
     let default_class = board.rules.get_default_net_class();
@@ -166,12 +129,17 @@ fn simple_board() -> Board {
     board
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg);
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); // id 2
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); // id 3
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
     board
 }
 
-/// `P6T14Probe.buildBlocked` — `simple_board` plus the net-2 trace across the channel.
+fn simple_board_fortyfive() -> Board {
+    let mut board = simple_board();
+    board.rules.trace_angle_restriction = AngleRestriction::FortyFiveDegree;
+    board
+}
+
 fn blocked_board() -> Board {
     let mut board = simple_board();
     let default_class = board.rules.get_default_net_class();
@@ -183,11 +151,10 @@ fn blocked_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); // id 4
+    );
     board
 }
 
-/// `P6T13Probe.build` — the 8000-unit board whose connection crosses two drills.
 fn probe_board() -> Board {
     let mut board = base_board(BOUNDING_BOX);
     let default_class = board.rules.get_default_net_class();
@@ -218,10 +185,10 @@ fn probe_board() -> Board {
         .components
         .add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg2);
 
-    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed); // id 2, the start pin
-    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed); // id 3, the destination pin
-    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed); // id 4
-    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed); // id 5
+    board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(1, 1, vec![1], 1, FixedState::Unfixed);
+    board.insert_pin(2, 0, vec![2], 1, FixedState::Unfixed);
+    board.insert_pin(2, 1, vec![2], 1, FixedState::Unfixed);
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[
             Point::new(0, -2000),
@@ -233,7 +200,7 @@ fn probe_board() -> Board {
         vec![2],
         1,
         FixedState::Unfixed,
-    ); // id 6
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -243,7 +210,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the free via inserts"); // id 7
+        .expect("the free via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, 2500), Point::new(2500, 3500)]),
         0,
@@ -251,7 +218,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); // id 8
+    );
     board
         .insert_via(
             PadstackId(3),
@@ -261,7 +228,7 @@ fn probe_board() -> Board {
             FixedState::Unfixed,
             false,
         )
-        .expect("the two-contact via inserts"); // id 9
+        .expect("the two-contact via inserts");
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(2500, -3500)]),
         0,
@@ -269,7 +236,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); // id 10
+    );
     board.insert_trace_without_cleaning(
         Polyline::from_points(&[Point::new(2500, -2500), Point::new(3500, -2500)]),
         0,
@@ -277,7 +244,7 @@ fn probe_board() -> Board {
         vec![3],
         1,
         FixedState::Unfixed,
-    ); // id 11
+    );
     board
 }
 
@@ -306,7 +273,6 @@ fn probe_engine(board: &mut Board, net_no: i32) -> AutorouteEngine {
     engine
 }
 
-/// A `StopCheck` that never fires.
 struct Counter {
     calls: Cell<u32>,
 }
@@ -328,25 +294,16 @@ fn set_of(ids: &[u32]) -> BTreeSet<ItemId> {
     ids.iter().map(|id| ItemId(*id)).collect()
 }
 
-/// What `P6T14Probe.dump` prints, in the same shape.
 struct Located {
     locator: FoundConnectionLocator,
     ripped: BTreeSet<ItemId>,
     ripup_costs: BTreeMap<ItemId, i32>,
 }
 
-/// `P6T14Probe.locate`: run the search on `board` and locate its result under `angle`.
-///
-/// The board is rebuilt per regime by the caller, exactly as the probe does — the 45° override
-/// calls `ExpansionDoor.getSectionSegments`, which reallocates the door's section array
-/// (ExpansionDoor.java:141, `:193-201`) whenever the section count differs from the one the
-/// search left, and that would drop the `backtrackDoor`s a second locator run needs.
 fn locate(board: &mut Board, angle: AngleRestriction, ripup_no_vias: bool) -> Located {
     locate_between(board, angle, ripup_no_vias, &[2], &[3])
 }
 
-/// The same, from an arbitrary start set to an arbitrary destination set — `P6T14Probe.locate`'s
-/// two extra parameters, which mode `reverse` uses to search pin 3 to pin 2.
 fn locate_between(
     board: &mut Board,
     angle: AngleRestriction,
@@ -394,17 +351,14 @@ fn locate_between(
     }
 }
 
-/// The three regimes, in the probe's order.
 const REGIMES: [AngleRestriction; 3] = [
     AngleRestriction::NinetyDegree,
     AngleRestriction::FortyFiveDegree,
     AngleRestriction::None,
 ];
 
-/// One `ResultItem` as `P6T14Probe.dump` prints it: its layer and its rounded corner list.
 type Item = (usize, Vec<(i32, i32)>);
 
-/// `(layer, corners)` per `ResultItem`, which is what `P6T14Probe.dump` prints.
 fn items(located: &Located) -> Vec<Item> {
     located
         .locator
@@ -419,16 +373,6 @@ fn items(located: &Located) -> Vec<Item> {
         .collect()
 }
 
-// =================================================================================================
-// getInstance — probe mode `share` (FoundConnectionLocator.java:185-207)
-// =================================================================================================
-
-/// ```text
-/// === mode share ===
-/// regime=NINETY_DEGREE class=FoundConnectionLocator45Degree
-/// regime=FORTYFIVE_DEGREE class=FoundConnectionLocator45Degree
-/// regime=NONE class=FoundConnectionLocatorAnyAngle
-/// ```
 #[test]
 fn ninety_and_fortyfive_share_one_implementation() {
     assert_eq!(
@@ -441,7 +385,6 @@ fn ninety_and_fortyfive_share_one_implementation() {
     );
 }
 
-/// The other half of `:196-205`.
 #[test]
 fn any_angle_does_not() {
     assert_eq!(
@@ -450,7 +393,6 @@ fn any_angle_does_not() {
     );
 }
 
-/// `nullResult=null` — the only reason `getInstance` (`:192-194`) answers null.
 #[test]
 fn get_instance_answers_none_only_for_a_null_maze_result() {
     let mut board = simple_board();
@@ -471,15 +413,8 @@ fn get_instance_answers_none_only_for_a_null_maze_result() {
     );
 }
 
-// =================================================================================================
-// calculateAdditionalCorner — probe mode `corner` (:329-404)
-// =================================================================================================
-
-/// The whole of `=== mode corner ===`, verbatim: twelve `(from, to)` pairs times both
-/// `horizontalFirst` values times the three regimes, printed with `Double.toString`.
 #[test]
 fn the_additional_corner_of_every_regime_matches_the_jvm() {
-    // from=(x,y) to=(x,y) hf=<bool> NINETY_DEGREE=(x,y) FORTYFIVE_DEGREE=(x,y) NONE=(x,y)
     let expected: [(&str, &str, bool, &str, &str, &str); 24] = [
         (
             "(0.0,0.0)",
@@ -697,7 +632,6 @@ fn the_additional_corner_of_every_regime_matches_the_jvm() {
     }
 }
 
-/// `P6T14Probe.fp`: `"(" + Double.toString(x) + "," + Double.toString(y) + ")"`.
 fn format_point(point: FloatPoint) -> String {
     format!(
         "({},{})",
@@ -712,27 +646,10 @@ fn parse_point(text: &str) -> FloatPoint {
     FloatPoint::new(x.parse().expect("a double"), y.parse().expect("a double"))
 }
 
-// =================================================================================================
-// backtrack — probe mode `backtrack` (:225-327)
-// =================================================================================================
-
-/// ```text
-/// === mode backtrack ===
-/// backtrack n=3
-///   [0] door=TargetItemExpansionDoor id=97 section=0 nextRoom=CompleteFreeSpaceExpansionRoom nextRoomId=4 nextRoomLayer=0
-///   [1] door=ExpansionDoor id=35 section=0 nextRoom=CompleteFreeSpaceExpansionRoom nextRoomId=1 nextRoomLayer=0
-///   [2] door=TargetItemExpansionDoor id=63 section=0 nextRoom=null nextRoomId=- nextRoomLayer=-
-/// ```
-///
-/// The last element's `nextRoom` is `null` because the start door is a
-/// `TargetItemExpansionDoor`, whose `otherRoom` answers null unconditionally
-/// (TargetItemExpansionDoor.java:50-53).
 #[test]
 fn the_backtrack_walk_reproduces_the_jvms_door_chain() {
-    let mut board = simple_board();
+    let mut board = simple_board_fortyfive();
     let located = locate(&mut board, AngleRestriction::None, false);
-    // Rebuild an engine view for the ids: the locator kept the arena refs, and the ids are what
-    // the probe prints.
     let mut engine = probe_engine(&mut board, 1);
     let _ = &mut engine;
 
@@ -749,24 +666,9 @@ fn the_backtrack_walk_reproduces_the_jvms_door_chain() {
     assert_eq!(arr[2].next_room, None, "the start door has no other room");
 }
 
-// =================================================================================================
-// The single-room connection — probe mode `locate`
-// =================================================================================================
-
-/// ```text
-/// === mode locate ===
-/// === NINETY_DEGREE
-/// startItem=2 startLayer=0 targetItem=3 targetLayer=0
-/// connectionItems n=1
-///   [0] layer=0 corners=5 (400,0) (-132,0) (-132,-132) (-132,0) (-400,0)
-/// ripped n=0
-/// ```
-///
-/// The 90° list visits `(-132,0)` **twice**: `calculateNextTrace`'s rounding loop (`:450-459`)
-/// drops only *consecutive* duplicates, so the spike back and forth survives.
 #[test]
-fn a_single_room_connection_yields_one_trace_with_the_java_corners() {
-    let mut board = simple_board();
+fn a_single_room_connection_yields_one_trace_with_corrected_corners() {
+    let mut board = simple_board_fortyfive();
     let located = locate(&mut board, AngleRestriction::NinetyDegree, false);
     assert_eq!(located.locator.start_item, Some(ItemId(2)));
     assert_eq!(located.locator.start_layer, 0);
@@ -776,50 +678,83 @@ fn a_single_room_connection_yields_one_trace_with_the_java_corners() {
         items(&located),
         vec![(
             0,
-            vec![(400, 0), (-132, 0), (-132, -132), (-132, 0), (-400, 0)]
+            vec![
+                (400, 0),
+                (400, -132),
+                (0, -132),
+                (-132, -132),
+                (-132, 0),
+                (-400, 0)
+            ]
         )]
     );
     assert!(located.ripped.is_empty());
 }
 
-/// The same maze result under all three regimes — mode `locate`'s three blocks. This is the
-/// fixed case the brief asks for: one search, three different corner lists.
 #[test]
 fn the_three_regimes_locate_three_different_corner_lists() {
     let expected: [Vec<(i32, i32)>; 3] = [
-        // === NINETY_DEGREE
-        vec![(400, 0), (-132, 0), (-132, -132), (-132, 0), (-400, 0)],
-        // === FORTYFIVE_DEGREE
-        vec![(400, 0), (-132, 0), (-132, -132), (-264, 0), (-400, 0)],
-        // === NONE
-        vec![(400, 0), (-400, 0)],
+        vec![
+            (400, 0),
+            (400, -132),
+            (0, -132),
+            (-132, -132),
+            (-132, 0),
+            (-400, 0),
+        ],
+        vec![
+            (400, 0),
+            (268, -132),
+            (0, -132),
+            (-132, -132),
+            (-264, 0),
+            (-400, 0),
+        ],
+        vec![(400, 0), (0, -140), (-400, 0)],
     ];
+    assert_eq!(
+        expected
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+        3,
+        "the three regimes must locate three DIFFERENT corner lists"
+    );
     for (regime, want) in REGIMES.into_iter().zip(expected) {
-        let mut board = simple_board();
+        let mut board = simple_board_fortyfive();
         let located = locate(&mut board, regime, false);
         assert_eq!(items(&located), vec![(0, want)], "regime {regime:?}");
     }
 }
 
-// =================================================================================================
-// The layer change — probe mode `ripup`
-// =================================================================================================
+#[test]
+fn the_free_angle_simple_board_search_finds_nothing() {
+    let mut board = simple_board();
+    assert_eq!(
+        board.rules.trace_angle_restriction,
+        AngleRestriction::None,
+        "the retired arm is the FREE-ANGLE one"
+    );
+    let mut engine = probe_engine(&mut board, 1);
+    let ctrl = probe_control(&board, 1);
+    let counter = Counter::new();
+    let mut maze = MazeSearchEngine::get_instance(
+        &set_of(&[2]),
+        &set_of(&[3]),
+        &mut engine,
+        &mut board,
+        &ctrl,
+        &|| counter.check(),
+    )
+    .expect("`getInstance` still builds the search: it is `findConnection` that answers None");
+    assert!(
+        maze.find_connection(&mut board, &|| counter.check())
+            .is_none(),
+        "#165's second half detached the abandoned room's doors and this board's free-angle path \
+         ran through it — if this ever answers again, #165 has been undone"
+    );
+}
 
-/// ```text
-/// === mode ripup ===
-/// === NINETY_DEGREE
-/// backtrack n=8
-///   [0] TargetItemExpansionDoor  [1] ExpansionDrill s=0  [2] ExpansionDrill s=1
-///   [3] ExpansionDoor s=1        [4] ExpansionDrill s=1  [5] ExpansionDrill s=0
-///   [6] ExpansionDoor s=1        [7] TargetItemExpansionDoor
-/// connectionItems n=3
-///   [0] layer=0 corners=2 (2000,0) (1180,0)
-///   [1] layer=1 corners=7 (1180,0) (1180,-974) (451,-974) (372,-974) (372,-1080) (-130,-1080) (-130,-974)
-///   [2] layer=0 corners=5 (-130,-974) (-130,0) (-130,132) (-130,0) (-2000,0)
-/// ```
-///
-/// Three `ResultItem`s and **no** via entry: `connectionItems` holds traces only, and the two
-/// vias are `FoundConnectionInserter`'s to derive from the layer changes (Task 15).
 #[test]
 fn a_layer_change_yields_two_traces_and_no_via_entry() {
     let mut board = probe_board();
@@ -873,7 +808,6 @@ fn a_layer_change_yields_two_traces_and_no_via_entry() {
     assert_eq!(located.locator.target_layer, 0);
 }
 
-/// The other two regimes of mode `ripup`: the same three-item split, different geometry.
 #[test]
 fn the_layer_change_splits_the_same_way_in_all_three_regimes() {
     let expected: [Vec<Item>; 3] = [
@@ -928,26 +862,9 @@ fn the_layer_change_splits_the_same_way_in_all_three_regimes() {
     }
 }
 
-// =================================================================================================
-// The long way round — probe mode `around`
-// =================================================================================================
-
-/// `P6T13Probe.build` with `viasAllowed` off: the connection has to walk eight `ExpansionDoor`s
-/// round the net-2 blocker, which is the only fixture here that reaches the any-angle turn
-/// corners (`FoundConnectionLocatorAnyAngle.java:365-408`), its clearance-correction loop
-/// (`:284-326`) and the 45-degree `calcHorizontalFirst*` diagonal arms.
-///
-/// ```text
-/// === mode around ===
-/// === NINETY_DEGREE
-/// backtrack n=9   (target, 7x ExpansionDoor, target)  sections 0,2,2,1,2,2,1,2,0
-/// connectionItems n=1
-///   [0] layer=0 corners=26 …
-/// ```
 #[test]
 fn the_long_way_round_matches_the_jvm_in_all_three_regimes() {
     let expected: [Vec<(i32, i32)>; 3] = [
-        // === NINETY_DEGREE, 26 corners
         vec![
             (2000, 0),
             (874, 0),
@@ -976,7 +893,6 @@ fn the_long_way_round_matches_the_jvm_in_all_three_regimes() {
             (-2000, -1252),
             (-2000, 0),
         ],
-        // === FORTYFIVE_DEGREE, 25 corners
         vec![
             (2000, 0),
             (1375, 0),
@@ -1004,7 +920,6 @@ fn the_long_way_round_matches_the_jvm_in_all_three_regimes() {
             (-2000, -1250),
             (-2000, 0),
         ],
-        // === NONE, 7 corners
         vec![
             (2000, 0),
             (331, -2249),
@@ -1026,8 +941,6 @@ fn the_long_way_round_matches_the_jvm_in_all_three_regimes() {
     }
 }
 
-/// The backtrack chain of mode `around`'s 90-degree block: eight doors between the two target
-/// doors, all `ExpansionDoor`s and none a drill, so the walk emits a single `ResultItem`.
 #[test]
 fn the_long_way_round_has_eight_expansion_doors_and_no_drill() {
     let mut board = probe_board();
@@ -1049,21 +962,9 @@ fn the_long_way_round_has_eight_expansion_doors_and_no_drill() {
     assert_eq!(located.locator.connection_items.len(), 1);
 }
 
-// =================================================================================================
-// The reversed search — probe mode `reverse`
-// =================================================================================================
-
-/// `P6T13Probe.build` searched from pin **3** to pin 2. It is the only fixture here that reaches
-/// `FoundConnectionLocatorAnyAngle.leftTurnNextCorner` (`:391-408`); the forward searches bend
-/// the other way and reach `rightTurnNextCorner` only.
-///
-/// `=== mode reverse ===`, the three `noVias=true` blocks. Note `startItem=3`/`targetItem=2`:
-/// the locator's "start" is the maze search's *destination set*, because `backtrack` walks from
-/// the found destination door back to the seed.
 #[test]
 fn the_reversed_search_reaches_the_left_turn_corner() {
     let expected: [Vec<(i32, i32)>; 3] = [
-        // === noVias=true NINETY_DEGREE, 31 corners
         vec![
             (-2000, 0),
             (-2000, 78),
@@ -1097,7 +998,6 @@ fn the_reversed_search_reaches_the_left_turn_corner() {
             (2000, 1422),
             (2000, 0),
         ],
-        // === noVias=true FORTYFIVE_DEGREE, 31 corners
         vec![
             (-2000, 0),
             (-1922, 78),
@@ -1131,7 +1031,6 @@ fn the_reversed_search_reaches_the_left_turn_corner() {
             (2000, 1247),
             (2000, 0),
         ],
-        // === noVias=true NONE, 11 corners
         vec![
             (-2000, 0),
             (-682, 2064),
@@ -1155,8 +1054,6 @@ fn the_reversed_search_reaches_the_left_turn_corner() {
     }
 }
 
-/// The `noVias=false` half of mode `reverse`: the same reversed search with vias allowed, so it
-/// splits into three `ResultItem`s on layers 0, 1, 0 the other way round from mode `ripup`.
 #[test]
 fn the_reversed_search_with_vias_splits_into_three_traces() {
     let expected: [Vec<Item>; 3] = [
@@ -1242,22 +1139,6 @@ fn the_reversed_search_with_vias_splits_into_three_traces() {
     }
 }
 
-// =================================================================================================
-// The ripped item list — probe mode `ripped` (:256-265, :316-323)
-// =================================================================================================
-
-/// ```text
-/// === mode ripped ===
-/// === NINETY_DEGREE
-/// backtrack n=4
-///   [0] door=TargetItemExpansionDoor id=99 section=0 nextRoom=CompleteFreeSpaceExpansionRoom …
-///   [1] door=ExpansionDoor id=4282 section=0 nextRoom=ObstacleExpansionRoom nextRoomId=4096 …
-///   [2] door=ExpansionDoor id=4127 section=0 nextRoom=CompleteFreeSpaceExpansionRoom …
-///   [3] door=TargetItemExpansionDoor id=63 section=0 nextRoom=null
-/// connectionItems n=1
-///   [0] layer=0 corners=6 (400,0) (130,0) (0,0) (-130,0) (-262,0) (-400,0)
-/// ripped n=1 4:1
-/// ```
 #[test]
 fn a_ripped_obstacle_room_reaches_the_ripped_item_list_with_its_cost() {
     let mut board = blocked_board();
@@ -1285,8 +1166,6 @@ fn a_ripped_obstacle_room_reaches_the_ripped_item_list_with_its_cost() {
     );
 }
 
-/// The other two regimes of mode `ripped` — the ripped set is regime-independent, because
-/// `backtrack` (`:225-327`) runs before any corner is computed.
 #[test]
 fn the_ripped_item_list_does_not_depend_on_the_angle_regime() {
     let expected: [Vec<(i32, i32)>; 3] = [
@@ -1302,8 +1181,6 @@ fn the_ripped_item_list_does_not_depend_on_the_angle_regime() {
     }
 }
 
-/// `backtrack`'s `ripupCosts` parameter is Java's nullable `Map`
-/// (`:260`, `:319`): a `None` here must not stop the ripped-item set from filling.
 #[test]
 fn a_null_ripup_cost_map_still_fills_the_ripped_item_set() {
     let mut board = blocked_board();
@@ -1341,27 +1218,9 @@ fn a_null_ripup_cost_map_still_fills_the_ripped_item_set() {
     assert_eq!(locator.connection_items.len(), 1);
 }
 
-// =================================================================================================
-// The empty connection-item list (:101-111, :130-135)
-// =================================================================================================
-
-/// Probe mode `warn`, `=== unexpectedDestinationDoor`:
-/// ```text
-/// middle door=ExpansionDoor section=0
-/// startItem=2 startLayer=0 targetItem=null targetLayer=0 backtrack n=2 connectionItems=n=0
-/// ```
-///
-/// `:130-135` — the destination door is neither a `TargetItemExpansionDoor` nor an
-/// `ExpansionDrill`, so Java warns and returns with `startItem`/`startLayer` **already set** at
-/// `:112-114` and `targetItem`/`targetLayer` left at their defaults. `connectionItems` is the
-/// empty list `:101` assigned, **not** null — `docs/java-quirks.md` #180.
-///
-/// The forged `MazeResult` is not synthetic geometry: it names the live `ExpansionDoor` the real
-/// walk found at `backtrack_array[1]`, with its own section number, so `backtrack` walks the same
-/// live `backtrackDoor` chain and `start_info.door` is still the start target door.
 #[test]
 fn an_unexpected_destination_door_yields_an_empty_connection_with_the_start_fields_set() {
-    let mut board = simple_board();
+    let mut board = simple_board_fortyfive();
     let mut engine = probe_engine(&mut board, 1);
     let ctrl = probe_control(&board, 1);
     let counter = Counter::new();
@@ -1420,22 +1279,9 @@ fn an_unexpected_destination_door_yields_an_empty_connection_with_the_start_fiel
     );
 }
 
-/// Probe mode `warn`, `=== orphanDoor`:
-/// ```text
-/// === orphanDoor type=ExpansionDoor section=0
-/// startItem=null startLayer=0 targetItem=null targetLayer=0 backtrack n=1 connectionItems=n=0
-/// ```
-///
-/// `:103-111` — a door section the search never reached has a null `backtrackDoor`, so
-/// `backtrack` (`:271-276`) breaks after one element and `startInfo.door` is an `ExpansionDoor`.
-/// Java warns and leaves **every** field at its default, `connectionItems` included — again the
-/// empty list, not null (`docs/java-quirks.md` #180).
-///
-/// The scan walks `completeExpansionRooms` in list order and each room's doors in list order,
-/// exactly as the probe does, so both sides pick the same door.
 #[test]
 fn a_start_door_that_is_not_a_target_door_yields_an_all_default_locator() {
-    let mut board = simple_board();
+    let mut board = blocked_board();
     let mut engine = probe_engine(&mut board, 1);
     let ctrl = probe_control(&board, 1);
     let counter = Counter::new();
@@ -1503,46 +1349,11 @@ fn a_start_door_that_is_not_a_target_door_yields_an_all_default_locator() {
     assert!(ripped.is_empty());
 }
 
-// =================================================================================================
-// plan-6 §10.3's first coverage obligation, as a standing assertion (Task 17 fix round, SF5)
-// =================================================================================================
-
-/// **The `FoundConnectionLocator` fanout arm (`:124-129`), asserted rather than counted.**
-///
-/// Plan 6 filed this arm as a coverage obligation it could not discharge: it fires only when the
-/// maze search's *destination* door is an `ExpansionDrill`, which needs `ctrl.isFanout`, which
-/// only `BatchFanout` sets — `autoroute/pipeline`'s, i.e. Plan 7's. Plan 7 Tasks 11 and 12 built
-/// it, and Task 17 measured the arm entered **32 times** by `tests/batch_parity.rs`'s
-/// `the_ci_stems_climb_the_whole_ladder` with a temporary counter, then removed the counter.
-///
-/// This is the same statement without an instrument, and **directed rather than corpus-derived**,
-/// which is the more durable form: a corpus assertion goes cold when the corpus changes, and the
-/// SES byte-parity ladder is already the guard that a corpus board still reaches the arm *and*
-/// gets the jar's answer there. What this test adds is that the arm cannot be deleted or made
-/// unreachable in the port without a red test.
-///
-/// **Why it is exact, not inferential.** Two discriminants, both of them the arm's own:
-///
-/// * `MazeSearchEngine`'s "algorithm completed after the first drill" exit
-///   (`MazeSearchEngine.java:361-368`, `search.rs`) sets `destination_door` to an
-///   `ExpandableRef::Drill` **only** under `ctrl.is_fanout`. The `match` in
-///   `FoundConnectionLocator::get_instance` dispatches on exactly that value, so a `Drill`
-///   destination *is* the arm being taken.
-/// * The arm is the only path that leaves `target_item == None` with a **non-empty**
-///   `connection_items`: the other two `None` producers are the `:103-111` and `:130-135` warn
-///   branches, and both `return` early with an empty list (see the field's own doc).
-///
-/// The board is the same `probe_board()` the whole file uses, and the *only* change from
-/// [`a_layer_change_yields_two_traces_and_no_via_entry`] — whose backtrack array is
-/// `target, drill, drill, door, drill, drill, door, target`, i.e. two drill-after-drill pairs the
-/// non-fanout search walks straight past — is `ctrl.is_fanout = true`.
 #[test]
 fn the_fanout_arm_is_reachable_and_ends_on_a_drill() {
     let mut board = probe_board();
     let mut engine = probe_engine(&mut board, 1);
     let mut ctrl = probe_control(&board, 1);
-    // `RoutingBoardExt::fanout` (`RoutingBoard.java:1024`) is the only producer of this in the
-    // port; setting it here is what makes the search a fanout search.
     ctrl.is_fanout = true;
 
     let counter = Counter::new();
@@ -1560,7 +1371,6 @@ fn the_fanout_arm_is_reachable_and_ends_on_a_drill() {
             .expect("findConnection answers a result")
     };
 
-    // Discriminant 1: the search stopped on a drill, which only `is_fanout` allows.
     assert!(
         matches!(result.destination_door, ExpandableRef::Drill(_)),
         "MazeSearchEngine.java:361-368 must end a fanout search on a drill; got {:?}",
@@ -1580,8 +1390,6 @@ fn the_fanout_arm_is_reachable_and_ends_on_a_drill() {
     )
     .expect("getInstance answers a locator for a non-null result");
 
-    // Discriminant 2: `target_item == None` with a non-empty `connection_items` is the fanout
-    // arm and nothing else.
     assert!(
         locator.target_item.is_none(),
         "the fanout arm sets targetItem = null (:126)"

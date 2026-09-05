@@ -1,15 +1,5 @@
-//! Plan 8 Task 12: [`fr_core::summarise`], the one document `freerouting info` (spec §12) and the
-//! `board_info` MCP tool (spec §13) both answer.
-//!
-//! Java has no counterpart to compare against — there is no `info` mode and no `board_info` tool
-//! — so these are the port's own pins. The one thing that *is* jar-derived is `statistics`, and
-//! the test that matters most below is the one asserting that the summary's three vectors and
-//! that document count the same board.
-
 use fr_core::{RoutingJob, SessionId, load_board_if_needed, summarise};
 
-/// The load the two callers perform: `BoardLoader.loadBoardIfNeeded` whole, exactly as
-/// `commands::drc` does — see that runner's step 6 for why the parse half is not enough.
 fn load(relative: &str) -> fr_board::Board {
     let path = parity::java_dir().join(relative);
     let mut job = RoutingJob::new(SessionId::NIL);
@@ -28,7 +18,6 @@ fn the_summary_names_every_layer_net_and_component() {
     let mut board = load("fixtures/Issue143-rpi_splitter.dsn");
     let summary = summarise(&mut board, None);
 
-    // The layer stack, in stack order, with the index every `layers[i]` setting is keyed by.
     assert_eq!(
         summary
             .layers
@@ -38,8 +27,6 @@ fn the_summary_names_every_layer_net_and_component() {
         vec![(0, "1#Top", true), (1, "16#Bottom", true)],
     );
 
-    // Net numbers are 1-based and consecutive (`rules/Nets.java`'s invariant), and every net
-    // names a real class.
     assert!(!summary.nets.is_empty());
     for (i, net) in summary.nets.iter().enumerate() {
         assert_eq!(net.number, i as i32 + 1, "net numbers are consecutive");
@@ -55,16 +42,12 @@ fn the_summary_names_every_layer_net_and_component() {
         "the splitter board's five nets, in net-number order"
     );
 
-    // Component ids are `Components.add`'s `count + 1`, so they are 1-based and consecutive too.
     assert!(!summary.components.is_empty());
     for (i, component) in summary.components.iter().enumerate() {
         assert_eq!(component.id, i as i32 + 1);
     }
 }
 
-/// **The anti-drift pin.** Every count in the answer comes from `BoardStatistics` and the three
-/// vectors carry only names; this asserts the two halves are looking at the same board, so a
-/// future edit that starts counting things itself fails here.
 #[test]
 fn the_summary_counts_agree_with_the_statistics() {
     if !parity::require_java_dir() {
@@ -100,9 +83,6 @@ fn the_summary_counts_agree_with_the_statistics() {
     }
 }
 
-/// The metadata is read off `board.communication` — where the DSN reader actually put it — and a
-/// `None` [`fr_dsn::BoardMetadata`] is the ordinary case, not a degraded one (see `summarise`'s
-/// own doc, and `LoadedBoard::metadata`).
 #[test]
 fn the_metadata_comes_from_the_boards_own_communication() {
     if !parity::require_java_dir() {
@@ -117,9 +97,6 @@ fn the_metadata_comes_from_the_boards_own_communication() {
     assert!(summary.metadata.resolution > 0);
 }
 
-/// Convention 8: the top-level keys come out in declaration order, which is what makes the
-/// `info` document diffable. (Inside `statistics` they are alphabetised — `to_gson_json`'s
-/// documented loss, recorded in this module's docs.)
 #[test]
 fn the_top_level_key_order_is_declaration_order() {
     if !parity::require_java_dir() {

@@ -1,13 +1,15 @@
 # fr-drc
 
 A behavioral Rust port of freerouting's design-rule checker (clone HEAD):
-`drc/{DesignRulesChecker,ClearanceViolation,NetIncompletes,AirLine,
-UnconnectedItems}.java`, the four `io/kicad/KiCadDrc*.java` report DTOs and
+`drc/{DesignRulesChecker,NetIncompletes,AirLine,UnconnectedItems}.java`, the
+four `io/kicad/KiCadDrc*.java` report DTOs and
 `core/scoring/BoardStatisticsClearanceViolations.java`. It answers the three
 questions Java's `-drc` mode answers — *which clearances are violated, which
-items are unconnected, and how many connections are still incomplete* — and
-answers them the way Java does, bug for bug. Use `fr_drc::prelude::*` to bring
-in every public type.
+items are unconnected, and how many connections are still incomplete* — but
+does so with KiCad's own routing-type checks: `get_all_violations()` returns
+`DrcViolation`s carrying KiCad's check-family kinds (`kind.kicad_type()`),
+not Java's `ClearanceViolation`. Use `fr_drc::prelude::*` to bring in every
+public type.
 
 The crate sits on `fr-board` (the boards it checks) and on `fr-dsn` (plan-5
 ruling 7: `CoordinateTransform` lives there, and so does the Gson-compatible
@@ -23,10 +25,11 @@ Deliberate Java bugs are reproduced rather than fixed; each carries a
 `// Java bug:` or `// totalized:` marker at the site and a row in
 `docs/java-quirks.md`. Rows **144-155** are this crate's.
 
-`ClearanceViolation` itself is defined in **`fr-board`**, in
+`ClearanceViolation` remains defined in **`fr-board`**, in
 `items/clearance_violation.rs` (ruling 9): `Item.clearanceViolations` returns
-it and `fr-board` cannot depend upward on `fr-drc`. It is re-exported here, so
-`fr_drc::ClearanceViolation` is the name callers use, and the five `Board`
+it and `fr-board` cannot depend upward on `fr-drc`. It is not this crate's
+violation type — this crate's checker produces `DrcViolation` — and stays
+`fr-board`'s own construct, for the router's own scoring; the five `Board`
 methods behind it (`clearance_violations`, `clearance_violation_count`,
 `calculate_clearance_between_two_shapes`,
 `aggregate_violations_sorted_by_severity`, `smallest_clearance`) are
@@ -51,7 +54,7 @@ constructions pass `null`.
 
 | What you want | Call | Java |
 |---|---|---|
-| the deduplicated clearance list | `get_all_clearance_violations() -> Vec<ClearanceViolation>` | `DesignRulesChecker.java:52-81` |
+| every DRC violation | `get_all_violations() -> Vec<DrcViolation>` | — (native KiCad-check port; see the spec's Rule resolution and Checks sections) |
 | the unconnected/dangling list | `get_all_unconnected_items() -> Vec<UnconnectedItems>` | `:91-178` |
 | the ratsnest | `calculate_all_incompletes()`, then `get_all_airlines() -> Vec<AirLine>` | `:542-623`, `:780-798` |
 | the counters | `max_connections()`, `get_incomplete_count()`, `get_incomplete_count_for_net(n)`, `get_length_violation_count()`, `get_length_violation(n)`, `recalculate_length_violations()` | `:33`, `:663-778` |
@@ -59,12 +62,11 @@ constructions pass `null`.
 | the KiCad DRC report | `generate_report(&DrcCoordinates, &DrcReportOptions) -> KiCadDrcReport` | `:210-290` |
 | that report as JSON | `report_to_json(&DrcCoordinates, &DrcReportOptions, DrcJsonFlavor) -> Result<String, DrcError>` | `:817-820` |
 | a hand-built report as JSON | `KiCadDrcReport::to_json(DrcJsonFlavor)` | `GsonProvider.GSON.toJson` |
-| the clearance half of `BoardStatistics` | `BoardStatisticsClearanceViolations::from_violations(&[ClearanceViolation], board_unit_to_um)` | `BoardStatistics.java:338-367` |
+| the clearance half of `BoardStatistics` | `BoardStatisticsClearanceViolations::from_violations(&[DrcViolation], board_unit_to_um_factor)` | `BoardStatistics.java:338-367` |
 | normalising two DRC documents for comparison | `parity::normalize_drc_json(&str)` (the `tests/parity` helper crate) | — |
 
 `generate_report` and `report_to_json` are `&mut self` for the same reason
-`new` takes `&mut Board`: they call `get_all_clearance_violations` internally
-(`DesignRulesChecker.java:216`).
+`new` takes `&mut Board`: they call `get_all_violations` internally.
 
 ### The two injected parameter blocks
 
@@ -255,7 +257,7 @@ halves of every row, against the same board, in the same test binary.
 | `drc/UnconnectedItems` | `unconnected.rs` (`UnconnectedItems`, `UnconnectedKind`) |
 | `drc/NetIncompletes` (+ its nested `NetItem`, `Edge`) | `net_incompletes.rs` |
 | `drc/AirLine` | `airline.rs` |
-| `drc/ClearanceViolation` | **`fr-board`**: `items/clearance_violation.rs` + `board/clearance.rs` (ruling 9), re-exported here |
+| `drc/ClearanceViolation` | **`fr-board`**: `items/clearance_violation.rs` + `board/clearance.rs` (ruling 9); not re-exported here — see above |
 | `io/kicad/KiCadDrc{Report,Violation,ViolationItem,Position}` | `report/mod.rs`, one struct each, fields in Java declaration order (which is Gson's emission order) |
 | `core/scoring/BoardStatisticsClearanceViolations` | `statistics.rs` (`from_violations`) |
 | `GsonProvider.GSON.toJson` | `report/json.rs`, over `fr_dsn::format::json::to_gson_string_pretty` |
@@ -282,7 +284,7 @@ than a silence.
 
 | suite | what it pins |
 |---|---|
-| `clearance_list.rs` | `getAllClearanceViolations`: the four fixture counts, the dedup's surviving `firstItem`, the ordered list against the JVM |
+| `checks.rs` | `get_all_violations`: one check per kind, the dedup and deterministic ordering, the KiCad-flavoured report keys and severities |
 | `unconnected.rs` | `getAllUnconnectedItems`: the three phases, their order, the dedup, the representative rule |
 | `net_incompletes.rs` | `NetIncompletes`: net-item order, the triangulation, length violations, the two non-total comparators (#147, #148) |
 | `incompletes.rs` | `calculateAllIncompletes`, the eight counters, `BoardStatisticsClearanceViolations` |
@@ -327,7 +329,7 @@ violations.len() == holeClearance + clearance + track_dangling + via_dangling
 ```
 
 with the clearance half checked against an independently computed
-`get_all_clearance_violations().len()`, and `unconnectedItems` checked to hold
+`get_all_violations().len()`, and `unconnectedItems` checked to hold
 *only* `unconnectedItems` entries. `generateReport` fills `violations` from two
 sources (`:231-233` and `:271-276`), so a mis-routed entry is invisible to a
 count of either list alone; that sum is what catches it.
@@ -413,7 +415,7 @@ not vendored. **Every fixture-reading test in this crate calls
 `parity::require_java_dir()` first and returns with a printed SKIP** —
 `FREEROUTING_JAVA_DIR=/nonexistent cargo test -p fr-drc` is green. The
 synthetic-board tests (the majority of `net_incompletes.rs`,
-`incompletes.rs`, `clearance_list.rs` and `report.rs`) need nothing.
+`incompletes.rs`, `checks.rs` and `report.rs`) need nothing.
 
 The **jar** is needed only by the probes, by `gen-drc-reference.sh` and by the
 two differentials — never by `cargo test`.
@@ -493,9 +495,9 @@ the `AIRLINE_BUDGETS` ratchet and how to regenerate it. Both need a JDK 25
   (`SearchTreeManager.java:35` — both setters are GUI), so the `true` arm of
   the compensation split (`Item.java:429-434`) is ported but unreached by any
   test or fixture.
-- **`get_all_clearance_violations` is not idempotent at the
-  `smallest_clearance` level.** Its return value is stable, but every call
-  lowers each item's `smallest_clearance` (quirk #153) — as Java's does.
+- **`get_all_violations` never touches `smallest_clearance`.** That field, and
+  its lowering side effect (quirk #153), belong to `fr-board`'s own
+  `clearance_violations` (see above); the KiCad-style checker calls neither.
 - **`schematic_parity` is `Vec<serde_json::Value>` and always empty.** Nothing
   in the Java tree ever adds to it. If Plan 8 fills it, that element type needs
   its own `Serialize` in declaration order, like the other four DTOs.

@@ -1,41 +1,13 @@
-//! Plan 9 Task 17: the #193 stale tree-index discovery.
-//!
-//! Quirk #193 is three HEAD-only guards that each silently `continue` when an item's tree-shape
-//! indices have gone stale under a running maze search. The register row's improvement column
-//! says *"find out why the indices go stale and fix **that**"*, and the plan makes that a
-//! **discovery workstream, not a fix**: nothing here changes a routing decision, and the guards
-//! stay exactly as they were transcribed.
-//!
-//! This file is the measurement. It drives the port's own whole-board pipeline over the eight
-//! batch stems with [`fr_router::autoroute::instrument`] on, and asserts two things:
-//!
-//! * [`the_three_guards_are_counted_on_every_router_stem`] — the survey's claim that *the corpus
-//!   reaches all three* is **verified rather than assumed**. It asserts what was measured, per
-//!   guard, so a later change that starts or stops tripping a guard breaks the test rather than
-//!   silently rewriting the report.
-//! * [`instrumentation_changes_no_board_byte`] — the Plan 7 ruling 11 shape: with the counters on
-//!   and off the SES is byte-identical. **This is the gate that makes the task safe to land**,
-//!   and it is the reason the instrumentation is a plain module behind an environment variable
-//!   rather than anything the guards read.
-//!
-//! # T17: these are characterisation pins, not fix markers
-//!
-//! Task 17 fixes nothing. [`MEASURED`] records the current, *stale*, behaviour. A Task 8 row that
-//! changes a guard's fire count is expected to update the table and say which row moved it; that
-//! is the flip, and the `// T17:` breadcrumbs at the guard sites point back here.
-//!
-//! # Why the counts are asserted exactly, and per stem
-//!
-//! Four of the eight stems are `FR_SLOW_PARITY` stems, so the CI lane and the full lane run
-//! different subsets and a whole-corpus total would mean two different things. The assertion is
-//! therefore per stem and an exact equality against [`MEASURED`], which is affordable because the
-//! pipeline is deterministic — `batch_parity.rs` gets a byte-identical SES out of these same runs.
-//! A moved count is a real change in what the router does, not measurement noise.
+use std::collections::{BTreeMap, BTreeSet};
 
-use std::collections::BTreeMap;
-
+use fr_board::prelude::*;
+use fr_board::{ItemId, TreeId};
 use fr_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
+use fr_geometry::{
+    IntBox, IntVector, Point, PolygonShape, Polyline, PolylineShapeRef, Shape, TileShape,
+};
 use fr_router::autoroute::instrument::{self, Guard, Snapshot};
+use fr_router::autoroute::maze::search::MazeSearchEngine;
 use fr_router::pipeline::{
     NoopProgressSink, RouterBudget, RouterStop, prepare_board, run_pipeline,
 };
@@ -132,11 +104,6 @@ const STEMS: &[Stem] = &[
 // The measurement — filled in from the run, and asserted from then on
 // =================================================================================================
 
-/// What one stem's instrumented run produced: the five guard fire counts, in [`Guard::ALL`] order.
-///
-/// **T17: this is the characterisation, not a specification.** The numbers are what the port does
-/// today with #193's guards in place. Task 8 may move them; when it does, the row moves with the
-/// fix that moved it and the report's paragraph is quoted in the commit message.
 struct Expected {
     stem: &'static str,
     /// `[G1a, G1b, G2-resized, G2-out-of-range, G3]`.
@@ -151,54 +118,74 @@ struct Expected {
     visits: [u64; 5],
 }
 
-/// The measured table, from the release run recorded in
-/// `.superpowers/sdd/2026-09-03-plan-9-post-parity/task-17-report.md`.
-///
-/// **Every fire count is zero, across 1 101 064 guard evaluations on eight boards.** That is the
-/// finding, and the plan asked for it in those words: *"if a guard never fires, that is the
-/// finding and the report says so."*
 const MEASURED: &[Expected] = &[
     Expected {
         stem: "router-rpi-splitter",
         fires: [0, 0, 0, 0, 0],
-        visits: [76, 76, 1042, 1042, 111],
+        visits: [75, 75, 1059, 1059, 114],
     },
     Expected {
         stem: "router-dac2020-bm01",
         fires: [0, 0, 0, 0, 0],
-        visits: [13210, 13210, 336_796, 336_796, 39896],
+        // T8: was [13210, 13210, 336_796, 336_796, 39896].
+        // #163 (cc6c210) -> [13161, 13161, 343_469, 343_469, 41377];
+        // #171+#170 (e860a26) -> [13631, 13631, 353_561, 353_561, 43337];
+        // #156+#167+#158 (c39d844) -> [13630, 13630, 353_444, 353_444, 43337].
+        // T9: #227 — the optimizer stage began doing work, so the router walks every guard site
+        // tens of times more often. This is the same board the A/B measures at 48.4x cpu.
+        visits: [144_444, 144_444, 13_355_651, 13_355_651, 2_339_316],
     },
     Expected {
         stem: "router-j2-reference",
         fires: [0, 0, 0, 0, 0],
-        visits: [2587, 2587, 17843, 17843, 1053],
+        // T8: was [2587, 2587, 17843, 17843, 1053].
+        // #171+#170 (e860a26) moved G1a/G1b 2587 -> 3177;
+        // #156+#167+#158 (c39d844) moved G2 17843 -> 17854. #163 moved nothing here.
+        // T9: #227, as on `dac2020`. The A/B measures this board at ~12x cpu.
+        visits: [35630, 35630, 296_273, 296_273, 21548],
     },
     Expected {
         // 438 empty `@:no_net_N` nets, so no item has an unconnected set and nothing routes —
         // `router-fixtures.txt`'s own note. The zero visits are that board, not a missing probe.
         stem: "router-tutorial-board",
         fires: [0, 0, 0, 0, 0],
+        // T8, T9: unchanged — this board routes nothing.
         visits: [0, 0, 0, 0, 0],
     },
     Expected {
         stem: "router-ecc83-input",
         fires: [0, 0, 0, 0, 0],
+        // T8: unchanged by all ten commits. T9: unchanged, for the same near-perfect reason as
+        // `router-rpi-splitter`.
         visits: [26, 26, 89, 89, 4],
     },
     Expected {
         stem: "router-fanout-bm11",
         fires: [0, 0, 0, 0, 0],
-        visits: [14952, 14952, 73088, 73088, 5461],
+        // T8: was [14952, 14952, 73088, 73088, 5461].
+        // #163 (cc6c210) -> [14952, 14952, 73080, 73080, 5455];
+        // #171+#170 (e860a26) -> [17445, 17445, 80849, 80849, 6142];
+        // #156+#167+#158 (c39d844) -> below.
+        // T9: **unchanged, and that is the control.** This is the one stem that runs with
+        // `optimizer=off`, so #227 cannot reach it — and none of T9's other six fixes moves a
+        // guard count either.
+        visits: [17445, 17445, 80853, 80853, 6142],
     },
     Expected {
         stem: "router-strict-drc-cnh",
         fires: [0, 0, 0, 0, 0],
-        visits: [3665, 3665, 60219, 60219, 7353],
+        // T8: was [3665, 3665, 60219, 60219, 7353].
+        // #163 (cc6c210) -> [3667, 3667, 60206, 60206, 7333];
+        // #171+#170 (e860a26) -> [3669, 3669, 60206, 60206, 7333];
+        // #156+#167+#158 (c39d844) -> [3669, 3669, 60180, 60180, 7356].
+        // T9: #227, as on `dac2020`. The A/B measures this board at ~26x cpu, and its incompletes
+        // fall 14 -> 2.
+        visits: [90961, 90961, 939_226, 939_226, 61424],
     },
     Expected {
-        // Nothing to route (plan-7 ruling 7's `NoRoutableLayer` board).
         stem: "router-empty-board",
         fires: [0, 0, 0, 0, 0],
+        // T8, T9: unchanged — this board has no routable signal layer.
         visits: [0, 0, 0, 0, 0],
     },
 ];
@@ -337,23 +324,22 @@ fn the_three_guards_are_counted_on_every_router_stem() {
     }
     let ci_only = std::env::var_os("FR_SLOW_PARITY").is_none();
     let mut report = String::new();
+    // **Collected, not asserted per stem.** A `assert_eq!` inside the loop stops at the first
+    // moved row, and on this suite a stem costs minutes — so a task that moves four rows would
+    // need four full sweeps to learn what to write into `MEASURED`. The rows are gathered, the
+    // whole table is printed, and the assertion is taken once at the end over every stem.
+    let mut moved: Vec<String> = Vec::new();
     for stem in stems(ci_only) {
         let run = route_stem(stem, true);
         report.push_str(&instrument::render(stem.name, &run.snapshot));
         let expected = expected_for(stem.name);
-        let actual: [u64; 5] = [
+        let fires: [u64; 5] = [
             run.snapshot.fires(Guard::G1aTreeEntryOutOfRange),
             run.snapshot.fires(Guard::G1bNullConnectionShape),
             run.snapshot.fires(Guard::G2RoomArrayResized),
             run.snapshot.fires(Guard::G2RoomIndexOutOfRange),
             run.snapshot.fires(Guard::G3TraceCornerOutOfRange),
         ];
-        assert_eq!(
-            actual, expected.fires,
-            "{}: the #193 guard fire counts moved. If a Task 8 fix moved them, update MEASURED \
-             and say which row did it; the order is [G1a, G1b, G2-resized, G2-out-of-range, G3].",
-            stem.name
-        );
         let visits: [u64; 5] = [
             run.snapshot.visits(Guard::G1aTreeEntryOutOfRange),
             run.snapshot.visits(Guard::G1bNullConnectionShape),
@@ -361,21 +347,37 @@ fn the_three_guards_are_counted_on_every_router_stem() {
             run.snapshot.visits(Guard::G2RoomIndexOutOfRange),
             run.snapshot.visits(Guard::G3TraceCornerOutOfRange),
         ];
-        assert_eq!(
-            visits, expected.visits,
-            "{}: the #193 guard **visit** counts moved — the router walks the guard sites a \
-             different number of times, which is a routing change, not an instrumentation one.",
+        // The row in `MEASURED`'s own syntax, so a task that has to update the table can paste it.
+        report.push_str(&format!(
+            "    MEASURED row: stem {:?} fires {fires:?} visits {visits:?}\n",
             stem.name
-        );
+        ));
+        if fires != expected.fires {
+            moved.push(format!(
+                "{}: FIRE counts moved {:?} -> {fires:?}",
+                stem.name, expected.fires
+            ));
+        }
+        if visits != expected.visits {
+            moved.push(format!(
+                "{}: VISIT counts moved {:?} -> {visits:?}",
+                stem.name, expected.visits
+            ));
+        }
     }
     // The measurement is the deliverable, so it is printed even on success (`--nocapture`).
     println!("{report}");
+    assert!(
+        moved.is_empty(),
+        "the #193 guard counts moved on {} row(s). A **fire** count moving is #193's finding \
+         changing; a **visit** count moving is a routing change, not an instrumentation one. \
+         Either way: update MEASURED and say which fix did it. The order is [G1a, G1b, \
+         G2-resized, G2-out-of-range, G3].\n{}",
+        moved.len(),
+        moved.join("\n")
+    );
 }
 
-/// Plan 7 ruling 11's shape: the instrumentation is invisible to the board.
-///
-/// **The gate that makes Task 17 safe to land.** Every recorder is a read behind
-/// [`instrument::on`], so this can only fail if a recorder is given a side effect.
 #[test]
 #[cfg_attr(
     debug_assertions,
@@ -413,27 +415,6 @@ fn instrumentation_changes_no_board_byte() {
 // The directed case — the staleness itself, and the mechanism that stops it reaching the guards
 // =================================================================================================
 
-/// T17: #193's staleness, reproduced on purpose, and the reason it never reaches the guards.
-///
-/// The eight-stem run says the guards never fire. That alone would be consistent with the
-/// staleness being impossible *or* with the measurement missing it, so this drives the mechanism
-/// by hand on a routed board:
-///
-/// 1. take a real trace and the tree-shape count a room or door would have recorded;
-/// 2. seed the item's `expansionRoomArr` at the last valid index, which is what
-///    `getExpansionRoom` does on every neighbour walk;
-/// 3. shorten the trace through [`fr_board::Board::replace_trace_geometry`] — the port of
-///    `PolylineTraceSearchTreeAdapter.replaceGeometry`, i.e. **the** path every pull-tight, shove
-///    and split takes;
-/// 4. read the count back.
-///
-/// The recorded index **is** now out of range — the staleness is real and the guards are not
-/// defending against nothing. But the same call cleared the item's autoroute scratch on the way
-/// through (`clearDerivedData` at `PolylineTraceSearchTreeAdapter.java:38`, ported at
-/// `board/mod.rs`'s `replace_trace_geometry`), so the array a stale index would have indexed no
-/// longer exists. That is the whole answer to the register row's *"find out why the indices go
-/// stale"*: **on this code path they do, and Java's own `clearDerivedData` throws away the thing
-/// that would have noticed.**
 #[test]
 #[cfg_attr(
     debug_assertions,
@@ -469,9 +450,6 @@ fn a_shortened_trace_makes_a_recorded_index_stale_and_clears_the_array_that_held
     assert!(before > 0, "the trace has tree shapes to begin with");
     let recorded_index = before - 1;
 
-    // What every `Sorted*RoomNeighbours` walk does: allocate the item's room array and take the
-    // slot for one shape index. `ObstacleRoomId(0)` stands in for the room Task 2's arena builds;
-    // the directed case is about the array, not its contents.
     let seeded = fr_router::autoroute::item_info::get_expansion_room(
         &mut board,
         trace_id,
@@ -552,4 +530,183 @@ fn the_stem_table_matches_the_fixture_file() {
             stem.name
         );
     }
+}
+
+fn tie_pin_board() -> (Board, ItemId, ItemId, ItemId) {
+    let ls = LayerStructure::new(vec![
+        Layer::new("front".to_string(), true),
+        Layer::new("back".to_string(), true),
+    ]);
+    let cm = ClearanceMatrix::get_default_instance(&ls, 200);
+    let mut rules = BoardRules::new(ls.clone(), cm);
+    rules.create_default_net_class();
+    let default_class = rules.get_default_net_class();
+
+    // A through pad, so the pin has a shape on both layers and a centre to contact.
+    let mut padstacks = Padstacks::new(ls);
+    let pad_shape = Shape::Tile(TileShape::Box(IntBox::from_coords(-200, -200, 200, 200)));
+    let pad = padstacks.add(
+        "tie",
+        vec![Some(pad_shape.clone()), Some(pad_shape)],
+        true,
+        false,
+    );
+    let mut packages = Packages::new();
+    let pkg = packages.add(
+        "tiepkg",
+        vec![PackagePin::new("P1", pad, IntVector::new(0, 0).into(), 0.0)],
+        None,
+        None,
+        None,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        true,
+    );
+    let mut components = Components::new();
+    components.add_with_generated_name(Some(Point::new(0, 0)), 0.0, true, pkg);
+
+    let outline = vec![PolylineShapeRef::Polygon(PolygonShape::from_points(&[
+        Point::new(-10_000, -10_000),
+        Point::new(10_000, -10_000),
+        Point::new(10_000, 10_000),
+        Point::new(-10_000, 10_000),
+    ]))];
+    let mut board = Board::new(
+        outline,
+        0,
+        IntBox::from_coords(-20_000, -20_000, 20_000, 20_000),
+        rules,
+        BoardLibrary::new(padstacks, packages),
+        components,
+        Communication::default(),
+    );
+    board.rules.nets.add("GND", 1, false, default_class);
+    board.rules.nets.add("GNDA", 1, false, default_class);
+
+    // **The tie pin**: one pin, two nets. This is the input `:157`'s `netCount() > 1` asks for,
+    // and the thing no corpus board turned out to have in this configuration.
+    let tie_pin = board.insert_pin(1, 0, vec![1, 2], 1, FixedState::Unfixed);
+    assert_eq!(
+        board
+            .get_item(tie_pin)
+            .expect("the pin inserts")
+            .net_count(),
+        2,
+        "the fixture must actually be a tie pin, or `:157` is not reached at all"
+    );
+
+    let foreign = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(0, 0), Point::new(5000, 0)]),
+            0,
+            100,
+            vec![2],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("the foreign-net trace inserts");
+    let own = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(0, 0), Point::new(-5000, 0)]),
+            0,
+            100,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("the own-net trace inserts");
+
+    let contacts = board.normal_contacts(tie_pin);
+    assert!(
+        contacts.contains(&foreign) && contacts.contains(&own),
+        "both traces must be normal contacts of the tie pin, or `:158`'s loop never sees them: \
+         {contacts:?}"
+    );
+    (board, tie_pin, foreign, own)
+}
+
+/// The tree shapes of one item in the default tree, as a comparable snapshot.
+fn tree_shapes(board: &mut Board, id: ItemId, tree: TreeId) -> Vec<Option<TileShape>> {
+    (0..board.item_tree_shape_count(id, tree))
+        .map(|i| board.item_tree_shape(id, tree, i))
+        .collect()
+}
+
+#[test]
+fn the_tie_pin_reduction_fires_on_a_genuine_tie_pin() {
+    let (mut board, tie_pin, foreign, own) = tie_pin_board();
+    let tree = board.trees.get_default_tree().id();
+
+    // The shape arrays before, so "it fired" is a board fact and not only a counter reading.
+    let foreign_before = tree_shapes(&mut board, foreign, tree);
+    let own_before = tree_shapes(&mut board, own, tree);
+
+    let item_list: BTreeSet<ItemId> = [tie_pin].into_iter().collect();
+    MazeSearchEngine::reduce_trace_shapes_at_tie_pins(&mut board, &item_list, 1, tree);
+
+    assert_ne!(
+        tree_shapes(&mut board, foreign, tree),
+        foreign_before,
+        "the foreign-net trace's tree shape must actually be reduced, so the pin centre stops \
+         being blocked — the whole point of the method"
+    );
+    assert_eq!(
+        tree_shapes(&mut board, own, tree),
+        own_before,
+        "and the own-net trace must be left alone: `:160`'s `containsNet(ownNetNo)` excuses it"
+    );
+}
+
+/// The other half of #297's answer: two negative controls, so
+/// [`the_tie_pin_reduction_fires_on_a_genuine_tie_pin`] cannot be passing for a reason unrelated
+/// to the predicate.
+///
+/// * Searching for net **2** on the same board makes the net-1 trace the foreign one, so the
+///   *other* trace is reduced — the predicate keys on the net argument, not on which trace the
+///   contact set happens to list first.
+/// * A pin on a **single** net fails `:157`'s `netCount() > 1` and nothing fires at all. That is
+///   the configuration every pin on all eight corpus stems is in, and it is why the census reads
+///   zero.
+#[test]
+fn the_tie_pin_reduction_keys_on_the_net_and_on_the_pin_being_a_tie() {
+    // Control 1: the same board, the other net.
+    let (mut board, tie_pin, foreign, own) = tie_pin_board();
+    let tree = board.trees.get_default_tree().id();
+    let own_before = tree_shapes(&mut board, own, tree);
+    let foreign_before = tree_shapes(&mut board, foreign, tree);
+    let item_list: BTreeSet<ItemId> = [tie_pin].into_iter().collect();
+    MazeSearchEngine::reduce_trace_shapes_at_tie_pins(&mut board, &item_list, 2, tree);
+    assert_ne!(
+        tree_shapes(&mut board, own, tree),
+        own_before,
+        "net 1's trace is the foreign one now"
+    );
+    assert_eq!(
+        tree_shapes(&mut board, foreign, tree),
+        foreign_before,
+        "and net 2's is excused"
+    );
+
+    // Control 2: a pin on one net. `:157` refuses, so neither trace moves.
+    let (mut board, _tie_pin, foreign, own) = tie_pin_board();
+    let tree = board.trees.get_default_tree().id();
+    let single_net_pin = board.insert_pin(1, 0, vec![1], 1, FixedState::Unfixed);
+    assert_eq!(
+        board
+            .get_item(single_net_pin)
+            .expect("inserted")
+            .net_count(),
+        1
+    );
+    let foreign_before = tree_shapes(&mut board, foreign, tree);
+    let own_before = tree_shapes(&mut board, own, tree);
+    let item_list: BTreeSet<ItemId> = [single_net_pin].into_iter().collect();
+    MazeSearchEngine::reduce_trace_shapes_at_tie_pins(&mut board, &item_list, 1, tree);
+    assert_eq!(
+        tree_shapes(&mut board, foreign, tree),
+        foreign_before,
+        "a pin on one net is not a tie pin — `:157` refuses"
+    );
+    assert_eq!(tree_shapes(&mut board, own, tree), own_before);
 }

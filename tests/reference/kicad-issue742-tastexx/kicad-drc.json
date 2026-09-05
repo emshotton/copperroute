@@ -1,0 +1,325 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-04T22:48:07",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "key": "pth_inside_courtyard"
+        },
+        {
+            "description": "NPTH inside courtyard",
+            "key": "npth_inside_courtyard"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning"
+    ],
+    "kicad_version": "10.0.3",
+    "schematic_parity": [],
+    "source": "routed.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [Net-(D3-A)] of D3 on B.Cu",
+                    "pos": {
+                        "x": 35.373379,
+                        "y": 58.662026
+                    },
+                    "uuid": "8c98f4f3-40ca-41b7-8ba0-10d12b8fac00"
+                },
+                {
+                    "description": "Pad 2 [Net-(D3-A)] of SW3 on B.Cu",
+                    "pos": {
+                        "x": 42.85172,
+                        "y": 50.773977
+                    },
+                    "uuid": "4f1e1d6e-d55e-4b36-9369-a7b714ee98df"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [Net-(D2-A)] of D2 on B.Cu",
+                    "pos": {
+                        "x": 60.079682,
+                        "y": 47.91942
+                    },
+                    "uuid": "e76ca910-c434-4877-876d-fbc392c6bc97"
+                },
+                {
+                    "description": "Pad 2 [Net-(D2-A)] of SW2 on B.Cu",
+                    "pos": {
+                        "x": 67.558023,
+                        "y": 40.031371
+                    },
+                    "uuid": "b07441ad-7512-4688-8ca9-9f3743f39a8f"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [Net-(D1-A)] of D1 on B.Cu",
+                    "pos": {
+                        "x": 42.355227,
+                        "y": 40.937571
+                    },
+                    "uuid": "6d38bb6d-3f1f-43a1-a2c7-4303b529677b"
+                },
+                {
+                    "description": "Pad 2 [Net-(D1-A)] of SW1 on B.Cu",
+                    "pos": {
+                        "x": 49.833568,
+                        "y": 33.049522
+                    },
+                    "uuid": "eb4cf1ea-f0da-4832-9858-0044ff49b2cb"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint H1",
+                    "pos": {
+                        "x": 23.119657,
+                        "y": 20.508059
+                    },
+                    "uuid": "0f2f2103-bf1e-4d41-b1d6-4a00c980bb7e"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint D3",
+                    "pos": {
+                        "x": 33.721888,
+                        "y": 58.011486
+                    },
+                    "uuid": "1286b39b-49f5-4921-a586-88fac661b6f3"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint H3",
+                    "pos": {
+                        "x": 23.119657,
+                        "y": 81.458059
+                    },
+                    "uuid": "20d8f0db-b7d9-4a12-b106-a7b64f04d102"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint U1",
+                    "pos": {
+                        "x": 88.424657,
+                        "y": 31.103059
+                    },
+                    "uuid": "25a694ab-8c3a-4bbe-87fa-94ab25c980d8"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint H4",
+                    "pos": {
+                        "x": 101.069657,
+                        "y": 81.458059
+                    },
+                    "uuid": "342538b3-a690-4bf0-b4a9-988260497d87"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint SW4",
+                    "pos": {
+                        "x": 53.278849,
+                        "y": 60.341246
+                    },
+                    "uuid": "58a67a2d-47ea-44c3-9650-06d5284de88b"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint SW2",
+                    "pos": {
+                        "x": 60.260697,
+                        "y": 42.616792
+                    },
+                    "uuid": "6df24478-1881-4c90-8d48-2410a8b708fe"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint D4",
+                    "pos": {
+                        "x": 51.446342,
+                        "y": 64.993334
+                    },
+                    "uuid": "9ca29426-40cb-413f-bed4-c60870a02fce"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint SW3",
+                    "pos": {
+                        "x": 35.554394,
+                        "y": 53.359398
+                    },
+                    "uuid": "a5eeeb85-76fb-4bc4-9906-8c10ce053436"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint D2",
+                    "pos": {
+                        "x": 58.428191,
+                        "y": 47.26888
+                    },
+                    "uuid": "b45affc9-3a89-452b-9c09-6bec7e3ab10f"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint H2",
+                    "pos": {
+                        "x": 101.069657,
+                        "y": 20.508059
+                    },
+                    "uuid": "c4dd04a0-20e4-4844-b878-f672f39a8e58"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint LED1",
+                    "pos": {
+                        "x": 71.929627,
+                        "y": 73.088784
+                    },
+                    "uuid": "d4cc8913-c922-4a9f-8642-0d4b9f89f369"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint SW1",
+                    "pos": {
+                        "x": 42.536242,
+                        "y": 35.634943
+                    },
+                    "uuid": "dda19368-ab2d-4a4d-9691-b683ef974f3b"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'isw-kbd'",
+            "items": [
+                {
+                    "description": "Footprint D1",
+                    "pos": {
+                        "x": 40.703736,
+                        "y": 40.287031
+                    },
+                    "uuid": "e192174b-aec1-4a1c-bae3-baf1fa42f721"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        }
+    ]
+}

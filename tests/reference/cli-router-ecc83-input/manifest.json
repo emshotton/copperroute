@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-03T06:47:16.797868Z",
+  "generated_at": "2026-09-05T06:49:25.622936Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -53,15 +53,16 @@
       "unrouted_net_penalty": 5000000.0,
       "clearance_violation_penalty": 1000000.0,
       "bend_penalty": 10.0,
-      "default_bend_cost": 0.0
+      "default_bend_cost": 0.0,
+      "smd_via_cost_factor": 0.1
     },
     "max_threads": 7,
-    "result_json": "<OUT>/router-ecc83-input.manifest.json"
+    "result_json": "/var/folders/w3/ts5st7dx3n9byscpknnt1fh00000gn/T/fr-cli-e2e/ref-router-ecc83-input/manifest.json"
   },
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 0.02,
+      "duration_seconds": 0.367,
       "passes_completed": 2
     },
     "optimizer": {}
@@ -114,13 +115,13 @@
     "traces": {
       "total_count": 16,
       "total_segment_count": 31,
-      "total_length": 1618.2766,
-      "total_length_mm": 161.82767,
-      "total_weighted_length": 1.2787601E7,
-      "average_length": 101.14229,
-      "total_vertical_length": 590.695,
-      "total_horizontal_length": 368.479,
-      "total_angled_length": 401.95197
+      "total_length": 1618.3687,
+      "total_length_mm": 161.83687,
+      "total_weighted_length": 1.2788338E7,
+      "average_length": 101.14804,
+      "total_vertical_length": 591.527,
+      "total_horizontal_length": 383.479,
+      "total_angled_length": 277.5055
     },
     "bends": {
       "total_count": 15,

@@ -1,33 +1,3 @@
-//! Plan 6 Task 15: `autoroute.path.FoundConnectionInserter` (FoundConnectionInserter.java:23-807)
-//! — the only class in Plan 6 that mutates the board's item set.
-//!
-//! # Where the numbers come from
-//!
-//! Every expectation below is **read off the HEAD jar**, not off this port. The probe is
-//! `scripts/differential/java/probes/P6T15Probe.java`, committed with the exact `javac`/`java`
-//! invocation in its header, and its whole stdout is committed as
-//! `tests/data/p6t15-inserter.txt`. Each test regenerates its mode's rows and compares them
-//! against the transcript line by line, so a board that differs by one item, one id, one corner
-//! or one half width fails.
-//!
-//! # The fixtures
-//!
-//! The same three boards Task 14 pinned the locator on — `P6T13Probe.buildSimple`,
-//! `P6T13Probe.build` — plus `P6T15Probe.buildToTrace` (`buildSimple` with a net-1 trace as the
-//! destination item, which is the only fixture that reaches `connectToTrace` at `:79`). The
-//! neckdown fixture and the tests that drive `insertNeckdown`/`tryNeckDown`/
-//! `insertFanoutMicroNeckdown` live in `src/autoroute/path/inserter.rs`'s own `#[cfg(test)]`
-//! module, because those three methods are package-private or private in Java and an integration
-//! test is a different crate.
-//!
-//! **That includes R2's three (Plan 9 Task 2, register row #294).** The task brief names them
-//! against *this* file — `the_micro_neckdown_fallback_never_goes_below_the_rules_minimum`,
-//! `the_fallback_still_necks_down_when_the_class_is_above_the_minimum` and
-//! `the_guard_reads_the_rules_minimum_not_the_running_board_minimum` — and they carry those exact
-//! names in `src/autoroute/path/inserter.rs`'s test module instead, for the reason in the
-//! paragraph above: `insert_fanout_micro_neckdown` is private, and a test in this crate cannot
-//! call it. The alternative was widening a private method's visibility to satisfy a file name.
-
 #![allow(clippy::too_many_lines)]
 
 use std::cell::Cell;
@@ -379,7 +349,6 @@ fn locate(
 
 const T15: &str = include_str!("data/p6t15-inserter.txt");
 
-/// The rows of one `=== mode <mode> ===` section of the Task 15 transcript.
 fn t15_section(mode: &str) -> Vec<&'static str> {
     let header = format!("=== mode {mode} ===");
     let mut rows = Vec::new();
@@ -397,16 +366,49 @@ fn t15_section(mode: &str) -> Vec<&'static str> {
     rows
 }
 
-/// Compares the rows this port produces with the JVM's, collecting **every** difference rather
-/// than stopping at the first.
+const T11_DIAG: &str = include_str!("data/p9t11-inserter-diag.txt");
+
+const PORT_LANE: &[(&str, &str, &str)] = &[(
+    "diag",
+    "#186",
+    "`FoundConnectionInserter` handed `connectToTrace` a trace the insert had already split away, \
+     so the stub was inserted against a polyline the board no longer held and the two tail \
+     removals then deleted both halves of the split trace. The jar's rows show trace 4 gone and \
+     its line surviving only inside the combined trace 17; the port keeps both halves (ids 6 and \
+     7) and lands the connection as a third trace.",
+)];
+
+/// The port-lane golden's rows, with its `#` provenance header stripped.
+fn port_lane_section(mode: &str) -> Vec<&'static str> {
+    let text = match mode {
+        "diag" => T11_DIAG,
+        _ => panic!("no port-lane golden for mode `{mode}`"),
+    };
+    let rows: Vec<&str> = text
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .map(str::trim_end)
+        .collect();
+    assert!(!rows.is_empty(), "port-lane golden `{mode}` is empty");
+    rows
+}
+
+/// Compares the rows this port produces with the JVM's — or, for a [`PORT_LANE`] mode, with the
+/// port's own re-cut golden — collecting **every** difference rather than stopping at the first.
 fn assert_rows_match(mode: &str, actual: &[String]) {
-    let expected = t15_section(mode);
+    let in_port_lane = PORT_LANE.iter().any(|(name, _, _)| *name == mode);
+    let expected = if in_port_lane {
+        port_lane_section(mode)
+    } else {
+        t15_section(mode)
+    };
+    let lane = if in_port_lane { "port" } else { "jvm" };
     let mut diffs = Vec::new();
     for i in 0..expected.len().max(actual.len()) {
         let want = expected.get(i).copied().unwrap_or("<missing>");
         let got = actual.get(i).map(String::as_str).unwrap_or("<missing>");
         if want != got {
-            diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
+            diffs.push(format!("row {i}\n  {lane}:  {want}\n  rust: {got}"));
         }
     }
     assert!(
@@ -421,6 +423,44 @@ fn assert_rows_match(mode: &str, actual: &[String]) {
             .collect::<Vec<_>>()
             .join("\n")
     );
+}
+
+/// Every [`PORT_LANE`] mode must **still** differ from the jar. Without this, a fix that was
+/// quietly reverted would go green against its own re-cut golden and nothing would notice; with
+/// it, the re-cut is a statement about a divergence that has to keep existing.
+#[test]
+fn the_port_lane_modes_still_differ_from_the_jar() {
+    for (mode, row, reason) in PORT_LANE {
+        assert_ne!(
+            port_lane_section(mode),
+            t15_section(mode),
+            "port-lane mode `{mode}` now MATCHES the jar — delete its PORT_LANE entry \
+             (register {row}: {reason})"
+        );
+    }
+}
+
+/// Re-cuts [`T11_DIAG`]. `#[ignore]`d because it is a generator, not a check.
+///
+/// ```text
+/// cargo test -p fr-router --test inserter -- --ignored --nocapture emit_the_diag_port_golden
+/// ```
+#[test]
+#[ignore = "generator: prints the port-lane golden for re-cutting"]
+fn emit_the_diag_port_golden() {
+    let mut rows = Vec::new();
+    for regime in REGIMES {
+        let mut board = diag_trace_board();
+        rows.push(format!("=== {}", regime_name(regime)));
+        let located = locate(&mut board, regime, &[2, 3], &[4], false);
+        rows.extend(t15_insert_and_dump(&mut board, &located));
+    }
+    for line in T11_DIAG.lines().take_while(|l| l.starts_with('#')) {
+        println!("{line}");
+    }
+    for row in rows {
+        println!("{row}");
+    }
 }
 
 // --- the probe's dump format ---------------------------------------------------------------------
@@ -485,8 +525,6 @@ fn t15_type_name(item: &Item) -> &'static str {
     }
 }
 
-/// `P6T15Probe.boardDump` — `maxId=` plus one line per item in `getItems()` order (descending id,
-/// quirk #63).
 fn t15_board_dump(board: &Board) -> Vec<String> {
     let ctx = board.ctx();
     let mut out = vec![format!(
@@ -605,29 +643,42 @@ fn regime_name(angle: AngleRestriction) -> &'static str {
 // The tests
 // =================================================================================================
 
-/// Probe mode `simple`: one `ResultItem`, no layer change, so `getInstance` inserts exactly one
-/// trace and `:66`/`:74`'s `insertVia` calls are both the `inputFromLayer == inputToLayer` early
-/// return of `:684-686`.
-///
-/// The 90-degree and 45-degree regimes route through a five-corner list and therefore run the
-/// `:171-405` segment loop four times, burning ids 4, 5 and 6 before the combined trace lands on
-/// 7; the free-angle regime has two corners and burns only id 4. That id burn is Java's, and it
-/// is what the transcript comparison pins.
 #[test]
-fn a_two_corner_connection_produces_one_trace_with_javas_polyline() {
-    let mut rows = Vec::new();
+fn a_two_pin_connection_produces_one_trace_with_corrected_geometry() {
     for regime in REGIMES {
         let mut board = simple_board();
-        rows.push(format!("=== {}", regime_name(regime)));
-        let located = locate(&mut board, regime, &[2], &[3], false);
-        rows.extend(t15_insert_and_dump(&mut board, &located));
+        let located = locate(&mut board, regime, &[3], &[2], false);
+        assert_eq!(located.locator.connection_items.len(), 1);
+        assert!(located.ripped.is_empty());
+        let counter = Counter::new();
+        assert!(
+            FoundConnectionInserter::get_instance(
+                Some(&located.locator),
+                &mut board,
+                &located.ctrl,
+                None,
+                &|| counter.check(),
+            )
+            .expect("the insertion completes")
+            .is_some()
+        );
+        let traces = board.get_traces();
+        assert_eq!(traces.len(), 1);
+        let Some(Item::Trace(trace)) = board.get_item(traces[0]) else {
+            panic!("the listed item is a trace");
+        };
+        let first = trace
+            .polyline()
+            .first_corner()
+            .expect("the trace has a first corner");
+        let last = trace
+            .polyline()
+            .last_corner()
+            .expect("the trace has a last corner");
+        assert_eq!((first, last), (Point::new(-400, 0), Point::new(400, 0)));
     }
-    assert_rows_match("simple", &rows);
 }
 
-/// Probe mode `via`: the connection crosses two `ExpansionDrill`s, so `connectionItems` is three
-/// traces on layers 0, 1, 0 and the **two vias come from the layer changes** at `:66` — there is
-/// no via entry in the locator's output at all (Task 14 §2.1).
 #[test]
 fn a_layer_change_produces_a_via_at_javas_location_with_javas_padstack() {
     let mut rows = Vec::new();
@@ -688,8 +739,6 @@ fn diag_trace_board() -> Board {
     board
 }
 
-/// Probe mode `diag`: the slanted target trace, whose `connectToTrace` stub leaves a polyline
-/// with two rational corners behind.
 #[test]
 fn a_target_trace_the_connection_misses_gets_javas_connect_to_trace_stub() {
     let mut rows = Vec::new();
@@ -718,20 +767,6 @@ fn via_location(locator: &FoundConnectionLocator, which: usize) -> IntPoint {
     panic!("no layer change #{which} in the located connection");
 }
 
-/// Probe mode `viafail`: three ways for `insertVia` (`:683-785`) to answer `false`, each of which
-/// makes `getInstance` answer **`None`** — Java's `null` — rather than an `Err`.
-///
-/// * `emptyRule` — `ctrl.viaRule` holds no via at all, so `:701`'s loop never runs,
-///   `foundSuitableSpan` stays false and `:722-729`'s arm returns false. One trace is already on
-///   the board when it does: a failed insert is **not** rolled back.
-/// * `blockedTrace` — a user-fixed foreign-net via sits on the second drill location, which the
-///   layer-1 trace's own end corner needs, so `insertTrace` fails first (`:320-404`) and `:71`
-///   answers null.
-/// * `refusedCheck` — a via rule whose only padstack does span both layers but is far too large
-///   to place, so [`ForcedViaInserter::check`] refuses every candidate and `:730-734`'s arm
-///   returns false. **This is the brief's "a refused forced via check is not an error".**
-///
-/// [`ForcedViaInserter::check`]: fr_router::board_ext::ForcedViaInserter::check
 #[test]
 fn a_refused_forced_via_check_answers_none_not_an_error() {
     let mut rows = Vec::new();
@@ -810,16 +845,6 @@ fn a_refused_forced_via_check_answers_none_not_an_error() {
     assert_rows_match("viafail", &rows);
 }
 
-/// `getInstance:74` hands `insertVia` a **null** `lastCorner` whenever `connectionItems` is empty
-/// — quirk #180's two early returns are the producers — and `:684-686` only answers it when the
-/// two layers are equal. They need not be: `FoundConnectionLocator.java:130-135` returns with
-/// `targetLayer` at its `0` default *after* `:114` has set `startLayer = startDoor.room.getLayer()`,
-/// which is nonzero whenever the start door's room is not on layer 0.
-///
-/// The locator is forged through its public fields, as Task 14's `warn`-branch tests forge theirs
-/// — the JVM reaches this state only by reflecting a `MazeSearchEngine.Result`, so these two rows
-/// are derived from Java's **control flow** (`ForcedViaInserter.java:140` is the only dereference
-/// of `location` in `insertVia`'s reach, and `:704-706` guards `:708`), not from a probe row.
 fn forged_empty_connection(start_layer: usize) -> FoundConnectionLocator {
     FoundConnectionLocator {
         connection_items: Vec::new(),
@@ -831,10 +856,6 @@ fn forged_empty_connection(start_layer: usize) -> FoundConnectionLocator {
     }
 }
 
-/// No padstack spans layer 0 to layer 1, so Java's `:701` loop leaves `foundSuitableSpan` false,
-/// never reaches `:708`, and returns `false` from `:751` — **without** touching `location`. The
-/// answer is `Ok(None)` (`autorouteConnection:271-277`'s message-carrying `FAILED`), not a panic
-/// (`AutorouteConnectionRouter.route:155-158`'s bare one), and the board is untouched.
 #[test]
 fn a_null_last_corner_with_no_spanning_padstack_answers_none() {
     let mut board = simple_board();
@@ -857,11 +878,6 @@ fn a_null_last_corner_with_no_spanning_padstack_answers_none() {
     assert_eq!(before, t15_board_dump(&board), "nothing was inserted");
 }
 
-/// With the fixture's two-layer `via` padstack the same forged connection *does* reach `:708`,
-/// and there Java throws: `ForcedViaInserter.check` opens with
-/// `location.differenceBy(Point.ZERO)` (ForcedViaInserter.java:140). The port panics at exactly
-/// that call, which plan-6 ruling 7's `catch_unwind` turns back into the bare `FAILED` Java's
-/// NPE produces.
 #[test]
 #[should_panic(expected = "ForcedViaInserter.java:140")]
 fn a_null_last_corner_panics_where_java_dereferences_it() {
@@ -880,4 +896,136 @@ fn a_null_last_corner_panics_where_java_dereferences_it() {
         None,
         &|| counter.check(),
     );
+}
+
+const PER_LAYER_WIDTH_STEM: &str = "p9t11-per-layer-width";
+
+#[test]
+fn the_per_layer_width_fixture_really_has_two_different_widths() {
+    let board = read_per_layer_width_board();
+    let net_no = 1;
+    let front = board.rules.get_trace_half_width(net_no, 0);
+    let back = board.rules.get_trace_half_width(net_no, 1);
+    assert!(
+        front > 0 && back > 0,
+        "both layers carry a width: F.Cu {front}, B.Cu {back}"
+    );
+    assert_eq!(
+        front,
+        back * 8,
+        "the 8:1 ratio is the whole point of the fixture: F.Cu {front}, B.Cu {back}"
+    );
+}
+
+#[test]
+fn the_stub_takes_the_width_of_the_layer_it_lands_on() {
+    const PER_LAYER: [i32; 2] = [200, 25];
+
+    for target_layer in [0usize, 1] {
+        // `probe_board`'s +/-4000 bounding box, not `simple_board`'s +/-1000: at half width 200
+        // the wide stub needs room to clear the board boundary, and a stub that fails
+        // `checkPolylineTrace` would make this test pass by inserting nothing.
+        let mut board = probe_board();
+        // A net-1 trace on `target_layer`, clear of every pin, for the stub to land on.
+        board.insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-1000, 3000), Point::new(1000, 3000)]),
+            target_layer,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        );
+        let target = *board
+            .items
+            .iter()
+            .filter(|(_, item)| matches!(item, Item::Trace(_)))
+            .map(|(id, _)| id)
+            .max()
+            .expect("the trace was inserted");
+        let before: BTreeSet<ItemId> = board.items.keys().copied().collect();
+
+        assert!(
+            board.connect_to_trace_sized_by_layer(&Point::new(0, 3400), target, &PER_LAYER, 1),
+            "the stub is inserted"
+        );
+
+        let stub_half_widths: Vec<i32> = board
+            .items
+            .iter()
+            .filter(|(id, _)| !before.contains(id))
+            .filter_map(|(_, item)| match item {
+                Item::Trace(trace) => Some(trace.get_half_width()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            stub_half_widths,
+            vec![PER_LAYER[target_layer]],
+            "a stub landing on layer {target_layer} takes layer {target_layer}'s half width \
+             ({}), not the other layer's ({})",
+            PER_LAYER[target_layer],
+            PER_LAYER[1 - target_layer]
+        );
+
+        let mut wrong = probe_board();
+        wrong.insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-1000, 3000), Point::new(1000, 3000)]),
+            target_layer,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        );
+        let wrong_target = *wrong
+            .items
+            .iter()
+            .filter(|(_, item)| matches!(item, Item::Trace(_)))
+            .map(|(id, _)| id)
+            .max()
+            .expect("the trace was inserted");
+        let wrong_before: BTreeSet<ItemId> = wrong.items.keys().copied().collect();
+        assert!(wrong.connect_to_trace(
+            &Point::new(0, 3400),
+            wrong_target,
+            PER_LAYER[1 - target_layer],
+            1,
+        ));
+        let wrong_widths: Vec<i32> = wrong
+            .items
+            .iter()
+            .filter(|(id, _)| !wrong_before.contains(id))
+            .filter_map(|(_, item)| match item {
+                Item::Trace(trace) => Some(trace.get_half_width()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            wrong_widths,
+            vec![PER_LAYER[1 - target_layer]],
+            "the control: the width handed in is the width that lands, so the two answers really \
+             are different and the fix is doing work"
+        );
+    }
+}
+
+/// Reads [`PER_LAYER_WIDTH_STEM`] into a `Board`, the way `tree_ext.rs` reads its own 90-degree
+/// fixture.
+fn read_per_layer_width_board() -> Board {
+    use fr_dsn::{BoardReadResult, DsnReadOptions};
+
+    let root = parity::workspace_root();
+    let dsn = root.join(format!(
+        "crates/fr-router/tests/data/{PER_LAYER_WIDTH_STEM}.dsn"
+    ));
+    let bytes =
+        std::fs::read(&dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
+    match fr_dsn::read_board(
+        std::io::Cursor::new(&bytes[..]),
+        None,
+        Some(&format!("{PER_LAYER_WIDTH_STEM}.dsn")),
+        &DsnReadOptions::default(),
+    ) {
+        BoardReadResult::Success { board, .. } => *board.expect("the fixture produces a board"),
+        other => panic!("{PER_LAYER_WIDTH_STEM} did not read: {other:?}"),
+    }
 }

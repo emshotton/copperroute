@@ -1,11 +1,3 @@
-//! Plan 2 Task 15: property-style consistency tests for `Board` and its search trees.
-//!
-//! These are not transcribed from a Java driver line-for-line (unlike every other file in
-//! `tests/`) — they check invariants the port must hold *by construction*, the way
-//! `scripts/differential/rust/src/bin/p2t15.rs` checks them empirically against the JVM. Every
-//! random input here comes from a tiny xorshift generator (no `rand` dependency), seeded so a
-//! failure is reproducible; every test is well under a second in debug.
-
 mod board_builder;
 
 use board_builder::{WIDE_CLEARANCE_CLASS, p2t11_board};
@@ -14,9 +6,6 @@ use fr_geometry::{
     Area, IntBox, Point, PolygonShape, Polyline, PolylineShapeRef, Shape, TileShape,
 };
 
-/// A minimal xorshift64* stream — the same shape as every differential driver's `Rng`
-/// (`scripts/differential/rust/src/bin/p2t3r.rs` and `p2t15.rs`), kept local here because these
-/// are unit tests, not a differential driver: no `rand` crate, no shared seed with any Java side.
 struct Rng(u64);
 
 impl Rng {
@@ -36,15 +25,6 @@ fn probe() -> TileShape {
     TileShape::Box(IntBox::from_coords(-100, -100, 100, 100))
 }
 
-/// `SearchTreeManager::get_autoroute_tree` needs `&mut [&mut Item]` (from `board.items`) and an
-/// [`ItemCtx`] (from `board.{library,components,rules,bounding_box}`) simultaneously, plus
-/// `&mut board.trees` — four disjoint fields. `Board::ctx()` cannot be used here: it takes
-/// `&self`, so it borrows the *whole* board, which would conflict with `&mut board.trees` and
-/// `&mut board.items` right after. Building the [`ItemCtx`] from the fields directly (as
-/// [`board_builder::BoardFixture::build_autoroute_tree`] does for its own, non-`Board` fields)
-/// keeps the four borrows disjoint instead. `max_tree_shape_width` is
-/// [`DEFAULT_MAX_TREE_SHAPE_WIDTH`] because every board built by this file uses
-/// `Communication::default()` (no host CAD) — the one value `Board::new` would have filled in.
 fn build_autoroute_tree(board: &mut Board, clearance_class_index: usize) -> TreeId {
     let mut items = std::mem::take(&mut board.items);
     let ctx = ItemCtx {
@@ -64,12 +44,6 @@ fn build_autoroute_tree(board: &mut Board, clearance_class_index: usize) -> Tree
     id
 }
 
-// ---------------------------------------------------------------------------------------------
-// Insert/remove round-trips
-// ---------------------------------------------------------------------------------------------
-
-/// Inserting an item and immediately removing it must leave the default tree's leaf count and
-/// every overlap query exactly as they were — a round trip is observationally a no-op.
 #[test]
 fn insert_remove_round_trips_leave_leaf_count_and_queries_unchanged() {
     let mut board = p2t11_board();
@@ -117,17 +91,11 @@ fn insert_remove_round_trips_leave_leaf_count_and_queries_unchanged() {
     }
 }
 
-// ---------------------------------------------------------------------------------------------
-// deep_copy
-// ---------------------------------------------------------------------------------------------
-
 #[test]
 fn deep_copy_is_hash_equal_and_query_equal() {
     let mut board = p2t11_board();
     let copy = board.deep_copy();
 
-    // `structural_hash`-equality is the comparison the brief asks for: the two hashes are not
-    // byte-comparable to anything on the Java side (`docs/java-quirks.md`), only to each other.
     assert_eq!(
         board.structural_hash(),
         copy.structural_hash(),
@@ -142,13 +110,6 @@ fn deep_copy_is_hash_equal_and_query_equal() {
         copy.overlapping_objects(&probe(), Some(1))
     );
 
-    // The copy must be independent: mutating the original afterwards must not touch it, and the
-    // hash must actually be sensitive to the mutation (otherwise the equality check above would
-    // be vacuous). Item 4 is a trace — the strongest case either way, since the Plan-2 hash
-    // covered only traces and vias. Plan 7 Task 3 (ruling AH) widened `structural_hash` to
-    // `serialize(true)`'s whole field set, so removing item 7's `ObstacleArea` would move it
-    // too now; the trace is kept because this assertion predates the widening and reads the
-    // same before and after it.
     assert!(matches!(board.get_item(ItemId(4)), Some(Item::Trace(_))));
     assert!(board.remove_item(ItemId(4)));
     assert_ne!(
@@ -163,17 +124,6 @@ fn deep_copy_is_hash_equal_and_query_equal() {
     );
 }
 
-// ---------------------------------------------------------------------------------------------
-// normalize_traces idempotence
-// ---------------------------------------------------------------------------------------------
-
-/// The bare board `tests/trace_normalize.rs::trace_board` builds, with two collinear,
-/// touching/overlapping traces on net 1 — the shape
-/// `normalize_traces_converges_and_then_reports_false` drives. `p2t11_board()` (used by every
-/// other test in this file) has nothing left to normalise by the time it is built
-/// (`insert_trace_without_cleaning` never normalises), so `normalize_traces(1)` on it returns
-/// `false` on the very first call and cannot demonstrate idempotence is doing real work — the
-/// first assertion below would already be checking a no-op against a no-op.
 fn normalize_fixture_board() -> Board {
     let ls = LayerStructure::new(vec![Layer::new("l0", true)]);
     let cm = ClearanceMatrix::get_default_instance(&ls, 10);
@@ -201,8 +151,6 @@ fn normalize_fixture_board() -> Board {
     board.rules.nets.add("N1", 1, false, default_class);
     board.rules.nets.add("N2", 1, false, default_class);
 
-    // Mode 9 scenario N4 (`P2T11.java`): a four-corner trace 0->30000 and a second trace sitting
-    // on top of its middle third — `normalizeTraces(1)` must combine them into one.
     board
         .insert_trace_without_cleaning(
             Polyline::from_points(&[
@@ -258,24 +206,6 @@ fn normalize_traces_is_idempotent() {
     );
 }
 
-// ---------------------------------------------------------------------------------------------
-// 45-degree vs. 90-degree autoroute tree
-// ---------------------------------------------------------------------------------------------
-
-/// The 45-degree tree's per-item tile shapes are cut against four supporting direction families
-/// (horizontal, vertical, both diagonals); the 90-degree tree's are cut against only two
-/// (horizontal, vertical). More supporting directions means a tighter (or equal) fit, so — for
-/// the very same items, inserted through the very same board otherwise — every 90-degree tile
-/// shape must contain its 45-degree counterpart.
-///
-/// This has to compare the *shapes themselves* (`TileShape::contains_tile`), not their
-/// axis-aligned bounding boxes: `RegularTileShape::bounding_box()` reads `leftX/rightX/bottomY/
-/// topY` straight off, and both bounding-direction families compute those four the same way —
-/// an octagon and a box with identical axis-aligned bounds have identical `bounding_box()`s
-/// regardless of what the diagonal cuts removed. A bounding-box comparison holds on *every* tile
-/// shape in this fixture in *both* directions (verified: 18/18 either way) and so cannot
-/// discriminate the two trees at all — `TileShape::contains_tile` can and does (18/18 one way,
-/// false for 11/18 the other).
 #[test]
 fn forty_five_degree_tile_shapes_are_never_looser_than_ninety_degree_ones() {
     let mut board_45 = p2t11_board();
@@ -287,9 +217,6 @@ fn forty_five_degree_tile_shapes_are_never_looser_than_ninety_degree_ones() {
     let mut board_90 = board_45.clone();
     board_90.rules.trace_angle_restriction = AngleRestriction::NinetyDegree;
 
-    // `WIDE_CLEARANCE_CLASS` (2) is not the default tree's own compensated class (0), so this
-    // actually builds a fresh, angle-restricted autoroute tree on each board rather than handing
-    // back the (angle-independent) default tree.
     let tree_45 = build_autoroute_tree(&mut board_45, WIDE_CLEARANCE_CLASS);
     let tree_90 = build_autoroute_tree(&mut board_90, WIDE_CLEARANCE_CLASS);
 
@@ -336,10 +263,6 @@ fn forty_five_degree_tile_shapes_are_never_looser_than_ninety_degree_ones() {
     );
 }
 
-// ---------------------------------------------------------------------------------------------
-// Item iteration order (quirk #63)
-// ---------------------------------------------------------------------------------------------
-
 #[test]
 fn item_iteration_is_descending_board_order() {
     let board = p2t11_board();
@@ -358,10 +281,6 @@ fn item_iteration_is_descending_board_order() {
         "get_items() and items_in_board_order() must agree"
     );
 }
-
-// ---------------------------------------------------------------------------------------------
-// Send + Sync + Clone
-// ---------------------------------------------------------------------------------------------
 
 #[test]
 fn board_is_send_sync_and_clone() {

@@ -1,11 +1,3 @@
-//! Port of `app.freerouting.geometry.planar.IntOctagon`: octagons with integer coordinates whose
-//! eight border lines run at multiples of 45 degrees.
-//!
-//! Java's `IntOctagon` extends `RegularTileShape` → `TileShape` → `PolylineShape`. This port
-//! carries the octagon- and box-typed methods; the `TileShape`/`RegularTileShape`/`Simplex`/
-//! `Circle`/`ShapeBoundingDirections`/`FortyfiveDegreeDirection`-typed ones are added in
-//! Tasks 13-14 (see the marker at the end of this file).
-
 use crate::float_point::FloatPoint;
 use crate::int_box::IntBox;
 use crate::int_point::IntPoint;
@@ -43,7 +35,6 @@ pub struct IntOctagon {
 }
 
 impl IntOctagon {
-    /// Reusable instance of an empty octagon. IntOctagon.java:14-23.
     pub const EMPTY: IntOctagon = IntOctagon {
         left_x: CRIT_INT,
         bottom_y: CRIT_INT,
@@ -55,18 +46,7 @@ impl IntOctagon {
         upper_right_diagonal_x: -CRIT_INT,
     };
 
-    /// Creates an `IntOctagon` from 8 integer boundary values, in Java's parameter order
-    /// (IntOctagon.java:72-89).
-    ///
-    /// * `left_x` — the smallest x value of the shape
-    /// * `bottom_y` — the smallest y value of the shape
-    /// * `right_x` — the biggest x value of the shape
-    /// * `top_y` — the biggest y value of the shape
-    /// * `upper_left_diagonal_x` — x-axis intersection of the upper left diagonal boundary line
-    /// * `lower_right_diagonal_x` — x-axis intersection of the lower right diagonal boundary line
-    /// * `lower_left_diagonal_x` — x-axis intersection of the lower left diagonal boundary line
-    /// * `upper_right_diagonal_x` — x-axis intersection of the upper right diagonal boundary line
-    #[allow(clippy::too_many_arguments)] // Java's 8-parameter constructor, ported verbatim.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         left_x: i32,
         bottom_y: i32,
@@ -89,37 +69,27 @@ impl IntOctagon {
         }
     }
 
-    /// Java `isEmpty()` is `this == EMPTY`, i.e. reference identity with the shared `EMPTY`
-    /// singleton (IntOctagon.java:91-94). `IntOctagon` is a plain value type here, so this is
-    /// ported as value equality: `EMPTY` is the only octagon `normalize()` ever produces with
-    /// those eight coordinates, so the two agree in practice while value equality additionally
-    /// catches a hand-built copy of `EMPTY` (Java would report `false` for that one).
     pub fn is_empty(&self) -> bool {
         *self == IntOctagon::EMPTY
     }
 
-    /// Java `isIntOctagon()`: always true.
     pub fn is_int_octagon(&self) -> bool {
         true
     }
 
-    /// Java `isBounded()`: always true for an `IntOctagon`.
     pub fn is_bounded(&self) -> bool {
         true
     }
 
-    /// Java `cornerIsBounded(int no)`: always true, `no` unused (as in Java).
     pub fn corner_is_bounded(&self, _no: usize) -> bool {
         true
     }
 
     /// Returns the smallest `IntBox` containing this octagon.
-    #[inline]
     pub fn bounding_box(&self) -> IntBox {
         IntBox::from_coords(self.left_x, self.bottom_y, self.right_x, self.top_y)
     }
 
-    /// Java `boundingOctagon()`: an `IntOctagon` is its own bounding octagon.
     pub fn bounding_octagon(&self) -> IntOctagon {
         *self
     }
@@ -142,9 +112,6 @@ impl IntOctagon {
         }
     }
 
-    /// Returns the corner with the given number, counterclockwise starting at the lower left
-    /// corner of the bottom horizontal border. Panics for `no` outside `0..8` (Java throws
-    /// `IllegalArgumentException`).
     pub fn corner(&self, no: usize) -> IntPoint {
         match no {
             // lower-left (bottom horizontal)
@@ -167,9 +134,6 @@ impl IntOctagon {
         }
     }
 
-    /// Returns a stable identifier for this octagon. Java `int` arithmetic wraps silently on
-    /// overflow and this is a hash-shaped value rather than a magnitude, so `wrapping_*`
-    /// reproduces it (plain `*`/`+` would panic in a debug build, e.g. for `IntOctagon::EMPTY`).
     pub fn get_id(&self) -> i32 {
         let mut result = self.left_x;
         result = 31i32.wrapping_mul(result).wrapping_add(self.right_x);
@@ -215,13 +179,6 @@ impl IntOctagon {
         }
     }
 
-    /// Returns the area of this octagon.
-    ///
-    /// Java calculates half of the absolute value of
-    /// `x0 (y1 - y7) + x1 (y2 - y0) + x2 (y3 - y1) + ... + x7 (y0 - y6)`, where `xi, yi` are the
-    /// coordinates of the i-th corner. It overwrites the same implementation in `TileShape` for
-    /// performance reasons to avoid `Point` allocation. Each factor is an `int` expression that
-    /// Java widens to `double` only at the multiplication, so the inner arithmetic stays `i32`.
     pub fn area(&self) -> f64 {
         let mut result = (self.lower_left_diagonal_x - self.bottom_y) as f64
             * (self.bottom_y - self.lower_left_diagonal_x + self.left_x) as f64;
@@ -243,15 +200,10 @@ impl IntOctagon {
         0.5 * result.abs()
     }
 
-    /// Java `borderLineCount()`: an octagon always has 8 border lines.
     pub fn border_line_count(&self) -> usize {
         8
     }
 
-    /// Returns the infinite line coincident with border edge `no`. **Not** the segment from
-    /// `corner(no)` to `corner((no + 1) % 8)` — as in `IntBox.borderLine`, Java fixes each line
-    /// with two arbitrary points that only pin down its position and direction
-    /// (IntOctagon.java:239-256). Panics for `no` outside `0..8`.
     pub fn border_line(&self, no: usize) -> Line {
         match no {
             // lower boundary line
@@ -294,12 +246,6 @@ impl IntOctagon {
         }
     }
 
-    /// Returns the translation of this octagon by `rel_coor`.
-    ///
-    /// Java: "This function is at the moment only implemented for Vectors with integer
-    /// coordinates. The general implementation is still missing." (IntOctagon.java:258-277) A
-    /// `Vector::Rational` would hit Java's unchecked `(IntVector) relCoor` cast and throw
-    /// `ClassCastException`; ported as a panic.
     pub fn translate_by(&self, rel_coor: &Vector) -> IntOctagon {
         if *rel_coor == Vector::ZERO {
             return *self;
@@ -322,8 +268,6 @@ impl IntOctagon {
         )
     }
 
-    /// Java `maxWidth()`: the two `Math.max` of `int` differences, the diagonal one scaled down
-    /// by `sqrt(2)`.
     pub fn max_width(&self) -> f64 {
         let width1 = (self.right_x - self.left_x).max(self.top_y - self.bottom_y) as f64;
         let width2 = (self.upper_right_diagonal_x - self.lower_left_diagonal_x)
@@ -332,8 +276,6 @@ impl IntOctagon {
         java_max(width1, width2 / SQRT2)
     }
 
-    /// Java `minWidth()`: the two `Math.min` of `int` differences, the diagonal one scaled down
-    /// by `sqrt(2)`.
     pub fn min_width(&self) -> f64 {
         let width1 = (self.right_x - self.left_x).min(self.top_y - self.bottom_y) as f64;
         let width2 = (self.upper_right_diagonal_x - self.lower_left_diagonal_x)
@@ -363,27 +305,24 @@ impl IntOctagon {
         result.normalize()
     }
 
-    /// Java `enlarge(double offset)`: `return offset(offset);`
     pub fn enlarge(&self, offset: f64) -> IntOctagon {
         self.offset(offset)
     }
 
-    /// Returns true if `point` is contained in this octagon. Because of the parameter type
-    /// `FloatPoint`, the function may not be exact close to the border.
     pub fn contains_float(&self, point: &FloatPoint) -> bool {
-        if self.left_x as f64 > point.x
-            || self.bottom_y as f64 > point.y
-            || (self.right_x as f64) < point.x
-            || (self.top_y as f64) < point.y
+        if self.left_x as f64 >= point.x
+            || self.bottom_y as f64 >= point.y
+            || (self.right_x as f64) <= point.x
+            || (self.top_y as f64) <= point.y
         {
             return false;
         }
         let tmp1 = point.x - point.y;
         let tmp2 = point.x + point.y;
-        self.upper_left_diagonal_x as f64 <= tmp1
-            && self.lower_right_diagonal_x as f64 >= tmp1
-            && self.lower_left_diagonal_x as f64 <= tmp2
-            && self.upper_right_diagonal_x as f64 >= tmp2
+        (self.upper_left_diagonal_x as f64) < tmp1
+            && (self.lower_right_diagonal_x as f64) > tmp1
+            && (self.lower_left_diagonal_x as f64) < tmp2
+            && (self.upper_right_diagonal_x as f64) > tmp2
     }
 
     /// Returns the smallest octagon containing this octagon and `other`.
@@ -402,8 +341,6 @@ impl IntOctagon {
         )
     }
 
-    /// Java `union(IntBox other)`: `return union(other.toIntOctagon());`
-    #[inline]
     pub fn union_box(&self, other: &IntBox) -> IntOctagon {
         self.union(&other.to_int_octagon())
     }
@@ -425,7 +362,6 @@ impl IntOctagon {
         result.normalize()
     }
 
-    /// Java `intersection(IntBox other)`: `return intersection(other.toIntOctagon());`
     pub fn intersection_box(&self, other: &IntBox) -> IntOctagon {
         self.intersection(&other.to_int_octagon())
     }
@@ -564,15 +500,6 @@ impl IntOctagon {
         *self == self.normalize()
     }
 
-    /// Calculates the side of the point (x, y) of the border line with index `border_line_no`.
-    /// The border lines are located in counterclock sense around this octagon.
-    ///
-    /// Note that this uses the *opposite* sign convention to `border_line(no).side_of(point)`:
-    /// here the interior of the octagon is `Side::OnTheLeft`, while `Line::side_of` puts it on
-    /// the right (see `TileShape.isOutside`). Both are ported as Java has them.
-    ///
-    /// Java logs a warning and yields 0 (`Side::Collinear`) for an out-of-range index; ported as
-    /// a `debug_assert!` plus the same `Collinear` fallback (`FRLogger` dropped per conventions).
     pub fn side_of_border_line(&self, x: i32, y: i32, border_line_no: usize) -> Side {
         debug_assert!(
             border_line_no < 8,
@@ -618,14 +545,11 @@ impl IntOctagon {
             && self.upper_right_diagonal_x <= other.upper_right_diagonal_x
     }
 
-    /// Java `intersects(IntBox other)`: `return intersects(other.toIntOctagon());`
-    #[inline]
     pub fn intersects_box(&self, other: &IntBox) -> bool {
         self.intersects_octagon(&other.to_int_octagon())
     }
 
     /// Checks if two normalized octagons intersect (touching counts as intersecting).
-    #[inline]
     pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
         let is_lx = other.left_x.max(self.left_x);
         let is_rx = other.right_x.min(self.right_x);
@@ -656,7 +580,6 @@ impl IntOctagon {
 
     /// Returns true if this octagon intersects with `other` and the intersection is
     /// 2-dimensional.
-    #[inline]
     pub fn overlaps(&self, other: &IntOctagon) -> bool {
         let is_lx = other.left_x.max(self.left_x);
         let is_rx = other.right_x.min(self.right_x);
@@ -709,9 +632,6 @@ impl IntOctagon {
         result.min(self.upper_right_diagonal_x - x)
     }
 
-    /// Compares this octagon against `other` along `edge_index` (0: lower, 1: lower right,
-    /// 2: right, 3: upper right, 4: upper, 5: upper left, 6: left, 7: lower left). Panics for
-    /// `edge_index` outside `0..8` (Java throws `IllegalArgumentException`).
     pub fn compare_octagon(&self, other: &IntOctagon, edge_index: usize) -> Side {
         match edge_index {
             0 => {
@@ -794,31 +714,18 @@ impl IntOctagon {
                     Side::Collinear
                 }
             }
-            // Java's message really does say "IntBox.compare" here (IntOctagon.java:832).
             _ => panic!("IntBox.compare: edgeIndex out of range"),
         }
     }
 
-    /// Java `compare(IntBox other, int edgeIndex)`:
-    /// `return compare(other.toIntOctagon(), edgeIndex);`
     pub fn compare_box(&self, other: &IntBox, edge_index: usize) -> Side {
         self.compare_octagon(&other.to_int_octagon(), edge_index)
     }
 
-    /// Java `borderLineIndex(Line line)` (IntOctagon.java:842-846) is an unfinished stub in
-    /// upstream freerouting: it unconditionally logs "edge_index_of_line not yet implemented for
-    /// octagons" and returns -1, regardless of whether `line` actually is one of this octagon's
-    /// border lines. Ported faithfully as always `None` (`FRLogger.warn` dropped per conventions
-    /// — `fr-geometry` has no `tracing` dependency, and the log carried no information beyond
-    /// "not implemented").
-    pub fn border_line_index(&self, _line: &Line) -> Option<usize> {
-        None
+    pub fn border_line_index(&self, line: &Line) -> Option<usize> {
+        (0..self.border_line_count()).find(|&i| line.equals_geometric(&self.border_line(i)))
     }
 
-    /// Returns the side of `point` with respect to border line `line_index`, with `tolerance`.
-    ///
-    /// Java logs a warning and yields `COLLINEAR` for an out-of-range index; ported as a
-    /// `debug_assert!` plus the same fallback.
     pub fn border_line_side_of(
         &self,
         point: &FloatPoint,
@@ -932,9 +839,7 @@ impl IntOctagon {
         self.upper_left_diagonal_x == self.left_x - self.top_y
     }
 
-    /// Divide `d` minus this octagon into 8 convex pieces, from which 4 have cut off a corner.
-    /// Java `IntOctagon.cutoutFrom(IntBox d)` (IntOctagon.java:1063-1314), transcribed literally.
-    #[allow(clippy::too_many_lines)] // literal transcription of Java's case analysis
+    #[allow(clippy::too_many_lines)]
     pub fn cutout_from_box(&self, d: &IntBox) -> Vec<IntOctagon> {
         let c = self.intersection_box(d);
 
@@ -1178,9 +1083,7 @@ impl IntOctagon {
         result
     }
 
-    /// Divide `d` minus this octagon into 8 convex pieces without sharp angles. Java
-    /// `IntOctagon.cutoutFrom(IntOctagon d)` (IntOctagon.java:1316-1695), transcribed literally.
-    #[allow(clippy::too_many_lines)] // literal transcription of Java's case analysis
+    #[allow(clippy::too_many_lines)]
     pub fn cutout_from_octagon(&self, d: &IntOctagon) -> Vec<IntOctagon> {
         let c = self.intersection(d);
 
@@ -1566,9 +1469,6 @@ impl IntOctagon {
         result.to_vec()
     }
 
-    /// Returns an object of class `Simplex` defining the same shape (IntOctagon.java:556-570).
-    /// The eight border lines are already sorted in ascending direction; the redundant ones (a
-    /// non-square octagon whose diagonal or orthogonal bounds do not bite) are removed.
     pub fn to_simplex(&self) -> Simplex {
         if self.is_empty() {
             return Simplex::EMPTY;
@@ -1577,34 +1477,17 @@ impl IntOctagon {
         Simplex::new(lines).remove_redundant_lines()
     }
 
-    /// Java `intersection(Simplex other)`: `other.intersection(this)`, which dispatches to
-    /// `Simplex.intersection(IntOctagon)`.
     pub fn intersection_simplex(&self, other: &Simplex) -> Simplex {
         other.intersection_octagon(self)
     }
 
-    /// Java `intersects(Simplex other)`: `other.intersects(this)`, which dispatches to
-    /// `Simplex.intersects(IntOctagon)`.
     pub fn intersects_simplex(&self, other: &Simplex) -> bool {
         other.intersects_octagon(self)
     }
 
-    /// Java `cutoutFrom(Simplex simplex)`: `this.toSimplex().cutoutFrom(simplex)`.
     pub fn cutout_from_simplex(&self, simplex: &Simplex) -> Option<Vec<Simplex>> {
         self.to_simplex().cutout_from(simplex)
     }
-
-    // not ported: the private `precalculatedToSimplex` memo field — it is a pure cache of
-    // `toSimplex()` and would make `IntOctagon` non-`Copy` for no behavioral gain.
-    // ported in Task 14, but in the modules that own the types they mention:
-    // `tile_shape.rs` has `boundingTile()`, `simplify() -> TileShape` and the
-    // `TileShape`-/`RegularTileShape`-typed `contains`, `union`, `intersection`, `intersects`,
-    // `compare` and `cutout` (all on the `TileShape` / `RegularTileShape` enums, where Java's
-    // double dispatch collapses into one `match`); `bounding_directions.rs` has
-    // `boundingShape(dirs)`, `borderPoint(IntPoint, FortyfiveDegreeDirection)` and
-    // `nearestBorderProjections(IntPoint, int)`.
-    // ported in Task 17, on the `TileShape` enum: intersects(Circle) (`intersects_circle`) and
-    // the `Shape`-typed `intersects(Shape)` (the `ShapeOps` impl in `shape.rs`).
 }
 
 impl fmt::Display for IntOctagon {
@@ -1713,17 +1596,10 @@ mod tests {
         let d = IntOctagon::new(-10, -10, 10, 10, -10, 10, -10, 10).normalize();
         for i in 0..8 {
             let line = d.border_line(i);
-            // `IntOctagon.borderLineIndex` (IntOctagon.java:842-846) is an unfinished stub in
-            // upstream freerouting: it logs "edge_index_of_line not yet implemented for octagons"
-            // and returns -1 for *every* line, including this octagon's own border lines. Ported
-            // as always `None`; the brief's `Some(i)` expectation does not match the Java source.
-            assert_eq!(d.border_line_index(&line), None);
-            // Freerouting's actual side convention (TileShape.java:140-157, `isOutside` /
-            // `contains(Point)`): a point is outside the shape as soon as
-            // `borderLine(i).sideOf(point) == ON_THE_LEFT`, i.e. the shape lies on the *right* of
-            // its border lines under `Line::side_of`. (`Line.sideOf(Point)` negates
-            // `Point.sideOf(Line)`, which itself negates a determinant, so the naming reads
-            // backwards; `IntOctagon::side_of_border_line` uses the opposite convention again.)
+            let found = d
+                .border_line_index(&line)
+                .expect("every border line is a border line");
+            assert!(d.border_line(found).equals_geometric(&line));
             for j in 0..8 {
                 let c = crate::point::Point::Int(d.corner(j));
                 assert_ne!(
@@ -1783,21 +1659,6 @@ mod tests {
 
     #[test]
     fn get_id_wraps_like_java() {
-        // Java `int` hash arithmetic wraps silently; `IntOctagon::EMPTY` overflows i32 several
-        // times over, so plain `*`/`+` would panic in a debug build. Hard-coded rather than
-        // recomputed with the same formula, so the test cannot agree with a wrong
-        // implementation. Hand-derived from IntOctagon.java:165-174, which folds the eight
-        // fields in the order leftX, rightX, bottomY, topY, lowerLeftDiagonalX,
-        // upperRightDiagonalX, upperLeftDiagonalX, lowerRightDiagonalX; for `EMPTY` those are
-        // C, -C, C, -C, C, -C, C, -C with C = CRIT_INT = 2^25 = 33_554_432:
-        //   r0 =                 C          =        33_554_432
-        //   r1 = 31 * r0 + (-C)             =     1_006_632_960
-        //   r2 = 31 * r1 +   C   (wraps)    =     1_174_405_120
-        //   r3 = 31 * r2 + (-C)  (wraps)    =     2_013_265_920
-        //   r4 = 31 * r3 +   C   (wraps)    =    -1_979_711_488
-        //   r5 = 31 * r4 + (-C)  (wraps)    =    -1_275_068_416
-        //   r6 = 31 * r5 +   C   (wraps)    =      -838_860_800
-        //   r7 = 31 * r6 + (-C)  (wraps)    =      -268_435_456
         assert_eq!(IntOctagon::EMPTY.get_id(), -268_435_456);
     }
 
@@ -1806,7 +1667,6 @@ mod tests {
         let a = from_box(IntBox::from_coords(0, 0, 10, 4));
         assert_eq!(a.max_width(), 10.0);
         assert_eq!(a.min_width(), 4.0);
-        // enlarge delegates to offset (IntOctagon.java:317-320)
         assert_eq!(a.enlarge(3.0), a.offset(3.0));
         // offset(0) returns the octagon unchanged, even unnormalized
         let loose = IntOctagon::new(0, 0, 10, 10, -50, 50, -50, 50);
@@ -1815,8 +1675,6 @@ mod tests {
 
     #[test]
     fn side_of_border_line_puts_interior_on_the_left() {
-        // IntOctagon.sideOfBorderLine (IntOctagon.java:581-607) uses the opposite sign
-        // convention to Line::side_of: the interior comes out ON_THE_LEFT here.
         let d = IntOctagon::new(-10, -10, 10, 10, -10, 10, -10, 10).normalize();
         for i in 0..8 {
             assert_eq!(d.side_of_border_line(0, 0, i), Side::OnTheLeft);

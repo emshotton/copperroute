@@ -1,14 +1,5 @@
 #![forbid(unsafe_code)]
 
-//! `fr-board`: the board-model crate — items, rules, library, search trees, and `Board` itself.
-//! Faithful port of freerouting's `board/model/**`, `board/searchtree/**`, `rules/**`, and
-//! `core/library/**` package family (see the Plan 2 design doc).
-//!
-//! This crate must not depend on `tracing`
-//! (`.superpowers/sdd/2026-08-28-plan-2-board-model/global-constraints.md`): diagnostic
-//! `FRLogger` calls from the Java source are dropped during porting, and invariant-guard logs
-//! become `debug_assert!`.
-
 pub mod board;
 pub mod datastructures;
 pub mod error;
@@ -45,9 +36,9 @@ pub use library::{
 };
 pub use rules::{
     BoardRules, CLEARANCE_SAFETY_MARGIN, ClearanceClassIndexed, ClearanceMatrix,
-    DefaultItemClearanceClasses, ItemClass, Net, NetClass, NetClasses, Nets, PadstackLookup,
-    ViaInfo, ViaInfos, ViaRule, compare_to_ignore_case, equals_ignore_case, java_to_lower,
-    java_to_upper,
+    DefaultItemClearanceClasses, DrcConstraints, DrcSeverity, ItemClass, Net, NetClass, NetClasses,
+    Nets, PadstackLookup, ViaInfo, ViaInfos, ViaRule, compare_to_ignore_case, equals_ignore_case,
+    java_to_lower, java_to_upper,
 };
 pub use searchtree::{ItemLookup, NoRooms, RoomLookup, SearchTreeManager, ShapeSearchTree};
 pub use structure::{
@@ -55,7 +46,6 @@ pub use structure::{
     ShapeAndEntrySide, ShapeEntrySide, Unit, free_trace_tree_shapes,
 };
 
-/// Re-exports every public type of the crate, for `use fr_board::prelude::*;`.
 pub mod prelude {
     pub use crate::{
         AngleRestriction, AutorouteInfo, Board, BoardError, BoardLibrary, BoardOutline, BoardRules,
@@ -63,14 +53,14 @@ pub mod prelude {
         ClearanceViolation, Communication, Component, ComponentObstacleArea, ComponentOutline,
         Components, ConductionArea, Connectable, ConnectableRef, ConnectionId,
         DEFAULT_MAX_TREE_SHAPE_WIDTH, DefaultItemClearanceClasses, DelaunayCorner, DelaunayEdge,
-        DrillItemData, DrillItemPadstackLookup, FixedState, Item, ItemClass, ItemCtx, ItemHeader,
-        ItemId, ItemIdGenerator, ItemKind, ItemLookup, Keepout, Layer, LayerStructure, LeafId,
-        LogicalPart, LogicalParts, MAX_NORMALIZATION_DEPTH, MAX_NORMALIZE_ITERATIONS, Net,
-        NetClass, NetClassId, NetClasses, Nets, NoRooms, Node, NodeId, ObstacleArea,
-        ObstacleAreaData, ObstacleRoomId, Package, PackagePin, Packages, Padstack, PadstackId,
-        PadstackLookup, Padstacks, PartPin, Pin, PlanarDelaunayTriangulation, PolylineTrace,
-        RoomId, RoomLookup, SearchTreeManager, ShapeAndEntrySide, ShapeEntrySide, ShapeSearchTree,
-        ShapeTraceEntries, ShapeTree, StopCheck, StopConnectionOption, TimeLimit,
+        DrcConstraints, DrcSeverity, DrillItemData, DrillItemPadstackLookup, FixedState, Item,
+        ItemClass, ItemCtx, ItemHeader, ItemId, ItemIdGenerator, ItemKind, ItemLookup, Keepout,
+        Layer, LayerStructure, LeafId, LogicalPart, LogicalParts, MAX_NORMALIZATION_DEPTH,
+        MAX_NORMALIZE_ITERATIONS, Net, NetClass, NetClassId, NetClasses, Nets, NoRooms, Node,
+        NodeId, ObstacleArea, ObstacleAreaData, ObstacleRoomId, Package, PackagePin, Packages,
+        Padstack, PadstackId, PadstackLookup, Padstacks, PartPin, Pin, PlanarDelaunayTriangulation,
+        PolylineTrace, RoomId, RoomLookup, SearchTreeManager, ShapeAndEntrySide, ShapeEntrySide,
+        ShapeSearchTree, ShapeTraceEntries, ShapeTree, StopCheck, StopConnectionOption, TimeLimit,
         TraceExitRestriction, TreeEntries, TreeEntry, TreeId, TreeObject, Unit, Via, ViaInfo,
         ViaInfoId, ViaInfos, ViaObstacleArea, ViaRule, ViaRuleId, WriteResolution,
         compare_to_ignore_case, equals_ignore_case, free_trace_tree_shapes, java_to_lower,

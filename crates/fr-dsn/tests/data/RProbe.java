@@ -9,21 +9,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-/**
- * The JVM half of `crates/fr-dsn/tests/rules_round_trip.rs`: reads a `.dsn` with the pinned 2.3.0
- * jar, applies a `.rules` file on top of it with `RulesReader.read`, and prints every piece of
- * rules state the port has to reproduce — or, in `write` mode, hands the board straight to
- * `RulesWriter.write` so the port's bytes can be diffed against Java's.
- *
- * <pre>
- * export PATH=/opt/homebrew/opt/openjdk@25/bin:$PATH
- * javac -cp tools/freerouting-2.3.0.jar -d /tmp/rprobe crates/fr-dsn/tests/data/RProbe.java
- * java -Djava.awt.headless=true -cp tools/freerouting-2.3.0.jar:/tmp/rprobe \
- *     RProbe dump  &lt;in.dsn&gt; &lt;in.rules|-&gt; &lt;designName&gt;
- * java -Djava.awt.headless=true -cp tools/freerouting-2.3.0.jar:/tmp/rprobe \
- *     RProbe write &lt;in.dsn&gt; &lt;in.rules|-&gt; &lt;designName&gt;
- * </pre>
- */
 public final class RProbe {
   static final class Gen implements IdentificationNumberGenerator {
     private int last = 0;
@@ -67,10 +52,6 @@ public final class RProbe {
       return;
     }
     if (mode.equals("writesettings")) {
-      // The 2.3.0 `RulesWriter.write` has no `RouterSettings` overload (the clone's HEAD added
-      // one, RulesWriter.java:54-68), so `writeRules` is replayed here against the same public
-      // scope writers with `autorouteSettings` non-null. The settings values are
-      // `RulesRoundTripTest.rulesRoundTripWithAutorouteSettings`' (RulesRoundTripTest.java:51-63).
       app.freerouting.settings.RouterSettings settings = new app.freerouting.settings.RouterSettings();
       settings.setLayerCount(board.get_layer_count());
       settings.set_via_costs(75);
@@ -90,11 +71,6 @@ public final class RProbe {
     }
 
     if (mode.equals("divergence")) {
-      // The `ViaInfoId` re-pointing divergence (docs/java-quirks.md, the open Plan 6/7
-      // obligation row): after `RulesReader.applyViaInfo` replaces an existing via info, what do
-      // the board's *via rules* still reach? Java's rules hold object references, so they keep
-      // the removed original; this port's hold indices and reach the replacement. Printing the
-      // identity hash makes the "detached object" concrete.
       for (ViaRule r : board.rules.via_rules) {
         for (int i = 0; i < r.via_count(); i++) {
           ViaInfo v = r.get_via(i);
@@ -187,7 +163,6 @@ public final class RProbe {
     out.println("pinedge " + board.rules.get_pin_edge_to_turn_dist());
   }
 
-  /** `RulesWriter.writeRules` (RulesWriter.java:74-103) with `autorouteSettings` non-null. */
   static void writeRulesWithSettings(
       BasicBoard board,
       app.freerouting.settings.RouterSettings settings,

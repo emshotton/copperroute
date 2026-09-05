@@ -6,4 +6,5 @@ license.workspace = true
 
 [dependencies]
 fr-geometry = { path = "../fr-geometry" }
+num-bigint.workspace = true
 thiserror.workspace = true

@@ -73,31 +73,52 @@ Three things about it are unlike the rest of the crate:
   Gson's three-way distinction between an absent key (the Java field
   initializer survives), an explicit `null` (a reference field is cleared, a
   primitive is left alone) and a value.
-- **`java.util.HashSet` iteration order is a parity surface.** `readBoard`
-  numbers every auto-registered net in the order a `HashSet<String>` hands the
-  names back, so `reader.rs` rebuilds `HashMap`'s bucket layout. Quirk #280.
+- ~~**`java.util.HashSet` iteration order is a parity surface.**~~ It was:
+  `readBoard` numbers every auto-registered net in the order a
+  `HashSet<String>` hands the names back, so the reader used to rebuild
+  `HashMap`'s bucket layout. **Fixed in Plan 9 Task 7** (quirk #280) — the
+  numbering is first-reference order, which is Java's own one-word fix
+  (`LinkedHashSet`), and the emulation is dead code awaiting Task 24.
+- **A malformed board is refused at the DTO boundary.** A `null` where the
+  board needs a name — a layer, a net class, a net, a component reference, a
+  pad — and a `null` array element are refused by
+  `KiCadBoardJson::validate` with a diagnostic naming the file, the section
+  and the object. Java stores each of them and dies hundreds of lines later
+  inside a JDK collection, or (for the array element) never. Plan 9 Task 7,
+  quirks #282, #283, #287.
+- **A pad's padstack is keyed on its shapes and its drill, not on its
+  generated name.** The name encodes neither the layer span nor the drill, so
+  in Java the second pad to generate a name inherits the first one's shapes
+  and its `attachAllowed`. Plan 9 Task 7, quirk #284; the name is a display
+  artefact and `unique_padstack_name` keeps it unique.
 - **The clearance matrix it builds is asymmetric on purpose.** Quirk #83's
   J-then-I `setValue`/`getValue` indexing, plus the fact that `readBoard`
   writes only one of each pair, means `getValue(1, 2, …)` and
   `getValue(2, 1, …)` genuinely differ on a KiCad board. Do not "fix" it.
 
-Ground truth is `tests/data/p8t8-kicad-read-a.txt`, the byte-exact stdout of
-`scripts/differential/java/probes/P8T8Probe.java` on 24 inputs — the seven
+The jar's rows are `tests/data/p8t8-kicad-read-a.txt`, the byte-exact stdout
+of `scripts/differential/java/probes/P8T8Probe.java` on 24 inputs — the seven
 real KiCad board-JSON files under the Java checkout's `fixtures/` plus
-seventeen synthetic payloads. `tests/kicad_reader.rs` re-emits the same rows
-from the Rust board: 995 of 996 match, and the one that does not is an
-`XDIFF` entry naming quirk #277 (a malformed payload's `ParseError.detail` is
-the JSON parser's own prose, Gson's on one side and `serde_json`'s on the
-other).
+seventeen synthetic payloads — and `tests/data/p8t8-kicad-read-b.txt`, the
+same probe's **part B** (`P8T8Probe b`): those 24 plus 43 more that reach
+sections 9-11's own arms, with `[s9]` rows carrying the whole item graph —
+every padstack with its per-layer shape, every package with every pin, every
+component, and every item in `board.getItems()` order (descending id, quirk
+#63). Neither file has changed since Task 9 cut it, and neither will: they
+are the record of what the jar does.
 
-Task 9 added the probe's **part B** (`P8T8Probe b`, transcript
-`tests/data/p8t8-kicad-read-b.txt`): the same 24 inputs plus 43 more that
-reach sections 9-11's own arms, and `[s9]` rows carrying the whole item graph
-— every padstack with its per-layer shape, every package with every pin,
-every component, and every item in `board.getItems()` order (descending id,
-quirk #63). 2 775 rows, 2 767 identical, 8 `XDIFF`, 0 unexplained. Part A's transcript is
-byte-identical across the change: the probe emits its part-A rows only when
-invoked with no argument.
+**Plan 9 Task 7 moved the family to the port lane** (ruling BT). Six of the
+things the jar does on this path are wrong, and the port now does something
+else on 172 of the 3 771 rows (and emits 67 fewer, because a refusal is one row
+where a board was many — 239 in the symmetric difference, over 26 stems) — so
+the acceptance test is against
+`tests/data/p9t7-kicad-read-{a,b}.txt`, the **port's** rows over the same
+inputs, and a second test diffs the two files and requires every diverging
+stem to appear in `kicad_reader.rs`'s `KNOWN_DIVERGENCES` with the register
+row that authorizes it (and every listed stem to still diverge). Both sides
+are pinned; drift fails both ways. `tests/data/p9t7-kicad-writer.txt` is the
+same arrangement for the writer, where one stem of nine moves — `ecc83-v1`,
+whose thirteen nets are all auto-registered and therefore renumbered by #280.
 
 ## What is *not* here
 

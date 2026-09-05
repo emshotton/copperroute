@@ -1,5 +1,3 @@
-//! Port of `board/optimize/TraceTightener45.java` (674 lines): the 45-degree regime.
-
 use fr_board::prelude::*;
 use fr_geometry::limits::SQRT2;
 use fr_geometry::{
@@ -7,45 +5,28 @@ use fr_geometry::{
     java_max, java_min,
 };
 
-use super::base::{TightenerBase, new_polyline, new_polyline_in_place};
+use super::base::{TightenerBase, new_polyline, new_polyline_normalised};
 
-/// `class TraceTightener45 extends TraceTightener` (TraceTightener45.java:21).
-///
-/// Like [`TraceTightener90`](super::TraceTightener90) it adds no state — the constructor
-/// (`:24-32`) is a bare `super(...)` call.
 pub struct TraceTightener45<'a> {
     pub(crate) base: TightenerBase<'a>,
 }
 
 impl<'a> TraceTightener45<'a> {
-    /// Port of the constructor `TraceTightener45(RoutingBoard, int[], Stoppable, int, Point, int)`
-    /// (TraceTightener45.java:24-32).
     pub(crate) fn new(base: TightenerBase<'a>) -> TraceTightener45<'a> {
         TraceTightener45 { base }
     }
 
-    /// Port of `getAngleRestriction()` (TraceTightener45.java:47-49) — a package-private accessor
-    /// with no caller anywhere in the Java tree, kept because the class declares it.
-    // pub seam: none, in Java or here — deliberate, and the doc above says why.
     pub fn get_angle_restriction(&self) -> AngleRestriction {
         AngleRestriction::FortyFiveDegree
     }
 
-    /// Port of `pullTight(Polyline)` (TraceTightener45.java:35-45). See
-    /// [`TraceTightener90::pull_tight`](super::TraceTightener90::pull_tight) for why `changed`
-    /// is Java's reference comparison.
     pub(crate) fn pull_tight(
         &mut self,
         board: &mut Board,
         polyline: &Polyline,
     ) -> Option<Polyline> {
-        // :36. `ever_changed` is seeded from this arm, not from the loop — see
-        // [`TraceTightener90::pull_tight`](super::TraceTightener90::pull_tight) for why the
-        // `avoidAcidTraps` result counts as a change in its own right. Dead today (quirk #182).
-        let (mut new_result, mut ever_changed) = match self.base.avoid_acid_traps(polyline) {
-            Some(replacement) => (replacement, true),
-            None => (polyline.clone(), false),
-        };
+        let mut new_result = polyline.clone();
+        let mut ever_changed = false;
         // :37-38.
         let mut changed = true;
         while changed && !self.base.is_stop_requested() {
@@ -74,13 +55,6 @@ impl<'a> TraceTightener45<'a> {
         if ever_changed { Some(new_result) } else { None }
     }
 
-    /// Port of the private `reduceCorners(Polyline)` (TraceTightener45.java:52-221): "tries to
-    /// reduce the amount of corners of polyline. Return polyline, if nothing was changed."
-    ///
-    /// Java's `newCorners` array is sized `polyline.lines.length - 3` (`:75`) and written at
-    /// `:202`, and it cannot overflow: `cornerIndex` runs over `[3, L - 2]` and every pass
-    /// advances it by 1 or 2, so there are at most `L - 4` passes, each writing at most one slot
-    /// from index 1 — the largest index written is `L - 4`, the last valid one.
     fn reduce_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
         let line_count = polyline.lines().len();
         // :53-55.
@@ -125,21 +99,6 @@ impl<'a> TraceTightener45<'a> {
             {
                 corner_index += 1;
                 current_corner[2] = current_corner[3].clone();
-                // Java bug: `TraceTightener45.reduceCorners` copies `currentCornerInClipShape[3]` onto slot 2 at `:91` while `currentCorner[3]` was replaced at `:81` and the flag is only recomputed at `:100-101`, so the flag belongs to the *previous* corner. See docs/java-quirks.md #184.
-                // obligation: quirk #184's own condition is still unexercised. Plan 7 Task 8
-                // made the *clip-shape path* reachable —
-                // `RoutingBoardExt::remove_items_and_pull_tight` with
-                // `0 < tidyWidth < i32::MAX` is the only caller in either language that
-                // hands `TraceTightener` a real octagon, and
-                // `batch_autorouter.rs`'s
-                // `remove_items_and_pull_tight_hands_the_tightener_a_live_clip_octagon`
-                // pins it — but instrumenting this statement showed it reached **only**
-                // with `current_clip_shape == None`, where stale and fresh are trivially
-                // equal in Java too. Closing it needs a board whose clip octagon cuts
-                // through a corner the `:85-99` skip block actually skips (a duplicate
-                // corner, or a collinear middle corner) so that the stale flag and the
-                // fresh one differ; then the two translate attempts at `:103-105` and
-                // `:148-151` can be shown to take different branches.
                 current_corner_in_clip_shape[2] = current_corner_in_clip_shape[3];
                 if corner_index < line_count - 1 {
                     current_corner[3] = polyline
@@ -214,8 +173,6 @@ impl<'a> TraceTightener45<'a> {
                 current_corner_in_clip_shape[1] = !self.base.clip_is_outside(&current_corner[1]);
                 if board.changed_area.is_some() {
                     let layer = self.base.current_layer;
-                    // :197-199: Java joins `newCorner` and `currentCorner[1]`, which `:193` has
-                    // just made the same point, and then `currentCorner[2]`.
                     board.join_changed_area(&moved.to_float(), layer);
                     let corner1 = current_corner[1].to_float();
                     board.join_changed_area(&corner1, layer);
@@ -316,9 +273,6 @@ impl<'a> TraceTightener45<'a> {
         self.base.check(board, &shape_to_check)
     }
 
-    /// Port of the private `smoothenCorners(Polyline)` (TraceTightener45.java:227-267):
-    /// "smoothens the 90 degree corners of polyline to 45 degree by cutting off the 90 degree
-    /// corner. The cutting off is so small that no check is needed."
     fn smoothen_corners(&mut self, board: &mut Board, polyline: &Polyline) -> Option<Polyline> {
         // :228-229.
         let mut result: Option<Polyline> = None;
@@ -368,10 +322,6 @@ impl<'a> TraceTightener45<'a> {
         result
     }
 
-    /// Port of the private `smoothenSharpCorner(Line[], int)` (TraceTightener45.java:275-310):
-    /// "adds a line at `no` to smoothen a 90 degree corner between line1 and line2 to 45 degree.
-    /// The distance of the new line to the corner will be so small that no clearance check is
-    /// necessary."
     fn smoothen_sharp_corner(
         &mut self,
         board: &mut Board,
@@ -419,9 +369,6 @@ impl<'a> TraceTightener45<'a> {
         Some(result)
     }
 
-    /// Port of the private `smoothenNonIntegerCorner(Line[], int)` (TraceTightener45.java:
-    /// 316-368): "smoothens with a short axis parallel line to remove a non integer corner of two
-    /// intersecting diagonal lines. Returns null, if that is not possible."
     fn smoothen_non_integer_corner(&mut self, lines: &[Line], no: usize) -> Option<Line> {
         // :317-324.
         let prev_line = lines[no];
@@ -481,10 +428,6 @@ impl<'a> TraceTightener45<'a> {
         )
     }
 
-    /// Port of the private `smoothenCorner(Line[], int)` (TraceTightener45.java:376-459): "adds a
-    /// line at `no` to smoothen a 90 degree corner between line1 and line2 to 45 degree. The
-    /// distance of the new line to the corner will be so big that a clearance check is
-    /// necessary."
     fn smoothen_corner(&mut self, board: &mut Board, lines: &[Line], no: usize) -> Option<Line> {
         // :377-383.
         let prev_corner = lines[no].intersection_approx(&lines[no - 1]);
@@ -534,9 +477,9 @@ impl<'a> TraceTightener45<'a> {
                 || new_line_side_of_nearest_corner == Side::Collinear
             {
                 // :420-432. `new Polyline(checkLines)` normalises **checkLines itself**, and
-                // `:435` reads element 1 back out of it — see `new_polyline_in_place`.
-                let mut check_lines = vec![check_line_0, new_line, check_line_2];
-                let tmp = new_polyline_in_place(&mut check_lines);
+                // `:435` reads element 1 back out of it — see `new_polyline_normalised`.
+                let check_lines = vec![check_line_0, new_line, check_line_2];
+                let (tmp, check_lines) = new_polyline_normalised(&check_lines);
                 let new_line = check_lines[1];
                 if tmp.lines().len() == 3 {
                     let shape_to_check = tmp
@@ -580,7 +523,6 @@ impl<'a> TraceTightener45<'a> {
         result
     }
 
-    /// Port of `smoothenStartCornerAtTrace(PolylineTrace)` (TraceTightener45.java:462-565).
     pub(crate) fn smoothen_start_corner_at_trace(
         &mut self,
         board: &mut Board,
@@ -653,7 +595,6 @@ impl<'a> TraceTightener45<'a> {
         None
     }
 
-    /// Port of `smoothenEndCornerAtTrace(PolylineTrace)` (TraceTightener45.java:568-673).
     pub(crate) fn smoothen_end_corner_at_trace(
         &mut self,
         board: &mut Board,
@@ -776,7 +717,6 @@ pub(crate) fn acute_add_line(
         .abs();
     translate_dist = java_min(translate_dist, prev_corner_dist);
     translate_dist = java_min(translate_dist, other_dist);
-    // Plan 7 Task 8b's level-7 ledger — `SSCA`. Off unless `P7T8B_OCA` is set; stderr only.
     if super::p7t8b_oca_ledger() {
         eprintln!(
             "SSCA newDir={new_line_dir:?} tline={} hw={current_half_width} \

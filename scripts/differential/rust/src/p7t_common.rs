@@ -183,7 +183,11 @@ pub fn run_pass_with(
 pub fn dump_autoroute_items<W: Write>(out: &mut W, router: &BatchAutorouter<'_>, board: &Board) {
     let (items, real_handled) = router.autoroute_items_with_handled(board);
     writeln!(out, "COUNT {}", items.len()).expect("write");
-    for (ordinal, id) in items.iter().enumerate() {
+    // fixed: T9 (#213) — the work list carries `(item, qualifying net)` pairs now. The `ITEM`
+    // line's **shape is unchanged** on purpose: no corpus board has a multi-net candidate, so the
+    // pairs are one per item and the transcript is byte-identical to the pre-fix one. Printing
+    // the net here would move every line of every stem for a change no stem exercises.
+    for (ordinal, (id, _qualifying_net)) in items.iter().enumerate() {
         let item = board.get_item(*id).expect("the list holds live items");
         let nets: Vec<String> = (0..item.net_count())
             .map(|i| item.get_net_number(i).to_string())
@@ -293,15 +297,21 @@ pub fn transcribe_run_single_thread<W: Write>(
     let mut items_to_go_count = autoroute_item_list.len() as i32;
     let mut k = 0usize;
 
-    // :202.
-    for current_item in autoroute_item_list {
+    // :202 — one turn per `(item, qualifying net)` pair since quirk #213's fix.
+    for (current_item, pair_net_no) in autoroute_item_list {
         // :203-205.
         if state.stop.is_stop_auto_router_requested() {
             break;
         }
-        // :207.
-        let net_count = board.get_item(current_item).map_or(0, |i| i.net_count());
-        for i in 0..net_count {
+        // :207 — Java's fresh `0..netCount()` walk, gone with quirk #213. The `netIndex` field
+        // stays in the JSON and is the position of the qualifying net in the item's own net list,
+        // which on every corpus board is `0` — the value the pre-fix walk printed.
+        let i: i64 = board.get_item(current_item).map_or(-1, |item| {
+            (0..item.net_count())
+                .find(|k| item.get_net_number(*k) == pair_net_no)
+                .map_or(-1, |k| k as i64)
+        });
+        {
             // :208-210.
             if state.stop.is_stop_auto_router_requested() {
                 break;
@@ -315,7 +325,11 @@ pub fn transcribe_run_single_thread<W: Write>(
                     router.total_items_routed
                 )
                 .expect("write");
-                state.stop.request_stop();
+                // fixed: T9 (#202) — the real `AutoroutePassRunner` calls
+                // `request_stop_auto_router()` here where Java's `:219` calls `requestStop()`, so
+                // the transcription follows it. A `p7t2` MISMATCH confined to what the stop flag
+                // reads after a `maxItems` run is that fix, not the port drifting.
+                state.stop.request_stop_auto_router();
                 break;
             }
             // :222-223.
@@ -326,9 +340,7 @@ pub fn transcribe_run_single_thread<W: Write>(
             let mut ripped_item_list: BTreeSet<ItemId> = BTreeSet::new();
             let mut ripped_item_costs: BTreeMap<ItemId, i32> = BTreeMap::new();
 
-            let route_net_no = board
-                .get_item(current_item)
-                .map_or(-1, |item| item.get_net_number(i));
+            let route_net_no = pair_net_no;
             let mut sb = format!(
                 "{{\"k\":{k},\"item\":{},\"netIndex\":{i},\"net\":{route_net_no}",
                 current_item.0

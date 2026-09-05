@@ -8,23 +8,23 @@ INIT anyRoutable=true
 STATE STARTED
 INITIAL-UNROUTED 160
 FANOUT enabled=true smdPins=193
-FANOUT-SUMMARY completedPassCount=4 isTimedOut=false escapeTotalSmdPins=157 escapedCount=142 escapedPercentage=90.44585987261146 fanoutTimedOut=false items=479 traces=186 vias=59 incompletes=82 traceLength="4173088.447045183"
-ROUTER-ENABLED true unrouted=82
+FANOUT-SUMMARY completedPassCount=5 isTimedOut=false escapeTotalSmdPins=157 escapedCount=141 escapedPercentage=89.80891719745223 fanoutTimedOut=false items=481 traces=186 vias=61 incompletes=84 traceLength="4129687.509088539"
+ROUTER-ENABLED true unrouted=84
 STATE RUNNING pass=1
-HIST-ADD pass=1 scoreBefore=487.49448 size=1 maxScore=487.49448
-PASS-RET pass=1 continueAutorouting=true scoreAfter=818.7422
-RESTORE-GATE pass=1 sizeGate=false modGate=false maxScore=487.49448 fires=false
-PASS pass=1 score=818.7422 incompletes=29 violations=0 vias=54 traces=243
+HIST-ADD pass=1 scoreBefore=474.99445 size=1 maxScore=474.99445
+PASS-RET pass=1 continueAutorouting=true scoreAfter=812.4924
+RESTORE-GATE pass=1 sizeGate=false modGate=false maxScore=474.99445 fires=false
+PASS pass=1 score=812.4924 incompletes=30 violations=0 vias=55 traces=243
 STAGNATION pass=1 counter=0 lastBest=-Infinity globalBest=-Infinity passOfBest=0
 STATE RUNNING pass=2
-HIST-ADD pass=2 scoreBefore=818.7422 size=2 maxScore=818.7422
-PASS-RET pass=2 continueAutorouting=true scoreAfter=893.74133
-RESTORE-GATE pass=2 sizeGate=false modGate=false maxScore=818.7422 fires=false
-PASS pass=2 score=893.74133 incompletes=17 violations=0 vias=55 traces=258
+HIST-ADD pass=2 scoreBefore=812.4924 size=2 maxScore=812.4924
+PASS-RET pass=2 continueAutorouting=true scoreAfter=887.4913
+RESTORE-GATE pass=2 sizeGate=false modGate=false maxScore=812.4924 fires=false
+PASS pass=2 score=887.4913 incompletes=18 violations=0 vias=57 traces=257
 STAGNATION pass=2 counter=0 lastBest=-Infinity globalBest=-Infinity passOfBest=0
 MAXPASSES-BREAK pass=3 maxPasses=2
-FINAL-SWAP currentFinalScore=893.74133 bestHistoryScore=818.7422 swapped=false
+FINAL-SWAP currentFinalScore=887.4913 bestHistoryScore=812.4924 swapped=false
 TAILS wasRouterRun=true removeUnconnectedVias=false continueAutorouting=true stopAutoRouterRequested=true fires=false
 RESULT state=CANCELLED passesRun=3 continueRouting=false stopRequested=false stopAutoRouterRequested=true
-TRANSCRIPT returned=false items=547 traces=258 vias=55 incompletes=17 traceLength="1.6308813285283038E7"
+TRANSCRIPT returned=false items=548 traces=257 vias=57 incompletes=18 traceLength="1.5563329101249386E7"
 [board] (elided — the board is batch.ses)

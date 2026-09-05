@@ -898,13 +898,11 @@ Four places the port's shape differs from Java's, each forced:
    that distinction the port would build drills where Java builds none — see
    quirk #169.
 
-Two transcriptions that look like tidying opportunities and are not: the
-`ceil` chain of `DrillPageArray.java:37-41` recomputes `pageWidth` from
-`columnCount` rather than reusing `maxPageWidth`, and `overlappingPages`'
-loops compare an `int` counter against a **`double`** bound (`:81-88`).
-`overlapping_pages_uses_javas_mixed_loop_bounds`
-(`crates/fr-router/tests/drill.rs`) is the test that fails if the second is
-"cleaned up" to an `int`.
+The `ceil` chain of `DrillPageArray.java:37-41` recomputes `pageWidth` from
+`columnCount` rather than reusing `maxPageWidth`. The port deliberately differs
+from `overlappingPages`' mixed integer/double bounds: it uses inclusive integer
+bounds so a boundary contact reaches both pages. The behavior is pinned by
+`overlapping_pages_include_boundary_contacts` in `crates/fr-router/tests/drill.rs`.
 
 `DrillPage::obstacle_cutout_trace` is the one added API with no Java
 counterpart. It is a **view** of the cut-out loop `get_drills` runs, not a copy,
@@ -1188,19 +1186,22 @@ the five services they read off it (net number, tree id,
 `generateRoomIdNo`, `removeAllDoors`, `addIncompleteExpansionRoom`), so Task 6's
 engine can call it without any signature here changing.
 
-**Plan-6 ruling 4 says the neighbour set is a `BTreeSet`. It cannot be.**
-`SortedRoomNeighbour.compareTo` is not a total order, and on such a comparator
-`std`'s `BTreeSet` and Java's `TreeSet` keep *different* elements and iterate
-the survivors in *different* orders — both measured, against the HEAD jar, by
+**Plan-6 ruling 4 says the neighbour set is a `BTreeSet`. It could not be, and
+Plan 9 Task 8 is what makes it possible again.** `SortedRoomNeighbour.compareTo`
+was not a total order, and on such a comparator `std`'s `BTreeSet` and Java's
+`TreeSet` keep *different* elements and iterate the survivors in *different*
+orders — both measured, against the HEAD jar, by
 `scripts/differential/run.sh p6t3 3`. The container is therefore
 `crates/fr-router/src/java_tree_set.rs`'s `JavaTreeSet`, a transcription of
 `java.util.TreeMap`'s red-black `put`, `fixAfterInsertion` and in-order
-traversal. Quirk row #160 records the measurement; the test
-`the_comparator_is_not_transitive_and_drops_the_same_neighbour_java_does` pins
-both the Java answer and the `BTreeSet` answer so the choice cannot be
-"simplified" away. **Task 8's `MazeListElement` queue should re-check the same
-question** before reusing `BTreeSet`: ruling 4 also prescribes one there, and its
-comparator has a documented five-way `Equal` (quirk #156).
+traversal. Quirk row #160 records the measurement.
+
+**Task 8 (#160 + #161) made the comparator a total order** — see that row — so
+the two containers now keep the same elements in the same order, which
+`the_neighbour_comparator_is_a_total_order` asserts over 2 000 generated cases
+in both. The `JavaTreeSet` **stays** here until Task 24 collects the swap; the
+obstacle to it is gone, not the container. **Task 8's `MazeListElement` queue
+answers the same question in the same commit series** (quirk #171).
 
 `scripts/differential/run.sh p6t3` covers the class in ten modes: `0`/`4` are
 `calculateNeighbours` over a random board (`4` snaps the obstacles to a grid,
@@ -1589,12 +1590,6 @@ whether the trace changed at all. Every step in this module therefore answers
 `Option`'s discriminant **is** Java's `!=`. Several steps rebuild a polyline
 that happens to be value-equal to their input, so a value comparison would loop
 where Java stops (and stop where Java loops).
-
-**The tighteners do not need `springOverObstacles`, and quirk #182 is why.**
-`TraceTightener.avoidAcidTraps` is the family's only caller of it, and its first
-statement is `if (true) { return polyline; }` — the whole body below is dead.
-(`springOverObstacles` itself arrived one task later, from the *other* side —
-`insertForcedTracePolyline` calls it; see the next section.)
 
 **Quirk #34 is discharged here.** Java's four `Line.equals` call sites are
 `Simplex.borderLineIndex` (done in Plan 1) and three tightener sites —
@@ -2491,8 +2486,8 @@ the following sweep see a stale region.
 **The `ViaOptimizer` arm is complete as of Task 7.** `:160-165` calls
 `ViaOptimizer::opt_via_location` for real, and Task 7's three `repositionVia`
 overloads closed the last gap under it, so `p7t3` **mode 4** (vias offered to the
-optimiser) is 0 diffs on all three boards and lives inside
-`opt_changed_area.rs`'s `the_whole_sweep_matches_the_jvm_on_a_real_board` loop.
+optimiser) lives inside
+`opt_changed_area.rs`'s `the_whole_sweep_matches_the_expected_real_board_transcripts` loop.
 Task 6's `#[should_panic]` sentinel is deleted. No `engine` is threaded into
 `opt_via_location`: none of the three things it calls — `DrillItemMover::insert`,
 `DrillItemMover::check`, `PolylineTraceExt::pull_tight` — takes one, because Java's
@@ -2635,7 +2630,7 @@ every sentinel:
 
 | sentinel | Task 6 | Task 7 |
 |---|---|---|
-| `opt_changed_area.rs` `mode_four_is_task_sevens_obligation` | `#[should_panic(expected = "repositionVia overload A")]` | **deleted**; mode 4 is inside `the_whole_sweep_matches_the_jvm_on_a_real_board`'s loop |
+| `opt_changed_area.rs` `mode_four_is_task_sevens_obligation` | `#[should_panic(expected = "repositionVia overload A")]` | **deleted**; mode 4 is inside `the_whole_sweep_matches_the_expected_real_board_transcripts`' loop |
 | `via_optimizer.rs` `the_only_divergence_is_repositionvia` | eight via ids named as expected divergences | **equality pin**: those same eight rows are asserted identical |
 | `via_optimizer.rs` `a_plane_via_reaches_task_sevens_guard` | both entry points must panic | `a_plane_via_moves_through_overload_a`: via 187 -> `(932812,1011224)`, via 84 -> `(1016000,3119161)` |
 | `via_optimizer.rs` `the_matching_runs_match_the_jvm_row_for_row` | seven of nine board sections | **all nine** |

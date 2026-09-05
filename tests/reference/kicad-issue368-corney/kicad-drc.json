@@ -1,0 +1,175 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-04T22:48:04",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "key": "pth_inside_courtyard"
+        },
+        {
+            "description": "NPTH inside courtyard",
+            "key": "npth_inside_courtyard"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning"
+    ],
+    "kicad_version": "10.0.3",
+    "schematic_parity": [],
+    "source": "routed.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [inner_bottom_B] of S16 on B.Cu",
+                    "pos": {
+                        "x": 200.842,
+                        "y": 92.545
+                    },
+                    "uuid": "a0b4bad1-9deb-4920-b4d2-774e4501e7c0"
+                },
+                {
+                    "description": "Pad 2 [inner_bottom_B] of D16 on B.Cu",
+                    "pos": {
+                        "x": 202.4,
+                        "y": 94.65
+                    },
+                    "uuid": "fe985211-3673-4992-9b13-3d4ec7cf0cba"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [inner_home_B] of S17 on B.Cu",
+                    "pos": {
+                        "x": 200.842,
+                        "y": 73.545
+                    },
+                    "uuid": "f59436a0-1151-4fb7-8a22-98887115df5d"
+                },
+                {
+                    "description": "Pad 2 [inner_home_B] of D17 on B.Cu",
+                    "pos": {
+                        "x": 202.4,
+                        "y": 75.65
+                    },
+                    "uuid": "afbfbcb8-82ba-4dc4-923b-083dab829167"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [C5] of S17 on B.Cu",
+                    "pos": {
+                        "x": 187.915,
+                        "y": 76.085
+                    },
+                    "uuid": "3e2c030e-6811-4c9a-9fd1-2ff6d0bfc702"
+                },
+                {
+                    "description": "Pad 1 [C5] of S16 on B.Cu",
+                    "pos": {
+                        "x": 187.915,
+                        "y": 95.085
+                    },
+                    "uuid": "96b97318-f12e-4d83-96a0-1d8c828cd34e"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "The current configuration does not include the footprint library 'ceoloide'",
+            "items": [
+                {
+                    "description": "Footprint D16",
+                    "pos": {
+                        "x": 202.4,
+                        "y": 96.3
+                    },
+                    "uuid": "14104a24-aa69-45a2-87f6-38f101fdc446"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'ceoloide'",
+            "items": [
+                {
+                    "description": "Footprint D17",
+                    "pos": {
+                        "x": 202.4,
+                        "y": 77.3
+                    },
+                    "uuid": "1eff3eac-7c11-4ab8-9843-23115efe6084"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'ceoloide'",
+            "items": [
+                {
+                    "description": "Footprint S16",
+                    "pos": {
+                        "x": 195.0,
+                        "y": 97.625
+                    },
+                    "uuid": "365fff8d-5473-4b6e-8cb0-6644882c51bd"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'ceoloide'",
+            "items": [
+                {
+                    "description": "Footprint S17",
+                    "pos": {
+                        "x": 195.0,
+                        "y": 78.625
+                    },
+                    "uuid": "81c2bf5b-ef53-4fd3-9c96-cec46a511d59"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        }
+    ]
+}

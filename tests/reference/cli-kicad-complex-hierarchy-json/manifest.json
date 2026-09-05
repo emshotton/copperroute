@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-03T06:49:14.874725Z",
+  "generated_at": "2026-09-05T02:18:17.330496Z",
   "app_version": "2.3.1-SNAPSHOT",
   "git_sha": "unknown",
   "fixture": {
@@ -53,16 +53,17 @@
       "unrouted_net_penalty": 5000000.0,
       "clearance_violation_penalty": 1000000.0,
       "bend_penalty": 10.0,
-      "default_bend_cost": 0.0
+      "default_bend_cost": 0.0,
+      "smd_via_cost_factor": 0.1
     },
     "max_threads": 7,
-    "result_json": "<OUT>/kicad-complex-hierarchy-json.manifest.json"
+    "result_json": "/var/folders/w3/ts5st7dx3n9byscpknnt1fh00000gn/T/fr-cli-e2e/ref-kicad-complex-hierarchy-json/manifest.json"
   },
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 5.361,
-      "passes_completed": 2
+      "duration_seconds": 2.3,
+      "passes_completed": 3
     },
     "optimizer": {}
   },
@@ -89,8 +90,8 @@
     },
     "items": {
       "total_count": 285,
-      "trace_count": 119,
-      "via_count": 0,
+      "trace_count": 118,
+      "via_count": 1,
       "conduction_area_count": 0,
       "drill_item_count": 0,
       "pin_count": 165,
@@ -112,25 +113,25 @@
       "incomplete_count": 0
     },
     "traces": {
-      "total_count": 119,
-      "total_segment_count": 264,
-      "total_length": 1.3379389E7,
-      "total_length_mm": 1337.9388,
-      "total_weighted_length": 5.5892963E10,
-      "average_length": 112431.84,
-      "total_vertical_length": 2701752.0,
-      "total_horizontal_length": 4108949.0,
-      "total_angled_length": 4332053.5
+      "total_count": 118,
+      "total_segment_count": 265,
+      "total_length": 1.3547519E7,
+      "total_length_mm": 1354.752,
+      "total_weighted_length": 5.6805724E10,
+      "average_length": 114809.484,
+      "total_vertical_length": 3176552.0,
+      "total_horizontal_length": 3862511.0,
+      "total_angled_length": 3884750.2
     },
     "bends": {
-      "total_count": 145,
-      "90_degree_count": 0,
-      "45_degree_count": 145,
+      "total_count": 147,
+      "90_degree_count": 1,
+      "45_degree_count": 146,
       "other_angle_count": 0
     },
     "vias": {
-      "total_count": 0,
-      "through_hole_count": 0,
+      "total_count": 1,
+      "through_hole_count": 1,
       "blind_count": 0,
       "buried_count": 0
     },
@@ -146,7 +147,7 @@
       "escaped_count": 0
     }
   },
-  "normalized_score": 935.7093,
+  "normalized_score": 935.7091,
   "resource_usage": {
     "cpu_time": 0.0,
     "max_memory": 0.0,

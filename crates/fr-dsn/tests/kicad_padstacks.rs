@@ -1,0 +1,171 @@
+use fr_board::{Board, PadstackId};
+use fr_dsn::error::BoardReadResult;
+use fr_dsn::kicad::read_board;
+
+fn board(json: &str) -> Board {
+    match read_board(json, None) {
+        BoardReadResult::Success { board: Some(b), .. } => *b,
+        other => panic!("expected a loaded board, got {other:?}"),
+    }
+}
+
+fn parse_error(json: &str) -> (String, String) {
+    match read_board(json, None) {
+        BoardReadResult::ParseError { location, detail } => (location, detail),
+        other => panic!("expected a ParseError, got {other:?}"),
+    }
+}
+
+fn first_pin_padstack(board: &Board, index: usize) -> PadstackId {
+    let component_package = board
+        .components
+        .get(i32::try_from(index).expect("a small index") + 1)
+        .get_package();
+    board
+        .library
+        .packages
+        .get(component_package)
+        .get_pin(0)
+        .expect("the package has a pin")
+        .padstack_no
+}
+
+fn two_pads_on(first: &str, second: &str, drill_a: f64, drill_b: f64) -> String {
+    format!(
+        r#"{{
+        "layers":[{{"name":"F.Cu"}},{{"name":"In1.Cu"}},{{"name":"In2.Cu"}},{{"name":"B.Cu"}}],
+        "components":[
+          {{"reference":"U1","footprint":"FA","position":{{"x":0,"y":0}},
+            "pads":[{{"name":"1","shape":"rect","size":{{"x":1.0,"y":1.0}},
+                     "drill":{drill_a},"layers":[{first}]}}]}},
+          {{"reference":"U2","footprint":"FB","position":{{"x":10,"y":0}},
+            "pads":[{{"name":"1","shape":"rect","size":{{"x":1.0,"y":1.0}},
+                     "drill":{drill_b},"layers":[{second}]}}]}}
+        ]}}"#
+    )
+}
+
+#[test]
+fn two_pads_of_the_same_name_and_different_layers_get_different_padstacks() {
+    let board = board(&two_pads_on(
+        r#""F.Cu","In1.Cu""#,
+        r#""In2.Cu","B.Cu""#,
+        0.0,
+        0.0,
+    ));
+    let first = first_pin_padstack(&board, 0);
+    let second = first_pin_padstack(&board, 1);
+    assert_ne!(
+        first, second,
+        "the two pads span different layers and must not share a padstack"
+    );
+
+    let first = board.library.padstacks.get(first).expect("padstack 1");
+    let second = board.library.padstacks.get(second).expect("padstack 2");
+    assert_eq!(
+        (first.from_layer(), first.to_layer()),
+        (0, 1),
+        "the F.Cu/In1.Cu pad spans layers 0..1"
+    );
+    assert_eq!(
+        (second.from_layer(), second.to_layer()),
+        (2, 3),
+        "the In2.Cu/B.Cu pad spans layers 2..3, not the first pad's 0..1"
+    );
+}
+
+#[test]
+fn two_pads_of_the_same_shapes_and_drill_share_one_padstack() {
+    let board = board(&two_pads_on(
+        r#""F.Cu","In1.Cu""#,
+        r#""F.Cu","In1.Cu""#,
+        0.0,
+        0.0,
+    ));
+    assert_eq!(
+        first_pin_padstack(&board, 0),
+        first_pin_padstack(&board, 1),
+        "identical pads still share a padstack — the fix narrows the key, it does not abolish it"
+    );
+}
+
+#[test]
+fn a_drilled_and_an_undrilled_pad_do_not_share_attach_allowed() {
+    let board = board(&two_pads_on(
+        r#""F.Cu","In1.Cu""#,
+        r#""F.Cu","In1.Cu""#,
+        0.5,
+        0.0,
+    ));
+    let drilled = board
+        .library
+        .padstacks
+        .get(first_pin_padstack(&board, 0))
+        .expect("padstack 1");
+    let undrilled = board
+        .library
+        .padstacks
+        .get(first_pin_padstack(&board, 1))
+        .expect("padstack 2");
+    assert!(drilled.attach_allowed, "the drilled pad allows attachment");
+    assert!(
+        !undrilled.attach_allowed,
+        "the undrilled pad must not inherit the drilled one's attachAllowed"
+    );
+}
+
+#[test]
+fn a_round_pad_name_carries_size_y() {
+    let board = board(
+        r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+            "components":[{"reference":"U1","footprint":"F","position":{"x":0,"y":0},
+              "pads":[{"name":"1","shape":"circle","size":{"x":1.0,"y":2.0},"layers":["F.Cu"]}]}]}"#,
+    );
+    let padstack = board
+        .library
+        .padstacks
+        .get(first_pin_padstack(&board, 0))
+        .expect("the pad's padstack");
+    assert_eq!(padstack.name, "Round[T]Pad_1000x2000_um");
+}
+
+#[test]
+fn an_all_null_shape_array_is_refused_naming_the_pad() {
+    let (location, detail) = parse_error(
+        r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+            "components":[{"reference":"U7","footprint":"F","position":{"x":0,"y":0},
+              "pads":[{"name":"3","shape":"rect","size":{"x":1.0,"y":1.0},
+                       "layers":["Nonexistent.Cu"]}]}]}"#,
+    );
+    assert_eq!(location, "components");
+    assert!(
+        detail.contains("KiCad board JSON file"),
+        "the diagnostic names the file: {detail}"
+    );
+    assert!(
+        detail.contains("pad `3` of component `U7`"),
+        "the diagnostic names the pad: {detail}"
+    );
+    assert!(
+        detail.contains("no shape on any layer"),
+        "the diagnostic says what is wrong: {detail}"
+    );
+    assert!(
+        !detail.contains("-2"),
+        "the bare NegativeArraySizeException number is gone: {detail}"
+    );
+}
+
+#[test]
+fn a_via_with_an_empty_layer_span_is_refused_naming_the_via() {
+    let (location, detail) = parse_error(
+        r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+            "vias":[{"netName":"GND","position":{"x":1,"y":1},"diameter":0.6,"drill":0.3,
+                     "startLayerIndex":1,"endLayerIndex":0}]}"#,
+    );
+    assert_eq!(location, "vias");
+    assert!(
+        detail.contains("via `Via[1-0]_600:300_um`") && detail.contains("no shape on any layer"),
+        "the diagnostic names the via and what is wrong: {detail}"
+    );
+}

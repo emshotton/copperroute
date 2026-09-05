@@ -1,29 +1,11 @@
-//! Port of `app.freerouting.geometry.planar.RegularTileShape`: tile shapes whose border lines may
-//! have only directions out of a fixed set — the axis-parallel [`IntBox`] and the 45-degree
-//! [`IntOctagon`].
-//!
-//! Java declares the class `abstract sealed ... permits IntBox, IntOctagon` and resolves every
-//! cross-type operation by the two auxiliary overloads (`compare(IntBox, int)` /
-//! `compare(IntOctagon, int)`, `union(IntBox)` / `union(IntOctagon)`, `isContainedIn(IntBox)` /
-//! `isContainedIn(IntOctagon)`). Those per-type halves are already ported on `IntBox` and
-//! `IntOctagon`; this enum only reproduces the dispatch, keeping Java's argument order — in
-//! particular `x.compare(y, e)` is Java's `y.compare(x, e).negate()`, and `x.union(y)` is Java's
-//! `y.union(x)`.
-//!
-//! This is the key type of the R-tree in Plan 2.
-
 use crate::int_box::IntBox;
 use crate::int_octagon::IntOctagon;
 use crate::side::Side;
 use crate::tile_shape::TileShape;
 
-/// A [`TileShape`] whose border lines run in a fixed set of directions
-/// (RegularTileShape.java:7).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RegularTileShape {
-    /// Java `IntBox`: the 4 orthogonal directions.
     Box(IntBox),
-    /// Java `IntOctagon`: the 8 multiples of 45 degree.
     Octagon(IntOctagon),
 }
 
@@ -46,14 +28,6 @@ impl From<RegularTileShape> for TileShape {
 }
 
 impl RegularTileShape {
-    /// Compares the edge lines of index `edge_index` of this regular tile shape and `other`.
-    /// Returns `Side::OnTheLeft`, if the edge line of this shape is to the left of the edge line
-    /// of `other`; `Side::Collinear`, if the edge lines are equal; and `Side::OnTheRight`, if
-    /// this edge line is to the right of the edge line of `other`
-    /// (RegularTileShape.java:9-21, IntBox.java:506-565, IntOctagon.java:742-841).
-    ///
-    /// Java implements this as `other.compare(this, edgeIndex).negate()` in *both* subclasses,
-    /// so the arguments are swapped and the result negated here as well.
     pub fn compare(&self, other: &RegularTileShape, edge_index: usize) -> Side {
         match (self, other) {
             (RegularTileShape::Box(a), RegularTileShape::Box(b)) => {
@@ -71,9 +45,6 @@ impl RegularTileShape {
         }
     }
 
-    /// Calculates the smallest `RegularTileShape` containing this shape and `other`
-    /// (RegularTileShape.java:23-30). The union of two boxes is a box; every other combination
-    /// widens to an octagon, exactly as Java's overload resolution does.
     pub fn union(&self, other: &RegularTileShape) -> RegularTileShape {
         match (self, other) {
             (RegularTileShape::Box(a), RegularTileShape::Box(b)) => {
@@ -91,8 +62,6 @@ impl RegularTileShape {
         }
     }
 
-    /// Returns true, if this shape contains `other` completely (RegularTileShape.java:32-33).
-    /// Java routes it through `other.isContainedIn(this)`.
     pub fn contains(&self, other: &RegularTileShape) -> bool {
         match (self, other) {
             (RegularTileShape::Box(a), RegularTileShape::Box(b)) => b.is_contained_in(a),
@@ -106,7 +75,6 @@ impl RegularTileShape {
         }
     }
 
-    /// Java `isContainedIn(IntBox other)` (RegularTileShape.java:35-37).
     pub fn is_contained_in_box(&self, other: &IntBox) -> bool {
         match self {
             RegularTileShape::Box(b) => b.is_contained_in(other),
@@ -114,7 +82,6 @@ impl RegularTileShape {
         }
     }
 
-    /// Java `isContainedIn(IntOctagon other)` (RegularTileShape.java:39-40).
     pub fn is_contained_in_octagon(&self, other: &IntOctagon) -> bool {
         match self {
             RegularTileShape::Box(b) => b.is_contained_in_octagon(other),
@@ -122,8 +89,6 @@ impl RegularTileShape {
         }
     }
 
-    /// Widens this shape to the full [`TileShape`] enum. Java gets this for free through
-    /// `RegularTileShape extends TileShape`.
     pub fn to_tile_shape(&self) -> TileShape {
         match self {
             RegularTileShape::Box(b) => TileShape::Box(*b),
@@ -131,7 +96,6 @@ impl RegularTileShape {
         }
     }
 
-    /// Java `boundingBox()` (IntBox.java:242-244, IntOctagon.java:112-114).
     pub fn bounding_box(&self) -> IntBox {
         match self {
             RegularTileShape::Box(b) => b.bounding_box(),
@@ -139,7 +103,6 @@ impl RegularTileShape {
         }
     }
 
-    /// Java `area()` (IntBox.java:68-70, IntOctagon.java:207-232).
     pub fn area(&self) -> f64 {
         match self {
             RegularTileShape::Box(b) => b.area(),
@@ -147,8 +110,6 @@ impl RegularTileShape {
         }
     }
 
-    /// Java `getId()` (IntBox.java:247-249, IntOctagon.java:165-176): a deterministic
-    /// tie-breaking id.
     pub fn get_id(&self) -> i32 {
         match self {
             RegularTileShape::Box(b) => b.get_id(),
@@ -197,18 +158,16 @@ mod tests {
         let oct = ShapeBoundingDirections::FortyfiveDegree
             .bounds_simplex(&tri)
             .expect("the triangle is bounded");
-        assert!((oct.area() - 50.0).abs() < 1e-9); // the 45° bound of a right triangle is exact
+        assert!((oct.area() - 50.0).abs() < 1e-9);
     }
 
     #[test]
     fn compare_edges_against_java_conventions() {
         let a = RegularTileShape::Box(IntBox::from_coords(0, 0, 10, 10));
         let b = RegularTileShape::Box(IntBox::from_coords(0, 2, 10, 10));
-        // edge 0 is the lower edge line; b's is higher, so b's is on the left of a's.
         assert_eq!(b.compare(&a, 0), Side::OnTheLeft);
         assert_eq!(a.compare(&b, 0), Side::OnTheRight);
         assert_eq!(a.compare(&a, 0), Side::Collinear);
-        // an IntBox compared against the octagon of the same box is collinear on every edge
         let oct = RegularTileShape::Octagon(IntBox::from_coords(0, 0, 10, 10).to_int_octagon());
         for edge in 0..8 {
             assert_eq!(a.compare(&oct, edge), Side::Collinear, "edge {edge}");

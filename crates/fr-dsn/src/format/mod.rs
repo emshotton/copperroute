@@ -1,6 +1,3 @@
-//! Specctra text-format primitives shared by every DSN/SES writer: indentation tracking
-//! (`IndentFileWriter`), legal-identifier quoting (`IdentifierType`), Java-identical number
-//! rendering (`double`) and the Gson-compatible JSON formatter (`json`).
 pub mod double;
 pub mod identifier;
 pub mod indent_writer;

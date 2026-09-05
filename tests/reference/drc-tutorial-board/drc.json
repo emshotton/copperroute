@@ -1,12 +1,12 @@
 {
   "$schema": "https://schemas.kicad.org/drc.v1.json",
-  "coordinateUnits": "mm",
-  "date": "2026-08-29T05:28:36.892452-07:00",
-  "kicadVersion": "N/A",
-  "freeroutingVersion": "Freerouting 2.3.1-SNAPSHOT",
+  "coordinate_units": "mm",
+  "date": "2026-09-05T04:36:17.45276Z",
+  "kicad_version": "N/A",
+  "freerouting_version": "Freerouting 2.3.1-SNAPSHOT",
   "source": "tutorial_board.dsn",
-  "unconnectedItems": [],
+  "unconnected_items": [],
   "violations": [],
-  "schematicParity": [],
-  "qualityScore": 0.0
+  "schematic_parity": [],
+  "quality_score": 0.0
 }

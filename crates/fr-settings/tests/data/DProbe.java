@@ -1,7 +1,3 @@
-// Plan 4 Task 3 JVM probe — see README.md in this directory for the full command and the
-// jar identity. Recorded command:
-//   javac -d . DProbe.java && java DProbe
-// JAR=…/freerouting/build/libs/freerouting-current-executable.jar (clone HEAD, plan ruling 7)
 public class DProbe {
   static void d(String s) {
     try { System.out.println("parseDouble(" + esc(s) + ") = " + Double.parseDouble(s)); }

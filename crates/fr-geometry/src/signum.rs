@@ -6,7 +6,6 @@ pub enum Signum {
 }
 
 impl Signum {
-    /// Returns the signum of value. Values are Positive, Negative and Zero.
     pub fn of_i64(value: i64) -> Signum {
         match value.signum() {
             1 => Signum::Positive,
@@ -15,7 +14,6 @@ impl Signum {
         }
     }
 
-    /// Returns the signum of value. Values are Positive, Negative and Zero.
     pub fn of_f64(value: f64) -> Signum {
         if value > 0.0 {
             Signum::Positive
@@ -26,12 +24,10 @@ impl Signum {
         }
     }
 
-    /// Returns the signum of value as an i32. Values are +1, 0 and -1.
     pub fn as_int_i64(value: i64) -> i32 {
         value.signum() as i32
     }
 
-    /// Returns the signum of value as an i32. Values are +1, 0 and -1.
     pub fn as_int_f64(value: f64) -> i32 {
         if value > 0.0 {
             1
@@ -42,7 +38,6 @@ impl Signum {
         }
     }
 
-    /// Returns the opposite Signum of this Signum.
     pub fn negate(self) -> Signum {
         match self {
             Signum::Positive => Signum::Negative,

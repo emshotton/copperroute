@@ -1,29 +1,5 @@
 #![forbid(unsafe_code)]
 
-//! `fr-dsn`: Specctra DSN/SES/rules text I/O — the reader/writer layer built directly on top of
-//! `fr-board`. Faithful port of `io/specctra/**` and `io/{CoordinateTransform,BoardReadResult,
-//! BoardMetadata,FileFormat}.java` plus `datastructures/{IdentifierType,IndentFileWriter}.java`
-//! (freerouting v2.3.0). See the Plan 3 design doc
-//! (`docs/superpowers/plans/2026-08-28-plan-3-dsn.md`) for scope, architecture and rulings.
-//!
-//! This crate must not depend on `tracing`: `FRLogger` calls from the Java source are dropped
-//! during porting, mirroring `fr-board`'s convention (plan Global Constraints).
-//
-// not ported: SessionToEagle.getInstance — `io/specctra/parser/SessionToEagle.java` (627
-// lines) converts a Specctra session file into an Eagle CAD command script. It is deliberately
-// outside Plan 3 (the plan's Architecture paragraph defers it, with `io/kicad/**`, to Plan 8
-// "fr-core + surfaces"): it neither reads the DSN grammar nor touches a `Board`, so nothing in
-// this crate calls it and nothing in it is needed to reach byte parity. Its only caller anywhere
-// in the Java tree is `SesReader.saveSpecctraSessionSesAsEagleScriptScr` (SesReader.java:105-109),
-// a one-line delegate that `ses_reader.rs` already carries a `// not ported:` marker for, so the
-// deferral is closed on both sides. See `scripts/audit-map/fr-dsn.map`.
-//
-// **Closed by Plan 8 Task 0**, which re-worded this line from its Plan-8 deferral marker to
-// `not ported:`. Spec §2 keeps the Specctra SES writer and drops every other export format, so
-// this is an out-of-scope port decision and **not** a reachability claim: the class is live in
-// Java, reached from `io/specctra/SesReader.java:107`. The roster line at the foot of
-// `crates/fr-core/src/lib.rs` says the same, with the grep.
-
 pub mod coordinate_transform;
 pub mod dsn_reader;
 pub mod dsn_writer;
@@ -48,13 +24,6 @@ pub use format::{
     java_rint, java_round, java_round_to_int, to_gson_string_pretty,
 };
 pub use keyword::{Keyword, ScopeKeyword};
-// The `kicad` re-exports (Plan 8 Task 8). The **module** is the export: `fr_dsn::kicad::dto`'s
-// twelve DTOs and `fr_dsn::kicad::read_board`, the KiCad board-JSON twin of this crate's Specctra
-// [`read_board`]. Neither the fn nor the DTOs are lifted to the crate root or into [`prelude`] —
-// `kicad::read_board` and `dsn_reader::read_board` are two readers of two formats with one name,
-// and a root-level `pub use` of either would make `fr_dsn::read_board` ambiguous to read even
-// where it still resolves. Callers write `fr_dsn::kicad::read_board`, which is the name the plan's
-// interface list uses.
 pub use lexer::{DsnScanner, LexicalState, Token};
 pub use parser::geometry::{
     DsnCircle, DsnLayer, DsnLayerStructure, DsnPolygon, DsnPolygonPath, DsnPolylinePath,
@@ -66,7 +35,6 @@ pub use parser::scope_parameter::{
 pub use parser::structure::RuleLayerScope;
 pub use ses_reader::SesImportSummary;
 
-/// Re-exports every public type of the crate, for `use fr_dsn::prelude::*;`.
 pub mod prelude {
     pub use crate::{
         BoardMetadata, BoardReadResult, CoordinateTransform, DSN_RESERVED, DsnCircle, DsnError,

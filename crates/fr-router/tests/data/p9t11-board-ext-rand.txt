@@ -1,0 +1,273 @@
+# PORT LANE (ruling BT / CC). The port's own rows for `p6t9-board-ext.txt` section `rand`,
+# re-cut at Plan 9 Task 11 for register row #23. `p6t9-board-ext.txt` stays byte-for-byte the
+# jar's stdout and is still the record of what the jar does.
+#
+# 76 of the 258 rows move, and every one of them moves only in `hash=`. That field is a
+# `String.hashCode` of the whole-board dump, so a row that differs by #23s end closing line
+# differs only in that one opaque number and the structural allowance in board_ext.rs has
+# nothing to read. The item-dump modes `seg` (84 of 1342) and `neck` (42 of 797) run over the
+# same code and do show their working: every differing row there is an end closing line and
+# nothing else, with the corner lists byte-identical. That is the evidence; this file is the
+# record.
+#
+# `the_rand_port_golden_still_differs_from_the_jar` requires the divergence to persist, so a fix
+# quietly reverted fails too. Re-cut with:
+#   T11_DUMP_DIR=<dir> cargo test -p fr-router --test board_ext the_two_random_blocks
+  block=polyline
+  row=0 regime=any n=4 hw=30 layer=1 net=3 cl=1 maxRec=20 check=false tidy=0 acc=341 -> (1098,-954) maxId=10 items=6 hash=15819303 failing=null failingLayer=-1
+  row=1 regime=any n=3 hw=11 layer=1 net=3 cl=2 maxRec=10 check=true tidy=0 acc=877 -> (1136,-90) maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=2 regime=45 n=3 hw=25 layer=1 net=1 cl=2 maxRec=10 check=true tidy=MAX acc=720 -> (392,990) maxId=6 items=6 hash=1035616043 failing=null failingLayer=-1
+  row=3 regime=90 n=2 hw=57 layer=0 net=2 cl=2 maxRec=20 check=true tidy=0 acc=310 -> (-1440,-206) maxId=6 items=6 hash=-1611759196 failing=Pin#2 failingLayer=-1
+  row=4 regime=45 n=2 hw=54 layer=1 net=1 cl=1 maxRec=10 check=true tidy=MAX acc=748 -> (-1191,-878) maxId=6 items=6 hash=778708090 failing=null failingLayer=-1
+  row=5 regime=90 n=2 hw=24 layer=1 net=3 cl=1 maxRec=10 check=true tidy=0 acc=942 -> (-983,-784) maxId=6 items=6 hash=1519518706 failing=null failingLayer=-1
+  row=6 regime=90 n=4 hw=49 layer=1 net=2 cl=1 maxRec=10 check=true tidy=0 acc=996 -> (615,-73) maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=7 regime=90 n=2 hw=12 layer=0 net=3 cl=2 maxRec=10 check=true tidy=0 acc=20 -> (-52,-438) maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=8 regime=45 n=3 hw=58 layer=0 net=2 cl=2 maxRec=10 check=false tidy=MAX acc=972 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=9 regime=any n=2 hw=47 layer=0 net=3 cl=2 maxRec=10 check=false tidy=MAX acc=430 -> (689,-167) maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=10 regime=any n=4 hw=55 layer=1 net=2 cl=1 maxRec=20 check=true tidy=0 acc=529 -> (-206,691) maxId=6 items=6 hash=1914796206 failing=null failingLayer=-1
+  row=11 regime=90 n=4 hw=68 layer=0 net=2 cl=2 maxRec=0 check=false tidy=0 acc=13 -> null maxId=5 items=5 hash=-268217344 failing=Pin#2 failingLayer=-1
+  row=12 regime=any n=2 hw=44 layer=0 net=2 cl=1 maxRec=20 check=true tidy=MAX acc=191 -> (-510,-514) maxId=9 items=6 hash=38528810 failing=null failingLayer=-1
+  row=13 regime=45 n=2 hw=12 layer=1 net=3 cl=2 maxRec=20 check=false tidy=0 acc=191 -> (-117,420) maxId=6 items=6 hash=-1650480320 failing=null failingLayer=-1
+  row=14 regime=any n=3 hw=36 layer=0 net=3 cl=2 maxRec=10 check=true tidy=0 acc=670 -> (-360,-202) maxId=5 items=5 hash=-268217344 failing=Pin#2 failingLayer=-1
+  row=15 regime=any n=3 hw=65 layer=1 net=3 cl=1 maxRec=10 check=true tidy=MAX acc=902 -> (368,-603) maxId=6 items=6 hash=-665363709 failing=null failingLayer=-1
+  row=16 regime=any n=4 hw=18 layer=0 net=3 cl=1 maxRec=10 check=true tidy=MAX acc=284 -> (985,1041) maxId=41 items=5 hash=-1139600536 failing=null failingLayer=-1
+  row=17 regime=any n=4 hw=52 layer=0 net=3 cl=2 maxRec=10 check=false tidy=0 acc=493 -> null maxId=9 items=5 hash=1281859175 failing=Pin#3 failingLayer=-1
+  row=18 regime=90 n=3 hw=16 layer=1 net=3 cl=1 maxRec=20 check=true tidy=0 acc=984 -> (608,-1160) maxId=6 items=6 hash=1428172651 failing=Pin#3 failingLayer=-1
+  row=19 regime=45 n=4 hw=66 layer=1 net=2 cl=2 maxRec=0 check=false tidy=0 acc=612 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=20 regime=45 n=4 hw=13 layer=0 net=2 cl=1 maxRec=10 check=true tidy=MAX acc=787 -> (-412,-1049) maxId=6 items=6 hash=-666190680 failing=null failingLayer=-1
+  row=21 regime=45 n=2 hw=44 layer=0 net=1 cl=1 maxRec=0 check=false tidy=MAX acc=615 -> null maxId=5 items=5 hash=-268217344 failing=PolylineTrace#5 failingLayer=-1
+  row=22 regime=any n=4 hw=29 layer=1 net=3 cl=1 maxRec=20 check=false tidy=0 acc=629 -> (-813,-1415) maxId=6 items=6 hash=-833698124 failing=null failingLayer=-1
+  row=23 regime=any n=2 hw=43 layer=0 net=1 cl=1 maxRec=10 check=false tidy=0 acc=479 -> (-326,329) maxId=7 items=6 hash=-832093521 failing=null failingLayer=-1
+  row=24 regime=90 n=2 hw=31 layer=0 net=2 cl=1 maxRec=20 check=true tidy=MAX acc=299 -> (-1487,-118) maxId=10 items=6 hash=372602264 failing=null failingLayer=-1
+  row=25 regime=any n=4 hw=25 layer=1 net=2 cl=2 maxRec=20 check=true tidy=MAX acc=0 -> (102,-1402) maxId=6 items=6 hash=-503727770 failing=null failingLayer=-1
+  row=26 regime=90 n=4 hw=26 layer=1 net=1 cl=2 maxRec=0 check=false tidy=MAX acc=883 -> (1347,-1347) maxId=6 items=6 hash=2122229118 failing=null failingLayer=-1
+  row=27 regime=90 n=2 hw=24 layer=1 net=1 cl=1 maxRec=10 check=false tidy=0 acc=541 -> (-1360,130) maxId=6 items=6 hash=534211734 failing=null failingLayer=-1
+  row=28 regime=45 n=2 hw=41 layer=1 net=1 cl=1 maxRec=0 check=false tidy=MAX acc=547 -> (1182,316) maxId=6 items=6 hash=1472803525 failing=null failingLayer=-1
+  row=29 regime=45 n=3 hw=48 layer=1 net=1 cl=2 maxRec=20 check=true tidy=MAX acc=499 -> (836,1348) maxId=6 items=6 hash=1421287962 failing=null failingLayer=-1
+  row=30 regime=90 n=2 hw=43 layer=1 net=2 cl=2 maxRec=10 check=true tidy=0 acc=777 -> (271,1387) maxId=6 items=6 hash=701874950 failing=Pin#3 failingLayer=-1
+  row=31 regime=45 n=4 hw=33 layer=0 net=3 cl=1 maxRec=10 check=true tidy=0 acc=402 -> (1267,1037) maxId=12 items=6 hash=1151835975 failing=null failingLayer=-1
+  row=32 regime=45 n=2 hw=52 layer=0 net=1 cl=2 maxRec=20 check=false tidy=MAX acc=183 -> (-429,-1113) maxId=6 items=6 hash=816867127 failing=null failingLayer=-1
+  row=33 regime=90 n=4 hw=49 layer=1 net=3 cl=2 maxRec=10 check=false tidy=0 acc=997 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=34 regime=90 n=4 hw=50 layer=1 net=2 cl=1 maxRec=10 check=false tidy=0 acc=819 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=35 regime=any n=2 hw=32 layer=0 net=2 cl=1 maxRec=20 check=false tidy=MAX acc=777 -> (520,-823) maxId=13 items=8 hash=2028709708 failing=null failingLayer=-1
+  row=36 regime=45 n=2 hw=25 layer=1 net=1 cl=2 maxRec=0 check=true tidy=0 acc=796 -> (-1068,310) maxId=6 items=6 hash=-361411793 failing=null failingLayer=-1
+  row=37 regime=90 n=2 hw=67 layer=1 net=2 cl=2 maxRec=10 check=false tidy=0 acc=567 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=38 regime=any n=2 hw=21 layer=1 net=3 cl=1 maxRec=20 check=false tidy=0 acc=482 -> (-920,-844) maxId=6 items=6 hash=127429185 failing=null failingLayer=-1
+  row=39 regime=45 n=3 hw=20 layer=0 net=1 cl=1 maxRec=0 check=true tidy=0 acc=795 -> (1158,1014) maxId=6 items=6 hash=711192210 failing=PolylineTrace#5 failingLayer=-1
+  row=40 regime=90 n=4 hw=56 layer=0 net=2 cl=2 maxRec=10 check=false tidy=0 acc=113 -> null maxId=5 items=5 hash=-268217344 failing=Pin#2 failingLayer=-1
+  row=41 regime=45 n=3 hw=53 layer=1 net=2 cl=2 maxRec=20 check=true tidy=0 acc=804 -> (-440,-521) maxId=6 items=6 hash=-699625267 failing=null failingLayer=-1
+  row=42 regime=90 n=4 hw=56 layer=1 net=2 cl=1 maxRec=10 check=true tidy=0 acc=927 -> (658,-359) maxId=6 items=6 hash=-1014764142 failing=null failingLayer=-1
+  row=43 regime=90 n=4 hw=36 layer=1 net=2 cl=1 maxRec=20 check=true tidy=MAX acc=647 -> (333,419) maxId=6 items=6 hash=811688601 failing=Pin#3 failingLayer=-1
+  row=44 regime=45 n=2 hw=13 layer=1 net=2 cl=1 maxRec=20 check=false tidy=0 acc=427 -> (-1150,-1160) maxId=6 items=6 hash=-1758377015 failing=null failingLayer=-1
+  row=45 regime=90 n=3 hw=10 layer=0 net=2 cl=2 maxRec=10 check=false tidy=MAX acc=92 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=46 regime=90 n=3 hw=33 layer=0 net=1 cl=2 maxRec=10 check=false tidy=0 acc=748 -> (-321,1102) maxId=6 items=6 hash=-1049759074 failing=null failingLayer=-1
+  row=47 regime=90 n=2 hw=25 layer=1 net=2 cl=1 maxRec=20 check=false tidy=0 acc=787 -> (-492,1116) maxId=6 items=6 hash=-755202763 failing=null failingLayer=-1
+  row=48 regime=45 n=2 hw=60 layer=0 net=1 cl=2 maxRec=0 check=false tidy=MAX acc=118 -> (-322,879) maxId=10 items=8 hash=-2101544741 failing=null failingLayer=-1
+  row=49 regime=90 n=2 hw=60 layer=0 net=1 cl=1 maxRec=20 check=false tidy=MAX acc=519 -> (-187,-802) maxId=6 items=6 hash=1941226819 failing=null failingLayer=-1
+  row=50 regime=45 n=3 hw=62 layer=0 net=3 cl=1 maxRec=0 check=false tidy=0 acc=85 -> null maxId=5 items=5 hash=-268217344 failing=PolylineTrace#5 failingLayer=-1
+  row=51 regime=any n=3 hw=56 layer=0 net=1 cl=2 maxRec=0 check=true tidy=MAX acc=152 -> (-644,422) maxId=5 items=5 hash=-268217344 failing=PolylineTrace#4 failingLayer=-1
+  row=52 regime=90 n=4 hw=34 layer=1 net=1 cl=2 maxRec=10 check=true tidy=0 acc=889 -> (1172,-1048) maxId=10 items=6 hash=-1900726825 failing=null failingLayer=-1
+  row=53 regime=any n=2 hw=37 layer=0 net=1 cl=2 maxRec=20 check=true tidy=0 acc=511 -> (-78,1386) maxId=9 items=6 hash=1539260208 failing=null failingLayer=-1
+  row=54 regime=any n=4 hw=69 layer=1 net=1 cl=1 maxRec=20 check=true tidy=0 acc=154 -> (-36,241) maxId=6 items=6 hash=964275991 failing=null failingLayer=-1
+  row=55 regime=90 n=2 hw=60 layer=1 net=2 cl=2 maxRec=20 check=true tidy=0 acc=803 -> (516,-1148) maxId=6 items=6 hash=206412881 failing=Pin#3 failingLayer=-1
+  row=56 regime=any n=2 hw=55 layer=0 net=3 cl=2 maxRec=20 check=true tidy=0 acc=900 -> (1237,791) maxId=6 items=6 hash=-1739554136 failing=Pin#3 failingLayer=-1
+  row=57 regime=any n=2 hw=59 layer=1 net=3 cl=1 maxRec=0 check=false tidy=0 acc=774 -> (687,-789) maxId=6 items=6 hash=-1998771920 failing=null failingLayer=-1
+  row=58 regime=90 n=4 hw=65 layer=0 net=3 cl=1 maxRec=10 check=false tidy=0 acc=886 -> (-377,479) maxId=12 items=6 hash=1582562304 failing=null failingLayer=-1
+  row=59 regime=any n=4 hw=59 layer=1 net=1 cl=1 maxRec=0 check=false tidy=0 acc=317 -> (854,-1131) maxId=6 items=6 hash=867695906 failing=null failingLayer=-1
+  row=60 regime=90 n=2 hw=25 layer=1 net=3 cl=2 maxRec=10 check=false tidy=MAX acc=140 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=61 regime=45 n=4 hw=46 layer=0 net=3 cl=1 maxRec=20 check=true tidy=0 acc=395 -> (679,12) maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=62 regime=45 n=2 hw=67 layer=1 net=1 cl=2 maxRec=20 check=false tidy=0 acc=809 -> (662,-306) maxId=6 items=6 hash=1606671203 failing=null failingLayer=-1
+  row=63 regime=any n=4 hw=67 layer=1 net=1 cl=1 maxRec=10 check=false tidy=MAX acc=150 -> (683,1117) maxId=10 items=6 hash=1731751153 failing=null failingLayer=-1
+  row=64 regime=any n=4 hw=51 layer=1 net=3 cl=2 maxRec=10 check=false tidy=MAX acc=666 -> (4,-1160) maxId=10 items=6 hash=-2133076734 failing=null failingLayer=-1
+  row=65 regime=any n=3 hw=61 layer=1 net=2 cl=2 maxRec=10 check=false tidy=MAX acc=25 -> (743,-243) maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=66 regime=any n=3 hw=22 layer=0 net=1 cl=1 maxRec=0 check=true tidy=MAX acc=794 -> (1196,176) maxId=6 items=6 hash=-1661138657 failing=PolylineTrace#4 failingLayer=-1
+  row=67 regime=45 n=3 hw=56 layer=1 net=3 cl=1 maxRec=0 check=false tidy=MAX acc=248 -> (-701,137) maxId=6 items=6 hash=-187686377 failing=null failingLayer=-1
+  row=68 regime=90 n=4 hw=44 layer=0 net=1 cl=2 maxRec=20 check=false tidy=MAX acc=881 -> (-776,-1190) maxId=10 items=6 hash=-385246386 failing=null failingLayer=-1
+  row=69 regime=any n=3 hw=37 layer=0 net=2 cl=1 maxRec=0 check=true tidy=MAX acc=215 -> (-723,-1452) maxId=6 items=6 hash=45917639 failing=null failingLayer=-1
+  row=70 regime=45 n=4 hw=19 layer=0 net=3 cl=1 maxRec=20 check=false tidy=MAX acc=292 -> (-1099,782) maxId=15 items=5 hash=-308384067 failing=null failingLayer=-1
+  row=71 regime=90 n=2 hw=19 layer=0 net=1 cl=1 maxRec=10 check=false tidy=MAX acc=547 -> (650,1112) maxId=12 items=8 hash=-1644483692 failing=null failingLayer=-1
+  row=72 regime=90 n=3 hw=10 layer=1 net=2 cl=1 maxRec=10 check=true tidy=MAX acc=646 -> (56,1338) maxId=6 items=6 hash=-1982533092 failing=null failingLayer=-1
+  row=73 regime=any n=4 hw=33 layer=1 net=1 cl=1 maxRec=0 check=true tidy=MAX acc=945 -> (-984,415) maxId=10 items=6 hash=-1546719744 failing=null failingLayer=-1
+  row=74 regime=45 n=2 hw=24 layer=1 net=2 cl=1 maxRec=0 check=true tidy=0 acc=276 -> (-989,-50) maxId=6 items=6 hash=522852092 failing=null failingLayer=-1
+  row=75 regime=45 n=2 hw=43 layer=0 net=3 cl=2 maxRec=0 check=true tidy=MAX acc=537 -> (28,302) maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=76 regime=90 n=2 hw=67 layer=0 net=1 cl=1 maxRec=10 check=false tidy=MAX acc=162 -> (483,-1463) maxId=6 items=6 hash=-1282215442 failing=null failingLayer=-1
+  row=77 regime=any n=3 hw=69 layer=1 net=1 cl=1 maxRec=0 check=true tidy=0 acc=659 -> (-636,-129) maxId=6 items=6 hash=1275554630 failing=null failingLayer=-1
+  row=78 regime=90 n=4 hw=16 layer=0 net=3 cl=2 maxRec=10 check=true tidy=MAX acc=159 -> (1360,100) maxId=6 items=6 hash=2124967682 failing=Pin#3 failingLayer=-1
+  row=79 regime=any n=2 hw=18 layer=0 net=3 cl=2 maxRec=0 check=false tidy=MAX acc=314 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=80 regime=45 n=2 hw=42 layer=0 net=1 cl=2 maxRec=0 check=true tidy=MAX acc=55 -> (-1278,-939) maxId=6 items=6 hash=1847787278 failing=null failingLayer=-1
+  row=81 regime=any n=4 hw=57 layer=1 net=2 cl=1 maxRec=20 check=true tidy=MAX acc=769 -> (-981,-10) maxId=6 items=6 hash=-344581066 failing=null failingLayer=-1
+  row=82 regime=45 n=3 hw=63 layer=1 net=1 cl=1 maxRec=10 check=true tidy=MAX acc=884 -> (-1422,-383) maxId=6 items=6 hash=-732510534 failing=null failingLayer=-1
+  row=83 regime=any n=4 hw=42 layer=0 net=1 cl=1 maxRec=20 check=true tidy=0 acc=185 -> (1170,563) maxId=18 items=9 hash=709765507 failing=null failingLayer=-1
+  row=84 regime=any n=3 hw=15 layer=0 net=3 cl=1 maxRec=20 check=false tidy=0 acc=177 -> (931,-414) maxId=13 items=6 hash=-612765930 failing=null failingLayer=-1
+  row=85 regime=any n=3 hw=44 layer=0 net=1 cl=1 maxRec=20 check=true tidy=0 acc=499 -> (-1456,-941) maxId=6 items=6 hash=-1489702954 failing=null failingLayer=-1
+  row=86 regime=45 n=2 hw=68 layer=1 net=1 cl=2 maxRec=0 check=true tidy=MAX acc=717 -> (991,-288) maxId=6 items=6 hash=-1308723391 failing=null failingLayer=-1
+  row=87 regime=90 n=4 hw=10 layer=0 net=3 cl=1 maxRec=0 check=true tidy=0 acc=196 -> (-9,612) maxId=5 items=5 hash=-268217344 failing=PolylineTrace#4 failingLayer=-1
+  row=88 regime=any n=4 hw=37 layer=1 net=1 cl=1 maxRec=20 check=false tidy=MAX acc=783 -> (366,-1038) maxId=6 items=6 hash=1837088210 failing=null failingLayer=-1
+  row=89 regime=45 n=3 hw=59 layer=1 net=1 cl=1 maxRec=20 check=true tidy=0 acc=335 -> (-44,-250) maxId=6 items=6 hash=1367536806 failing=null failingLayer=-1
+  row=90 regime=any n=2 hw=66 layer=0 net=2 cl=2 maxRec=20 check=true tidy=MAX acc=400 -> (613,1393) maxId=6 items=6 hash=-1797117460 failing=null failingLayer=-1
+  row=91 regime=90 n=4 hw=54 layer=1 net=1 cl=1 maxRec=0 check=false tidy=MAX acc=148 -> (1268,570) maxId=6 items=6 hash=1761942751 failing=null failingLayer=-1
+  row=92 regime=90 n=3 hw=40 layer=1 net=3 cl=2 maxRec=20 check=true tidy=0 acc=647 -> (549,877) maxId=6 items=6 hash=-1226176194 failing=null failingLayer=-1
+  row=93 regime=90 n=3 hw=31 layer=1 net=3 cl=1 maxRec=20 check=false tidy=MAX acc=268 -> (396,6) maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=94 regime=45 n=4 hw=50 layer=1 net=2 cl=1 maxRec=0 check=false tidy=MAX acc=38 -> (109,978) maxId=6 items=6 hash=1687050975 failing=null failingLayer=-1
+  row=95 regime=90 n=2 hw=33 layer=0 net=2 cl=2 maxRec=0 check=false tidy=0 acc=562 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=96 regime=45 n=3 hw=50 layer=1 net=1 cl=1 maxRec=20 check=false tidy=0 acc=399 -> (1294,-1186) maxId=6 items=6 hash=2087761280 failing=null failingLayer=-1
+  row=97 regime=90 n=4 hw=49 layer=1 net=2 cl=1 maxRec=10 check=false tidy=MAX acc=185 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=98 regime=90 n=3 hw=34 layer=0 net=1 cl=1 maxRec=0 check=false tidy=0 acc=664 -> null maxId=5 items=5 hash=-268217344 failing=PolylineTrace#5 failingLayer=-1
+  row=99 regime=any n=2 hw=53 layer=1 net=2 cl=1 maxRec=10 check=false tidy=0 acc=88 -> (990,1115) maxId=6 items=6 hash=-1896890631 failing=null failingLayer=-1
+  row=100 regime=45 n=2 hw=42 layer=0 net=2 cl=2 maxRec=0 check=false tidy=0 acc=480 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=101 regime=any n=2 hw=61 layer=1 net=3 cl=1 maxRec=0 check=true tidy=0 acc=85 -> (-1197,-898) maxId=6 items=6 hash=2135622236 failing=null failingLayer=-1
+  row=102 regime=45 n=2 hw=35 layer=0 net=2 cl=1 maxRec=20 check=false tidy=MAX acc=408 -> (-30,-1120) maxId=6 items=6 hash=714004110 failing=null failingLayer=-1
+  row=103 regime=45 n=4 hw=28 layer=0 net=3 cl=2 maxRec=20 check=false tidy=MAX acc=216 -> null maxId=5 items=5 hash=-268217344 failing=Pin#2 failingLayer=-1
+  row=104 regime=any n=3 hw=67 layer=0 net=3 cl=2 maxRec=10 check=false tidy=0 acc=239 -> null maxId=7 items=5 hash=1348248093 failing=Pin#2 failingLayer=-1
+  row=105 regime=any n=3 hw=45 layer=1 net=2 cl=1 maxRec=0 check=false tidy=0 acc=507 -> (1126,-1221) maxId=6 items=6 hash=693122141 failing=null failingLayer=-1
+  row=106 regime=45 n=4 hw=40 layer=1 net=3 cl=2 maxRec=20 check=false tidy=MAX acc=629 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=107 regime=any n=4 hw=56 layer=0 net=3 cl=2 maxRec=10 check=false tidy=MAX acc=829 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=108 regime=45 n=2 hw=14 layer=1 net=3 cl=2 maxRec=0 check=false tidy=MAX acc=397 -> (-1368,1028) maxId=6 items=6 hash=412174934 failing=null failingLayer=-1
+  row=109 regime=45 n=2 hw=28 layer=1 net=2 cl=2 maxRec=0 check=true tidy=0 acc=455 -> (121,-496) maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=110 regime=45 n=4 hw=12 layer=0 net=3 cl=2 maxRec=0 check=false tidy=MAX acc=227 -> (315,52) maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=111 regime=any n=4 hw=40 layer=1 net=3 cl=2 maxRec=10 check=true tidy=0 acc=429 -> (-531,-830) maxId=6 items=6 hash=-410702502 failing=Pin#3 failingLayer=-1
+  row=112 regime=90 n=4 hw=13 layer=1 net=2 cl=1 maxRec=0 check=false tidy=0 acc=479 -> (671,-198) maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=113 regime=any n=4 hw=34 layer=1 net=1 cl=2 maxRec=10 check=false tidy=MAX acc=220 -> (47,-1480) maxId=6 items=6 hash=2109380483 failing=null failingLayer=-1
+  row=114 regime=45 n=2 hw=32 layer=0 net=1 cl=1 maxRec=10 check=false tidy=0 acc=249 -> (-406,486) maxId=10 items=8 hash=256271530 failing=null failingLayer=-1
+  row=115 regime=any n=4 hw=26 layer=1 net=1 cl=1 maxRec=0 check=true tidy=0 acc=570 -> (-1261,-708) maxId=6 items=6 hash=-184383073 failing=null failingLayer=-1
+  row=116 regime=45 n=2 hw=51 layer=0 net=1 cl=1 maxRec=0 check=true tidy=0 acc=44 -> (815,879) maxId=6 items=6 hash=1740163914 failing=PolylineTrace#5 failingLayer=-1
+  row=117 regime=90 n=4 hw=16 layer=1 net=1 cl=2 maxRec=20 check=false tidy=MAX acc=669 -> (893,1376) maxId=6 items=6 hash=888228928 failing=null failingLayer=-1
+  row=118 regime=45 n=4 hw=46 layer=0 net=1 cl=1 maxRec=10 check=false tidy=MAX acc=349 -> (322,-967) maxId=14 items=9 hash=864766656 failing=null failingLayer=-1
+  row=119 regime=45 n=4 hw=19 layer=1 net=2 cl=2 maxRec=20 check=false tidy=0 acc=372 -> null maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=120 regime=90 n=3 hw=43 layer=1 net=1 cl=1 maxRec=0 check=true tidy=0 acc=492 -> (1330,-1309) maxId=6 items=6 hash=975436142 failing=null failingLayer=-1
+  row=121 regime=45 n=4 hw=56 layer=0 net=1 cl=2 maxRec=0 check=true tidy=0 acc=10 -> (-793,831) maxId=5 items=5 hash=-268217344 failing=PolylineTrace#5 failingLayer=-1
+  row=122 regime=45 n=4 hw=57 layer=0 net=1 cl=1 maxRec=10 check=true tidy=MAX acc=41 -> (-396,233) maxId=8 items=6 hash=2001144947 failing=null failingLayer=-1
+  row=123 regime=45 n=2 hw=53 layer=1 net=1 cl=2 maxRec=20 check=true tidy=0 acc=501 -> (-133,1116) maxId=6 items=6 hash=1781534015 failing=null failingLayer=-1
+  row=124 regime=45 n=2 hw=16 layer=1 net=3 cl=2 maxRec=20 check=true tidy=MAX acc=952 -> (-276,130) maxId=6 items=6 hash=-1100275339 failing=Pin#3 failingLayer=-1
+  row=125 regime=any n=4 hw=24 layer=0 net=2 cl=1 maxRec=20 check=true tidy=MAX acc=23 -> (576,-333) maxId=22 items=8 hash=554873124 failing=null failingLayer=-1
+  row=126 regime=any n=3 hw=59 layer=1 net=1 cl=2 maxRec=10 check=true tidy=MAX acc=821 -> (-1260,-1247) maxId=6 items=6 hash=-687354241 failing=null failingLayer=-1
+  row=127 regime=90 n=3 hw=45 layer=1 net=1 cl=2 maxRec=0 check=true tidy=0 acc=940 -> (76,701) maxId=6 items=6 hash=1114050684 failing=null failingLayer=-1
+  block=segment
+  row=0 regime=any from=(-64,-999) to=(315,825) hw=27 layer=1 net=2 cl=2 maxRec=10 check=false tidy=MAX acc=563 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=1 regime=45 from=(567,760) to=(-908,-633) hw=59 layer=0 net=1 cl=1 maxRec=20 check=true tidy=MAX acc=880 -> (523,719) isFrom=false isTo=false maxId=10 items=6 hash=1759088964 failing=Pin#2 failingLayer=-1
+  row=2 regime=45 from=(-137,-235) to=(-1131,-515) hw=31 layer=1 net=2 cl=1 maxRec=10 check=false tidy=0 acc=25 -> (-1131,-515) isFrom=false isTo=true maxId=6 items=6 hash=1906938989 failing=null failingLayer=-1
+  row=3 regime=90 from=(-565,197) to=(62,908) hw=57 layer=0 net=2 cl=2 maxRec=10 check=true tidy=MAX acc=529 -> (-565,197) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#2 failingLayer=-1
+  row=4 regime=any from=(238,1013) to=(-1084,-726) hw=25 layer=1 net=3 cl=1 maxRec=0 check=false tidy=MAX acc=44 -> (-1084,-726) isFrom=false isTo=true maxId=6 items=6 hash=1511677350 failing=null failingLayer=-1
+  row=5 regime=any from=(-352,677) to=(-1277,593) hw=48 layer=0 net=1 cl=1 maxRec=0 check=false tidy=MAX acc=374 -> (-1277,593) isFrom=false isTo=true maxId=6 items=6 hash=1316342340 failing=null failingLayer=-1
+  row=6 regime=90 from=(577,1325) to=(868,-655) hw=50 layer=1 net=3 cl=2 maxRec=10 check=true tidy=0 acc=355 -> (586,1266) isFrom=false isTo=false maxId=6 items=6 hash=1870448091 failing=Pin#3 failingLayer=-1
+  row=7 regime=45 from=(-322,-1356) to=(1497,1012) hw=66 layer=0 net=3 cl=1 maxRec=10 check=false tidy=MAX acc=493 -> (1497,1012) isFrom=false isTo=true maxId=6 items=6 hash=-508277568 failing=null failingLayer=-1
+  row=8 regime=90 from=(-1179,-161) to=(-629,1265) hw=39 layer=0 net=2 cl=2 maxRec=0 check=false tidy=MAX acc=763 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#2 failingLayer=-1
+  row=9 regime=45 from=(834,-939) to=(153,1014) hw=38 layer=0 net=3 cl=1 maxRec=10 check=true tidy=0 acc=761 -> (153,1014) isFrom=false isTo=true maxId=18 items=6 hash=-694508772 failing=null failingLayer=-1
+  row=10 regime=any from=(-47,-77) to=(490,58) hw=18 layer=1 net=3 cl=1 maxRec=0 check=true tidy=MAX acc=333 -> (-47,-77) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=11 regime=45 from=(-856,338) to=(-1015,-140) hw=30 layer=1 net=1 cl=2 maxRec=0 check=true tidy=MAX acc=778 -> (-1015,-140) isFrom=false isTo=true maxId=6 items=6 hash=601350330 failing=null failingLayer=-1
+  row=12 regime=any from=(-1361,-578) to=(-931,1089) hw=60 layer=0 net=3 cl=2 maxRec=10 check=true tidy=MAX acc=6 -> (-1346,-520) isFrom=false isTo=false maxId=6 items=6 hash=-1770557534 failing=Pin#2 failingLayer=-1
+  row=13 regime=45 from=(376,475) to=(-1148,-251) hw=59 layer=0 net=1 cl=2 maxRec=10 check=false tidy=MAX acc=269 -> (-1148,-251) isFrom=false isTo=true maxId=14 items=9 hash=-1908130165 failing=null failingLayer=-1
+  row=14 regime=any from=(-213,-385) to=(1076,-1079) hw=41 layer=1 net=2 cl=2 maxRec=0 check=false tidy=0 acc=146 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=15 regime=any from=(296,1063) to=(893,1449) hw=18 layer=0 net=2 cl=1 maxRec=10 check=false tidy=0 acc=560 -> (893,1449) isFrom=false isTo=true maxId=6 items=6 hash=269239025 failing=null failingLayer=-1
+  row=16 regime=45 from=(-1117,1083) to=(590,-1017) hw=27 layer=1 net=3 cl=1 maxRec=0 check=true tidy=0 acc=357 -> (590,-1017) isFrom=false isTo=true maxId=6 items=6 hash=628890085 failing=null failingLayer=-1
+  row=17 regime=45 from=(-1173,-838) to=(274,-1418) hw=15 layer=0 net=3 cl=2 maxRec=0 check=false tidy=MAX acc=857 -> (274,-1418) isFrom=false isTo=true maxId=6 items=6 hash=991494560 failing=null failingLayer=-1
+  row=18 regime=90 from=(-255,1168) to=(-1152,-1209) hw=11 layer=0 net=1 cl=2 maxRec=20 check=true tidy=MAX acc=488 -> (-1152,-1209) isFrom=false isTo=true maxId=6 items=6 hash=889447146 failing=null failingLayer=-1
+  row=19 regime=any from=(-1167,629) to=(484,-208) hw=67 layer=0 net=3 cl=1 maxRec=20 check=false tidy=MAX acc=942 -> (-1167,629) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=20 regime=45 from=(541,95) to=(285,-1065) hw=42 layer=0 net=2 cl=1 maxRec=10 check=true tidy=MAX acc=428 -> (541,95) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=21 regime=any from=(-1471,-1392) to=(-935,1193) hw=56 layer=1 net=3 cl=2 maxRec=0 check=true tidy=0 acc=744 -> (-935,1193) isFrom=false isTo=true maxId=6 items=6 hash=735110226 failing=null failingLayer=-1
+  row=22 regime=45 from=(132,1139) to=(-1323,1315) hw=68 layer=0 net=3 cl=1 maxRec=20 check=false tidy=MAX acc=301 -> (-1323,1315) isFrom=false isTo=true maxId=8 items=6 hash=-684218272 failing=null failingLayer=-1
+  row=23 regime=45 from=(-679,-1347) to=(121,-1438) hw=32 layer=1 net=2 cl=1 maxRec=10 check=false tidy=MAX acc=587 -> (121,-1438) isFrom=false isTo=true maxId=6 items=6 hash=2036654164 failing=null failingLayer=-1
+  row=24 regime=90 from=(-894,214) to=(803,358) hw=63 layer=0 net=1 cl=2 maxRec=0 check=true tidy=0 acc=729 -> (803,358) isFrom=false isTo=true maxId=10 items=8 hash=-107876844 failing=null failingLayer=-1
+  row=25 regime=any from=(-1185,150) to=(788,-714) hw=30 layer=1 net=1 cl=1 maxRec=10 check=false tidy=MAX acc=348 -> (788,-714) isFrom=false isTo=true maxId=6 items=6 hash=129784236 failing=null failingLayer=-1
+  row=26 regime=45 from=(617,302) to=(675,94) hw=54 layer=0 net=1 cl=2 maxRec=0 check=false tidy=MAX acc=439 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=PolylineTrace#4 failingLayer=-1
+  row=27 regime=45 from=(-801,1441) to=(-954,-52) hw=17 layer=0 net=1 cl=1 maxRec=20 check=true tidy=0 acc=725 -> (-954,-52) isFrom=false isTo=true maxId=9 items=6 hash=-2078607049 failing=null failingLayer=-1
+  row=28 regime=any from=(797,-1376) to=(-40,-717) hw=57 layer=1 net=2 cl=1 maxRec=0 check=false tidy=0 acc=448 -> (-40,-717) isFrom=false isTo=true maxId=6 items=6 hash=243760115 failing=null failingLayer=-1
+  row=29 regime=90 from=(1075,-643) to=(-37,1021) hw=61 layer=0 net=2 cl=1 maxRec=10 check=false tidy=MAX acc=567 -> (-37,1021) isFrom=false isTo=true maxId=14 items=8 hash=-644514422 failing=null failingLayer=-1
+  row=30 regime=45 from=(123,222) to=(-725,122) hw=50 layer=0 net=1 cl=2 maxRec=0 check=true tidy=0 acc=765 -> (-725,122) isFrom=false isTo=true maxId=10 items=8 hash=866876879 failing=null failingLayer=-1
+  row=31 regime=45 from=(-148,622) to=(-87,744) hw=49 layer=0 net=2 cl=2 maxRec=20 check=false tidy=0 acc=772 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#2 failingLayer=-1
+  row=32 regime=any from=(-924,-965) to=(-1123,458) hw=18 layer=1 net=2 cl=1 maxRec=0 check=false tidy=0 acc=465 -> (-1123,458) isFrom=false isTo=true maxId=6 items=6 hash=-1911795091 failing=null failingLayer=-1
+  row=33 regime=90 from=(-1271,1379) to=(47,102) hw=14 layer=0 net=3 cl=2 maxRec=20 check=true tidy=MAX acc=104 -> (-1271,1379) isFrom=true isTo=false maxId=6 items=5 hash=1980280321 failing=Pin#2 failingLayer=-1
+  row=34 regime=45 from=(-1500,-651) to=(-796,-703) hw=11 layer=1 net=2 cl=1 maxRec=0 check=false tidy=MAX acc=235 -> (-796,-703) isFrom=false isTo=true maxId=6 items=6 hash=-347185302 failing=null failingLayer=-1
+  row=35 regime=45 from=(-514,323) to=(1104,1271) hw=61 layer=1 net=1 cl=2 maxRec=10 check=false tidy=0 acc=114 -> (1104,1271) isFrom=false isTo=true maxId=6 items=6 hash=1337581822 failing=null failingLayer=-1
+  row=36 regime=90 from=(640,-260) to=(-500,92) hw=54 layer=1 net=1 cl=1 maxRec=0 check=true tidy=0 acc=11 -> (-500,92) isFrom=false isTo=true maxId=6 items=6 hash=1573750129 failing=null failingLayer=-1
+  row=37 regime=90 from=(1310,-1242) to=(-144,-204) hw=44 layer=0 net=2 cl=1 maxRec=20 check=true tidy=MAX acc=440 -> (1261,-1207) isFrom=false isTo=false maxId=6 items=6 hash=100286040 failing=Pin#3 failingLayer=-1
+  row=38 regime=90 from=(-521,921) to=(1218,-319) hw=19 layer=1 net=2 cl=1 maxRec=20 check=false tidy=0 acc=20 -> (1218,-319) isFrom=false isTo=true maxId=6 items=6 hash=770886664 failing=null failingLayer=-1
+  row=39 regime=90 from=(360,694) to=(-10,1291) hw=65 layer=1 net=3 cl=1 maxRec=0 check=false tidy=0 acc=707 -> (-10,1291) isFrom=false isTo=true maxId=6 items=6 hash=1544969888 failing=null failingLayer=-1
+  row=40 regime=any from=(-730,196) to=(976,-484) hw=36 layer=1 net=2 cl=2 maxRec=20 check=true tidy=MAX acc=314 -> (-674,174) isFrom=false isTo=false maxId=6 items=6 hash=1433617866 failing=Pin#3 failingLayer=-1
+  row=41 regime=45 from=(1143,-1246) to=(764,1088) hw=40 layer=0 net=3 cl=1 maxRec=10 check=false tidy=MAX acc=584 -> (764,1088) isFrom=false isTo=true maxId=6 items=6 hash=-1485227618 failing=null failingLayer=-1
+  row=42 regime=90 from=(570,-1205) to=(-1200,457) hw=54 layer=0 net=2 cl=2 maxRec=0 check=false tidy=0 acc=488 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=43 regime=45 from=(-335,-593) to=(409,93) hw=52 layer=1 net=2 cl=1 maxRec=10 check=false tidy=0 acc=933 -> (-335,-593) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=44 regime=90 from=(1437,137) to=(1097,-1464) hw=32 layer=1 net=2 cl=2 maxRec=20 check=true tidy=0 acc=53 -> (1425,78) isFrom=false isTo=false maxId=6 items=6 hash=-704801653 failing=Pin#3 failingLayer=-1
+  row=45 regime=any from=(-74,-458) to=(1413,-131) hw=52 layer=1 net=2 cl=2 maxRec=20 check=true tidy=MAX acc=833 -> (-74,-458) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=46 regime=45 from=(1365,653) to=(1024,525) hw=31 layer=0 net=3 cl=2 maxRec=10 check=true tidy=MAX acc=404 -> (1309,632) isFrom=false isTo=false maxId=6 items=6 hash=-2126902758 failing=Pin#3 failingLayer=-1
+  row=47 regime=any from=(544,-452) to=(-1057,234) hw=28 layer=1 net=2 cl=2 maxRec=10 check=true tidy=MAX acc=516 -> (544,-452) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=48 regime=any from=(199,810) to=(1255,421) hw=50 layer=1 net=1 cl=2 maxRec=20 check=false tidy=MAX acc=35 -> (1255,421) isFrom=false isTo=true maxId=6 items=6 hash=1184820441 failing=null failingLayer=-1
+  row=49 regime=90 from=(1172,658) to=(160,-980) hw=61 layer=1 net=3 cl=2 maxRec=0 check=true tidy=MAX acc=486 -> (1140,607) isFrom=false isTo=false maxId=6 items=6 hash=121753461 failing=Pin#3 failingLayer=-1
+  row=50 regime=90 from=(-1480,904) to=(-79,525) hw=56 layer=1 net=1 cl=1 maxRec=20 check=true tidy=0 acc=641 -> (-79,525) isFrom=false isTo=true maxId=6 items=6 hash=-501289717 failing=null failingLayer=-1
+  row=51 regime=90 from=(718,1406) to=(-467,1271) hw=65 layer=0 net=3 cl=2 maxRec=0 check=true tidy=0 acc=91 -> (718,1406) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=PolylineTrace#5 failingLayer=-1
+  row=52 regime=45 from=(1213,338) to=(-1375,-537) hw=30 layer=0 net=2 cl=1 maxRec=10 check=false tidy=0 acc=691 -> (-1375,-537) isFrom=false isTo=true maxId=15 items=6 hash=-150378153 failing=null failingLayer=-1
+  row=53 regime=90 from=(1422,13) to=(-1040,-35) hw=49 layer=1 net=1 cl=2 maxRec=0 check=true tidy=MAX acc=705 -> (-1040,-35) isFrom=false isTo=true maxId=6 items=6 hash=880215799 failing=null failingLayer=-1
+  row=54 regime=any from=(-1166,-196) to=(570,307) hw=34 layer=0 net=1 cl=2 maxRec=20 check=true tidy=0 acc=453 -> (570,307) isFrom=false isTo=true maxId=12 items=8 hash=91654464 failing=null failingLayer=-1
+  row=55 regime=45 from=(-1129,-689) to=(806,-258) hw=39 layer=1 net=1 cl=1 maxRec=20 check=false tidy=MAX acc=625 -> (806,-258) isFrom=false isTo=true maxId=6 items=6 hash=-382069715 failing=null failingLayer=-1
+  row=56 regime=45 from=(-289,793) to=(-709,-166) hw=49 layer=1 net=3 cl=1 maxRec=0 check=false tidy=0 acc=50 -> (-709,-166) isFrom=false isTo=true maxId=6 items=6 hash=-819399562 failing=null failingLayer=-1
+  row=57 regime=90 from=(1463,1041) to=(1442,-369) hw=26 layer=1 net=2 cl=1 maxRec=20 check=true tidy=0 acc=640 -> (1442,-369) isFrom=false isTo=true maxId=6 items=6 hash=-1771122135 failing=null failingLayer=-1
+  row=58 regime=45 from=(-1278,-1098) to=(836,998) hw=60 layer=0 net=1 cl=1 maxRec=20 check=false tidy=MAX acc=23 -> null isFrom=false isTo=false maxId=6 items=4 hash=-1477270405 failing=Pin#2 failingLayer=-1
+  row=59 regime=45 from=(-1189,-668) to=(257,1118) hw=19 layer=1 net=1 cl=2 maxRec=10 check=true tidy=MAX acc=303 -> (257,1118) isFrom=false isTo=true maxId=6 items=6 hash=-228440082 failing=null failingLayer=-1
+  row=60 regime=any from=(1237,1091) to=(-534,-761) hw=24 layer=1 net=1 cl=2 maxRec=20 check=true tidy=0 acc=647 -> (-534,-761) isFrom=false isTo=true maxId=6 items=6 hash=-588927982 failing=null failingLayer=-1
+  row=61 regime=90 from=(-657,150) to=(726,-387) hw=21 layer=0 net=3 cl=2 maxRec=0 check=true tidy=0 acc=962 -> (-657,150) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#2 failingLayer=-1
+  row=62 regime=45 from=(1245,-643) to=(-587,-816) hw=43 layer=1 net=1 cl=2 maxRec=0 check=true tidy=0 acc=390 -> (-587,-816) isFrom=false isTo=true maxId=6 items=6 hash=568615234 failing=null failingLayer=-1
+  row=63 regime=45 from=(-819,-1185) to=(1424,-202) hw=22 layer=0 net=3 cl=1 maxRec=20 check=true tidy=0 acc=436 -> (1424,-202) isFrom=false isTo=true maxId=6 items=6 hash=751051431 failing=null failingLayer=-1
+  row=64 regime=90 from=(-208,425) to=(466,1119) hw=39 layer=1 net=1 cl=1 maxRec=20 check=true tidy=MAX acc=995 -> (466,1119) isFrom=false isTo=true maxId=6 items=6 hash=-1911794282 failing=null failingLayer=-1
+  row=65 regime=45 from=(1084,-584) to=(-743,-106) hw=48 layer=1 net=2 cl=2 maxRec=10 check=true tidy=0 acc=123 -> (1026,-569) isFrom=false isTo=false maxId=6 items=6 hash=-1458720344 failing=Pin#3 failingLayer=-1
+  row=66 regime=90 from=(1078,-1222) to=(-473,930) hw=67 layer=0 net=3 cl=1 maxRec=0 check=false tidy=MAX acc=225 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=PolylineTrace#4 failingLayer=-1
+  row=67 regime=any from=(-1433,298) to=(525,956) hw=61 layer=0 net=2 cl=1 maxRec=0 check=true tidy=MAX acc=765 -> (525,956) isFrom=false isTo=true maxId=10 items=8 hash=-1076771461 failing=null failingLayer=-1
+  row=68 regime=any from=(26,612) to=(-1487,-376) hw=58 layer=0 net=2 cl=2 maxRec=0 check=true tidy=MAX acc=597 -> (26,612) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=69 regime=any from=(-1343,866) to=(327,465) hw=63 layer=1 net=2 cl=2 maxRec=10 check=false tidy=MAX acc=402 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=70 regime=45 from=(-104,-863) to=(757,-1243) hw=52 layer=1 net=2 cl=1 maxRec=20 check=true tidy=0 acc=145 -> (757,-1243) isFrom=false isTo=true maxId=6 items=6 hash=-1319579511 failing=null failingLayer=-1
+  row=71 regime=45 from=(-338,-1217) to=(-1218,1160) hw=29 layer=0 net=1 cl=1 maxRec=10 check=false tidy=0 acc=802 -> (-1218,1160) isFrom=false isTo=true maxId=8 items=6 hash=1932360194 failing=null failingLayer=-1
+  row=72 regime=90 from=(194,-1467) to=(-727,-1106) hw=56 layer=1 net=1 cl=1 maxRec=20 check=false tidy=0 acc=891 -> (-727,-1106) isFrom=false isTo=true maxId=6 items=6 hash=1655292526 failing=null failingLayer=-1
+  row=73 regime=90 from=(-37,194) to=(912,-1019) hw=63 layer=1 net=3 cl=2 maxRec=0 check=true tidy=MAX acc=891 -> (-37,194) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=74 regime=any from=(772,-407) to=(-1201,-739) hw=30 layer=1 net=1 cl=2 maxRec=20 check=true tidy=MAX acc=666 -> (-1201,-739) isFrom=false isTo=true maxId=6 items=6 hash=-1755580258 failing=null failingLayer=-1
+  row=75 regime=any from=(-1379,836) to=(1159,526) hw=40 layer=1 net=2 cl=2 maxRec=0 check=true tidy=MAX acc=201 -> (-1319,829) isFrom=false isTo=false maxId=6 items=6 hash=-1753027521 failing=Pin#3 failingLayer=-1
+  row=76 regime=45 from=(-1119,-34) to=(-1427,-1380) hw=40 layer=1 net=1 cl=2 maxRec=20 check=true tidy=MAX acc=122 -> (-1427,-1380) isFrom=false isTo=true maxId=6 items=6 hash=-1068652135 failing=null failingLayer=-1
+  row=77 regime=any from=(1211,-320) to=(1176,196) hw=60 layer=1 net=3 cl=2 maxRec=0 check=true tidy=0 acc=629 -> (1211,-320) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=78 regime=90 from=(-283,-489) to=(-235,1291) hw=62 layer=0 net=1 cl=2 maxRec=10 check=false tidy=MAX acc=977 -> (-235,1291) isFrom=false isTo=true maxId=10 items=8 hash=-1162908847 failing=null failingLayer=-1
+  row=79 regime=45 from=(-1354,-774) to=(1394,-344) hw=65 layer=0 net=3 cl=1 maxRec=0 check=true tidy=0 acc=25 -> (1394,-344) isFrom=false isTo=true maxId=6 items=6 hash=1651857740 failing=null failingLayer=-1
+  row=80 regime=any from=(396,553) to=(385,-718) hw=10 layer=0 net=1 cl=2 maxRec=10 check=false tidy=MAX acc=486 -> (385,-718) isFrom=false isTo=true maxId=12 items=8 hash=-712880419 failing=null failingLayer=-1
+  row=81 regime=any from=(-426,545) to=(265,1466) hw=16 layer=1 net=1 cl=1 maxRec=20 check=false tidy=0 acc=528 -> (265,1466) isFrom=false isTo=true maxId=6 items=6 hash=903870725 failing=null failingLayer=-1
+  row=82 regime=90 from=(-1442,-941) to=(-613,-1290) hw=63 layer=1 net=1 cl=1 maxRec=0 check=false tidy=MAX acc=343 -> (-613,-1290) isFrom=false isTo=true maxId=6 items=6 hash=-777937897 failing=null failingLayer=-1
+  row=83 regime=90 from=(1241,-666) to=(-915,1488) hw=69 layer=0 net=1 cl=1 maxRec=10 check=true tidy=MAX acc=27 -> (-915,1488) isFrom=false isTo=true maxId=10 items=8 hash=552299141 failing=null failingLayer=-1
+  row=84 regime=any from=(-243,594) to=(-181,1472) hw=35 layer=1 net=2 cl=1 maxRec=10 check=false tidy=0 acc=541 -> (-181,1472) isFrom=false isTo=true maxId=6 items=6 hash=1387411839 failing=null failingLayer=-1
+  row=85 regime=90 from=(35,-332) to=(482,-900) hw=62 layer=1 net=3 cl=2 maxRec=10 check=true tidy=0 acc=203 -> (35,-332) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=86 regime=90 from=(-1350,441) to=(-847,944) hw=15 layer=1 net=3 cl=2 maxRec=20 check=true tidy=0 acc=356 -> (-847,944) isFrom=false isTo=true maxId=6 items=6 hash=-1771606333 failing=null failingLayer=-1
+  row=87 regime=45 from=(-656,895) to=(-1252,220) hw=14 layer=0 net=1 cl=2 maxRec=10 check=false tidy=0 acc=930 -> (-1252,220) isFrom=false isTo=true maxId=8 items=6 hash=1367659594 failing=null failingLayer=-1
+  row=88 regime=45 from=(-962,833) to=(-17,988) hw=29 layer=1 net=2 cl=2 maxRec=20 check=false tidy=MAX acc=990 -> (-17,988) isFrom=false isTo=true maxId=6 items=6 hash=-1099706932 failing=null failingLayer=-1
+  row=89 regime=45 from=(839,623) to=(1084,31) hw=37 layer=0 net=3 cl=2 maxRec=20 check=false tidy=0 acc=794 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=90 regime=45 from=(643,1339) to=(-767,1026) hw=40 layer=0 net=1 cl=2 maxRec=0 check=true tidy=MAX acc=8 -> (-767,1026) isFrom=false isTo=true maxId=6 items=6 hash=745357543 failing=null failingLayer=-1
+  row=91 regime=45 from=(-1397,-499) to=(-892,-952) hw=65 layer=0 net=1 cl=2 maxRec=20 check=false tidy=MAX acc=125 -> (-892,-952) isFrom=false isTo=true maxId=6 items=6 hash=682644722 failing=null failingLayer=-1
+  row=92 regime=45 from=(105,-38) to=(1256,-914) hw=30 layer=0 net=2 cl=2 maxRec=0 check=true tidy=MAX acc=960 -> (105,-38) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=93 regime=45 from=(-497,963) to=(285,-13) hw=55 layer=0 net=1 cl=2 maxRec=10 check=false tidy=0 acc=392 -> (285,-13) isFrom=false isTo=true maxId=10 items=8 hash=-1558893494 failing=null failingLayer=-1
+  row=94 regime=45 from=(-466,1253) to=(1034,-446) hw=18 layer=0 net=3 cl=1 maxRec=10 check=true tidy=0 acc=307 -> (-426,1208) isFrom=false isTo=false maxId=7 items=6 hash=1007683676 failing=Pin#2 failingLayer=-1
+  row=95 regime=90 from=(979,-1033) to=(-1054,1131) hw=21 layer=1 net=1 cl=1 maxRec=0 check=false tidy=0 acc=959 -> (-1054,1131) isFrom=false isTo=true maxId=6 items=6 hash=-1899759904 failing=null failingLayer=-1
+  row=96 regime=any from=(-194,-915) to=(-410,766) hw=31 layer=0 net=1 cl=1 maxRec=20 check=false tidy=0 acc=933 -> (-410,766) isFrom=false isTo=true maxId=12 items=8 hash=-1386754500 failing=null failingLayer=-1
+  row=97 regime=90 from=(1103,-697) to=(-170,-454) hw=13 layer=0 net=2 cl=2 maxRec=10 check=true tidy=MAX acc=222 -> (1044,-686) isFrom=false isTo=false maxId=6 items=6 hash=-1896391906 failing=Pin#3 failingLayer=-1
+  row=98 regime=90 from=(871,-245) to=(527,-831) hw=26 layer=1 net=2 cl=1 maxRec=10 check=false tidy=0 acc=52 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=99 regime=90 from=(121,383) to=(-911,1460) hw=14 layer=0 net=3 cl=2 maxRec=0 check=true tidy=0 acc=627 -> (121,383) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=100 regime=45 from=(1307,715) to=(444,282) hw=17 layer=0 net=2 cl=1 maxRec=0 check=false tidy=0 acc=510 -> (1307,715) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=101 regime=90 from=(35,-704) to=(-746,1164) hw=60 layer=1 net=1 cl=1 maxRec=10 check=false tidy=0 acc=582 -> (-746,1164) isFrom=false isTo=true maxId=6 items=6 hash=-184962112 failing=null failingLayer=-1
+  row=102 regime=any from=(-1109,643) to=(-275,-1401) hw=25 layer=1 net=3 cl=2 maxRec=20 check=false tidy=MAX acc=463 -> (-275,-1401) isFrom=false isTo=true maxId=6 items=6 hash=-1883316565 failing=null failingLayer=-1
+  row=103 regime=45 from=(1073,1040) to=(1305,-793) hw=36 layer=1 net=3 cl=2 maxRec=0 check=false tidy=0 acc=982 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=104 regime=90 from=(-644,376) to=(-123,504) hw=68 layer=0 net=3 cl=2 maxRec=10 check=false tidy=MAX acc=824 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=105 regime=90 from=(1461,-847) to=(-1079,1491) hw=15 layer=0 net=1 cl=2 maxRec=20 check=true tidy=0 acc=677 -> (-1079,1491) isFrom=false isTo=true maxId=10 items=8 hash=2099320703 failing=null failingLayer=-1
+  row=106 regime=90 from=(20,566) to=(1408,-618) hw=11 layer=1 net=3 cl=1 maxRec=20 check=true tidy=MAX acc=663 -> (1408,-618) isFrom=false isTo=true maxId=6 items=6 hash=45578781 failing=null failingLayer=-1
+  row=107 regime=45 from=(-1252,74) to=(1241,-775) hw=16 layer=0 net=3 cl=1 maxRec=0 check=false tidy=0 acc=346 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=PolylineTrace#4 failingLayer=-1
+  row=108 regime=90 from=(-474,716) to=(-836,-403) hw=20 layer=0 net=1 cl=1 maxRec=0 check=false tidy=MAX acc=900 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=PolylineTrace#5 failingLayer=-1
+  row=109 regime=90 from=(347,-153) to=(661,-720) hw=40 layer=0 net=1 cl=2 maxRec=0 check=false tidy=MAX acc=917 -> (661,-720) isFrom=false isTo=true maxId=6 items=6 hash=693695783 failing=null failingLayer=-1
+  row=110 regime=45 from=(965,-261) to=(488,-949) hw=35 layer=0 net=1 cl=2 maxRec=20 check=true tidy=MAX acc=739 -> (488,-949) isFrom=false isTo=true maxId=6 items=6 hash=-571788120 failing=null failingLayer=-1
+  row=111 regime=45 from=(-691,24) to=(1336,-724) hw=10 layer=0 net=2 cl=1 maxRec=10 check=false tidy=MAX acc=715 -> (-691,24) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#2 failingLayer=-1
+  row=112 regime=any from=(-662,478) to=(1341,-138) hw=34 layer=1 net=3 cl=2 maxRec=10 check=true tidy=MAX acc=620 -> (-605,460) isFrom=false isTo=false maxId=6 items=6 hash=-235284992 failing=Pin#3 failingLayer=-1
+  row=113 regime=any from=(-920,129) to=(-148,-120) hw=17 layer=1 net=2 cl=2 maxRec=20 check=false tidy=MAX acc=483 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=114 regime=any from=(-111,-249) to=(-223,-1014) hw=16 layer=0 net=3 cl=1 maxRec=10 check=false tidy=0 acc=61 -> (-223,-1014) isFrom=false isTo=true maxId=9 items=6 hash=-40676838 failing=null failingLayer=-1
+  row=115 regime=90 from=(-1012,-1213) to=(1352,-823) hw=39 layer=0 net=3 cl=1 maxRec=20 check=true tidy=0 acc=537 -> (1352,-823) isFrom=false isTo=true maxId=6 items=6 hash=1770879911 failing=null failingLayer=-1
+  row=116 regime=any from=(-892,-569) to=(826,927) hw=40 layer=1 net=1 cl=1 maxRec=0 check=false tidy=0 acc=65 -> (826,927) isFrom=false isTo=true maxId=6 items=6 hash=1262165687 failing=null failingLayer=-1
+  row=117 regime=any from=(-427,-124) to=(72,257) hw=51 layer=0 net=2 cl=1 maxRec=20 check=true tidy=0 acc=899 -> (-427,-124) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#2 failingLayer=-1
+  row=118 regime=any from=(-1076,1164) to=(-59,1253) hw=58 layer=0 net=3 cl=1 maxRec=20 check=false tidy=MAX acc=422 -> (-59,1253) isFrom=false isTo=true maxId=8 items=6 hash=-1886910342 failing=null failingLayer=-1
+  row=119 regime=90 from=(1161,-1411) to=(-583,1324) hw=30 layer=1 net=1 cl=1 maxRec=0 check=false tidy=MAX acc=594 -> (-583,1324) isFrom=false isTo=true maxId=6 items=6 hash=-1996505769 failing=null failingLayer=-1
+  row=120 regime=90 from=(922,1491) to=(587,-1346) hw=50 layer=1 net=3 cl=2 maxRec=10 check=false tidy=MAX acc=618 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=121 regime=any from=(0,1161) to=(160,61) hw=55 layer=1 net=1 cl=2 maxRec=0 check=false tidy=MAX acc=934 -> (160,61) isFrom=false isTo=true maxId=6 items=6 hash=14802323 failing=null failingLayer=-1
+  row=122 regime=45 from=(360,-199) to=(1237,-78) hw=43 layer=1 net=1 cl=1 maxRec=20 check=true tidy=0 acc=110 -> (1237,-78) isFrom=false isTo=true maxId=6 items=6 hash=1671150647 failing=null failingLayer=-1
+  row=123 regime=any from=(-1249,-998) to=(-498,605) hw=41 layer=1 net=1 cl=2 maxRec=10 check=true tidy=MAX acc=906 -> (-498,605) isFrom=false isTo=true maxId=6 items=6 hash=1083348144 failing=null failingLayer=-1
+  row=124 regime=90 from=(318,-276) to=(687,1) hw=49 layer=1 net=3 cl=2 maxRec=10 check=false tidy=MAX acc=951 -> (318,-276) isFrom=true isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=125 regime=45 from=(-575,-208) to=(1125,1125) hw=57 layer=0 net=1 cl=2 maxRec=10 check=true tidy=0 acc=252 -> (1125,1125) isFrom=false isTo=true maxId=20 items=9 hash=-1011318102 failing=null failingLayer=-1
+  row=126 regime=any from=(644,-893) to=(26,1447) hw=57 layer=0 net=3 cl=2 maxRec=0 check=false tidy=MAX acc=528 -> null isFrom=false isTo=false maxId=5 items=5 hash=-268217344 failing=Pin#3 failingLayer=-1
+  row=127 regime=any from=(138,-788) to=(988,1190) hw=29 layer=0 net=2 cl=2 maxRec=10 check=true tidy=0 acc=858 -> (162,-733) isFrom=false isTo=false maxId=6 items=6 hash=-1033567279 failing=Pin#3 failingLayer=-1

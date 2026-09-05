@@ -1,16 +1,3 @@
-// Plan 5 Task 2 JVM probe: `Item.clearanceViolations()` over a real board, item by item.
-//
-// Prints, for every item of `board.getItems()` (i.e. in `board.itemList` order — descending id,
-// quirk #63), the violation list that `Item.clearanceViolations()` (Item.java:363-469) returns,
-// field for field, plus the `smallestClearance` the call left on the item. Then it prints
-// `ClearanceViolation.aggregateSortedBySeverity(board.getItems())` (:64-75) — a *second* pass
-// over the same items, which is what makes the "smallestClearance is never reset" quirk visible —
-// and `ClearanceViolation.smallestClearance(board.getItems())` (:86-94).
-//
-// Doubles are printed with `Double.toString`, so the port compares exact bits through
-// `java_double_to_string`; the bisection is deterministic, so the values are stable run to run.
-//
-// Usage: java -Djava.awt.headless=true -cp <jar>:. DrcProbe <board.dsn>
 import app.freerouting.board.facade.BasicBoard;
 import app.freerouting.board.model.items.Item;
 import app.freerouting.drc.ClearanceViolation;
@@ -88,9 +75,6 @@ public class DrcProbe {
     System.out.println(
         "smallest " + Double.toString(ClearanceViolation.smallestClearance(board.getItems())));
 
-    // Block D: the private `Item.calculateClearanceBetweenTwoShapes` (Item.java:471-493) on
-    // synthetic boxes, reached by reflection. The method never touches `this`, so any item of the
-    // board serves as the receiver. These are the goldens the port's bisection test asserts.
     System.out.println("== D: calculateClearanceBetweenTwoShapes on synthetic boxes ==");
     Method m =
         Item.class.getDeclaredMethod(

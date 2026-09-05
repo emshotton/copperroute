@@ -1,18 +1,10 @@
-//! Plan 6 Task 8: the guarded queue — the anonymous `TreeSet<MazeListElement>` subclass
-//! `MazeSearchEngine` installs at `MazeSearchEngine.java:84-125`.
-//!
-//! The guard is 35 lines of straight-line arithmetic over `ctrl` and the board's resolution, with
-//! no Java-side state a probe could disagree about; every literal below is derived from the Java
-//! text with its line number, and the *container* half (ordering, the tie-drop, pop-first) is
-//! pinned separately in `tests/maze_list_element.rs` against `JavaTreeSet`.
-
 use fr_board::prelude::*;
 use fr_board::structure::Unit;
 use fr_geometry::{FloatLine, FloatPoint, IntBox, IntPoint, Point, TileShape};
 use fr_router::arena::DoorId;
 use fr_router::autoroute::expansion::{ExpandableRef, RoomRef};
 use fr_router::autoroute::maze::{
-    AutorouteControl, AutorouteEngine, MazeAdjustment, MazeListElement, MazeQueue,
+    AutorouteControl, AutorouteEngine, MazeAdjustment, MazeListElement, MazeQueue, ViaPricing,
 };
 use fr_router::{DrillId, ExpansionDrill};
 use fr_settings::RouterSettings;
@@ -28,7 +20,6 @@ const BOUNDING_BOX: IntBox = IntBox {
     },
 };
 
-/// Two signal layers, nothing on the board, one net so `initNet` can read a half width.
 fn bare_board() -> Board {
     let layers = || LayerStructure::new(vec![Layer::new("front", true), Layer::new("back", true)]);
     let clearance_matrix = ClearanceMatrix::get_default_instance(&layers(), 200);
@@ -47,23 +38,18 @@ fn bare_board() -> Board {
     )
 }
 
-/// A control block with the fanout fields the guard reads already set: `isFanout`, the start pin
-/// centre and its layer. `viaRule` is left `None`, which is why this does not go through
-/// `AutorouteControl::new` — the guard never touches a via.
 fn fanout_control(
     settings: &RouterSettings,
     pin_center: Point,
     pin_layer: i32,
 ) -> AutorouteControl {
     let mut ctrl = fresh_control(settings);
-    ctrl.is_fanout = true; // :87
-    ctrl.fanout_start_pin_center = Some(pin_center); // :87-89
-    ctrl.fanout_start_pin_layer = pin_layer; // :92
+    ctrl.is_fanout = true;
+    ctrl.fanout_start_pin_center = Some(pin_center);
+    ctrl.fanout_start_pin_layer = pin_layer;
     ctrl
 }
 
-/// A control block with every field at the private constructor's default, built without a board
-/// so the test can set exactly the four fields the guard reads.
 fn fresh_control(settings: &RouterSettings) -> AutorouteControl {
     AutorouteControl {
         trace_costs: settings.get_trace_costs(),
@@ -102,8 +88,12 @@ fn fresh_control(settings: &RouterSettings) -> AutorouteControl {
         min_cheap_via_cost: 0.0,
         fanout_max_escape_length: 3000.0,
         fanout_min_escape_length: 500.0,
-        // `RouterSettings.getStartRipupCosts`'s default (RouterSettings.java:537-548).
         start_ripup_costs: 1,
+        smd_via_relaxation: settings.get_smd_via_relaxation(),
+        units_per_mm: 1.0,
+        trace_cost_per_mm: 1.0,
+        smd_via_cost_factor: 0.1,
+        via_pricing: ViaPricing::ByPadstackRadius,
     }
 }
 
@@ -121,8 +111,6 @@ fn element(
         expansion_value: 0.0,
         sorting_value: sorting,
         next_room,
-        // `shapeEntry.a.middlePoint(shapeEntry.b)` (:102-103) is the point the guard measures, so
-        // a degenerate line puts it exactly at `entry`.
         shape_entry: FloatLine::new(entry, entry),
         room_ripped: false,
         adjustment: MazeAdjustment::None,
@@ -131,11 +119,6 @@ fn element(
     }
 }
 
-// =================================================================================================
-// The guard
-// =================================================================================================
-
-/// `:87` — with `isFanout` false, neither window applies, however far away the element is.
 #[test]
 fn without_fanout_the_window_is_not_consulted_at_all() {
     let mut board = bare_board();
@@ -163,8 +146,6 @@ fn without_fanout_the_window_is_not_consulted_at_all() {
     assert_eq!(queue.len(), 1);
 }
 
-/// `:90-106` — an element whose `nextRoom` is on the fanout start layer is refused when the
-/// middle of its shape entry is further than `maxLen * resolution` from the start pin.
 #[test]
 fn the_max_escape_window_refuses_a_far_entry_on_the_start_layer() {
     let mut board = bare_board();
@@ -185,7 +166,6 @@ fn the_max_escape_window_refuses_a_far_entry_on_the_start_layer() {
     let limit = ctrl.fanout_max_escape_length * resolution;
 
     let mut queue = MazeQueue::new();
-    // Just inside the window: accepted.
     assert!(queue.push(
         element(
             ExpandableRef::Door(DoorId(0)),
@@ -197,7 +177,6 @@ fn the_max_escape_window_refuses_a_far_entry_on_the_start_layer() {
         &engine,
         &board,
     ));
-    // Exactly at it: `dist > maxLen * resolution` is a strict `>` (:104), so this is accepted too.
     assert!(queue.push(
         element(
             ExpandableRef::Door(DoorId(1)),
@@ -209,7 +188,6 @@ fn the_max_escape_window_refuses_a_far_entry_on_the_start_layer() {
         &engine,
         &board,
     ));
-    // Past it: refused.
     assert!(!queue.push(
         element(
             ExpandableRef::Door(DoorId(2)),
@@ -221,7 +199,6 @@ fn the_max_escape_window_refuses_a_far_entry_on_the_start_layer() {
         &engine,
         &board,
     ));
-    // The same distance on another layer is not measured at all (:90-92).
     assert!(queue.push(
         element(
             ExpandableRef::Door(DoorId(3)),
@@ -233,7 +210,6 @@ fn the_max_escape_window_refuses_a_far_entry_on_the_start_layer() {
         &engine,
         &board,
     ));
-    // And a `null` nextRoom is not on any layer (`element.nextRoom != null &&`, :91).
     assert!(queue.push(
         element(
             ExpandableRef::Door(DoorId(4)),
@@ -248,8 +224,6 @@ fn the_max_escape_window_refuses_a_far_entry_on_the_start_layer() {
     assert_eq!(queue.len(), 4);
 }
 
-/// `:108-122` — a drill element is refused when it is **closer** than `minLen * resolution` to
-/// the start pin, on any layer, and the test is a strict `<` (:119).
 #[test]
 fn the_min_escape_window_refuses_a_near_drill() {
     let mut board = bare_board();
@@ -300,8 +274,6 @@ fn the_min_escape_window_refuses_a_near_drill() {
     assert_eq!(queue.len(), 1);
 }
 
-/// The two windows are **both** applied to the same element (`:93-107` then `:108-122`, not an
-/// `else`): a drill on the start layer has to clear the max window and the min window.
 #[test]
 fn both_windows_apply_to_a_drill_on_the_start_layer() {
     let mut board = bare_board();
@@ -316,7 +288,6 @@ fn both_windows_apply_to_a_drill_on_the_start_layer() {
     let ctrl = fanout_control(&settings, Point::Int(IntPoint::new(0, 0)), 0);
     let floor = ctrl.fanout_min_escape_length * resolution;
 
-    // A drill comfortably inside the max window but under the min one.
     let drill = engine.rooms.drills.insert(ExpansionDrill::new(
         TileShape::Box(IntBox::from_coords(-10, -10, 10, 10)),
         Point::Int(IntPoint::new(floor as i32 - 1, 0)),
@@ -338,12 +309,6 @@ fn both_windows_apply_to_a_drill_on_the_start_layer() {
     assert!(queue.is_empty());
 }
 
-// =================================================================================================
-// The container half, through the queue's own API
-// =================================================================================================
-
-/// `push` resolves `door.getId()` through the engine, so two doors between different rooms sort
-/// by the ids the engine answers — and `pop_first` walks them in that order.
 #[test]
 fn the_queue_sorts_and_pops_through_the_engines_door_ids() {
     let mut board = bare_board();
@@ -372,12 +337,10 @@ fn the_queue_sorts_and_pops_through_the_engines_door_ids() {
     let bc = engine
         .rooms
         .new_door(RoomRef::Complete(b), RoomRef::Complete(c), 1);
-    // `ExpansionDoor.getId` = `min * 31 + max` over the two room ids: 1*31+2 = 33, 2*31+3 = 65.
     assert_eq!(engine.expandable_id_no(ExpandableRef::Door(ab)), 33);
     assert_eq!(engine.expandable_id_no(ExpandableRef::Door(bc)), 65);
 
     let mut queue = MazeQueue::new();
-    // Equal costs, so the door id is the whole order — and the *larger* id goes in first.
     assert!(queue.push(
         element(
             ExpandableRef::Door(bc),
