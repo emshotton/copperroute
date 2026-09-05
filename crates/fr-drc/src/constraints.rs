@@ -1,6 +1,9 @@
-use fr_board::{Board, DrcConstraints, DrcSeverity, Item};
+use fr_board::{Board, DrcConstraints, DrcSeverity, Item, Unit};
+use fr_dsn::CoordinateTransform;
+use fr_geometry::java_round;
+use serde_json::Value;
 
-use crate::DrcViolationKind;
+use crate::{DrcError, DrcViolationKind};
 
 #[must_use]
 pub fn canonical_class_name(name: &str) -> &str {
@@ -102,4 +105,88 @@ pub fn search_radius(constraints: &DrcConstraints) -> i32 {
         .chain(constraints.copper_edge_clearance)
         .max()
         .unwrap_or(0)
+}
+
+fn to_board_units(mm: f64, board: &Board, transform: &CoordinateTransform) -> i32 {
+    let dsn_value = Unit::scale(mm, Unit::Mm, board.communication.unit);
+    java_round(transform.dsn_to_board(dsn_value)) as i32
+}
+
+fn rule(rules: &Value, key: &str, board: &Board, transform: &CoordinateTransform) -> Option<i32> {
+    let mm = rules.get(key)?.as_f64()?;
+    Some(to_board_units(mm, board, transform))
+}
+
+fn positive(value: Option<i32>) -> Option<i32> {
+    value.filter(|v| *v > 0)
+}
+
+fn parse_severity(text: &str) -> Option<DrcSeverity> {
+    match text {
+        "error" => Some(DrcSeverity::Error),
+        "warning" => Some(DrcSeverity::Warning),
+        "ignore" | "exclusion" => Some(DrcSeverity::Ignore),
+        _ => None,
+    }
+}
+
+pub fn from_kicad_project(
+    json: &str,
+    board: &Board,
+    transform: &CoordinateTransform,
+) -> Result<DrcConstraints, DrcError> {
+    let document: Value = serde_json::from_str(json)?;
+    let settings = document
+        .pointer("/board/design_settings")
+        .ok_or_else(|| DrcError::Project("no board.design_settings object".to_string()))?;
+    let rules = settings.get("rules").cloned().unwrap_or(Value::Null);
+    let mut constraints = DrcConstraints {
+        min_clearance: positive(rule(&rules, "min_clearance", board, transform)),
+        min_track_width: positive(rule(&rules, "min_track_width", board, transform)),
+        hole_clearance: rule(&rules, "min_hole_clearance", board, transform),
+        hole_to_hole: positive(rule(&rules, "min_hole_to_hole", board, transform)),
+        copper_edge_clearance: positive(rule(&rules, "min_copper_edge_clearance", board, transform)),
+        min_via_diameter: positive(rule(&rules, "min_via_diameter", board, transform)),
+        min_via_annular_width: positive(rule(&rules, "min_via_annular_width", board, transform)),
+        min_through_hole_diameter: positive(rule(&rules, "min_through_hole_diameter", board, transform)),
+        min_microvia_diameter: positive(rule(&rules, "min_microvia_diameter", board, transform)),
+        min_microvia_drill: positive(rule(&rules, "min_microvia_drill", board, transform)),
+        ..DrcConstraints::default()
+    };
+    if let Some(severities) = settings.get("rule_severities").and_then(Value::as_object) {
+        for (name, value) in severities {
+            if let Some(severity) = value.as_str().and_then(parse_severity) {
+                constraints.severities.insert(name.clone(), severity);
+            }
+        }
+    }
+    if let Some(classes) = document
+        .pointer("/net_settings/classes")
+        .and_then(Value::as_array)
+    {
+        for class in classes {
+            let Some(name) = class.get("name").and_then(Value::as_str) else {
+                continue;
+            };
+            let name = canonical_class_name(name).to_string();
+            if let Some(clearance) = positive(rule(class, "clearance", board, transform)) {
+                constraints.netclass_clearance.insert(name.clone(), clearance);
+            }
+            if let Some(width) = positive(rule(class, "track_width", board, transform)) {
+                constraints.netclass_track_width.insert(name, width);
+            }
+        }
+    }
+    Ok(constraints)
+}
+
+pub fn apply_kicad_project(
+    json: &str,
+    board: &mut Board,
+    transform: &CoordinateTransform,
+) -> Result<(), DrcError> {
+    let project = from_kicad_project(json, board, transform)?;
+    let dsn = from_dsn(board);
+    board.rules.drc_constraints = Some(DrcConstraints::merge(dsn, project));
+    Ok(())
 }

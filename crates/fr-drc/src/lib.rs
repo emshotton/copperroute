@@ -12,6 +12,7 @@ pub mod violation;
 
 pub use airline::AirLine;
 pub use checker::DesignRulesChecker;
+pub use constraints::apply_kicad_project;
 pub use error::DrcError;
 pub use net_incompletes::NetIncompletes;
 pub use report::{
