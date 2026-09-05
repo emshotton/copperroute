@@ -415,7 +415,7 @@ not vendored. **Every fixture-reading test in this crate calls
 `parity::require_java_dir()` first and returns with a printed SKIP** —
 `FREEROUTING_JAVA_DIR=/nonexistent cargo test -p fr-drc` is green. The
 synthetic-board tests (the majority of `net_incompletes.rs`,
-`incompletes.rs`, `clearance_list.rs` and `report.rs`) need nothing.
+`incompletes.rs`, `checks.rs` and `report.rs`) need nothing.
 
 The **jar** is needed only by the probes, by `gen-drc-reference.sh` and by the
 two differentials — never by `cargo test`.
