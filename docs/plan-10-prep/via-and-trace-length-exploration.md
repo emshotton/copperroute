@@ -382,12 +382,19 @@ violations 497 → 448, wirelength +0.2 %, unrouted 2 766 → 3 271 (+18 %; 74 b
 worse, 4 with no output), cpu 34 432 s → 59 862 s. The 72 boards that lost completions are the
 fixture set for the two fixes below.
 
-**The overrun, found.** Sampled at 100 s and 200 s on `2d_conduction_sk9822-matrix` (routes fully
-in 31 s with the optimizer off), the stage sits in connectivity walks and shape-tree overlap
-queries: every item paid a whole-board deep copy, two `BoardStatistics` computations and two more
-full DRC incomplete counts. The job deadline was polled only inside the per-item re-router's pass
-loop, which never runs when the ripped item leaves no open connection behind — a redundant via on
-a matrix board — so a stage full of such items never saw the deadline and ran until the harness
-killed it. Fixed on the branch: the optimizer's pass and item loops poll the job deadline
-themselves, and the incomplete count comes from the statistics already computed rather than a
-second DRC pass. The per-item cost itself (W3) is still the stage's price on big boards.
+**The overrun, found.** Three gaps let a run outlive its job deadline, and all three are fixed
+on the branch, each pinned by a test: the optimizer polled the deadline only inside its per-item
+re-router's pass loop, which never runs when the ripped item leaves no open connection behind;
+a search that began just before the deadline ran to its own per-connection time limit, up to
+100 s × 2^(pass−1) inside the re-router, because the stop check between expansions only read a
+flag nobody had polled (`RouterStop::is_stopped_or_expired` polls it); and every optimizer item
+paid two whole-board DRC passes for a count the statistics already carried. The re-router's
+work-list sweep, which walked every item's connected set on the board up to six times per item,
+is now limited to the nets that can have an open connection. With a real deadline
+(`router.job_timeout`; the native CLI's `--timeout` flag is not it) the tail past the deadline is
+under two seconds on the worst boards, and sk9822 routes fully inside a 60 s job.
+
+**What the optimizer still costs.** On large routed boards the stage is expensive because every
+item pays a whole-board deep copy, a rip, a re-route and two statistics passes: 28 s per item on
+sk9822 before the work-list filter. That is W3's problem and the reason the corpus cpu roughly
+doubled; the job deadline is the bound.
