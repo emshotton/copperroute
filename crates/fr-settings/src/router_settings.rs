@@ -144,6 +144,17 @@ pub struct RouterSettings {
         skip_serializing_if = "Option::is_none"
     )]
     pub smd_via_relaxation: Option<bool>,
+
+    /// The port's own field: no Java counterpart. `RoutingFailureLog::FAILURE_THRESHOLD`'s
+    /// give-up policy is wired into the autoroute item loop only when this is `Some`; the value
+    /// is the number of recorded failures at which an item is skipped on later passes. `None`
+    /// (the default) retries every item on every pass, matching the jar's inert threshold.
+    #[serde(
+        rename = "failure_give_up_threshold",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub failure_give_up_threshold: Option<i32>,
 }
 
 impl RouterSettings {
@@ -171,6 +182,7 @@ impl RouterSettings {
         "board_specific_trace_costs_applied",
         "opt_changed_area_ms",
         "smd_via_relaxation",
+        "failure_give_up_threshold",
     ];
 
     pub fn new() -> Self {
@@ -280,6 +292,14 @@ impl RouterSettings {
 
     pub fn set_smd_via_relaxation(&mut self, value: Option<bool>) {
         self.smd_via_relaxation = value;
+    }
+
+    pub fn get_failure_give_up_threshold(&self) -> Option<i32> {
+        self.failure_give_up_threshold
+    }
+
+    pub fn set_failure_give_up_threshold(&mut self, value: Option<i32>) {
+        self.failure_give_up_threshold = value;
     }
 
     pub fn get_via_costs(&self) -> i32 {

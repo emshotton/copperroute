@@ -155,6 +155,12 @@ impl RouterSettings {
             "smd_via_relaxation",
             FieldKind::Bool,
         ),
+        spec(
+            "failure_give_up_threshold",
+            "failure_give_up_threshold",
+            "failure_give_up_threshold",
+            FieldKind::I32,
+        ),
     ];
 }
 
@@ -727,6 +733,9 @@ fn set_router_leaf(
         }
         "opt_changed_area_ms" => target.opt_changed_area_ms = Some(java_parse_i32(value, path)?),
         "smd_via_relaxation" => target.smd_via_relaxation = Some(java_parse_bool(value)),
+        "failure_give_up_threshold" => {
+            target.failure_give_up_threshold = Some(java_parse_i32(value, path)?);
+        }
         _ => return Err(type_mismatch(path, value)),
     }
     Ok(())

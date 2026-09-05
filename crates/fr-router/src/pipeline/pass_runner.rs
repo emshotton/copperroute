@@ -93,6 +93,25 @@ impl AutoroutePassRunner {
                     break;
                 }
 
+                if let Some(threshold) = router.settings().get_failure_give_up_threshold()
+                    && failure_log.should_skip(current_item, threshold)
+                {
+                    skipped += 1;
+                    items_to_go_count -= 1;
+                    AutoroutePassRunner::update_progress(
+                        board,
+                        router,
+                        progress,
+                        &mut counters,
+                        items_to_go_count,
+                        ripped_item_count,
+                        not_routed,
+                        routed,
+                        skipped,
+                    );
+                    continue;
+                }
+
                 let max_items = router.settings().max_items;
                 if max_items.is_some_and(|max| max > 0 && router.total_items_routed >= max) {
                     stop.request_stop_auto_router();

@@ -226,6 +226,7 @@ fn field_names_pin_javas_declaration_order() {
             "board_specific_trace_costs_applied",
             "opt_changed_area_ms",
             "smd_via_relaxation",
+            "failure_give_up_threshold",
         ]
     );
     assert_eq!(

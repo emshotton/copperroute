@@ -497,6 +497,12 @@ impl CopyFields for RouterSettings {
             mode,
             report,
         );
+        scalar_copy(
+            &self.failure_give_up_threshold,
+            &mut target.failure_give_up_threshold,
+            mode,
+            report,
+        );
     }
 }
 

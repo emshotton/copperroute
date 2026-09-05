@@ -37,6 +37,12 @@ impl RoutingFailureLog {
             .map_or(0, |info| info.failure_count)
     }
 
+    /// Whether `item` has already failed at least `threshold` times and should be given up on
+    /// for the rest of the run, rather than retried on every later pass.
+    pub fn should_skip(&self, item: ItemId, threshold: i32) -> bool {
+        self.failure_count(item) >= threshold
+    }
+
     pub fn entry(&self, item: ItemId) -> Option<&ItemFailureInfo> {
         self.failures.get(&item)
     }

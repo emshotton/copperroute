@@ -464,6 +464,7 @@ fn populated_router() -> RouterSettings {
     s.result_json_path = Some("/tmp/result.json".to_string());
     s.opt_changed_area_ms = Some(48);
     s.smd_via_relaxation = Some(false);
+    s.failure_give_up_threshold = Some(50);
     s
 }
 

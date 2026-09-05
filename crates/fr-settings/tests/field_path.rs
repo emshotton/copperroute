@@ -652,6 +652,7 @@ fn field_kinds_match_the_java_field_types() {
             ("board_specific_trace_costs_applied", Bool),
             ("opt_changed_area_ms", I32),
             ("smd_via_relaxation", Bool),
+            ("failure_give_up_threshold", I32),
         ],
     );
     check(
