@@ -183,6 +183,7 @@ fn optimizer_schema() -> Value {
             "additional_ripup_cost_factor_at_start": { "type": "integer", "description": "Extra rip-up cost applied at the start of the stage, decaying as it runs." },
             "trace_ripup_cost_factor": { "type": "number", "description": "How expensive ripping up an existing trace is relative to routing a new one." },
             "max_autoroute_passes": { "type": "integer", "description": "How many auto-routing passes the optimizer may spend re-routing what it rips up." },
+            "max_search_steps": { "type": "integer", "description": "A deterministic cap on the total search steps the optimizer may spend; 0 means unlimited. Bounds runaway routing on incomplete boards without a wall-clock." },
             "timeout": { "type": "string", "description": "Wall-clock budget for the optimizer stage, as a timespan. A stage timeout is not a job timeout: the job still finishes COMPLETED." }
         }
     })

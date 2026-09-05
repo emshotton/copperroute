@@ -161,6 +161,10 @@
             "description": "How many optimizer passes to run.",
             "type": "integer"
           },
+          "max_search_steps": {
+            "description": "A deterministic cap on the total search steps the optimizer may spend; 0 means unlimited. Bounds runaway routing on incomplete boards without a wall-clock.",
+            "type": "integer"
+          },
           "max_threads": {
             "description": "Worker threads for the optimizer.",
             "type": "integer"
