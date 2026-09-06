@@ -84,7 +84,7 @@ pub struct ToolDef {
 pub struct State {
     tools: BTreeMap<String, (ToolDef, ToolHandler)>,
     pub initialized: AtomicBool,
-    pub settings_argv: Vec<String>,
+    pub overrides: crate::ops::SettingsOverrides,
 }
 
 impl Default for State {
@@ -98,13 +98,13 @@ impl State {
         Self {
             tools: BTreeMap::new(),
             initialized: AtomicBool::new(false),
-            settings_argv: Vec::new(),
+            overrides: crate::ops::SettingsOverrides::default(),
         }
     }
 
-    pub fn with_settings_argv(settings_argv: &[String]) -> Self {
+    pub fn with_overrides(overrides: crate::ops::SettingsOverrides) -> Self {
         Self {
-            settings_argv: settings_argv.to_vec(),
+            overrides,
             ..Self::new()
         }
     }

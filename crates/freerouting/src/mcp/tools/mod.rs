@@ -6,7 +6,7 @@ pub mod schema;
 
 use super::jsonrpc::RpcError;
 use super::server::{State, ToolDef};
-use fr_core::{RoutingJob, SessionId, Uuid128};
+use fr_core::Uuid128;
 use serde_json::{Value, json};
 use std::path::PathBuf;
 
@@ -57,10 +57,9 @@ pub fn register_all(state: &mut State) {
     );
 }
 
-pub fn board_input(args: &Value) -> Result<RoutingJob, RpcError> {
+pub fn board_source(args: &Value) -> Result<crate::ops::load::BoardSource, RpcError> {
     let path = optional_string(args, "dsn_path")?;
     let text = optional_string(args, "dsn_text")?;
-    let mut job = RoutingJob::with_id(SessionId::NIL, mint_job_id());
     match (path, text) {
         (Some(_), Some(_)) => Err(RpcError::invalid_params(
             "give exactly one of dsn_path and dsn_text, not both",
@@ -68,28 +67,19 @@ pub fn board_input(args: &Value) -> Result<RoutingJob, RpcError> {
         (None, None) => Err(RpcError::invalid_params(
             "one of dsn_path and dsn_text is required",
         )),
-        (Some(path), None) => {
-            let path = PathBuf::from(path);
-            job.set_input(&path).map_err(|error| {
-                RpcError::invalid_params(format!(
-                    "Couldn't load the input file '{}': {error}",
-                    path.display()
-                ))
-            })?;
-            Ok(job)
-        }
-        (None, Some(text)) => {
-            job.set_input_bytes(Some(text.as_bytes()));
-            if let Some(input) = job.input.as_mut() {
-                let extension = match input.format.default_extension() {
-                    "" => "dsn",
-                    extension => extension,
-                };
-                input.set_filename(Some(&format!("board.{extension}")));
-            }
-            job.name = "board".to_string();
-            Ok(job)
-        }
+        (Some(path), None) => Ok(crate::ops::load::BoardSource::Path(PathBuf::from(path))),
+        (None, Some(text)) => Ok(crate::ops::load::BoardSource::Text {
+            text,
+            name: "board".to_string(),
+        }),
+    }
+}
+
+pub fn rpc_error(error: crate::ops::OpError) -> RpcError {
+    use crate::ops::OpError;
+    match error {
+        OpError::Input(message) | OpError::Settings(message) => RpcError::invalid_params(message),
+        other => RpcError::internal(other.to_string()),
     }
 }
 
