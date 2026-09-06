@@ -4,7 +4,7 @@ use fr_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
 use fr_geometry::{FloatLine, FloatPoint, TileShape};
 
 use crate::checks::geometry::{
-    candidates, gap_below, hole_of, is_copper, item_shapes, sub_epsilon,
+    candidates, gap_below, has_copper, hole_of, is_copper, item_shapes, sub_epsilon,
 };
 use crate::constraints::{pair_clearance, search_radius, severity};
 use crate::{DrcViolation, DrcViolationKind};
@@ -34,15 +34,6 @@ fn same_logical_pad(board: &Board, a: &Item, b: &Item) -> bool {
                 }
         }
         _ => false,
-    }
-}
-
-fn has_copper(board: &Board, id: ItemId) -> bool {
-    let ctx = board.ctx();
-    match board.get_item(id) {
-        Some(Item::Pin(pin)) => !pin.get_padstack(&ctx).is_some_and(|p| p.hole_only),
-        Some(item) => is_copper(item),
-        None => false,
     }
 }
 

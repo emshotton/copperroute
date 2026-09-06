@@ -1,5 +1,5 @@
 use fr_board::{Board, Item, ItemId, ItemKind, TreeObject};
-use fr_geometry::{Circle, FloatPoint, Shape, ShapeOps, TileShape, java_round};
+use fr_geometry::{Circle, FloatPoint, ShapeOps, TileShape, java_round};
 
 pub struct Hole {
     pub shape: TileShape,
@@ -40,6 +40,16 @@ pub fn gap_below(a: &TileShape, b: &TileShape, clearance: i32) -> Option<(f64, F
 #[must_use]
 pub fn is_copper(item: &Item) -> bool {
     matches!(item.kind(), ItemKind::Trace | ItemKind::Via | ItemKind::Pin)
+}
+
+#[must_use]
+pub fn has_copper(board: &Board, id: ItemId) -> bool {
+    let ctx = board.ctx();
+    match board.get_item(id) {
+        Some(Item::Pin(pin)) => !pin.get_padstack(&ctx).is_some_and(|p| p.hole_only),
+        Some(item) => is_copper(item),
+        None => false,
+    }
 }
 
 #[must_use]
@@ -122,26 +132,19 @@ pub fn item_shapes(board: &mut Board, id: ItemId) -> Vec<(usize, TileShape)> {
             .map(|i| item.shape_layer(i, &ctx))
             .collect()
     };
-    // Routing search shapes can be enlarged for hole clearance. DRC must
-    // measure physical copper, not that extra routing obstacle margin.
+    // The search tree enlarges pin and via shapes by the routing hole clearance;
+    // DRC measures the copper itself.
     {
         let ctx = board.ctx();
-        let item = board.get_item(id);
-        if matches!(item, Some(Item::Pin(_) | Item::Via(_))) {
+        let copper_on = |layer: usize| match board.get_item(id) {
+            Some(Item::Pin(pin)) => pin.get_shape_on_layer(layer, &ctx),
+            Some(Item::Via(via)) => via.get_shape_on_layer(layer, &ctx),
+            _ => None,
+        };
+        if matches!(board.get_item(id), Some(Item::Pin(_) | Item::Via(_))) {
             return layers
                 .into_iter()
-                .filter_map(|layer| {
-                    let shape = match item? {
-                        Item::Pin(pin) => pin.get_shape_on_layer(layer, &ctx),
-                        Item::Via(via) => via.get_shape_on_layer(layer, &ctx),
-                        _ => None,
-                    }?;
-                    let tile = match shape {
-                        Shape::Tile(tile) => tile,
-                        other => TileShape::Octagon(other.bounding_octagon()?),
-                    };
-                    Some((layer, tile))
-                })
+                .filter_map(|layer| Some((layer, copper_on(layer)?.bounding_tile())))
                 .collect();
         }
     }
