@@ -3,6 +3,7 @@ pub mod clearance;
 pub mod clearance_override;
 pub mod communication;
 pub mod connectivity;
+mod contact_cache;
 pub mod normalize;
 pub mod query;
 pub mod shape_trace_entries;
@@ -70,6 +71,7 @@ pub struct Board {
     pub normalize_suppressed_net_nos: std::collections::BTreeSet<i32>,
 
     revision: u64,
+    contact_cache: contact_cache::ContactCache,
     max_trace_half_width: i32,
     min_trace_half_width: i32,
     max_tree_shape_width: f64,
@@ -117,6 +119,7 @@ impl Board {
             shove_failing_layer: -1,
             normalize_suppressed_net_nos: std::collections::BTreeSet::new(),
             revision: 0,
+            contact_cache: contact_cache::ContactCache::default(),
             max_trace_half_width: 1000,
             min_trace_half_width: 10000,
             max_tree_shape_width,
@@ -172,6 +175,7 @@ impl Board {
     }
 
     pub fn insert_item(&mut self, mut item: Item) -> ItemId {
+        self.invalidate_cached_contacts();
         if item.clearance_class() >= self.rules.clearance_matrix.get_class_count() {
             item.set_clearance_class(0, &self.rules);
         }
@@ -194,6 +198,7 @@ impl Board {
     }
 
     pub fn remove_item(&mut self, id: ItemId) -> bool {
+        self.invalidate_cached_contacts();
         let Some(item) = self.items.get(&id) else {
             return false;
         };
@@ -672,6 +677,7 @@ impl Board {
     }
 
     pub fn get_item_mut(&mut self, id: ItemId) -> Option<&mut Item> {
+        self.invalidate_cached_contacts();
         self.items.get_mut(&id)
     }
 
@@ -849,6 +855,7 @@ impl Board {
     }
 
     pub fn move_item_by(&mut self, id: ItemId, vector: &Vector) -> Result<bool, crate::BoardError> {
+        self.invalidate_cached_contacts();
         let Some(item) = self.items.get(&id) else {
             return Ok(false);
         };
@@ -926,6 +933,7 @@ impl Board {
     }
 
     pub fn replace_trace_geometry(&mut self, id: ItemId, new_polyline: Polyline) -> bool {
+        self.invalidate_cached_contacts();
         if !matches!(self.items.get(&id), Some(Item::Trace(_))) {
             return false;
         }
