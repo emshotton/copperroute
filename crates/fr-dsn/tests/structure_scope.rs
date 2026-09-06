@@ -271,20 +271,20 @@ fn write_autoroute_settings_scope_matches_javas_bytes_on_a_two_layer_board() {
         "  (layer_rule F.Cu",
         "    (active on)",
         "    (preferred_direction vertical)",
-        "    (preferred_direction_trace_costs 1.0)",
-        "    (against_preferred_direction_trace_costs 1.0)",
+        "    (preferred_direction_trace_costs 1)",
+        "    (against_preferred_direction_trace_costs 1)",
         "  )",
         "  (layer_rule B.Cu",
         "    (active on)",
         "    (preferred_direction horizontal)",
-        "    (preferred_direction_trace_costs 1.0)",
-        "    (against_preferred_direction_trace_costs 1.0)",
+        "    (preferred_direction_trace_costs 1)",
+        "    (against_preferred_direction_trace_costs 1)",
         "  )",
         ")",
     ]
     .join("\n");
     assert_eq!(text, expected);
-    assert!(text.contains("(preferred_direction_trace_costs 1.0)"));
+    assert!(text.contains("(preferred_direction_trace_costs 1)"));
 }
 
 #[test]

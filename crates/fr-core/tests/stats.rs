@@ -2,7 +2,7 @@ use fr_core::{
     BoardStatistics, BoardStatisticsExt, FileFormat, count_occurrences, to_gson_json,
     to_gson_string,
 };
-use fr_dsn::{java_double_to_string, java_float_to_string};
+use fr_dsn::{format_double, format_float};
 use fr_router::score::{BoardStatisticsFanout, Rectangle2DFloat};
 
 const FIELD_PATHS: &[&str] = &[
@@ -841,10 +841,10 @@ fn rect(v: &mut Vec<String>, r: Option<&Rectangle2DFloat>) {
     match r {
         None => v.extend(std::iter::repeat_n("<null>".to_string(), 4)),
         Some(r) => {
-            v.push(java_float_to_string(r.x));
-            v.push(java_float_to_string(r.y));
-            v.push(java_float_to_string(r.width));
-            v.push(java_float_to_string(r.height));
+            v.push(format_float(r.x));
+            v.push(format_float(r.y));
+            v.push(format_float(r.width));
+            v.push(format_float(r.height));
         }
     }
 }
@@ -854,11 +854,11 @@ fn int(n: Option<i32>) -> String {
 }
 
 fn float(n: Option<f32>) -> String {
-    n.map_or_else(|| "<null>".to_string(), java_float_to_string)
+    n.map_or_else(|| "<null>".to_string(), format_float)
 }
 
 fn double(n: Option<f64>) -> String {
-    n.map_or_else(|| "<null>".to_string(), java_double_to_string)
+    n.map_or_else(|| "<null>".to_string(), format_double)
 }
 
 fn string_field(s: &str) -> String {

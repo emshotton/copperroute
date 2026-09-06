@@ -313,7 +313,7 @@ fn describe_token(token: Option<&Token>) -> String {
         Some(Token::Kw(keyword)) => keyword.name().to_string(),
         Some(Token::Str(value)) => value.clone(),
         Some(Token::Int(value)) => value.to_string(),
-        Some(Token::Float(value)) => crate::format::java_double_to_string(*value),
+        Some(Token::Float(value)) => crate::format::format_double(*value),
     }
 }
 

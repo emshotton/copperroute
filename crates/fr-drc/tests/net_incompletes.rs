@@ -62,8 +62,8 @@ fn transcript(board: &Board) -> String {
             items.len(),
             net_incompletes.count(),
             net_incompletes.get_connected_group_count(),
-            fr_dsn::java_double_to_string(net_incompletes.get_length_violation()),
-            fr_dsn::java_double_to_string(net_incompletes.get_marker_radius()),
+            fr_dsn::format_double(net_incompletes.get_length_violation()),
+            fr_dsn::format_double(net_incompletes.get_marker_radius()),
         ));
     }
     out.push_str(&format!("airlines {total}\n"));
@@ -173,7 +173,7 @@ fn the_airline_endpoints_are_a_hash_dependent_choice() {
             let weights = |lines: &[Line]| {
                 let mut w: Vec<String> = lines
                     .iter()
-                    .map(|l| fr_dsn::java_double_to_string(l.length_square))
+                    .map(|l| fr_dsn::format_double(l.length_square))
                     .collect();
                 w.sort();
                 w

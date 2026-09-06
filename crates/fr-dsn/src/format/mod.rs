@@ -4,7 +4,7 @@ pub mod indent_writer;
 pub mod json;
 
 pub use double::{
-    format_placement_rotation, java_double_to_string, java_float_to_string, java_format_fixed,
+    format_placement_rotation, format_double, format_float, format_fixed,
 };
 pub use identifier::{DSN_RESERVED, IdentifierType, SES_RESERVED};
 pub use indent_writer::IndentFileWriter;

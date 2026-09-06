@@ -1,6 +1,6 @@
 use fr_board::items::Item;
 use fr_board::prelude::*;
-use fr_dsn::java_double_to_string;
+use fr_dsn::format_double;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{IntBox, IntOctagon, IntPoint, Line, Point, Polyline};
 use fr_router::board_ext::{RoutingBoardExt, TraceTightener};
@@ -502,7 +502,7 @@ fn p7t3_rows(mode: i32) -> Vec<String> {
     out.push(format!(
         "sweep regime={} pinEdgeToTurnDist={} traceCosts={}",
         regime_name(regime),
-        java_double_to_string(board.rules.get_pin_edge_to_turn_dist()),
+        format_double(board.rules.get_pin_edge_to_turn_dist()),
         match &via_costs {
             Some(costs) => costs.len().to_string(),
             None => "null".to_string(),
@@ -728,8 +728,8 @@ fn dump_corner(polyline: &Polyline, no: usize) -> String {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }

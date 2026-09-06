@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use fr_board::ids::{ItemId, PadstackId, ViaInfoId};
 use fr_board::prelude::*;
 use fr_board::rules::{ViaInfo, ViaRule};
-use fr_dsn::format::double::java_double_to_string;
+use fr_dsn::format::double::format_double;
 use fr_geometry::{
     FloatPoint, IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, Shape, TileShape,
 };
@@ -635,8 +635,8 @@ fn the_additional_corner_of_every_regime_matches_the_jvm() {
 fn format_point(point: FloatPoint) -> String {
     format!(
         "({},{})",
-        java_double_to_string(point.x),
-        java_double_to_string(point.y)
+        format_double(point.x),
+        format_double(point.y)
     )
 }
 

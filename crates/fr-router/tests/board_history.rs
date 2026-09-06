@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::prelude::*;
 use fr_board::structure::FixedState;
-use fr_dsn::java_float_to_string;
+use fr_dsn::format_float;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{Point, Polyline};
 use fr_router::pipeline::BoardHistory;
@@ -158,7 +158,7 @@ impl Transcript {
     }
 
     fn score(&self, board: &mut Board) -> String {
-        java_float_to_string(BoardStatistics::new(board).normalized_score(&self.scoring))
+        format_float(BoardStatistics::new(board).normalized_score(&self.scoring))
     }
 
     fn describe_board(&mut self, name: &str, board: &mut Board) {
@@ -181,7 +181,7 @@ impl Transcript {
             let label = self.labels.label(entry.hash);
             self.push(format!(
                 "  entry={i} hash={label} score={} restoreCount={}",
-                java_float_to_string(entry.score),
+                format_float(entry.score),
                 entry.restore_count
             ));
         }
@@ -289,8 +289,8 @@ fn dump_corners(polyline: &Polyline) -> String {
                     let f = polyline.corner_approx(i).expect("i is below cornerCount");
                     format!(
                         "~({},{})",
-                        fr_dsn::java_double_to_string(f.x),
-                        fr_dsn::java_double_to_string(f.y)
+                        fr_dsn::format_double(f.x),
+                        fr_dsn::format_double(f.y)
                     )
                 }
             },
@@ -343,7 +343,7 @@ fn the_history_transcript_matches_the_port_golden() {
 
     let size = h.size().to_string();
     t.call(&h, "size", &size);
-    let max = java_float_to_string(max_score(&h));
+    let max = format_float(max_score(&h));
     t.call(&h, "getMaxScore", &max);
     let contains = h.contains(&pool[0]).to_string();
     t.call(&h, "contains(B0)", &contains);
@@ -373,7 +373,7 @@ fn the_history_transcript_matches_the_port_golden() {
     t.call(&h, "add(B0) at capacity", "-");
     let contains = h.contains(&pool[0]).to_string();
     t.call(&h, "contains(B0)", &contains);
-    let max = java_float_to_string(max_score(&h));
+    let max = format_float(max_score(&h));
     t.call(&h, "getMaxScore", &max);
     for i in [1usize, 2, 3] {
         let rank = h.rank(&pool[i]).to_string();
@@ -407,7 +407,7 @@ fn the_history_transcript_matches_the_port_golden() {
     t.call(&h, "getRank(B1)", &rank);
     h.clear();
     t.call(&h, "clear", "-");
-    let max = java_float_to_string(max_score(&h));
+    let max = format_float(max_score(&h));
     t.call(&h, "getMaxScore", &max);
     let mut restored = h.restore_best_board();
     t.restore(&h, "restoreBestBoard", restored.as_mut());
@@ -419,7 +419,7 @@ fn the_history_transcript_matches_the_port_golden() {
         big.add(&mut pool[i]);
         t.call(&big, &format!("add(B{})", POOL_K[i]), "-");
     }
-    let max = java_float_to_string(max_score(&big));
+    let max = format_float(max_score(&big));
     t.call(&big, "getMaxScore", &max);
     let mut best = big.restore_best_board();
     t.restore(&big, "restoreBestBoard", best.as_mut());
@@ -515,8 +515,8 @@ fn under_capacity_any_distinct_board_enters() {
     h.add(&mut b0);
     assert_eq!(h.size(), 2, "under capacity there is no score gate");
     assert!(h.contains(&b0));
-    assert_eq!(java_float_to_string(h.entries()[0].score), "199.99464");
-    assert_eq!(java_float_to_string(h.entries()[1].score), "0.0");
+    assert_eq!(format_float(h.entries()[0].score), "199.99464");
+    assert_eq!(format_float(h.entries()[1].score), "0.0");
 }
 
 #[test]
@@ -557,8 +557,8 @@ fn at_capacity_an_equal_scoring_board_is_rejected_too() {
         "a different board"
     );
     assert_eq!(
-        java_float_to_string(BoardStatistics::new(&mut b1).normalized_score(&scoring)),
-        java_float_to_string(BoardStatistics::new(&mut b1f).normalized_score(&scoring)),
+        format_float(BoardStatistics::new(&mut b1).normalized_score(&scoring)),
+        format_float(BoardStatistics::new(&mut b1f).normalized_score(&scoring)),
         "with an identical score — the JVM says 199.99464 for both"
     );
 
@@ -604,14 +604,14 @@ fn entries_are_score_ordered_before_restore() {
 
     h.add(&mut b0);
     h.add(&mut b1);
-    assert_eq!(java_float_to_string(h.entries()[0].score), "199.99464");
-    assert_eq!(java_float_to_string(h.entries()[1].score), "0.0");
+    assert_eq!(format_float(h.entries()[0].score), "199.99464");
+    assert_eq!(format_float(h.entries()[1].score), "0.0");
     assert_eq!(h.entries()[0].restore_count, 0);
 
     let restored = h.restore_board(0).expect("a two-entry history restores");
 
-    assert_eq!(java_float_to_string(h.entries()[0].score), "199.99464");
-    assert_eq!(java_float_to_string(h.entries()[1].score), "0.0");
+    assert_eq!(format_float(h.entries()[0].score), "199.99464");
+    assert_eq!(format_float(h.entries()[1].score), "0.0");
     assert_eq!(h.entries()[0].restore_count, 1, "the winner's count rose");
     assert_eq!(h.entries()[1].restore_count, 0, "and only the winner's");
     assert_eq!(restored.structural_hash(), b1.structural_hash());
@@ -676,7 +676,7 @@ fn add_and_restore_board() {
     let mut history = BoardHistory::new(&scoring);
     history.add(&mut board1);
     assert_eq!(history.size(), 1);
-    assert_eq!(java_float_to_string(history.entries()[0].score), "0.0");
+    assert_eq!(format_float(history.entries()[0].score), "0.0");
 
     let restored = history.restore_best_board().expect("assertNotNull(:60)");
 

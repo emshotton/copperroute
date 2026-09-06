@@ -392,7 +392,7 @@ fn the_duration_narrowing_matches_the_transcript() {
             .duration_seconds
             .expect("both instants are set");
         assert_eq!(
-            fr_dsn::java_float_to_string(seconds),
+            fr_dsn::format_float(seconds),
             expected,
             "DUR {start}->{finish}"
         );

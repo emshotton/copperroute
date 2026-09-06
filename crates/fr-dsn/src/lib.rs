@@ -20,7 +20,7 @@ pub use dsn_writer::write;
 pub use error::{BoardMetadata, BoardReadResult, DsnError, FileFormat};
 pub use format::{
     DSN_RESERVED, IdentifierType, IndentFileWriter, JavaNumberFormatter, SES_RESERVED,
-    format_placement_rotation, java_double_to_string, java_float_to_string, java_format_fixed,
+    format_placement_rotation, format_double, format_float, format_fixed,
     to_gson_string_pretty,
 };
 pub use keyword::{Keyword, ScopeKeyword};
@@ -42,7 +42,7 @@ pub mod prelude {
         DsnRectangle, DsnScanner, DsnShape, FileFormat, IdentifierType, IndentFileWriter,
         JavaNumberFormatter, Keyword, LexicalState, ReadAreaScopeResult, ReadScopeParameter,
         RuleLayerScope, SES_RESERVED, ScopeKeyword, SesImportSummary, Token, WriteScopeParameter,
-        format_placement_rotation, java_double_to_string, java_float_to_string, java_format_fixed,
+        format_placement_rotation, format_double, format_float, format_fixed,
         read_board, read_metadata, read_scope, skip_scope, to_gson_string_pretty, write,
     };
 }

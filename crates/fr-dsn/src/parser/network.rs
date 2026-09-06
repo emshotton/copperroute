@@ -10,7 +10,7 @@ use fr_geometry::{Area, Point, ShapeOps, Vector};
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
-use crate::format::{IdentifierType, IndentFileWriter, java_double_to_string};
+use crate::format::{IdentifierType, IndentFileWriter, format_double};
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::dsn_file::{
@@ -1963,7 +1963,7 @@ pub fn write_rule_scope(net_class: &NetClass, p: &mut WriteScopeParameter<'_>) {
             .board_to_dsn(f64::from(default_trace_half_width));
     p.file.new_line();
     p.file.write("(width ");
-    p.file.write(&java_double_to_string(trace_width));
+    p.file.write(&format_double(trace_width));
     p.file.write(")");
     p.file.end_scope();
     for i in 1..p.board.layer_structure().count() {
@@ -1991,7 +1991,7 @@ fn write_layer_rule(net_class: &NetClass, layer_index: usize, p: &mut WriteScope
             .board_to_dsn(f64::from(current_trace_half_width));
     p.file.new_line();
     p.file.write("(width ");
-    p.file.write(&java_double_to_string(trace_width));
+    p.file.write(&format_double(trace_width));
     p.file.write(") ");
     p.file.end_scope();
     p.file.end_scope();
@@ -2007,7 +2007,7 @@ pub fn write_default_rule(p: &mut WriteScopeParameter<'_>, layer: usize) {
             .board_to_dsn(f64::from(default_half_width));
     p.file.new_line();
     p.file.write("(width ");
-    p.file.write(&java_double_to_string(trace_width));
+    p.file.write(&format_double(trace_width));
     p.file.write(")");
     let default_cl_no = BoardRules::default_clearance_class();
     let default_board_clearance =
@@ -2020,14 +2020,14 @@ pub fn write_default_rule(p: &mut WriteScopeParameter<'_>, layer: usize) {
         .board_to_dsn(f64::from(default_board_clearance));
     p.file.new_line();
     p.file.write("(clearance ");
-    p.file.write(&java_double_to_string(default_clearance));
+    p.file.write(&format_double(default_clearance));
     p.file.write(")");
     let smd_to_turn_dist = p
         .coordinate_transform
         .board_to_dsn(p.board.rules.get_pin_edge_to_turn_dist());
     p.file.new_line();
     p.file.write("(clearance ");
-    p.file.write(&java_double_to_string(smd_to_turn_dist));
+    p.file.write(&format_double(smd_to_turn_dist));
     p.file.write(" (type smd_to_turn_gap))");
 
     write_named_clearance_rules(p, layer);
@@ -2061,7 +2061,7 @@ fn write_non_default_clearance_rules(
             let name_j = clearance_class_name(&p.board.rules, j).to_string();
             p.file.new_line();
             p.file.write("(clearance ");
-            p.file.write(&java_double_to_string(current_clearance));
+            p.file.write(&format_double(current_clearance));
             p.file.write(" (type ");
             p.identifier_type.write(&name_i, &mut p.file);
             p.file.write(CLASS_CLEARANCE_SEPARATOR_STR);
@@ -2087,7 +2087,7 @@ fn write_named_clearance_rules(p: &mut WriteScopeParameter<'_>, layer: usize) {
 
         p.file.new_line();
         p.file.write("(clearance ");
-        p.file.write(&java_double_to_string(current_clearance));
+        p.file.write(&format_double(current_clearance));
         p.file.write(" (type ");
         p.identifier_type.write(&name_i, &mut p.file);
         p.file.write("))");
@@ -2336,14 +2336,14 @@ fn write_circuit(net_class: &NetClass, p: &mut WriteScopeParameter<'_>) {
         } else {
             p.coordinate_transform.board_to_dsn(max_trace_length)
         };
-        p.file.write(&java_double_to_string(transformed_max_length));
+        p.file.write(&format_double(transformed_max_length));
         p.file.write(" ");
         let transformed_min_length = if min_trace_length <= 0.0 {
             0.0
         } else {
             p.coordinate_transform.board_to_dsn(min_trace_length)
         };
-        p.file.write(&java_double_to_string(transformed_min_length));
+        p.file.write(&format_double(transformed_min_length));
         p.file.write(")");
     }
     p.file.end_scope();

@@ -4,7 +4,7 @@ use std::io;
 use serde::Serialize;
 use serde_json::ser::{Formatter, PrettyFormatter};
 
-use crate::format::double::{java_double_to_string, java_float_to_string};
+use crate::format::double::{format_double, format_float};
 
 const NON_FINITE: &str = "not a valid double value as per JSON specification (Gson refuses it: GsonProvider never \
      calls serializeSpecialFloatingPointValues)";
@@ -41,7 +41,7 @@ impl Formatter for JavaNumberFormatter<'_> {
     where
         W: ?Sized + io::Write,
     {
-        writer.write_all(java_float_to_string(value).as_bytes())
+        writer.write_all(format_float(value).as_bytes())
     }
 
     #[inline]
@@ -49,7 +49,7 @@ impl Formatter for JavaNumberFormatter<'_> {
     where
         W: ?Sized + io::Write,
     {
-        writer.write_all(java_double_to_string(value).as_bytes())
+        writer.write_all(format_double(value).as_bytes())
     }
 
     #[inline]

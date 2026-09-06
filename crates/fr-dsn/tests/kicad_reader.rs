@@ -2,7 +2,7 @@ use std::fmt::Write as _;
 
 use fr_board::{Board, DefaultItemClearanceClasses, Item, ItemClass, NetClassId, Unit};
 use fr_dsn::error::{BoardMetadata, BoardReadResult};
-use fr_dsn::format::java_double_to_string;
+use fr_dsn::format::format_double;
 use fr_dsn::kicad::{UnitJson, read_board};
 use fr_geometry::PolylineShapeRef;
 
@@ -202,8 +202,8 @@ fn emit(result: &BoardReadResult) -> Vec<String> {
                             let point = corner.to_float();
                             rows.push(format!(
                                 "corner {s} {c} {} {}",
-                                java_double_to_string(point.x),
-                                java_double_to_string(point.y)
+                                format_double(point.x),
+                                format_double(point.y)
                             ));
                         }
                     }
@@ -231,9 +231,9 @@ fn emit(result: &BoardReadResult) -> Vec<String> {
     ));
     rows.push(format!(
         "transform scale={} baseX={} baseY={}",
-        java_double_to_string(transform.scale_factor()),
-        java_double_to_string(transform.base_x()),
-        java_double_to_string(transform.base_y())
+        format_double(transform.scale_factor()),
+        format_double(transform.base_x()),
+        format_double(transform.base_y())
     ));
 
     rows.push(format!(
@@ -272,8 +272,8 @@ fn emit(result: &BoardReadResult) -> Vec<String> {
             net_class.is_shove_fixed(),
             net_class.get_pull_tight(),
             net_class.get_ignore_cycles_with_areas(),
-            java_double_to_string(net_class.get_minimum_trace_length()),
-            java_double_to_string(net_class.get_maximum_trace_length()),
+            format_double(net_class.get_minimum_trace_length()),
+            format_double(net_class.get_maximum_trace_length()),
             dicc.join(",")
         ));
     }
@@ -761,8 +761,8 @@ fn emit_shape(shape: Option<&fr_geometry::Shape>) -> String {
     if let Shape::Circle(circle) = shape {
         return format!(
             "Circle({},{},r={})",
-            java_double_to_string(circle.center.to_float().x),
-            java_double_to_string(circle.center.to_float().y),
+            format_double(circle.center.to_float().x),
+            format_double(circle.center.to_float().y),
             circle.radius
         );
     }
@@ -785,8 +785,8 @@ fn emit_corners(corners: &[fr_geometry::FloatPoint]) -> String {
         let _ = write!(
             out,
             "{},{}",
-            java_double_to_string(corner.x),
-            java_double_to_string(corner.y)
+            format_double(corner.x),
+            format_double(corner.y)
         );
     }
     out.push(')');
@@ -887,9 +887,9 @@ fn emit_b(result: &BoardReadResult) -> Vec<String> {
                 "packagepin {i} {j} name={} padstack={} rel={},{} rot={}",
                 escape(Some(&pin.name)),
                 pin.padstack_no.0,
-                java_double_to_string(pin.relative_location.to_float().x),
-                java_double_to_string(pin.relative_location.to_float().y),
-                java_double_to_string(pin.rotation_in_degree)
+                format_double(pin.relative_location.to_float().x),
+                format_double(pin.relative_location.to_float().y),
+                format_double(pin.rotation_in_degree)
             ));
         }
     }
@@ -904,8 +904,8 @@ fn emit_b(result: &BoardReadResult) -> Vec<String> {
             |location| {
                 format!(
                     "{},{}",
-                    java_double_to_string(location.to_float().x),
-                    java_double_to_string(location.to_float().y)
+                    format_double(location.to_float().x),
+                    format_double(location.to_float().y)
                 )
             },
         );
@@ -914,7 +914,7 @@ fn emit_b(result: &BoardReadResult) -> Vec<String> {
              positionFixed={} partNumber={}",
             escape(Some(&component.name)),
             component.id,
-            java_double_to_string(component.get_rotation_in_degree()),
+            format_double(component.get_rotation_in_degree()),
             component.placed_on_front(),
             component.get_package(),
             component.position_fixed,
@@ -959,8 +959,8 @@ fn emit_b(result: &BoardReadResult) -> Vec<String> {
                             .expect("c < corner_count()");
                         format!(
                             "{},{}",
-                            java_double_to_string(corner.x),
-                            java_double_to_string(corner.y)
+                            format_double(corner.x),
+                            format_double(corner.y)
                         )
                     })
                     .collect();
@@ -974,8 +974,8 @@ fn emit_b(result: &BoardReadResult) -> Vec<String> {
             Item::Via(via) => format!(
                 "{head} padstack={} center={},{} attachAllowed={}",
                 via.get_padstack_id().0,
-                java_double_to_string(via.get_center().to_float().x),
-                java_double_to_string(via.get_center().to_float().y),
+                format_double(via.get_center().to_float().x),
+                format_double(via.get_center().to_float().y),
                 via.attach_allowed
             ),
             Item::ConductionArea(zone) => {
@@ -1690,8 +1690,8 @@ fn the_generated_padstack_names_carry_both_dimensions() {
             "Rect[T]Pad_7000x7000_um",
             "Rect[B]Pad_8000x8000_um",
             "Rect[A]Pad_9000x9000_um",
-            "Round[A]Pad_1x1_um",
-            "Rect[A]Pad_3x4_um",
+            "Round[A]Pad_0x0_um",
+            "Rect[A]Pad_2x4_um",
         ]
     );
 

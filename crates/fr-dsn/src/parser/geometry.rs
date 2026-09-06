@@ -5,7 +5,7 @@ use fr_geometry::{
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
-use crate::format::{IdentifierType, IndentFileWriter, java_double_to_string};
+use crate::format::{IdentifierType, IndentFileWriter, format_double};
 use crate::keyword::{Keyword, ScopeKeyword};
 use crate::lexer::{DsnScanner, Token};
 use crate::parser::dsn_file::read_string_scope;
@@ -190,7 +190,7 @@ impl DsnRectangle {
         identifier.write(&self.layer.name, file);
         for c in self.coor {
             file.write(" ");
-            file.write(&java_double_to_string(c));
+            file.write(&format_double(c));
         }
         file.write(")");
     }
@@ -266,7 +266,7 @@ impl DsnCircle {
         identifier.write(&self.layer.name, file);
         for c in self.coor {
             file.write(" ");
-            file.write(&java_double_to_string(c));
+            file.write(&format_double(c));
         }
         file.write(")");
     }
@@ -368,9 +368,9 @@ impl DsnPolygon {
         let corner_count = self.coor.len() / 2;
         for i in 0..corner_count {
             file.new_line();
-            file.write(&java_double_to_string(self.coor[2 * i]));
+            file.write(&format_double(self.coor[2 * i]));
             file.write(" ");
-            file.write(&java_double_to_string(self.coor[2 * i + 1]));
+            file.write(&format_double(self.coor[2 * i + 1]));
         }
         file.end_scope();
     }
@@ -425,13 +425,13 @@ impl DsnPolygonPath {
         file.write("path ");
         identifier.write(&self.layer.name, file);
         file.write(" ");
-        file.write(&java_double_to_string(self.width));
+        file.write(&format_double(self.width));
         let corner_count = self.coordinate_arr.len() / 2;
         for i in 0..corner_count {
             file.new_line();
-            file.write(&java_double_to_string(self.coordinate_arr[2 * i]));
+            file.write(&format_double(self.coordinate_arr[2 * i]));
             file.write(" ");
-            file.write(&java_double_to_string(self.coordinate_arr[2 * i + 1]));
+            file.write(&format_double(self.coordinate_arr[2 * i + 1]));
         }
         file.end_scope();
     }
@@ -445,7 +445,7 @@ impl DsnPolygonPath {
         file.write("path ");
         identifier.write(&self.layer.name, file);
         file.write(" ");
-        file.write(&java_double_to_string(self.width));
+        file.write(&format_double(self.width));
         let corner_count = self.coordinate_arr.len() / 2;
         for i in 0..corner_count {
             file.new_line();
@@ -552,12 +552,12 @@ impl DsnPolylinePath {
         file.write("polyline_path ");
         identifier.write(&self.layer.name, file);
         file.write(" ");
-        file.write(&java_double_to_string(self.width));
+        file.write(&format_double(self.width));
         let line_count = self.coordinate_arr.len() / 4;
         for i in 0..line_count {
             file.new_line();
             for j in 0..4 {
-                file.write(&java_double_to_string(self.coordinate_arr[4 * i + j]));
+                file.write(&format_double(self.coordinate_arr[4 * i + j]));
                 file.write(" ");
             }
         }
@@ -573,7 +573,7 @@ impl DsnPolylinePath {
         file.write("polyline_path ");
         identifier.write(&self.layer.name, file);
         file.write(" ");
-        file.write(&java_double_to_string(self.width));
+        file.write(&format_double(self.width));
         let line_count = self.coordinate_arr.len() / 4;
         for i in 0..line_count {
             file.new_line();

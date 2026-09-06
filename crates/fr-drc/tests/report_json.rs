@@ -203,7 +203,7 @@ fn flavors_differ_only_in_the_key_tables_eight_strings() {
 }
 
 #[test]
-fn quality_score_is_java_double_text() {
+fn quality_score_is_plain_decimal_text() {
     let expected = std::fs::read_to_string(data_dir().join("gson-escapes.txt"))
         .expect("cannot read tests/data/gson-escapes.txt");
 
@@ -237,7 +237,7 @@ fn quality_score_is_java_double_text() {
     );
     assert_eq!(actual, expected);
 
-    assert!(score_1e7.ends_with("1.0E7"), "{score_1e7}");
+    assert!(score_1e7.ends_with("10000000"), "{score_1e7}");
     assert!(score_902.ends_with("902.078369140625"), "{score_902}");
 }
 
@@ -322,7 +322,7 @@ fn a_non_finite_coordinate_is_refused_where_gson_throws() {
 }
 
 #[test]
-fn a_hand_built_position_renders_through_the_java_formatter() {
+fn a_hand_built_position_renders_through_the_formatter() {
     let mut report = bare_report("probe");
     report.add_violation(fr_drc::report::KiCadDrcViolation::new(
         "clearance",
@@ -335,6 +335,6 @@ fn a_hand_built_position_renders_through_the_java_formatter() {
         )],
     ));
     let json = report.to_json(DrcJsonFlavor::FreeroutingHead).unwrap();
-    assert!(json.contains("\"x\": 1.0E7"), "{json}");
+    assert!(json.contains("\"x\": 10000000"), "{json}");
     assert!(json.contains("\"y\": -72.18960000000001"), "{json}");
 }

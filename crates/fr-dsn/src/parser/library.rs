@@ -3,7 +3,7 @@ use fr_geometry::{Area, Circle, IntVector, Shape, ShapeOps, TileShape, Vector};
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
-use crate::format::java_double_to_string;
+use crate::format::format_double;
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::dsn_file::read_on_off_scope;
@@ -225,7 +225,7 @@ pub fn write_package_scope(p: &mut WriteScopeParameter<'_>, board_package: &fr_b
             .board_to_dsn_vector(&current_pin.relative_location);
         for coordinate in rel_coor {
             p.file.write(" ");
-            p.file.write(&java_double_to_string(coordinate));
+            p.file.write(&format_double(coordinate));
         }
         let rotation = (current_pin.rotation_in_degree).round() as i32;
         if rotation != 0 {

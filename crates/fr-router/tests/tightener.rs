@@ -1,7 +1,7 @@
 use fr_board::ids::ItemId;
 use fr_board::items::Item;
 use fr_board::prelude::*;
-use fr_dsn::format::double::java_double_to_string;
+use fr_dsn::format::double::format_double;
 use fr_geometry::{
     IntBox, IntOctagon, IntPoint, IntVector, Line, Point, Polyline, Shape, SplitMix64, TileShape,
 };
@@ -184,8 +184,8 @@ fn dump_corner(polyline: &Polyline, no: usize) -> String {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }
@@ -712,7 +712,7 @@ fn lineeq_mode_matches_the_jvm() {
         let translated = diagonal.translate(dist);
         actual.push(format!(
             "translate dist={} line={} equals={} structural={} sameRef=false",
-            java_double_to_string(dist),
+            format_double(dist),
             dump_line(&translated),
             translated.equals_geometric(&diagonal),
             translated == diagonal
@@ -1226,7 +1226,7 @@ fn pin_edge_branch_matches_the_jvm() {
             actual.push(format!(
                 "regime={} pinEdgeToTurnDist={}",
                 java_angle_name(angle),
-                java_double_to_string(edge_to_turn_dist)
+                format_double(edge_to_turn_dist)
             ));
             let mut a = algo(&mut board, 500);
             for id in trace_ids(&board) {

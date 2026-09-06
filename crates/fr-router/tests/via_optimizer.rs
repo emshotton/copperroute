@@ -1,6 +1,6 @@
 use fr_board::items::Item;
 use fr_board::prelude::*;
-use fr_dsn::java_double_to_string;
+use fr_dsn::format_double;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{IntBox, IntPoint, Line, Point, Polyline, Shape, TileShape};
 use fr_router::board_ext::ViaOptimizer;
@@ -147,7 +147,7 @@ fn p7t4_rows(tag: &str, mode: i32) -> Vec<String> {
             "via id={} center={} minWidth={} contacts={contacts} class={class} result={result} after={after}",
             via_id.0,
             dump_point(&center),
-            java_double_to_string(min_width),
+            format_double(min_width),
         ));
     }
 
@@ -759,8 +759,8 @@ fn dump_corner(polyline: &Polyline, no: usize) -> String {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }

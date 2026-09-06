@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use fr_board::ids::{ItemId, PadstackId, ViaInfoId};
 use fr_board::prelude::*;
 use fr_board::rules::{ViaInfo, ViaRule};
-use fr_dsn::format::double::java_double_to_string;
+use fr_dsn::format::double::format_double;
 use fr_geometry::{IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, Shape, TileShape};
 use fr_router::autoroute::maze::AutorouteControl;
 use fr_router::autoroute::maze::engine::AutorouteEngine;
@@ -478,8 +478,8 @@ fn t15_corner(polyline: &Polyline, no: usize) -> String {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }

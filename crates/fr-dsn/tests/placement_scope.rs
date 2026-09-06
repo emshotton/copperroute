@@ -287,7 +287,7 @@ fn a_placed_component_writes_coordinates_side_rotation_and_pin_clearance_classes
             "\n(placement",
             "\n  (place_control (flip_style rotate_first))",
             "\n  (component PKG",
-            "\n    (place \n      J1 1000.0 2000.0 front 90",
+            "\n    (place \n      J1 1000 2000 front 90",
             "\n      (pin D+ (clearance_class default))",
             "\n    )",
             "\n  )",

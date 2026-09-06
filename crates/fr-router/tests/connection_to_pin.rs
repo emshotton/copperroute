@@ -1,6 +1,6 @@
 use fr_board::items::Item;
 use fr_board::prelude::*;
-use fr_dsn::format::double::java_double_to_string;
+use fr_dsn::format::double::format_double;
 use fr_geometry::{IntBox, IntPoint, IntVector, Line, Point, Polyline, Shape, TileShape};
 use fr_router::autoroute::maze::engine::AutorouteEngine;
 use fr_router::board_ext::{PolylineTraceExt, TraceTightener};
@@ -289,8 +289,8 @@ fn dump_corner(polyline: &Polyline, no: usize) -> String {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }
@@ -385,7 +385,7 @@ fn check_connection_to_pin_matches_the_task_16_golden_over_the_whole_table() {
                 let line = format!(
                     "regime={} edge={} case={} atStart={} atEnd={}",
                     regime_name(angle),
-                    java_double_to_string(edge),
+                    format_double(edge),
                     case.name,
                     <Board as PolylineTraceExt>::check_connection_to_pin(&board, trace, true),
                     <Board as PolylineTraceExt>::check_connection_to_pin(&board, trace, false),
@@ -458,7 +458,7 @@ fn correct_rows_for(angle: AngleRestriction) -> Vec<String> {
                 out.push(format!(
                     "regime={} edge={} case={} atStart={at_start} changed={changed}",
                     regime_name(angle),
-                    java_double_to_string(edge),
+                    format_double(edge),
                     case.name,
                 ));
                 out.extend(dump_board(&board));
@@ -547,7 +547,7 @@ fn swap_rows_for(angle: AngleRestriction) -> Vec<String> {
                 out.push(format!(
                     "regime={} edge={} case={} atStart={at_start} changed={changed}",
                     regime_name(angle),
-                    java_double_to_string(edge),
+                    format_double(edge),
                     case.name,
                 ));
                 out.extend(dump_board(&board));
@@ -640,7 +640,7 @@ fn edge_rows_for(angle: AngleRestriction) -> Vec<String> {
             out.push(format!(
                 "regime={} edge={} case={} pullTight={changed}",
                 regime_name(angle),
-                java_double_to_string(edge),
+                format_double(edge),
                 case.name,
             ));
             out.extend(dump_board(&board));

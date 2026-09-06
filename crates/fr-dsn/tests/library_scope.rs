@@ -298,8 +298,8 @@ fn write_padstack_scope_emits_the_2_3_0_bytes_for_a_round_via_pad() {
     });
     assert_eq!(
         out,
-        "(padstack VIA\n  (shape\n    (circle F.Cu 600.0 0.0 0.0)\n  )\n  (shape\n    (circle \
-         B.Cu 600.0 0.0 0.0)\n  )\n  (attach off)\n)"
+        "(padstack VIA\n  (shape\n    (circle F.Cu 600 0 0)\n  )\n  (shape\n    (circle \
+         B.Cu 600 0 0)\n  )\n  (attach off)\n)"
     );
 }
 

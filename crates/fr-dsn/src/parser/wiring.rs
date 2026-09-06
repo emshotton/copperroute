@@ -6,7 +6,7 @@ use fr_board::{Board, BoardError, FixedState, Item, ItemId, NetClassId, Padstack
 use fr_geometry::{Area, FloatPoint, Line, Point, Polygon, Polyline, TileShape};
 
 use crate::error::DsnError;
-use crate::format::{IdentifierType, IndentFileWriter, java_double_to_string};
+use crate::format::{IdentifierType, IndentFileWriter, format_double};
 use crate::keyword::Keyword;
 use crate::lexer::Token;
 use crate::parser::geometry::{self as shape, DsnLayer, DsnPolygonPath, DsnPolylinePath, DsnShape};
@@ -604,7 +604,7 @@ fn write_via_scope(p: &mut WriteScopeParameter<'_>, via_id: ItemId) {
     p.identifier_type.write(&via_padstack_name, &mut p.file);
     for coor in via_coor {
         p.file.write(" ");
-        p.file.write(&java_double_to_string(coor));
+        p.file.write(&format_double(coor));
     }
     if let Some(via_net) = &via_net {
         write_net(via_net, &mut p.file, &p.identifier_type);

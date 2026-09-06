@@ -2,7 +2,7 @@ use fr_board::BoardError;
 use fr_board::ids::{ItemId, PadstackId};
 use fr_board::items::Item;
 use fr_board::prelude::*;
-use fr_dsn::format::double::java_double_to_string;
+use fr_dsn::format::double::format_double;
 use fr_geometry::{
     IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, Shape, SplitMix64, TileShape, Vector,
 };
@@ -1187,8 +1187,8 @@ fn t15b_corner(polyline: &Polyline, no: usize) -> String {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }
@@ -1220,8 +1220,8 @@ fn t15b_answer(point: Option<&Point>) -> String {
             let f = other.to_float();
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }

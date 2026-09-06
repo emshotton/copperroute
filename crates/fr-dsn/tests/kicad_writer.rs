@@ -2,7 +2,7 @@ use std::fmt::Write as _;
 
 use fr_board::{Board, Item};
 use fr_dsn::error::{BoardReadResult, DsnError};
-use fr_dsn::format::java_double_to_string;
+use fr_dsn::format::format_double;
 use fr_dsn::kicad::{DEFAULT_DESIGN_NAME, import_session, read_board, write};
 
 const TRANSCRIPT: &str = include_str!("data/p8t10-kicad-writer.txt");
@@ -326,8 +326,8 @@ fn emit_session(case: &SessionCase) -> Vec<String> {
                     let _ = write!(
                         corners,
                         "{},{}",
-                        java_double_to_string(point.x),
-                        java_double_to_string(point.y)
+                        format_double(point.x),
+                        format_double(point.y)
                     );
                 }
                 rows.push(format!(
@@ -342,8 +342,8 @@ fn emit_session(case: &SessionCase) -> Vec<String> {
                     "{head} padstack={} center={},{}",
                     via.get_padstack(&ctx)
                         .map_or_else(|| "<null>".to_string(), |p| p.name.clone()),
-                    java_double_to_string(center.x),
-                    java_double_to_string(center.y)
+                    format_double(center.x),
+                    format_double(center.y)
                 ));
             }
             Item::ConductionArea(zone) => {
@@ -360,8 +360,8 @@ fn emit_session(case: &SessionCase) -> Vec<String> {
                     let _ = write!(
                         area,
                         "{},{}",
-                        java_double_to_string(corner.x),
-                        java_double_to_string(corner.y)
+                        format_double(corner.x),
+                        format_double(corner.y)
                     );
                 }
                 rows.push(format!(

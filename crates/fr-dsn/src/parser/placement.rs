@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use fr_board::{Board, Component, Item, equals_ignore_case};
 
 use crate::error::DsnError;
-use crate::format::java_double_to_string;
+use crate::format::format_double;
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::dsn_file::read_string_scope;
@@ -252,7 +252,7 @@ pub fn write_component_scope(p: &mut WriteScopeParameter<'_>, component: &Compon
         let coor = p.coordinate_transform.board_to_dsn_point(&location);
         for value in coor {
             p.file.write(" ");
-            p.file.write(&java_double_to_string(value));
+            p.file.write(&format_double(value));
         }
         if component.placed_on_front() {
             p.file.write(" front ");

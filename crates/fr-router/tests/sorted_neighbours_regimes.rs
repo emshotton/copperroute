@@ -1,6 +1,6 @@
 use fr_board::ids::TreeObject;
 use fr_board::prelude::*;
-use fr_dsn::format::java_double_to_string;
+use fr_dsn::format::format_double;
 use fr_geometry::{Area, IntBox, IntOctagon, IntVector, Point, Polyline, Shape, TileShape};
 use fr_router::JavaTreeSet;
 use fr_router::autoroute::expansion::sorted_neighbours::SortedRoomNeighbours;
@@ -288,9 +288,9 @@ fn corners(shape: Option<&TileShape>) -> String {
         if i > 0 {
             out.push(';');
         }
-        out.push_str(&java_double_to_string(corner.x));
+        out.push_str(&format_double(corner.x));
         out.push(',');
-        out.push_str(&java_double_to_string(corner.y));
+        out.push_str(&format_double(corner.y));
     }
     out.push(')');
     out

@@ -11,7 +11,7 @@ use fr_geometry::{
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::{BoardMetadata, BoardReadResult, DsnError};
-use crate::format::double::java_format_fixed;
+use crate::format::double::format_fixed;
 use crate::kicad::dto::{KiCadBoardJson, NetClassJson, PadJson, Point2D, UnitJson};
 use crate::parser::network::is_kicad_default_net_class_name;
 
@@ -900,8 +900,8 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             "Via[{}-{}]_{}:{}_um",
             via.startLayerIndex,
             via.endLayerIndex,
-            java_format_fixed(via.diameter * 1000.0, 0),
-            java_format_fixed(via.drill * 1000.0, 0)
+            format_fixed(via.diameter * 1000.0, 0),
+            format_fixed(via.drill * 1000.0, 0)
         );
         if shapes.iter().all(Option::is_none) {
             return no_shape_on_any_layer(
@@ -1098,8 +1098,8 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
                 "Via[{}-{}]_{}:{}_um",
                 via.startLayerIndex,
                 via.endLayerIndex,
-                java_format_fixed(via.diameter * 1000.0, 0),
-                java_format_fixed(via.drill * 1000.0, 0)
+                format_fixed(via.diameter * 1000.0, 0),
+                format_fixed(via.drill * 1000.0, 0)
             );
             if shapes.iter().all(Option::is_none) {
                 return Err(DsnError::KicadSession(format!(
@@ -1302,8 +1302,8 @@ fn get_descriptive_padstack_name(
         .expect("KiCadJsonReader.java:509 dereferenced pad.size before calling this");
     Ok(format!(
         "{shape_str}[{layer_type}]Pad_{}x{}_um",
-        java_format_fixed(size.x * 1000.0, 0),
-        java_format_fixed(size.y * 1000.0, 0)
+        format_fixed(size.x * 1000.0, 0),
+        format_fixed(size.y * 1000.0, 0)
     ))
 }
 

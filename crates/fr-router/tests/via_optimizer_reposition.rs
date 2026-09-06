@@ -151,10 +151,10 @@ fn rows_c(out: &mut Vec<String>, board: &mut Board, via_id: ItemId) {
         out.push(format!(
             "repC id={} k={k} costs1=({},{}) costs2=({},{}) from1={} from2={} -> {}",
             via_id.0,
-            fr_dsn::java_double_to_string(pair[0]),
-            fr_dsn::java_double_to_string(pair[1]),
-            fr_dsn::java_double_to_string(pair[2]),
-            fr_dsn::java_double_to_string(pair[3]),
+            fr_dsn::format_double(pair[0]),
+            fr_dsn::format_double(pair[1]),
+            fr_dsn::format_double(pair[2]),
+            fr_dsn::format_double(pair[3]),
             dump_point(&c1),
             dump_point(&c2),
             answer.map_or_else(|| "null".to_string(), |p| dump_point(&p))

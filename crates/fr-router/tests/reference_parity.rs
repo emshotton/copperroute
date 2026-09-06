@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::prelude::*;
 use fr_drc::DesignRulesChecker;
-use fr_dsn::java_double_to_string;
+use fr_dsn::format_double;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::Point;
 use fr_router::autoroute::maze::ViaPricing;
@@ -270,7 +270,7 @@ fn inserted_geometry(
 
 fn metrics(board: &mut Board, net_no: i32) -> RouterMetrics {
     let vias = board.net_via_count(net_no) as i64;
-    let trace_length = java_double_to_string(board.cumulative_trace_length());
+    let trace_length = format_double(board.cumulative_trace_length());
     let (incompletes, violations) = {
         let mut drc = DesignRulesChecker::new(board);
         (drc.get_incomplete_count(), drc.get_all_violations())
@@ -294,8 +294,8 @@ fn point(p: &Point) -> String {
             let f = p.to_float();
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }
@@ -308,8 +308,8 @@ fn corner(p: &fr_geometry::Polyline, i: usize) -> String {
             let f = p.corner_approx(i).expect("a corner of a valid polyline");
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }

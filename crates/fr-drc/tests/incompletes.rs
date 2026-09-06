@@ -113,20 +113,20 @@ fn transcript(board: &mut Board) -> String {
         sum += count;
         per_net.push_str(&format!(
             "net={net_number} incompleteCount={count} lengthViolation={}\n",
-            fr_dsn::java_double_to_string(drc.get_length_violation(net_number)),
+            fr_dsn::format_double(drc.get_length_violation(net_number)),
         ));
     }
     out.push_str(&format!("perNetIncompleteSum {sum}\n"));
     out.push_str(&per_net);
     out.push_str(&format!(
         "boardUnitToUmFactor {}\n",
-        fr_dsn::java_double_to_string(board_unit_to_um_factor),
+        fr_dsn::format_double(board_unit_to_um_factor),
     ));
 
     let violations = drc.get_all_violations();
     let stats =
         BoardStatisticsClearanceViolations::from_violations(&violations, board_unit_to_um_factor);
-    let d = |v: Option<f64>| fr_dsn::java_double_to_string(v.expect("the block is never partial"));
+    let d = |v: Option<f64>| fr_dsn::format_double(v.expect("the block is never partial"));
     out.push_str(&format!(
         "clearanceViolations totalCount={} min={} max={} avg={}\n",
         stats.total_count.expect("the block is never partial"),
