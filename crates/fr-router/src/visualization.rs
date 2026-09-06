@@ -503,9 +503,9 @@ fn render_rooms(
                 svg,
                 shape,
                 view,
-                if highlighted { "#fff176" } else { "#b388ff" },
-                if highlighted { "#fffde7" } else { "#d3baff" },
-                if highlighted { 0.30 } else { 0.08 },
+                "none",
+                if highlighted { "#fff176" } else { "#d3baff" },
+                if highlighted { 1.0 } else { 0.72 },
                 if highlighted { 3.0 } else { 1.0 },
             );
         }

@@ -29,7 +29,7 @@ Colors are:
 - gold/orange: vias and pins;
 - green: complete free-space rooms;
 - red: obstacle rooms;
-- purple: incomplete free-space rooms;
+- purple outlines: incomplete free-space rooms;
 - yellow: the room currently removed from the maze priority queue;
 - magenta: the current door-entry segment.
 
