@@ -1,7 +1,7 @@
 //! | target | `RouterSettings` — reaches the router | the `@Deprecated` bridge — reaches nothing |
 use std::collections::BTreeMap;
 
-use crate::field_path::{java_parse_f32, split_dropping_trailing_empty};
+use crate::field_path::{parse_f32, split_dropping_trailing_empty};
 use crate::{
     BoardUpdateStrategy, ItemSelectionStrategy, MergeError, RouterSettings, SettingsSource,
     SourceKind, merger::priority, set_field_value,
@@ -274,14 +274,14 @@ pub fn apply_command_line_arguments(args: &[String]) -> LegacyBridge {
             }
         } else if arg.starts_with("-mp") {
             if let Some(value) = value_of(i)
-                && let Some(decoded) = java_integer_decode(value)
+                && let Some(decoded) = integer_decode(value)
             {
                 bridge.max_passes = Some(if decoded < 0 { 1 } else { decoded.min(9999) });
                 i += 1;
             }
         } else if arg.starts_with("-mt") {
             if let Some(value) = value_of(i)
-                && let Some(decoded) = java_integer_decode(value)
+                && let Some(decoded) = integer_decode(value)
             {
                 bridge.optimizer_max_threads = Some(decoded.clamp(0, 1024));
                 i += 1;
@@ -289,7 +289,7 @@ pub fn apply_command_line_arguments(args: &[String]) -> LegacyBridge {
         } else if arg.starts_with("-oit") {
             if let Some(value) = value_of(i)
                 && let Ok(percent) =
-                    java_parse_f32(value, "optimizer.optimization_improvement_threshold")
+                    parse_f32(value, "optimizer.optimization_improvement_threshold")
             {
                 let threshold = percent / 100.0f32;
                 bridge.optimization_improvement_threshold =
@@ -362,17 +362,17 @@ pub fn legacy_flag_value_is_consumed(arg: &str, value: &str) -> bool {
     {
         true
     } else if arg.starts_with("-mp") || arg.starts_with("-mt") {
-        java_integer_decode(value).is_some()
+        integer_decode(value).is_some()
     } else if arg.starts_with("-oit") {
-        java_parse_f32(value, "optimizer.optimization_improvement_threshold").is_ok()
+        parse_f32(value, "optimizer.optimization_improvement_threshold").is_ok()
     } else if arg.starts_with("-dct") {
-        crate::field_path::java_parse_i32(value, "gui.dialog_confirmation_timeout").is_ok()
+        crate::field_path::parse_i32(value, "gui.dialog_confirmation_timeout").is_ok()
     } else {
         true
     }
 }
 
-fn java_integer_decode(nm: &str) -> Option<i32> {
+fn integer_decode(nm: &str) -> Option<i32> {
     if nm.is_empty() {
         return None;
     }
