@@ -91,7 +91,7 @@ fn dump_control(board: &Board, net_no: i32, settings: &RouterSettings) -> String
             m.from_layer, m.to_layer, m.attach_smd_allowed
         );
     }
-    s += &format!(" attachSmdAllowed={}", c.attach_smd_allowed);
+    s += &format!(" attachSmdAllowed={}", c.attach_smd_allowed());
     s += &format!(" maxViaRadius={}", f(c.max_via_radius));
     s += &format!(" minNormalViaCost={}", f(c.min_normal_via_cost));
     s += &format!(" minCheapViaCost={}", f(c.min_cheap_via_cost));
@@ -219,17 +219,7 @@ fn every_field_of_the_jvm_transcript_is_reproduced() {
                 .and_then(|r| r.split(' ').next())
                 .and_then(|n| n.parse().ok())
                 .expect("a net number");
-            // The port intentionally fixes the old search-only attachment relaxation.
-            let expected = if !control(b, net, s)
-                .via_infos
-                .iter()
-                .any(|v| v.attach_smd_allowed)
-            {
-                line.replace("attachSmdAllowed=true", "attachSmdAllowed=false")
-            } else {
-                line.to_string()
-            };
-            assert_eq!(dump_control(b, net, s), expected);
+            assert_eq!(dump_control(b, net, s), line);
             ctrl_rows += 1;
         } else {
             panic!("unparsed transcript row: {line}");
@@ -261,7 +251,7 @@ fn first_pure_and_mixed(board: &Board) -> (i32, i32) {
 }
 
 #[test]
-fn pure_smd_cost_relaxation_preserves_explicit_attachment_permissions() {
+fn pure_smd_relaxes_attach_and_scales_the_via_cost() {
     for (name, pure_net, mixed_net, pure_cost, normal_cost) in [
         ("Issue593-BBD_Mars-64.dsn", 1, 0, 400.0, 4000.0),
         ("Issue508-DAC2020_bm01.dsn", 8, 1, 300.0, 3000.0),
@@ -276,15 +266,15 @@ fn pure_smd_cost_relaxation_preserves_explicit_attachment_permissions() {
             "{name}: the padstack itself still says attach=false"
         );
         assert!(
-            !pure.attach_smd_allowed,
-            "{name}: cost relaxation cannot grant attachment permission"
+            pure.attach_smd_allowed(),
+            "{name}: :263-269 relaxes the routing gate anyway"
         );
         assert_eq!(pure.min_normal_via_cost, pure_cost, "{name}: :277-281");
         assert_eq!(pure.min_cheap_via_cost, 0.8 * pure_cost, "{name}: :283");
 
         assert!(!AutorouteControl::is_pure_smd_net(&board, mixed_net));
         let normal = control(&board, mixed_net, &settings);
-        assert!(!normal.attach_smd_allowed, "{name}: no relaxation");
+        assert!(!normal.attach_smd_allowed(), "{name}: no relaxation");
         assert_eq!(normal.min_normal_via_cost, normal_cost, "{name}");
         assert_eq!(
             normal.min_normal_via_cost,
@@ -305,7 +295,7 @@ fn the_smd_relaxation_is_a_setting() {
     let off = control(&board, pure_net, &settings);
     assert_eq!(off.min_normal_via_cost, 4000.0, "no 0.1 discount when off");
     assert_eq!(
-        off.attach_smd_allowed,
+        off.attach_smd_allowed(),
         off.via_infos.iter().any(|via| via.attach_smd_allowed),
         "off: attachSmdAllowed agrees with the via masks, no override"
     );
@@ -314,8 +304,8 @@ fn the_smd_relaxation_is_a_setting() {
     let on = control(&board, pure_net, &settings);
     assert_eq!(on.min_normal_via_cost, 400.0, "the 0.1 discount when on");
     assert!(
-        !on.attach_smd_allowed,
-        "cost relaxation must not override via masks"
+        on.attach_smd_allowed(),
+        "on: forced true even though every via mask says false"
     );
     assert!(
         !on.via_infos.iter().any(|via| via.attach_smd_allowed),
@@ -719,4 +709,17 @@ fn the_pure_smd_discount_is_a_setting_under_both_pricings() {
             0.25 * full_price
         );
     }
+}
+
+#[test]
+fn strict_attachment_is_derived_from_the_current_via_masks() {
+    let mut board = fixture_board("Issue593-BBD_Mars-64.dsn");
+    board.rules.strict_smd_via_attachment = true;
+    let settings = board_settings(&board);
+    let mut ctrl = control(&board, 1, &settings);
+    assert!(!ctrl.attach_smd_allowed());
+    ctrl.via_infos[0].attach_smd_allowed = true;
+    assert!(ctrl.attach_smd_allowed());
+    ctrl.via_infos[0].attach_smd_allowed = false;
+    assert!(!ctrl.attach_smd_allowed());
 }

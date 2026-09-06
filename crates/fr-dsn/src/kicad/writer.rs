@@ -20,16 +20,12 @@ pub fn write(board: &Board, design_name: &str) -> String {
     };
 
     let mut board_json = KiCadBoardJson {
-        // The JSON permission is global: mixed DSN via permissions must not
-        // silently grant attachment to previously restricted via templates.
-        viaInPadAllowed: board.rules.via_infos.count() > 0
-            && (0..board.rules.via_infos.count()).all(|i| {
-                board
-                    .rules
-                    .via_infos
-                    .get(fr_board::ViaInfoId(i))
-                    .attach_smd_allowed()
-            }),
+        viaInPadAllowed: board
+            .rules
+            .net_classes
+            .iter()
+            .next()
+            .is_some_and(class_via_attachment),
         designName: Some(design_name.to_string()),
         resolution: scale_factor,
         unit: Some(match board.communication.unit {
@@ -114,6 +110,8 @@ pub fn write(board: &Board, design_name: &str) -> String {
             .as_mut()
             .expect("`new ArrayList<>()`")
             .push(NetClassJson {
+                viaInPadAllowed: (class_via_attachment(net_class) != board_json.viaInPadAllowed)
+                    .then_some(class_via_attachment(net_class)),
                 name: Some(net_class.get_name().to_string()),
                 clearance,
                 traceWidth: trace_width,
@@ -273,4 +271,11 @@ pub fn write(board: &Board, design_name: &str) -> String {
     }
 
     to_gson_string_pretty(&board_json).expect("every double the writer builds is finite")
+}
+
+fn class_via_attachment(class: &fr_board::rules::NetClass) -> bool {
+    class
+        .get_via_rule()
+        .and_then(|r| r.iter().next())
+        .is_some_and(|via| via.attach_smd_allowed())
 }

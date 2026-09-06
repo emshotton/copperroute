@@ -240,7 +240,7 @@
         "type": "object"
       },
       "smd_via_relaxation": {
-        "description": "On a pure-SMD net, allow a via to attach to an SMD pad and cut the via cost to a tenth, even where the via rule itself disallows SMD attach. Default true keeps that relaxation; false leaves the via rule's own attach permission and cost alone.",
+        "description": "Discount via cost on pure-SMD nets (default true). DSN inputs also retain the legacy SMD attachment search relaxation. KiCad JSON inputs require explicit viaInPadAllowed permission; this setting never overrides it.",
         "type": "boolean"
       },
       "strict_drc": {

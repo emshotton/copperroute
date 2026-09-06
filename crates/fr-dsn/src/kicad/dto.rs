@@ -67,6 +67,8 @@ pub struct LayerJson {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NetClassJson {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub viaInPadAllowed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(default, deserialize_with = "nullable")]
     pub clearance: f64,
@@ -231,6 +233,7 @@ impl Default for KiCadBoardJson {
 impl Default for NetClassJson {
     fn default() -> NetClassJson {
         NetClassJson {
+            viaInPadAllowed: None,
             name: None,
             clearance: 0.0,
             traceWidth: 0.0,

@@ -2759,15 +2759,12 @@ fn kicad_smd_attachment_requires_explicit_permission_at_search_and_insertion() {
             settings.get_via_costs(),
             &settings.get_trace_costs(),
         );
-        assert_eq!(ctrl.attach_smd_allowed, allowed);
+        assert_eq!(ctrl.attach_smd_allowed(), allowed);
         assert!(
             ctrl.via_infos
                 .iter()
                 .all(|v| v.attach_smd_allowed == allowed)
         );
-        for rule in &board.rules.via_rules {
-            assert_eq!(rule.get_via(0).attach_smd_allowed(), allowed);
-        }
         let via = board.rules.via_rules[0].get_via(0).clone();
         let point = Point::Int(IntPoint::new(100000, -100000));
         assert_eq!(
@@ -2789,19 +2786,5 @@ fn kicad_smd_attachment_requires_explicit_permission_at_search_and_insertion() {
         .unwrap();
         assert_eq!(inserted, allowed);
         assert_eq!(board.get_vias().len(), count + usize::from(allowed));
-        let exported = fr_dsn::kicad::write(&board, "test");
-        assert_eq!(exported.contains("\"viaInPadAllowed\": true"), allowed);
-        if allowed {
-            board
-                .rules
-                .via_infos
-                .get_mut(fr_board::ViaInfoId(0))
-                .set_attach_smd_allowed(false);
-            let mixed = fr_dsn::kicad::write(&board, "mixed");
-            assert!(
-                !mixed.contains("\"viaInPadAllowed\": true"),
-                "a global JSON permission must not broaden mixed via rules"
-            );
-        }
     }
 }

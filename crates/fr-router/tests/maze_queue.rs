@@ -4,7 +4,7 @@ use fr_geometry::{FloatLine, FloatPoint, IntBox, IntPoint, Point, TileShape};
 use fr_router::arena::DoorId;
 use fr_router::autoroute::expansion::{ExpandableRef, RoomRef};
 use fr_router::autoroute::maze::{
-    AutorouteControl, AutorouteEngine, MazeAdjustment, MazeListElement, MazeQueue, ViaPricing,
+    AutorouteControl, AutorouteEngine, MazeAdjustment, MazeListElement, MazeQueue,
 };
 use fr_router::{DrillId, ExpansionDrill};
 use fr_settings::RouterSettings;
@@ -27,6 +27,10 @@ fn bare_board() -> Board {
     rules.trace_angle_restriction = AngleRestriction::None;
     let class = rules.net_classes.append("default", &layers(), false);
     rules.nets.add("n1", 1, false, class);
+    rules
+        .net_classes
+        .get_mut(class)
+        .set_via_rule(Some(ViaRule::new("empty")));
     Board::new(
         Vec::new(),
         0,
@@ -51,50 +55,22 @@ fn fanout_control(
 }
 
 fn fresh_control(settings: &RouterSettings) -> AutorouteControl {
-    AutorouteControl {
-        trace_costs: settings.get_trace_costs(),
-        bend_costs: vec![0.0, 0.0],
-        with_neckdown: false,
-        layer_active: vec![true, true],
-        layer_count: 2,
-        trace_half_width: vec![100, 100],
-        compensated_trace_half_width: vec![100, 100],
-        via_radii: vec![0.0, 0.0],
-        add_via_costs: vec![vec![0, 0], vec![0, 0]],
-        trace_clearance_class_index: 1,
-        vias_allowed: true,
-        attach_smd_allowed: false,
-        min_normal_via_cost: 0.0,
-        ripup_allowed: false,
-        ripup_costs: 1000,
-        ripup_pass_no: 1,
-        is_fanout: false,
-        fanout_start_pin_name: None,
-        fanout_start_pin_center: None,
-        fanout_start_pin_layer: -1,
-        remove_unconnected_vias: true,
-        via_rule: None,
-        net_number: 1,
-        via_clearance_class: 1,
-        via_infos: Vec::new(),
-        via_lower_bound: 0,
-        via_upper_bound: 2,
-        max_via_radius: 0.0,
-        tidy_region_width: i32::MAX,
-        pull_tight_accuracy: 500,
-        max_shove_trace_recursion_depth: 20,
-        max_shove_via_recursion_depth: 5,
-        max_spring_over_recursion_depth: 5,
-        min_cheap_via_cost: 0.0,
-        fanout_max_escape_length: 3000.0,
-        fanout_min_escape_length: 500.0,
-        start_ripup_costs: 1,
-        smd_via_relaxation: settings.get_smd_via_relaxation(),
-        units_per_mm: 1.0,
-        trace_cost_per_mm: 1.0,
-        smd_via_cost_factor: 0.1,
-        via_pricing: ViaPricing::ByPadstackRadius,
-    }
+    let mut ctrl = AutorouteControl::from_settings(&bare_board(), 1, settings);
+    ctrl.bend_costs = vec![0.0, 0.0];
+    ctrl.with_neckdown = false;
+    ctrl.trace_half_width = vec![100, 100];
+    ctrl.compensated_trace_half_width = vec![100, 100];
+    ctrl.via_radii = vec![0.0, 0.0];
+    ctrl.trace_clearance_class_index = 1;
+    ctrl.min_normal_via_cost = 0.0;
+    ctrl.via_rule = None;
+    ctrl.max_via_radius = 0.0;
+    ctrl.min_cheap_via_cost = 0.0;
+    ctrl.fanout_max_escape_length = 3000.0;
+    ctrl.fanout_min_escape_length = 500.0;
+    ctrl.start_ripup_costs = 1;
+    ctrl.units_per_mm = 1.0;
+    ctrl
 }
 
 fn element(
