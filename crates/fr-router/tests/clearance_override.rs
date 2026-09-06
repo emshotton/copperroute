@@ -444,3 +444,39 @@ fn project_minimums_floor_default_and_explicit_router_clearances() {
     assert!(prepare_board(&mut board, &settings));
     assert_eq!(board.rules.get_hole_clearance(), 2500);
 }
+
+#[test]
+fn project_edge_floor_preserves_both_directions_of_asymmetric_clearances() {
+    let json = r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+      "outline":{"corners":[{"x":0,"y":0},{"x":20,"y":0},{"x":20,"y":20},{"x":0,"y":20}]}}"#;
+    let BoardReadResult::Success {
+        board: Some(mut board),
+        ..
+    } = fr_dsn::kicad::read_board(json, None)
+    else {
+        panic!("fixture import failed")
+    };
+    board.apply_copper_to_edge_clearance_override(500.0);
+    let edge = board
+        .rules
+        .clearance_matrix
+        .get_no(fr_board::BOARD_EDGE_CLEARANCE_CLASS_NAME)
+        .unwrap();
+    for (forward, reverse) in [(2000, 8000), (8000, 2000)] {
+        board.rules.clearance_matrix.set_value(edge, 1, 0, forward);
+        board.rules.clearance_matrix.set_value(1, edge, 0, reverse);
+        assert!(board.raise_copper_to_edge_clearance_to(5000));
+        assert_eq!(
+            board.rules.clearance_matrix.get_value(edge, 1, 0, false),
+            forward.max(5000)
+        );
+        assert_eq!(
+            board.rules.clearance_matrix.get_value(1, edge, 0, false),
+            reverse.max(5000)
+        );
+        assert!(
+            !board.raise_copper_to_edge_clearance_to(5000),
+            "an applied floor is idempotent"
+        );
+    }
+}

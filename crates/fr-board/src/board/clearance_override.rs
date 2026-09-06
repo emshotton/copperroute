@@ -42,6 +42,8 @@ impl Board {
                 (1..matrix.get_class_count()).any(|class_no| {
                     matrix.get_value(board_edge_class_no, class_no, layer, false)
                         < minimum_board_units
+                        || matrix.get_value(class_no, board_edge_class_no, layer, false)
+                            < minimum_board_units
                 })
             }),
         };
@@ -77,8 +79,10 @@ impl Board {
             for class_no in 1..matrix.get_class_count() {
                 let clearance =
                     clearance_for(matrix.get_value(board_edge_class_no, class_no, layer, false));
+                let reverse_clearance =
+                    clearance_for(matrix.get_value(class_no, board_edge_class_no, layer, false));
                 matrix.set_value(board_edge_class_no, class_no, layer, clearance);
-                matrix.set_value(class_no, board_edge_class_no, layer, clearance);
+                matrix.set_value(class_no, board_edge_class_no, layer, reverse_clearance);
             }
         }
 
