@@ -27,13 +27,33 @@ impl Board {
         if clearance_um < 0.0 {
             return false;
         }
+        let configured_clearance_board_units = self.clearance_override_board_units(clearance_um);
+        self.set_copper_to_edge_clearance(|_| configured_clearance_board_units)
+    }
+
+    pub fn raise_copper_to_edge_clearance_to(&mut self, minimum_board_units: i32) -> bool {
+        if minimum_board_units <= 0 {
+            return false;
+        }
+        let matrix = &self.rules.clearance_matrix;
+        let below_minimum = match matrix.get_no(BOARD_EDGE_CLEARANCE_CLASS_NAME) {
+            None => true,
+            Some(board_edge_class_no) => (0..matrix.get_layer_count()).any(|layer| {
+                (1..matrix.get_class_count()).any(|class_no| {
+                    matrix.get_value(board_edge_class_no, class_no, layer, false)
+                        < minimum_board_units
+                })
+            }),
+        };
+        below_minimum
+            && self.set_copper_to_edge_clearance(|existing| existing.max(minimum_board_units))
+    }
+
+    fn set_copper_to_edge_clearance(&mut self, clearance_for: impl Fn(i32) -> i32) -> bool {
         // :488-494: no outline, nothing to re-point.
         let Some(outline_id) = self.get_outline() else {
             return false;
         };
-
-        // :509-516.
-        let configured_clearance_board_units = self.clearance_override_board_units(clearance_um);
 
         // :518-528: reuse a `board_edge` class the DSN already declares, else append one. No
         // corpus board declares one, so this always appends and the new index is
@@ -50,25 +70,15 @@ impl Board {
             }
         };
 
-        // :536-541. Both the row and the column, on every layer, unconditionally — unlike the
-        // hole path below, which floors against the existing value. The two are deliberately
-        // not factored together. The loop starts at class 1, so column/row 0 (the `"null"`
-        // class) keeps its zeros, and it ends at the *new* class count, so the
-        // `[board_edge][board_edge]` diagonal is written too.
+        // :536-541. Both the row and the column, on every layer. The loop starts at class 1,
+        // so column/row 0 (the `"null"` class) keeps its zeros, and it ends at the *new* class
+        // count, so the `[board_edge][board_edge]` diagonal is written too.
         for layer in 0..matrix.get_layer_count() {
             for class_no in 1..matrix.get_class_count() {
-                matrix.set_value(
-                    board_edge_class_no,
-                    class_no,
-                    layer,
-                    configured_clearance_board_units,
-                );
-                matrix.set_value(
-                    class_no,
-                    board_edge_class_no,
-                    layer,
-                    configured_clearance_board_units,
-                );
+                let clearance =
+                    clearance_for(matrix.get_value(board_edge_class_no, class_no, layer, false));
+                matrix.set_value(board_edge_class_no, class_no, layer, clearance);
+                matrix.set_value(class_no, board_edge_class_no, layer, clearance);
             }
         }
 
@@ -96,6 +106,17 @@ impl Board {
         }
         // :365-372.
         let configured_clearance_board_units = self.clearance_override_board_units(clearance_um);
+        self.set_hole_clearance_board_units(configured_clearance_board_units)
+    }
+
+    pub fn raise_hole_clearance_to(&mut self, minimum_board_units: i32) -> bool {
+        if self.rules.get_hole_clearance() >= minimum_board_units {
+            return false;
+        }
+        self.set_hole_clearance_board_units(minimum_board_units)
+    }
+
+    fn set_hole_clearance_board_units(&mut self, configured_clearance_board_units: i32) -> bool {
         // :373-374: `changed` is read *before* the write, and the write is unconditional.
         let changed = configured_clearance_board_units != self.rules.get_hole_clearance();
         self.rules

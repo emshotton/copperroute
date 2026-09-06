@@ -17,7 +17,7 @@ pub use airline::{calculate_airline, calculate_item_distance};
 pub use batch_autorouter::BatchAutorouter;
 pub use batch_loop::{AutorouteBatchLoop, BatchLoopExit, BatchLoopResult, StagnationStep};
 pub use board_history::{BoardHistory, BoardHistoryEntry};
-pub use board_prep::prepare_board;
+pub use board_prep::{prepare_board, raise_to_project_minimums};
 pub use counters::RouterCounters;
 pub use failure_log::{ItemFailureInfo, RoutingFailureLog};
 pub use fanout::{

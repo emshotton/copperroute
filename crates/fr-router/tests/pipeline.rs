@@ -630,3 +630,58 @@ fn routing_honors_project_hole_clearance_attached_after_load() {
     );
     assert!(drc.get_all_unconnected_items().is_empty());
 }
+
+#[test]
+#[cfg_attr(debug_assertions, ignore)]
+fn a_rules_file_board_edge_clearance_survives_the_project_floor_at_pipeline_entry() {
+    let json = r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+      "netClasses":[{"name":"Default","traceWidth":0.2,"clearance":0.15,"viaDiameter":0.5,"viaDrill":0.3}],
+      "nets":[{"id":1,"name":"N","className":"Default"}],
+      "outline":{"corners":[{"x":0,"y":0},{"x":30,"y":0},{"x":30,"y":20},{"x":0,"y":20}]},
+      "components":[
+      {"reference":"A","position":{"x":10,"y":10},"pads":[{"name":"1","netName":"N","shape":"rect","size":{"x":1,"y":1},"layers":["F.Cu"]}]},
+      {"reference":"B","position":{"x":20,"y":10},"pads":[{"name":"1","netName":"N","shape":"rect","size":{"x":1,"y":1},"layers":["F.Cu"]}]}]}"#;
+    let fr_dsn::BoardReadResult::Success {
+        board: Some(mut board),
+        ..
+    } = fr_dsn::kicad::read_board(json, None)
+    else {
+        panic!("fixture import failed")
+    };
+    let mut settings = build_settings(&board, 1);
+    settings.copper_to_edge_clearance_um = Some(500.0);
+    settings.set_layer_active(1, false);
+    fr_router::pipeline::prepare_board(&mut board, &settings);
+    let edge = board
+        .rules
+        .clearance_matrix
+        .get_no(fr_board::BOARD_EDGE_CLEARANCE_CLASS_NAME)
+        .unwrap();
+    for class in 1..board.rules.clearance_matrix.get_class_count() {
+        board
+            .rules
+            .clearance_matrix
+            .set_value_on_all_layers(edge, class, 8000);
+        board
+            .rules
+            .clearance_matrix
+            .set_value_on_all_layers(class, edge, 8000);
+    }
+    board.rules.drc_constraints = Some(fr_board::DrcConstraints {
+        copper_edge_clearance: Some(5000),
+        ..fr_board::DrcConstraints::default()
+    });
+    run_pipeline(
+        &mut board,
+        &settings,
+        &RouterStop::new(),
+        RouterBudget::disabled(),
+        &mut NoopProgressSink,
+    )
+    .unwrap();
+    assert_eq!(
+        board.rules.clearance_matrix.get_value(edge, 1, 0, false),
+        8000,
+        "a board-edge clearance above the project minimum is kept, not rewritten"
+    );
+}

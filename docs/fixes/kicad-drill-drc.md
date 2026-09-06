@@ -14,13 +14,13 @@ exports explicit via drills. Legacy inputs without metadata retain their old
 fallback behavior. Unplated holes do not require a copper annular ring. The JSON
 pad extensions `nonPlated` and `drillEstimated` default to false.
 
-Project clearances also need to reach the routing search. Previously the project
-import attached DRC constraints after board preparation, and the resolved router
-settings contained a zero hole-clearance default. Pipeline entry now refreshes
-preparation when DRC constraints are present. Hole and copper-edge project minima
-floor the routing settings, after conversion from board units to micrometres;
-stricter router settings remain effective. Existing board preparation rebuilds
-the search trees when the effective clearance changes.
+Project clearances also need to reach the routing search. The project import
+attaches DRC constraints after board preparation, and the resolved router
+settings contain a zero hole-clearance default. Board preparation and pipeline
+entry therefore raise the hole clearance and every board-edge clearance cell
+that sits below the project minimum, in board units. Values already above the
+minimum, whether from the router settings or a rules file, are left alone, and
+the search trees are rebuilt only when something was raised.
 
 DRC now uses physical pin/via shapes instead of search-tree shapes inflated for
 routing hole clearance. Bare holes participate in hole-clearance checks, but do
