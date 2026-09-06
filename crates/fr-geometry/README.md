@@ -54,9 +54,9 @@ types, the Rust methods carry a suffix naming the argument:
   in the `Float*` types.
 - **`CRIT_INT`** (`limits.rs`) is the coordinate magnitude above which a
   product of two coordinates no longer fits an `i64` without promotion.
-- **Rounding is round-half-up** (`java_round`), not round-half-away-from-zero.
-  Every place that converts an approximate value back to an integer coordinate
-  goes through it, so a coordinate rounds the same way everywhere.
+- **Rounding is round-half-away-from-zero** (`f64::round`). Every place that
+  converts an approximate value back to an integer coordinate goes through
+  `FloatPoint`'s rounding methods, so a coordinate rounds the same way everywhere.
 - **`Polyline::from_lines` returns `Result<_, PolylineError>`.** A line list
   that cannot be normalised into a polyline (parallel consecutive lines, fewer
   than two lines) is an error, never an empty polyline. Callers propagate it.
@@ -68,23 +68,21 @@ types, the Rust methods carry a suffix naming the argument:
   affect ordering or serialisation. Nothing else may use it as a stand-in for
   `==`.
 
-## `JavaRandom`
+## `SplitMix64`
 
-`java_random.rs` is a 48-bit truncated linear congruential generator with
-`next_int`, `next_double` and `set_seed`. It has two users with a fixed-seed
-contract: `PolygonShape::split_to_convex` starts its concavity scan at a
-pseudo-random corner from seed 99, and the router's ripup resolver draws from
-a generator seeded with the ripup cost. Both need the exact same stream on
-every run for routing to be reproducible, which is why the crate carries its
-own generator rather than depending on `rand`.
-`crates/fr-geometry/tests/java_random.rs` pins the stream.
+`split_mix64.rs` is a SplitMix64 generator with `next_int`, `next_double` and
+`set_seed`. It has two users with a fixed-seed contract: `PolygonShape::split_to_convex`
+starts its concavity scan at a pseudo-random corner from seed 99, and the router's
+ripup resolver draws from a generator seeded with the ripup cost. Both need the exact
+same stream on every run for routing to be reproducible, which is why the crate carries
+its own generator rather than depending on `rand`.
 
 ## Tests
 
-`cargo test -p fr-geometry` runs the unit tests plus eight integration
-suites: `border_line_index`, `consistency`, `java_random`,
-`nearest_and_stairs`, `polygon_geometry`, `polyline`, `rational_point` and
-`tail`. None of them needs anything outside the repository.
+`cargo test -p fr-geometry` runs the unit tests plus seven integration
+suites: `border_line_index`, `consistency`, `nearest_and_stairs`,
+`polygon_geometry`, `polyline`, `rational_point` and `tail`. None of them
+needs anything outside the repository.
 
 ## Conventions this crate shares with the workspace
 
