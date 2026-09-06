@@ -2,35 +2,31 @@
 
 pub mod cli;
 pub mod commands;
-pub mod legacy;
 pub mod logging;
 pub mod mcp;
 pub mod ops;
 
 use clap::Parser;
 
-use legacy::{ExitCode, Level};
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(i32)]
+pub enum ExitCode {
+    Ok = 0,
+    Failure = 1,
+    UsageError = 2,
+}
+
+impl ExitCode {
+    #[must_use]
+    pub fn code(self) -> i32 {
+        self as i32
+    }
+}
 
 #[must_use]
 pub fn run(raw: &[String]) -> ExitCode {
-    logging::init(logging::level_from_argv(raw));
-
-    let (argv, diagnostics) = legacy::rewrite(raw);
-    for diagnostic in &diagnostics {
-        match diagnostic.level {
-            Level::Warn => tracing::warn!("{}", diagnostic.message),
-            Level::Error => tracing::error!("{}", diagnostic.message),
-        }
-    }
-
-    tracing::debug!("rewritten command line: {argv:?}");
-
-    if argv.is_empty() {
-        return ExitCode::Failure;
-    }
-
     let cli = match cli::Cli::try_parse_from(
-        std::iter::once("freerouting".to_string()).chain(argv.iter().cloned()),
+        std::iter::once("freerouting".to_string()).chain(raw.iter().cloned()),
     ) {
         Ok(cli) => cli,
         Err(error) => {
@@ -42,12 +38,13 @@ pub fn run(raw: &[String]) -> ExitCode {
             };
         }
     };
+    logging::init(logging::level_for(cli.verbose, cli.log_level.as_deref()));
 
     match &cli.command {
-        cli::Command::Route(args) => commands::route::run(args, raw),
-        cli::Command::Drc(args) => commands::drc::run(args, raw),
-        cli::Command::Info(args) => commands::info::run(args, raw),
-        cli::Command::Mcp => match mcp::stdio::run(raw) {
+        cli::Command::Route(args) => commands::route::run(&cli, args),
+        cli::Command::Drc(args) => commands::drc::run(&cli, args),
+        cli::Command::Info(args) => commands::info::run(&cli, args),
+        cli::Command::Mcp => match mcp::stdio::run(commands::overrides(&cli, &[])) {
             0 => ExitCode::Ok,
             _ => ExitCode::Failure,
         },
