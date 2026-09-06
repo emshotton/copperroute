@@ -1,4 +1,4 @@
-import { outlinePaths } from "./geometry.js";
+import { outlinePaths, nativeArcPoints, footprintPoint } from "./geometry.js";
 import { parse } from "./kicad.js";
 export function layerColor(name) {
   if (name === "F.Cu") return "#f26d78";
@@ -116,6 +116,12 @@ export function previewBoard(text) {
         `<polygon points="${path(ps)}" fill="none" stroke="${color(layer)}" stroke-width="0.15"/>`,
       );
     }
+    if ((kind === "arc" || kind === "gr_arc") && !one(n, "mid")) {
+      const ps = nativeArcPoints(n);
+      collect(ps);
+      shapes.push(`<polyline points="${path(ps)}" fill="none" stroke="${color(layer)}" stroke-width="${num(value(n, "width", 0.15))}"/>`);
+      continue;
+    }
     if (kind === "arc" || kind === "gr_arc") {
       const a = at(n, "start"),
         m = at(n, "mid"),
@@ -142,6 +148,14 @@ export function previewBoard(text) {
   for (const fp of footprints) {
     const origin = at(fp, "at"),
       angle = (num(one(fp, "at")?.values[3]) * Math.PI) / 180;
+    for (const rect of kids(fp, "fp_rect")) {
+      const layer = value(rect, "layer", "");
+      if (!layer.endsWith(".Cu")) continue;
+      const a = at(rect, "start"), b = at(rect, "end");
+      const ps = [a, {x:b.x,y:a.y}, b, {x:a.x,y:b.y}].map(p => footprintPoint(fp,p));
+      collect(ps);
+      shapes.push(`<polygon points="${path(ps)}" fill="${value(rect,"fill") === "yes" ? color(layer) : "none"}" stroke="${color(layer)}" stroke-width="${num(value(one(rect,"stroke") ?? rect,"width",0))}"/>`);
+    }
     for (const p of kids(fp, "pad")) {
       if (
         !one(p, "layers")?.values.some(
@@ -165,9 +179,16 @@ export function previewBoard(text) {
           : type === "roundrect"
             ? num(value(p, "roundrect_rratio", 0.25)) * Math.min(size.x, size.y)
             : 0;
+      const shapeOffset = at(one(p, "drill") ?? {values: []}, "offset");
       shapes.push(
-        `<g transform="translate(${x} ${y}) rotate(${rotation})" fill="#edcf86"><title>${escape(p.values[1])} · ${escape(value(p, "net", ""))}</title>${type === "circle" ? `<ellipse rx="${size.x / 2}" ry="${size.y / 2}"/>` : `<rect x="${-size.x / 2}" y="${-size.y / 2}" width="${size.x}" height="${size.y}" rx="${radius}"/>`}`,
+        `<g transform="translate(${x} ${y}) rotate(${rotation})" fill="#edcf86"><title>${escape(p.values[1])} · ${escape(value(p, "net", ""))}</title><g transform="translate(${shapeOffset.x} ${shapeOffset.y})">${type === "circle" || type === "custom" ? `<ellipse rx="${size.x / 2}" ry="${size.y / 2}"/>` : `<rect x="${-size.x / 2}" y="${-size.y / 2}" width="${size.x}" height="${size.y}" rx="${radius}"/>`}`,
       );
+      if (type === "custom")
+        for (const primitive of kids(one(p, "primitives") ?? {values: []}, "gr_poly")) {
+          const ps = kids(one(primitive, "pts") ?? {values: []}, "xy").map(xy);
+          shapes.push(`<polygon points="${path(ps)}" fill="#edcf86" stroke="#edcf86" stroke-width="${num(value(primitive, "width", 0))}" stroke-linejoin="round"/>`);
+        }
+      shapes.push("</g>");
       const drill = one(p, "drill");
       if (drill) {
         if (drill.values[1] === "oval") {

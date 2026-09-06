@@ -1,4 +1,4 @@
-import { outlinePaths, OUTLINE_TOLERANCE } from "./geometry.js";
+import { footprintPoint, outlinePaths, OUTLINE_TOLERANCE } from "./geometry.js";
 // Native KiCad adapter. Source spans let us replace routing while preserving
 // every other byte (footprints, graphics, properties, and unknown metadata).
 export function parse(text) {
@@ -69,15 +69,28 @@ const xy = (n) => {
 const point = (n, key) => xy(child(n, key));
 const equal = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 0.00001;
 
+export function embeddedNetClasses(root) {
+  return children(root, "net_class").map((node) => ({
+    name: node.values[1],
+    clearance: number(val(node, "clearance")),
+    traceWidth: number(val(node, "trace_width")),
+    viaDiameter: number(val(node, "via_dia")),
+    viaDrill: number(val(node, "via_drill")),
+    netNames: children(node, "add_net").map((net) => net.values[1]),
+  }));
+}
+
 export function importBoard(text, name, rules, options = {}) {
   const root = parse(text),
     warnings = [];
-  for (const key of ["traceWidth", "clearance", "viaDiameter", "viaDrill"]) {
-    if (!(rules[key] > 0 && rules[key] <= 5))
-      throw Error("Invalid routing rules.");
+  if (!children(root, "net_class").some(n => n.values[1] === "Default")) {
+    for (const key of ["traceWidth", "clearance", "viaDiameter", "viaDrill"]) {
+      if (!(rules[key] > 0 && rules[key] <= 5))
+        throw Error("Invalid routing rules.");
+    }
+    if (rules.viaDrill >= rules.viaDiameter)
+      throw Error("Via drill must be smaller than diameter.");
   }
-  if (rules.viaDrill >= rules.viaDiameter)
-    throw Error("Via drill must be smaller than diameter.");
   if (
     (!options.rebuildZones &&
       children(root, "zone").some((zone) => !child(zone, "keepout"))) ||
@@ -86,8 +99,6 @@ export function importBoard(text, name, rules, options = {}) {
     throw Error(
       "This prototype does not yet support copper zones, keepouts, or curved tracks.",
     );
-  if (children(root, "net_class").length)
-    throw Error("Legacy embedded net classes are not supported yet.");
   const layers = child(root, "layers")
     ?.values.filter((v) => v?.values && /\.Cu$/.test(v.values[1]))
     .map((v, index) => {
@@ -152,12 +163,32 @@ export function importBoard(text, name, rules, options = {}) {
     warnings.push(
       `${preservedKeepouts} keepout areas allow tracks and vias and are preserved for KiCad zone refill.`,
     );
+  const conductionAreas = [];
   const outline = outlinePaths(root);
   const edges = outline.paths.flatMap((path) =>
     path.slice(1).map((p, i) => [path[i], p]),
   );
   for (const n of root.values.filter((v) => v?.values)) {
     const layer = val(n, "layer", "");
+    if (layer.endsWith(".Cu") && n.values[0] === "gr_text") {
+      const effects = child(n, "effects"), font = effects && child(effects, "font");
+      if (!font || child(font, "face")) throw Error("Custom copper text fonts are not supported yet.");
+      const size = point(font, "size"), at = point(n, "at"), angle = -number(child(n, "at").values[3] ?? 0) * Math.PI / 180;
+      const lines = String(n.values[1]).split("\n");
+      const w = Math.max(...lines.map(line => line.length)) * size.x * 1.5 + size.y;
+      const h = lines.length * size.y * 2;
+      const justify = child(effects, "justify")?.values ?? [];
+      const left = justify.includes("left") ? -size.y / 2 : justify.includes("right") ? -w : -w / 2;
+      const top = justify.includes("top") ? -size.y / 2 : justify.includes("bottom") ? -h : -h / 2;
+      const mirror = justify.includes("mirror") ? -1 : 1;
+      const polygon = [[left, top], [left + w, top], [left + w, top + h], [left, top + h]].map(([x, y]) => ({
+        x: at.x + mirror * x * Math.cos(angle) - y * Math.sin(angle),
+        y: at.y + mirror * x * Math.sin(angle) + y * Math.cos(angle),
+      }));
+      conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+      warnings.push("Copper text is preserved and reserved as conservative rectangular routing obstacles; check text clearances in KiCad.");
+      continue;
+    }
     if (
       layer.endsWith(".Cu") &&
       ![
@@ -175,18 +206,37 @@ export function importBoard(text, name, rules, options = {}) {
       "Curved board edges are approximated within 0.005 mm for routing; the original outline is preserved in downloads.",
     );
   if (!edges.length) throw Error("A closed Edge.Cuts outline is required.");
-  const [first, last] = edges.shift(),
-    corners = [first];
-  let end = last;
-  while (!equal(end, first)) {
-    corners.push(end);
-    const i = edges.findIndex(([a, b]) => equal(a, end) || equal(b, end));
-    if (i < 0) throw Error("The Edge.Cuts outline is not closed.");
-    const [a, b] = edges.splice(i, 1)[0];
-    end = equal(a, end) ? b : a;
+  const loops = [];
+  while (edges.length) {
+    const [first, last] = edges.shift(), loop = [first];
+    let end = last;
+    while (!equal(end, first)) {
+      loop.push(end);
+      const i = edges.findIndex(([a, b]) => equal(a, end) || equal(b, end));
+      if (i < 0) throw Error("The Edge.Cuts outline is not closed.");
+      const [a, b] = edges.splice(i, 1)[0];
+      end = equal(a, end) ? b : a;
+    }
+    if (loop.length < 3) throw Error("Degenerate Edge.Cuts outline.");
+    loops.push(loop);
   }
-  if (edges.length || corners.length < 3)
-    throw Error("Multiple outlines or cutouts are not supported yet.");
+  const area = ps => Math.abs(ps.reduce((sum, p, i) => {
+    const q = ps[(i + 1) % ps.length];
+    return sum + p.x * q.y - p.y * q.x;
+  }, 0));
+  loops.sort((a, b) => area(b) - area(a));
+  const corners = loops.shift();
+  const inside = (p, poly) => {
+    let result = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const a = poly[i], b = poly[j];
+      if ((a.y > p.y) !== (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) result = !result;
+    }
+    return result;
+  };
+  if (loops.some(loop => loop.some(p => !inside(p, corners))))
+    throw Error("Separate board outlines are not supported yet.");
+  if (loops.length) warnings.push(`${loops.length} internal cutouts are reserved on every copper layer.`);
   const components = [];
   for (const [fi, fp] of [
     ...children(root, "footprint"),
@@ -198,6 +248,17 @@ export function importBoard(text, name, rules, options = {}) {
       throw Error("Footprint zones are not supported yet.");
     for (const n of fp.values.filter((v) => v?.values)) {
       const layer = val(n, "layer", "");
+      if (layer.endsWith(".Cu") && n.values[0] === "fp_rect") {
+        const a = point(n, "start"), b = point(n, "end");
+        const stroke = child(n, "stroke");
+        const margin = number(val(stroke ?? n, "width", 0)) / 2;
+        const x0 = Math.min(a.x, b.x) - margin, x1 = Math.max(a.x, b.x) + margin;
+        const y0 = Math.min(a.y, b.y) - margin, y1 = Math.max(a.y, b.y) + margin;
+        const polygon = [{x:x0,y:y0},{x:x1,y:y0},{x:x1,y:y1},{x:x0,y:y1}].map(p => footprintPoint(fp, p));
+        conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+        warnings.push("Footprint copper rectangles are reserved as solid routing obstacles and preserved in downloads.");
+        continue;
+      }
       if (
         layer.endsWith(".Cu") &&
         n.values[0] !== "pad" &&
@@ -214,20 +275,41 @@ export function importBoard(text, name, rules, options = {}) {
         ?.values[2] ??
       `FP${fi}`;
     for (const [pi, pad] of children(fp, "pad").entries()) {
-      const shape = pad.values[3],
-        type = pad.values[2];
+      const shape = pad.values[3];
+      const type = pad.values[2];
       if (
         !["smd", "connect", "thru_hole", "np_thru_hole"].includes(type) ||
-        !["circle", "rect", "oval", "roundrect"].includes(shape)
+        !["circle", "rect", "oval", "roundrect", "custom"].includes(shape)
       )
         throw Error(
           `Unsupported pad ${reference}.${pad.values[1]}: ${type}/${shape}`,
         );
-      if (
-        children(pad, "primitives").length ||
-        child(child(pad, "drill") ?? { values: [] }, "offset")
-      )
-        throw Error("Custom pads and offset drills are not supported yet.");
+      let copperPolygon;
+      if (shape === "custom") {
+        const primitives = child(pad, "primitives")?.values.slice(1) ?? [];
+        if (primitives.length !== 1 || primitives[0]?.values?.[0] !== "gr_poly" || val(primitives[0], "fill") !== "yes")
+          throw Error("Custom pads require one filled convex polygon.");
+        const poly = children(child(primitives[0], "pts") ?? {values: []}, "xy").map(xy);
+        const cross = (a, b, c) => (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+        const signs = poly.map((p,i) => Math.sign(cross(p,poly[(i+1)%poly.length],poly[(i+2)%poly.length]))).filter(Boolean);
+        if (poly.length < 3 || signs.some(s => s !== signs[0])) throw Error("Concave custom pads are not supported yet.");
+        const radius = number(val(primitives[0], "width", 0)) / 2;
+        const size = point(pad, "size");
+        if (val(child(pad, "options") ?? {values: []}, "anchor") !== "circle" || size.x !== size.y || radius < 0)
+          throw Error("Custom polygon pads require a circular anchor and nonnegative stroke.");
+        if (poly.some((a,i) => {
+          const b = poly[(i+1)%poly.length];
+          return signs[0] * cross(a,b,{x:0,y:0}) / Math.hypot(b.x-a.x,b.y-a.y) + radius < size.x/2;
+        })) throw Error("Custom pad polygon must cover its circular anchor.");
+        const count = radius ? Math.max(24, Math.ceil(Math.PI / Math.acos(1 / (1 + OUTLINE_TOLERANCE / radius)))) : 1;
+        const samples = poly.flatMap(p => Array.from({length: count}, (_,i) => {
+          const r = radius ? radius / Math.cos(Math.PI/count) : 0, angle = i * 2*Math.PI/count;
+          return {x:p.x+r*Math.cos(angle),y:p.y+r*Math.sin(angle)};
+        })).sort((a,b) => a.x-b.x || a.y-b.y);
+        const half = points => {const out=[];for(const p of points){while(out.length>1 && cross(out.at(-2),out.at(-1),p)<=0)out.pop();out.push(p);}return out.slice(0,-1);};
+        copperPolygon = [...half(samples), ...half([...samples].reverse())];
+        warnings.push("Convex custom pad outlines include their stroke, approximated within 0.005 mm; original pad definitions are preserved.");
+      } else if (children(pad, "primitives").length) throw Error("Unexpected custom pad primitives.");
       const drillNode = child(pad, "drill"),
         slotted = drillNode?.values[1] === "oval";
       const drill = slotted
@@ -289,6 +371,8 @@ export function importBoard(text, name, rules, options = {}) {
             shape,
             ...(shape === "roundrect" ? { roundRectRatio: number(val(pad, "roundrect_rratio", 0.25)) } : {}),
             size,
+            ...(copperPolygon ? { copperPolygon } : {}),
+            ...(drillNode && child(drillNode, "offset") ? { shapeOffset: point(drillNode, "offset") } : {}),
             offset: { x: 0, y: 0 },
             position,
             drill,
@@ -348,6 +432,32 @@ export function importBoard(text, name, rules, options = {}) {
       };
     },
   );
+  const embedded = children(root, "net_class");
+  const netClasses = embeddedNetClasses(root);
+  const classNames = new Set();
+  const assignments = new Map();
+  for (const cls of netClasses) {
+    if (typeof cls.name !== "string" || !cls.name || classNames.has(cls.name))
+      throw Error("Embedded net class names must be nonempty and unique.");
+    classNames.add(cls.name);
+    if (cls.clearance < 0 || cls.traceWidth <= 0 || cls.viaDrill <= 0 || cls.viaDiameter <= cls.viaDrill)
+      throw Error(`Invalid embedded routing rules for ${cls.name}.`);
+    for (const name of cls.netNames) {
+      if (assignments.has(name) && assignments.get(name) !== cls.name)
+        throw Error(`Net ${name} belongs to multiple embedded net classes.`);
+      assignments.set(name, cls.name);
+    }
+    cls.netNames = [];
+  }
+  if (!classNames.has("Default"))
+    netClasses.unshift({ name: "Default", ...rules, netNames: [] });
+  else netClasses.sort((a, b) => (b.name === "Default") - (a.name === "Default"));
+  for (const net of nets.filter((n) => n.id > 0)) {
+    net.className = assignments.get(net.name) ?? "Default";
+    netClasses.find((cls) => cls.name === net.className).netNames.push(net.name);
+  }
+  if (embedded.length)
+    warnings.push(`Imported ${embedded.length} embedded KiCad net classes, including trace widths, clearances and via dimensions.`);
   return {
     text,
     root,
@@ -362,21 +472,17 @@ export function importBoard(text, name, rules, options = {}) {
       resolution: 10000,
       layers,
       nets: nets.filter((n) => n.id > 0),
-      netClasses: [
-        {
-          name: "Default",
-          ...rules,
-          netNames: nets.filter((n) => n.id > 0).map((n) => n.name),
-        },
-      ],
+      netClasses,
       components,
       outline: {
         corners,
-        clearance: rules.clearance + (outline.curved ? OUTLINE_TOLERANCE : 0),
+        ordered: true,
+        cutouts: loops,
+        clearance: netClasses[0].clearance + (outline.curved ? OUTLINE_TOLERANCE : 0),
       },
       traces,
       vias,
-      conductionAreas: [],
+      conductionAreas,
     },
   };
 }

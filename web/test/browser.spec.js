@@ -512,3 +512,46 @@ test("via-in-pad requires a browser opt-in and resets for the next board", async
   await page.locator("#demo").click();
   await expect(page.locator("#allow-via-in-pad")).not.toBeChecked();
 });
+
+test("legacy KiCad rules are shown, used by WASM, and cleared with the board", async ({ page }) => {
+  await page.goto('/');
+  const source = readFileSync('example.kicad_pcb', 'utf8').replace('(setup', '(net_class Default "" (clearance 0.08) (trace_width 0.15) (via_dia 0.6) (via_drill 0.35) (add_net "Signal") (add_net "Return")) (setup');
+  await page.locator('#file').setInputFiles({name: 'legacy.kicad_pcb', mimeType: 'text/plain', buffer: Buffer.from(source)});
+  await expect(page.locator('#project-name')).toContainText('embedded KiCad net classes');
+  await expect(page.locator('#traceWidth')).toHaveValue('0.15');
+  await expect(page.locator('#traceWidth')).toBeDisabled();
+  await page.locator('#route').click();
+  await expect(page.locator('#pcb')).toBeVisible({timeout: 80000});
+  await expect(page.locator('#status')).toContainText('0 unrouted connections');
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#pcb').click();
+  const output = readFileSync(await (await downloadPromise).path(), 'utf8');
+  const board = importBoard(output, 'routed', rules).board;
+  expect(board.traces.length).toBeGreaterThan(0);
+  expect(board.traces.every(t => t.width === .15)).toBe(true);
+  await page.locator('#file').setInputFiles('example.kicad_pcb');
+  await expect(page.locator('#traceWidth')).toBeEnabled();
+  await expect(page.locator('#project-name')).toContainText('manual rules');
+  await expect(page.locator('#traceWidth')).toHaveValue('0.25');
+});
+
+test("WASM routes around cutouts with a distinct edge clearance class", async ({page}) => {
+  await page.goto('/');
+  const source=readFileSync('example.kicad_pcb','utf8').replace('(setup','(gr_rect (start 113 104) (end 117 116) (layer "Edge.Cuts")) (setup');
+  await page.locator('#file').setInputFiles({name:'cutout.kicad_pcb',mimeType:'text/plain',buffer:Buffer.from(source)});
+  await page.locator('#route').click();
+  await expect(page.locator('#pcb')).toBeVisible({timeout:80000});
+  await expect(page.locator('#status')).toContainText('0 router DRC violations');
+  const download=page.waitForEvent('download');
+  await page.locator('#pcb').click();
+  const board=importBoard(readFileSync(await (await download).path(),'utf8'),'cutout',rules).board;
+  expect(board.outline.cutouts).toHaveLength(1);
+  expect(board.traces.length).toBeGreaterThan(0);
+  for(const trace of board.traces)for(let i=1;i<trace.points.length;i++) {
+    const a=trace.points[i-1],b=trace.points[i];
+    for(let step=0;step<=20;step++) {
+      const x=a.x+(b.x-a.x)*step/20,y=a.y+(b.y-a.y)*step/20;
+      expect(x>113 && x<117 && y>104 && y<116).toBe(false);
+    }
+  }
+});

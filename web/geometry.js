@@ -57,6 +57,14 @@ export function arcPoints(a, m, b) {
   points[points.length - 1] = b;
   return points;
 }
+export function nativeArcPoints(node) {
+  if (child(node, "mid")) return arcPoints(point(node, "start"), point(node, "mid"), point(node, "end"));
+  const center = point(node, "start"), start = point(node, "end");
+  const points = sample(center, Math.hypot(start.x - center.x, start.y - center.y),
+    Math.atan2(start.y - center.y, start.x - center.x), num(val(node, "angle")) * Math.PI / 180);
+  points[0] = start;
+  return points;
+}
 export function outlinePaths(root) {
   const paths = [];
   let curved = false;
@@ -73,11 +81,7 @@ export function outlinePaths(root) {
       points = kids(child(node, "pts") ?? { values: [] }, "xy").map(xy);
       if (points.length) points.push(points[0]);
     } else if (kind === "gr_arc") {
-      points = arcPoints(
-        point(node, "start"),
-        point(node, "mid"),
-        point(node, "end"),
-      );
+      points = nativeArcPoints(node);
       curved = true;
     } else if (kind === "gr_circle") {
       const c = point(node, "center"),

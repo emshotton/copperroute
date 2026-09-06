@@ -9,6 +9,7 @@ let manualRules = Object.fromEntries(
   ]),
 );
 let selected,
+  embeddedRules,
   projectFile,
   previewWorker,
   worker,
@@ -71,11 +72,16 @@ function finish() {
 function isDsn() { return /\.dsn$/i.test(selected?.name ?? ""); }
 function updateRuleControls() {
   const embedded = isDsn();
-  for (const id of Object.keys(manualRules)) $(id).disabled = embedded || !!projectFile;
+  for (const id of Object.keys(manualRules)) $(id).disabled = embedded || !!projectFile || !!embeddedRules;
   for (const id of ["project", "clear-project", "rebuild-zones", "allow-via-in-pad"]) $(id).disabled = embedded;
   $("project-name").textContent = embedded
     ? "Using embedded DSN net classes, routing rules and layer settings."
-    : projectFile ? projectFile.name : "No project selected — using the manual rules below.";
+    : projectFile ? projectFile.name : embeddedRules
+      ? "Using embedded KiCad net classes. Default class values are shown below."
+      : "No project selected — using the manual rules below.";
+  if (!projectFile && !embedded && embeddedRules)
+    for (const [id, value] of Object.entries(embeddedRules))
+      if (id in manualRules) $(id).value = value;
 }
 function select(file) {
   selectionRevision++;
@@ -86,6 +92,11 @@ function select(file) {
   previewWorker = null;
   finish();
   clearDownloads();
+  if (!projectFile && !embeddedRules && !isDsn())
+    manualRules = Object.fromEntries(Object.keys(manualRules).map((id) => [id, $(id).value]));
+  if (embeddedRules && !projectFile)
+    for (const [id, value] of Object.entries(manualRules)) $(id).value = value;
+  embeddedRules = null;
   selected = null;
   updateRuleControls();
   $("route").disabled = true;
@@ -115,6 +126,10 @@ function select(file) {
       $("preview").innerHTML = data.svg;
       showLayers(data.layers);
       $("warnings").textContent = data.warnings.join(" ");
+    }
+    if (data.type === "ready" && data.embeddedRules) {
+      embeddedRules = data.embeddedRules;
+      updateRuleControls();
     }
     if (data.type === "ready" || data.type === "error") {
       active.terminate();
@@ -156,7 +171,7 @@ function selectProject(file) {
     status("Project files are limited to 5 MB.");
     return;
   }
-  if (file && !projectFile)
+  if (file && !projectFile && !embeddedRules)
     manualRules = Object.fromEntries(
       Object.keys(manualRules).map((id) => [id, $(id).value]),
     );

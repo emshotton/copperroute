@@ -70,9 +70,11 @@ subset of the native S-expression format into that existing representation.
 
 - Standard circular, rectangular, oval, and rounded rectangular pads; rotated
   footprints and pads on either side; straight tracks; through vias; up to 32
-  copper layers; one closed board outline made from lines, arcs, circles, a rectangle,
+  copper layers; one outer board outline with internal cutouts, made from lines, arcs, circles, a rectangle,
   or a polygon, including Edge.Cuts inside footprints. Curves are approximated
-  within 0.005 mm; the original outline remains intact in downloads.
+  within 0.005 mm; legacy center/angle arcs and modern three-point arcs are supported.
+  The original outline remains intact in downloads. Cutouts become fixed obstacles
+  on every copper layer, with the imported copper-edge clearance.
 - Copper layers retain stack order and canonical names independently of KiCad
   numeric IDs; the original layer table (including IDs and aliases) is preserved
   in the PCB download. Signal/mixed copper layers allow routing; power layers
@@ -96,9 +98,15 @@ subset of the native S-expression format into that existing representation.
   keepouts. Areas restricting tracks or vias, and netless copper zones, remain
   rejected. Deselecting the option rejects copper zones but still allows these
   non-routing keepout areas.
-- Keepouts restricting tracks or vias, cutouts/multiple outlines,
-  footprint copper graphics, net ties, custom pads, non-plated slots/offset holes,
-  and legacy embedded net classes are explicitly rejected. Existing routing is
+- Offset pad copper is translated in its local coordinate system while the hole
+  stays at the pad anchor. Convex custom pads with one filled polygon and a covered
+  circular anchor include their stroke, approximated within 0.005 mm. Other custom
+  pad constructions remain rejected.
+- Copper text is reserved using conservative rectangles. Footprint copper
+  rectangles include their stroke and reserve their entire interior. Original
+  graphics remain in the download; the reserved text bounds can reduce routability.
+- Keepouts restricting tracks or vias, separate outer boards, other footprint
+  copper graphics, net ties, and non-plated slots are explicitly rejected. Existing routing is
   discarded before import, including locked tracks, arcs and all via types. This excludes many production boards.
 - An optional `.kicad_pro` supplies net-class widths, clearances, via diameters,
   drills and class assignments to the existing KiCad JSON loader. The WASM entry
@@ -107,7 +115,9 @@ subset of the native S-expression format into that existing representation.
   precedence over the disabled manual fields. Simple `*`/`?` net-name patterns
   and explicit assignments are supported; composite classes and richer patterns
   are rejected. `.kicad_dru` custom rules and local pad overrides are not applied.
-  Without a project, the manual rule set applies to all nets. Project files are
+  Legacy embedded `net_class` records supply widths, clearances, via dimensions
+  and exact net assignments without a project. An accompanying project takes
+  precedence. Manual rules apply when neither source is available. Project files are
   limited to 5 MiB. Browsers cannot read adjacent project files automatically.
 - Original non-routing source sections are preserved byte for byte, including
   footprints and board metadata, except cached zone fills when rebuilding zones and the modification notice
@@ -275,3 +285,19 @@ physical circle, segment, rectangle and rounded-rectangle distances. Routing
 retains enclosing rectangles for rounded pads. Result details distinguish
 findings already present before routing from new findings; the original project
 minimum is not reduced to hide existing footprint violations.
+
+
+To check a local PCBench download through import, preview, WASM routing and both
+PCB/SVG downloads, start the web server and run:
+
+```sh
+node web/scripts/check-pcbench.mjs /path/to/PCBench-top-5-new-boards /tmp/pcbench-results
+```
+
+The check imports both raw and processed boards and routes each processed board
+with its adjacent `raw.kicad_pro` when available. It uses five passes and a
+60-second routing budget per board, writes downloaded files and a JSON report,
+and verifies unchanged footprints, layer tables and source rules. Passing this
+check means the browser produces a usable partial result; the report separately
+records remaining connections and DRC findings. Refill pours and run KiCad DRC
+before treating an output as complete.

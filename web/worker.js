@@ -1,5 +1,5 @@
 import { EXAMPLES, modificationNotice, svgNotice } from "./examples.js";
-import { importBoard, exportBoard } from "./kicad.js";
+import { importBoard, exportBoard, parse, embeddedNetClasses } from "./kicad.js";
 import { previewBoard, previewLayers } from "./preview.js";
 import { applyProject } from "./project.js";
 self.onmessage = async ({ data }) => {
@@ -25,7 +25,7 @@ self.onmessage = async ({ data }) => {
       warnings: [],
     });
     if (data.action === "preview") {
-      self.postMessage({ type: "ready" });
+      self.postMessage({ type: "ready", embeddedRules: embeddedNetClasses(parse(data.text)).find((c) => c.name === "Default") });
       return;
     }
     self.postMessage({

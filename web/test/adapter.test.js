@@ -212,3 +212,87 @@ test("KiCad via attachment is opt-in independently of project net classes", () =
   assert.equal(load(source).board.viaInPadAllowed, false);
   assert.equal(importBoard(source, "example", rules, {allowViaInPad: true}).board.viaInPadAllowed, true);
 });
+
+const legacyClasses = `
+  (net_class Power "" (clearance 0.3) (trace_width 0.7) (via_dia 0.8) (via_drill 0.4) (add_net "Return"))
+  (net_class Default "" (clearance 0.08) (trace_width 0.15) (via_dia 0.6) (via_drill 0.35) (add_net "Signal"))`;
+const legacySource = source.replace('(setup', legacyClasses + ' (setup').replace('20240108', '20171130').replaceAll('(footprint ', '(module ');
+test("legacy embedded classes assign exact net rules and survive routing export", () => {
+  const input = load(legacySource);
+  assert.deepEqual(input.board.netClasses, [
+    {name: 'Default', clearance: .08, traceWidth: .15, viaDiameter: .6, viaDrill: .35, netNames: ['Signal']},
+    {name: 'Power', clearance: .3, traceWidth: .7, viaDiameter: .8, viaDrill: .4, netNames: ['Return']},
+  ]);
+  assert.equal(input.board.nets.find(n => n.name === 'Return').className, 'Power');
+  assert.equal(input.board.outline.clearance, .08);
+  const output = exportBoard(input, input.board);
+  assert.ok(output.includes(legacyClasses));
+  assert.deepEqual(load(output).board.netClasses, input.board.netClasses);
+  assert.equal(load(legacySource.replace('(add_net "Return")', '')).board.nets.find(n => n.name === 'Return').className, 'Default');
+});
+test("malformed or ambiguous embedded classes fail explicitly", () => {
+  assert.throws(() => load(legacySource.replace('(via_drill 0.35)', '(via_drill 0.65)')), /Invalid embedded/);
+  assert.throws(() => load(legacySource.replace('(trace_width 0.15)', '(trace_width NaN)')));
+  assert.throws(() => load(legacySource.replace('(add_net "Return")', '(add_net "Signal")')), /multiple embedded/);
+  assert.throws(() => load(legacySource.replace('net_class Power', 'net_class Default')), /unique/);
+});
+test("an accompanying project overrides embedded class assignments and dimensions", async () => {
+  const {applyProject} = await import('../project.js');
+  const input = load(legacySource);
+  applyProject(input, JSON.stringify({board: {design_settings: {}}, net_settings: {classes: [{name: 'Default', track_width: .4}]}}));
+  assert.equal(input.board.netClasses[0].traceWidth, .4);
+  assert.ok(input.board.nets.every(n => n.className === 'Default'));
+});
+
+test("offset pad copper retains the drill anchor and local displacement", async () => {
+  const input = load(source.replace('(drill 0.8)', '(drill 0.8 (offset 0.25 -0.1))'));
+  const pad = input.board.components.flatMap(c=>c.pads).find(p=>p.shapeOffset);
+  assert.deepEqual(pad.shapeOffset,{x:.25,y:-.1});
+  assert.equal(pad.drill,.8);
+});
+
+test("internal cutouts remain separate from ordered outer edges", () => {
+  const text = source.replace('(setup','(gr_rect (start 112 110) (end 114 112) (layer "Edge.Cuts")) (setup');
+  const input = load(text);
+  assert.equal(input.board.outline.cutouts.length,1);
+  assert.equal(input.board.outline.ordered,true);
+  assert.deepEqual(input.board.outline.corners,load(source).board.outline.corners);
+  assert.ok(exportBoard(input,input.board).includes('(gr_rect (start 112 110)'));
+  assert.throws(()=>load(text.replace('(start 112 110) (end 114 112)','(start 212 110) (end 214 112)')),/Separate board/);
+});
+
+test("legacy signed arcs match the modern three-point geometry", async () => {
+  const {nativeArcPoints} = await import('../geometry.js');
+  const arc = (text) => parse('(kicad_pcb '+text+')').values[1];
+  for(const angle of [90,-90,180,-180]) {
+    const ps = nativeArcPoints(arc(`(gr_arc (start 10 10) (end 12 10) (angle ${angle}))`));
+    assert.deepEqual(ps[0],{x:12,y:10});
+    assert.ok(Math.abs(ps.at(-1).x-(10+2*Math.cos(angle*Math.PI/180)))<1e-9);
+    assert.ok(Math.abs(ps.at(-1).y-(10+2*Math.sin(angle*Math.PI/180)))<1e-9);
+  }
+});
+
+test("copper text and footprint rectangles become layer-specific fixed obstacles", () => {
+  const text = source.replace('(setup', '(gr_text "A" (at 112 110 90) (layer "F.Cu") (effects (font (size 1 1) (thickness 0.2)))) (setup')
+    .replace('(at 105 105)', '(at 105 105) (fp_rect (start 1 1) (end 2 2) (layer "B.Cu") (stroke (width 0.2)) (fill yes))');
+  const input = load(text);
+  assert.equal(input.board.conductionAreas.length,2);
+  assert.ok(input.board.conductionAreas.every(a=>a.isObstacle && a.netName === ''));
+  assert.deepEqual(input.board.conductionAreas.map(a=>a.layerIndex),[0,1]);
+  const xs = input.board.conductionAreas[1].polygon.map(p=>p.x);
+  assert.equal(Math.min(...xs),105.9);
+  assert.equal(Math.max(...xs),107.1);
+  assert.ok(exportBoard(input,input.board).includes('(gr_text "A"'));
+});
+
+test("a stroked convex custom pad includes its copper, while unsupported primitives fail", () => {
+  const pad = '(pad "1" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8)';
+  const custom = '(pad "1" thru_hole custom (at 0 0) (size 0.8 0.8) (options (anchor circle)) (primitives (gr_poly (pts (xy -0.8 -0.8) (xy 0 -0.8) (xy 0.8 0) (xy 0.8 0.8) (xy -0.8 0.8)) (width 0.2) (fill yes))) (drill 0.3)';
+  const text = source.replace(pad,custom);
+  const polygon = load(text).board.components[0].pads[0].copperPolygon;
+  assert.ok(polygon.length>5);
+  assert.ok(Math.max(...polygon.map(p=>p.y))>=.9);
+  assert.ok(Math.max(...polygon.map(p=>p.y))<=.905);
+  assert.throws(()=>load(text.replace('(fill yes)','(fill no)')),/filled convex/);
+  assert.throws(()=>load(text.replace('(anchor circle)','(anchor rect)')),/circular anchor/);
+});
