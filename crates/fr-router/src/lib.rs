@@ -7,6 +7,7 @@ pub mod error;
 pub mod java_tree_set;
 pub mod pipeline;
 pub mod score;
+pub mod visualization;
 
 pub use arena::{Arena, DoorId, DrillId, IncompleteRoomId, PageId, TargetDoorId};
 pub use autoroute::{
@@ -37,6 +38,10 @@ pub use score::{
     BoardStatisticsClearanceViolations, BoardStatisticsComponents, BoardStatisticsConnections,
     BoardStatisticsFanout, BoardStatisticsItems, BoardStatisticsLayers, BoardStatisticsNets,
     BoardStatisticsPads, BoardStatisticsTraces, BoardStatisticsVias, Rectangle2DFloat,
+};
+pub use visualization::{
+    RoutingVisualizationGuard, RoutingVisualizationOptions, RoutingVisualizationSummary,
+    start_routing_visualization,
 };
 
 pub use fr_settings::ExpansionCostFactor;

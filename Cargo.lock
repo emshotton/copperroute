@@ -215,6 +215,7 @@ dependencies = [
  "fr-drc",
  "fr-dsn",
  "fr-geometry",
+ "fr-router",
  "fr-settings",
  "parity",
  "serde",
