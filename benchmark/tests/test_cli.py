@@ -261,3 +261,49 @@ def test_corpus_kicad_fixtures_rejects_jobs_below_one(tmp_path, monkeypatch):
                                       "--jobs", "0"])
     assert r.exit_code != 0
     assert "--jobs must be >= 1" in r.output
+
+
+def test_run_does_not_overwrite_previous_results(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    args = ["run", "--candidates", "fake", "--boards", "mini", "--no-referee", "--run-id", "once"]
+    assert CliRunner().invoke(cli.main, args).exit_code == 0
+    meta_path = tmp_path / "results" / "once" / "meta.json"
+    original = meta_path.read_bytes()
+    repeated = CliRunner().invoke(cli.main, args)
+    assert repeated.exit_code != 0 and "already exists" in repeated.output
+    assert meta_path.read_bytes() == original
+
+
+def test_selected_candidate_referee_override_is_used(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    custom = tmp_path / "custom.toml"
+    custom.write_text((tmp_path / "candidates.toml").read_text()
+                      + '\n[referee.java]\nexec = ["custom-java"]\n')
+    calls = []
+    monkeypatch.setattr(cli.referee, "score_cell", lambda b, c, j: calls.append(j))
+    result = CliRunner().invoke(cli.main, ["run", "--candidates", "fake", "--candidates-file", str(custom),
+                                           "--boards", "mini", "--seeds", "1", "--run-id", "custom"])
+    assert result.exit_code == 0, result.output
+    assert calls == [["custom-java"]]
+
+
+def test_regression_gate_writes_reports_before_failing(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    _write_run(tmp_path / "results", "r", {"head": {"mini": [_cell()] * 3},
+                                           "change": {"mini": [_cell(score=800)] * 3}})
+    args = ["compare", "--baseline", "head", "--against", "change", "--runs", "r", "--out", "gate"]
+    assert CliRunner().invoke(cli.main, args).exit_code == 0
+    result = CliRunner().invoke(cli.main, [*args, "--fail-on-regression"])
+    assert result.exit_code != 0 and "regression check failed" in result.output
+    for suffix in ("json", "md", "html"):
+        assert (tmp_path / "reports" / f"gate.{suffix}").exists()
+
+
+def test_regression_gate_rejects_unscored_run(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    _write_run(tmp_path / "results", "r", {"head": {"mini": [_cell()] * 3},
+                                           "change": {"mini": [_cell()] * 3}})
+    (runner.cell_dir(tmp_path / "results" / "r", "change", "mini", 3) / "metrics.json").unlink()
+    result = CliRunner().invoke(cli.main, ["compare", "--baseline", "head", "--against", "change", "--runs", "r",
+                                           "--out", "gate", "--fail-on-regression"])
+    assert result.exit_code != 0 and "inconclusive" in result.output

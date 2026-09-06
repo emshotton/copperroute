@@ -16,12 +16,6 @@ def test_java_vs_itself_is_all_ties(tmp_path, monkeypatch):
         pytest.skip("run `bench corpus init` first")
     monkeypatch.setattr(runner, "RESULTS", tmp_path / "results")
     monkeypatch.setattr(paths, "REPORTS", tmp_path / "reports")
-    # A minimal candidates.toml with java-current and a second candidate name
-    # (java-twin) pointing at the same jar. We don't reuse the real
-    # candidates.toml verbatim because it also carries a java-2.3.0 entry
-    # with a `binaries/...jar` path relative to the real ROOT; load_candidates
-    # validates every candidate in the file (not just the ones requested), so
-    # that entry would fail to resolve once copied into tmp_path.
     extra = (
         '[candidates.java-current]\n'
         'kind = "java"\n'

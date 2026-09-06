@@ -1,9 +1,3 @@
-# Candidates for remote hosts where the Java repo checkout is absent: jars live in binaries/.
-# Selected via `bench run --candidates-file candidates.remote.toml` (or $BENCH_CANDIDATES);
-# used by scripts/remote-run.sh. `java-current`'s sha is recorded at sync time by
-# scripts/remote-run.sh into binaries/freerouting-current.sha (see sha_file below) rather
-# than resolved from a local ../freerouting git checkout, which the remote host doesn't have.
-
 [candidates.java-current]
 kind = "java"
 exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-current-executable.jar"]

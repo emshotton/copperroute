@@ -1,38 +1,3 @@
-# Minimal remote candidates file: only the two candidates whose binaries the nested
-# benchmark/ layout actually ships (candidates.remote.toml lists nine historical jars
-# that live only in the old ~/freerouting-bench/binaries; load_candidates validates
-# every exec up front, so a file naming them fails before routing a single board).
-#
-# ## Why this file exists, and why it must not be deleted (Plan 9 ruling BP3)
-#
-# `bench/candidates.py::load_candidates` calls `_check_exec` on **every** candidate in a file
-# before it returns anything, so a candidates file is all-or-nothing: one missing binary and no
-# candidate loads. That makes both of the other two files unusable on a machine that is merely
-# missing something historical:
-#
-#  * `candidates.toml` names **17** candidates, sixteen of them jars in the gitignored
-#    `binaries/`, and its `java-current` resolves into the **Java clone's build output**
-#    (`../../freerouting/build/libs/...`) — so it also needs a *built* read-only clone;
-#  * `candidates.remote.toml` names **nine** historical jars that exist only under the old
-#    `~/freerouting-bench/binaries` and are not in this repo at all.
-#
-# This file names **two** candidates and no historical jar, and its `java-current` reads the
-# in-repo `binaries/freerouting-current-executable.jar` with `sha_file
-# binaries/freerouting-current.sha` (content `278fe14123c4` — the sha of the frozen
-# `java-278fe14` run of record). It is therefore the only candidates file that is **independent
-# of the Java clone**, and it is the shape ruling BN's milestone command needs:
-#
-#   scripts/remote-run.sh --remote-dir freerouting-rs/benchmark --jobs 12 --poll-interval 300 -- \
-#     --candidates rs-main --candidates-file candidates.rs.toml \
-#     --tier pcbench --max-passes 10 --timeout 300 --threads 1 --run-id plan9-m<n>
-#
-# `remote-run.sh` exports `BENCH_CANDIDATES=$PWD/candidates.remote.toml` on the host, and a
-# `--candidates-file` given after the `--` wins over it. Deleting this file, or "tidying" the
-# milestones back onto `candidates.toml`, re-couples every Plan 9 milestone to the read-only
-# clone's build output — which is exactly the dependency the milestones must not have.
-#
-# Committed by Plan 9 Task 0 (it had been untracked since it was written).
-
 [candidates.java-current]
 kind = "java"
 exec = ["{java}", "-Xmx4g", "-jar", "binaries/freerouting-current-executable.jar"]

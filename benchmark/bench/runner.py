@@ -26,7 +26,7 @@ class RunConfig:
     run_id: str
     candidates: list[Candidate]
     boards: list[Board]
-    seeds: int = 1
+    seeds: int = 3
     max_passes: int = 100
     timeout_s: int = 300
     threads: int = 1
@@ -126,7 +126,7 @@ def _run_one_cell(cand: Candidate, board: Board, seed: int, cfg: RunConfig, run_
 def run(cfg: RunConfig, referee: RefereeHook | None,
         progress: Callable[[str], None] | None = None) -> Path:
     run_dir = RESULTS / cfg.run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
+    run_dir.mkdir(parents=True, exist_ok=False)
     meta = {
         "schema_version": 1, "run_id": cfg.run_id, "started_at": _now(), "finished_at": None,
         "status": "incomplete",

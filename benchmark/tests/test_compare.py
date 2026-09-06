@@ -225,3 +225,65 @@ def test_all_baseline_seeds_unjudged_skips_board(tmp_path):
     assert "a" not in cmp["boards"]
     failure_entries = [f for f in cmp["failures"] if f["candidate"] == "java"]
     assert len(failure_entries) == 3
+
+
+BOARD = Board(id="a", source="", origin="freerouting-fixtures", referee="java-drc",
+              tiers=["canary"], nets=5, layers=2)
+
+
+def test_compare_rejects_multiple_commits_under_one_name(tmp_path):
+    r1 = _write_run(tmp_path, "r1", {"rs": {"a": [cell()] * 3}})
+    r2 = _write_run(tmp_path, "r2", {"rs": {"a": [cell()] * 3}})
+    meta = runner.load_meta(r2)
+    meta["candidates"][0]["sha"] = "new-commit"
+    (r2 / "meta.json").write_text(json.dumps(meta))
+    with pytest.raises(compare.IncompatibleRuns, match="distinct candidate names"):
+        compare.compare([r1, r2], "rs", ["rs"], [BOARD], allow_mixed=True)
+
+
+@pytest.mark.parametrize("mode", ["missing-metrics", "unjudged", "unfinished", "no-boards"])
+def test_incomplete_comparison_cannot_claim_same_or_better(tmp_path, mode):
+    r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3},
+                                   "change": {"a": [cell(score=1000)] * 3}})
+    if mode == "missing-metrics":
+        (runner.cell_dir(r, "change", "a", 3) / "metrics.json").unlink()
+    elif mode == "unjudged":
+        p = runner.cell_dir(r, "change", "a", 3) / "metrics.json"
+        p.write_text(json.dumps(cell(failed=True, unjudged=True)))
+    elif mode == "unfinished":
+        meta = runner.load_meta(r)
+        meta["args"]["boards"] = ["a"]
+        meta["cells"] = [e for e in meta["cells"] if e["candidate"] == "head"]
+        meta["status"] = "incomplete"
+        (r / "meta.json").write_text(json.dumps(meta))
+    cmp = compare.compare([r], "head", ["change"], [] if mode == "no-boards" else [BOARD])
+    assert cmp["overall"]["change"]["verdict"] == "inconclusive"
+
+
+@pytest.mark.parametrize("key,value", [("referee", "kicad"), ("score_version", 2), ("score_n", 20)])
+def test_compare_rejects_different_scoring(tmp_path, key, value):
+    changed = cell()
+    changed[key] = value
+    r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3}, "change": {"a": [changed] * 3}})
+    with pytest.raises(compare.IncompatibleRuns, match=key):
+        compare.compare([r], "head", ["change"], [BOARD])
+
+
+def test_compare_rejects_different_hosts(tmp_path):
+    runs = []
+    for name in ("head", "change"):
+        r = _write_run(tmp_path, name, {name: {"a": [cell()] * 3}})
+        meta = runner.load_meta(r)
+        meta["host"] = {"node": name, "machine": "arm64"}
+        (r / "meta.json").write_text(json.dumps(meta))
+        runs.append(r)
+    with pytest.raises(compare.IncompatibleRuns, match="hosts"):
+        compare.compare(runs, "head", ["change"], [BOARD])
+    cmp = compare.compare(runs, "head", ["change"], [BOARD], allow_mixed=True)
+    assert any("hosts" in w for w in cmp["warnings"])
+
+
+def test_compare_unknown_candidate_is_not_a_tie(tmp_path):
+    r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3}})
+    with pytest.raises(compare.IncompatibleRuns, match="absent"):
+        compare.compare([r], "head", ["typo"], [BOARD])

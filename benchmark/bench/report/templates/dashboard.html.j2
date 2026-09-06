@@ -5,7 +5,7 @@ body{font-family:system-ui,sans-serif;margin:2rem;color:#222;background:#fff}
 h1,h2{margin-top:2rem} table{border-collapse:collapse;font-size:13px} td,th{border:1px solid #ddd;padding:4px 8px;text-align:right}
 th:first-child,td:first-child{text-align:left} .cards{display:flex;gap:1rem;flex-wrap:wrap}
 .card{border:1px solid #ddd;border-radius:6px;padding:1rem;min-width:180px} .win{background:#e6f4ea}.loss{background:#fbe9e7}.tie{background:#f3f3f3}
-.better{color:#1b7f3b}.worse{color:#b3261e}.same{color:#555} .legend span{display:inline-block;width:12px;height:8px;margin-right:4px}
+.better{color:#1b7f3b}.worse{color:#b3261e}.same{color:#555}.inconclusive{color:#986300} .legend span{display:inline-block;width:12px;height:8px;margin-right:4px}
 </style></head><body>
 <h1>{{ cmp.baseline }} vs {{ names|join(', ') }}</h1>
 <p>Created {{ cmp.created_at }} · runs {{ cmp.runs|join(', ') }} · threads={{ cmp.config.threads }} jobs={{ cmp.config.jobs or 1 }} max_passes={{ cmp.config.max_passes }} timeout={{ cmp.config.timeout_s }}s seeds={{ cmp.config.seeds }} · time metric = {{ cmp.config.time_metric or 'wall_s' }}</p>

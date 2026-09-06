@@ -12,7 +12,7 @@ from . import paths
 @dataclass(frozen=True)
 class Candidate:
     name: str
-    kind: str                     # "java" | "rust" | other (informational only)
+    kind: str
     exec: list[str]
     sha: str
     version: str = ""
@@ -28,7 +28,7 @@ class Candidate:
              max_passes: int, timeout_s: int, threads: int, seed: int) -> list[str]:
         if self.kind == "rust":
             return self._native_argv(in_dsn=in_dsn, out_ses=out_ses, result_json=result_json,
-                                     max_passes=max_passes, timeout_s=timeout_s, seed=seed)
+                                     max_passes=max_passes, timeout_s=timeout_s, threads=threads, seed=seed)
         args = [
             *self.exec,
             "-de", str(in_dsn),
@@ -45,7 +45,7 @@ class Candidate:
         return args
 
     def _native_argv(self, *, in_dsn: Path, out_ses: Path, result_json: Path,
-                     max_passes: int, timeout_s: int, seed: int) -> list[str]:
+                     max_passes: int, timeout_s: int, threads: int, seed: int) -> list[str]:
         args = [
             *self.exec,
             "route", str(in_dsn),
@@ -53,6 +53,7 @@ class Candidate:
             "--max-passes", str(max_passes),
             "--timeout", self.hms(timeout_s),
             "--result-json", str(result_json),
+            "--set", f"router.max_threads={threads}",
         ]
         for extra in self.extra_args:
             extra = extra.format(seed=seed)
@@ -104,11 +105,17 @@ def _sha_from_file(base: Path, rel: str) -> str:
         return "unknown"
 
 
-def load_candidates(path: Path) -> dict[str, Candidate]:
+def load_candidates(path: Path, names: list[str] | None = None) -> dict[str, Candidate]:
     data = tomllib.loads(path.read_text())
     base = path.parent
     out: dict[str, Candidate] = {}
-    for name, c in data.get("candidates", {}).items():
+    table = data.get("candidates", {})
+    selected = list(table) if names is None else list(dict.fromkeys(names))
+    for name in selected:
+        if name not in table:
+            raise KeyError(name)
+    for name in selected:
+        c = table[name]
         exec = _check_exec(list(c["exec"]), base)
         if c.get("sha"):
             sha = c["sha"]

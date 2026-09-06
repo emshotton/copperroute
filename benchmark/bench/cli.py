@@ -17,8 +17,8 @@ from bench.report import markdown as md_report
 from bench.report import plots as plots_report
 
 
-def _java_exec() -> list[str]:
-    custom = load_referee_java(paths.ROOT / "candidates.toml")
+def _java_exec(candidates_file: Path | None = None) -> list[str]:
+    custom = load_referee_java(candidates_file or paths.ROOT / "candidates.toml")
     return custom or [paths.java_exe(), "-Xmx4g", "-jar", str(paths.java_jar())]
 
 
@@ -189,13 +189,14 @@ def corpus_connections_cmd(tier: str | None, board_ids: str | None) -> None:
                   "point at candidates.remote.toml on hosts without the Java repo checkout.")
 @click.option("--tier", default=None)
 @click.option("--boards", "board_ids", default=None, help="comma-separated board ids")
-@click.option("--seeds", default=1, show_default=True)
+@click.option("--seeds", type=click.IntRange(min=1), default=3, show_default=True,
+              help="repetitions per board; {seed} in candidate extra_args receives the repetition index")
 @click.option("--max-passes", default=100, show_default=True)
 @click.option("--timeout", "timeout_s", default=300, show_default=True)
-@click.option("--threads", default=1, show_default=True)
+@click.option("--threads", type=click.IntRange(min=1), default=1, show_default=True)
 @click.option("--jobs", default=1, show_default=True,
              help="number of cells (candidate x board x seed) to run concurrently. "
-                  "Quality metrics are unaffected by parallelism; use --jobs 1 for official "
+                  "Use --jobs 1 for controlled quality and "
                   "wall-time numbers -- with --jobs > 1, `compare` falls back to CPU time "
                   "since wall time is contended. Rule of thumb (~1.5 GB RSS per Java cell): "
                   "4 on a 10-core/16 GB laptop, 8-12 on a 16-core/64 GB workstation.")
@@ -207,11 +208,12 @@ def run_cmd(cand_names, candidates_file, tier, board_ids, seeds, max_passes, tim
     if jobs < 1:
         raise click.ClickException("--jobs must be >= 1")
     candidates_file = Path(candidates_file) if candidates_file else paths.ROOT / "candidates.toml"
-    cands = load_candidates(candidates_file)
     try:
-        chosen = [cands[n] for n in cand_names.split(",")]
+        chosen = list(load_candidates(candidates_file, cand_names.split(",")).values())
     except KeyError as e:
         raise click.ClickException(f"unknown candidate: {e.args[0]}") from e
+    except (FileNotFoundError, paths.ToolMissing) as e:
+        raise click.ClickException(str(e)) from e
     try:
         boards = corpus.select(corpus.load_manifest(), tier=tier,
                                ids=board_ids.split(",") if board_ids else None)
@@ -229,9 +231,12 @@ def run_cmd(cand_names, candidates_file, tier, board_ids, seeds, max_passes, tim
                            max_passes=max_passes, timeout_s=timeout_s, threads=threads, jobs=jobs, tier=tier)
     hook = None
     if not no_referee:
-        java_exec = _java_exec()
+        java_exec = _java_exec(candidates_file)
         hook = lambda board, cell: referee.score_cell(board, cell, java_exec)
-    run_dir = runner.run(cfg, referee=hook, progress=click.echo)
+    try:
+        run_dir = runner.run(cfg, referee=hook, progress=click.echo)
+    except FileExistsError as e:
+        raise click.ClickException(f"run already exists: {run_id}; choose a new --run-id") from e
     click.echo(f"run written to {run_dir}")
 
 
@@ -306,12 +311,14 @@ def _latest_run_for(name: str) -> Path:
 @click.option("--tier", default=None)
 @click.option("--out", "out_name", default=None)
 @click.option("--allow-mixed", is_flag=True)
+@click.option("--fail-on-regression", is_flag=True,
+              help="exit nonzero after writing reports if any board loses or coverage is incomplete")
 @click.option("--time-metric", "time_metric", type=click.Choice(["auto", "wall", "cpu"]), default="auto",
              show_default=True,
              help="which time metric decides verdicts and median_time_ratio. 'auto' uses wall time "
                   "when every compared run used --jobs 1, else falls back to CPU time (wall time is "
                   "contended once cells run concurrently).")
-def compare_cmd(baseline, against, runs, tier, out_name, allow_mixed, time_metric):
+def compare_cmd(baseline, against, runs, tier, out_name, allow_mixed, fail_on_regression, time_metric):
     """Compare candidates and write reports/<id>.{json,md,html}."""
     names = against.split(",")
     if runs:
@@ -340,6 +347,9 @@ def compare_cmd(baseline, against, runs, tier, out_name, allow_mixed, time_metri
         click.echo(f"{n} vs {baseline}: {cmp['overall'][n]['verdict']} "
                    f"({cmp['overall'][n]['wins']}W/{cmp['overall'][n]['losses']}L/{cmp['overall'][n]['ties']}T)")
     click.echo(f"reports written to {paths.REPORTS / out_name}.{{json,md,html}}")
+    if fail_on_regression and any(o["losses"] or o["verdict"] == "inconclusive"
+                                  for o in cmp["overall"].values()):
+        raise click.ClickException("regression check failed; see the comparison report")
 
 
 @main.command("report")

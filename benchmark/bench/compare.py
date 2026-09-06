@@ -1,4 +1,4 @@
-"""Aggregate cells, compute noise floors, apply the lexicographic verdict (spec §9)."""
+"""Compare routing quality before speed, using repeated runs to estimate noise."""
 from __future__ import annotations
 
 import json
@@ -71,16 +71,22 @@ def collect(run_dirs: list[Path], names: list[str]) -> tuple[dict, dict, list[st
     info: dict[str, dict] = {}
     warnings: list[str] = []
     unisolated = False
+    identities = {}
     for rd in run_dirs:
         meta = runner.load_meta(rd)
         for c in meta["candidates"]:
             if c["name"] in names:
                 prev = info.get(c["name"])
-                if prev and prev["sha"] != c["sha"]:
-                    warnings.append(f"candidate {c['name']} has sha {prev['sha']} in one run and {c['sha']} in {meta['run_id']}")
+                identity = (c["sha"], c.get("kind"), c.get("extra_args", []))
+                if prev and identities[c["name"]] != identity:
+                    raise IncompatibleRuns(
+                        f"candidate {c['name']} has different commits or settings across runs; "
+                        "use distinct candidate names for baseline and change")
+                identities[c["name"]] = identity
                 info[c["name"]] = {"sha": c["sha"], "version": c.get("version", "")}
+        selected = set(names) & {c["name"] for c in meta["candidates"]}
         for e in meta["cells"]:
-            if e["candidate"] not in names:
+            if e["candidate"] not in selected:
                 continue
             mp = runner.cell_dir(rd, e["candidate"], e["board"], e["seed"]) / "metrics.json"
             if mp.exists():
@@ -90,19 +96,11 @@ def collect(run_dirs: list[Path], names: list[str]) -> tuple[dict, dict, list[st
                     unisolated = True
                 cells[e["candidate"]].setdefault(e["board"], []).append(m)
     if unisolated:
-        # Not a refusal (spec: a warning, not IncompatibleRuns) -- a run made before
-        # per-cell HOME/XDG isolation existed may have shared a real freerouting.json
-        # across candidates/runs on the same host, silently skewing costs/ripup
-        # costs/neckdown flags; flag it so the reader knows to rerun rather than trust it.
         warnings.append("results may be affected by shared freerouting.json — rerun")
     return cells, info, warnings
 
 
 def _arg(args: dict, key: str):
-    # Pre-parallel-jobs runs have no args["jobs"] at all; treat that the same as jobs=1
-    # (what those runs actually did) rather than None, so an old run and a `--jobs 1` run
-    # compare as compatible instead of tripping IncompatibleRuns on a key that didn't exist
-    # yet when the old run was made.
     if key == "jobs":
         return args.get("jobs", 1)
     return args.get(key)
@@ -115,12 +113,17 @@ def _check_config(run_dirs: list[Path], allow_mixed: bool) -> tuple[dict, list[s
     warnings = []
     for name, a in configs[1:]:
         if any(_arg(a, k) != _arg(first, k) for k in keys):
-            # Full config dicts, not just the differing key(s), so the message is
-            # self-contained (spec §12: "always print both configurations").
             msg = f"incompatible runs: {first_name} has config {first!r} but {name} has config {a!r}"
             if not allow_mixed:
                 raise IncompatibleRuns(msg)
             warnings.append(msg)
+    hosts = [(rd.name, runner.load_meta(rd).get("host")) for rd in run_dirs]
+    known_hosts = [(name, host) for name, host in hosts if host]
+    if known_hosts and any(host != known_hosts[0][1] for _, host in known_hosts[1:]):
+        msg = f"incompatible hosts: {known_hosts!r}"
+        if not allow_mixed:
+            raise IncompatibleRuns(msg)
+        warnings.append(msg)
     return {k: _arg(first, k) for k in keys + ["seeds"]}, warnings
 
 
@@ -139,20 +142,62 @@ def _resolve_time_metric(run_dirs: list[Path], time_metric: str) -> str:
 
 
 def _judged(cells: list[dict]) -> list[dict]:
-    """Drop cells the referee couldn't score (candidate produced out.ses but the referee
-    itself failed -- spec §7.1/§8 case b). Those are excluded from verdict aggregation but
-    still visible in the failures list."""
+    """Exclude referee failures from routing verdicts; retain them in coverage and failures."""
     return [c for c in cells if not c.get("unjudged")]
+
+
+def _coverage(run_dirs: list[Path], names: list[str], cells: dict, board_ids: set[str]) -> dict:
+    expected = {name: {} for name in names}
+    for rd in run_dirs:
+        meta = runner.load_meta(rd)
+        for candidate in meta["candidates"]:
+            name = candidate["name"]
+            if name not in expected:
+                continue
+            ids = meta["args"].get("boards")
+            if ids is None:
+                ids = {e["board"] for e in meta["cells"] if e["candidate"] == name}
+            for bid in set(ids) & board_ids:
+                expected[name][bid] = expected[name].get(bid, 0) + meta["args"].get("seeds", 1)
+    ids = set().union(*(set(b) for b in expected.values()))
+    coverage = {}
+    for name in names:
+        missing = []
+        for bid in sorted(ids):
+            count = len(_judged(cells[name].get(bid, [])))
+            if count == 0 or count < expected[name].get(bid, 0):
+                missing.append(bid)
+        coverage[name] = {"expected_boards": len(ids), "incomplete_boards": missing}
+    return coverage
+
+
+def _check_scoring(cells: list[dict], bid: str) -> None:
+    for key in ("referee", "score_version", "score_n"):
+        values = {c.get(key) for c in cells if not c.get("failed")}
+        if len(values) > 1:
+            raise IncompatibleRuns(f"incompatible {key} for board {bid}: {values!r}; rescore with the same referee and corpus")
 
 
 def compare(run_dirs: list[Path], baseline: str, against: list[str], boards: list[Board],
             tier: str | None = None, allow_mixed: bool = False, time_metric: str = "auto") -> dict:
+    run_dirs = list(dict.fromkeys(run_dirs))
+    if not run_dirs:
+        raise IncompatibleRuns("no runs selected")
     config, warnings = _check_config(run_dirs, allow_mixed)
     time_metric = _resolve_time_metric(run_dirs, time_metric)
     config["time_metric"] = time_metric
     cells, info, w2 = collect(run_dirs, [baseline, *against])
     warnings += w2
+    missing_names = set([baseline, *against]) - info.keys()
+    if missing_names:
+        raise IncompatibleRuns(f"candidates absent from selected runs: {', '.join(sorted(missing_names))}")
     by_id = {b.id: b for b in boards}
+    coverage = _coverage(run_dirs, [baseline, *against], cells,
+                         {b.id for b in boards if not tier or tier in b.tiers})
+    for name, cov in coverage.items():
+        if cov["incomplete_boards"]:
+            warnings.append(f"{name}: missing or unjudged repetitions on "
+                            f"{len(cov['incomplete_boards'])} board(s)")
     out_boards: dict[str, dict] = {}
     disagreements, failures = [], []
     for bid in sorted(cells.get(baseline, {})):
@@ -171,6 +216,7 @@ def compare(run_dirs: list[Path], baseline: str, against: list[str], boards: lis
                 failures.append({"board": bid, "candidate": m["_candidate"], "seed": m["_seed"],
                                  "reason": m.get("failure_reason", ""), "unjudged": bool(m.get("unjudged"))})
 
+        _check_scoring(all_cells_for_board, bid)
         base_cells = _judged(base_cells_all)
         if not base_cells:
             continue  # every baseline seed for this board was unjudged: no baseline aggregate to compare against
@@ -212,9 +258,11 @@ def compare(run_dirs: list[Path], baseline: str, against: list[str], boards: lis
         hard = sum(1 for r in rows if r["verdict"]["result"] == "loss" and r["verdict"]["level"] in HARD_LEVELS)
         wins = sum(1 for r in rows if r["verdict"]["result"] == "win")
         losses = sum(1 for r in rows if r["verdict"]["result"] == "loss")
+        incomplete = (not rows or coverage[baseline]["incomplete_boards"]
+                      or coverage[name]["incomplete_boards"])
         overall[name] = {"wins": wins, "losses": losses, "ties": len(rows) - wins - losses, "hard_losses": hard,
-                         "verdict": "better" if hard == 0 and wins > losses else ("worse" if hard > 0 or losses > wins else "same")}
+                         "verdict": "inconclusive" if incomplete else "better" if hard == 0 and wins > losses else ("worse" if hard > 0 or losses > wins else "same")}
     return {"schema_version": 1, "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "baseline": baseline, "against": against, "candidates": info, "runs": [rd.name for rd in run_dirs],
             "config": config, "tier": tier, "boards": out_boards, "tiers": tiers, "overall": overall,
-            "disagreements": disagreements, "failures": failures, "warnings": warnings}
+            "coverage": coverage, "disagreements": disagreements, "failures": failures, "warnings": warnings}
