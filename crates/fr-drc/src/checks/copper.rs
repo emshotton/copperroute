@@ -66,6 +66,7 @@ fn crossing_point(a: &Item, b: &Item) -> Option<FloatPoint> {
 struct Emit<'a> {
     constraints: &'a DrcConstraints,
     seen: BTreeSet<PairKey>,
+    measured_holes: BTreeSet<(ItemId, ItemId, usize)>,
     out: &'a mut Vec<DrcViolation>,
 }
 
@@ -109,6 +110,7 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
     let mut emit = Emit {
         constraints,
         seen: BTreeSet::new(),
+        measured_holes: BTreeSet::new(),
         out,
     };
     let ids: Vec<ItemId> = board
@@ -224,6 +226,9 @@ fn check_pair(
         let Some(hole) = hole_of(board, hole_id) else {
             continue;
         };
+        if !emit.measured_holes.insert((copper_id, hole_id, layer)) {
+            continue;
+        }
         if let Some((actual, position)) = hole_copper_gap(
             board,
             copper_id,

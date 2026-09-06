@@ -216,7 +216,6 @@ impl Padstacks {
         pad.hole_only = hole_only;
     }
 
-    /// Set physical corner metadata before inserting pins that use this padstack.
     pub fn set_round_rect_radius(&mut self, id: PadstackId, radius: Option<f64>) {
         assert!(radius.is_none_or(|r| r.is_finite() && r >= 0.0));
         self.list[id.0 - 1].round_rect_radius = radius;

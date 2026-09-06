@@ -579,19 +579,11 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             let Some(pad_size) = pad.size.as_ref() else {
                 return npe_field("x", "pad.size");
             };
-            let round_rect_radius = if pad
-                .shape
-                .as_deref()
-                .is_some_and(|s| equals_ignore_case("roundrect", s))
+            let shape_name = pad.shape.as_deref().unwrap_or("").to_ascii_lowercase();
+            let round_rect_radius = if shape_name == "roundrect"
+                && let Some(ratio) = pad.roundRectRatio
             {
-                let Some(ratio) = pad.roundRectRatio else {
-                    return parse_error(
-                        "components",
-                        "Rounded rectangular pads require roundRectRatio",
-                    );
-                };
-                if !ratio.is_finite()
-                    || !(0.0..=0.5).contains(&ratio)
+                if !(0.0..=0.5).contains(&ratio)
                     || !pad_size.x.is_finite()
                     || !pad_size.y.is_finite()
                     || pad_size.x <= 0.0
@@ -608,18 +600,10 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             };
             let dx = pad_size.x * scale_factor / 2.0;
             let dy = pad_size.y * scale_factor / 2.0;
-            let pad_shape = if pad
-                .shape
-                .as_deref()
-                .is_some_and(|shape| equals_ignore_case("circle", shape))
-            {
+            let pad_shape = if shape_name == "circle" {
                 let radius = (pad_size.x).min(pad_size.y) * scale_factor / 2.0;
                 Shape::Circle(Circle::new(IntPoint::ZERO, (radius).round() as i32))
-            } else if pad
-                .shape
-                .as_deref()
-                .is_some_and(|shape| equals_ignore_case("oval", shape))
-            {
+            } else if shape_name == "oval" {
                 let lx = (-dx).round() as i32;
                 let rx = (dx).round() as i32;
                 let ly = (-dy).round() as i32;

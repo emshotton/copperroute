@@ -361,3 +361,20 @@ fn rounded_pad_radii_are_validated_and_part_of_padstack_identity() {
         ));
     }
 }
+
+#[test]
+fn rounded_pads_without_radius_metadata_keep_the_legacy_rectangle() {
+    let input = r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+        "components":[{"reference":"J","pads":[
+            {"name":"1","shape":"ROUNDRECT","size":{"x":1.2,"y":0.6},"layers":["F.Cu"]},
+            {"name":"2","shape":"rect","size":{"x":1.2,"y":0.6},"layers":["F.Cu"]}
+        ]}]} "#;
+    let b = board(input);
+    let first = first_pin_padstack(&b, 0);
+    let package = b.library.packages.get(b.components.get(1).get_package());
+    assert_eq!(first, package.get_pin(1).unwrap().padstack_no);
+    assert_eq!(
+        b.library.padstacks.get(first).unwrap().round_rect_radius,
+        None
+    );
+}

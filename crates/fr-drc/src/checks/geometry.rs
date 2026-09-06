@@ -8,6 +8,12 @@ pub struct Hole {
     pub center: FloatPoint,
 }
 
+impl Hole {
+    pub fn gap_to(&self, other: &Self) -> f64 {
+        self.center.distance(&other.center) - self.radius - other.radius
+    }
+}
+
 /// KiCad's `DRC_TEST_PROVIDER_COPPER_CLEARANCE::sub_e` (and the hole-to-hole and
 /// edge-clearance providers' matching subtractions): the clearance requirement a gap test
 /// actually enforces, with `constraints.epsilon` removed so a gap exactly at the nominal
@@ -186,55 +192,6 @@ pub fn item_position(board: &Board, id: ItemId) -> FloatPoint {
     }
 }
 
-/// Physical point-to-copper distance, without routing margins or polygon inflation.
-fn segment_nearest(p: FloatPoint, a: FloatPoint, b: FloatPoint) -> FloatPoint {
-    let dx = b.x - a.x;
-    let dy = b.y - a.y;
-    let length2 = dx * dx + dy * dy;
-    let t = if length2 == 0.0 {
-        0.0
-    } else {
-        ((p.x - a.x) * dx + (p.y - a.y) * dy) / length2
-    }
-    .clamp(0.0, 1.0);
-    FloatPoint::new(a.x + t * dx, a.y + t * dy)
-}
-
-fn rounded_rectangle_nearest(shape: &Shape, radius: f64, p: FloatPoint) -> Option<FloatPoint> {
-    let corners = shape.corner_approx_arr();
-    if corners.len() != 4 {
-        return None;
-    }
-    let center = FloatPoint::new(
-        corners.iter().map(|p| p.x).sum::<f64>() / 4.0,
-        corners.iter().map(|p| p.y).sum::<f64>() / 4.0,
-    );
-    let width = corners[0].distance(&corners[1]);
-    let height = corners[1].distance(&corners[2]);
-    if width == 0.0 || height == 0.0 {
-        return None;
-    }
-    let ux = (corners[1].x - corners[0].x) / width;
-    let uy = (corners[1].y - corners[0].y) / width;
-    let vx = (corners[2].x - corners[1].x) / height;
-    let vy = (corners[2].y - corners[1].y) / height;
-    let x = (p.x - center.x) * ux + (p.y - center.y) * uy;
-    let y = (p.x - center.x) * vx + (p.y - center.y) * vy;
-    let hx = (width / 2.0 - radius).max(0.0);
-    let hy = (height / 2.0 - radius).max(0.0);
-    let qx = x.clamp(-hx, hx);
-    let qy = y.clamp(-hy, hy);
-    let q = FloatPoint::new(center.x + ux * qx + vx * qy, center.y + uy * qx + vy * qy);
-    let distance = p.distance(&q);
-    if distance <= radius {
-        return Some(p);
-    }
-    Some(FloatPoint::new(
-        q.x + (p.x - q.x) * radius / distance,
-        q.y + (p.y - q.y) * radius / distance,
-    ))
-}
-
 pub fn hole_copper_gap(
     board: &Board,
     copper_id: ItemId,
@@ -246,14 +203,10 @@ pub fn hole_copper_gap(
     let item = board.get_item(copper_id)?;
     let p = hole.center;
     let (nearest, copper_radius) = match item {
-        Item::Trace(trace) => {
-            let corners = trace.polyline().corner_approx_arr();
-            let nearest = corners
-                .windows(2)
-                .map(|s| segment_nearest(p, s[0], s[1]))
-                .min_by(|a, b| a.distance(&p).total_cmp(&b.distance(&p)))?;
-            (nearest, f64::from(trace.get_half_width()))
-        }
+        Item::Trace(trace) => (
+            trace.polyline().nearest_point_approx(&p)?,
+            f64::from(trace.get_half_width()),
+        ),
         _ => {
             let (shape, radius) = match item {
                 Item::Pin(pin) => (
@@ -265,16 +218,12 @@ pub fn hole_copper_gap(
             };
             if let Shape::Circle(circle) = &shape {
                 (circle.center.to_float(), f64::from(circle.radius))
-            } else if let Some(radius) = radius {
-                (rounded_rectangle_nearest(&shape, radius, p)?, 0.0)
-            } else if shape.contains_float(&p) {
-                (p, 0.0)
             } else {
-                let corners = shape.corner_approx_arr();
-                let nearest = (0..corners.len())
-                    .map(|i| segment_nearest(p, corners[i], corners[(i + 1) % corners.len()]))
-                    .min_by(|a, b| a.distance(&p).total_cmp(&b.distance(&p)))?;
-                (nearest, 0.0)
+                let tile = shape.bounding_tile();
+                let rounded =
+                    radius.and_then(|r| tile.offset(-r).nearest_point_approx(&p).map(|q| (q, r)));
+                // Integer rounding can collapse an inset; keep checking the enclosing copper.
+                rounded.unwrap_or_else(|| (tile.nearest_point_approx(&p).unwrap_or(p), 0.0))
             }
         }
     };
@@ -285,7 +234,7 @@ pub fn hole_copper_gap(
         return None;
     }
     let position = if distance > 0.0 {
-        let along = (hole.radius + actual / 2.0) / distance;
+        let along = ((hole.radius + actual / 2.0) / distance).min(1.0);
         FloatPoint::new(
             p.x + (nearest.x - p.x) * along,
             p.y + (nearest.y - p.y) * along,
