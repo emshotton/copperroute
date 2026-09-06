@@ -147,6 +147,15 @@ pub struct RouterSettings {
         skip_serializing_if = "Option::is_none"
     )]
     pub failure_give_up_threshold: Option<i32>,
+
+    /// Cap each connection's search at this many maze-search steps, machine-independently.
+    /// Absent is the router's default of 250 000; `0` lifts the cap.
+    #[serde(
+        rename = "connection_search_steps",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub connection_search_steps: Option<i64>,
 }
 
 impl RouterSettings {
@@ -175,6 +184,7 @@ impl RouterSettings {
         "opt_changed_area_ms",
         "smd_via_relaxation",
         "failure_give_up_threshold",
+        "connection_search_steps",
     ];
 
     pub fn new() -> Self {
@@ -292,6 +302,14 @@ impl RouterSettings {
 
     pub fn set_failure_give_up_threshold(&mut self, value: Option<i32>) {
         self.failure_give_up_threshold = value;
+    }
+
+    pub fn get_connection_search_steps(&self) -> Option<i64> {
+        self.connection_search_steps
+    }
+
+    pub fn set_connection_search_steps(&mut self, value: Option<i64>) {
+        self.connection_search_steps = value;
     }
 
     pub fn get_via_costs(&self) -> i32 {

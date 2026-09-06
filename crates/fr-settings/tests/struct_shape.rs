@@ -227,6 +227,7 @@ fn field_names_pin_javas_declaration_order() {
             "opt_changed_area_ms",
             "smd_via_relaxation",
             "failure_give_up_threshold",
+            "connection_search_steps",
         ]
     );
     assert_eq!(

@@ -3,6 +3,7 @@ pub mod batch_autorouter;
 pub mod batch_loop;
 pub mod board_history;
 pub mod board_prep;
+pub mod connection_budget;
 pub mod counters;
 pub mod failure_log;
 pub mod fanout;
@@ -18,6 +19,7 @@ pub use batch_autorouter::BatchAutorouter;
 pub use batch_loop::{AutorouteBatchLoop, BatchLoopExit, BatchLoopResult, StagnationStep};
 pub use board_history::{BoardHistory, BoardHistoryEntry};
 pub use board_prep::{prepare_board, raise_to_project_minimums};
+pub use connection_budget::{ConnectionBudget, DEFAULT_CONNECTION_SEARCH_STEPS};
 pub use counters::RouterCounters;
 pub use failure_log::{ItemFailureInfo, RoutingFailureLog};
 pub use fanout::{
