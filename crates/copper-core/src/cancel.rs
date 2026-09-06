@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, Instant};
+use web_time::{Duration, Instant};
 
 use copper_router::pipeline::RouterStop;
 

@@ -9,16 +9,19 @@ pub struct RoutingPipeline;
 
 impl RoutingPipeline {
     pub fn run(board: &mut Board, ctx: &Ctx<'_>) -> Result<RoutingResult, Error> {
-        let stop = ctx.cancel.as_router_stop();
-
         let mut sink = ctx.progress.as_pipeline_sink();
-        let pipeline = copper_router::pipeline::run_pipeline(
-            board,
-            ctx.settings,
-            &stop,
-            ctx.budget,
-            &mut sink,
-        )?;
+        Self::run_with_progress(board, ctx, &mut sink)
+    }
+
+    /// Run with a synchronous observer, including borrowed board snapshots.
+    pub fn run_with_progress(
+        board: &mut Board,
+        ctx: &Ctx<'_>,
+        sink: &mut dyn copper_router::pipeline::ProgressSink,
+    ) -> Result<RoutingResult, Error> {
+        let stop = ctx.cancel.as_router_stop();
+        let pipeline =
+            copper_router::pipeline::run_pipeline(board, ctx.settings, &stop, ctx.budget, sink)?;
 
         let unrouted_report = copper_router::pipeline::build_unrouted_report(board);
 

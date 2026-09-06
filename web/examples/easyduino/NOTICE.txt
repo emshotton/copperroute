@@ -1,0 +1,22 @@
+Easyduino Uno and Nano demonstration boards
+Source: https://github.com/Hanqaqa/Easyduino
+Revision: 53b14b66d64f25c55f88971c1c1b51656126bd30
+Author/project attribution: Hanqaqa and Easyduino contributors.
+License: CERN Open Hardware Licence Version 2 - Permissive (CERN-OHL-P-2.0).
+See LICENSE.txt and UPSTREAM-README.md.
+
+uno.kicad_pcb and uno.kicad_pro are unmodified copies of:
+  Atmega328p Arduino Uno/Easyduino_Atmega.kicad_pcb
+  Atmega328p Arduino Uno/Easyduino_Atmega.kicad_pro
+nano.kicad_pcb and nano.kicad_pro are unmodified copies of:
+  Atmega328p Arduino Nano/Easyduino_Atmega_Nano.kicad_pcb
+  Atmega328p Arduino Nano/Easyduino_Atmega_Nano.kicad_pro
+Only the filenames are shortened for distribution.
+
+These are community Arduino-compatible recreations, not official Arduino
+products. No endorsement by Arduino, CERN, or the original contributors is
+claimed. The web application code is separately licensed.
+
+Downloads produced by the demo include a dated modification notice in the
+board's title block. The router replaces tracks and vias and clears zone fill
+caches; users must refill zones and verify the result in KiCad.

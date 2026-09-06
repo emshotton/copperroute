@@ -81,9 +81,12 @@ impl AutoroutePassRunner {
         counters.incomplete_count =
             AutoroutePassRunner::incomplete_count_for_progress(board, router);
 
-        progress.on_event(&RoutingEvent::BoardUpdated {
-            counters: counters.clone(),
-        });
+        progress.on_board_update(
+            board,
+            &RoutingEvent::BoardUpdated {
+                counters: counters.clone(),
+            },
+        );
 
         let mut ripped_item_count: i32 = 0;
         let mut not_routed: i32 = 0;
@@ -210,9 +213,12 @@ impl AutoroutePassRunner {
         counters.routed_count = Some(routed);
         counters.incomplete_count =
             AutoroutePassRunner::incomplete_count_for_progress(board, router);
-        progress.on_event(&RoutingEvent::BoardUpdated {
-            counters: counters.clone(),
-        });
+        progress.on_board_update(
+            board,
+            &RoutingEvent::BoardUpdated {
+                counters: counters.clone(),
+            },
+        );
 
         Ok(routed > 0 || not_routed > 0)
     }
@@ -247,9 +253,12 @@ impl AutoroutePassRunner {
             counters.routed_count = Some(routed);
             counters.incomplete_count =
                 AutoroutePassRunner::incomplete_count_for_progress(board, router);
-            progress.on_event(&RoutingEvent::BoardUpdated {
-                counters: counters.clone(),
-            });
+            progress.on_board_update(
+                board,
+                &RoutingEvent::BoardUpdated {
+                    counters: counters.clone(),
+                },
+            );
         }
     }
 }

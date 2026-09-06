@@ -1,4 +1,4 @@
-use std::time::Instant;
+use web_time::Instant;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TimeLimit {

@@ -3,7 +3,7 @@ use crate::file_details::BoardFileDetails;
 use crate::manifest::RouterJobResourceUsage;
 use copper_settings::{DesignRulesCheckerSettings, RouterSettings};
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use web_time::{Duration, Instant};
 
 pub const DSN_FILE_EXTENSION: &str = "dsn";
 pub const BINARY_FILE_EXTENSION: &str = "frb";

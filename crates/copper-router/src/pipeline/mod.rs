@@ -84,6 +84,13 @@ impl TaskState {
 }
 
 pub trait ProgressSink {
+    /// Borrow a coherent board at the existing throttled progress checkpoints.
+    /// Default sinks retain their event-only behavior without copying the board.
+    fn on_board_update(&mut self, board: &copper_board::Board, event: &RoutingEvent) {
+        let _ = board;
+        self.on_event(event);
+    }
+
     fn on_event(&mut self, event: &RoutingEvent) {
         let _ = event;
     }

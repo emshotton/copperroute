@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
-use std::time::Instant;
+use web_time::Instant;
 
 use copper_board::StopConnectionOption;
 use copper_board::datastructures::StopCheck;

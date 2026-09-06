@@ -1,0 +1,74 @@
+import { EXAMPLES, modificationNotice, svgNotice } from "./examples.js";
+import { importBoard, exportBoard } from "./kicad.js";
+import { previewBoard, previewLayers } from "./preview.js";
+import { applyProject } from "./project.js";
+self.onmessage = async ({ data }) => {
+  try {
+    self.postMessage({
+      type: "preview",
+      svg: previewBoard(data.text),
+      layers: previewLayers(data.text),
+      warnings: [],
+    });
+    if (data.action === "preview") {
+      self.postMessage({ type: "ready" });
+      return;
+    }
+    self.postMessage({
+      type: "status",
+      text: "Importing board and project rules…",
+    });
+    const input = importBoard(data.text, data.name, data.rules, {
+      rebuildZones: data.rebuildZones,
+      ripUpRouting: true,
+    });
+    applyProject(input, data.project);
+    input.routingLayers = EXAMPLES[data.example]?.routingLayers;
+    if (input.routingLayers)
+      input.warnings.push(`Routing restricted to ${input.routingLayers.join(" and ")}; the original layer stack is preserved.`);
+    // Show the same unrouted board that the WASM pipeline will receive.
+    self.postMessage({
+      type: "preview",
+      svg: previewBoard(exportBoard(input, input.board)),
+      warnings: input.warnings,
+    });
+    const { default: init, route_board } = await import("./pkg/fr_web.js");
+    await init();
+    self.postMessage({
+      type: "status",
+      text: "Existing tracks and vias removed. Routing from scratch…",
+    });
+    const result = JSON.parse(
+      route_board(
+        JSON.stringify(input.board),
+        data.passes,
+        data.seconds,
+        data.project ?? "",
+        (json) => {
+          const frame = JSON.parse(json);
+          self.postMessage({
+            type: "progress",
+            svg: previewBoard(exportBoard(input, frame.board)),
+            pass: frame.pass,
+            incomplete: frame.incomplete,
+            routed: frame.routed,
+          });
+        },
+        input.routingLayers ? JSON.stringify(input.routingLayers) : "",
+      ),
+    );
+    const pcb = modificationNotice(
+      exportBoard(input, result.board),
+      data.example,
+    );
+    self.postMessage({
+      type: "result",
+      ...result,
+      pcb,
+      svg: svgNotice(previewBoard(pcb), data.example),
+      warnings: input.warnings,
+    });
+  } catch (error) {
+    self.postMessage({ type: "error", text: error.message ?? String(error) });
+  }
+};

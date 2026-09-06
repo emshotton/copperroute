@@ -171,7 +171,7 @@ pub struct BatchOptimizer<'a> {
     pub total_items_optimized: i32,
     pub total_route_work: i64,
     pub search_work_budget: Option<Rc<DeterministicWorkBudget>>,
-    pub deadline: Option<std::time::Instant>,
+    pub deadline: Option<web_time::Instant>,
     pub is_timed_out: bool,
     pub incomplete_nets: BTreeSet<i32>,
     carried_connections: Option<BoardStatisticsConnections>,
@@ -568,7 +568,7 @@ impl BatchOptimizer<'_> {
     #[must_use]
     pub fn is_deadline_reached(&self) -> bool {
         self.deadline
-            .is_some_and(|deadline| std::time::Instant::now() >= deadline)
+            .is_some_and(|deadline| web_time::Instant::now() >= deadline)
     }
 
     pub fn run_batch_loop(
@@ -596,7 +596,7 @@ impl BatchOptimizer<'_> {
 
         self.use_increased_ripup_costs = true;
 
-        let session_start = std::time::Instant::now();
+        let session_start = web_time::Instant::now();
         if let Some(timeout_string) = optimizer.timeout_string.as_deref() {
             if let Some(timeout_seconds) =
                 parse_timespan_seconds(timeout_string).map_err(RouterError::Timespan)?

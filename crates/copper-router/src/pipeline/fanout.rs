@@ -1,5 +1,5 @@
 use std::collections::BTreeSet;
-use std::time::{Duration, Instant};
+use web_time::{Duration, Instant};
 
 use copper_board::items::Item;
 use copper_board::structure::Unit;

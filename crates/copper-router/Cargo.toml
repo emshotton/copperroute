@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+web-time = "1.1"
 copper-board = { path = "../copper-board" }
 copper-drc = { path = "../copper-drc" }
 copper-geometry = { path = "../copper-geometry" }

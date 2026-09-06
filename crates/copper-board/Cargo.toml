@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+web-time = "1.1"
 copper-geometry = { path = "../copper-geometry" }
 num-bigint.workspace = true
 thiserror.workspace = true

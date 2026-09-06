@@ -1,5 +1,5 @@
 use std::cell::Cell;
-use std::time::Instant;
+use web_time::Instant;
 
 use copper_board::TimeLimit;
 

@@ -1,0 +1,13 @@
+{
+  "name": "freerouting-browser",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bash build.sh",
+    "start": "python3 -m http.server 8080 --bind 127.0.0.1",
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}

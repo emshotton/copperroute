@@ -50,7 +50,7 @@ pub fn parse_timespan(timespan_string: &str) -> Option<Duration> {
 
 pub fn job_timeout_deadline_from(
     timeout_string: Option<&str>,
-    base: std::time::Instant,
+    base: web_time::Instant,
 ) -> Result<Option<Deadline>, TimespanError> {
     let Some(timeout_string) = timeout_string else {
         return Ok(None);
@@ -67,7 +67,7 @@ pub fn job_timeout_deadline_from(
 pub fn job_timeout_deadline(
     timeout_string: Option<&str>,
 ) -> Result<Option<Deadline>, TimespanError> {
-    job_timeout_deadline_from(timeout_string, std::time::Instant::now())
+    job_timeout_deadline_from(timeout_string, web_time::Instant::now())
 }
 
 #[cfg(test)]
@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn the_cap_is_applied_from_above_only() {
-        let base = std::time::Instant::now();
+        let base = web_time::Instant::now();
         let capped = job_timeout_deadline_from(Some("25:00:00"), base)
             .expect("parses")
             .expect("a deadline");

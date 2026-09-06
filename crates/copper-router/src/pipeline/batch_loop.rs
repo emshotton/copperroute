@@ -1,4 +1,4 @@
-use std::time::Instant;
+use web_time::Instant;
 
 use copper_board::StopConnectionOption;
 use copper_board::prelude::*;
