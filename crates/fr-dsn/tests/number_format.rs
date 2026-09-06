@@ -1,6 +1,28 @@
 use fr_dsn::format::double::{
     format_double, format_fixed, format_float, format_placement_rotation,
 };
+use fr_dsn::{DsnScanner, Token};
+
+#[test]
+fn large_whole_double_roundtrips_through_dsn_scanner() {
+    let value = 3_000_000_000.0;
+    let mut original = DsnScanner::new("3000000000.0");
+    assert_eq!(original.next_token().unwrap(), Some(Token::Float(value)));
+
+    // DSN rule values can exceed i32::MAX while still being valid floats.
+    let rendered = format_double(value);
+    let mut scanner = DsnScanner::new(&rendered);
+    let token = scanner
+        .next_token()
+        .unwrap_or_else(|error| panic!("cannot read formatted value {rendered}: {error}"));
+    let parsed = match token {
+        Some(Token::Float(number)) => number,
+        Some(Token::Int(number)) => number as f64,
+        other => panic!("expected a numeric token for {rendered}, got {other:?}"),
+    };
+    assert_eq!(parsed, value);
+    assert_eq!(scanner.next_token().unwrap(), None);
+}
 
 #[test]
 fn double_to_string_special_values() {
