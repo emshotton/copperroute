@@ -299,11 +299,87 @@ def test_regression_gate_writes_reports_before_failing(tmp_path, monkeypatch):
         assert (tmp_path / "reports" / f"gate.{suffix}").exists()
 
 
-def test_regression_gate_rejects_unscored_run(tmp_path, monkeypatch):
+def test_strict_coverage_gate_rejects_missing_repetitions(tmp_path, monkeypatch):
     _env(tmp_path, monkeypatch)
     _write_run(tmp_path / "results", "r", {"head": {"mini": [_cell()] * 3},
                                            "change": {"mini": [_cell()] * 3}})
     (runner.cell_dir(tmp_path / "results" / "r", "change", "mini", 3) / "metrics.json").unlink()
     result = CliRunner().invoke(cli.main, ["compare", "--baseline", "head", "--against", "change", "--runs", "r",
-                                           "--out", "gate", "--fail-on-regression"])
-    assert result.exit_code != 0 and "inconclusive" in result.output
+                                           "--out", "gate", "--fail-on-regression", "--require-complete"])
+    assert result.exit_code != 0 and "regression check failed" in result.output
+
+
+def test_candidate_missing_exec_is_a_configuration_error(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    (tmp_path / "candidates.toml").write_text('[candidates.fake]\nexce = ["typo"]\n')
+    r = CliRunner().invoke(cli.main, ["run", "--candidates", "fake", "--no-referee"])
+    assert r.exit_code != 0
+    assert "exec must be" in r.output and "unknown candidate" not in r.output
+
+
+def test_kicad_only_run_and_rescore_do_not_resolve_java(tmp_path, monkeypatch):
+    board = _env(tmp_path, monkeypatch)
+    board.referee = "kicad"
+    corpus.save_manifest([board])
+    def no_java(*args):
+        raise AssertionError("Java must not be resolved")
+    monkeypatch.setattr(cli, "_java_exec", no_java)
+    monkeypatch.setattr(cli.referee, "score_cell", lambda b, c, j: _cell())
+    r = CliRunner().invoke(cli.main, ["run", "--candidates", "fake", "--run-id", "kicad"])
+    assert r.exit_code == 0, r.output
+    r = CliRunner().invoke(cli.main, ["referee", "--run", "kicad"])
+    assert r.exit_code == 0, r.output
+
+
+def test_missing_java_is_a_clean_cli_error(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    def unavailable(*args):
+        raise paths.ToolMissing("jar missing")
+    monkeypatch.setattr(cli, "_java_exec", unavailable)
+    r = CliRunner().invoke(cli.main, ["run", "--candidates", "fake"])
+    assert r.exit_code != 0 and "Java referee unavailable: jar missing" in r.output
+
+
+def test_top_up_reuses_recorded_referee_and_default_is_one_repetition(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    custom = tmp_path / "custom.toml"
+    custom.write_text((tmp_path / "candidates.toml").read_text() + '\n[referee.java]\nexec=["custom-java"]\n')
+    calls = []
+    def score(b, c, j):
+        calls.append(j)
+        return _cell()
+    monkeypatch.setattr(cli.referee, "score_cell", score)
+    r = CliRunner().invoke(cli.main, ["run", "--candidates", "fake", "--candidates-file", str(custom), "--run-id", "r"])
+    assert r.exit_code == 0, r.output
+    meta = runner.load_meta(tmp_path / "results" / "r")
+    assert meta["args"]["seeds"] == 1
+    assert meta["referee_java"]["exec"] == ["custom-java"]
+    mp = runner.cell_dir(tmp_path / "results" / "r", "fake", "mini", 1) / "metrics.json"
+    assert json.loads(mp.read_text())["referee_identity"]["exec"] == ["custom-java"]
+    mp.unlink()
+    custom.unlink()
+    r = CliRunner().invoke(cli.main, ["referee", "--run", "r", "--only-missing"])
+    assert r.exit_code == 0, r.output
+    assert calls == [["custom-java"], ["custom-java"]]
+
+
+def test_changed_referee_jar_cannot_silently_top_up(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    jar = tmp_path / "referee.jar"
+    jar.write_bytes(b"old-jar")
+    command = ["java", "-jar", str(jar)]
+    recorded = cli._java_identity(command)
+    jar.write_bytes(b"new-jar")
+    import pytest
+    with pytest.raises(cli.click.ClickException, match="jar has changed"):
+        cli._referee_config([corpus.load_manifest()[0]], recorded=recorded)
+
+
+def test_timing_only_losses_are_advisory_unless_requested(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    slow = dict(_cell(), wall_s=20, cpu_s=20)
+    _write_run(tmp_path / "results", "r", {"head": {"mini": [_cell()] * 3}, "change": {"mini": [slow] * 3}})
+    args = ["compare", "--baseline", "head", "--against", "change", "--runs", "r", "--out", "gate", "--fail-on-regression"]
+    assert CliRunner().invoke(cli.main, args).exit_code == 0
+    r = CliRunner().invoke(cli.main, [*args, "--performance-regression-percent", "10"])
+    assert r.exit_code != 0

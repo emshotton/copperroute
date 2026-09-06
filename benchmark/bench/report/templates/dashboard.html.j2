@@ -16,6 +16,17 @@ th:first-child,td:first-child{text-align:left} .cards{display:flex;gap:1rem;flex
 <div class="card"><b>{{ n }}</b><br><span class="{{ o.verdict }}">{{ o.verdict }}</span><br>{{ o.wins }}W / {{ o.losses }}L / {{ o.ties }}T<br>hard losses: {{ o.hard_losses }}</div>
 {% endfor %}</div>
 
+{% if cmp.coverage %}
+<h2>Coverage</h2>
+<p>Verdicts summarize comparable shared boards; exclusions are not ties.</p>
+<table><tr><th>candidate</th><th>shared</th><th>compared</th><th>incomplete</th><th>skipped</th><th>baseline only</th><th>candidate only</th></tr>
+{% for n, c in cmp.coverage.items() %}<tr><td>{{ n }}</td><td>{{ c.shared_boards|length }}</td><td>{{ c.compared_boards }}</td><td>{{ c.incomplete_boards|length }}</td><td>{{ c.skipped_boards|length }}</td><td>{{ c.baseline_only_boards|length }}</td><td>{{ c.candidate_only_boards|length }}</td></tr>{% endfor %}</table>
+<h2>Regression gate</h2>
+<p>Routing-quality losses fail the default gate. Time/RSS are advisory unless a tolerance is specified.</p>
+{% if cmp.config.performance_regression_percent is not none %}<p>Performance tolerance: {{ cmp.config.performance_regression_percent }}%, plus the noise allowance.</p>{% endif %}
+<ul>{% for n, o in cmp.overall.items() %}<li>{{ n }}: {{ o.quality_losses }} quality losses, {{ o.performance_losses }} performance losses, {{ o.performance_unmeasured }} boards with insufficient performance samples</li>{% endfor %}</ul>
+{% endif %}
+
 <h2>Per tier</h2>
 <table><tr><th>tier</th><th>candidate</th><th>wins</th><th>losses</th><th>ties</th><th>clean-pass rate</th><th>median Δscore</th><th>median time ratio</th></tr>
 {% for t, row in cmp.tiers.items() %}{% for n, s in row.items() %}

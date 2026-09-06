@@ -40,6 +40,24 @@ def render(cmp: dict) -> str:
         L.append(f"- **{n}** vs {cmp['baseline']}: **{o['verdict']}** — {o['wins']} wins, {o['losses']} losses "
                  f"({o['hard_losses']} on hard metrics), {o['ties']} ties")
     L.append("")
+    if cmp.get("coverage"):
+        L += ["## Coverage", "", "Verdicts summarize comparable shared boards; exclusions are not ties.", "",
+              "| candidate | shared | compared | incomplete | skipped | baseline only | candidate only |",
+              "|---|---|---|---|---|---|---|"]
+        for name, cov in cmp["coverage"].items():
+            L.append(f"| {name} | {len(cov['shared_boards'])} | {cov['compared_boards']} | "
+                     f"{len(cov['incomplete_boards'])} | {len(cov['skipped_boards'])} | "
+                     f"{len(cov['baseline_only_boards'])} | {len(cov['candidate_only_boards'])} |")
+        L += ["", "## Regression gate", "",
+              "Routing-quality losses fail the default gate. Time/RSS are advisory unless a tolerance is specified.", ""]
+        for name, overall in cmp["overall"].items():
+            L.append(f"- {name}: {overall['quality_losses']} quality losses, "
+                     f"{overall['performance_losses']} performance losses, "
+                     f"{overall['performance_unmeasured']} boards with insufficient performance samples")
+        percent = cmp["config"].get("performance_regression_percent")
+        if percent is not None:
+            L += ["", f"Performance tolerance: {percent:g}%, plus the noise allowance."]
+        L.append("")
     L.append("## Per tier")
     L.append("")
     L.append("| tier | candidate | wins | losses | ties | clean-pass rate | median Δscore | median time ratio |")
@@ -59,7 +77,7 @@ def render(cmp: dict) -> str:
     L.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for bid, e in cmp["boards"].items():
         b = e["baseline"]
-        noise_val = "unmeasured" if few_seeds else _f(e["noise"].get("score"))
+        noise_val = "unmeasured" if b.get("n", seeds or 0) < 3 else _f(e["noise"].get("score"))
         L.append(f"| {bid} | {e['referee']} | {cmp['baseline']} | {_f(b['clean_pass_rate'], 2)} | {_f(b['unrouted'])} | {_f(b['violations'])} | "
                  f"{_f(b['score'])} | | {noise_val} | {_f(b.get(time_metric))} | | {_f(b['vias'])} | {_f(b['wirelength_mm'])} | baseline |")
         for n in names:

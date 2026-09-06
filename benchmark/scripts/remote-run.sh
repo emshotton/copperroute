@@ -69,7 +69,7 @@ in this repo); a HOST given on the command line always wins over it.
   --print-host           print the resolved HOST (from the argument or $BENCH_REMOTE_HOST) and exit 0
   -h, --help             print this message and exit 0
 
-See the "Running on a remote NixOS host" section of README.md for the full walkthrough.
+See the "Remote runs" section of README.md for the full walkthrough.
 USAGE
 }
 
@@ -138,17 +138,11 @@ else
     RUN_ARGS+=(--run-id "$RUN_ID")
   fi
 
-  # Refuse to launch a duplicate: if this run-id already has a live remote job
-  # (results/$RUN_ID.remote.pid names a PID that's still alive) and its meta.json says
-  # "incomplete", that job is still in progress -- launching another would race it. Check
-  # this *before* touching binaries/ or rsyncing, so a refusal is instant. A run-id whose
-  # meta.json says "complete" (or that doesn't exist remotely yet) is fine to (re)launch.
   poll_line=$(remote_poll "$HOST" "$REMOTE_DIR" "$RUN_ID" "results/$RUN_ID/meta.json")
   eval "$poll_line"
-  if [[ "$STATUS" == "incomplete" && "$ALIVE" == "1" ]]; then
-    echo "error: run-id '$RUN_ID' already has a live remote job on $HOST" \
-         "(see $REMOTE_DIR/results/$RUN_ID.remote.pid) with an incomplete meta.json." >&2
-    echo "       Attach to it instead: scripts/remote-run.sh $HOST --attach $RUN_ID" >&2
+  if [[ "$EXISTS" == "1" || "$ALIVE" == "1" ]]; then
+    echo "error: run-id '$RUN_ID' already exists on $HOST; choose a new --run-id" >&2
+    echo "       To retrieve it instead: scripts/remote-run.sh $HOST --attach $RUN_ID" >&2
     exit 1
   fi
 
@@ -260,10 +254,6 @@ if [[ "$EXITCODE" =~ ^-?[0-9]+$ ]]; then
   [[ "$EXITCODE" == "0" ]] || echo "warning: remote job exited with status $EXITCODE" \
        "(see $REMOTE_DIR/results/$RUN_ID.remote.log on $HOST for its output)" >&2
   exit "$EXITCODE"
-elif [[ "$STATUS" == "complete" ]]; then
-  echo "warning: $REMOTE_DIR/results/$RUN_ID.remote.log.exit not found on $HOST yet," \
-       "but meta.json says complete; treating as success" >&2
-  exit 0
 else
   echo "warning: could not determine the remote job's exit status" \
        "($REMOTE_DIR/results/$RUN_ID.remote.log.exit missing on $HOST;" \

@@ -26,13 +26,15 @@ class RunConfig:
     run_id: str
     candidates: list[Candidate]
     boards: list[Board]
-    seeds: int = 3
+    seeds: int = 1
     max_passes: int = 100
     timeout_s: int = 300
     threads: int = 1
     jobs: int = 1  # number of cells (candidate x board x seed) to run concurrently
     tier: str | None = None
     board_ids: list[str] = field(default_factory=list)
+    referee_java: dict | None = None
+    candidates_file: str | None = None
     grace_s: int = 60  # extra time (beyond timeout_s) the suite waits before killing the process group
 
 
@@ -109,6 +111,7 @@ def _run_one_cell(cand: Candidate, board: Board, seed: int, cfg: RunConfig, run_
                 referee(board, cell)
             except Exception as e:
                 r = {"status": "referee_failed", "referee": board.referee,
+                     "candidate_output": (cell / "out.ses").exists(),
                      "reason": f"referee raised {type(e).__name__}: {e}"}
                 (cell / "referee.json").write_text(json.dumps(r, indent=2) + "\n")
                 metrics.build(cell, board)
@@ -135,6 +138,8 @@ def run(cfg: RunConfig, referee: RefereeHook | None,
                  "threads": cfg.threads, "jobs": cfg.jobs, "tier": cfg.tier,
                  "boards": [b.id for b in cfg.boards]},
         "candidates": [c.to_json() for c in cfg.candidates],
+        "referee_java": cfg.referee_java,
+        "candidates_file": cfg.candidates_file,
         "cells": [],
     }
     _save_meta(run_dir, meta)

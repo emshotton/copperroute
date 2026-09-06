@@ -116,7 +116,10 @@ def load_candidates(path: Path, names: list[str] | None = None) -> dict[str, Can
             raise KeyError(name)
     for name in selected:
         c = table[name]
-        exec = _check_exec(list(c["exec"]), base)
+        command = c.get("exec")
+        if not isinstance(command, list) or not command or not all(isinstance(a, str) for a in command):
+            raise ValueError(f"candidate {name!r} in {path}: exec must be a nonempty array of strings")
+        exec = _check_exec(command, base)
         if c.get("sha"):
             sha = c["sha"]
         elif c.get("sha_file"):

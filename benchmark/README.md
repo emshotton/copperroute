@@ -118,10 +118,20 @@ uv run bench compare --baseline rs-head --against rs-change --runs head-vs-chang
   --out head-vs-change --fail-on-regression
 ```
 
-`--fail-on-regression` writes the reports first, then exits nonzero if **any board loses** or
-coverage is inconclusive. The aggregate “better” verdict alone is insufficient for a no-regression
-check: wins can outnumber performance losses on other boards. Inspect the deciding metrics,
-repeat borderline timing results, and run the broader corpus before accepting an improvement.
+`--fail-on-regression` writes the reports first, then exits nonzero for routing-quality losses
+(clean-pass rate, unrouted connections, violations or score), or if no boards can be compared.
+Timing and RSS verdicts remain advisory by default. To gate those too, add
+`--performance-regression-percent 10`: each side needs at least three measured repetitions,
+and a loss must exceed both the specified relative margin and three times the root-sum-square
+of the two samples' standard deviations. This is a conservative noise allowance, not a
+statistical significance guarantee; repeat borderline results under controlled conditions.
+
+Comparisons use the intersection of the candidates' selected boards. Missing repetitions,
+unjudged outputs and incompatible referees are reported explicitly; available comparable
+measurements still contribute. Add `--require-complete` alongside `--fail-on-regression` when
+every shared board and its planned repetitions must be present. A replacement run can complete
+an interrupted plan under a new run ID; repeated plans are not added together as new obligations.
+Boards selected by only one side are excluded and listed in coverage.
 
 You can also compare separate run IDs with `--runs baseline-run,change-run`. Keep the candidate
 names distinct across revisions. Never combine multiple commits under `rs-main`: the suite
@@ -146,34 +156,43 @@ verdict. The first three metrics are hard quality metrics; a loss on one prevent
 “better” verdict. `same` means differences did not decide a net win or loss under this rule;
 it is not proof of equivalence. Per-board rows remain essential.
 
-`--seeds` defaults to 3 **repetitions**. By default no random-seed flag is sent to either router;
+`--seeds` defaults to 1 **repetition**; use `--seeds 3` or more to estimate noise. By default no random-seed flag is sent to either router;
 `{seed}` is available in candidate `extra_args` for a router that supports one. Below three
-measurements the suite uses a zero noise band. This is a noise heuristic, not a significance
+baseline measurements the suite uses a zero noise band. This is a noise heuristic, not a significance
 test; short routes can be dominated by process/JVM startup. Repeating both candidates under
 quiet, comparable conditions is necessary for timing claims.
 
-Missing measurements and referee failures make overall coverage `inconclusive`, rather than
-counting as ties. A candidate that produces no session is scored as a routing failure; a
-session that the referee cannot judge is excluded from routing aggregates and listed in
-failures. `--no-referee` runs require `bench referee` before comparison. The JSON `coverage`
-field lists boards with missing or unjudged repetitions.
+Coverage is shown near the top of each report. A candidate with no comparable shared boards
+gets `inconclusive`; otherwise aggregate verdicts describe the comparable subset. A candidate
+that produces no session is scored as a routing failure. An output the referee cannot judge is
+excluded from routing aggregates and listed in failures. `--no-referee` runs require
+`bench referee` before comparison. The JSON `coverage` field includes shared, unmatched,
+incomplete and skipped boards, with reasons for skipped comparisons.
 
-Comparisons reject different thread counts, job counts, pass limits, timeouts or known hosts.
-`--allow-mixed` permits those differences with warnings for exploratory analysis; do not use
-it for regression acceptance. Different commits/settings under one candidate name, or different
-referees, score versions or score denominators on one board, are rejected. Rescore old outputs
-with the same suite and corpus when possible.
+Comparisons reject different thread counts, job counts, pass limits or timeouts unless
+`--allow-mixed` is passed for exploratory analysis. Host differences produce a warning: network
+hostnames can change on the same machine, so verify the physical hardware yourself. Repetition
+count differences are reported, and each board's noise estimate uses its actual baseline
+sample count, regardless of `--runs` order. Different commits/settings under one candidate
+name remain an error: they cannot be pooled into one identity.
 
-The score weights incomplete connections most heavily, followed by violations, bends, vias
-and length. Its denominator currently uses the candidate's reported maximum connection count,
-then the manifest connection count, then net count. `score_n` records that denominator; differing
-denominators cannot be compared fairly. `bench corpus connections` measures manifest connection
-counts with the Java referee. Candidate self-reports are retained for diagnosis; connectivity
-and violation verdicts use the referee's measurements.
+Cells judged by different referees or known Java referee jars are excluded for that board and
+candidate pair, without discarding other boards. Re-score those outputs with one referee to
+include them. Different score versions omit the score comparison but retain other metrics.
+
+For current-version metrics, comparison recomputes scores in memory using one shared denominator
+per board: its manifest connection count, falling back to its manifest net count. Candidate
+self-reported counts and missing `result.json` files therefore cannot change the denominator
+between candidates. Candidate failures are charged the same shared connection count. Raw
+metrics and exports retain their original scores; the compare JSON records `config.score_basis`
+and each board's `score_n`. `bench corpus connections` measures manifest connection counts
+with the Java referee. Keep the manifest fixed across comparisons and inspect connectivity,
+violations, length and vias alongside the normalized score.
 
 ### Timing and parallelism
 
-Use `--jobs 1 --threads 1` for controlled comparisons. `--threads` is passed to both routers;
+Use `--jobs 1 --threads 1` for controlled comparisons. `--threads` is passed to both routers
+(the current Rust implementation does not use that setting to create workers);
 `--jobs` controls how many candidate/board/repetition processes run concurrently. Time includes
 process startup and the candidate's routing/optimization/output work, but excludes referee work.
 
@@ -210,6 +229,13 @@ uv run bench referee --run head-vs-change --only-missing --jobs 1
 uv run bench corpus revalidate --origin pcbench --regenerate-projects --rerun-drc --jobs 4
 ```
 
+Java-scored runs record the resolved referee command and jar SHA-256 in `meta.json`, and Java
+measurements record the same identity in `metrics.json`. `bench referee --only-missing` reuses
+that recorded referee and refuses a changed jar. To change referees, pass `--candidates-file`
+and rescore the full run without `--only-missing`. For older runs or runs made with
+`--no-referee`, use their original candidates file when first scoring them. KiCad-only runs
+and rescoring do not require a Java referee jar.
+
 Revalidation can change corpus membership and ground truth. Finish it before benchmarking and
 keep the corpus fixed between candidates. Compare/export currently use the current manifest;
 archive it along with inputs if a result needs to remain reproducible after corpus updates.
@@ -234,11 +260,10 @@ committed. Raw `results/` and generated `reports/` remain local. To share a repo
 add the chosen files with `git add -f reports/<name>.{json,md,html}` and retain the source run
 and corpus elsewhere. Exports alone cannot reconstruct every raw cell or rerun the referee.
 
-Existing `baselines/`, exports and `docs/plan-9-prep/` are historical measurements, not an
-updating HEAD baseline. The documents in `docs/superpowers/` record the original suite design
-and implementation plan; this README describes current operation. `scripts/make-java-view.sh`
-reconstructs one specific historical Java run from existing local result data. New comparisons
-should pin and measure their own baseline rather than treating that old run as current HEAD.
+Existing baseline files and exports are fixed historical measurements, not an updating HEAD
+baseline. New comparisons should pin and measure the intended baseline. The archive utility
+`scripts/make-java-view.sh` can extract the specific Java result set it names from existing
+local result data.
 
 ## Remote runs
 
@@ -260,6 +285,9 @@ comparisons, build both pinned revisions there and provide a candidates file wit
 and known SHAs; `sha_from` only works when the referenced remote Git checkout exists. Keep each
 worktree's remote directory separate. Local binaries may target a different architecture.
 
+Remote run IDs cannot be reused, including completed or interrupted runs. Use a new ID for
+a new measurement; the script refuses existing IDs before syncing and reserves launches
+against concurrent reuse. A successful retrieval requires the remote job's recorded exit status.
 `--no-wait` returns after launch; `remote-run.sh HOST --attach RUN_ID` resumes polling and result
 retrieval. Corpus import does not pull all board files back automatically; copy the corpus
 inputs separately if you need local routing or rescoring. Do not mix local and remote timings.

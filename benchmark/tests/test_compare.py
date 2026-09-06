@@ -242,7 +242,7 @@ def test_compare_rejects_multiple_commits_under_one_name(tmp_path):
 
 
 @pytest.mark.parametrize("mode", ["missing-metrics", "unjudged", "unfinished", "no-boards"])
-def test_incomplete_comparison_cannot_claim_same_or_better(tmp_path, mode):
+def test_partial_measurements_remain_comparable_with_explicit_coverage(tmp_path, mode):
     r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3},
                                    "change": {"a": [cell(score=1000)] * 3}})
     if mode == "missing-metrics":
@@ -257,19 +257,47 @@ def test_incomplete_comparison_cannot_claim_same_or_better(tmp_path, mode):
         meta["status"] = "incomplete"
         (r / "meta.json").write_text(json.dumps(meta))
     cmp = compare.compare([r], "head", ["change"], [] if mode == "no-boards" else [BOARD])
-    assert cmp["overall"]["change"]["verdict"] == "inconclusive"
+    if mode in ("unfinished", "no-boards"):
+        assert cmp["overall"]["change"]["verdict"] == "inconclusive"
+    else:
+        assert cmp["overall"]["change"]["verdict"] == "better"
+        assert cmp["coverage"]["change"]["incomplete_boards"] == ["a"]
 
 
-@pytest.mark.parametrize("key,value", [("referee", "kicad"), ("score_version", 2), ("score_n", 20)])
-def test_compare_rejects_different_scoring(tmp_path, key, value):
+def test_referee_mismatch_skips_only_affected_board(tmp_path):
     changed = cell()
-    changed[key] = value
-    r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3}, "change": {"a": [changed] * 3}})
-    with pytest.raises(compare.IncompatibleRuns, match=key):
-        compare.compare([r], "head", ["change"], [BOARD])
+    changed["referee"] = "java-drc(fallback)"
+    r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3, "b": [cell()] * 3},
+                                   "change": {"a": [changed] * 3, "b": [cell()] * 3}})
+    board_b = Board(id="b", source="", origin="pcbench", referee="kicad", tiers=[], nets=5, layers=2)
+    cmp = compare.compare([r], "head", ["change"], [BOARD, board_b])
+    assert cmp["coverage"]["change"]["compared_boards"] == 1
+    assert "referee" in cmp["coverage"]["change"]["skipped_boards"]["a"]
+    assert cmp["overall"]["change"]["verdict"] == "same"
 
 
-def test_compare_rejects_different_hosts(tmp_path):
+def test_different_denominators_are_normalized_even_for_candidate_failure(tmp_path):
+    base = dict(cell(), score_version=1, score_n=10)
+    other = dict(cell(score=999), score_version=1, score_n=20)
+    failure = dict(cell(clean=False, failed=True, unrouted=20), score_version=1, score_n=20)
+    r = _write_run(tmp_path, "r", {"head": {"a": [base] * 3}, "change": {"a": [other, other, failure]}})
+    cmp = compare.compare([r], "head", ["change"], [BOARD])
+    row = cmp["boards"]["a"]
+    assert row["baseline"]["score"] == row["against"]["change"]["agg"]["score"]
+    assert row["against"]["change"]["verdict"]["level"] == "clean_pass_rate"
+    assert cmp["coverage"]["change"]["compared_boards"] == 1
+    assert json.loads((runner.cell_dir(r, "change", "a", 1) / "metrics.json").read_text())["score_n"] == 20
+
+
+def test_score_version_mismatch_omits_score_without_discarding_quality(tmp_path):
+    r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3},
+                                   "change": {"a": [dict(cell(), score_version=2)] * 3}})
+    cmp = compare.compare([r], "head", ["change"], [BOARD])
+    assert cmp["coverage"]["change"]["compared_boards"] == 1
+    assert cmp["boards"]["a"]["against"]["change"]["delta"]["score"] is None
+
+
+def test_network_hostname_change_is_advisory(tmp_path):
     runs = []
     for name in ("head", "change"):
         r = _write_run(tmp_path, name, {name: {"a": [cell()] * 3}})
@@ -277,13 +305,66 @@ def test_compare_rejects_different_hosts(tmp_path):
         meta["host"] = {"node": name, "machine": "arm64"}
         (r / "meta.json").write_text(json.dumps(meta))
         runs.append(r)
-    with pytest.raises(compare.IncompatibleRuns, match="hosts"):
-        compare.compare(runs, "head", ["change"], [BOARD])
-    cmp = compare.compare(runs, "head", ["change"], [BOARD], allow_mixed=True)
-    assert any("hosts" in w for w in cmp["warnings"])
+    cmp = compare.compare(runs, "head", ["change"], [BOARD])
+    assert any("host metadata differs" in w for w in cmp["warnings"])
 
 
 def test_compare_unknown_candidate_is_not_a_tie(tmp_path):
     r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3}})
     with pytest.raises(compare.IncompatibleRuns, match="absent"):
         compare.compare([r], "head", ["typo"], [BOARD])
+
+
+def test_replacement_run_finishes_interrupted_plan(tmp_path):
+    first = _write_run(tmp_path, "first", {"head": {"a": [cell()] * 3}, "change": {}})
+    meta = runner.load_meta(first)
+    meta["args"]["boards"] = ["a"]
+    meta["status"] = "incomplete"
+    (first / "meta.json").write_text(json.dumps(meta))
+    second = _write_run(tmp_path, "second", {"change": {"a": [cell()] * 3}})
+    cmp = compare.compare([first, second], "head", ["change"], [BOARD])
+    assert cmp["coverage"]["change"]["incomplete_boards"] == []
+    assert cmp["overall"]["change"]["verdict"] == "same"
+
+
+def test_shared_selection_does_not_require_candidate_only_board(tmp_path):
+    b = Board(id="b", source="", origin="pcbench", referee="kicad", tiers=[], nets=5, layers=2)
+    r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3},
+                                   "change": {"a": [cell()] * 3, "b": [cell()] * 3}})
+    cmp = compare.compare([r], "head", ["change"], [BOARD, b])
+    assert cmp["coverage"]["change"]["shared_boards"] == ["a"]
+    assert cmp["coverage"]["change"]["candidate_only_boards"] == ["b"]
+    assert cmp["overall"]["change"]["verdict"] == "same"
+
+
+def test_repetition_reporting_uses_actual_baseline_and_is_run_order_independent(tmp_path, monkeypatch):
+    r1 = _write_run(tmp_path, "first", {"head": {"a": [cell()]}})
+    meta = runner.load_meta(r1)
+    meta["args"]["seeds"] = 1
+    (r1 / "meta.json").write_text(json.dumps(meta))
+    r2 = _write_run(tmp_path, "second", {"change": {"a": [cell()] * 3}})
+    real_load = runner.load_meta
+    calls = []
+    def load(path):
+        calls.append(path)
+        return real_load(path)
+    monkeypatch.setattr(runner, "load_meta", load)
+    one = compare.compare([r1, r2], "head", ["change"], [BOARD])
+    assert calls == [r1, r2]
+    two = compare.compare([r2, r1], "head", ["change"], [BOARD])
+    assert one["config"]["seeds"] is None
+    assert one["config"] == two["config"]
+    assert one["boards"] == two["boards"]
+    assert any("baseline has 1" in w for w in one["warnings"])
+
+
+def test_optional_performance_gate_requires_margin_and_repeated_evidence(tmp_path):
+    def run_case(name, times, percent):
+        r = _write_run(tmp_path, name, {"head": {"a": [cell(wall=10)] * 3},
+                                       "change": {"a": [cell(wall=t) for t in times]}})
+        return compare.compare([r], "head", ["change"], [BOARD],
+                               performance_regression_percent=percent)["overall"]["change"]
+    assert run_case("noise", [10.1, 10.2, 10.3], 10)["performance_losses"] == 0
+    assert run_case("slower", [15, 15, 15], 10)["performance_losses"] == 1
+    assert run_case("short", [15], 10)["performance_unmeasured"] == 1
+    assert run_case("advisory", [15], None)["quality_losses"] == 0

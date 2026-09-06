@@ -132,7 +132,7 @@ remote_launch_detached() {
   quoted_dir=$(printf '%q' "$remote_dir")
   quoted_job=$(printf '%q' "$job")
   quoted_inner=$(printf '%q' "$inner_cmd")
-  ssh "$host" "cd $quoted_dir 2>/dev/null; bash -s -- $quoted_job $quoted_inner" <<'LAUNCH'
+  ssh "$host" "cd $quoted_dir && bash -s -- $quoted_job $quoted_inner" <<'LAUNCH'
 set -u
 job="$1"
 inner_cmd="$2"
@@ -140,7 +140,15 @@ mkdir -p results
 log="results/$job.remote.log"
 pid_file="results/$job.remote.pid"
 exit_file="$log.exit"
-rm -f "$exit_file"
+# Keep the reservation after completion so concurrent launches cannot reuse the ID.
+if ! mkdir "results/$job.remote.lock" 2>/dev/null; then
+  echo "error: job '$job' already launched; choose a new ID" >&2
+  exit 1
+fi
+if [ -e "results/$job" ] || [ -e "$log" ] || [ -e "$pid_file" ] || [ -e "$exit_file" ]; then
+  echo "error: job '$job' already exists; choose a new ID" >&2
+  exit 1
+fi
 setsid nohup bash -c '
   eval "$1"
   ec=$?
@@ -160,7 +168,7 @@ LAUNCH
 # scripts/remote-run.sh has one; scripts/remote-corpus.sh has no run-id/meta.json and passes
 # "") -- the run's meta.json `"status"` plus a `cells done/total` count, parsed with grep/sed
 # (no python dependency on the remote host). Prints one line:
-#   ALIVE=<0|1> STATUS=<meta status|none|unknown> DONE=<n> TOTAL=<n> EXITCODE=<code|none>
+#   EXISTS=<0|1> ALIVE=<0|1> STATUS=<meta status|none|unknown> DONE=<n> TOTAL=<n> EXITCODE=<code|none>
 # which callers `eval` directly (it's just space-separated `VAR=value` words) to populate
 # $ALIVE/$STATUS/$DONE/$TOTAL/$EXITCODE in their own shell.
 #
@@ -188,13 +196,21 @@ remote_poll() {
   quoted_dir=$(printf '%q' "$remote_dir")
   quoted_job=$(printf '%q' "$job")
   quoted_meta=$(printf '%q' "$meta_rel")
-  ssh "$host" "cd $quoted_dir 2>/dev/null; bash -s -- $quoted_job $quoted_meta" <<'POLL'
+  ssh "$host" "if [ ! -d $quoted_dir ]; then
+    echo 'EXISTS=0 ALIVE=0 STATUS=none DONE=0 TOTAL=0 EXITCODE=none'
+    exit 0
+  fi
+  cd $quoted_dir && bash -s -- $quoted_job $quoted_meta" <<'POLL'
 set -u
 job="$1"
 meta="$2"
 pid_file="results/$job.remote.pid"
 log="results/$job.remote.log"
 alive=0
+exists=0
+if [ -e "results/$job" ] || [ -e "$log" ] || [ -e "$pid_file" ] || [ -e "$log.exit" ] || [ -e "results/$job.remote.lock" ]; then
+  exists=1
+fi
 if [ -f "$pid_file" ]; then
   p=$(cat "$pid_file" 2>/dev/null)
   if [ -n "$p" ] && kill -0 "$p" 2>/dev/null; then alive=1; fi
@@ -213,6 +229,6 @@ else
 fi
 ec="none"
 if [ -f "$log.exit" ]; then ec=$(cat "$log.exit" 2>/dev/null); [ -n "$ec" ] || ec="none"; fi
-echo "ALIVE=$alive STATUS=$status DONE=$done TOTAL=$total EXITCODE=$ec"
+echo "EXISTS=$exists ALIVE=$alive STATUS=$status DONE=$done TOTAL=$total EXITCODE=$ec"
 POLL
 }

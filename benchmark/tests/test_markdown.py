@@ -22,6 +22,7 @@ def test_render_contains_verdict_tables():
 def test_render_shows_unmeasured_noise_and_note_when_seeds_below_three():
     cmp = _cmp()
     cmp["config"]["seeds"] = 1
+    cmp["boards"]["a"]["baseline"]["n"] = 1
     md = markdown.render(cmp)
     assert "| a | java-drc | java |" in md
     # the baseline row's noise column shows "unmeasured" instead of a number
@@ -62,3 +63,12 @@ def test_render_flags_unjudged_failures():
     lines = [ln for ln in md.splitlines() if "a / rs / seed" in ln]
     assert any("[unjudged]" in ln and "seed 1" in ln for ln in lines)
     assert not any("[unjudged]" in ln and "seed 2" in ln for ln in lines)
+
+
+def test_noise_label_uses_actual_baseline_samples_with_mixed_run_counts():
+    cmp = _cmp()
+    cmp["config"]["seeds"] = None
+    cmp["boards"]["a"]["baseline"]["n"] = 1
+    md = markdown.render(cmp)
+    assert any(line.startswith("| a | java-drc | java |") and "unmeasured" in line
+               for line in md.splitlines())
