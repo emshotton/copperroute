@@ -26,6 +26,7 @@ use crate::autoroute::path::{Connection, FoundConnectionInserter, FoundConnectio
 use crate::autoroute::tree_ext::{AutorouteSearchTreeExt, p7t14b_cs_ledger};
 use crate::board_ext::RoutingBoardExt;
 use crate::error::RouterError;
+use crate::pipeline::connection_budget::ConnectionBudget;
 use crate::pipeline::{BatchAutorouter, RouterBudget};
 
 #[derive(Debug)]
@@ -1168,6 +1169,7 @@ pub fn route_connection_full(
     trace_pull_tight_accuracy: i32,
     budget: RouterBudget,
     stop: StopCheck<'_>,
+    search_budget: Option<&ConnectionBudget>,
 ) -> AutorouteAttemptResult {
     std::panic::catch_unwind(AssertUnwindSafe(|| {
         route_connection_steps_1_to_8(
@@ -1186,6 +1188,7 @@ pub fn route_connection_full(
             trace_pull_tight_accuracy,
             budget,
             stop,
+            search_budget,
         )
     }))
     .unwrap_or_else(|_| AutorouteAttemptResult::new(AutorouteAttemptState::Failed))
@@ -1208,7 +1211,9 @@ fn route_connection_steps_1_to_8(
     trace_pull_tight_accuracy: i32,
     budget: RouterBudget,
     stop: StopCheck<'_>,
+    search_budget: Option<&ConnectionBudget>,
 ) -> AutorouteAttemptResult {
+    let search_stop = &|| stop() || search_budget.is_some_and(ConnectionBudget::exceeded);
     let (autoroute_result, context) = match route_connection_steps_1_to_5(
         board,
         engine,
@@ -1224,7 +1229,7 @@ fn route_connection_steps_1_to_8(
         remove_unconnected_vias,
         BatchAutorouter::BENCHMARK_RETAIN_AUTOROUTE_DATABASE,
         true,
-        stop,
+        search_stop,
     ) {
         Steps1To5::Early(result) => return result,
         Steps1To5::Ran { result, context } => (result, *context),
@@ -1266,6 +1271,7 @@ fn route_connection_steps_1_to_8(
             trace_pull_tight_accuracy,
             budget,
             stop,
+            search_budget,
         );
         if let Some(necked_result) = necked_result {
             let strict_result = apply_strict_drc_after_route(
@@ -1315,7 +1321,9 @@ fn retry_connection_necked(
     trace_pull_tight_accuracy: i32,
     budget: RouterBudget,
     stop: StopCheck<'_>,
+    search_budget: Option<&ConnectionBudget>,
 ) -> Option<AutorouteAttemptResult> {
+    let search_stop = &|| stop() || search_budget.is_some_and(ConnectionBudget::exceeded);
     let original_control = &context.autoroute_control;
 
     let board_resolution = board.communication.resolution.max(1);
@@ -1371,7 +1379,7 @@ fn retry_connection_necked(
         &neck_control,
         ripped,
         Some(ripup_costs),
-        stop,
+        search_stop,
     );
     if neck_result.state != AutorouteAttemptState::Routed {
         return None;

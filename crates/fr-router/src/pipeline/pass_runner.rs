@@ -134,9 +134,6 @@ impl AutoroutePassRunner {
                         || optimizer_work_budget
                             .as_ref()
                             .is_some_and(|work| work.poll())
-                        || connection_budget
-                            .as_ref()
-                            .is_some_and(ConnectionBudget::exceeded)
                 };
                 let autorouter_result = router.autoroute_item(
                     board,
@@ -147,6 +144,7 @@ impl AutoroutePassRunner {
                     &mut ripped_item_costs,
                     pass_no,
                     stop_check,
+                    connection_budget.as_ref(),
                 );
 
                 match autorouter_result.state {

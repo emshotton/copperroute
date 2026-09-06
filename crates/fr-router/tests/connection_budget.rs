@@ -1,12 +1,17 @@
 //! The per-connection search cap: a bound on the maze steps one connection may spend, so a
 //! hopeless connection cannot eat a job's whole deadline.
 
+use std::cell::Cell;
+use std::collections::{BTreeMap, BTreeSet};
+
 use fr_board::prelude::*;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
+use fr_router::autoroute::maze::ViaPricing;
 use fr_router::pipeline::{
     BatchAutorouter, ConnectionBudget, DEFAULT_CONNECTION_SEARCH_STEPS, NoopProgressSink,
     RouterBudget, RouterStop, RoutingFailureLog,
 };
+use fr_router::{AutorouteAttemptState, route_connection_full};
 use fr_settings::RouterSettings;
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, SettingsSource};
@@ -118,5 +123,56 @@ fn a_tiny_step_cap_fails_connections_without_stopping_the_pass() {
     assert!(
         with_starved_cap < with_generous_cap,
         "one step per connection routes less: {with_starved_cap} vs {with_generous_cap}"
+    );
+}
+
+#[test]
+#[cfg_attr(debug_assertions, ignore = "routes rpi_splitter; run with --release")]
+fn the_search_budget_is_polled_by_the_search_and_not_by_the_cleanup() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let mut board = load_rpi();
+    let settings = rpi_settings(&board);
+    let trace_costs = settings.get_trace_costs();
+    let router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+    let (item, net) = router.autoroute_items(&board)[0];
+
+    let mut generous = RouterSettings::new();
+    generous.connection_search_steps = Some(50_000_000);
+    let budget = ConnectionBudget::start(&generous);
+    let stop_polls = Cell::new(0_u64);
+    let stop = || {
+        stop_polls.set(stop_polls.get() + 1);
+        false
+    };
+
+    board.start_marking_changed_area();
+    let mut engine = None;
+    let result = route_connection_full(
+        &mut board,
+        &mut engine,
+        item,
+        net,
+        &settings,
+        &trace_costs,
+        ViaPricing::ByPadstackRadius,
+        &mut BTreeSet::new(),
+        &mut BTreeMap::new(),
+        1,
+        settings.get_start_ripup_costs(),
+        !settings.is_fanout_enabled(),
+        settings.trace_pull_tight_accuracy.unwrap_or(500),
+        RouterBudget::disabled(),
+        &stop,
+        Some(&budget),
+    );
+    assert_eq!(result.state, AutorouteAttemptState::Routed);
+    assert!(budget.spent() > 0, "the search polled the budget");
+    assert!(
+        stop_polls.get() > budget.spent(),
+        "the cleanup after the search polls the job stop ({}) but not the budget ({})",
+        stop_polls.get(),
+        budget.spent()
     );
 }

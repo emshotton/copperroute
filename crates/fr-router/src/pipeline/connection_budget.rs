@@ -25,6 +25,14 @@ impl ConnectionBudget {
         ConnectionBudget { steps }
     }
 
+    /// Search steps polled so far.
+    #[must_use]
+    pub fn spent(&self) -> u64 {
+        self.steps
+            .as_ref()
+            .map_or(0, DeterministicWorkBudget::spent)
+    }
+
     #[must_use]
     pub fn step_cap(&self) -> Option<u64> {
         self.steps.as_ref().map(DeterministicWorkBudget::limit)
