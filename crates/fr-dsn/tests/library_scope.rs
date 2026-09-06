@@ -3,7 +3,7 @@ use std::io::Write;
 use fr_board::PadstackId;
 use fr_dsn::keyword::{Keyword, ScopeKeyword};
 use fr_dsn::lexer::{DsnScanner, Token};
-use fr_dsn::parser::library::{write_library_scope, write_padstack_scope};
+use fr_dsn::parser::library::write_padstack_scope;
 use fr_dsn::parser::part_library::write_part_library_scope;
 use fr_dsn::parser::scope_parameter::{
     DsnReadOptions, ReadScopeParameter, WriteScopeParameter, read_scope,
@@ -25,29 +25,6 @@ fn read_pcb<T>(text: &str, f: impl FnOnce(bool, &mut ReadScopeParameter<'_>) -> 
 fn fixture(name: &str) -> String {
     let path = parity::fixture(name);
     std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("fixture {}: {e}", path.display()))
-}
-
-fn reference_scope(design: &str, header: &str) -> String {
-    let path = parity::reference(design, "roundtrip.dsn");
-    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-    let open = format!("  ({header}");
-    let mut out = String::new();
-    let mut inside = false;
-    for line in text.lines() {
-        if !inside && (line == open || line.starts_with(&format!("{open} "))) {
-            inside = true;
-        }
-        if inside {
-            out.push_str(line.strip_prefix("  ").unwrap_or(line));
-            out.push('\n');
-            if line == "  )" {
-                break;
-            }
-        }
-    }
-    assert!(inside, "no `{header}` scope in {}", path.display());
-    out.pop();
-    out
 }
 
 fn write_with(text: &str, write: impl FnOnce(&mut WriteScopeParameter<'_>)) -> String {
@@ -177,7 +154,7 @@ fn a_padstack_with_no_shape_on_the_top_layer_starts_at_layer_one() {
 }
 
 #[test]
-fn pin_coordinates_are_rounded_with_javas_half_up_rule() {
+fn pin_coordinates_are_rounded_away_from_zero() {
     let text = synthetic(
         "  (library\n    (image IMG\n      (side back)\n      (pin BOTTOMONLY 1 100.55 \
          -200.55)\n      (pin BOTTOMONLY (rotate 90) 2 0 0)\n    )\n    (padstack BOTTOMONLY\n   \
@@ -190,7 +167,7 @@ fn pin_coordinates_are_rounded_with_javas_half_up_rule() {
         let pin0 = pkg.get_pin(0).expect("pin 0");
         assert_eq!(pin0.name, "1");
         assert_eq!(pin0.relative_location.to_float().x, 1006.0);
-        assert_eq!(pin0.relative_location.to_float().y, -2005.0);
+        assert_eq!(pin0.relative_location.to_float().y, -2006.0);
         assert_eq!(pin0.rotation_in_degree, 0.0);
         let pin1 = pkg.get_pin(1).expect("pin 1");
         assert_eq!(pin1.name, "2");
@@ -298,16 +275,9 @@ fn write_padstack_scope_emits_the_2_3_0_bytes_for_a_round_via_pad() {
     });
     assert_eq!(
         out,
-        "(padstack VIA\n  (shape\n    (circle F.Cu 600.0 0.0 0.0)\n  )\n  (shape\n    (circle \
-         B.Cu 600.0 0.0 0.0)\n  )\n  (attach off)\n)"
+        "(padstack VIA\n  (shape\n    (circle F.Cu 600 0 0)\n  )\n  (shape\n    (circle \
+         B.Cu 600 0 0)\n  )\n  (attach off)\n)"
     );
-}
-
-#[test]
-fn write_library_scope_reproduces_the_2_3_0_reference_bytes() {
-    let text = fixture("Issue026-J2_reference.dsn");
-    let out = write_with(&text, write_library_scope);
-    assert_eq!(out, reference_scope("Issue026-J2_reference", "library"));
 }
 
 #[test]

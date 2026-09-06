@@ -540,7 +540,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "unknown net")]
-    fn get_trace_half_width_panics_where_java_npes() {
+    fn get_trace_half_width_panics_on_unknown_net() {
         let rules = rules();
         rules.get_trace_half_width(1, 0);
     }

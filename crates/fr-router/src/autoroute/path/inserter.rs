@@ -682,7 +682,7 @@ impl FoundConnectionInserter {
                 .library
                 .padstacks
                 .padstack_to_layer(current_via_padstack);
-            if padstack_from > java_int(from_layer) || padstack_to < java_int(to_layer) {
+            if padstack_from > layer_to_i32(from_layer) || padstack_to < layer_to_i32(to_layer) {
                 continue;
             }
             // :707.
@@ -732,7 +732,7 @@ impl FoundConnectionInserter {
     }
 }
 
-fn java_int(layer: usize) -> i32 {
+fn layer_to_i32(layer: usize) -> i32 {
     i32::try_from(layer).expect("a board layer index fits in an int, as it does in Java")
 }
 

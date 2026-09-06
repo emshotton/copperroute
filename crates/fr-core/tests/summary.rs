@@ -1,7 +1,7 @@
 use fr_core::{RoutingJob, SessionId, load_board_if_needed, summarise};
 
 fn load(relative: &str) -> fr_board::Board {
-    let path = parity::java_dir().join(relative);
+    let path = parity::reference_dir().join(relative);
     let mut job = RoutingJob::new(SessionId::NIL);
     job.set_input(&path)
         .unwrap_or_else(|e| panic!("cannot set {} as input: {e}", path.display()));
@@ -12,7 +12,7 @@ fn load(relative: &str) -> fr_board::Board {
 
 #[test]
 fn the_summary_names_every_layer_net_and_component() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load("fixtures/Issue143-rpi_splitter.dsn");
@@ -50,7 +50,7 @@ fn the_summary_names_every_layer_net_and_component() {
 
 #[test]
 fn the_summary_counts_agree_with_the_statistics() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     for stem in [
@@ -85,7 +85,7 @@ fn the_summary_counts_agree_with_the_statistics() {
 
 #[test]
 fn the_metadata_comes_from_the_boards_own_communication() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load("examples/tutorial_board/tutorial_board.dsn");
@@ -99,7 +99,7 @@ fn the_metadata_comes_from_the_boards_own_communication() {
 
 #[test]
 fn the_top_level_key_order_is_declaration_order() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load("fixtures/Issue143-rpi_splitter.dsn");

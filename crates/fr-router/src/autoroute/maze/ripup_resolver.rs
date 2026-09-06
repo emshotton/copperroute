@@ -1,5 +1,5 @@
 use fr_board::{Board, FixedState, Item, ItemId, TreeObject};
-use fr_geometry::{Line, Polyline, java_max};
+use fr_geometry::{Line, Polyline};
 
 use crate::autoroute::expansion::{ExpandableRef, ObstacleExpansionRoom, RoomRef};
 use crate::autoroute::maze::engine::tree_of;
@@ -55,7 +55,7 @@ impl MazeRipupResolver {
                 let mut fanout_via_cost_factor = half_width / length;
                 fanout_via_cost_factor *= fanout_via_cost_factor;
                 fanout_via_cost_factor *= FANOUT_COST_CONSTANT;
-                return java_max(fanout_via_cost_factor, 1.0);
+                return (fanout_via_cost_factor).max(1.0);
             }
         }
         1.0
@@ -127,7 +127,7 @@ impl MazeRipupResolver {
                     }
                     let contact_half_width = f64::from(obstacle_trace.get_half_width());
                     contact_count += 1;
-                    cost_factor = java_max(cost_factor, contact_half_width);
+                    cost_factor = (cost_factor).max(contact_half_width);
                     if look_if_fanout_via && !search.ctrl.is_fanout {
                         let current_fanout_via_cost_factor =
                             Self::calc_fanout_via_ripup_cost_factor(board, current_contact);

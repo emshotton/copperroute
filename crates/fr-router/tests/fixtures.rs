@@ -23,7 +23,7 @@ struct PassResult {
 }
 
 fn load_board(rel_path: &str) -> Board {
-    let path = parity::java_dir().join(rel_path);
+    let path = parity::reference_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path
@@ -138,7 +138,7 @@ fn check(name: &str, result: &PassResult, max_incomplete_connections: usize) {
 
 #[test]
 fn dac2020_bm01_one_pass_two_items_leaves_at_most_194_incompletes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let result = route_one_pass("fixtures/Issue508-DAC2020_bm01.dsn", 2);
@@ -155,7 +155,7 @@ fn dac2020_bm01_one_pass_two_items_leaves_at_most_194_incompletes() {
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn rpi_splitter_one_pass_leaves_at_most_two_incompletes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let result = route_one_pass("fixtures/Issue143-rpi_splitter.dsn", 8);
@@ -165,7 +165,7 @@ fn rpi_splitter_one_pass_leaves_at_most_two_incompletes() {
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn j2_reference_one_pass_leaves_at_most_seven_incompletes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let result = route_one_pass("fixtures/Issue026-J2_reference.dsn", 100_000);
@@ -177,7 +177,7 @@ fn j2_reference_one_pass_leaves_at_most_seven_incompletes() {
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn ecc83_input_one_pass_leaves_no_incompletes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let result = route_one_pass(
@@ -192,7 +192,7 @@ fn ecc83_input_one_pass_leaves_no_incompletes() {
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn dac2020_bm01_one_pass_whole_board_leaves_at_most_57_incompletes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let result = route_one_pass("fixtures/Issue508-DAC2020_bm01.dsn", 100_000);
@@ -205,7 +205,7 @@ fn dac2020_bm01_one_pass_whole_board_leaves_at_most_57_incompletes() {
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn tutorial_board_has_no_connections_to_route() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let result = route_one_pass("examples/tutorial_board/tutorial_board.dsn", 100_000);
@@ -221,7 +221,7 @@ struct JobResult {
 }
 
 fn run_job(dsn: &str, max_passes: i32, max_items: Option<i32>, strict_drc: bool) -> JobResult {
-    let path = parity::java_dir().join(dsn);
+    let path = parity::reference_dir().join(dsn);
     let bytes =
         std::fs::read(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
     let file_name = path
@@ -333,7 +333,7 @@ fn check_job(name: &str, result: &JobResult, max_incomplete: usize, exact_violat
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn dac2020_bm01_pipeline_first_2_nets_leaves_at_most_194_incompletes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let result = run_job("fixtures/Issue508-DAC2020_bm01.dsn", 1, Some(2), false);
@@ -344,7 +344,7 @@ fn dac2020_bm01_pipeline_first_2_nets_leaves_at_most_194_incompletes() {
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn dac2020_bm01_pipeline_first_43_nets_leaves_at_most_161_incompletes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let result = run_job("fixtures/Issue508-DAC2020_bm01.dsn", 1, Some(43), false);
@@ -355,7 +355,7 @@ fn dac2020_bm01_pipeline_first_43_nets_leaves_at_most_161_incompletes() {
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn dac2020_bm01_pipeline_first_61_nets_leaves_at_most_147_incompletes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let result = run_job("fixtures/Issue508-DAC2020_bm01.dsn", 1, Some(61), false);
@@ -366,7 +366,7 @@ fn dac2020_bm01_pipeline_first_61_nets_leaves_at_most_147_incompletes() {
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn dac2020_bm01_pipeline_first_111_nets_leaves_at_most_134_incompletes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let result = run_job("fixtures/Issue508-DAC2020_bm01.dsn", 1, Some(111), false);
@@ -377,7 +377,7 @@ fn dac2020_bm01_pipeline_first_111_nets_leaves_at_most_134_incompletes() {
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn dac2020_bm01_pipeline_first_151_nets_leaves_at_most_126_incompletes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let result = run_job("fixtures/Issue508-DAC2020_bm01.dsn", 1, Some(151), false);
@@ -387,7 +387,7 @@ fn dac2020_bm01_pipeline_first_151_nets_leaves_at_most_126_incompletes() {
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn dac2020_bm01_pipeline_one_pass_leaves_at_most_71_incompletes() {
-    if std::env::var_os("FR_SLOW_PARITY").is_none() || !parity::require_java_dir() {
+    if std::env::var_os("FR_SLOW_PARITY").is_none() || !parity::require_reference_dir() {
         return;
     }
     let result = run_job("fixtures/Issue508-DAC2020_bm01.dsn", 1, None, false);
@@ -397,7 +397,7 @@ fn dac2020_bm01_pipeline_one_pass_leaves_at_most_71_incompletes() {
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn dac2020_bm01_pipeline_two_passes_leave_at_most_37_incompletes() {
-    if std::env::var_os("FR_SLOW_PARITY").is_none() || !parity::require_java_dir() {
+    if std::env::var_os("FR_SLOW_PARITY").is_none() || !parity::require_reference_dir() {
         return;
     }
     let result = run_job("fixtures/Issue508-DAC2020_bm01.dsn", 2, None, false);
@@ -407,7 +407,7 @@ fn dac2020_bm01_pipeline_two_passes_leave_at_most_37_incompletes() {
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn j2_reference_pipeline_leaves_at_most_three_incompletes_and_under_sixty_drills() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let result = run_job("fixtures/Issue026-J2_reference.dsn", 100, None, false);
@@ -427,7 +427,7 @@ fn j2_reference_pipeline_leaves_at_most_three_incompletes_and_under_sixty_drills
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn strict_drc_cnh_pipeline_adds_no_violations_beyond_the_sixteen_pre_existing() {
-    if std::env::var_os("FR_SLOW_PARITY").is_none() || !parity::require_java_dir() {
+    if std::env::var_os("FR_SLOW_PARITY").is_none() || !parity::require_reference_dir() {
         return;
     }
     let result = run_job(
@@ -464,7 +464,7 @@ fn copper_override_outcome(dsn: &str, configured: Option<f64>) -> (Option<usize>
 #[cfg_attr(debug_assertions, ignore)]
 #[test]
 fn the_copper_to_edge_override_is_continuous() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dsn = "fixtures/Issue143-rpi_splitter.dsn";

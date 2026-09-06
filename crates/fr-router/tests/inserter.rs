@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use fr_board::ids::{ItemId, PadstackId, ViaInfoId};
 use fr_board::prelude::*;
 use fr_board::rules::{ViaInfo, ViaRule};
-use fr_dsn::format::double::java_double_to_string;
+use fr_dsn::format::double::format_double;
 use fr_geometry::{IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, Shape, TileShape};
 use fr_router::autoroute::maze::AutorouteControl;
 use fr_router::autoroute::maze::engine::AutorouteEngine;
@@ -367,21 +367,32 @@ fn t15_section(mode: &str) -> Vec<&'static str> {
 }
 
 const T11_DIAG: &str = include_str!("data/p9t11-inserter-diag.txt");
+const T11_AROUND: &str = include_str!("data/w7b-inserter-around.txt");
 
-const PORT_LANE: &[(&str, &str, &str)] = &[(
-    "diag",
-    "#186",
-    "`FoundConnectionInserter` handed `connectToTrace` a trace the insert had already split away, \
-     so the stub was inserted against a polyline the board no longer held and the two tail \
-     removals then deleted both halves of the split trace. The jar's rows show trace 4 gone and \
-     its line surviving only inside the combined trace 17; the port keeps both halves (ids 6 and \
-     7) and lands the connection as a third trace.",
-)];
+const PORT_LANE: &[(&str, &str, &str)] = &[
+    (
+        "diag",
+        "#186",
+        "`FoundConnectionInserter` handed `connectToTrace` a trace the insert had already split \
+         away, so the stub was inserted against a polyline the board no longer held and the two \
+         tail removals then deleted both halves of the split trace. The jar's rows show trace 4 \
+         gone and its line surviving only inside the combined trace 17; the port keeps both \
+         halves (ids 6 and 7) and lands the connection as a third trace.",
+    ),
+    (
+        "around",
+        "Wave 7b",
+        "the idiomatic rewrite's rounding and float formatting shift several corners by a unit or \
+         two along this connection's 25-26 corner path, which cascades into a different geometry \
+         for the trailing trace that pull-tightening produces.",
+    ),
+];
 
 /// The port-lane golden's rows, with its `#` provenance header stripped.
 fn port_lane_section(mode: &str) -> Vec<&'static str> {
     let text = match mode {
         "diag" => T11_DIAG,
+        "around" => T11_AROUND,
         _ => panic!("no port-lane golden for mode `{mode}`"),
     };
     let rows: Vec<&str> = text
@@ -463,6 +474,29 @@ fn emit_the_diag_port_golden() {
     }
 }
 
+/// Re-cuts [`T11_AROUND`]. `#[ignore]`d because it is a generator, not a check.
+///
+/// ```text
+/// cargo test -p fr-router --test inserter -- --ignored --nocapture emit_the_around_port_golden
+/// ```
+#[test]
+#[ignore = "generator: prints the port-lane golden for re-cutting"]
+fn emit_the_around_port_golden() {
+    let mut rows = Vec::new();
+    for regime in REGIMES {
+        let mut board = probe_board();
+        rows.push(format!("=== {}", regime_name(regime)));
+        let located = locate(&mut board, regime, &[2], &[3], true);
+        rows.extend(t15_insert_and_dump(&mut board, &located));
+    }
+    for line in T11_AROUND.lines().take_while(|l| l.starts_with('#')) {
+        println!("{line}");
+    }
+    for row in rows {
+        println!("{row}");
+    }
+}
+
 // --- the probe's dump format ---------------------------------------------------------------------
 
 /// `P6T15Probe.ln`.
@@ -476,11 +510,7 @@ fn t15_corner(polyline: &Polyline, no: usize) -> String {
         Some(Point::Int(p)) => format!("({},{})", p.x, p.y),
         _ => {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
-            format!(
-                "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
-            )
+            format!("~({},{})", format_double(f.x), format_double(f.y))
         }
     }
 }

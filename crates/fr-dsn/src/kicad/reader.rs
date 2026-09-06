@@ -1,10 +1,7 @@
-use std::cmp::Ordering;
-
 use fr_board::{
     Board, BoardLibrary, BoardRules, ClearanceMatrix, Communication, Components, FixedState,
     ItemClass, ItemIdGenerator, Layer, LayerStructure, NetClassId, Nets, Package, PackagePin,
     Packages, Padstack, PadstackId, Padstacks, Unit, ViaInfo, ViaRule, equals_ignore_case,
-    java_to_lower, java_to_upper,
 };
 use fr_geometry::{
     Area, Circle, FloatPoint, IntBox, IntOctagon, IntPoint, IntVector, Point, PolygonShape,
@@ -13,8 +10,7 @@ use fr_geometry::{
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::{BoardMetadata, BoardReadResult, DsnError};
-use crate::format::double::java_format_fixed;
-use crate::format::java_round_to_int;
+use crate::format::double::format_fixed;
 use crate::kicad::dto::{KiCadBoardJson, NetClassJson, PadJson, Point2D, UnitJson};
 use crate::parser::network::is_kicad_default_net_class_name;
 
@@ -23,7 +19,7 @@ use crate::parser::network::is_kicad_default_net_class_name;
 pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardReadResult {
     let id_generator = id_generator.unwrap_or_default();
 
-    let board_json: KiCadBoardJson = if json.chars().all(java_is_whitespace) {
+    let board_json: KiCadBoardJson = if json.trim().is_empty() {
         return parse_error("json_root", "JSON payload is empty or invalid");
     } else {
         match serde_json::from_str::<Option<KiCadBoardJson>>(json) {
@@ -51,7 +47,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         Some(UnitJson::MM) | None => Unit::Mm,
     };
 
-    let mut resolution = java_max(1.0, board_json.resolution) as i32;
+    let mut resolution = board_json.resolution.max(1.0) as i32;
     if board_json.resolution == 1.0 && user_unit == Unit::Mm {
         resolution = 10000;
     }
@@ -112,20 +108,20 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         &layer_structure,
         &clearance_class_names,
     );
-    let default_clearance = java_round_to_int(Unit::scale(0.2, Unit::Mm, user_unit) * scale_factor);
+    let default_clearance = (Unit::scale(0.2, Unit::Mm, user_unit) * scale_factor).round() as i32;
     clearance_matrix.set_default_value(default_clearance);
 
     let kicad_default_net_class = find_kicad_default_net_class(json_net_classes);
     if let Some(kicad_default) = kicad_default_net_class
         && kicad_default.clearance > 0.0
     {
-        let default_cl_val = java_round_to_int(kicad_default.clearance * scale_factor);
+        let default_cl_val = (kicad_default.clearance * scale_factor).round() as i32;
         clearance_matrix.set_value_on_all_layers(1, 1, default_cl_val);
     }
 
     for (i, net_class) in additional_net_classes.iter().enumerate() {
         let cl_no = i + 2;
-        let cl_val = java_round_to_int(net_class.clearance * scale_factor);
+        let cl_val = (net_class.clearance * scale_factor).round() as i32;
         clearance_matrix.set_value_on_all_layers(cl_no, cl_no, cl_val);
         clearance_matrix.set_value_on_all_layers(1, cl_no, cl_val);
     }
@@ -143,7 +139,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             .as_deref()
             .and_then(|name| clearance_matrix.get_no(name));
         if let (Some(idx_a), Some(idx_b)) = (idx_a, idx_b) {
-            let clearance_val = java_round_to_int(rule.clearance * scale_factor);
+            let clearance_val = (rule.clearance * scale_factor).round() as i32;
             clearance_matrix.set_value_on_all_layers(idx_a, idx_b, clearance_val);
         }
     }
@@ -167,18 +163,18 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         if let Some(components) = board_json.components.as_ref() {
             for component in components {
                 if let Some(position) = component.position.as_ref() {
-                    min_x = java_min(min_x, position.x);
-                    max_x = java_max(max_x, position.x);
-                    min_y = java_min(min_y, position.y);
-                    max_y = java_max(max_y, position.y);
+                    min_x = (min_x).min(position.x);
+                    max_x = (max_x).max(position.x);
+                    min_y = (min_y).min(position.y);
+                    max_y = (max_y).max(position.y);
                 }
                 if let Some(pads) = component.pads.as_ref() {
                     for pad in pads {
                         if let Some(position) = pad.position.as_ref() {
-                            min_x = java_min(min_x, position.x);
-                            max_x = java_max(max_x, position.x);
-                            min_y = java_min(min_y, position.y);
-                            max_y = java_max(max_y, position.y);
+                            min_x = (min_x).min(position.x);
+                            max_x = (max_x).max(position.x);
+                            min_y = (min_y).min(position.y);
+                            max_y = (max_y).max(position.y);
                         }
                     }
                 }
@@ -188,10 +184,10 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         if let Some(vias) = board_json.vias.as_ref() {
             for via in vias {
                 if let Some(position) = via.position.as_ref() {
-                    min_x = java_min(min_x, position.x);
-                    max_x = java_max(max_x, position.x);
-                    min_y = java_min(min_y, position.y);
-                    max_y = java_max(max_y, position.y);
+                    min_x = (min_x).min(position.x);
+                    max_x = (max_x).max(position.x);
+                    min_y = (min_y).min(position.y);
+                    max_y = (max_y).max(position.y);
                 }
             }
         }
@@ -200,10 +196,10 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             for trace in traces {
                 if let Some(points) = trace.points.as_ref() {
                     for point in points {
-                        min_x = java_min(min_x, point.x);
-                        max_x = java_max(max_x, point.x);
-                        min_y = java_min(min_y, point.y);
-                        max_y = java_max(max_y, point.y);
+                        min_x = (min_x).min(point.x);
+                        max_x = (max_x).max(point.x);
+                        min_y = (min_y).min(point.y);
+                        max_y = (max_y).max(point.y);
                     }
                 }
             }
@@ -213,10 +209,10 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             for zone in zones {
                 if let Some(polygon) = zone.polygon.as_ref() {
                     for point in polygon {
-                        min_x = java_min(min_x, point.x);
-                        max_x = java_max(max_x, point.x);
-                        min_y = java_min(min_y, point.y);
-                        max_y = java_max(max_y, point.y);
+                        min_x = (min_x).min(point.x);
+                        max_x = (max_x).max(point.x);
+                        min_y = (min_y).min(point.y);
+                        max_y = (max_y).max(point.y);
                     }
                 }
             }
@@ -238,20 +234,20 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
 
         let points = [
             Point::Int(IntPoint::new(
-                java_round_to_int(min_x * scale_factor),
-                java_round_to_int(-min_y * scale_factor),
+                (min_x * scale_factor).round() as i32,
+                (-min_y * scale_factor).round() as i32,
             )),
             Point::Int(IntPoint::new(
-                java_round_to_int(min_x * scale_factor),
-                java_round_to_int(-max_y * scale_factor),
+                (min_x * scale_factor).round() as i32,
+                (-max_y * scale_factor).round() as i32,
             )),
             Point::Int(IntPoint::new(
-                java_round_to_int(max_x * scale_factor),
-                java_round_to_int(-max_y * scale_factor),
+                (max_x * scale_factor).round() as i32,
+                (-max_y * scale_factor).round() as i32,
             )),
             Point::Int(IntPoint::new(
-                java_round_to_int(max_x * scale_factor),
-                java_round_to_int(-min_y * scale_factor),
+                (max_x * scale_factor).round() as i32,
+                (-min_y * scale_factor).round() as i32,
             )),
         ];
 
@@ -283,14 +279,14 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             let cx = sum_x / count;
             let cy = sum_y / count;
             corners.sort_by(|p1, p2| {
-                java_double_compare((p1.y - cy).atan2(p1.x - cx), (p2.y - cy).atan2(p2.x - cx))
+                ((p1.y - cy).atan2(p1.x - cx)).total_cmp(&(p2.y - cy).atan2(p2.x - cx))
             });
         }
         let mut points: Vec<Point> = Vec::with_capacity(corners.len());
         for corner in &corners {
             let point = Point::Int(IntPoint::new(
-                java_round_to_int(corner.x * scale_factor),
-                java_round_to_int(-corner.y * scale_factor),
+                (corner.x * scale_factor).round() as i32,
+                (-corner.y * scale_factor).round() as i32,
             ));
             outline.add_point(point.to_float());
             points.push(point);
@@ -312,13 +308,13 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     let host_cad = board_json
         .hostCad
         .as_deref()
-        .filter(|host| !java_is_blank(host))
+        .filter(|host| !(host).trim().is_empty())
         .unwrap_or("KiCad")
         .to_string();
     let host_version = board_json
         .hostVersion
         .as_deref()
-        .filter(|version| !java_is_blank(version))
+        .filter(|version| !(version).trim().is_empty())
         .unwrap_or("v10.0")
         .to_string();
     let communication = Communication::new(
@@ -559,7 +555,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     }
 
     for net_name in referenced_nets.iteration_order() {
-        if java_nets_get(&board.rules.nets, Some(net_name), 1).is_none() {
+        if nets_get(&board.rules.nets, Some(net_name), 1).is_none() {
             let net = board
                 .rules
                 .nets
@@ -590,19 +586,19 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 .as_deref()
                 .is_some_and(|shape| equals_ignore_case("circle", shape))
             {
-                let radius = java_min(pad_size.x, pad_size.y) * scale_factor / 2.0;
-                Shape::Circle(Circle::new(IntPoint::ZERO, java_round_to_int(radius)))
+                let radius = (pad_size.x).min(pad_size.y) * scale_factor / 2.0;
+                Shape::Circle(Circle::new(IntPoint::ZERO, (radius).round() as i32))
             } else if pad
                 .shape
                 .as_deref()
                 .is_some_and(|shape| equals_ignore_case("oval", shape))
             {
-                let lx = java_round_to_int(-dx);
-                let rx = java_round_to_int(dx);
-                let ly = java_round_to_int(-dy);
-                let uy = java_round_to_int(dy);
-                let r = java_round_to_int(java_min(dx, dy));
-                let cut = java_round_to_int((2.0 - 2.0_f64.sqrt()) * f64::from(r));
+                let lx = (-dx).round() as i32;
+                let rx = (dx).round() as i32;
+                let ly = (-dy).round() as i32;
+                let uy = (dy).round() as i32;
+                let r = ((dx).min(dy)).round() as i32;
+                let cut = ((2.0 - 2.0_f64.sqrt()) * f64::from(r)).round() as i32;
                 let octagon = IntOctagon::new(
                     lx,
                     ly,
@@ -617,10 +613,10 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             } else {
                 Shape::Tile(TileShape::Simplex(
                     IntBox::from_coords(
-                        java_round_to_int(-dx),
-                        java_round_to_int(-dy),
-                        java_round_to_int(dx),
-                        java_round_to_int(dy),
+                        (-dx).round() as i32,
+                        (-dy).round() as i32,
+                        (dx).round() as i32,
+                        (dy).round() as i32,
                     )
                     .to_simplex(),
                 ))
@@ -716,8 +712,8 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 return npe_field("x", "pad.offset");
             };
             let relative_loc = Vector::Int(IntVector::new(
-                java_round_to_int(offset.x * scale_factor),
-                java_round_to_int(-offset.y * scale_factor),
+                (offset.x * scale_factor).round() as i32,
+                (-offset.y * scale_factor).round() as i32,
             ));
             package_pins.push(PackagePin::new(
                 pad.name
@@ -777,8 +773,8 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             return npe_field("x", "comp.position");
         };
         let position = IntPoint::new(
-            java_round_to_int(position.x * scale_factor),
-            java_round_to_int(-position.y * scale_factor),
+            (position.x * scale_factor).round() as i32,
+            (-position.y * scale_factor).round() as i32,
         );
 
         let reference = component
@@ -800,8 +796,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             .id;
 
         for (pad_index, pad) in pads.iter().enumerate() {
-            let net_number =
-                java_nets_get(&board.rules.nets, pad.netName.as_deref(), 1).unwrap_or(0);
+            let net_number = nets_get(&board.rules.nets, pad.netName.as_deref(), 1).unwrap_or(0);
             let net_numbers = if net_number > 0 {
                 vec![net_number]
             } else {
@@ -821,7 +816,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         return npe("java.util.List.iterator()", "boardJson.conductionAreas");
     };
     for zone in json_zones {
-        let net_number = java_nets_get(&board.rules.nets, zone.netName.as_deref(), 1).unwrap_or(0);
+        let net_number = nets_get(&board.rules.nets, zone.netName.as_deref(), 1).unwrap_or(0);
         let net_numbers = if net_number > 0 {
             vec![net_number]
         } else {
@@ -834,8 +829,8 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         let mut zone_points: Vec<Point> = Vec::with_capacity(polygon.len());
         for corner in polygon {
             zone_points.push(Point::Int(IntPoint::new(
-                java_round_to_int(corner.x * scale_factor),
-                java_round_to_int(-corner.y * scale_factor),
+                (corner.x * scale_factor).round() as i32,
+                (-corner.y * scale_factor).round() as i32,
             )));
         }
         if zone_points.is_empty() {
@@ -859,13 +854,13 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         return npe("java.util.List.iterator()", "boardJson.traces");
     };
     for trace in json_traces {
-        let net_number = java_nets_get(&board.rules.nets, trace.netName.as_deref(), 1).unwrap_or(0);
+        let net_number = nets_get(&board.rules.nets, trace.netName.as_deref(), 1).unwrap_or(0);
         let net_numbers = if net_number > 0 {
             vec![net_number]
         } else {
             Vec::new()
         };
-        let trace_half_width = java_round_to_int(trace.width * scale_factor / 2.0);
+        let trace_half_width = (trace.width * scale_factor / 2.0).round() as i32;
 
         let Some(points) = trace.points.as_ref() else {
             return npe("java.util.List.size()", "tr.points");
@@ -873,8 +868,8 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         let mut trace_points: Vec<Point> = Vec::with_capacity(points.len());
         for point in points {
             trace_points.push(Point::Int(IntPoint::new(
-                java_round_to_int(point.x * scale_factor),
-                java_round_to_int(-point.y * scale_factor),
+                (point.x * scale_factor).round() as i32,
+                (-point.y * scale_factor).round() as i32,
             )));
         }
         board.insert_trace_at_points(
@@ -891,7 +886,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         return npe("java.util.List.iterator()", "boardJson.vias");
     };
     for via in json_vias {
-        let net_number = java_nets_get(&board.rules.nets, via.netName.as_deref(), 1).unwrap_or(0);
+        let net_number = nets_get(&board.rules.nets, via.netName.as_deref(), 1).unwrap_or(0);
         let net_numbers = if net_number > 0 {
             vec![net_number]
         } else {
@@ -902,8 +897,8 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             return npe_field("x", "vj.position");
         };
         let center = IntPoint::new(
-            java_round_to_int(position.x * scale_factor),
-            java_round_to_int(-position.y * scale_factor),
+            (position.x * scale_factor).round() as i32,
+            (-position.y * scale_factor).round() as i32,
         );
 
         let mut shapes: Vec<Option<Shape>> = vec![None; layer_count];
@@ -934,8 +929,8 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             "Via[{}-{}]_{}:{}_um",
             via.startLayerIndex,
             via.endLayerIndex,
-            java_format_fixed(via.diameter * 1000.0, 0),
-            java_format_fixed(via.drill * 1000.0, 0)
+            format_fixed(via.diameter * 1000.0, 0),
+            format_fixed(via.drill * 1000.0, 0)
         );
         if shapes.iter().all(Option::is_none) {
             return no_shape_on_any_layer(
@@ -1013,7 +1008,7 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
         _ => Unit::Mm,
     };
 
-    let mut resolution = java_double_to_int(java_max(1.0, board_json.resolution));
+    let mut resolution = board_json.resolution.max(1.0).round() as i32;
     if board_json.resolution == 1.0 && user_unit == Unit::Mm {
         resolution = 10_000;
     }
@@ -1023,8 +1018,7 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
 
     if let Some(zones) = board_json.conductionAreas.as_ref() {
         for zone in zones {
-            let net_number =
-                java_nets_get(&board.rules.nets, zone.netName.as_deref(), 1).unwrap_or(0);
+            let net_number = nets_get(&board.rules.nets, zone.netName.as_deref(), 1).unwrap_or(0);
             let net_numbers = if net_number > 0 {
                 vec![net_number]
             } else {
@@ -1038,8 +1032,8 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
                 .iter()
                 .map(|corner| {
                     Point::Int(IntPoint::new(
-                        java_round_to_int(corner.x * scale_factor),
-                        java_round_to_int(-corner.y * scale_factor),
+                        (corner.x * scale_factor).round() as i32,
+                        (-corner.y * scale_factor).round() as i32,
                     ))
                 })
                 .collect();
@@ -1063,14 +1057,13 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
 
     if let Some(traces) = board_json.traces.as_ref() {
         for trace in traces {
-            let net_number =
-                java_nets_get(&board.rules.nets, trace.netName.as_deref(), 1).unwrap_or(0);
+            let net_number = nets_get(&board.rules.nets, trace.netName.as_deref(), 1).unwrap_or(0);
             let net_numbers = if net_number > 0 {
                 vec![net_number]
             } else {
                 Vec::new()
             };
-            let trace_half_width = java_round_to_int(trace.width * scale_factor / 2.0);
+            let trace_half_width = (trace.width * scale_factor / 2.0).round() as i32;
 
             let Some(points) = trace.points.as_ref() else {
                 return Err(session_npe("java.util.List.size()", "tr.points"));
@@ -1079,8 +1072,8 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
                 .iter()
                 .map(|point| {
                     Point::Int(IntPoint::new(
-                        java_round_to_int(point.x * scale_factor),
-                        java_round_to_int(-point.y * scale_factor),
+                        (point.x * scale_factor).round() as i32,
+                        (-point.y * scale_factor).round() as i32,
                     ))
                 })
                 .collect();
@@ -1097,8 +1090,7 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
 
     if let Some(vias) = board_json.vias.as_ref() {
         for via in vias {
-            let net_number =
-                java_nets_get(&board.rules.nets, via.netName.as_deref(), 1).unwrap_or(0);
+            let net_number = nets_get(&board.rules.nets, via.netName.as_deref(), 1).unwrap_or(0);
             let net_numbers = if net_number > 0 {
                 vec![net_number]
             } else {
@@ -1109,8 +1101,8 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
                 return Err(session_npe_field("x", "vj.position"));
             };
             let center = IntPoint::new(
-                java_round_to_int(position.x * scale_factor),
-                java_round_to_int(-position.y * scale_factor),
+                (position.x * scale_factor).round() as i32,
+                (-position.y * scale_factor).round() as i32,
             );
 
             let mut shapes: Vec<Option<Shape>> = vec![None; layer_count];
@@ -1126,8 +1118,8 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
                 "Via[{}-{}]_{}:{}_um",
                 via.startLayerIndex,
                 via.endLayerIndex,
-                java_format_fixed(via.diameter * 1000.0, 0),
-                java_format_fixed(via.drill * 1000.0, 0)
+                format_fixed(via.diameter * 1000.0, 0),
+                format_fixed(via.drill * 1000.0, 0)
             );
             if shapes.iter().all(Option::is_none) {
                 return Err(DsnError::KicadSession(format!(
@@ -1172,11 +1164,6 @@ fn session_npe_field(field: &str, receiver: &str) -> DsnError {
     ))
 }
 
-#[allow(clippy::cast_possible_truncation)]
-fn java_double_to_int(value: f64) -> i32 {
-    value as i32
-}
-
 fn find_kicad_default_net_class(net_classes: &[NetClassJson]) -> Option<&NetClassJson> {
     net_classes.iter().find(|net_class| {
         net_class
@@ -1207,7 +1194,7 @@ fn apply_kicad_net_class_parameters(
     clearance_class_index: usize,
 ) {
     if source.traceWidth > 0.0 {
-        let trace_half_width = java_round_to_int(source.traceWidth * scale_factor / 2.0);
+        let trace_half_width = (source.traceWidth * scale_factor / 2.0).round() as i32;
         for layer in 0..layer_count {
             rules
                 .net_classes
@@ -1262,16 +1249,16 @@ impl PointOutline {
         let mut max_x = -f64::MAX;
         let mut max_y = -f64::MAX;
         for point in &self.points {
-            min_x = java_min(min_x, point.x);
-            min_y = java_min(min_y, point.y);
-            max_x = java_max(max_x, point.x);
-            max_y = java_max(max_y, point.y);
+            min_x = (min_x).min(point.x);
+            min_y = (min_y).min(point.y);
+            max_x = (max_x).max(point.x);
+            max_y = (max_y).max(point.y);
         }
         IntBox::from_coords(
-            java_round_to_int(min_x),
-            java_round_to_int(min_y),
-            java_round_to_int(max_x),
-            java_round_to_int(max_y),
+            (min_x).round() as i32,
+            (min_y).round() as i32,
+            (max_x).round() as i32,
+            (max_y).round() as i32,
         )
     }
 }
@@ -1296,9 +1283,9 @@ fn get_descriptive_padstack_name(
                 return Err("Range [0, 1) out of bounds for length 0".to_string());
             };
             fall_through = String::new();
-            fall_through.push(java_to_upper(first));
+            fall_through.push(first.to_ascii_uppercase());
             for c in chars {
-                fall_through.push(java_to_lower(c));
+                fall_through.push(c.to_ascii_lowercase());
             }
             shape_str = &fall_through;
         }
@@ -1324,8 +1311,8 @@ fn get_descriptive_padstack_name(
         .expect("KiCadJsonReader.java:509 dereferenced pad.size before calling this");
     Ok(format!(
         "{shape_str}[{layer_type}]Pad_{}x{}_um",
-        java_format_fixed(size.x * 1000.0, 0),
-        java_format_fixed(size.y * 1000.0, 0)
+        format_fixed(size.x * 1000.0, 0),
+        format_fixed(size.y * 1000.0, 0)
     ))
 }
 
@@ -1357,7 +1344,7 @@ fn are_package_pins_identical(pkg1: &Package, p2: &[PackagePin]) -> bool {
 
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
-struct JavaNpe {
+struct NullPointerSite {
     invoked: &'static str,
     receiver: &'static str,
 }
@@ -1435,7 +1422,7 @@ fn outline_clearance_class(matrix: &ClearanceMatrix, clearance: f64, scale_facto
     if clearance <= 0.0 {
         return 1;
     }
-    let value = java_round_to_int(clearance * scale_factor);
+    let value = (clearance * scale_factor).round() as i32;
     (1..matrix.get_class_count())
         .find(|&class| matrix.get_value(class, class, 0, false) == value)
         .unwrap_or(1)
@@ -1451,7 +1438,7 @@ fn no_shape_on_any_layer(section: &str, object: &str, because: &str) -> BoardRea
     )
 }
 
-fn java_nets_get(nets: &Nets, name: Option<&str>, subnet_number: i32) -> Option<i32> {
+fn nets_get(nets: &Nets, name: Option<&str>, subnet_number: i32) -> Option<i32> {
     for current_net in nets.iter() {
         if name.is_some_and(|name| equals_ignore_case(&current_net.name, name))
             && current_net.subnet_number == subnet_number
@@ -1463,7 +1450,7 @@ fn java_nets_get(nets: &Nets, name: Option<&str>, subnet_number: i32) -> Option<
 }
 
 #[allow(dead_code)]
-fn java_drill_item_tile_shape_count(padstack: &Padstack) -> i32 {
+fn drill_layer_span(padstack: &Padstack) -> i32 {
     padstack.to_layer() - padstack.from_layer() + 1
 }
 
@@ -1495,7 +1482,7 @@ fn npe_field(field: &str, receiver: &str) -> BoardReadResult {
 }
 
 fn via_shape(radius: f64) -> Shape {
-    Shape::Circle(Circle::new(IntPoint::ZERO, java_round_to_int(radius)))
+    Shape::Circle(Circle::new(IntPoint::ZERO, (radius).round() as i32))
 }
 
 fn registered_via_info(rules: &BoardRules, name: &str) -> ViaInfo {
@@ -1506,204 +1493,10 @@ fn registered_via_info(rules: &BoardRules, name: &str) -> ViaInfo {
         .expect("ViaInfos::add was called with this name immediately above")
 }
 
-fn java_min(a: f64, b: f64) -> f64 {
-    if a.is_nan() {
-        return a;
-    }
-    if a == 0.0 && b == 0.0 && b.is_sign_negative() {
-        return b;
-    }
-    if a <= b { a } else { b }
-}
-
-fn java_max(a: f64, b: f64) -> f64 {
-    if a.is_nan() {
-        return a;
-    }
-    if a == 0.0 && b == 0.0 && a.is_sign_negative() {
-        return b;
-    }
-    if a >= b { a } else { b }
-}
-
-fn java_double_compare(a: f64, b: f64) -> Ordering {
-    if a < b {
-        Ordering::Less
-    } else if a > b {
-        Ordering::Greater
-    } else {
-        let bits = |x: f64| {
-            if x.is_nan() {
-                0x7ff8_0000_0000_0000_u64 as i64
-            } else {
-                x.to_bits() as i64
-            }
-        };
-        bits(a).cmp(&bits(b))
-    }
-}
-
-fn java_is_blank(text: &str) -> bool {
-    text.chars().all(java_is_whitespace)
-}
-
-fn java_is_whitespace(c: char) -> bool {
-    matches!(c, '\u{1c}'..='\u{1f}')
-        || (c.is_whitespace() && !matches!(c, '\u{a0}' | '\u{85}' | '\u{2007}' | '\u{202f}'))
-}
-
 #[allow(dead_code)]
-fn java_string_hash(text: &str) -> i32 {
-    let mut hash: i32 = 0;
-    for unit in text.encode_utf16() {
-        hash = hash.wrapping_mul(31).wrapping_add(i32::from(unit));
-    }
-    hash
-}
-
-#[allow(dead_code)]
-fn java_hash_iteration_order(keys: &[String]) -> Vec<usize> {
-    let mut capacity = 16_usize;
-    let mut threshold = 12_usize;
-    for size in 1..=keys.len() {
-        if size > threshold {
-            capacity *= 2;
-            threshold *= 2;
-        }
-    }
-    let mut buckets: Vec<Vec<usize>> = vec![Vec::new(); capacity];
-    for (index, key) in keys.iter().enumerate() {
-        let hash = java_string_hash(key) as u32;
-        let spread = hash ^ (hash >> 16);
-        buckets[(capacity - 1) & (spread as usize)].push(index);
-    }
-    buckets.into_iter().flatten().collect()
-}
-
-#[allow(dead_code)]
-struct JavaStringSet {
-    keys: Vec<String>,
-}
-
-#[allow(dead_code)]
-impl JavaStringSet {
-    fn new() -> JavaStringSet {
-        JavaStringSet { keys: Vec::new() }
-    }
-
-    fn add(&mut self, key: &str) {
-        if !self.keys.iter().any(|existing| existing == key) {
-            self.keys.push(key.to_string());
-        }
-    }
-
-    fn iteration_order(&self) -> Vec<&str> {
-        java_hash_iteration_order(&self.keys)
-            .into_iter()
-            .map(|index| self.keys[index].as_str())
-            .collect()
-    }
-}
-
-#[allow(dead_code)]
-struct JavaStringMap {
-    entries: Vec<(String, usize)>,
-}
-
-#[allow(dead_code)]
-impl JavaStringMap {
-    fn new() -> JavaStringMap {
-        JavaStringMap {
-            entries: Vec::new(),
-        }
-    }
-
-    fn put(&mut self, key: String, value: usize) {
-        if let Some(entry) = self.entries.iter_mut().find(|(name, _)| *name == key) {
-            entry.1 = value;
-        } else {
-            self.entries.push((key, value));
-        }
-    }
-
-    fn get(&self, key: &str) -> Option<usize> {
-        self.entries
-            .iter()
-            .find(|(name, _)| name == key)
-            .map(|(_, value)| *value)
-    }
-
-    fn entry_set(&self) -> Vec<(&str, usize)> {
-        let keys: Vec<String> = self.entries.iter().map(|(name, _)| name.clone()).collect();
-        java_hash_iteration_order(&keys)
-            .into_iter()
-            .map(|index| {
-                let (name, value) = &self.entries[index];
-                (name.as_str(), *value)
-            })
-            .collect()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn java_is_blank_matches_character_is_whitespace() {
-        assert!(java_is_blank(""));
-        assert!(java_is_blank("  \t\r\n\u{b}\u{c}"));
-        assert!(java_is_blank("\u{1c}\u{1d}\u{1e}\u{1f}"));
-        assert!(!java_is_blank("\u{a0}"));
-        assert!(!java_is_blank("\u{85}"));
-        assert!(!java_is_blank("\u{2007}"));
-        assert!(!java_is_blank("\u{202f}"));
-        assert!(!java_is_blank("KiCad"));
-    }
-
-    #[test]
-    fn java_string_hash_matches_the_jvm() {
-        assert_eq!(java_string_hash(""), 0);
-        assert_eq!(java_string_hash("GND"), 70717);
-        assert_eq!(java_string_hash("default"), 1_544_803_905);
-        assert_eq!(java_string_hash("kicad_default"), -800_824_662);
-        assert_eq!(java_string_hash("\u{1F600}"), 1_772_899);
-    }
-
-    #[test]
-    fn java_double_compare_is_a_total_order() {
-        assert_eq!(java_double_compare(1.0, 2.0), Ordering::Less);
-        assert_eq!(java_double_compare(2.0, 1.0), Ordering::Greater);
-        assert_eq!(java_double_compare(1.0, 1.0), Ordering::Equal);
-        assert_eq!(java_double_compare(-0.0, 0.0), Ordering::Less);
-        assert_eq!(
-            java_double_compare(f64::NAN, f64::INFINITY),
-            Ordering::Greater
-        );
-        assert_eq!(java_double_compare(f64::NAN, f64::NAN), Ordering::Equal);
-    }
-
-    #[test]
-    fn java_min_and_max_propagate_nan_where_rusts_do_not() {
-        assert!(java_min(f64::NAN, 1.0).is_nan());
-        assert!(java_max(f64::NAN, 1.0).is_nan());
-        assert!(java_min(1.0, f64::NAN).is_nan());
-        assert!(java_max(1.0, f64::NAN).is_nan());
-        assert_eq!(f64::min(f64::NAN, 1.0), 1.0);
-        assert_eq!(f64::max(1.0, f64::NAN), 1.0);
-    }
-
-    #[test]
-    fn java_min_and_max_order_signed_zero() {
-        assert!(java_min(-0.0, 0.0).is_sign_negative());
-        assert!(java_min(0.0, -0.0).is_sign_negative());
-        assert!(java_max(-0.0, 0.0).is_sign_positive());
-        assert!(java_max(0.0, -0.0).is_sign_positive());
-        assert_eq!(java_min(1.0, 2.0), 1.0);
-        assert_eq!(java_max(1.0, 2.0), 2.0);
-        assert_eq!(java_min(2.0, 1.0), 1.0);
-        assert_eq!(java_max(2.0, 1.0), 2.0);
-    }
 
     #[test]
     fn via_copper_is_a_centered_circle_with_a_rounded_radius() {

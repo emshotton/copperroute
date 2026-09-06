@@ -5,9 +5,7 @@ use fr_board::{Board, FixedState, Item, ItemId, Padstack};
 use fr_geometry::{Area, FloatPoint, Shape, ShapeOps};
 
 use crate::coordinate_transform::CoordinateTransform;
-use crate::format::{
-    IdentifierType, IndentFileWriter, SES_RESERVED, format_placement_rotation, java_round_to_int,
-};
+use crate::format::{IdentifierType, IndentFileWriter, SES_RESERVED, format_placement_rotation};
 use crate::parser::geometry::DsnLayer;
 use crate::parser::header::{write_parser_scope, write_resolution_scope};
 
@@ -119,8 +117,8 @@ fn write_component<W: Write>(
     identifier_type.write(&component.name, file);
     if let Some(location) = component.get_location() {
         let location = ct.board_to_dsn_point(&location.to_float());
-        let xcoordinate = java_round_to_int(location[0]);
-        let ycoordinate = java_round_to_int(location[1]);
+        let xcoordinate = (location[0]).round() as i32;
+        let ycoordinate = (location[1]).round() as i32;
         file.write(" ");
         file.write(&xcoordinate.to_string());
         file.write(" ");
@@ -371,7 +369,7 @@ fn write_wire<W: Write>(
     };
     let layer_index = wire.get_layer();
     let board_layer_name = board.layer_structure().layers[layer_index].name.clone();
-    let wire_width = java_round_to_int(ct.board_to_dsn(f64::from(2 * wire.get_half_width())));
+    let wire_width = (ct.board_to_dsn(f64::from(2 * wire.get_half_width()))).round() as i32;
 
     let corners = wire.polyline().corners();
     let mut coors: Vec<i32> = Vec::with_capacity(2 * corners.len());
@@ -385,8 +383,8 @@ fn write_wire<W: Write>(
         }
         let current_float_coors = ct.board_to_dsn_point(&corner_point);
         let current_coors = [
-            java_round_to_int(current_float_coors[0]),
-            java_round_to_int(current_float_coors[1]),
+            (current_float_coors[0]).round() as i32,
+            (current_float_coors[1]).round() as i32,
         ];
         if prev_coors != Some(current_coors) {
             coors.push(current_coors[0]);
@@ -480,9 +478,9 @@ fn write_via<W: Write>(
     identifier_type.write(&via_padstack_name, file);
     file.write(" ");
     let location = ct.board_to_dsn_point(&via_location);
-    file.write(&java_round_to_int(location[0]).to_string());
+    file.write(&((location[0]).round() as i32).to_string());
     file.write(" ");
-    file.write(&java_round_to_int(location[1]).to_string());
+    file.write(&((location[1]).round() as i32).to_string());
     write_fixed_state(file, item.get_fixed_state());
     file.end_scope();
 }

@@ -5,7 +5,6 @@ use crate::int_box::IntBox;
 use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
 use crate::int_vector::IntVector;
-use crate::limits::{java_max, java_min, java_round};
 use crate::line::Line;
 use crate::point::Point;
 use crate::polyline::{Polyline, PolylineError};
@@ -147,10 +146,10 @@ impl LineSegment {
     pub fn bounding_box(&self) -> IntBox {
         let start_corner = self.middle.intersection_approx(&self.start);
         let end_corner = self.middle.intersection_approx(&self.end);
-        let llx = java_min(start_corner.x, end_corner.x);
-        let lly = java_min(start_corner.y, end_corner.y);
-        let urx = java_max(start_corner.x, end_corner.x);
-        let ury = java_max(start_corner.y, end_corner.y);
+        let llx = (start_corner.x).min(end_corner.x);
+        let lly = (start_corner.y).min(end_corner.y);
+        let urx = (start_corner.x).max(end_corner.x);
+        let ury = (start_corner.y).max(end_corner.y);
         let lower_left = IntPoint::new(llx.floor() as i32, lly.floor() as i32);
         let upper_right = IntPoint::new(urx.ceil() as i32, ury.ceil() as i32);
         IntBox::new(lower_left, upper_right)
@@ -159,18 +158,18 @@ impl LineSegment {
     pub fn bounding_octagon(&self) -> IntOctagon {
         let start_corner = self.middle.intersection_approx(&self.start);
         let end_corner = self.middle.intersection_approx(&self.end);
-        let lx = java_min(start_corner.x, end_corner.x).floor();
-        let ly = java_min(start_corner.y, end_corner.y).floor();
-        let rx = java_max(start_corner.x, end_corner.x).ceil();
-        let uy = java_max(start_corner.y, end_corner.y).ceil();
+        let lx = (start_corner.x).min(end_corner.x).floor();
+        let ly = (start_corner.y).min(end_corner.y).floor();
+        let rx = (start_corner.x).max(end_corner.x).ceil();
+        let uy = (start_corner.y).max(end_corner.y).ceil();
         let start_x_minus_y = start_corner.x - start_corner.y;
         let end_x_minus_y = end_corner.x - end_corner.y;
-        let ulx = java_min(start_x_minus_y, end_x_minus_y).floor();
-        let lrx = java_max(start_x_minus_y, end_x_minus_y).ceil();
+        let ulx = (start_x_minus_y).min(end_x_minus_y).floor();
+        let lrx = (start_x_minus_y).max(end_x_minus_y).ceil();
         let start_x_plus_y = start_corner.x + start_corner.y;
         let end_x_plus_y = end_corner.x + end_corner.y;
-        let llx = java_min(start_x_plus_y, end_x_plus_y).floor();
-        let urx = java_max(start_x_plus_y, end_x_plus_y).ceil();
+        let llx = (start_x_plus_y).min(end_x_plus_y).floor();
+        let urx = (start_x_plus_y).max(end_x_plus_y).ceil();
         let result = IntOctagon::new(
             lx as i32, ly as i32, rx as i32, uy as i32, ulx as i32, lrx as i32, llx as i32,
             urx as i32,
@@ -265,13 +264,13 @@ impl LineSegment {
         let stair_count: i32;
 
         if function_of_x {
-            stair_width = java_round((width * abs_dx as f64) / abs_dy as f64) as i32;
+            stair_width = ((width * abs_dx as f64) / abs_dy as f64).round() as i64 as i32;
             stair_count = (abs_dx - 1) / stair_width + 1;
             if end_point.x < start_point.x {
                 stair_width = -stair_width;
             }
         } else {
-            stair_width = java_round((width * abs_dy as f64) / abs_dx as f64) as i32;
+            stair_width = ((width * abs_dy as f64) / abs_dx as f64).round() as i64 as i32;
             stair_count = (abs_dy - 1) / stair_width + 1;
             if end_point.y < start_point.y {
                 stair_width = -stair_width;
@@ -290,16 +289,16 @@ impl LineSegment {
             let current_line_point_y;
             if function_of_x {
                 current_line_point_x = start_point.x + i * stair_width;
-                current_line_point_y = java_round(
-                    self.get_line()
-                        .function_value_approx(current_line_point_x as f64),
-                ) as i32;
+                current_line_point_y = (self
+                    .get_line()
+                    .function_value_approx(current_line_point_x as f64))
+                .round() as i64 as i32;
             } else {
                 current_line_point_y = start_point.y + i * stair_width;
-                current_line_point_x = java_round(
-                    self.get_line()
-                        .function_in_y_value_approx(current_line_point_y as f64),
-                ) as i32;
+                current_line_point_x = (self
+                    .get_line()
+                    .function_in_y_value_approx(current_line_point_y as f64))
+                .round() as i64 as i32;
             }
             if change_x_first {
                 result.push(IntPoint::new(current_line_point_x, prev_line_point_y));
@@ -336,13 +335,13 @@ impl LineSegment {
         let mut stair_width: i32;
         let stair_count: i32;
         if function_of_x {
-            stair_width = java_round((width * abs_delta.x as f64) / abs_delta.y as f64) as i32;
+            stair_width = ((width * abs_delta.x as f64) / abs_delta.y as f64).round() as i64 as i32;
             stair_count = (abs_delta.x - 1) / stair_width + 1;
             if end_point.x < start_point.x {
                 stair_width = -stair_width;
             }
         } else {
-            stair_width = java_round((width * abs_delta.y as f64) / abs_delta.x as f64) as i32;
+            stair_width = ((width * abs_delta.y as f64) / abs_delta.x as f64).round() as i64 as i32;
             stair_count = (abs_delta.y - 1) / stair_width + 1;
             if end_point.y < start_point.y {
                 stair_width = -stair_width;
@@ -360,13 +359,12 @@ impl LineSegment {
             } else {
                 if function_of_x {
                     current_x = start_point.x + i * stair_width;
-                    current_y =
-                        java_round(self.get_line().function_value_approx(current_x as f64)) as i32;
+                    current_y = (self.get_line().function_value_approx(current_x as f64)).round()
+                        as i64 as i32;
                 } else {
                     current_y = start_point.y + i * stair_width;
-                    current_x =
-                        java_round(self.get_line().function_in_y_value_approx(current_y as f64))
-                            as i32;
+                    current_x = (self.get_line().function_in_y_value_approx(current_y as f64))
+                        .round() as i64 as i32;
                 }
                 current_line_point = IntPoint::new(current_x, current_y);
             }

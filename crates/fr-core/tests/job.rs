@@ -252,7 +252,7 @@ fn six_leading_crlf_bytes_hang_java_and_the_port_bounds_the_loop() {
         b"\r\r\r\r\r\rX".to_vec(),
     ] {
         assert!(
-            FileFormat::java_shift_loop_hangs(&content),
+            FileFormat::shift_loop_would_hang(&content),
             "java should hang on {content:?}"
         );
         assert_eq!(FileFormat::sniff_bytes(&content), FileFormat::Unknown);
@@ -272,7 +272,7 @@ fn a_null_content_is_unknown_before_anything_else_runs() {
 #[test]
 fn the_json_precheck_saves_six_newlines_followed_by_a_brace() {
     let content = b"\n\n\n\n\n\n   {";
-    assert!(!FileFormat::java_shift_loop_hangs(content));
+    assert!(!FileFormat::shift_loop_would_hang(content));
     assert_eq!(
         FileFormat::sniff_bytes(content),
         FileFormat::KicadDesignJson
@@ -595,7 +595,7 @@ fn is_cli_terminal_totalises_javas_invalid_omission() {
         assert!(!state.is_cli_terminal(), "{state:?}");
     }
     assert_eq!(RoutingJobState::default(), RoutingJobState::Invalid);
-    assert_eq!(RoutingJobState::TimedOut.java_name(), "TIMED_OUT");
+    assert_eq!(RoutingJobState::TimedOut.name(), "TIMED_OUT");
 }
 
 #[test]
@@ -864,8 +864,8 @@ impl Ctx {
                 };
                 let hangs = content
                     .as_deref()
-                    .is_some_and(FileFormat::java_shift_loop_hangs);
-                let format = FileFormat::sniff_bytes_opt(content.as_deref()).java_name();
+                    .is_some_and(FileFormat::shift_loop_would_hang);
+                let format = FileFormat::sniff_bytes_opt(content.as_deref()).name();
                 let answer = if hangs {
                     format!("XDIFF\tjava=HANG(>5000ms)\trust={format}")
                 } else {
@@ -879,14 +879,14 @@ impl Ctx {
                     "EXT\t{}\t{}\t{}",
                     f[1],
                     f[2],
-                    FileFormat::from_path(Path::new(&raw)).java_name()
+                    FileFormat::from_path(Path::new(&raw)).name()
                 ))
             }
             "CFE" => {
                 let path = unquote(f[2]);
                 let ext = unquote(f[3]);
                 let value = RoutingJob::change_file_extension(&path, &ext);
-                let answer = if java_parent_is_null(&path) {
+                let answer = if parent_is_null(&path) {
                     format!(
                         "XDIFF\tjava=NullPointerException\trust={}",
                         self.norm(&value)
@@ -906,19 +906,19 @@ impl Ctx {
                 };
                 let mut d = BoardFileDetails::default();
                 if preset != "-" {
-                    d.format = FileFormat::from_java_name(preset).unwrap();
+                    d.format = FileFormat::from_name(preset).unwrap();
                 }
-                let java_npes = arg == Some("/");
+                let expect_npe = arg == Some("/");
                 d.set_filename(arg);
                 let body = format!(
                     "dir={}\tname={}\tformat={}\tabs={}\tstem={}",
                     quote(&self.norm(d.get_directory_path())),
                     quote(&self.norm(d.get_filename())),
-                    d.format.java_name(),
+                    d.format.name(),
                     quote(&self.norm(&d.get_absolute_path())),
                     quote(&self.norm(&d.get_filename_without_extension())),
                 );
-                let answer = if java_npes {
+                let answer = if expect_npe {
                     format!("XDIFF\tjava=NullPointerException\trust={body}")
                 } else {
                     body
@@ -954,7 +954,7 @@ impl Ctx {
                     "TSI\t{}\t{}\tok={ok}\tformat={}\tsize={}\tcrc32={}",
                     f[1],
                     f[2],
-                    input.format.java_name(),
+                    input.format.name(),
                     input.size,
                     input.crc32
                 ))
@@ -974,7 +974,7 @@ impl Ctx {
                     None => "output=<null>".to_string(),
                     Some(o) => format!(
                         "format={}\tdir={}\tname={}\tsize={}\tcrc32={}",
-                        o.format.java_name(),
+                        o.format.name(),
                         quote(&self.norm(o.get_directory_path())),
                         quote(&self.norm(o.get_filename())),
                         o.size,
@@ -1003,14 +1003,14 @@ impl Ctx {
                             None => "out=<null>".to_string(),
                             Some(o) => format!(
                                 "out.format={}\tout.dir={}\tout.name={}",
-                                o.format.java_name(),
+                                o.format.name(),
                                 quote(&self.norm(o.get_directory_path())),
                                 quote(&self.norm(o.get_filename()))
                             ),
                         };
                         format!(
                             "in.format={}\tin.dir={}\tin.name={}\tin.size={}\tin.crc32={}\t{out}\tjob.name={}",
-                            input.format.java_name(),
+                            input.format.name(),
                             quote(&self.norm(input.get_directory_path())),
                             quote(&self.norm(input.get_filename())),
                             input.size,
@@ -1030,7 +1030,7 @@ impl Ctx {
     }
 }
 
-fn java_parent_is_null(filename: &str) -> bool {
+fn parent_is_null(filename: &str) -> bool {
     let absolute = filename.starts_with('/');
     let segments: Vec<&str> = filename.split('/').filter(|x| !x.is_empty()).collect();
     let normalized = if segments.is_empty() {

@@ -124,7 +124,7 @@ fn rectangle_write_scope_matches_the_reference_fixture_line() {
     let out = render(|f| rect.write_scope(f, &identifier()));
     assert_eq!(
         out,
-        "\n(rect pcb -0.3937007874015748 -0.3937007874015748 837.4015748031496 1650.0)"
+        "\n(rect pcb -0.3937007874015748 -0.3937007874015748 837.4015748031496 1650)"
     );
 }
 
@@ -182,7 +182,7 @@ fn polygon_write_scope_indents_one_corner_pair_per_line() {
     let polygon = DsnPolygon::new(DsnLayer::signal(), vec![0.0, 0.0, 837.0, 0.0]);
     assert_eq!(
         render(|f| polygon.write_scope(f, &identifier())),
-        "\n(polygon signal 0\n  0.0 0.0\n  837.0 0.0\n)"
+        "\n(polygon signal 0\n  0 0\n  837 0\n)"
     );
     assert_eq!(
         render(|f| polygon.write_scope_int(f, &identifier())),
@@ -195,11 +195,11 @@ fn polygon_path_write_scope_writes_the_width_then_the_corners() {
     let path = DsnPolygonPath::new(DsnLayer::signal(), 10.0, vec![0.0, 0.0, 5.0, 6.0]);
     assert_eq!(
         render(|f| path.write_scope(f, &identifier())),
-        "\n(path signal 10.0\n  0.0 0.0\n  5.0 6.0\n)"
+        "\n(path signal 10\n  0 0\n  5 6\n)"
     );
     assert_eq!(
         render(|f| path.write_scope_int(f, &identifier())),
-        "\n(path signal 10.0\n  0 0\n  5 6\n)"
+        "\n(path signal 10\n  0 0\n  5 6\n)"
     );
 }
 
@@ -208,11 +208,11 @@ fn polyline_path_write_scope_writes_four_numbers_per_line_each_followed_by_a_spa
     let path = DsnPolylinePath::new(DsnLayer::signal(), 10.0, vec![0.0, 1.0, 2.0, 3.0]);
     assert_eq!(
         render(|f| path.write_scope(f, &identifier())),
-        "\n(polyline_path signal 10.0\n  0.0 1.0 2.0 3.0 \n)"
+        "\n(polyline_path signal 10\n  0 1 2 3 \n)"
     );
     assert_eq!(
         render(|f| path.write_scope_int(f, &identifier())),
-        "\n(polyline_path signal 10.0\n  0 1 2 3 \n)"
+        "\n(polyline_path signal 10\n  0 1 2 3 \n)"
     );
 }
 
@@ -222,7 +222,7 @@ fn write_hole_scope_wraps_the_shape_in_a_window_scope() {
     let shape = DsnShape::Rect(rect);
     assert_eq!(
         render(|f| shape.write_hole_scope(f, &identifier())),
-        "\n(window\n  (rect signal 0.0 0.0 1.0 1.0)\n)"
+        "\n(window\n  (rect signal 0 0 1 1)\n)"
     );
 }
 

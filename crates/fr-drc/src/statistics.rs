@@ -24,28 +24,13 @@ impl BoardStatisticsClearanceViolations {
         let (min_violation, max_violation, avg_violation) = if violations.is_empty() {
             (0.0, 0.0, 0.0)
         } else {
-            let java_min = |a: f64, b: f64| {
-                if a.is_nan() || b.is_nan() {
-                    f64::NAN
-                } else {
-                    a.min(b)
-                }
-            };
-            let java_max = |a: f64, b: f64| {
-                if a.is_nan() || b.is_nan() {
-                    f64::NAN
-                } else {
-                    a.max(b)
-                }
-            };
-
             let mut minimum = f64::MAX;
             let mut maximum = 0.0_f64;
             let mut sum = 0.0;
             for violation in violations {
                 let shortfall_um = violation.shortfall() * board_unit_to_um_factor;
-                minimum = java_min(minimum, shortfall_um);
-                maximum = java_max(maximum, shortfall_um);
+                minimum = (minimum).min(shortfall_um);
+                maximum = (maximum).max(shortfall_um);
                 sum += shortfall_um;
             }
             (minimum, maximum, sum / violations.len() as f64)

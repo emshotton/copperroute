@@ -194,12 +194,12 @@ fn max_items_stops_all_and_max_passes_stops_the_router_only() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn max_items_optimises_like_max_passes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
 
     fn route(max_items: Option<i32>, max_passes: i32) -> (StopRequestState, TaskState, u64) {
-        let path = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+        let path = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
         let file = std::fs::File::open(&path)
             .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
         let mut board = match fr_dsn::read_board(
@@ -253,7 +253,7 @@ fn max_items_optimises_like_max_passes() {
     assert_ne!(by_passes_state, TaskState::Idle);
 
     let unoptimised = {
-        let path = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+        let path = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
         let file = std::fs::File::open(&path).expect("cannot open the fixture");
         let mut board = match fr_dsn::read_board(
             file,
@@ -324,7 +324,7 @@ fn a_stop_without_a_deadline_never_times_out() {
 
 #[test]
 fn an_unexpired_deadline_is_invisible() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let without = route_mini_pass(&RouterStop::new(), &mut NoopProgressSink);
@@ -353,7 +353,7 @@ impl ProgressSink for RecordingSink {
 
 #[test]
 fn a_recording_sink_changes_no_board_byte() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let quiet = route_mini_pass(&RouterStop::new(), &mut NoopProgressSink);
@@ -555,7 +555,7 @@ fn router_counters_field_list_matches_java() {
 
 #[test]
 fn the_java_literal_budget_carries_javas_four_literals() {
-    let budget = RouterBudget::java_literals();
+    let budget = RouterBudget::from_fixed_budget();
 
     let reflected: Vec<i32> = section("constants")
         .iter()
@@ -603,7 +603,7 @@ fn the_java_literal_budget_carries_javas_four_literals() {
 #[test]
 fn a_zero_opt_changed_area_budget_is_javas_no_limit() {
     assert!(
-        RouterBudget::java_literals()
+        RouterBudget::from_fixed_budget()
             .opt_changed_area_limit()
             .is_some(),
         "TraceTightener.java:73 — `if (timeLimit > 0) this.timeLimit = new TimeLimit(timeLimit)`"
@@ -623,7 +623,7 @@ fn a_zero_opt_changed_area_budget_is_javas_no_limit() {
 
 #[test]
 fn the_ports_default_budget_departs_from_java_in_exactly_one_field() {
-    let java = RouterBudget::java_literals();
+    let java = RouterBudget::from_fixed_budget();
     let port = RouterBudget::default();
 
     assert_eq!(java.opt_changed_area_ms, 1000, "the jar's inlined constant");
@@ -802,7 +802,7 @@ struct MiniPass {
 }
 
 fn route_mini_pass(stop: &RouterStop, progress: &mut dyn ProgressSink) -> MiniPass {
-    let path = parity::java_dir().join("fixtures/Issue508-DAC2020_bm01.dsn");
+    let path = parity::reference_dir().join("fixtures/Issue508-DAC2020_bm01.dsn");
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let mut board = match fr_dsn::read_board(

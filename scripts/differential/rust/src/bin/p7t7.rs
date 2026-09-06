@@ -30,9 +30,9 @@ use std::time::UNIX_EPOCH;
 use fr_board::prelude::*;
 use fr_board::structure::Unit;
 use fr_dsn::parser::scope_parameter::DsnReadOptions;
-use fr_dsn::{java_double_to_string, java_float_to_string, BoardReadResult};
+use fr_dsn::{format_double, format_float, BoardReadResult};
 use fr_router::route_connection;
-use fr_router::score::{java_double_stream_sum, BoardStatistics};
+use fr_router::score::BoardStatistics;
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, ScoringSettings, SettingsSource};
 
@@ -607,7 +607,7 @@ fn emit_kahan<W: Write>(out: &mut W) {
             out,
             &format!("K{k}"),
             "sum",
-            &java_double_to_string(java_double_stream_sum(values.iter().copied())),
+            &format_double(values.iter().copied().sum::<f64>()),
         );
     }
 }
@@ -638,10 +638,10 @@ fn i(value: Option<i32>) -> String {
 
 /// `Float.toString`.
 fn f(value: Option<f32>) -> String {
-    value.map_or_else(|| "null".to_string(), java_float_to_string)
+    value.map_or_else(|| "null".to_string(), format_float)
 }
 
 /// `Double.toString`.
 fn d(value: Option<f64>) -> String {
-    value.map_or_else(|| "null".to_string(), java_double_to_string)
+    value.map_or_else(|| "null".to_string(), format_double)
 }

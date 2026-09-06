@@ -120,7 +120,7 @@ fn default_settings() -> RouterSettings {
 }
 
 fn read_dsn_bytes(dsn_rel: &str) -> (Vec<u8>, String) {
-    let path = parity::java_dir().join(dsn_rel);
+    let path = parity::reference_dir().join(dsn_rel);
     let bytes =
         std::fs::read(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
     let design_name = path

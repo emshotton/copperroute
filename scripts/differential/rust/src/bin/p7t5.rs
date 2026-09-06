@@ -23,7 +23,7 @@ use std::io::{BufWriter, Write};
 
 use fr_board::items::Item;
 use fr_board::prelude::*;
-use fr_dsn::java_double_to_string;
+use fr_dsn::format_double;
 use fr_router::board_ext::RoutingBoardExt;
 use fr_router::pipeline::{
     fanout_pin_can_use_vias, fanout_ripup_costs, BatchFanout, EscapeStatistics, FanoutLoopState,
@@ -153,12 +153,12 @@ fn dump_order<W: Write>(out: &mut W, board: &Board, settings: &RouterSettings, o
             p7t_common::quote(&component.component_name),
             component.smd_pin_count,
             component.smd_pins.len(),
-            java_double_to_string(component.gravity_center_of_smd_pins.x),
-            java_double_to_string(component.gravity_center_of_smd_pins.y),
+            format_double(component.gravity_center_of_smd_pins.x),
+            format_double(component.gravity_center_of_smd_pins.y),
         )
         .expect("write");
         for (pin_index, pin) in component.smd_pins.iter().enumerate() {
-            let name = match board.get_item(pin.pin) {
+            let name = match board.get_item(pin.inner.pin) {
                 Some(Item::Pin(p)) => p.name(&ctx).map(str::to_owned),
                 _ => None,
             };
@@ -166,13 +166,16 @@ fn dump_order<W: Write>(out: &mut W, board: &Board, settings: &RouterSettings, o
                 out,
                 "  PIN {pin_index} id={} pinIndex={} name={} distToCentre={} \
                  distToClosestOnNet={} surroundingsDensity={}",
-                pin.pin.0,
-                pin.pin_index,
+                pin.inner.pin.0,
+                pin.inner.pin_index,
                 name.as_deref()
                     .map_or("null".to_string(), p7t_common::quote),
-                java_double_to_string(pin.distance_to_component_center),
-                java_double_to_string(pin.distance_to_closest_on_net),
-                pin.surroundings_density,
+                format_double(pin.inner.distance_to_component_center),
+                // `None` is the port's model of Java's `Double.MAX_VALUE` sentinel (quirk #219,
+                // `FanoutPin::distance_to_closest_on_net`'s doc) — `unwrap_or(f64::MAX)` is not a
+                // fallback, it is that sentinel.
+                format_double(pin.inner.distance_to_closest_on_net.unwrap_or(f64::MAX)),
+                pin.inner.surroundings_density,
             )
             .expect("write");
         }
@@ -200,7 +203,7 @@ fn dump_fanout_run<W: Write>(
             .map(|component| {
                 (
                     component.component_name.clone(),
-                    component.smd_pins.iter().map(|pin| pin.pin).collect(),
+                    component.smd_pins.iter().map(|pin| pin.inner.pin).collect(),
                 )
             })
             .collect()
@@ -356,7 +359,7 @@ fn escape_line(board: &mut Board) -> String {
         "totalSmdPins={} escapedCount={} escapedPercentage={} pinsToEscape={}",
         escape.total_smd_pins,
         escape.escaped_count,
-        java_double_to_string(escape.escaped_percentage),
+        format_double(escape.escaped_percentage),
         stats.fanout.pins_to_escape,
     )
 }
@@ -461,7 +464,7 @@ fn transcribe_pass<W: Write>(
         .map(|component| {
             (
                 component.component_name.clone(),
-                component.smd_pins.iter().map(|pin| pin.pin).collect(),
+                component.smd_pins.iter().map(|pin| pin.inner.pin).collect(),
             )
         })
         .collect();
@@ -644,6 +647,12 @@ fn dump_board_run<W: Write>(
     let max_items = settings.fanout.as_ref().and_then(|f| f.max_items);
     let mut completed_passes = 0_i32;
     let mut loop_state = FanoutLoopState::new(board.structural_hash());
+    // `FanoutLoopState::board_state` and its `identical_passes` stagnation counter were retired
+    // from the crate (59bbdd9 #222, then 1929fc8 folded stagnation into an immediate
+    // `UnchangedHash` stop); the packed value and the counter live only here now, kept verbatim
+    // so this transcript still lines up with `P7T5.java`'s `:133-147`, which still computes both.
+    let mut previous_board_state = i64::MIN;
+    let mut identical_passes = 0_i32;
     let mut stop_reason = "MAXPASSES".to_string();
     // `:110-157`.
     for i in 0..max_passes {
@@ -664,7 +673,7 @@ fn dump_board_run<W: Write>(
             .expect("fanout_pass answers Ok on every path");
         completed_passes += 1;
         let via_count = board.get_vias().len();
-        let board_state = FanoutLoopState::board_state(routed_count, via_count);
+        let board_state = (i64::from(routed_count) << 32) ^ i64::from(via_count as i32);
         let timed_out = instance.is_timed_out;
         writeln!(
             out,
@@ -677,20 +686,21 @@ fn dump_board_run<W: Write>(
         .expect("write");
         // `:125-156`, through the port's own decision block, so the driver checks the shipped
         // code rather than a second copy of it.
-        let identical_before = loop_state.identical_passes;
+        if routed_count != 0 {
+            if board_state == previous_board_state {
+                identical_passes += 1;
+                writeln!(out, "STAGNATION pass={i} identicalPasses={identical_passes}")
+                    .expect("write");
+            } else {
+                identical_passes = 0;
+                previous_board_state = board_state;
+            }
+        }
         let mut hash_taken = false;
-        let decision = loop_state.after_pass(routed_count, via_count, timed_out, || {
+        let decision = loop_state.after_pass(routed_count, timed_out, || {
             hash_taken = true;
             board.structural_hash()
         });
-        if routed_count != 0 && loop_state.identical_passes > identical_before {
-            writeln!(
-                out,
-                "STAGNATION pass={i} identicalPasses={}",
-                loop_state.identical_passes
-            )
-            .expect("write");
-        }
         if hash_taken {
             writeln!(
                 out,
@@ -702,7 +712,6 @@ fn dump_board_run<W: Write>(
         if let Some(reason) = decision {
             stop_reason = match reason {
                 FanoutStop::NothingRouted => "NOTHING-ROUTED",
-                FanoutStop::Stagnated => "STAGNATED",
                 FanoutStop::TimedOut => "TIMED-OUT",
                 FanoutStop::UnchangedHash => "UNCHANGED-HASH",
             }
@@ -744,7 +753,7 @@ fn dump_board_run<W: Write>(
         summary.is_timed_out,
         escape.total_smd_pins,
         escape.escaped_count,
-        java_double_to_string(escape.escaped_percentage),
+        format_double(escape.escaped_percentage),
         p7t_common::board_shape(&mut real_board),
     )
     .expect("write");

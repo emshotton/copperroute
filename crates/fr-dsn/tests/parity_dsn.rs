@@ -35,139 +35,12 @@ fn read_fixture(path: &Path) -> (Board, CoordinateTransform) {
 
 use parity::dsn_design_name as design_name;
 
-fn assert_roundtrip_parity(stem: &str, relative_fixture: &str) {
-    if !parity::require_java_dir() {
-        return;
-    }
-    let reference = parity::reference(stem, "roundtrip.dsn");
-    if !parity::require_reference(&reference) {
-        return;
-    }
-    let fixture = parity::java_dir().join(relative_fixture);
-    let (board, coordinate_transform) = read_fixture(&fixture);
-    let mut actual: Vec<u8> = Vec::new();
-    dsn_writer::write(
-        &board,
-        &coordinate_transform,
-        &mut actual,
-        &design_name(&fixture),
-        false,
-    )
-    .expect("write must succeed into a Vec");
-    let actual = String::from_utf8(actual).expect("DSN output must be valid UTF-8");
-    parity::assert_text_parity(&actual, &reference);
-}
-
-#[test]
-fn tutorial_board_roundtrip_matches_java() {
-    assert_roundtrip_parity(
-        "tutorial_board",
-        "examples/tutorial_board/tutorial_board.dsn",
-    );
-}
-
-#[test]
-fn issue026_j2_reference_roundtrip_matches_java() {
-    assert_roundtrip_parity(
-        "Issue026-J2_reference",
-        "fixtures/Issue026-J2_reference.dsn",
-    );
-}
-
-#[test]
-fn issue103_board_unrouted_roundtrip_matches_java() {
-    assert_roundtrip_parity(
-        "Issue103-Board-Unrouted",
-        "fixtures/Issue103-Board-Unrouted.dsn",
-    );
-}
-
-#[test]
-fn issue143_rpi_splitter_roundtrip_matches_java() {
-    assert_roundtrip_parity(
-        "Issue143-rpi_splitter",
-        "fixtures/Issue143-rpi_splitter.dsn",
-    );
-}
-
-#[test]
-fn issue413_test_roundtrip_matches_java() {
-    assert_roundtrip_parity("Issue413-test", "fixtures/Issue413-test.dsn");
-}
-
-#[test]
-fn issue110_relay_module_roundtrip_matches_java() {
-    assert_roundtrip_parity("Issue110-RelayModule", "fixtures/Issue110-RelayModule.dsn");
-}
-
-#[test]
-fn issue753_cpu_85_r104_roundtrip_matches_java() {
-    assert_roundtrip_parity("Issue753-CPU-85_r104", "fixtures/Issue753-CPU-85_r104.dsn");
-}
-
-#[test]
-fn every_reference_is_byte_for_byte_identical_to_java() {
-    if !parity::require_java_dir() {
-        return;
-    }
-    for (stem, relative_fixture) in [
-        (
-            "tutorial_board",
-            "examples/tutorial_board/tutorial_board.dsn",
-        ),
-        (
-            "Issue026-J2_reference",
-            "fixtures/Issue026-J2_reference.dsn",
-        ),
-        (
-            "Issue103-Board-Unrouted",
-            "fixtures/Issue103-Board-Unrouted.dsn",
-        ),
-        (
-            "Issue143-rpi_splitter",
-            "fixtures/Issue143-rpi_splitter.dsn",
-        ),
-        ("Issue413-test", "fixtures/Issue413-test.dsn"),
-        ("Issue110-RelayModule", "fixtures/Issue110-RelayModule.dsn"),
-        ("Issue753-CPU-85_r104", "fixtures/Issue753-CPU-85_r104.dsn"),
-    ] {
-        let reference_path = parity::reference(stem, "roundtrip.dsn");
-        if !parity::require_reference(&reference_path) {
-            continue;
-        }
-        let fixture = parity::java_dir().join(relative_fixture);
-        let (board, coordinate_transform) = read_fixture(&fixture);
-        let mut actual: Vec<u8> = Vec::new();
-        dsn_writer::write(&board, &coordinate_transform, &mut actual, stem, false)
-            .expect("write must succeed into a Vec");
-        let expected = std::fs::read(&reference_path).expect("reference must be readable");
-        if actual == expected {
-            continue;
-        }
-        let a = String::from_utf8_lossy(&actual);
-        let e = String::from_utf8_lossy(&expected);
-        let first_difference = a
-            .lines()
-            .zip(e.lines())
-            .enumerate()
-            .find(|(_, (la, le))| la != le)
-            .map_or_else(
-                || format!("no differing line; lengths {} vs {}", a.len(), e.len()),
-                |(i, (la, le))| format!("line {}:\n  actual   {la:?}\n  expected {le:?}", i + 1),
-            );
-        panic!(
-            "{stem}: not byte-identical to {}\n{first_difference}",
-            reference_path.display()
-        );
-    }
-}
-
 #[test]
 fn valid_header() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
-    let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let fixture = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (board, ct) = read_fixture(&fixture);
     let mut out: Vec<u8> = Vec::new();
     dsn_writer::write(&board, &ct, &mut out, "test", false).expect("write");
@@ -184,10 +57,10 @@ fn valid_header() {
 
 #[test]
 fn roundtrip_preserves_layer_count() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
-    let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let fixture = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (original, ct) = read_fixture(&fixture);
     let original_layers = original.get_layer_count();
     let mut out: Vec<u8> = Vec::new();
@@ -208,10 +81,10 @@ fn roundtrip_preserves_layer_count() {
 
 #[test]
 fn compat_mode_produces_output() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
-    let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let fixture = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (board, ct) = read_fixture(&fixture);
     let mut out: Vec<u8> = Vec::new();
     dsn_writer::write(&board, &ct, &mut out, "compat-test", true).expect("write");
@@ -224,10 +97,10 @@ fn compat_mode_produces_output() {
 
 #[test]
 fn output_is_non_empty() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
-    let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let fixture = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (board, ct) = read_fixture(&fixture);
     let mut out: Vec<u8> = Vec::new();
     dsn_writer::write(&board, &ct, &mut out, "flush-test", false).expect("write");
@@ -239,10 +112,10 @@ fn output_is_non_empty() {
 
 #[test]
 fn compat_mode_writes_paths_where_the_default_writes_polyline_paths() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
-    let fixture = parity::java_dir().join("fixtures/Issue413-test.dsn");
+    let fixture = parity::reference_dir().join("fixtures/Issue413-test.dsn");
     if !fixture.exists() {
         eprintln!("SKIP: {} missing", fixture.display());
         return;

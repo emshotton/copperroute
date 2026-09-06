@@ -1,5 +1,5 @@
 === boards ===
-  B0 hash=H0 score=0.0 items=33 maxId=33
+  B0 hash=H0 score=0 items=33 maxId=33
   B1 hash=H1 score=199.99464 items=38 maxId=51
   B3 hash=H2 score=199.99211 items=40 maxId=85
   B4 hash=H3 score=359.9864 items=45 maxId=100
@@ -21,34 +21,34 @@ call=5 restoreBestBoard ret=null
   restored=null
 call=6 add(B0) ret=-
   size=1
-  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=0 hash=H0 score=0 restoreCount=0
 call=7 add(B0) again ret=-
   size=1
-  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=0 hash=H0 score=0 restoreCount=0
 call=8 add(B1X-as-B1-twin) ret=-
   size=2
   entry=0 hash=H1 score=199.99464 restoreCount=0
-  entry=1 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H0 score=0 restoreCount=0
 call=9 add(B3) ret=-
   size=3
   entry=0 hash=H1 score=199.99464 restoreCount=0
   entry=1 hash=H2 score=199.99211 restoreCount=0
-  entry=2 hash=H0 score=0.0 restoreCount=0
+  entry=2 hash=H0 score=0 restoreCount=0
 call=10 contains(B1) ret=true
   size=3
   entry=0 hash=H1 score=199.99464 restoreCount=0
   entry=1 hash=H2 score=199.99211 restoreCount=0
-  entry=2 hash=H0 score=0.0 restoreCount=0
+  entry=2 hash=H0 score=0 restoreCount=0
 call=11 contains(B4) ret=false
   size=3
   entry=0 hash=H1 score=199.99464 restoreCount=0
   entry=1 hash=H2 score=199.99211 restoreCount=0
-  entry=2 hash=H0 score=0.0 restoreCount=0
+  entry=2 hash=H0 score=0 restoreCount=0
 call=12 size ret=3
   size=3
   entry=0 hash=H1 score=199.99464 restoreCount=0
   entry=1 hash=H2 score=199.99211 restoreCount=0
-  entry=2 hash=H0 score=0.0 restoreCount=0
+  entry=2 hash=H0 score=0 restoreCount=0
 call=13 add(B4) at capacity ret=-
   size=3
   entry=0 hash=H3 score=359.9864 restoreCount=0
@@ -147,36 +147,36 @@ call=32 restoreBestBoard ret=null
 === phase cap30 ===
 call=1 add(B0) ret=-
   size=1
-  entry=0 hash=H0 score=0.0 restoreCount=0
+  entry=0 hash=H0 score=0 restoreCount=0
 call=2 add(B1) ret=-
   size=2
   entry=0 hash=H1 score=199.99464 restoreCount=0
-  entry=1 hash=H0 score=0.0 restoreCount=0
+  entry=1 hash=H0 score=0 restoreCount=0
 call=3 add(B3) ret=-
   size=3
   entry=0 hash=H1 score=199.99464 restoreCount=0
   entry=1 hash=H2 score=199.99211 restoreCount=0
-  entry=2 hash=H0 score=0.0 restoreCount=0
+  entry=2 hash=H0 score=0 restoreCount=0
 call=4 add(B4) ret=-
   size=4
   entry=0 hash=H3 score=359.9864 restoreCount=0
   entry=1 hash=H1 score=199.99464 restoreCount=0
   entry=2 hash=H2 score=199.99211 restoreCount=0
-  entry=3 hash=H0 score=0.0 restoreCount=0
+  entry=3 hash=H0 score=0 restoreCount=0
 call=5 add(B5) ret=-
   size=5
   entry=0 hash=H4 score=559.9836 restoreCount=0
   entry=1 hash=H3 score=359.9864 restoreCount=0
   entry=2 hash=H1 score=199.99464 restoreCount=0
   entry=3 hash=H2 score=199.99211 restoreCount=0
-  entry=4 hash=H0 score=0.0 restoreCount=0
+  entry=4 hash=H0 score=0 restoreCount=0
 call=6 add(B6) ret=-
   size=5
   entry=0 hash=H4 score=559.9836 restoreCount=0
   entry=1 hash=H3 score=359.9864 restoreCount=0
   entry=2 hash=H1 score=199.99464 restoreCount=0
   entry=3 hash=H2 score=199.99211 restoreCount=0
-  entry=4 hash=H0 score=0.0 restoreCount=0
+  entry=4 hash=H0 score=0 restoreCount=0
 call=7 add(B8) ret=-
   size=6
   entry=0 hash=H4 score=559.9836 restoreCount=0
@@ -184,7 +184,7 @@ call=7 add(B8) ret=-
   entry=2 hash=H3 score=359.9864 restoreCount=0
   entry=3 hash=H1 score=199.99464 restoreCount=0
   entry=4 hash=H2 score=199.99211 restoreCount=0
-  entry=5 hash=H0 score=0.0 restoreCount=0
+  entry=5 hash=H0 score=0 restoreCount=0
 call=8 getMaxScore ret=559.9836
   size=6
   entry=0 hash=H4 score=559.9836 restoreCount=0
@@ -192,7 +192,7 @@ call=8 getMaxScore ret=559.9836
   entry=2 hash=H3 score=359.9864 restoreCount=0
   entry=3 hash=H1 score=199.99464 restoreCount=0
   entry=4 hash=H2 score=199.99211 restoreCount=0
-  entry=5 hash=H0 score=0.0 restoreCount=0
+  entry=5 hash=H0 score=0 restoreCount=0
 call=9 restoreBestBoard ret=board
   size=6
   entry=0 hash=H4 score=559.9836 restoreCount=1
@@ -200,7 +200,7 @@ call=9 restoreBestBoard ret=board
   entry=2 hash=H3 score=359.9864 restoreCount=0
   entry=3 hash=H1 score=199.99464 restoreCount=0
   entry=4 hash=H2 score=199.99211 restoreCount=0
-  entry=5 hash=H0 score=0.0 restoreCount=0
+  entry=5 hash=H0 score=0 restoreCount=0
   restored hash=H4 score=559.9836 items=47 maxId=126
 call=10 getRank(best) ret=1
   size=6
@@ -209,7 +209,7 @@ call=10 getRank(best) ret=1
   entry=2 hash=H3 score=359.9864 restoreCount=0
   entry=3 hash=H1 score=199.99464 restoreCount=0
   entry=4 hash=H2 score=199.99211 restoreCount=0
-  entry=5 hash=H0 score=0.0 restoreCount=0
+  entry=5 hash=H0 score=0 restoreCount=0
   items maxId=126
   item id=126 type=PolylineTrace nets=[3] cl=1 fixed=UNFIXED layer=0 hw=20320 corners=[(552098,2269671),(552083,2269656),(552083,1473029),(955860,1069252),(1116683,1069252),(1366000,819935),(1366000,802200)]
   item id=116 type=PolylineTrace nets=[3] cl=1 fixed=UNFIXED layer=0 hw=20320 corners=[(552098,2269671),(531001,2269671)]

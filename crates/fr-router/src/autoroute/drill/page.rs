@@ -250,7 +250,7 @@ impl DrillPage {
         self.id_no
     }
 
-    pub fn java_id(&self) -> i32 {
+    pub fn id(&self) -> i32 {
         31i32
             .wrapping_mul(self.shape.get_id())
             .wrapping_add(self.net_number)
@@ -299,7 +299,7 @@ mod tests {
             net_number: -1,
         };
         assert_eq!(page.get_id(), 1);
-        assert_eq!(page.java_id(), -29_760_001);
+        assert_eq!(page.id(), -29_760_001);
         assert_eq!(page.net_number(), -1);
         assert_eq!(page.drills(), None);
         assert_eq!(page.get_dimension(), 2);

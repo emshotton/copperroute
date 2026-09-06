@@ -28,7 +28,7 @@
 use std::io::{BufWriter, Write};
 
 use fr_board::prelude::*;
-use fr_dsn::{java_double_to_string, java_float_to_string};
+use fr_dsn::{format_double, format_float};
 use fr_router::pipeline::{
     optimizer_route_improved, prepare_board, run_pipeline, AutorouteBatchLoop, BatchLoopResult,
     BatchOptimizer, ItemRouteResult, NamedAlgorithmType, NoopProgressSink, PipelineResult,
@@ -652,6 +652,22 @@ fn limit_name(limit: Option<i32>) -> String {
 /// The transcription is deliberately *not* a call to [`AutorouteBatchLoop::run`] — that is the
 /// `[real]` half's job, and `equalsTranscript` is what ties the two together. Everything it calls
 /// is the real thing; only the control flow is here.
+///
+/// `BoardHistory::max_score` was retired when the router's scoring model moved from an f32 score
+/// to an f64 penalty (81c3281, `BoardHistory` now ranks by [`BoardHistoryEntry::penalty`]), but
+/// `AutorouteBatchLoop.java:118-123` still ranks by this exact f32 formula — the `f32::NEG_INFINITY`
+/// seed and bare `>` comparison of quirk #197 — so it lives here now, over the still-public
+/// `BoardHistoryEntry::score`.
+fn board_history_max_score(bh: &fr_router::pipeline::BoardHistory) -> f32 {
+    let mut max_score = f32::NEG_INFINITY;
+    for entry in bh.entries() {
+        if entry.score > max_score {
+            max_score = entry.score;
+        }
+    }
+    max_score
+}
+
 fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSettings) -> bool {
     use fr_board::StopConnectionOption;
     use fr_router::pipeline::batch_loop::{
@@ -718,7 +734,7 @@ fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSet
             fanout_summary.is_timed_out,
             final_escape.total_smd_pins,
             final_escape.escaped_count,
-            fr_dsn::java_double_to_string(final_escape.escaped_percentage),
+            fr_dsn::format_double(final_escape.escaped_percentage),
             router.fanout_timed_out,
             p7t_common::board_shape(board),
         )
@@ -782,9 +798,9 @@ fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSet
         writeln!(
             out,
             "HIST-ADD pass={current_pass} scoreBefore={} size={} maxScore={}",
-            java_float_to_string(board_score_before),
+            format_float(board_score_before),
             bh.size(),
-            java_float_to_string(bh.max_score())
+            format_float(board_history_max_score(&bh))
         )
         .expect("write");
 
@@ -800,7 +816,7 @@ fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSet
             out,
             "PASS-RET pass={current_pass} continueAutorouting={continue_autorouting} \
              scoreAfter={}",
-            java_float_to_string(board_score_after)
+            format_float(board_score_after)
         )
         .expect("write");
 
@@ -814,8 +830,8 @@ fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSet
             out,
             "RESTORE-GATE pass={current_pass} sizeGate={size_gate} modGate={mod_gate} \
              maxScore={} fires={}",
-            java_float_to_string(bh.max_score()),
-            size_gate && mod_gate && bh.max_score() > board_score_after
+            format_float(board_history_max_score(&bh)),
+            size_gate && mod_gate && board_history_max_score(&bh) > board_score_after
         )
         .expect("write");
         // The two gates stay nested, as Java's `:298` and `:299` are, because this half of the
@@ -826,7 +842,7 @@ fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSet
         if size_gate {
             if mod_gate {
                 // :306.
-                if bh.max_score() > board_score_after {
+                if board_history_max_score(&bh) > board_score_after {
                     // :307.
                     let Some(board_to_restore) = bh.restore_board(MAXIMUM_TRIES_ON_THE_SAME_BOARD)
                     else {
@@ -865,7 +881,7 @@ fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSet
                     writeln!(
                         out,
                         "RESTORED pass={current_pass} scoreAfter={}",
-                        java_float_to_string(board_score_after)
+                        format_float(board_score_after)
                     )
                     .expect("write");
                 }
@@ -876,7 +892,7 @@ fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSet
         writeln!(
             out,
             "PASS pass={current_pass} score={} incompletes={} violations={} vias={} traces={}",
-            java_float_to_string(board_score_after),
+            format_float(board_score_after),
             stat(board_statistics_after.connections.incomplete_count),
             stat(board_statistics_after.clearance_violations.total_count),
             stat(board_statistics_after.items.via_count),
@@ -962,8 +978,8 @@ fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSet
             out,
             "STAGNATION pass={current_pass} counter={consecutive_no_improvement_passes} \
              lastBest={} globalBest={} passOfBest={pass_of_best_score}",
-            java_float_to_string(last_best_score),
-            java_float_to_string(global_best_score)
+            format_float(last_best_score),
+            format_float(global_best_score)
         )
         .expect("write");
 
@@ -975,7 +991,7 @@ fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSet
 
     // :528-530.
     let current_final_score = BoardStatistics::new(board).normalized_score(scoring);
-    let best_history_score = bh.max_score();
+    let best_history_score = board_history_max_score(&bh);
     let mut swapped = false;
     // :531-550.
     if best_history_score > current_final_score {
@@ -987,8 +1003,8 @@ fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSet
     writeln!(
         out,
         "FINAL-SWAP currentFinalScore={} bestHistoryScore={} swapped={swapped}",
-        java_float_to_string(current_final_score),
-        java_float_to_string(best_history_score)
+        format_float(current_final_score),
+        format_float(best_history_score)
     )
     .expect("write");
 
@@ -1205,12 +1221,12 @@ fn transcribe_optimizer<W: Write>(
         out,
         "OPT-START score={} incompletes={} violations={} maxPasses={} maxItems={} threshold={} \
          maxConsecutiveFailures={}",
-        java_float_to_string(initial_stats.normalized_score(scoring)),
+        format_float(initial_stats.normalized_score(scoring)),
         stat(initial_stats.connections.incomplete_count),
         stat(initial_stats.clearance_violations.total_count),
         limit_name(optimizer_settings.max_passes),
         limit_name(optimizer_settings.max_items),
-        java_float_to_string(threshold),
+        format_float(threshold),
         optimizer_settings
             .max_consecutive_failures
             .map_or_else(|| "null".to_string(), |value| value.to_string()),
@@ -1243,13 +1259,16 @@ fn transcribe_optimizer<W: Write>(
         // :177.
         current_pass += 1;
         // :179.
-        let score_before_pass = BoardStatistics::new(board).normalized_score(scoring);
+        let statistics_before = BoardStatistics::new(board);
+        let score_before_pass = statistics_before.normalized_score(scoring);
+        let cost_before_pass = statistics_before.routing_cost(scoring);
+        let incomplete_before_pass = statistics_before.connections.incomplete_count.unwrap_or(0);
         // :182-193.
         if score_before_pass * (1.0 + threshold) >= 1000.0 {
             writeln!(
                 out,
                 "OPT-STOP reason=near-perfect pass={current_pass} score={}",
-                java_float_to_string(score_before_pass)
+                format_float(score_before_pass)
             )
             .expect("write");
             break;
@@ -1277,28 +1296,32 @@ fn transcribe_optimizer<W: Write>(
         let statistics_after = BoardStatistics::new(board);
         let score_after_pass = statistics_after.normalized_score(scoring);
         // :209-218 — the port's own arm, so the transcription cannot drift from it.
-        let (pass_improvement, force_another_pass) =
-            optimizer.apply_pass_improvement(score_before_pass, score_after_pass);
+        let (pass_improvement, force_another_pass) = optimizer.apply_pass_improvement(
+            incomplete_before_pass,
+            cost_before_pass,
+            statistics_after.connections.incomplete_count.unwrap_or(0),
+            statistics_after.routing_cost(scoring),
+        );
         writeln!(
             out,
             "OPT-PASS pass={current_pass} withPreferredDirections={with_preferred_directions} \
              scoreBefore={} scoreAfter={} passImprovement={} scoreImprovement={} \
              useIncreasedRipupCosts={} routeImproved={} items={} pass={current_pass} score={} \
              incompletes={} violations={} vias={} traces={}",
-            java_float_to_string(score_before_pass),
-            java_float_to_string(score_after_pass),
-            java_double_to_string(pass_improvement),
+            format_float(score_before_pass),
+            format_float(score_after_pass),
+            format_double(pass_improvement),
             // fixed: T9 (#228) — Java's `-1` sentinel is a `bool` here; the transcript keeps
             // printing the number Java printed so the two sides stay comparable.
-            java_double_to_string(if force_another_pass {
+            format_double(if force_another_pass {
                 -1.0
             } else {
                 pass_improvement
             }),
             optimizer.use_increased_ripup_costs,
-            java_float_to_string(route_improved),
+            format_float(route_improved),
             optimizer.total_items_optimized,
-            java_float_to_string(score_after_pass),
+            format_float(score_after_pass),
             stat(statistics_after.connections.incomplete_count),
             stat(statistics_after.clearance_violations.total_count),
             stat(statistics_after.items.via_count),
@@ -1310,7 +1333,7 @@ fn transcribe_optimizer<W: Write>(
             writeln!(
                 out,
                 "OPT-STOP reason=threshold pass={current_pass} scoreImprovement={}",
-                java_double_to_string(pass_improvement)
+                format_double(pass_improvement)
             )
             .expect("write");
             break;
@@ -1336,7 +1359,7 @@ fn transcribe_optimizer<W: Write>(
         optimizer.total_items_optimized,
         optimizer.is_timed_out(),
         optimizer.use_increased_ripup_costs,
-        java_float_to_string(final_stats.normalized_score(scoring)),
+        format_float(final_stats.normalized_score(scoring)),
         p7t_common::board_shape(board)
     )
     .expect("write");
@@ -1440,13 +1463,13 @@ fn transcribe_opt_route_pass<W: Write>(
             current_item.0,
             result.improved(),
             result.via_count(),
-            java_double_to_string(result.trace_length()),
+            format_double(result.trace_length()),
             result.incomplete_count_before(),
             result.incomplete_count(),
-            java_float_to_string(result.improvement_percentage()),
-            java_float_to_string(route_improved),
+            format_float(result.improvement_percentage()),
+            format_float(route_improved),
             optimizer.total_items_optimized,
-            java_double_to_string(optimizer.min_cumulative_trace_length),
+            format_double(optimizer.min_cumulative_trace_length),
         )
         .expect("write");
         n += 1;

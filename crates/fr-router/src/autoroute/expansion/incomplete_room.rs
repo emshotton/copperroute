@@ -44,7 +44,7 @@ impl IncompleteFreeSpaceExpansionRoom {
         self.id_no
     }
 
-    pub fn java_id(&self) -> i32 {
+    pub fn id(&self) -> i32 {
         let shape = self.base.get_shape().unwrap_or_else(|| {
             panic!(
                 "IncompleteFreeSpaceExpansionRoom.getId: the room has no shape — Java NPEs here \
@@ -107,10 +107,7 @@ mod tests {
     fn the_id_is_the_engine_counter_and_javas_is_the_shape_hash() {
         let shape = boxed(1, 2, 3, 4);
         let mut room = IncompleteFreeSpaceExpansionRoom::new(Some(shape.clone()), 5, None);
-        assert_eq!(
-            room.java_id(),
-            shape.get_id().wrapping_mul(31).wrapping_add(5)
-        );
+        assert_eq!(room.id(), shape.get_id().wrapping_mul(31).wrapping_add(5));
         assert_eq!(room.get_id(), 0, "a candidate that never reached the arena");
         room.set_id_no(7);
         assert_eq!(room.get_id(), 7);
@@ -121,10 +118,10 @@ mod tests {
         let mut room = IncompleteFreeSpaceExpansionRoom::new(Some(boxed(0, 0, 1, 1)), 0, None);
         room.set_id_no(3);
         let before = room.get_id();
-        let java_before = room.java_id();
+        let id_before = room.id();
         room.set_shape(Some(boxed(0, 0, 2, 2)));
         assert_eq!(room.get_id(), before);
-        assert_ne!(room.java_id(), java_before, "Java's does move — the defect");
+        assert_ne!(room.id(), id_before, "Java's does move — the defect");
     }
 
     #[test]
@@ -137,7 +134,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "the room has no shape")]
     fn javas_id_of_a_whole_plane_room_still_npes() {
-        IncompleteFreeSpaceExpansionRoom::new(None, 0, Some(boxed(0, 0, 1, 1))).java_id();
+        IncompleteFreeSpaceExpansionRoom::new(None, 0, Some(boxed(0, 0, 1, 1))).id();
     }
 
     #[test]

@@ -653,7 +653,7 @@ mod tests {
             unreachable!()
         };
         assert_eq!(
-            store.incomplete_room(id).unwrap().java_id(),
+            store.incomplete_room(id).unwrap().id(),
             shape.get_id().wrapping_mul(31).wrapping_add(3),
             "Java's formula, kept pinned"
         );

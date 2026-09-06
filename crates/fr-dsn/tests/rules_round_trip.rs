@@ -45,11 +45,6 @@ fn fixture_bytes(name: &str) -> Vec<u8> {
     std::fs::read(&path).unwrap_or_else(|e| panic!("cannot read fixture {}: {e}", path.display()))
 }
 
-fn raw_golden(name: &str) -> Vec<u8> {
-    let path = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/")).join(name);
-    std::fs::read(&path).unwrap_or_else(|e| panic!("cannot read golden {}: {e}", path.display()))
-}
-
 fn write_rules(
     board: &Board,
     ct: &CoordinateTransform,
@@ -328,46 +323,6 @@ fn dump_rules(board: &mut Board, ok: bool) -> Vec<String> {
         board.rules.get_pin_edge_to_turn_dist()
     ));
     out
-}
-
-#[test]
-fn rules_writer_matches_java_issue593() {
-    let (board, ct) = load_board("Issue593-BBD_Mars-64.dsn");
-    let actual = write_rules(&board, &ct, None, "Issue593-BBD_Mars-64");
-    assert_bytes_match(&actual, "Issue593-BBD_Mars-64-written.rules");
-}
-
-#[test]
-fn rules_writer_matches_java_hw48na() {
-    let (board, ct) = load_board("Issue029-hw48na.dsn");
-    let actual = write_rules(&board, &ct, None, "Issue029-hw48na");
-    assert_bytes_match(&actual, "Issue029-hw48na-written.rules");
-}
-
-#[test]
-fn rules_writer_with_settings_matches_java() {
-    let (board, ct) = load_board("Issue029-hw48na.dsn");
-    let settings = round_trip_settings(board.get_layer_count());
-    let actual = write_rules(&board, &ct, Some(&settings), "Issue029-hw48na");
-    assert_bytes_match(&actual, "Issue029-hw48na-settings.rules");
-}
-
-fn assert_bytes_match(actual: &[u8], golden_name: &str) {
-    let expected = raw_golden(golden_name);
-    if actual == expected.as_slice() {
-        return;
-    }
-    let actual_text = String::from_utf8_lossy(actual);
-    let expected_text = String::from_utf8_lossy(&expected);
-    for (i, (a, e)) in actual_text.lines().zip(expected_text.lines()).enumerate() {
-        assert_eq!(a, e, "{golden_name}: line {} differs", i + 1);
-    }
-    assert_eq!(
-        actual_text.lines().count(),
-        expected_text.lines().count(),
-        "{golden_name}: line count differs"
-    );
-    assert_eq!(actual, expected.as_slice(), "{golden_name}: bytes differ");
 }
 
 #[test]

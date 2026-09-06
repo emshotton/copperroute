@@ -18,19 +18,22 @@ struct WithString {
 }
 
 #[test]
-fn f64_fields_use_java_double_to_string() {
+fn f64_fields_use_format_double() {
     let value = json!({"a": 1.0e7_f64, "b": 0.0001_f64});
     let text = to_gson_string_pretty(&value).expect("serialises");
-    assert_eq!(text, "{\n  \"a\": 1.0E7,\n  \"b\": 1.0E-4\n}");
+    assert_eq!(text, "{\n  \"a\": 10000000,\n  \"b\": 0.0001\n}");
 }
 
 #[test]
-fn f32_field_uses_java_float_to_string() {
+fn f32_field_uses_format_float() {
     let text = to_gson_string_pretty(&WithF32 {
         value: 3.402_823_5e38_f32,
     })
     .expect("serialises");
-    assert_eq!(text, "{\n  \"value\": 3.4028235E38\n}");
+    assert_eq!(
+        text,
+        "{\n  \"value\": 340282350000000000000000000000000000000\n}"
+    );
 }
 
 #[test]

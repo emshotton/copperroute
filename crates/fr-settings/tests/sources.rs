@@ -365,7 +365,7 @@ fn rules_file_settings_priority_is_40() {
 
 #[test]
 fn rules_file_settings_parses_processor_z80_rules() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let path = parity::fixture("Issue191-processor.Z80/processor.rules");
@@ -419,7 +419,7 @@ fn rules_file_settings_parses_processor_z80_rules() {
 
 #[test]
 fn rules_file_settings_parses_hw48na_rules() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let source = RulesFileSettings::from_path(&parity::fixture("Issue029-hw48na_valid.rules"));
@@ -452,7 +452,7 @@ fn rules_file_settings_parses_hw48na_rules() {
 
 #[test]
 fn dsn_file_settings_seeds_the_layer_count() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     for (name, layer_count) in [
@@ -498,7 +498,7 @@ fn dsn_file_settings_seeds_the_layer_count() {
 
 #[test]
 fn dsn_source_seeds_the_arrays_that_block_later_sources() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let host = host();
@@ -579,7 +579,7 @@ fn an_unnamed_rules_field_does_not_overwrite_a_lower_priority_source() {
     assert_eq!(merged.get_layer_count(), 2);
     assert!(!merged.are_board_specific_trace_costs_applied());
 
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let full = std::fs::read(parity::fixture("Issue029-hw48na_valid.rules")).expect("golden");
@@ -615,7 +615,7 @@ fn is_fanout_enabled_defaults_to_false_when_absent() {
 
 #[test]
 fn dsn_router_settings_converts_into_router_settings() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let bytes = std::fs::read(parity::fixture("Issue191-processor.Z80/processor.rules"))
@@ -653,7 +653,7 @@ fn dsn_router_settings_converts_into_router_settings() {
 
 #[test]
 fn dsn_router_settings_round_trips_through_router_settings() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     for name in [

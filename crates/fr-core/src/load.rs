@@ -178,7 +178,7 @@ pub fn load_board_if_needed(job: &mut RoutingJob) -> Result<LoadedBoard, Error> 
     if format != FileFormat::Dsn && format != FileFormat::KicadDesignJson {
         return Err(Error::Load(format!(
             "Cannot load board: only DSN and JSON formats are supported, got {}",
-            format.java_name()
+            format.name()
         )));
     }
     let data = input.get_data().to_vec();
@@ -204,7 +204,7 @@ pub fn parse_board_if_needed(job: &RoutingJob) -> Result<ParsedBoard, Error> {
     if format != FileFormat::Dsn && format != FileFormat::KicadDesignJson {
         return Err(Error::Load(format!(
             "Cannot load board: only DSN and JSON formats are supported, got {}",
-            format.java_name()
+            format.name()
         )));
     }
     let data = input.get_data().to_vec();

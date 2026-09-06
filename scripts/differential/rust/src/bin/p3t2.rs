@@ -1,14 +1,14 @@
 //! Rust twin of `scripts/differential/java/P3T2.java` (Plan 3 Task 2).
 //!
 //! Walks the same seeded pseudo-random doubles through `fr_dsn::format::double`'s
-//! `java_double_to_string` / `java_float_to_string` / `format_placement_rotation` that the Java
+//! `format_double` / `format_float` / `format_placement_rotation` that the Java
 //! driver walks through `Double.toString` / `Float.toString` /
 //! `SesWriter.formatPlacementRotation`. See `scripts/differential/README.md`.
 
 use std::io::{BufWriter, Write};
 
 use fr_dsn::format::double::{
-    format_placement_rotation, java_double_to_string, java_float_to_string,
+    format_placement_rotation, format_double, format_float,
 };
 
 /// `java.util.Random`, duplicated here (the copies inside `fr-geometry`/`fr-board` are private)
@@ -104,8 +104,8 @@ fn main() {
                 out,
                 "{:x} {} {}",
                 bits,
-                java_double_to_string(value),
-                java_float_to_string(value as f32)
+                format_double(value),
+                format_float(value as f32)
             )
             .expect("write");
         } else {
@@ -113,8 +113,8 @@ fn main() {
                 out,
                 "{:x} {} {} {}",
                 bits,
-                java_double_to_string(value),
-                java_float_to_string(value as f32),
+                format_double(value),
+                format_float(value as f32),
                 format_placement_rotation(value)
             )
             .expect("write");

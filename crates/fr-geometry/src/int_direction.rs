@@ -1,5 +1,4 @@
 use crate::int_vector::IntVector;
-use crate::limits::java_round;
 use crate::side::Side;
 use crate::signum::Signum;
 use std::cmp::Ordering;
@@ -96,8 +95,8 @@ impl IntDirection {
         let y = v1.y / length1 + v2.y / length2;
         const SCALE_FACTOR: f64 = 1000.0;
         let vm = IntVector::new(
-            java_round(x * SCALE_FACTOR) as i32,
-            java_round(y * SCALE_FACTOR) as i32,
+            (x * SCALE_FACTOR).round() as i64 as i32,
+            (y * SCALE_FACTOR).round() as i64 as i32,
         );
         vm.to_normalized_direction()
     }

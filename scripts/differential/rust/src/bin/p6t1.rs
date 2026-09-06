@@ -63,10 +63,11 @@ use std::time::UNIX_EPOCH;
 
 use fr_board::prelude::*;
 use fr_drc::DesignRulesChecker;
-use fr_dsn::java_double_to_string;
+use fr_dsn::format_double;
 use fr_dsn::parser::scope_parameter::DsnReadOptions;
 use fr_dsn::BoardReadResult;
 use fr_geometry::Point;
+use fr_router::autoroute::maze::ViaPricing;
 use fr_router::pipeline::RouterBudget;
 use fr_router::{route_connection, route_connection_full};
 use fr_settings::sources::DefaultSettings;
@@ -167,7 +168,7 @@ fn print_header<W: Write>(
     let steps_suffix = if steps == "1-8" {
         format!(
             " steps={steps} neckWidthUm={}",
-            java_double_to_string(neck_width_um)
+            format_double(neck_width_um)
         )
     } else {
         String::new()
@@ -343,6 +344,7 @@ fn route_one(
             connection.net_no,
             settings,
             &trace_costs,
+            ViaPricing::ByPadstackRadius,
             &mut ripped,
             &mut ripup_costs,
             ripup_pass_no,
@@ -500,7 +502,7 @@ fn append_metrics(sb: &mut String, board: &mut Board, net_no: i32) {
         .count();
     sb.push_str(&format!(
         ",\"metrics\":{{\"incompletes\":{incompletes},\"vias\":{vias},\"traceLength\":\"{}\",\"violations\":{violations}}}",
-        java_double_to_string(trace_length)
+        format_double(trace_length)
     ));
 }
 
@@ -567,8 +569,8 @@ fn pt(p: &Point) -> String {
             let f = p.to_float();
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }
@@ -587,8 +589,8 @@ fn corners(p: &fr_geometry::Polyline) -> String {
                 let f = p.corner_approx(i).expect("a corner of a valid polyline");
                 sb.push_str(&format!(
                     "\"~({},{})\"",
-                    java_double_to_string(f.x),
-                    java_double_to_string(f.y)
+                    format_double(f.x),
+                    format_double(f.y)
                 ));
             }
         }

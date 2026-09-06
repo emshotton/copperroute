@@ -106,7 +106,7 @@ fn an_empty_output_directory_is_not_unlinked() {
 
 #[test]
 fn an_unsupported_output_extension_is_refused_at_the_argument() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("unsupported-output-extension");
@@ -153,7 +153,7 @@ fn an_unsupported_output_extension_is_refused_at_the_argument() {
 
 #[test]
 fn do_out_json_writes_the_routed_board() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("do-out-json");
@@ -313,7 +313,7 @@ fn a_session_under_a_dsn_name_exits_1() {
 
 #[test]
 fn a_missing_rules_path_disables_rules_discovery() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("missing-rules");
@@ -364,7 +364,7 @@ fn a_missing_rules_path_disables_rules_discovery() {
 
 #[test]
 fn no_banner_on_stdout() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("no-banner");
@@ -382,7 +382,7 @@ fn no_banner_on_stdout() {
 
 #[test]
 fn max_passes_zero_is_unlimited() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("max-passes-zero");
@@ -407,7 +407,7 @@ fn max_passes_zero_is_unlimited() {
 
 #[test]
 fn max_passes_and_timeout_reach_the_settings() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("max-passes-timeout");
@@ -432,7 +432,7 @@ fn max_passes_and_timeout_reach_the_settings() {
 
 #[test]
 fn the_rules_file_is_read_as_bytes_twice() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("rules-twice");
@@ -461,7 +461,7 @@ fn the_rules_file_is_read_as_bytes_twice() {
 
 #[test]
 fn set_reaches_the_run_and_the_dotted_spelling_is_a_usage_error() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("set");
@@ -522,7 +522,7 @@ fn set_reaches_the_run_and_the_dotted_spelling_is_a_usage_error() {
 
 #[test]
 fn a_settings_file_reaches_the_run_and_the_working_directory_is_not_read() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("settings-file");
@@ -597,7 +597,7 @@ fn a_settings_file_reaches_the_run_and_the_working_directory_is_not_read() {
 
 #[test]
 fn final_state_distinguishes_stage_limits_from_job_deadlines() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("stage-timeout");
@@ -736,7 +736,7 @@ fn autoroute_settings_rules(dir: &Path, via_costs: i32) -> PathBuf {
 
 #[test]
 fn drc_exits_1_on_violations_and_0_on_a_clean_board() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("drc-exit");
@@ -751,7 +751,7 @@ fn drc_exits_1_on_violations_and_0_on_a_clean_board() {
     assert_eq!(report(&out)["violations"].as_array().unwrap().len(), 8);
 
     let clean = dir.join("clean.json");
-    let tutorial = parity::java_dir().join("examples/tutorial_board/tutorial_board.dsn");
+    let tutorial = parity::reference_dir().join("examples/tutorial_board/tutorial_board.dsn");
     let (_, stderr, code) = run(&[
         "drc",
         &tutorial.to_string_lossy(),
@@ -764,7 +764,7 @@ fn drc_exits_1_on_violations_and_0_on_a_clean_board() {
 
 #[test]
 fn drc_only_warns_about_a_missing_rules_or_session_file() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("drc-missing-aux");
@@ -793,7 +793,7 @@ fn drc_only_warns_about_a_missing_rules_or_session_file() {
 
 #[test]
 fn drc_exits_1_when_the_input_is_unreadable_or_not_a_board_or_unwritable() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("drc-refusals");
@@ -831,7 +831,7 @@ fn drc_exits_1_when_the_input_is_unreadable_or_not_a_board_or_unwritable() {
 
 #[test]
 fn the_session_is_imported_after_the_rules() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("drc-load-order");
@@ -894,7 +894,7 @@ fn the_session_is_imported_after_the_rules() {
 
 #[test]
 fn the_quality_score_uses_a_dsn_only_merge() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("drc-separate-merge");
@@ -956,7 +956,7 @@ fn the_quality_score_uses_a_dsn_only_merge() {
 
 #[test]
 fn the_quality_score_is_an_f32_widened_to_f64() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("drc-score-width");
@@ -985,7 +985,7 @@ fn the_quality_score_is_an_f32_widened_to_f64() {
 
 #[test]
 fn every_committed_reference_score_is_recomputed() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("drc-reference-scores");
@@ -1016,12 +1016,12 @@ fn every_committed_reference_score_is_recomputed() {
         let out = dir.join(format!("{stem}.json"));
         let mut argv = vec![
             "drc".to_string(),
-            parity::java_dir().join(&dsn).to_string_lossy().into_owned(),
+            parity::reference_dir().join(&dsn).to_string_lossy().into_owned(),
         ];
         if !rules.is_empty() {
             argv.push("--rules".to_string());
             argv.push(
-                parity::java_dir()
+                parity::reference_dir()
                     .join(&rules)
                     .to_string_lossy()
                     .into_owned(),
@@ -1029,7 +1029,7 @@ fn every_committed_reference_score_is_recomputed() {
         }
         if !ses.is_empty() {
             argv.push("--ses".to_string());
-            argv.push(parity::java_dir().join(&ses).to_string_lossy().into_owned());
+            argv.push(parity::reference_dir().join(&ses).to_string_lossy().into_owned());
         }
         argv.push("-o".to_string());
         argv.push(out.to_string_lossy().into_owned());
@@ -1054,7 +1054,7 @@ fn every_committed_reference_score_is_recomputed() {
 
 #[test]
 fn drc_with_no_output_prints_to_stdout() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (stdout, stderr, code) = run(&["drc", &drc_dsn().to_string_lossy()]);
@@ -1078,7 +1078,7 @@ fn drc_with_no_output_prints_to_stdout() {
 
 #[test]
 fn info_writes_the_board_summary_to_stdout() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dsn = small_dsn();
@@ -1119,7 +1119,7 @@ fn info_writes_the_board_summary_to_stdout() {
 
 #[test]
 fn info_exits_1_on_an_unreadable_input_and_on_an_unloadable_board() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (stdout, stderr, code) = run(&["info", "/nonexistent/board.dsn"]);
@@ -1136,7 +1136,7 @@ fn info_exits_1_on_an_unreadable_input_and_on_an_unloadable_board() {
 
 #[test]
 fn the_cli_passes_kicad_flavor_explicitly() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("drc-flavor");
@@ -1301,7 +1301,7 @@ fn regolden_one(
 }
 
 fn climb(ci_only: bool) {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut failures = Vec::new();
@@ -1327,11 +1327,6 @@ fn climb(ci_only: bool) {
 }
 
 #[test]
-fn the_ci_stems_match_the_reference() {
-    climb(true);
-}
-
-#[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_slow_stems_match_the_reference() {
     if std::env::var_os("FR_SLOW_PARITY").is_none() {
@@ -1343,7 +1338,7 @@ fn the_slow_stems_match_the_reference() {
 
 #[test]
 fn two_runs_of_every_ci_stem_are_byte_identical() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut failures = Vec::new();

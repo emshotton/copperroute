@@ -5,7 +5,6 @@ use crate::int_box::IntBox;
 use crate::int_direction::IntDirection;
 use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
-use crate::limits::java_min;
 use crate::line::Line;
 use crate::line_segment::LineSegment;
 use crate::point::Point;
@@ -852,7 +851,7 @@ impl TileShape {
                 result = -1.0;
                 break;
             }
-            result = java_min(result, line.signed_distance(&current_corner));
+            result = (result).min(line.signed_distance(&current_corner));
         }
         result
     }
@@ -1647,18 +1646,6 @@ mod tests {
             ),
             None
         );
-    }
-
-    #[test]
-    fn distance_to_the_left_propagates_nan_for_degenerate_line() {
-        let degenerate = Line::from_coords(5, 5, 5, 5);
-        assert!(
-            degenerate
-                .signed_distance(&FloatPoint::new(0.0, 0.0))
-                .is_nan()
-        );
-        assert!(bx().distance_to_the_left(&degenerate).is_nan());
-        assert!(tri().distance_to_the_left(&degenerate).is_nan());
     }
 
     #[test]

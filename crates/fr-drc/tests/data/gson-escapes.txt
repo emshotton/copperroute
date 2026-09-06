@@ -1,4 +1,4 @@
 qualityScore-902	"qualityScore": 902.078369140625
-qualityScore-1e7	"qualityScore": 1.0E7
+qualityScore-1e7	"qualityScore": 10000000
 source-html	"source": "<'&=>\"",
 source-separators	"source": "a\u2028b\u2029c",

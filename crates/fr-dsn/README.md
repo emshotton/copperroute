@@ -88,7 +88,7 @@ worth knowing before touching it:
 - **UTF-16 code-unit string order.** Several structures are keyed by name in
   UTF-16 code-unit order, which differs from Rust's code-point `str: Ord`
   above the BMP. Where the order is observable in the output, the writers
-  use `java_string_cmp` (`parser/part_library.rs`), not the derived `Ord`.
+  use `utf16_cmp` (`parser/part_library.rs`), not the derived `Ord`.
 - **Descending item iteration.** Every writer walks the board through
   `Board::get_items`/`items_in_board_order` — newest item first — and the
   output bytes depend on it.

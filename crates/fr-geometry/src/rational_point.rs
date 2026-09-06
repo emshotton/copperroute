@@ -93,13 +93,13 @@ impl RationalPoint {
     }
 
     pub fn get_id(&self) -> i32 {
-        let mut result = java_big_integer_hash_code(&self.x);
+        let mut result = bigint_hash(&self.x);
         result = 31i32
             .wrapping_mul(result)
-            .wrapping_add(java_big_integer_hash_code(&self.y));
+            .wrapping_add(bigint_hash(&self.y));
         31i32
             .wrapping_mul(result)
-            .wrapping_add(java_big_integer_hash_code(&self.z))
+            .wrapping_add(bigint_hash(&self.z))
     }
 
     pub fn to_float(&self) -> FloatPoint {
@@ -241,7 +241,7 @@ impl Hash for RationalPoint {
     }
 }
 
-pub fn java_big_integer_hash_code(value: &BigInt) -> i32 {
+pub fn bigint_hash(value: &BigInt) -> i32 {
     let (sign, digits) = value.to_u32_digits();
     let mut hash_code: i32 = 0;
     for word in digits.iter().rev() {
@@ -273,7 +273,7 @@ mod get_id_tests {
     /// rationalPoint(123456789012345678901234567890, -5, 4294967296).getId() = -1717769283
     /// ```
     #[test]
-    fn the_big_integer_hash_code_is_javas() {
+    fn bigint_hash_matches_the_reference_values() {
         let cases: [(&str, i32); 10] = [
             ("0", 0),
             ("1", 1),
@@ -289,7 +289,7 @@ mod get_id_tests {
         for (text, expected) in cases {
             let value = BigInt::from_str(text).expect("a decimal literal");
             assert_eq!(
-                java_big_integer_hash_code(&value),
+                bigint_hash(&value),
                 expected,
                 "BigInteger({text}).hashCode()"
             );

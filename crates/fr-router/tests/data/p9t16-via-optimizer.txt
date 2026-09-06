@@ -10,12 +10,12 @@ route k=8 item=3 net=2 state=FAILED ripped=0
 route k=9 item=2 net=1 state=FAILED ripped=0
 sweep regime=FORTYFIVE_DEGREE traceCosts=2
 vias n=6
-via id=189 center=(932812,1038683) minWidth=75640.0 contacts=[184:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(932812,1011224)
-via id=98 center=(531001,1221669) minWidth=75640.0 contacts=[100:PolylineTrace,97:PolylineTrace] class=TWO_TRACES result=false after=(531001,1221669)
-via id=93 center=(765863,1751594) minWidth=75640.0 contacts=[97:PolylineTrace,92:PolylineTrace] class=TWO_TRACES result=false after=(765863,1751594)
-via id=84 center=(977281,2968339) minWidth=75640.0 contacts=[83:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1016000,3119161)
-via id=49 center=(531001,2269671) minWidth=75640.0 contacts=[116:PolylineTrace,48:PolylineTrace] class=TWO_TRACES result=false after=(531001,2269671)
-via id=43 center=(531001,2619005) minWidth=75640.0 contacts=[48:PolylineTrace,42:PolylineTrace] class=TWO_TRACES result=false after=(531001,2619005)
+via id=189 center=(932812,1038683) minWidth=75640 contacts=[184:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(932812,1011224)
+via id=98 center=(531001,1221669) minWidth=75640 contacts=[100:PolylineTrace,97:PolylineTrace] class=TWO_TRACES result=false after=(531001,1221669)
+via id=93 center=(765863,1751594) minWidth=75640 contacts=[97:PolylineTrace,92:PolylineTrace] class=TWO_TRACES result=false after=(765863,1751594)
+via id=84 center=(977281,2968339) minWidth=75640 contacts=[83:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1016000,3119161)
+via id=49 center=(531001,2269671) minWidth=75640 contacts=[116:PolylineTrace,48:PolylineTrace] class=TWO_TRACES result=false after=(531001,2269671)
+via id=43 center=(531001,2619005) minWidth=75640 contacts=[48:PolylineTrace,42:PolylineTrace] class=TWO_TRACES result=false after=(531001,2619005)
 maxId=226
 item id=225 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(1016000,3119161)->(1016001,3119161)] corners=[(1016000,3306000),(1016000,3119161)]
 item id=220 type=PolylineTrace nets=[2] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(916000,802200)->(915999,802200),(916000,802200)->(916000,802201),(0,1003017)->(-1,1003017)] corners=[(916000,802200),(916000,1003017)]
@@ -79,12 +79,12 @@ route k=8 item=3 net=2 state=FAILED ripped=0
 route k=9 item=2 net=1 state=FAILED ripped=0
 sweep regime=FORTYFIVE_DEGREE traceCosts=2
 vias n=6
-via id=189 center=(932812,1038683) minWidth=75640.0 contacts=[184:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(932812,1011224)
-via id=98 center=(531001,1221669) minWidth=75640.0 contacts=[100:PolylineTrace,97:PolylineTrace] class=TWO_TRACES result=false after=(531001,1221669)
-via id=93 center=(765863,1751594) minWidth=75640.0 contacts=[97:PolylineTrace,92:PolylineTrace] class=TWO_TRACES result=false after=(765863,1751594)
-via id=84 center=(977281,2968339) minWidth=75640.0 contacts=[83:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1016000,3119161)
-via id=49 center=(531001,2269671) minWidth=75640.0 contacts=[116:PolylineTrace,48:PolylineTrace] class=TWO_TRACES result=false after=(531001,2269671)
-via id=43 center=(531001,2619005) minWidth=75640.0 contacts=[48:PolylineTrace,42:PolylineTrace] class=TWO_TRACES result=false after=(531001,2619005)
+via id=189 center=(932812,1038683) minWidth=75640 contacts=[184:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(932812,1011224)
+via id=98 center=(531001,1221669) minWidth=75640 contacts=[100:PolylineTrace,97:PolylineTrace] class=TWO_TRACES result=false after=(531001,1221669)
+via id=93 center=(765863,1751594) minWidth=75640 contacts=[97:PolylineTrace,92:PolylineTrace] class=TWO_TRACES result=false after=(765863,1751594)
+via id=84 center=(977281,2968339) minWidth=75640 contacts=[83:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1016000,3119161)
+via id=49 center=(531001,2269671) minWidth=75640 contacts=[116:PolylineTrace,48:PolylineTrace] class=TWO_TRACES result=false after=(531001,2269671)
+via id=43 center=(531001,2619005) minWidth=75640 contacts=[48:PolylineTrace,42:PolylineTrace] class=TWO_TRACES result=false after=(531001,2619005)
 maxId=226
 item id=225 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(1016000,3119161)->(1016001,3119161)] corners=[(1016000,3306000),(1016000,3119161)]
 item id=220 type=PolylineTrace nets=[2] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(916000,802200)->(915999,802200),(916000,802200)->(916000,802201),(0,1003017)->(-1,1003017)] corners=[(916000,802200),(916000,1003017)]
@@ -148,12 +148,12 @@ route k=8 item=3 net=2 state=FAILED ripped=0
 route k=9 item=2 net=1 state=FAILED ripped=0
 sweep regime=FORTYFIVE_DEGREE traceCosts=null
 vias n=6
-via id=189 center=(932812,1038683) minWidth=75640.0 contacts=[184:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(932812,1011224)
-via id=98 center=(531001,1221669) minWidth=75640.0 contacts=[100:PolylineTrace,97:PolylineTrace] class=TWO_TRACES result=false after=(531001,1221669)
-via id=93 center=(765863,1751594) minWidth=75640.0 contacts=[97:PolylineTrace,92:PolylineTrace] class=TWO_TRACES result=false after=(765863,1751594)
-via id=84 center=(977281,2968339) minWidth=75640.0 contacts=[83:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1016000,3119161)
-via id=49 center=(531001,2269671) minWidth=75640.0 contacts=[116:PolylineTrace,48:PolylineTrace] class=TWO_TRACES result=false after=(531001,2269671)
-via id=43 center=(531001,2619005) minWidth=75640.0 contacts=[48:PolylineTrace,42:PolylineTrace] class=TWO_TRACES result=false after=(531001,2619005)
+via id=189 center=(932812,1038683) minWidth=75640 contacts=[184:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(932812,1011224)
+via id=98 center=(531001,1221669) minWidth=75640 contacts=[100:PolylineTrace,97:PolylineTrace] class=TWO_TRACES result=false after=(531001,1221669)
+via id=93 center=(765863,1751594) minWidth=75640 contacts=[97:PolylineTrace,92:PolylineTrace] class=TWO_TRACES result=false after=(765863,1751594)
+via id=84 center=(977281,2968339) minWidth=75640 contacts=[83:PolylineTrace] class=PLANE_OR_FANOUT_ONE_CONTACT result=true after=(1016000,3119161)
+via id=49 center=(531001,2269671) minWidth=75640 contacts=[116:PolylineTrace,48:PolylineTrace] class=TWO_TRACES result=false after=(531001,2269671)
+via id=43 center=(531001,2619005) minWidth=75640 contacts=[48:PolylineTrace,42:PolylineTrace] class=TWO_TRACES result=false after=(531001,2619005)
 maxId=226
 item id=225 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=20320 n=3 lines=[(1016000,3306000)->(1016001,3306000),(1016000,3130199)->(1016000,3130198),(1016000,3119161)->(1016001,3119161)] corners=[(1016000,3306000),(1016000,3119161)]
 item id=220 type=PolylineTrace nets=[2] cl=1 fix=SHOVE_FIXED layer=0 hw=20320 n=3 lines=[(916000,802200)->(915999,802200),(916000,802200)->(916000,802201),(0,1003017)->(-1,1003017)] corners=[(916000,802200),(916000,1003017)]
@@ -220,17 +220,17 @@ route k=11 item=316 net=7 state=NO_UNCONNECTED_NETS ripped=0
 route k=12 item=315 net=6 state=NO_UNCONNECTED_NETS ripped=0
 sweep regime=FORTYFIVE_DEGREE traceCosts=2
 vias n=0
-maxId=409
-item id=409 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1526750,-1184650)->(1526749,-1184651),(1492067,-1149967)->(1492066,-1149966),(1492067,-1118850)->(1436150,-1118850),(1436150,-1118850)->(1436150,-1118849)] corners=[(1526750,-1184650),(1460950,-1118850),(1436150,-1118850)]
-item id=405 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1155350)->(1548251,-1155350),(1548250,-1155350)->(1548251,-1155351),(1644650,-1174750)->(1644651,-1174750),(1644650,-1174750)->(1644651,-1174751)] corners=[(1548250,-1155350),(1567650,-1174750),(1644650,-1174750)]
-item id=399 type=PolylineTrace nets=[13] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1118850)->(1548249,-1118849),(1548250,-1118850)->(1582398,-1084702),(1562100,-1039700)->(1562100,-958850),(1562100,-958850)->(1562101,-958850)] corners=[(1548250,-1118850),(1562100,-1105000),(1562100,-958850)]
-item id=391 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1492250,-1078150)->(1492251,-1078150),(1492250,-1078150)->(1492250,-1298740),(1492250,-1298740)->(1505420,-1311910),(1505420,-1311910)->(1505419,-1311911)] corners=[(1492250,-1078150),(1492250,-1298740),(1505420,-1311910)]
-item id=386 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1492250,-1078150)->(1492250,-1078149),(1492250,-1078150)->(1515350,-1078150),(1515350,-1078150)->(1526750,-1089550),(1526750,-1089550)->(1526749,-1089551)] corners=[(1492250,-1078150),(1515350,-1078150),(1526750,-1089550)]
-item id=384 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1089550)->(1457649,-1089551),(1457650,-1089550)->(1416050,-1047950),(1416050,-1047950)->(1416050,-996950),(1416050,-996950)->(1416051,-996950)] corners=[(1457650,-1089550),(1416050,-1047950),(1416050,-996950)]
+maxId=408
+item id=408 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1526750,-1184650)->(1526749,-1184651),(1492067,-1149967)->(1492066,-1149966),(1492067,-1118850)->(1436150,-1118850),(1436150,-1118850)->(1436150,-1118849)] corners=[(1526750,-1184650),(1460950,-1118850),(1436150,-1118850)]
+item id=404 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1155350)->(1548251,-1155350),(1548250,-1155350)->(1548251,-1155351),(1644650,-1174750)->(1644651,-1174750),(1644650,-1174750)->(1644651,-1174751)] corners=[(1548250,-1155350),(1567650,-1174750),(1644650,-1174750)]
+item id=398 type=PolylineTrace nets=[13] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1118850)->(1548249,-1118849),(1548250,-1118850)->(1582398,-1084702),(1562100,-1039700)->(1562100,-958850),(1562100,-958850)->(1562101,-958850)] corners=[(1548250,-1118850),(1562100,-1105000),(1562100,-958850)]
+item id=389 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1492250,-1078150)->(1492251,-1078150),(1492250,-1078150)->(1492250,-1298740),(1492250,-1298740)->(1505420,-1311910),(1505420,-1311910)->(1505419,-1311911)] corners=[(1492250,-1078150),(1492250,-1298740),(1505420,-1311910)]
+item id=384 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1492250,-1078150)->(1492250,-1078149),(1492250,-1078150)->(1515350,-1078150),(1515350,-1078150)->(1526750,-1089550),(1526750,-1089550)->(1526749,-1089551)] corners=[(1492250,-1078150),(1515350,-1078150),(1526750,-1089550)]
+item id=382 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1089550)->(1457649,-1089551),(1457650,-1089550)->(1416050,-1047950),(1416050,-1047950)->(1416050,-996950),(1416050,-996950)->(1416051,-996950)] corners=[(1457650,-1089550),(1416050,-1047950),(1416050,-996950)]
 item id=373 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1436150,-1118850)->(1436150,-1118851),(1436150,-1118850)->(1402060,-1118850),(1402060,-1118850)->(1362710,-1079500),(1362710,-1079500)->(1362711,-1079499)] corners=[(1436150,-1118850),(1402060,-1118850),(1362710,-1079500)]
 item id=371 type=PolylineTrace nets=[4] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1436150,-1154950)->(1436150,-1154951),(1417998,-1154950)->(1363460,-1154950),(1363460,-1154950)->(1362710,-1155700),(1362710,-1155700)->(1362709,-1155699)] corners=[(1436150,-1154950),(1363460,-1154950),(1362710,-1155700)]
 item id=368 type=PolylineTrace nets=[6] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1184650)->(1457651,-1184651),(1457650,-1184650)->(1455420,-1186880),(1455420,-1186880)->(1455420,-1311910),(1455420,-1311910)->(1455419,-1311910)] corners=[(1457650,-1184650),(1455420,-1186880),(1455420,-1311910)]
-item id=366 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=4000 n=5 lines=[(1663700,-1004100)->(1663701,-1004101),(1663700,-1004100)->(1638927,-1028873),(1640357,-1028873)->(1640357,-1028874),(1644650,-1174750)->(1644651,-1174751),(1644650,-1174750)->(1644650,-1174751)] corners=[(1663700,-1004100),(1640357,-1027443),(1640357,-1170457),(1644650,-1174750)]
+item id=366 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=4000 n=5 lines=[(1663700,-1004100)->(1663701,-1004101),(1663700,-1004100)->(1638927,-1028873),(1640358,-1028873)->(1640358,-1028874),(1644650,-1174750)->(1644651,-1174751),(1644650,-1174750)->(1644650,-1174751)] corners=[(1663700,-1004100),(1640358,-1027442),(1640358,-1170458),(1644650,-1174750)]
 item id=354 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
 item id=353 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
 item id=352 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
@@ -600,17 +600,17 @@ route k=11 item=316 net=7 state=NO_UNCONNECTED_NETS ripped=0
 route k=12 item=315 net=6 state=NO_UNCONNECTED_NETS ripped=0
 sweep regime=FORTYFIVE_DEGREE traceCosts=2
 vias n=0
-maxId=409
-item id=409 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1526750,-1184650)->(1526749,-1184651),(1492067,-1149967)->(1492066,-1149966),(1492067,-1118850)->(1436150,-1118850),(1436150,-1118850)->(1436150,-1118849)] corners=[(1526750,-1184650),(1460950,-1118850),(1436150,-1118850)]
-item id=405 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1155350)->(1548251,-1155350),(1548250,-1155350)->(1548251,-1155351),(1644650,-1174750)->(1644651,-1174750),(1644650,-1174750)->(1644651,-1174751)] corners=[(1548250,-1155350),(1567650,-1174750),(1644650,-1174750)]
-item id=399 type=PolylineTrace nets=[13] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1118850)->(1548249,-1118849),(1548250,-1118850)->(1582398,-1084702),(1562100,-1039700)->(1562100,-958850),(1562100,-958850)->(1562101,-958850)] corners=[(1548250,-1118850),(1562100,-1105000),(1562100,-958850)]
-item id=391 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1492250,-1078150)->(1492251,-1078150),(1492250,-1078150)->(1492250,-1298740),(1492250,-1298740)->(1505420,-1311910),(1505420,-1311910)->(1505419,-1311911)] corners=[(1492250,-1078150),(1492250,-1298740),(1505420,-1311910)]
-item id=386 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1492250,-1078150)->(1492250,-1078149),(1492250,-1078150)->(1515350,-1078150),(1515350,-1078150)->(1526750,-1089550),(1526750,-1089550)->(1526749,-1089551)] corners=[(1492250,-1078150),(1515350,-1078150),(1526750,-1089550)]
-item id=384 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1089550)->(1457649,-1089551),(1457650,-1089550)->(1416050,-1047950),(1416050,-1047950)->(1416050,-996950),(1416050,-996950)->(1416051,-996950)] corners=[(1457650,-1089550),(1416050,-1047950),(1416050,-996950)]
+maxId=408
+item id=408 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1526750,-1184650)->(1526749,-1184651),(1492067,-1149967)->(1492066,-1149966),(1492067,-1118850)->(1436150,-1118850),(1436150,-1118850)->(1436150,-1118849)] corners=[(1526750,-1184650),(1460950,-1118850),(1436150,-1118850)]
+item id=404 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1155350)->(1548251,-1155350),(1548250,-1155350)->(1548251,-1155351),(1644650,-1174750)->(1644651,-1174750),(1644650,-1174750)->(1644651,-1174751)] corners=[(1548250,-1155350),(1567650,-1174750),(1644650,-1174750)]
+item id=398 type=PolylineTrace nets=[13] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1118850)->(1548249,-1118849),(1548250,-1118850)->(1582398,-1084702),(1562100,-1039700)->(1562100,-958850),(1562100,-958850)->(1562101,-958850)] corners=[(1548250,-1118850),(1562100,-1105000),(1562100,-958850)]
+item id=389 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1492250,-1078150)->(1492251,-1078150),(1492250,-1078150)->(1492250,-1298740),(1492250,-1298740)->(1505420,-1311910),(1505420,-1311910)->(1505419,-1311911)] corners=[(1492250,-1078150),(1492250,-1298740),(1505420,-1311910)]
+item id=384 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1492250,-1078150)->(1492250,-1078149),(1492250,-1078150)->(1515350,-1078150),(1515350,-1078150)->(1526750,-1089550),(1526750,-1089550)->(1526749,-1089551)] corners=[(1492250,-1078150),(1515350,-1078150),(1526750,-1089550)]
+item id=382 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1089550)->(1457649,-1089551),(1457650,-1089550)->(1416050,-1047950),(1416050,-1047950)->(1416050,-996950),(1416050,-996950)->(1416051,-996950)] corners=[(1457650,-1089550),(1416050,-1047950),(1416050,-996950)]
 item id=373 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1436150,-1118850)->(1436150,-1118851),(1436150,-1118850)->(1402060,-1118850),(1402060,-1118850)->(1362710,-1079500),(1362710,-1079500)->(1362711,-1079499)] corners=[(1436150,-1118850),(1402060,-1118850),(1362710,-1079500)]
 item id=371 type=PolylineTrace nets=[4] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1436150,-1154950)->(1436150,-1154951),(1417998,-1154950)->(1363460,-1154950),(1363460,-1154950)->(1362710,-1155700),(1362710,-1155700)->(1362709,-1155699)] corners=[(1436150,-1154950),(1363460,-1154950),(1362710,-1155700)]
 item id=368 type=PolylineTrace nets=[6] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1184650)->(1457651,-1184651),(1457650,-1184650)->(1455420,-1186880),(1455420,-1186880)->(1455420,-1311910),(1455420,-1311910)->(1455419,-1311910)] corners=[(1457650,-1184650),(1455420,-1186880),(1455420,-1311910)]
-item id=366 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=4000 n=5 lines=[(1663700,-1004100)->(1663701,-1004101),(1663700,-1004100)->(1638927,-1028873),(1640357,-1028873)->(1640357,-1028874),(1644650,-1174750)->(1644651,-1174751),(1644650,-1174750)->(1644650,-1174751)] corners=[(1663700,-1004100),(1640357,-1027443),(1640357,-1170457),(1644650,-1174750)]
+item id=366 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=4000 n=5 lines=[(1663700,-1004100)->(1663701,-1004101),(1663700,-1004100)->(1638927,-1028873),(1640358,-1028873)->(1640358,-1028874),(1644650,-1174750)->(1644651,-1174751),(1644650,-1174750)->(1644650,-1174751)] corners=[(1663700,-1004100),(1640358,-1027442),(1640358,-1170458),(1644650,-1174750)]
 item id=354 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
 item id=353 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
 item id=352 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
@@ -980,17 +980,17 @@ route k=11 item=316 net=7 state=NO_UNCONNECTED_NETS ripped=0
 route k=12 item=315 net=6 state=NO_UNCONNECTED_NETS ripped=0
 sweep regime=FORTYFIVE_DEGREE traceCosts=null
 vias n=0
-maxId=409
-item id=409 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1526750,-1184650)->(1526749,-1184651),(1492067,-1149967)->(1492066,-1149966),(1492067,-1118850)->(1436150,-1118850),(1436150,-1118850)->(1436150,-1118849)] corners=[(1526750,-1184650),(1460950,-1118850),(1436150,-1118850)]
-item id=405 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1155350)->(1548251,-1155350),(1548250,-1155350)->(1548251,-1155351),(1644650,-1174750)->(1644651,-1174750),(1644650,-1174750)->(1644651,-1174751)] corners=[(1548250,-1155350),(1567650,-1174750),(1644650,-1174750)]
-item id=399 type=PolylineTrace nets=[13] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1118850)->(1548249,-1118849),(1548250,-1118850)->(1582398,-1084702),(1562100,-1039700)->(1562100,-958850),(1562100,-958850)->(1562101,-958850)] corners=[(1548250,-1118850),(1562100,-1105000),(1562100,-958850)]
-item id=391 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1492250,-1078150)->(1492251,-1078150),(1492250,-1078150)->(1492250,-1298740),(1492250,-1298740)->(1505420,-1311910),(1505420,-1311910)->(1505419,-1311911)] corners=[(1492250,-1078150),(1492250,-1298740),(1505420,-1311910)]
-item id=386 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1492250,-1078150)->(1492250,-1078149),(1492250,-1078150)->(1515350,-1078150),(1515350,-1078150)->(1526750,-1089550),(1526750,-1089550)->(1526749,-1089551)] corners=[(1492250,-1078150),(1515350,-1078150),(1526750,-1089550)]
-item id=384 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1089550)->(1457649,-1089551),(1457650,-1089550)->(1416050,-1047950),(1416050,-1047950)->(1416050,-996950),(1416050,-996950)->(1416051,-996950)] corners=[(1457650,-1089550),(1416050,-1047950),(1416050,-996950)]
+maxId=408
+item id=408 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1526750,-1184650)->(1526749,-1184651),(1492067,-1149967)->(1492066,-1149966),(1492067,-1118850)->(1436150,-1118850),(1436150,-1118850)->(1436150,-1118849)] corners=[(1526750,-1184650),(1460950,-1118850),(1436150,-1118850)]
+item id=404 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1155350)->(1548251,-1155350),(1548250,-1155350)->(1548251,-1155351),(1644650,-1174750)->(1644651,-1174750),(1644650,-1174750)->(1644651,-1174751)] corners=[(1548250,-1155350),(1567650,-1174750),(1644650,-1174750)]
+item id=398 type=PolylineTrace nets=[13] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1548250,-1118850)->(1548249,-1118849),(1548250,-1118850)->(1582398,-1084702),(1562100,-1039700)->(1562100,-958850),(1562100,-958850)->(1562101,-958850)] corners=[(1548250,-1118850),(1562100,-1105000),(1562100,-958850)]
+item id=389 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1492250,-1078150)->(1492251,-1078150),(1492250,-1078150)->(1492250,-1298740),(1492250,-1298740)->(1505420,-1311910),(1505420,-1311910)->(1505419,-1311911)] corners=[(1492250,-1078150),(1492250,-1298740),(1505420,-1311910)]
+item id=384 type=PolylineTrace nets=[7] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1492250,-1078150)->(1492250,-1078149),(1492250,-1078150)->(1515350,-1078150),(1515350,-1078150)->(1526750,-1089550),(1526750,-1089550)->(1526749,-1089551)] corners=[(1492250,-1078150),(1515350,-1078150),(1526750,-1089550)]
+item id=382 type=PolylineTrace nets=[2] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1089550)->(1457649,-1089551),(1457650,-1089550)->(1416050,-1047950),(1416050,-1047950)->(1416050,-996950),(1416050,-996950)->(1416051,-996950)] corners=[(1457650,-1089550),(1416050,-1047950),(1416050,-996950)]
 item id=373 type=PolylineTrace nets=[12] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1436150,-1118850)->(1436150,-1118851),(1436150,-1118850)->(1402060,-1118850),(1402060,-1118850)->(1362710,-1079500),(1362710,-1079500)->(1362711,-1079499)] corners=[(1436150,-1118850),(1402060,-1118850),(1362710,-1079500)]
 item id=371 type=PolylineTrace nets=[4] cl=1 fix=UNFIXED layer=0 hw=4000 n=4 lines=[(1436150,-1154950)->(1436150,-1154951),(1417998,-1154950)->(1363460,-1154950),(1363460,-1154950)->(1362710,-1155700),(1362710,-1155700)->(1362709,-1155699)] corners=[(1436150,-1154950),(1363460,-1154950),(1362710,-1155700)]
 item id=368 type=PolylineTrace nets=[6] cl=1 fix=UNFIXED layer=1 hw=4000 n=4 lines=[(1457650,-1184650)->(1457651,-1184651),(1457650,-1184650)->(1455420,-1186880),(1455420,-1186880)->(1455420,-1311910),(1455420,-1311910)->(1455419,-1311910)] corners=[(1457650,-1184650),(1455420,-1186880),(1455420,-1311910)]
-item id=366 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=4000 n=5 lines=[(1663700,-1004100)->(1663701,-1004101),(1663700,-1004100)->(1638927,-1028873),(1640357,-1028873)->(1640357,-1028874),(1644650,-1174750)->(1644651,-1174751),(1644650,-1174750)->(1644650,-1174751)] corners=[(1663700,-1004100),(1640357,-1027443),(1640357,-1170457),(1644650,-1174750)]
+item id=366 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=1 hw=4000 n=5 lines=[(1663700,-1004100)->(1663701,-1004101),(1663700,-1004100)->(1638927,-1028873),(1640358,-1028873)->(1640358,-1028874),(1644650,-1174750)->(1644651,-1174751),(1644650,-1174750)->(1644650,-1174751)] corners=[(1663700,-1004100),(1640358,-1027442),(1640358,-1170458),(1644650,-1174750)]
 item id=354 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
 item id=353 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
 item id=352 type=ComponentOutline nets=[] cl=0 fix=UNFIXED
@@ -1480,24 +1480,24 @@ repB id=43 k=10 r=0 to=(530001,2619005) connect=(531001,2269671) -> true
 repB id=43 k=10 r=1 to=(530001,2619005) connect=(856000,2944004) -> true
 ######## rpi mode 5
 repC id=189 class=PLANE_OR_FANOUT_ONE_CONTACT state=SKIP
-repC id=98 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(666000,1086670) from2=(765863,1456531) -> null
-repC id=98 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(666000,1086670) from2=(765863,1456531) -> (531001,1086670)
-repC id=98 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(666000,1086670) from2=(765863,1456531) -> (666000,1221669)
-repC id=98 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(666000,1086670) from2=(765863,1456531) -> (611550,1302218)
-repC id=98 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(666000,1086670) from2=(765863,1456531) -> (666000,1221669)
-repC id=93 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(765863,1456531) from2=(727900,1789557) -> null
-repC id=93 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(765863,1456531) from2=(727900,1789557) -> (727900,1751594)
-repC id=93 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(765863,1456531) from2=(727900,1789557) -> (765863,1789557)
-repC id=93 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(765863,1456531) from2=(727900,1789557) -> (727900,1789557)
-repC id=93 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(765863,1456531) from2=(727900,1789557) -> (765863,1789557)
+repC id=98 k=0 costs1=(1,1) costs2=(1,1) from1=(666000,1086670) from2=(765863,1456531) -> null
+repC id=98 k=1 costs1=(1,2) costs2=(2,1) from1=(666000,1086670) from2=(765863,1456531) -> (531001,1086670)
+repC id=98 k=2 costs1=(2,1) costs2=(1,2) from1=(666000,1086670) from2=(765863,1456531) -> (666000,1221669)
+repC id=98 k=3 costs1=(1,1) costs2=(2,2) from1=(666000,1086670) from2=(765863,1456531) -> (611550,1302218)
+repC id=98 k=4 costs1=(3,1) costs2=(1,3) from1=(666000,1086670) from2=(765863,1456531) -> (666000,1221669)
+repC id=93 k=0 costs1=(1,1) costs2=(1,1) from1=(765863,1456531) from2=(727900,1789557) -> null
+repC id=93 k=1 costs1=(1,2) costs2=(2,1) from1=(765863,1456531) from2=(727900,1789557) -> (727900,1751594)
+repC id=93 k=2 costs1=(2,1) costs2=(1,2) from1=(765863,1456531) from2=(727900,1789557) -> (765863,1789557)
+repC id=93 k=3 costs1=(1,1) costs2=(2,2) from1=(765863,1456531) from2=(727900,1789557) -> (727900,1789557)
+repC id=93 k=4 costs1=(3,1) costs2=(1,3) from1=(765863,1456531) from2=(727900,1789557) -> (765863,1789557)
 repC id=84 class=PLANE_OR_FANOUT_ONE_CONTACT state=SKIP
-repC id=49 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(552098,2269671) from2=(531001,2619005) -> null
-repC id=49 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(552098,2269671) from2=(531001,2619005) -> null
-repC id=49 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(552098,2269671) from2=(531001,2619005) -> (552098,2269671)
-repC id=49 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(552098,2269671) from2=(531001,2619005) -> (531001,2520755)
-repC id=49 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(552098,2269671) from2=(531001,2619005) -> (552098,2269671)
-repC id=43 k=0 costs1=(1.0,1.0) costs2=(1.0,1.0) from1=(531001,2269671) from2=(856000,2944004) -> null
-repC id=43 k=1 costs1=(1.0,2.0) costs2=(2.0,1.0) from1=(531001,2269671) from2=(856000,2944004) -> (531001,2367921)
-repC id=43 k=2 costs1=(2.0,1.0) costs2=(1.0,2.0) from1=(531001,2269671) from2=(856000,2944004) -> (531001,2944004)
-repC id=43 k=3 costs1=(1.0,1.0) costs2=(2.0,2.0) from1=(531001,2269671) from2=(856000,2944004) -> (856000,2944004)
-repC id=43 k=4 costs1=(3.0,1.0) costs2=(1.0,3.0) from1=(531001,2269671) from2=(856000,2944004) -> (531001,2944004)
+repC id=49 k=0 costs1=(1,1) costs2=(1,1) from1=(552098,2269671) from2=(531001,2619005) -> null
+repC id=49 k=1 costs1=(1,2) costs2=(2,1) from1=(552098,2269671) from2=(531001,2619005) -> null
+repC id=49 k=2 costs1=(2,1) costs2=(1,2) from1=(552098,2269671) from2=(531001,2619005) -> (552098,2269671)
+repC id=49 k=3 costs1=(1,1) costs2=(2,2) from1=(552098,2269671) from2=(531001,2619005) -> (531001,2520755)
+repC id=49 k=4 costs1=(3,1) costs2=(1,3) from1=(552098,2269671) from2=(531001,2619005) -> (552098,2269671)
+repC id=43 k=0 costs1=(1,1) costs2=(1,1) from1=(531001,2269671) from2=(856000,2944004) -> null
+repC id=43 k=1 costs1=(1,2) costs2=(2,1) from1=(531001,2269671) from2=(856000,2944004) -> (531001,2367921)
+repC id=43 k=2 costs1=(2,1) costs2=(1,2) from1=(531001,2269671) from2=(856000,2944004) -> (531001,2944004)
+repC id=43 k=3 costs1=(1,1) costs2=(2,2) from1=(531001,2269671) from2=(856000,2944004) -> (856000,2944004)
+repC id=43 k=4 costs1=(3,1) costs2=(1,3) from1=(531001,2269671) from2=(856000,2944004) -> (531001,2944004)

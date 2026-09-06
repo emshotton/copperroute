@@ -11,12 +11,12 @@ struct Row {
     ses: PathBuf,
     pro: PathBuf,
     ignore: Vec<String>,
-    needs_java: bool,
+    needs_reference: bool,
 }
 
 fn resolve(field: &str) -> (PathBuf, bool) {
     match field.strip_prefix("java:") {
-        Some(rest) => (parity::java_dir().join(rest), true),
+        Some(rest) => (parity::reference_dir().join(rest), true),
         None => (parity::workspace_root().join(field), false),
     }
 }
@@ -30,9 +30,9 @@ fn rows() -> Vec<Row> {
         .filter(|line| !line.is_empty() && !line.starts_with('#'))
         .map(|line| {
             let fields: Vec<&str> = line.split('|').map(str::trim).collect();
-            let (dsn, java_a) = resolve(fields[1]);
-            let (ses, java_b) = resolve(fields[2]);
-            let (pro, java_c) = resolve(fields[4]);
+            let (dsn, dsn_is_reference) = resolve(fields[1]);
+            let (ses, ses_is_reference) = resolve(fields[2]);
+            let (pro, pro_is_reference) = resolve(fields[4]);
             Row {
                 stem: fields[0].to_string(),
                 dsn,
@@ -47,7 +47,7 @@ fn rows() -> Vec<Row> {
                             .collect()
                     })
                     .unwrap_or_default(),
-                needs_java: java_a || java_b || java_c,
+                needs_reference: dsn_is_reference || ses_is_reference || pro_is_reference,
             }
         })
         .collect()
@@ -141,7 +141,7 @@ fn oracle_counts(stem: &str) -> Option<(BTreeMap<String, usize>, usize)> {
 fn the_port_matches_kicad_cli_per_violation_type() {
     let mut failures = Vec::new();
     for row in rows() {
-        if row.needs_java && !parity::require_java_dir() {
+        if row.needs_reference && !parity::require_reference_dir() {
             continue;
         }
         let Some((expected, expected_unconnected)) = oracle_counts(&row.stem) else {

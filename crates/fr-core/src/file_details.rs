@@ -1,4 +1,4 @@
-use crate::job::{FileFormat, java_path};
+use crate::job::{FileFormat, path_util};
 use fr_router::score::BoardStatistics;
 use std::path::{Path, PathBuf};
 
@@ -16,7 +16,7 @@ pub struct BoardFileDetails {
 impl BoardFileDetails {
     pub fn from_file(file: &Path) -> BoardFileDetails {
         let mut details = BoardFileDetails::default();
-        let absolute = java_path::to_absolute_path(&file.to_string_lossy());
+        let absolute = path_util::to_absolute_path(&file.to_string_lossy());
         details.set_filename(Some(&absolute));
         if let Ok(data) = std::fs::read(file) {
             let format = FileFormat::sniff_bytes(&data);
@@ -45,7 +45,7 @@ impl BoardFileDetails {
     }
 
     pub fn get_absolute_path(&self) -> String {
-        java_path::join2(&self.directory_path, &self.filename)
+        path_util::join2(&self.directory_path, &self.filename)
     }
 
     pub fn get_data(&self) -> &[u8] {
@@ -63,7 +63,7 @@ impl BoardFileDetails {
         if self.filename.is_empty() {
             return None;
         }
-        Some(PathBuf::from(java_path::join2(
+        Some(PathBuf::from(path_util::join2(
             &self.directory_path,
             &self.filename,
         )))
@@ -84,10 +84,10 @@ impl BoardFileDetails {
             return;
         };
 
-        let path = java_path::to_absolute_path(filename);
+        let path = path_util::to_absolute_path(filename);
 
         if filename.contains(crate::job::FILE_SEPARATOR) {
-            self.directory_path = java_path::parent_of_normalized(&path).unwrap_or_default();
+            self.directory_path = path_util::parent_of_normalized(&path).unwrap_or_default();
             self.directory_path = self.directory_path.replace("\\.\\", "\\");
             self.directory_path = self
                 .directory_path
@@ -98,7 +98,7 @@ impl BoardFileDetails {
             self.directory_path = String::new();
         }
 
-        self.filename = java_path::file_name_of_normalized(&path).unwrap_or_default();
+        self.filename = path_util::file_name_of_normalized(&path).unwrap_or_default();
 
         if self.format == FileFormat::Unknown {
             self.format = FileFormat::from_path(Path::new(&self.filename));

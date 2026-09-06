@@ -417,7 +417,7 @@ impl RouterSettings {
         scoring
             .preferred_direction_trace_cost
             .as_mut()
-            .expect("set above")[layer] = java_math_max(value, 0.1);
+            .expect("set above")[layer] = (value).max(0.1);
         self.board_specific_trace_costs_applied = Some(true);
     }
 
@@ -444,7 +444,7 @@ impl RouterSettings {
         scoring
             .undesired_direction_trace_cost
             .as_mut()
-            .expect("set above")[layer] = java_math_max(value, 0.1);
+            .expect("set above")[layer] = (value).max(0.1);
         self.board_specific_trace_costs_applied = Some(true);
     }
 
@@ -504,7 +504,7 @@ impl RouterSettings {
             .collect()
     }
 
-    pub fn java_clone(&self) -> Self {
+    pub fn duplicate(&self) -> Self {
         let mut result = Self::new();
         let layer_count = self.get_layer_count();
         if layer_count > 0 {
@@ -599,14 +599,6 @@ fn clamp_bend_cost(value: f64) -> f64 {
     value.clamp(RouterSettings::MIN_BEND_COST, RouterSettings::MAX_BEND_COST)
 }
 
-fn java_math_max(a: f64, b: f64) -> f64 {
-    if a.is_nan() || b.is_nan() {
-        f64::NAN
-    } else {
-        a.max(b)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct ExpansionCostFactor {
     pub horizontal: f64,
@@ -663,28 +655,20 @@ mod tests {
     }
 
     #[test]
-    fn java_clone_carries_the_applied_flag() {
+    fn duplicate_carries_the_applied_flag() {
         let mut settings = RouterSettings::new();
         settings.set_layer_count(2);
         settings.set_preferred_direction_trace_costs(0, 2.5);
         assert_eq!(
-            settings.java_clone().board_specific_trace_costs_applied,
+            settings.duplicate().board_specific_trace_costs_applied,
             Some(true)
         );
 
         let mut untouched = RouterSettings::new();
         untouched.set_layer_count(2);
         assert_eq!(
-            untouched.java_clone().board_specific_trace_costs_applied,
+            untouched.duplicate().board_specific_trace_costs_applied,
             Some(false)
         );
-    }
-
-    #[test]
-    fn java_math_max_propagates_nan() {
-        assert!(java_math_max(f64::NAN, 0.1).is_nan());
-        assert!(java_math_max(0.1, f64::NAN).is_nan());
-        assert_eq!(java_math_max(0.05, 0.1), 0.1);
-        assert_eq!(java_math_max(5.0, 0.1), 5.0);
     }
 }

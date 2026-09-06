@@ -7,7 +7,7 @@ use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_board::{BoardError, ItemId, StopConnectionOption, TimeLimit};
 use fr_geometry::{
-    Direction, IntBox, Line, LineSegment, Point, Polyline, PolylineShapeOps, TileShape, java_min,
+    Direction, IntBox, Line, LineSegment, Point, Polyline, PolylineShapeOps, TileShape,
 };
 
 use crate::board_ext::drill_item_mover::{
@@ -174,7 +174,7 @@ impl TraceShover {
                 if current_ok_length <= 0.0 {
                     return 0.0;
                 }
-                result = java_min(result, current_ok_length);
+                result = (result).min(current_ok_length);
             }
         }
 
@@ -231,16 +231,14 @@ impl TraceShover {
                     if shove_ok_length <= 0.0 {
                         return 0.0;
                     }
-                    let mut projection = java_min(
-                        start_corner_approx.scalar_product(
-                            &end_corner_approx,
-                            &current_line_segment.start_point_approx(),
-                        ),
-                        start_corner_approx.scalar_product(
-                            &end_corner_approx,
-                            &current_line_segment.end_point_approx(),
-                        ),
-                    );
+                    let mut projection = (start_corner_approx.scalar_product(
+                        &end_corner_approx,
+                        &current_line_segment.start_point_approx(),
+                    ))
+                    .min(start_corner_approx.scalar_product(
+                        &end_corner_approx,
+                        &current_line_segment.end_point_approx(),
+                    ));
                     projection /= segment_length;
                     let mut current_ok_length = shove_ok_length + projection
                         - f64::from(trace_half_width)
@@ -263,7 +261,7 @@ impl TraceShover {
                     if current_ok_length <= 0.0 {
                         return 0.0;
                     }
-                    result = java_min(current_ok_length, result);
+                    result = (current_ok_length).min(result);
                 }
                 // :220 — the `break` is inside the `isInFront` arm, so the loop stops at the
                 // first segment pointing the same way whether or not the check bit.
@@ -1060,7 +1058,7 @@ impl TraceShover {
             None => None,
         };
 
-        let reversed = java_reverse(polyline);
+        let reversed = reverse_polyline(polyline);
         let clock_wise_result = match Self::spring_over(
             board,
             reversed.clone(),
@@ -1081,20 +1079,20 @@ impl TraceShover {
         match (clock_wise_result, counter_clock_wise_result) {
             (Some(clock_wise), Some(counter_clock_wise)) => {
                 if clock_wise.length_approx() <= counter_clock_wise.length_approx() {
-                    Some(java_reverse(&clock_wise))
+                    Some(reverse_polyline(&clock_wise))
                 } else {
                     Some(counter_clock_wise)
                 }
             }
-            (Some(clock_wise), None) => Some(java_reverse(&clock_wise)),
+            (Some(clock_wise), None) => Some(reverse_polyline(&clock_wise)),
             (None, Some(counter_clock_wise)) => Some(counter_clock_wise),
             (None, None) => None,
         }
     }
 }
 
-fn java_reverse(polyline: &Polyline) -> Polyline {
+fn reverse_polyline(polyline: &Polyline) -> Polyline {
     polyline
         .reverse()
-        .unwrap_or_else(|e| panic!("Polyline.reverse() threw (Polyline.java:148, quirk #22): {e}"))
+        .unwrap_or_else(|e| panic!("Polyline::reverse failed: {e}"))
 }

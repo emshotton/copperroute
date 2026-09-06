@@ -97,7 +97,7 @@ fn add_trace(
 }
 
 fn load_board(rel_path: &str) -> Board {
-    let path = parity::java_dir().join(rel_path);
+    let path = parity::reference_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path
@@ -390,7 +390,7 @@ fn contains_only_unfixed_traces_answers_javas_three_cases() {
 }
 
 #[test]
-fn the_trace_ripup_cost_factor_is_rounded_java_style() {
+fn the_trace_ripup_cost_factor_is_rounded_half_away_from_zero() {
     let board = empty_board();
     let mut settings = build_settings(&board);
     let base = settings.get_start_ripup_costs();
@@ -405,7 +405,7 @@ fn the_trace_ripup_cost_factor_is_rounded_java_style() {
     assert_eq!(optimizer_ripup_costs(&settings, true, false), base * 10);
     assert_eq!(
         optimizer_ripup_costs(&settings, true, true),
-        fr_geometry::java_round(f64::from(0.6_f32) * f64::from(base * 10)) as i32
+        (f64::from(0.6_f32) * f64::from(base * 10)).round() as i32
     );
     assert_eq!(optimizer_ripup_costs(&settings, true, false), 1_000);
     assert_eq!(optimizer_ripup_costs(&settings, true, true), 600);
@@ -436,10 +436,9 @@ fn the_trace_ripup_cost_factor_is_rounded_java_style() {
         .trace_ripup_cost_factor = Some(-0.5);
     assert_eq!(
         optimizer_ripup_costs(&settings, true, true),
-        -2,
-        "-2.5 -> -2"
+        -3,
+        "-2.5 -> -3"
     );
-    assert_eq!((-2.5_f64).round() as i32, -3, "the trap this avoids");
 
     settings
         .optimizer
@@ -452,7 +451,7 @@ fn the_trace_ripup_cost_factor_is_rounded_java_style() {
         3,
         "the float factor is widened after its own rounding, not before"
     );
-    assert_eq!(fr_geometry::java_round(0.7_f64 * 5.0) as i32, 4, "the trap");
+    assert_eq!((0.7_f64 * 5.0).round() as i32, 4, "the trap");
 }
 
 #[test]

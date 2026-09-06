@@ -1,7 +1,7 @@
 //! `EnvironmentVariablesSource` (`FREEROUTING__ROUTER__OPTIMIZER__MAX_THREADS=8`) and
 use crate::{
-    BoardUpdateStrategy, FanoutSettings, ItemSelectionStrategy, JavaEnum, LayerSettings,
-    MergeError, OptimizerSettings, RouterSettings, ScoringSettings,
+    BoardUpdateStrategy, FanoutSettings, ItemSelectionStrategy, LayerSettings, MergeError,
+    NamedEnum, OptimizerSettings, RouterSettings, ScoringSettings,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,7 +24,7 @@ pub enum FieldKind {
 pub struct FieldSpec {
     pub serialized: &'static str,
     pub alternates: &'static [&'static str],
-    pub java_name: &'static str,
+    pub legacy_name: &'static str,
     pub rust_name: &'static str,
     pub kind: FieldKind,
 }
@@ -34,14 +34,14 @@ const ITEM_SELECTION_STRATEGY_NAMES: &[&str] = &["SEQUENTIAL", "RANDOM", "PRIORI
 
 const fn spec(
     serialized: &'static str,
-    java_name: &'static str,
+    legacy_name: &'static str,
     rust_name: &'static str,
     kind: FieldKind,
 ) -> FieldSpec {
     FieldSpec {
         serialized,
         alternates: &[],
-        java_name,
+        legacy_name,
         rust_name,
         kind,
     }
@@ -50,14 +50,14 @@ const fn spec(
 const fn spec_alt(
     serialized: &'static str,
     alternates: &'static [&'static str],
-    java_name: &'static str,
+    legacy_name: &'static str,
     rust_name: &'static str,
     kind: FieldKind,
 ) -> FieldSpec {
     FieldSpec {
         serialized,
         alternates,
-        java_name,
+        legacy_name,
         rust_name,
         kind,
     }
@@ -385,11 +385,10 @@ impl FanoutSettings {
     ];
 }
 
-pub(crate) fn java_trim(value: &str) -> &str {
-    value.trim_matches(|c: char| c <= '\u{20}')
-}
-
-pub(crate) fn java_split(value: &str, is_separator: impl Fn(char) -> bool + Copy) -> Vec<&str> {
+pub(crate) fn split_dropping_trailing_empty(
+    value: &str,
+    is_separator: impl Fn(char) -> bool + Copy,
+) -> Vec<&str> {
     if !value.contains(is_separator) {
         return vec![value];
     }
@@ -404,7 +403,7 @@ fn snake_to_lower_camel(name: &str) -> String {
     if !name.contains('_') {
         return name.to_string();
     }
-    let parts = java_split(name, |c| c == '_');
+    let parts = split_dropping_trailing_empty(name, |c| c == '_');
     let Some((first, rest)) = parts.split_first() else {
         return String::new();
     };
@@ -447,9 +446,9 @@ fn resolve_field(fields: &'static [FieldSpec], name: &str) -> Option<&'static Fi
                 return Some(field);
             }
         }
-        if equals_ignore_case(field.java_name, name)
-            || equals_ignore_case(field.java_name, &camel_name)
-            || equals_ignore_case(&snake_to_lower_camel(field.java_name), &camel_name)
+        if equals_ignore_case(field.legacy_name, name)
+            || equals_ignore_case(field.legacy_name, &camel_name)
+            || equals_ignore_case(&snake_to_lower_camel(field.legacy_name), &camel_name)
         {
             return Some(field);
         }
@@ -477,111 +476,30 @@ fn type_mismatch(path: &str, value: &str) -> MergeError {
     }
 }
 
-pub fn java_parse_i32(value: &str, path: &str) -> Result<i32, MergeError> {
+pub fn parse_i32(value: &str, path: &str) -> Result<i32, MergeError> {
     value.parse::<i32>().map_err(|_| number_format(path, value))
 }
 
-pub fn java_parse_i64(value: &str, path: &str) -> Result<i64, MergeError> {
+pub fn parse_i64(value: &str, path: &str) -> Result<i64, MergeError> {
     value.parse::<i64>().map_err(|_| number_format(path, value))
 }
 
-enum FloatLexeme<'a> {
-    Nan,
-    Infinity(bool),
-    Decimal(&'a str),
+pub fn parse_f64(value: &str, path: &str) -> Result<f64, MergeError> {
+    value
+        .trim()
+        .parse::<f64>()
+        .map_err(|_| number_format(path, value))
 }
 
-fn java_float_lexeme(value: &str) -> Option<FloatLexeme<'_>> {
-    let bytes = value.as_bytes();
-    let mut i = 0;
-    let mut negative = false;
-    match bytes.first() {
-        Some(b'-') => {
-            negative = true;
-            i = 1;
-        }
-        Some(b'+') => i = 1,
-        Some(_) => {}
-        None => return None,
-    }
-    match &value[i..] {
-        "NaN" => return Some(FloatLexeme::Nan),
-        "Infinity" => return Some(FloatLexeme::Infinity(negative)),
-        _ => {}
-    }
-
-    let mut j = i;
-    let mut digits = 0usize;
-    while j < bytes.len() && bytes[j].is_ascii_digit() {
-        j += 1;
-        digits += 1;
-    }
-    if j < bytes.len() && bytes[j] == b'.' {
-        j += 1;
-        while j < bytes.len() && bytes[j].is_ascii_digit() {
-            j += 1;
-            digits += 1;
-        }
-    }
-    if digits == 0 {
-        return None;
-    }
-    if j < bytes.len() && (bytes[j] == b'e' || bytes[j] == b'E') {
-        let mut k = j + 1;
-        if k < bytes.len() && (bytes[k] == b'+' || bytes[k] == b'-') {
-            k += 1;
-        }
-        let exponent_start = k;
-        while k < bytes.len() && bytes[k].is_ascii_digit() {
-            k += 1;
-        }
-        if k == exponent_start {
-            return None;
-        }
-        j = k;
-    }
-    let end = j;
-    if j < bytes.len() && matches!(bytes[j], b'f' | b'F' | b'd' | b'D') {
-        j += 1;
-    }
-    if j != bytes.len() {
-        return None;
-    }
-    Some(FloatLexeme::Decimal(&value[..end]))
-}
-
-pub fn java_parse_f64(value: &str, path: &str) -> Result<f64, MergeError> {
-    match java_float_lexeme(java_trim(value)) {
-        Some(FloatLexeme::Nan) => Ok(f64::NAN),
-        Some(FloatLexeme::Infinity(negative)) => Ok(if negative {
-            f64::NEG_INFINITY
-        } else {
-            f64::INFINITY
-        }),
-        Some(FloatLexeme::Decimal(decimal)) => decimal
-            .parse::<f64>()
-            .map_err(|_| number_format(path, value)),
-        None => Err(number_format(path, value)),
-    }
-}
-
-pub fn java_parse_f32(value: &str, path: &str) -> Result<f32, MergeError> {
-    match java_float_lexeme(java_trim(value)) {
-        Some(FloatLexeme::Nan) => Ok(f32::NAN),
-        Some(FloatLexeme::Infinity(negative)) => Ok(if negative {
-            f32::NEG_INFINITY
-        } else {
-            f32::INFINITY
-        }),
-        Some(FloatLexeme::Decimal(decimal)) => decimal
-            .parse::<f32>()
-            .map_err(|_| number_format(path, value)),
-        None => Err(number_format(path, value)),
-    }
+pub fn parse_f32(value: &str, path: &str) -> Result<f32, MergeError> {
+    value
+        .trim()
+        .parse::<f32>()
+        .map_err(|_| number_format(path, value))
 }
 
 #[must_use]
-pub fn java_parse_bool(value: &str) -> bool {
+pub fn parse_bool(value: &str) -> bool {
     if value == "0" {
         return false;
     }
@@ -592,20 +510,20 @@ pub fn java_parse_bool(value: &str) -> bool {
 }
 
 #[must_use]
-pub fn java_enum_constant(constants: &[&'static str], value: &str) -> Option<&'static str> {
-    let trimmed = java_trim(value);
+pub fn enum_constant(constants: &[&'static str], value: &str) -> Option<&'static str> {
+    let trimmed = (value).trim();
     constants
         .iter()
         .copied()
         .find(|constant| equals_ignore_case(constant, trimmed))
 }
 
-fn convert_enum<T: JavaEnum>(kind: FieldKind, value: &str, path: &str) -> Result<T, MergeError> {
+fn convert_enum<T: NamedEnum>(kind: FieldKind, value: &str, path: &str) -> Result<T, MergeError> {
     let FieldKind::Enum(constants) = kind else {
         return Err(type_mismatch(path, value));
     };
-    java_enum_constant(constants, value)
-        .and_then(T::from_java_name)
+    enum_constant(constants, value)
+        .and_then(T::from_name)
         .ok_or_else(|| MergeError::EnumName {
             path: path.to_string(),
             value: value.to_string(),
@@ -613,36 +531,36 @@ fn convert_enum<T: JavaEnum>(kind: FieldKind, value: &str, path: &str) -> Result
 }
 
 #[must_use]
-pub fn java_parse_string_vec(value: &str) -> Vec<String> {
-    let raw = java_trim(value);
+pub fn parse_string_vec(value: &str) -> Vec<String> {
+    let raw = (value).trim();
     if raw.is_empty() {
         return Vec::new();
     }
-    java_split(raw, |c| c == ',')
+    split_dropping_trailing_empty(raw, |c| c == ',')
         .into_iter()
-        .map(|token| java_trim(token).to_string())
+        .map(|token| (token).trim().to_string())
         .collect()
 }
 
-pub fn java_parse_f64_vec(value: &str, path: &str) -> Result<Vec<f64>, MergeError> {
-    let raw = java_trim(value);
+pub fn parse_f64_vec(value: &str, path: &str) -> Result<Vec<f64>, MergeError> {
+    let raw = (value).trim();
     if raw.is_empty() {
         return Ok(Vec::new());
     }
-    java_split(raw, |c| c == ',')
+    split_dropping_trailing_empty(raw, |c| c == ',')
         .into_iter()
-        .map(|token| java_parse_f64(java_trim(token), path))
+        .map(|token| parse_f64((token).trim(), path))
         .collect()
 }
 
-pub fn java_parse_i32_vec(value: &str, path: &str) -> Result<Vec<i32>, MergeError> {
-    let raw = java_trim(value);
+pub fn parse_i32_vec(value: &str, path: &str) -> Result<Vec<i32>, MergeError> {
+    let raw = (value).trim();
     if raw.is_empty() {
         return Ok(Vec::new());
     }
-    java_split(raw, |c| c == ',')
+    split_dropping_trailing_empty(raw, |c| c == ',')
         .into_iter()
-        .map(|token| java_parse_i32(java_trim(token), path))
+        .map(|token| parse_i32((token).trim(), path))
         .collect()
 }
 
@@ -651,7 +569,7 @@ pub fn set_field_value(
     property_path: &str,
     value: &str,
 ) -> Result<(), MergeError> {
-    let segments = java_split(property_path, |c| matches!(c, '.' | ':' | '-'));
+    let segments = split_dropping_trailing_empty(property_path, |c| matches!(c, '.' | ':' | '-'));
     if segments.is_empty() {
         return Err(no_such_field(property_path));
     }
@@ -674,13 +592,13 @@ fn set_router_property(
 
     match field.rust_name {
         "layers" => {
-            let tokens = java_split(value, |c| c == ',');
+            let tokens = split_dropping_trailing_empty(value, |c| c == ',');
             let layers = target
                 .layers
                 .get_or_insert_with(|| vec![LayerSettings::default(); tokens.len()]);
             let limit = layers.len().min(tokens.len());
             for (element, token) in layers.iter_mut().zip(tokens).take(limit) {
-                set_layer_property(element, segments, index + 1, java_trim(token), path)?;
+                set_layer_property(element, segments, index + 1, (token).trim(), path)?;
             }
             Ok(())
         }
@@ -718,38 +636,36 @@ fn set_router_leaf(
     path: &str,
 ) -> Result<(), MergeError> {
     match field.rust_name {
-        "enabled" => target.enabled = Some(java_parse_bool(value)),
+        "enabled" => target.enabled = Some(parse_bool(value)),
         "algorithm" => target.algorithm = Some(value.to_string()),
         "copper_to_edge_clearance_um" => {
-            target.copper_to_edge_clearance_um = Some(java_parse_f64(value, path)?);
+            target.copper_to_edge_clearance_um = Some(parse_f64(value, path)?);
         }
-        "hole_clearance_um" => target.hole_clearance_um = Some(java_parse_f64(value, path)?),
-        "neck_width_um" => target.neck_width_um = Some(java_parse_f64(value, path)?),
-        "strict_drc" => target.strict_drc = Some(java_parse_bool(value)),
+        "hole_clearance_um" => target.hole_clearance_um = Some(parse_f64(value, path)?),
+        "neck_width_um" => target.neck_width_um = Some(parse_f64(value, path)?),
+        "strict_drc" => target.strict_drc = Some(parse_bool(value)),
         "job_timeout_string" => target.job_timeout_string = Some(value.to_string()),
-        "max_passes" => target.max_passes = Some(java_parse_i32(value, path)?),
-        "max_items" => target.max_items = Some(java_parse_i32(value, path)?),
-        "save_intermediate_stages" => {
-            target.save_intermediate_stages = Some(java_parse_bool(value))
-        }
-        "ignore_net_classes" => target.ignore_net_classes = Some(java_parse_string_vec(value)),
+        "max_passes" => target.max_passes = Some(parse_i32(value, path)?),
+        "max_items" => target.max_items = Some(parse_i32(value, path)?),
+        "save_intermediate_stages" => target.save_intermediate_stages = Some(parse_bool(value)),
+        "ignore_net_classes" => target.ignore_net_classes = Some(parse_string_vec(value)),
         "trace_pull_tight_accuracy" => {
-            target.trace_pull_tight_accuracy = Some(java_parse_i32(value, path)?);
+            target.trace_pull_tight_accuracy = Some(parse_i32(value, path)?);
         }
-        "vias_allowed" => target.vias_allowed = Some(java_parse_bool(value)),
-        "automatic_neckdown" => target.automatic_neckdown = Some(java_parse_bool(value)),
-        "max_threads" => target.max_threads = Some(java_parse_i32(value, path)?),
+        "vias_allowed" => target.vias_allowed = Some(parse_bool(value)),
+        "automatic_neckdown" => target.automatic_neckdown = Some(parse_bool(value)),
+        "max_threads" => target.max_threads = Some(parse_i32(value, path)?),
         "result_json_path" => target.result_json_path = Some(value.to_string()),
         "board_specific_trace_costs_applied" => {
-            target.board_specific_trace_costs_applied = Some(java_parse_bool(value));
+            target.board_specific_trace_costs_applied = Some(parse_bool(value));
         }
-        "opt_changed_area_ms" => target.opt_changed_area_ms = Some(java_parse_i32(value, path)?),
-        "smd_via_relaxation" => target.smd_via_relaxation = Some(java_parse_bool(value)),
+        "opt_changed_area_ms" => target.opt_changed_area_ms = Some(parse_i32(value, path)?),
+        "smd_via_relaxation" => target.smd_via_relaxation = Some(parse_bool(value)),
         "failure_give_up_threshold" => {
-            target.failure_give_up_threshold = Some(java_parse_i32(value, path)?);
+            target.failure_give_up_threshold = Some(parse_i32(value, path)?);
         }
         "connection_search_steps" => {
-            target.connection_search_steps = Some(java_parse_i64(value, path)?);
+            target.connection_search_steps = Some(parse_i64(value, path)?);
         }
         _ => return Err(type_mismatch(path, value)),
     }
@@ -769,11 +685,11 @@ fn set_layer_property(
         return Err(type_mismatch(path, value));
     }
     match field.rust_name {
-        "routable" => target.routable = Some(java_parse_bool(value)),
+        "routable" => target.routable = Some(parse_bool(value)),
         "preferred_direction_horizontal" => {
-            target.preferred_direction_horizontal = Some(java_parse_bool(value));
+            target.preferred_direction_horizontal = Some(parse_bool(value));
         }
-        "bend_cost" => target.bend_cost = Some(java_parse_f64(value, path)?),
+        "bend_cost" => target.bend_cost = Some(parse_f64(value, path)?),
         _ => return Err(type_mismatch(path, value)),
     }
     Ok(())
@@ -793,28 +709,28 @@ fn set_scoring_property(
     }
     match field.rust_name {
         "preferred_direction_trace_cost" => {
-            target.preferred_direction_trace_cost = Some(java_parse_f64_vec(value, path)?);
+            target.preferred_direction_trace_cost = Some(parse_f64_vec(value, path)?);
         }
         "undesired_direction_trace_cost" => {
-            target.undesired_direction_trace_cost = Some(java_parse_f64_vec(value, path)?);
+            target.undesired_direction_trace_cost = Some(parse_f64_vec(value, path)?);
         }
         "default_preferred_direction_trace_cost" => {
-            target.default_preferred_direction_trace_cost = Some(java_parse_f64(value, path)?);
+            target.default_preferred_direction_trace_cost = Some(parse_f64(value, path)?);
         }
         "default_undesired_direction_trace_cost" => {
-            target.default_undesired_direction_trace_cost = Some(java_parse_f64(value, path)?);
+            target.default_undesired_direction_trace_cost = Some(parse_f64(value, path)?);
         }
-        "via_costs" => target.via_costs = Some(java_parse_i32(value, path)?),
-        "plane_via_costs" => target.plane_via_costs = Some(java_parse_i32(value, path)?),
-        "start_ripup_costs" => target.start_ripup_costs = Some(java_parse_i32(value, path)?),
-        "unrouted_net_penalty" => target.unrouted_net_penalty = Some(java_parse_f32(value, path)?),
+        "via_costs" => target.via_costs = Some(parse_i32(value, path)?),
+        "plane_via_costs" => target.plane_via_costs = Some(parse_i32(value, path)?),
+        "start_ripup_costs" => target.start_ripup_costs = Some(parse_i32(value, path)?),
+        "unrouted_net_penalty" => target.unrouted_net_penalty = Some(parse_f32(value, path)?),
         "clearance_violation_penalty" => {
-            target.clearance_violation_penalty = Some(java_parse_f32(value, path)?);
+            target.clearance_violation_penalty = Some(parse_f32(value, path)?);
         }
-        "bend_penalty" => target.bend_penalty = Some(java_parse_f32(value, path)?),
-        "default_bend_cost" => target.default_bend_cost = Some(java_parse_f64(value, path)?),
+        "bend_penalty" => target.bend_penalty = Some(parse_f32(value, path)?),
+        "default_bend_cost" => target.default_bend_cost = Some(parse_f64(value, path)?),
         "smd_via_cost_factor" => {
-            target.smd_via_cost_factor = Some(java_parse_f64(value, path)?);
+            target.smd_via_cost_factor = Some(parse_f64(value, path)?);
         }
         _ => return Err(type_mismatch(path, value)),
     }
@@ -834,25 +750,25 @@ fn set_optimizer_property(
         return Err(type_mismatch(path, value));
     }
     match field.rust_name {
-        "enabled" => target.enabled = Some(java_parse_bool(value)),
+        "enabled" => target.enabled = Some(parse_bool(value)),
         "algorithm" => target.algorithm = Some(value.to_string()),
-        "max_passes" => target.max_passes = Some(java_parse_i32(value, path)?),
-        "max_items" => target.max_items = Some(java_parse_i32(value, path)?),
-        "max_threads" => target.max_threads = Some(java_parse_i32(value, path)?),
+        "max_passes" => target.max_passes = Some(parse_i32(value, path)?),
+        "max_items" => target.max_items = Some(parse_i32(value, path)?),
+        "max_threads" => target.max_threads = Some(parse_i32(value, path)?),
         "optimization_improvement_threshold" => {
-            target.optimization_improvement_threshold = Some(java_parse_f32(value, path)?);
+            target.optimization_improvement_threshold = Some(parse_f32(value, path)?);
         }
         "max_consecutive_failures" => {
-            target.max_consecutive_failures = Some(java_parse_i32(value, path)?);
+            target.max_consecutive_failures = Some(parse_i32(value, path)?);
         }
         "additional_ripup_cost_factor_at_start" => {
-            target.additional_ripup_cost_factor_at_start = Some(java_parse_i32(value, path)?);
+            target.additional_ripup_cost_factor_at_start = Some(parse_i32(value, path)?);
         }
         "trace_ripup_cost_factor" => {
-            target.trace_ripup_cost_factor = Some(java_parse_f32(value, path)?);
+            target.trace_ripup_cost_factor = Some(parse_f32(value, path)?);
         }
-        "max_autoroute_passes" => target.max_autoroute_passes = Some(java_parse_i32(value, path)?),
-        "max_search_steps" => target.max_search_steps = Some(java_parse_i64(value, path)?),
+        "max_autoroute_passes" => target.max_autoroute_passes = Some(parse_i32(value, path)?),
+        "max_search_steps" => target.max_search_steps = Some(parse_i64(value, path)?),
         "board_update_strategy" => {
             target.board_update_strategy = Some(convert_enum::<BoardUpdateStrategy>(
                 field.kind, value, path,
@@ -883,21 +799,19 @@ fn set_fanout_property(
         return Err(type_mismatch(path, value));
     }
     match field.rust_name {
-        "enabled" => target.enabled = Some(java_parse_bool(value)),
-        "max_passes" => target.max_passes = Some(java_parse_i32(value, path)?),
-        "max_items" => target.max_items = Some(java_parse_i32(value, path)?),
+        "enabled" => target.enabled = Some(parse_bool(value)),
+        "max_passes" => target.max_passes = Some(parse_i32(value, path)?),
+        "max_items" => target.max_items = Some(parse_i32(value, path)?),
         "max_milliseconds_per_pin" => {
-            target.max_milliseconds_per_pin = Some(java_parse_i64(value, path)?);
+            target.max_milliseconds_per_pin = Some(parse_i64(value, path)?);
         }
-        "ripup_allowed" => target.ripup_allowed = Some(java_parse_bool(value)),
-        "min_escape_length_mm" => target.min_escape_length_mm = Some(java_parse_f64(value, path)?),
-        "max_escape_length_mm" => target.max_escape_length_mm = Some(java_parse_f64(value, path)?),
-        "start_via_diameter_mm" => {
-            target.start_via_diameter_mm = Some(java_parse_f64(value, path)?)
-        }
-        "end_via_diameter_mm" => target.end_via_diameter_mm = Some(java_parse_f64(value, path)?),
+        "ripup_allowed" => target.ripup_allowed = Some(parse_bool(value)),
+        "min_escape_length_mm" => target.min_escape_length_mm = Some(parse_f64(value, path)?),
+        "max_escape_length_mm" => target.max_escape_length_mm = Some(parse_f64(value, path)?),
+        "start_via_diameter_mm" => target.start_via_diameter_mm = Some(parse_f64(value, path)?),
+        "end_via_diameter_mm" => target.end_via_diameter_mm = Some(parse_f64(value, path)?),
         "pin_sorting_order" => target.pin_sorting_order = Some(value.to_string()),
-        "fallback_to_board_vias" => target.fallback_to_board_vias = Some(java_parse_bool(value)),
+        "fallback_to_board_vias" => target.fallback_to_board_vias = Some(parse_bool(value)),
         "timeout_string" => target.timeout_string = Some(value.to_string()),
         _ => return Err(type_mismatch(path, value)),
     }
@@ -925,24 +839,17 @@ mod tests {
     }
 
     #[test]
-    fn java_split_matches_java() {
+    fn split_dropping_trailing_empty_matches_java() {
         let comma = |c: char| c == ',';
-        assert_eq!(java_split("a,b", comma), ["a", "b"]);
-        assert_eq!(java_split("a,,b", comma), ["a", "", "b"]);
-        assert_eq!(java_split("a,b,", comma), ["a", "b"]);
-        assert_eq!(java_split("a,b,,", comma), ["a", "b"]);
-        assert_eq!(java_split(",a", comma), ["", "a"]);
-        assert_eq!(java_split("abc", comma), ["abc"]);
-        assert_eq!(java_split("", comma), [""]);
-        assert!(java_split(",", comma).is_empty());
-        assert!(java_split(",,", comma).is_empty());
-    }
-
-    #[test]
-    fn java_trim_is_not_rust_trim() {
-        assert_eq!(java_trim("\t 7 \n"), "7");
-        assert_eq!(java_trim("\u{a0}7"), "\u{a0}7");
-        assert!(java_parse_f64("\u{a0}7", "x").is_err());
+        assert_eq!(split_dropping_trailing_empty("a,b", comma), ["a", "b"]);
+        assert_eq!(split_dropping_trailing_empty("a,,b", comma), ["a", "", "b"]);
+        assert_eq!(split_dropping_trailing_empty("a,b,", comma), ["a", "b"]);
+        assert_eq!(split_dropping_trailing_empty("a,b,,", comma), ["a", "b"]);
+        assert_eq!(split_dropping_trailing_empty(",a", comma), ["", "a"]);
+        assert_eq!(split_dropping_trailing_empty("abc", comma), ["abc"]);
+        assert_eq!(split_dropping_trailing_empty("", comma), [""]);
+        assert!(split_dropping_trailing_empty(",", comma).is_empty());
+        assert!(split_dropping_trailing_empty(",,", comma).is_empty());
     }
 
     #[test]

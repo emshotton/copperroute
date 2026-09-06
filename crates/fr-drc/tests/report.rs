@@ -55,7 +55,7 @@ fn report_for(fixture: &str, unit: &str) -> KiCadDrcReport {
 
 #[test]
 fn the_unconnected_entry_description_and_severity() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let report = report_for(DEV_BOARD, "mm");
@@ -75,7 +75,7 @@ fn the_unconnected_entry_description_and_severity() {
 
 #[test]
 fn a_dangling_track_carries_the_detailed_description() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let report = report_for(DEV_BOARD, "mm");
@@ -95,7 +95,7 @@ fn a_dangling_track_carries_the_detailed_description() {
 
 #[test]
 fn coordinates_are_in_a_plausible_mm_range() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let report = report_for(NATURAL_TONE_PREAMP, "mm");
@@ -114,7 +114,7 @@ fn coordinates_are_in_a_plausible_mm_range() {
 
 #[test]
 fn y_is_negative_on_a_kicad_sourced_board() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let report = report_for(DEV_BOARD, "mm");
@@ -124,7 +124,7 @@ fn y_is_negative_on_a_kicad_sourced_board() {
 
 #[test]
 fn unknown_coordinate_unit_falls_back_to_the_board_unit() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (mut board, transform) = fixture_board(BBD_MARS_64);
@@ -148,7 +148,7 @@ fn unknown_coordinate_unit_falls_back_to_the_board_unit() {
 
 #[test]
 fn mil_and_inch_scale() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mm = report_for(BBD_MARS_64, "mm").violations[0].items[0].pos.x;
@@ -164,7 +164,7 @@ fn mil_and_inch_scale() {
 
 #[test]
 fn percent_four_f_uses_a_dot() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let has_comma_decimal = |s: &str| {

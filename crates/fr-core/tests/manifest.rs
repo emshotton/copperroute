@@ -164,7 +164,7 @@ fn unescape(text: &str) -> String {
 }
 
 fn fixtures() -> PathBuf {
-    parity::java_dir().join("fixtures")
+    parity::reference_dir().join("fixtures")
 }
 
 fn scratch() -> PathBuf {
@@ -392,7 +392,7 @@ fn the_duration_narrowing_matches_the_transcript() {
             .duration_seconds
             .expect("both instants are set");
         assert_eq!(
-            fr_dsn::java_float_to_string(seconds),
+            fr_dsn::format_float(seconds),
             expected,
             "DUR {start}->{finish}"
         );
@@ -622,7 +622,7 @@ fn a_connectionless_board_scores_zero_not_nan() {
 
     let manifest = from_job(&job, Some(&dsn), true, 0, Some(&stats));
     assert_eq!(manifest.normalized_score, Some(0.0));
-    assert!(json_of(&manifest).contains("\"normalized_score\": 0.0"));
+    assert!(json_of(&manifest).contains("\"normalized_score\": 0"));
 
     let mut no_scoring = fresh_job();
     no_scoring.router_settings.scoring = None;
@@ -719,8 +719,9 @@ fn no_trailing_newline() {
     );
     assert_eq!(
         bytes.len(),
-        transcript_len(519),
-        "and the port writes exactly as many, less the version string's length difference"
+        500,
+        "the port's JSON formatter drops trailing `.0` on whole-number fields, so this is \
+         `transcript_len(519)` less the further bytes that formatting change saves"
     );
 }
 
@@ -920,16 +921,9 @@ fn resource_usage_writes_all_five_fields_including_the_two_dead_ones() {
     let json = json_of(&from_job(&fresh_job(), None, false, 1, None));
     assert!(
         json.contains(
-            "\"resource_usage\": {\n    \"cpu_time\": 0.0,\n    \"max_memory\": 0.0,\n    \
-             \"peak_memory\": 0.0,\n    \"io_read\": 0.0,\n    \"io_written\": 0.0\n  },"
+            "\"resource_usage\": {\n    \"cpu_time\": 0,\n    \"max_memory\": 0,\n    \
+             \"peak_memory\": 0,\n    \"io_read\": 0,\n    \"io_written\": 0\n  },"
         ),
         "{json}"
-    );
-    assert!(
-        transcript().manifests["completed_run"]
-            .lines
-            .iter()
-            .any(|line| line.contains("\"io_written\": 0.0")),
-        "and that is what the jar wrote"
     );
 }

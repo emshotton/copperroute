@@ -10,7 +10,7 @@
 //! driver, which is a different driver against the same jar.
 
 use fr_core::{BoardStatistics, BoardStatisticsExt, FileFormat, count_occurrences, to_gson_string};
-use fr_dsn::{java_double_to_string, java_float_to_string};
+use fr_dsn::{format_double, format_float};
 use fr_router::score::{BoardStatisticsFanout, Rectangle2DFloat};
 use std::path::{Path, PathBuf};
 
@@ -243,7 +243,7 @@ fn main() {
         FileFormat::KicadSessionJson,
     ] {
         rows.push(bytes_row(
-            &format!("no branch {}", format.java_name()),
+            &format!("no branch {}", format.name()),
             "s:(pcb x",
             Some(format),
         ));
@@ -461,7 +461,7 @@ fn main() {
         out.push_str(&format!(
             "BS\t{index}\t{}\t{}\t{}\n",
             row.label,
-            row.format.map_or("<null>", FileFormat::java_name),
+            row.format.map_or("<null>", FileFormat::name),
             row.src
         ));
         let stats = match (&row.data, row.format) {
@@ -634,10 +634,10 @@ fn rect(v: &mut Vec<String>, r: Option<&Rectangle2DFloat>) {
     match r {
         None => v.extend(std::iter::repeat_n("<null>".to_string(), 4)),
         Some(r) => {
-            v.push(java_float_to_string(r.x));
-            v.push(java_float_to_string(r.y));
-            v.push(java_float_to_string(r.width));
-            v.push(java_float_to_string(r.height));
+            v.push(format_float(r.x));
+            v.push(format_float(r.y));
+            v.push(format_float(r.width));
+            v.push(format_float(r.height));
         }
     }
 }
@@ -647,11 +647,11 @@ fn int(n: Option<i32>) -> String {
 }
 
 fn float(n: Option<f32>) -> String {
-    n.map_or_else(|| "<null>".to_string(), java_float_to_string)
+    n.map_or_else(|| "<null>".to_string(), format_float)
 }
 
 fn double(n: Option<f64>) -> String {
-    n.map_or_else(|| "<null>".to_string(), java_double_to_string)
+    n.map_or_else(|| "<null>".to_string(), format_double)
 }
 
 /// The port spells Java's `null` string as the empty string (quirk #251), so an empty field

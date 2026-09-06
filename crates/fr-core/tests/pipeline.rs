@@ -11,7 +11,7 @@ const STEM: &str = "router-rpi-splitter";
 
 #[test]
 fn a_recording_sink_changes_no_board_byte() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
 
@@ -55,7 +55,7 @@ fn a_recording_sink_changes_no_board_byte() {
 
 #[test]
 fn the_wrapper_is_transparent_to_the_ses_bytes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let reference_path = parity::reference(STEM, "batch.ses");
@@ -94,7 +94,7 @@ fn the_wrapper_is_transparent_to_the_ses_bytes() {
 
 #[test]
 fn routing_result_carries_the_drc_violations_and_the_incompletes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let run = route(&SyncProgressSink::noop());
@@ -140,7 +140,7 @@ struct Run {
 }
 
 fn route(sink: &SyncProgressSink) -> Run {
-    let dsn = parity::java_dir().join(DSN);
+    let dsn = parity::reference_dir().join(DSN);
     let bytes =
         std::fs::read(&dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
     let file_name = dsn

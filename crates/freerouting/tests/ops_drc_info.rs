@@ -42,7 +42,7 @@ fn info_summarises_the_spike_board() {
 
 #[test]
 fn drc_counts_the_dev_boards_violations_in_both_flavors() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dsn = parity::fixture("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
@@ -77,7 +77,7 @@ fn drc_counts_the_dev_boards_violations_in_both_flavors() {
 
 #[test]
 fn a_rules_file_does_not_move_the_quality_score() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = std::env::temp_dir().join("fr-ops-drc");

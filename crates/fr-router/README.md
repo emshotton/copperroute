@@ -57,7 +57,6 @@ rollback and the failure-log write around it.
 | `score/` | `BoardStatistics` and its blocks, `normalized_score`, the JSON DTOs |
 | `visualization.rs` | opt-in SVG capture of the maze search: `RoutingVisualizationOptions`, `start_routing_visualization`, the `RoutingVisualizationGuard` whose `finish()` returns a `RoutingVisualizationSummary`. When no recorder is active the capture hooks the search calls cost one relaxed atomic load; `docs/routing-visualizer.md` describes the frames and the viewer |
 | `arena.rs` | `Arena<T>` and its index newtypes |
-| `java_tree_set.rs` | `JavaTreeSet`, a red-black tree used where a comparator is not a total order (below) |
 | `error.rs` | `RouterError` |
 
 ## The stop machine and the budget
@@ -94,22 +93,18 @@ flag.
   `Send + Sync`, but nothing here spawns, and `max_threads` is read by
   nothing. A threaded maze would be non-deterministic and would dissolve
   every reproducibility test in the tree.
-* **No new workspace dependencies.** Not `rand` (see `JavaRandom` in
+* **No new workspace dependencies.** Not `rand` (see `SplitMix64` in
   `fr-geometry`), not `slotmap` (see `Arena` below), not `rayon`.
-* **Deterministic containers, transcribed rather than chosen.** The maze
-  queue is a sorted set, never a `BinaryHeap`: the search pops the least
-  element and re-inserts mutated elements. Comparators are written as
-  explicit `<`/`>` chains, never `total_cmp` and never
-  `partial_cmp().unwrap()`, so a `NaN` falls through to the next key
-  instead of panicking or sorting arbitrarily. Where a comparator is **not** a
-  total order — the neighbour sorters' `SortedRoomNeighbour`,
-  `MazeListElement`, `BatchFanout`'s pin order — the container is
-  `JavaTreeSet`, a red-black tree, because a `BTreeSet` visits a different
-  subset of elements on insert under a non-total order and therefore drops a
-  different one. `BTreeSet` is used wherever the comparator provably is a
-  total order. `MazeQueue::push` is guarded: an element outside the fanout
-  escape window is refused, and the boolean is discarded at the one site
-  that discards it, so `init` can succeed with an empty queue.
+* **Deterministic containers.** The maze queue is a sorted set (`BTreeSet`),
+  never a `BinaryHeap`: the search pops the least element and re-inserts
+  mutated elements. Every sorted container is a `BTreeSet`, which is sound
+  because every comparator is a total order: float keys compare with
+  `total_cmp`, giving `NaN` a fixed position rather than letting it sort
+  arbitrarily. That covers the neighbour sorters' `SortedRoomNeighbour`,
+  `MazeListElement`, `BatchFanout`'s pin order and the queue — each orders and
+  dedups identically on every run. `MazeQueue::push` is guarded: an element
+  outside the fanout escape window is refused, and the boolean is discarded at
+  the one site that discards it, so `init` can succeed with an empty queue.
 * **No GUI, no logging, no observers, no clock, and no static mutable state,
   with one recorded exception:** `fr_geometry::Line`'s identity token, which
   `Board::change_trace` reads through `Line::is_same_object` to decide how

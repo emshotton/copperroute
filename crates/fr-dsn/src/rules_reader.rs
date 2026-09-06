@@ -4,7 +4,6 @@ use fr_board::Board;
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
-use crate::format::java_round_to_int;
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::DsnRouterSettings;
@@ -188,7 +187,7 @@ fn apply_rules(
     for rule in rules {
         match rule {
             DsnRule::Width(value) => {
-                let trace_half_width = java_round_to_int(ct.dsn_to_board(*value) / 2.0);
+                let trace_half_width = (ct.dsn_to_board(*value) / 2.0).round() as i32;
                 match scope {
                     RuleLayerScope::AllLayers => {
                         board.rules.set_default_trace_half_widths(trace_half_width);

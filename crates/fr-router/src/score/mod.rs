@@ -7,8 +7,6 @@ pub use dtos::{
     BoardStatisticsConnections, BoardStatisticsItems, BoardStatisticsLayers, BoardStatisticsNets,
     BoardStatisticsPads, BoardStatisticsTraces, BoardStatisticsVias, Rectangle2DFloat,
 };
-pub use statistics::{
-    BoardStatistics, BoardStatisticsFanout, java_double_stream_sum, unescape_unicode,
-};
+pub use statistics::{BoardStatistics, BoardStatisticsFanout, unescape_unicode};
 
 pub use fr_drc::{BoardStatisticsClearanceViolations, DrcViolation};

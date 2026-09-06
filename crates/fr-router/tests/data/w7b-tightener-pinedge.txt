@@ -1,0 +1,64 @@
+# PORT LANE (Wave 7b golden re-cut). The port's own rows for `p6t15a-tightener.txt`
+# section `pinedge`. `p6t15a-tightener.txt` stays byte-for-byte the jar's stdout and is
+# still the record of what the jar does; this file is what the port answers over the same
+# input now that the idiomatic rewrite's `format_double` no longer appends a trailing `.0`
+# to a whole-number double (the jar's `Double.toString` does) — see the `pinEdgeToTurnDist`
+# header rows.
+#
+# `the_port_lane_modes_still_differ_from_the_jar` requires the divergence to persist, so a
+# fix silently reverted fails too. Re-cut with:
+#   T11_DUMP_PINEDGE=<path> cargo test -p fr-router --test tightener pin_edge_branch_matches_the_jvm
+regime=NINETY_DEGREE pinEdgeToTurnDist=0
+  trace id=5 changed=false
+  trace id=4 changed=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 n=4 lines=[(-800,300)->(-801,300),(-800,300)->(-800,900),(-800,900)->(300,900),(300,900)->(300,899)] corners=[(-800,300),(-800,900),(300,900)]
+    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=4 lines=[(-500,0)->(0,0),(-500,0)->(-500,1),(0,400)->(500,400),(500,400)->(500,399)] corners=[(-500,0),(-500,400),(500,400)]
+    item id=3 type=Pin nets=[1] cl=1 center=(500,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-500,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+regime=NINETY_DEGREE pinEdgeToTurnDist=500
+  trace id=5 changed=false
+  trace id=4 changed=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 n=4 lines=[(-800,300)->(-801,300),(-800,300)->(-800,900),(-800,900)->(300,900),(300,900)->(300,899)] corners=[(-800,300),(-800,900),(300,900)]
+    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=4 lines=[(-500,0)->(0,0),(-500,0)->(-500,1),(0,400)->(500,400),(500,400)->(500,399)] corners=[(-500,0),(-500,400),(500,400)]
+    item id=3 type=Pin nets=[1] cl=1 center=(500,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-500,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+regime=FORTYFIVE_DEGREE pinEdgeToTurnDist=0
+  trace id=5 changed=true
+  trace id=4 changed=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 n=5 lines=[(-800,300)->(-801,300),(-800,300)->(-800,900),(-778,900)->(-777,901),(-800,900)->(300,900),(300,900)->(300,899)] corners=[(-800,300),(-800,878),(-778,900),(300,900)]
+    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=4 lines=[(-500,0)->(-501,0),(-500,0)->(-499,1),(-500,400)->(500,400),(500,400)->(500,399)] corners=[(-500,0),(-100,400),(500,400)]
+    item id=3 type=Pin nets=[1] cl=1 center=(500,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-500,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+regime=FORTYFIVE_DEGREE pinEdgeToTurnDist=500
+  trace id=5 changed=true
+  trace id=4 changed=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 n=5 lines=[(-800,300)->(-801,300),(-800,300)->(-800,900),(-778,900)->(-777,901),(-800,900)->(300,900),(300,900)->(300,899)] corners=[(-800,300),(-800,878),(-778,900),(300,900)]
+    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=4 lines=[(-500,0)->(-501,0),(-500,0)->(-499,1),(-500,400)->(500,400),(500,400)->(500,399)] corners=[(-500,0),(-100,400),(500,400)]
+    item id=3 type=Pin nets=[1] cl=1 center=(500,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-500,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+regime=NONE pinEdgeToTurnDist=0
+  trace id=5 changed=false
+  trace id=4 changed=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 n=4 lines=[(-800,300)->(-801,300),(-800,300)->(-800,900),(-800,900)->(300,900),(300,900)->(300,899)] corners=[(-800,300),(-800,900),(300,900)]
+    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-500,0)->(-502,5),(-500,0)->(500,400),(500,400)->(498,405)] corners=[(-500,0),(500,400)]
+    item id=3 type=Pin nets=[1] cl=1 center=(500,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-500,0)
+    item id=1 type=BoardOutline nets=[] cl=0
+regime=NONE pinEdgeToTurnDist=500
+  trace id=5 changed=false
+  trace id=4 changed=true
+    maxId=5
+    item id=5 type=PolylineTrace nets=[2] cl=2 layer=0 hw=40 n=4 lines=[(-800,300)->(-801,300),(-800,300)->(-800,900),(-800,900)->(300,900),(300,900)->(300,899)] corners=[(-800,300),(-800,900),(300,900)]
+    item id=4 type=PolylineTrace nets=[1] cl=1 layer=0 hw=30 n=3 lines=[(-500,0)->(-502,5),(-500,0)->(500,400),(500,400)->(498,405)] corners=[(-500,0),(500,400)]
+    item id=3 type=Pin nets=[1] cl=1 center=(500,0)
+    item id=2 type=Pin nets=[1] cl=1 center=(-500,0)
+    item id=1 type=BoardOutline nets=[] cl=0

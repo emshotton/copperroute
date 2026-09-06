@@ -1,4 +1,4 @@
-use fr_geometry::{FloatPoint, IntBox, java_max, java_min};
+use fr_geometry::{FloatPoint, IntBox};
 use fr_settings::ExpansionCostFactor;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -61,21 +61,20 @@ impl DestinationDistance {
             };
 
         let mut max_inner_side_trace_cost =
-            java_min(max_component_side_trace_cost, max_solder_side_trace_cost);
+            (max_component_side_trace_cost).min(max_solder_side_trace_cost);
         for ind2 in 1..layer_count.saturating_sub(1) {
             if !layer_active[ind2] {
                 continue;
             }
-            let current_max_cost =
-                java_max(trace_costs[ind2].horizontal, trace_costs[ind2].vertical);
-            max_inner_side_trace_cost = java_min(max_inner_side_trace_cost, current_max_cost);
+            let current_max_cost = (trace_costs[ind2].horizontal).max(trace_costs[ind2].vertical);
+            max_inner_side_trace_cost = (max_inner_side_trace_cost).min(current_max_cost);
         }
         let min_component_inner_trace_cost =
-            java_min(min_component_side_trace_cost, max_inner_side_trace_cost);
+            (min_component_side_trace_cost).min(max_inner_side_trace_cost);
         let min_solder_inner_trace_cost =
-            java_min(min_solder_side_trace_cost, max_inner_side_trace_cost);
+            (min_solder_side_trace_cost).min(max_inner_side_trace_cost);
         let min_component_solder_inner_trace_cost =
-            java_min(min_component_inner_trace_cost, min_solder_inner_trace_cost);
+            (min_component_inner_trace_cost).min(min_solder_inner_trace_cost);
 
         DestinationDistance {
             trace_costs: trace_costs.to_vec(),
@@ -174,12 +173,12 @@ impl DestinationDistance {
                         + self.min_solder_side_trace_cost * solder_side_min_delta
                         + min_normal_via_cost
                 };
-            result = java_min(result, tmp_distance);
+            result = (result).min(tmp_distance);
 
             tmp_distance = component_side_max_delta
                 + component_side_min_delta * self.min_component_inner_trace_cost
                 + 2.0 * min_normal_via_cost;
-            result = java_min(result, tmp_distance);
+            result = (result).min(tmp_distance);
 
             if self.active_layer_count == 2 {
                 return result;
@@ -188,27 +187,27 @@ impl DestinationDistance {
             tmp_distance = inner_side_max_delta
                 + inner_side_min_delta * self.min_component_inner_trace_cost
                 + min_normal_via_cost;
-            result = java_min(result, tmp_distance);
+            result = (result).min(tmp_distance);
 
             tmp_distance = solder_side_max_delta
                 + self.min_component_solder_inner_trace_cost * solder_side_min_delta
                 + 2.0 * min_normal_via_cost;
-            result = java_min(result, tmp_distance);
+            result = (result).min(tmp_distance);
 
             tmp_distance =
                 component_side_max_delta + component_side_min_delta + 2.0 * min_normal_via_cost;
-            result = java_min(result, tmp_distance);
+            result = (result).min(tmp_distance);
 
             if self.active_layer_count == 3 {
                 return result;
             }
 
             tmp_distance = inner_side_max_delta + inner_side_min_delta + 2.0 * min_normal_via_cost;
-            result = java_min(result, tmp_distance);
+            result = (result).min(tmp_distance);
 
             tmp_distance =
                 solder_side_max_delta + solder_side_min_delta + 3.0 * min_normal_via_cost;
-            return java_min(result, tmp_distance);
+            return (result).min(tmp_distance);
         }
 
         if layer == self.layer_count - 1 {
@@ -230,12 +229,12 @@ impl DestinationDistance {
                         + self.min_component_side_trace_cost * component_side_min_delta
                         + min_normal_via_cost
                 };
-            result = java_min(result, tmp_distance);
+            result = (result).min(tmp_distance);
 
             tmp_distance = solder_side_max_delta
                 + solder_side_min_delta * self.min_solder_inner_trace_cost
                 + 2.0 * min_normal_via_cost;
-            result = java_min(result, tmp_distance);
+            result = (result).min(tmp_distance);
 
             if self.active_layer_count <= 2 {
                 return result;
@@ -244,27 +243,27 @@ impl DestinationDistance {
             tmp_distance = inner_side_min_delta * self.min_solder_inner_trace_cost
                 + inner_side_max_delta
                 + min_normal_via_cost;
-            result = java_min(result, tmp_distance);
+            result = (result).min(tmp_distance);
 
             tmp_distance = component_side_max_delta
                 + self.min_component_solder_inner_trace_cost * component_side_min_delta
                 + 2.0 * min_normal_via_cost;
-            result = java_min(result, tmp_distance);
+            result = (result).min(tmp_distance);
 
             tmp_distance =
                 solder_side_max_delta + solder_side_min_delta + 2.0 * min_normal_via_cost;
-            result = java_min(result, tmp_distance);
+            result = (result).min(tmp_distance);
 
             if self.active_layer_count == 3 {
                 return result;
             }
 
             tmp_distance = inner_side_max_delta + inner_side_min_delta + 2.0 * min_normal_via_cost;
-            result = java_min(result, tmp_distance);
+            result = (result).min(tmp_distance);
 
             tmp_distance =
                 component_side_max_delta + component_side_min_delta + 3.0 * min_normal_via_cost;
-            return java_min(result, tmp_distance);
+            return (result).min(tmp_distance);
         }
 
         if !self.inner_side_box_is_empty {
@@ -276,21 +275,21 @@ impl DestinationDistance {
         }
 
         let mut tmp_distance = inner_side_max_delta + inner_side_min_delta + min_normal_via_cost;
-        result = java_min(result, tmp_distance);
+        result = (result).min(tmp_distance);
         tmp_distance = component_side_max_delta
             + component_side_min_delta * self.min_component_inner_trace_cost
             + min_normal_via_cost;
-        result = java_min(result, tmp_distance);
+        result = (result).min(tmp_distance);
         tmp_distance = solder_side_max_delta
             + solder_side_min_delta * self.min_solder_inner_trace_cost
             + min_normal_via_cost;
-        result = java_min(result, tmp_distance);
+        result = (result).min(tmp_distance);
 
         tmp_distance =
             component_side_max_delta + component_side_min_delta + 2.0 * min_normal_via_cost;
-        result = java_min(result, tmp_distance);
+        result = (result).min(tmp_distance);
         tmp_distance = solder_side_max_delta + solder_side_min_delta + 2.0 * min_normal_via_cost;
-        java_min(result, tmp_distance)
+        (result).min(tmp_distance)
     }
 }
 

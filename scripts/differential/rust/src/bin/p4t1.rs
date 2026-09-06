@@ -44,7 +44,7 @@ use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 use fr_board::prelude::*;
-use fr_dsn::format::double::{java_double_to_string, java_float_to_string};
+use fr_dsn::format::double::{format_double, format_float};
 use fr_dsn::parser::scope_parameter::DsnReadOptions;
 use fr_dsn::BoardReadResult;
 use fr_geometry::{IntBox, PolylineShapeRef, TileShape};
@@ -337,7 +337,7 @@ fn push<T: JavaValue>(lines: &mut Vec<String>, path: &str, value: Option<&T>) {
 }
 
 /// `String.valueOf` for the wrapper types the dump can meet, plus `Double.toString` /
-/// `Float.toString` (Plan 3's `java_double_to_string` / `java_float_to_string`) and `Enum.name`.
+/// `Float.toString` (Plan 3's `format_double` / `format_float`) and `Enum.name`.
 trait JavaValue {
     fn java_string(&self) -> String;
 }
@@ -358,12 +358,12 @@ impl JavaValue for i64 {
 }
 impl JavaValue for f64 {
     fn java_string(&self) -> String {
-        java_double_to_string(*self)
+        format_double(*self)
     }
 }
 impl JavaValue for f32 {
     fn java_string(&self) -> String {
-        java_float_to_string(*self)
+        format_float(*self)
     }
 }
 impl JavaValue for String {
@@ -373,12 +373,12 @@ impl JavaValue for String {
 }
 impl JavaValue for BoardUpdateStrategy {
     fn java_string(&self) -> String {
-        self.java_name().to_string()
+        self.name().to_string()
     }
 }
 impl JavaValue for ItemSelectionStrategy {
     fn java_string(&self) -> String {
-        self.java_name().to_string()
+        self.name().to_string()
     }
 }
 

@@ -29,7 +29,7 @@ use std::time::UNIX_EPOCH;
 use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_dsn::parser::scope_parameter::DsnReadOptions;
-use fr_dsn::{java_double_to_string, BoardReadResult};
+use fr_dsn::{format_double, BoardReadResult};
 use fr_geometry::{IntPoint, Line, Point, Polyline};
 use fr_router::board_ext::ViaOptimizer;
 use fr_router::route_connection;
@@ -137,7 +137,7 @@ fn main() {
             "via id={} center={} minWidth={} contacts={contacts} class={class} result={result} after={after}",
             via_id.0,
             dump_point(&center),
-            java_double_to_string(min_width),
+            format_double(min_width),
         )
         .expect("write");
     }
@@ -149,6 +149,19 @@ fn main() {
 // ------------------------------------------------------------------------------------------------
 // Mode 2 — `isWithinTolerance` over the scripted stream
 // ------------------------------------------------------------------------------------------------
+
+/// `ViaOptimizer::is_within_tolerance` was retired from the crate (333d549 made via repositioning
+/// exact); this is that removed method, kept here verbatim so the mode-2 probe still exercises it.
+fn is_within_tolerance(p1: Option<&Point>, p2: &Point, tolerance: i32) -> bool {
+    let Some(p1) = p1 else {
+        return false;
+    };
+    let fp1 = p1.to_float();
+    let fp2 = p2.to_float();
+    let dx = (fp1.x - fp2.x).abs();
+    let dy = (fp1.y - fp2.y).abs();
+    (dx + dy) <= f64::from(tolerance)
+}
 
 /// The Java twin's 64-bit LCG, with `wrapping_mul` / `wrapping_add` for Java's silent `long`
 /// overflow and `>> 33` on the **unsigned** value for Java's `>>>`. The `% 4001 - 2000` and
@@ -171,7 +184,7 @@ fn tolerance_triples<W: Write>(out: &mut W) {
         let tolerance = next(&mut seed) % 121 - 20;
         let p1 = Point::Int(IntPoint::new(x1, y1));
         let p2 = Point::Int(IntPoint::new(x2, y2));
-        let answer = ViaOptimizer::is_within_tolerance(Some(&p1), &p2, tolerance);
+        let answer = is_within_tolerance(Some(&p1), &p2, tolerance);
         writeln!(
             out,
             "tol i={i} p1=({x1},{y1}) p2=({x2},{y2}) t={tolerance} -> {answer}"
@@ -187,7 +200,7 @@ fn tolerance_triples<W: Write>(out: &mut W) {
             let dy = tolerance - dx + delta;
             let p1 = Point::Int(IntPoint::new(x1, y1));
             let p2 = Point::Int(IntPoint::new(x1 + dx, y1 + dy));
-            let answer = ViaOptimizer::is_within_tolerance(Some(&p1), &p2, tolerance);
+            let answer = is_within_tolerance(Some(&p1), &p2, tolerance);
             writeln!(
                 out,
                 "bnd i={i} d={delta} p1=({x1},{y1}) p2=({},{}) t={tolerance} -> {answer}",
@@ -544,10 +557,10 @@ fn drive_overload_c<W: Write>(out: &mut W, board: &mut Board, via_ids: &[ItemId]
                 out,
                 "repC id={} k={k} costs1=({},{}) costs2=({},{}) from1={} from2={} -> {}",
                 via_id.0,
-                java_double_to_string(pair[0]),
-                java_double_to_string(pair[1]),
-                java_double_to_string(pair[2]),
-                java_double_to_string(pair[3]),
+                format_double(pair[0]),
+                format_double(pair[1]),
+                format_double(pair[2]),
+                format_double(pair[3]),
                 dump_point(&c1),
                 dump_point(&c2),
                 answer.map_or_else(|| "null".to_string(), |p| dump_point(&p))
@@ -740,8 +753,8 @@ fn dump_corner(polyline: &Polyline, no: usize) -> String {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }

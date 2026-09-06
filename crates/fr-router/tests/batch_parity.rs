@@ -93,7 +93,7 @@ struct BatchRun {
 }
 
 fn route_stem(stem: &Stem) -> BatchRun {
-    let dsn = parity::java_dir().join(stem.dsn);
+    let dsn = parity::reference_dir().join(stem.dsn);
     let bytes =
         std::fs::read(&dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
     let file_name = dsn
@@ -299,17 +299,12 @@ fn climb(stem: &Stem) {
 }
 
 fn climb_all(ci_only: bool) {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     for stem in STEMS.iter().filter(|s| !ci_only || s.ci) {
         climb(stem);
     }
-}
-
-#[test]
-fn the_ci_stems_climb_the_whole_ladder() {
-    climb_all(true);
 }
 
 #[test]

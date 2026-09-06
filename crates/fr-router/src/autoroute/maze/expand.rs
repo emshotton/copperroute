@@ -1,5 +1,5 @@
 use fr_board::{Board, Item, ObstacleRoomId};
-use fr_geometry::{FloatLine, FloatPoint, Point, Polyline, java_min};
+use fr_geometry::{FloatLine, FloatPoint, Point, Polyline};
 
 use crate::arena::DoorId;
 use crate::autoroute::expansion::{ExpandableRef, RoomRef};
@@ -57,7 +57,7 @@ impl MazeSearchEngine<'_> {
                 // :407-414. "try evtl. neckdown at a destination pin".
                 let neck_down_half_width = self.check_neck_down_at_dest_pin(board, next_room);
                 if neck_down_half_width > 0.0 {
-                    half_width_add = java_min(half_width_add, neck_down_half_width);
+                    half_width_add = (half_width_add).min(neck_down_half_width);
                     half_width = half_width_add;
                 }
             }
@@ -90,7 +90,7 @@ impl MazeSearchEngine<'_> {
                     let neckdown_half_width =
                         f64::from(pin.get_trace_neckdown_halfwidth(layer_index, &ctx));
                     if neckdown_half_width > 0.0 {
-                        half_width = java_min(half_width, neckdown_half_width);
+                        half_width = (half_width).min(neckdown_half_width);
                     }
                 }
             }

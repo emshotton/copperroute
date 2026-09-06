@@ -271,20 +271,20 @@ fn write_autoroute_settings_scope_matches_javas_bytes_on_a_two_layer_board() {
         "  (layer_rule F.Cu",
         "    (active on)",
         "    (preferred_direction vertical)",
-        "    (preferred_direction_trace_costs 1.0)",
-        "    (against_preferred_direction_trace_costs 1.0)",
+        "    (preferred_direction_trace_costs 1)",
+        "    (against_preferred_direction_trace_costs 1)",
         "  )",
         "  (layer_rule B.Cu",
         "    (active on)",
         "    (preferred_direction horizontal)",
-        "    (preferred_direction_trace_costs 1.0)",
-        "    (against_preferred_direction_trace_costs 1.0)",
+        "    (preferred_direction_trace_costs 1)",
+        "    (against_preferred_direction_trace_costs 1)",
         "  )",
         ")",
     ]
     .join("\n");
     assert_eq!(text, expected);
-    assert!(text.contains("(preferred_direction_trace_costs 1.0)"));
+    assert!(text.contains("(preferred_direction_trace_costs 1)"));
 }
 
 #[test]
@@ -337,15 +337,16 @@ fn an_autoroute_settings_scope_after_a_keepout_is_read() {
 
 #[test]
 fn the_corpus_sweep_counts_boards_whose_settings_were_read() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
-    let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(parity::java_dir().join("fixtures"))
-        .expect("the fixtures directory")
-        .flatten()
-        .map(|e| e.path())
-        .filter(|p| p.extension().is_some_and(|e| e == "dsn"))
-        .collect();
+    let mut files: Vec<std::path::PathBuf> =
+        std::fs::read_dir(parity::reference_dir().join("fixtures"))
+            .expect("the fixtures directory")
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|e| e == "dsn"))
+            .collect();
     files.push(parity::example("tutorial_board/tutorial_board.dsn"));
     files.sort();
     assert_eq!(files.len(), 106, "sweep-p3t15.sh's corpus");

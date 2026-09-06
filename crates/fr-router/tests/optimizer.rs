@@ -57,7 +57,7 @@ fn empty_board() -> Board {
 }
 
 fn load_board(rel_path: &str) -> Board {
-    let path = parity::java_dir().join(rel_path);
+    let path = parity::reference_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path
@@ -513,7 +513,7 @@ fn the_five_named_algorithm_members_are_javas_literals() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn consecutive_failures_break_the_pass() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (mut board, mut settings) = routed_rpi();
@@ -562,7 +562,7 @@ fn consecutive_failures_break_the_pass() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn an_auto_router_only_stop_still_runs_the_optimizer() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
 
@@ -676,7 +676,7 @@ fn the_stage_scoped_stop_does_not_leak_into_the_router() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_optimizer_stage_is_pinned_on_the_routed_rpi() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (mut board, settings) = routed_rpi();

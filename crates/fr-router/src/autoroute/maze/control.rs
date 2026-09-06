@@ -2,7 +2,7 @@ use fr_board::ids::{ItemId, NetClassId};
 use fr_board::rules::{PadstackLookup, ViaRule};
 use fr_board::structure::Unit;
 use fr_board::{Board, Item};
-use fr_geometry::{Point, java_max};
+use fr_geometry::Point;
 use fr_settings::{ExpansionCostFactor, RouterSettings};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -294,7 +294,7 @@ impl AutorouteControl {
                     .padstack_shape_max_width(padstack, j)
                     .map_or(0.0, |width| 0.5 * width);
                 let slot = &mut self.via_radii[j as usize];
-                *slot = java_max(*slot, current_radius);
+                *slot = (*slot).max(current_radius);
             }
             self.via_infos.push(ViaMask {
                 from_layer,
@@ -313,11 +313,11 @@ impl AutorouteControl {
         }
 
         for j in 0..self.layer_count {
-            self.via_radii[j] = java_max(self.via_radii[j], f64::from(self.trace_half_width[j]));
-            self.max_via_radius = java_max(self.max_via_radius, self.via_radii[j]);
+            self.via_radii[j] = (self.via_radii[j]).max(f64::from(self.trace_half_width[j]));
+            self.max_via_radius = (self.max_via_radius).max(self.via_radii[j]);
         }
         let mut via_cost_factor = match self.via_pricing {
-            ViaPricing::ByPadstackRadius => java_max(self.max_via_radius, 1.0),
+            ViaPricing::ByPadstackRadius => (self.max_via_radius).max(1.0),
             ViaPricing::PerMillimetre => self.units_per_mm * self.trace_cost_per_mm,
         };
         if self.smd_via_relaxation && pure_smd_net {

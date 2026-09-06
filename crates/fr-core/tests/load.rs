@@ -16,7 +16,7 @@ fn default_settings() -> RouterSettings {
 }
 
 fn job_for(relative: &str) -> RoutingJob {
-    let path = parity::java_dir().join(relative);
+    let path = parity::reference_dir().join(relative);
     let mut job = RoutingJob::new(SessionId::default());
     job.set_input(&path)
         .unwrap_or_else(|e| panic!("cannot set {} as input: {e}", path.display()));
@@ -106,8 +106,8 @@ fn a_kicad_json_input_loads_a_real_board() {
 
 #[test]
 fn the_loader_runs_read_then_the_settings_pass_then_the_post_load_pass() {
-    let path =
-        parity::java_dir().join("fixtures/Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
+    let path = parity::reference_dir()
+        .join("fixtures/Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
     let bytes = std::fs::read(&path).expect("the fixture is readable");
 
     let mut job = job_for("fixtures/Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
@@ -155,7 +155,7 @@ fn the_loader_runs_read_then_the_settings_pass_then_the_post_load_pass() {
 #[test]
 fn the_loaded_board_carries_its_coordinate_transform() {
     let relative = "examples/tutorial_board/tutorial_board.dsn";
-    let path = parity::java_dir().join(relative);
+    let path = parity::reference_dir().join(relative);
     let bytes = std::fs::read(&path).expect("the fixture is readable");
 
     let mut job = job_for(relative);
@@ -227,7 +227,7 @@ fn the_loaded_board_carries_its_coordinate_transform() {
 #[test]
 fn the_settings_pass_is_the_same_two_steps_resolve_headless_runs() {
     let relative = "fixtures/Issue753-CPU-85_r104.dsn";
-    let path = parity::java_dir().join(relative);
+    let path = parity::reference_dir().join(relative);
     let bytes = std::fs::read(&path).expect("the fixture is readable");
     let mut board = match fr_dsn::read_board(
         &bytes[..],
