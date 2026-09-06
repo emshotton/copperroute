@@ -1710,9 +1710,7 @@ fn max_generated_id(board: &Board) -> u32 {
     board.communication.id_gen.max_generated_id().0
 }
 
-/// `String.hashCode()` (JLS: `s[0]*31^(n-1) + …`, `int` arithmetic, so wrapping) of the probe's
-/// `maxId|items|dump` string — mode `rand`'s compact whole-board fingerprint.
-fn java_string_hash(text: &str) -> i32 {
+fn string_hash(text: &str) -> i32 {
     let mut hash: i32 = 0;
     for c in text.chars() {
         hash = hash.wrapping_mul(31).wrapping_add(c as i32);
@@ -1727,7 +1725,7 @@ fn board_fingerprint(board: &Board) -> i32 {
         text.push_str(line);
         text.push('\n');
     }
-    java_string_hash(&text)
+    string_hash(&text)
 }
 
 /// Assert the whole board state against one probe row.

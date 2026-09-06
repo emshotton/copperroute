@@ -10,12 +10,12 @@ use fr_board::{
 use fr_geometry::polyline_shape::PolylineShapeOps;
 use fr_geometry::{Line, Point, Side, Simplex, TileShape};
 
-use crate::JavaTreeSet;
 use crate::autoroute::expansion::sorted_neighbours_45::Sorted45DegreeRoomNeighbours;
 use crate::autoroute::expansion::sorted_neighbours_orthogonal::SortedOrthogonalRoomNeighbours;
 use crate::autoroute::expansion::{ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom, RoomRef};
 use crate::autoroute::item_info;
 use crate::autoroute::tree_ext::AutorouteSearchTreeExt;
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CalculationMode {
@@ -39,7 +39,7 @@ pub struct SortedRoomNeighbours {
     pub from_room: RoomRef,
     pub completed_room: RoomRef,
     pub room_shape: TileShape,
-    pub sorted_neighbours: JavaTreeSet<SortedRoomNeighbour>,
+    pub sorted_neighbours: BTreeSet<SortedRoomNeighbour>,
     pub own_net_objects: Vec<TreeEntry<TreeObject>>,
 }
 
@@ -145,7 +145,7 @@ impl SortedRoomNeighbours {
             from_room: room,
             completed_room,
             room_shape: room_simplex.clone(),
-            sorted_neighbours: JavaTreeSet::new(),
+            sorted_neighbours: BTreeSet::new(),
             own_net_objects: Vec::new(),
         };
 
@@ -316,7 +316,7 @@ impl SortedRoomNeighbours {
     }
 
     fn add_sorted_neighbour(&mut self, neighbour: SortedRoomNeighbour) {
-        self.sorted_neighbours.add(neighbour);
+        self.sorted_neighbours.insert(neighbour);
     }
 
     fn try_remove_edge(

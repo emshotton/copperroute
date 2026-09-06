@@ -2,7 +2,6 @@ use fr_board::ids::TreeObject;
 use fr_board::prelude::*;
 use fr_dsn::format::format_double;
 use fr_geometry::{Area, IntBox, IntOctagon, IntVector, Point, Polyline, Shape, TileShape};
-use fr_router::JavaTreeSet;
 use fr_router::autoroute::expansion::sorted_neighbours::SortedRoomNeighbours;
 use fr_router::autoroute::expansion::sorted_neighbours_45::Sorted45DegreeRoomNeighbours;
 use fr_router::autoroute::expansion::sorted_neighbours_orthogonal::SortedOrthogonalRoomNeighbours;
@@ -1031,9 +1030,10 @@ fn identical_geometry_and_a_colliding_id_still_drops_a_neighbour() {
     );
     assert_eq!(item.compare_to(&expansion_room), std::cmp::Ordering::Equal);
 
-    let mut set = JavaTreeSet::new();
-    assert!(set.add(item));
-    assert!(!set.add(expansion_room), "the TreeSet silently drops it");
+    #[allow(clippy::mutable_key_type)]
+    let mut set = std::collections::BTreeSet::new();
+    assert!(set.insert(item));
+    assert!(!set.insert(expansion_room), "the TreeSet silently drops it");
     assert_eq!(set.len(), 1);
     assert!(matches!(
         set.last().expect("one survivor").search_tree_object,

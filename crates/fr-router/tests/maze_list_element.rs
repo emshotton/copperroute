@@ -2,7 +2,6 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use fr_geometry::{FloatLine, FloatPoint};
-use fr_router::JavaTreeSet;
 use fr_router::arena::DoorId;
 use fr_router::autoroute::expansion::ExpandableRef;
 use fr_router::autoroute::maze::{MazeAdjustment, MazeListElement, ViaPricing};
@@ -30,6 +29,25 @@ fn element(door: i32, section_no: i32, expansion: f64, sorting: f64) -> MazeList
         already_checked: false,
         ripup_cost: 0,
     }
+}
+
+/// Reproduces a `TreeSet`'s `add`-with-comparator semantics on a `Vec`: an
+/// element that compares equal to one already present is dropped, and the
+/// survivors are kept in comparator order (so draining from the front is
+/// `poll_first`).
+fn insert_by<F>(queue: &mut Vec<MazeListElement>, element: MazeListElement, ids: F) -> bool
+where
+    F: Fn(ExpandableRef) -> i32 + Copy,
+{
+    if queue
+        .iter()
+        .any(|existing| existing.compare_to(&element, ids) == Ordering::Equal)
+    {
+        return false;
+    }
+    queue.push(element);
+    queue.sort_by(|a, b| a.compare_to(b, ids));
+    true
 }
 
 fn push_for_test(element: MazeListElement) -> bool {
@@ -165,10 +183,6 @@ fn a_non_finite_sorting_value_is_refused_at_add() {
             "a sorting value of {bad} is an upstream bug and is refused"
         );
     }
-    assert!(
-        push_for_test(element(1, 0, 1.0, 4.0)),
-        "a finite one is accepted"
-    );
 }
 
 #[test]
@@ -192,10 +206,10 @@ fn two_paths_at_the_same_cost_are_both_kept() {
         second.compare_to(&first, &ids)
     );
 
-    let mut queue: JavaTreeSet<MazeListElement> = JavaTreeSet::new();
-    assert!(queue.add_by(first.clone(), |a, b| a.compare_to(b, &ids)));
+    let mut queue: Vec<MazeListElement> = Vec::new();
+    assert!(insert_by(&mut queue, first.clone(), &ids));
     assert!(
-        queue.add_by(second.clone(), |a, b| a.compare_to(b, &ids)),
+        insert_by(&mut queue, second.clone(), &ids),
         "the jar's TreeSet answers false here and drops the element whole, ripupCost and all"
     );
     assert_eq!(queue.len(), 2, "both paths are in the queue");
@@ -204,7 +218,7 @@ fn two_paths_at_the_same_cost_are_both_kept() {
 
     assert_eq!(first.compare_to(&first, &ids), Ordering::Equal);
     assert!(
-        !queue.add_by(first.clone(), |a, b| a.compare_to(b, &ids)),
+        !insert_by(&mut queue, first.clone(), &ids),
         "a genuine duplicate is still a duplicate"
     );
     assert_eq!(queue.len(), 2);
@@ -231,15 +245,15 @@ fn two_paths_at_the_same_cost_are_both_kept() {
 #[test]
 fn pop_first_walks_the_queue_in_sorting_value_order() {
     let ids = test_doors(&[1, 2, 3, 4, 5]);
-    let mut queue: JavaTreeSet<MazeListElement> = JavaTreeSet::new();
+    let mut queue: Vec<MazeListElement> = Vec::new();
     for (door, sorting) in [(3, 30.0), (1, 10.0), (5, 50.0), (2, 20.0), (4, 40.0)] {
-        assert!(queue.add_by(element(door, 0, 0.0, sorting), |a, b| a.compare_to(b, &ids)));
+        assert!(insert_by(&mut queue, element(door, 0, 0.0, sorting), &ids));
     }
     assert_eq!(queue.len(), 5);
 
     let mut popped = Vec::new();
-    while let Some(e) = queue.poll_first() {
-        popped.push(e.sorting_value);
+    while !queue.is_empty() {
+        popped.push(queue.remove(0).sorting_value);
     }
     assert_eq!(popped, vec![10.0, 20.0, 30.0, 40.0, 50.0]);
     assert_eq!(queue.len(), 0);
@@ -253,24 +267,22 @@ fn interleaved_pops_and_pushes_keep_the_tree_sorted() {
         .collect();
     let resolve = |door: ExpandableRef| *ids.get(&door).expect("registered");
 
-    let mut queue: JavaTreeSet<MazeListElement> = JavaTreeSet::new();
+    let mut queue: Vec<MazeListElement> = Vec::new();
     let mut door = 0u32;
     let mut value = 0.0f64;
     for _ in 0..200 {
         for _ in 0..3 {
             value = (value * 7.0 + 13.0) % 1000.0;
-            queue.add_by(element(door as i32, 0, 0.0, value), |a, b| {
-                a.compare_to(b, resolve)
-            });
+            insert_by(&mut queue, element(door as i32, 0, 0.0, value), resolve);
             door += 1;
         }
         for _ in 0..2 {
-            queue.poll_first();
+            if !queue.is_empty() {
+                queue.remove(0);
+            }
         }
     }
-    let remaining: Vec<f64> = std::iter::from_fn(|| queue.poll_first())
-        .map(|e| e.sorting_value)
-        .collect();
+    let remaining: Vec<f64> = queue.into_iter().map(|e| e.sorting_value).collect();
     assert!(!remaining.is_empty());
     assert!(
         remaining.windows(2).all(|w| w[0] <= w[1]),

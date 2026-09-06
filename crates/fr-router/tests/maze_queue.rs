@@ -129,6 +129,14 @@ fn without_fanout_the_window_is_not_consulted_at_all() {
         0,
         1,
     );
+    let other = engine.rooms.new_complete_room(
+        Some(TileShape::Box(IntBox::from_coords(20, 20, 30, 30))),
+        0,
+        2,
+    );
+    engine
+        .rooms
+        .new_door(RoomRef::Complete(room), RoomRef::Complete(other), 1);
     let ctrl = fresh_control(&settings);
 
     let mut queue = MazeQueue::new();
@@ -162,6 +170,13 @@ fn the_max_escape_window_refuses_a_far_entry_on_the_start_layer() {
         1,
         2,
     );
+    for _ in 0..5 {
+        engine.rooms.new_door(
+            RoomRef::Complete(on_layer_0),
+            RoomRef::Complete(on_layer_1),
+            1,
+        );
+    }
     let ctrl = fanout_control(&settings, Point::Int(IntPoint::new(0, 0)), 0);
     let limit = ctrl.fanout_max_escape_length * resolution;
 
