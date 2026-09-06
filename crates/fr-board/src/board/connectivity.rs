@@ -603,7 +603,7 @@ impl Board {
         if ignore_areas && matches!(self.items.get(&id), Some(Item::ConductionArea(_))) {
             return false;
         }
-        for contact_id in self.normal_contacts(id).into_iter().rev() {
+        for contact_id in self.cycle_contacts(id).iter().rev().copied() {
             if contact_id == come_from_item {
                 continue;
             }

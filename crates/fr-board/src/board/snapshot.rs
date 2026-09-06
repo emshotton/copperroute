@@ -180,6 +180,7 @@ impl Board {
     }
 
     pub fn undo_from_snapshot(&mut self, snapshot: Board) {
+        self.invalidate_cached_contacts();
         let journal = self.undo_journal.take().unwrap_or_default();
         let mut snapshot_items = snapshot.items;
 
