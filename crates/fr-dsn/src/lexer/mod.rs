@@ -141,10 +141,14 @@ impl DsnScanner {
                 }
                 5 => {
                     let text = self.yytext();
-                    let value: i32 = text.parse().map_err(|_| {
-                        DsnError::Scan(format!("For input string: \"{text}\" (Integer.valueOf)"))
-                    })?;
-                    return Ok(Some(Token::Int(i64::from(value))));
+                    return Ok(Some(match text.parse::<i32>() {
+                        Ok(value) => Token::Int(i64::from(value)),
+                        Err(_) => Token::Float(text.parse::<f64>().map_err(|_| {
+                            DsnError::Scan(format!(
+                                "For input string: \"{text}\" (Integer.valueOf)"
+                            ))
+                        })?),
+                    }));
                 }
                 6 => {
                     self.string_buffer.clear();
