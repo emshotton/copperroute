@@ -681,6 +681,10 @@ impl<'a> BatchFanout<'a> {
         budget: RouterBudget,
         progress: &mut dyn ProgressSink,
     ) -> Result<i32, RouterError> {
+        crate::visualization::set_route_context(
+            crate::visualization::RoutingPhase::Fanout,
+            pass_no + 1,
+        );
         let pass_start = Instant::now();
         let mut pins_to_go = self.total_smd_pin_count;
         let mut routed_count = 0_i32;

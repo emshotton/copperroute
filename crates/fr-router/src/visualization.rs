@@ -195,13 +195,24 @@ pub(crate) fn capture_maze_step(
     );
 }
 
-pub(crate) fn set_route_context(is_optimizer: bool, pass: i32) {
+#[derive(Clone, Copy)]
+pub(crate) enum RoutingPhase {
+    Fanout,
+    Autorouter,
+    Optimizer,
+}
+
+pub(crate) fn set_route_context(phase: RoutingPhase, pass: i32) {
     if ACTIVE_RECORDERS.load(Ordering::Relaxed) == 0 {
         return;
     }
     RECORDER.with(|slot| {
         if let Some(recorder) = slot.borrow_mut().as_mut() {
-            recorder.phase = is_optimizer.then_some("optimizer").unwrap_or("autorouter");
+            recorder.phase = match phase {
+                RoutingPhase::Fanout => "fanout",
+                RoutingPhase::Autorouter => "autorouter",
+                RoutingPhase::Optimizer => "optimizer",
+            };
             recorder.pass = pass;
         }
     });
