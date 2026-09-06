@@ -929,7 +929,10 @@ impl AutorouteEngine {
                     describe_connection_from_names(&start_names, &dest_names)
                 ),
             ),
-            Ok(Some(_)) => AutorouteAttemptResult::new(AutorouteAttemptState::Routed),
+            Ok(Some(_)) => {
+                crate::visualization::capture_route_committed(board, self);
+                AutorouteAttemptResult::new(AutorouteAttemptState::Routed)
+            }
         }
     }
 }

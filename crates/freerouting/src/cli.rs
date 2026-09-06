@@ -58,6 +58,19 @@ pub struct RouteArgs {
     pub hybrid_ratio: Option<String>,
     #[arg(long)]
     pub item_selection: Option<String>,
+    /// Write SVG frames showing maze rooms over the routed PCB.
+    #[arg(long, value_name = "DIR")]
+    pub visualize: Option<PathBuf>,
+    /// Capture one visualization frame for every N maze steps; route commits are always kept.
+    #[arg(long, default_value_t = 1, requires = "visualize")]
+    pub visualize_every: u64,
+    /// Stop writing visualization frames after this many images; routing continues.
+    #[arg(long, default_value_t = 1_000, requires = "visualize")]
+    pub visualize_max_frames: u64,
+    #[arg(long, default_value_t = 1280, requires = "visualize")]
+    pub visualize_width: u32,
+    #[arg(long, default_value_t = 720, requires = "visualize")]
+    pub visualize_height: u32,
     #[arg(long = "set")]
     pub set: Vec<String>,
 }
@@ -139,6 +152,31 @@ mod tests {
             Command::Drc(d) => assert_eq!(d.kicad_json, Some(PathBuf::from("k.json"))),
             _ => panic!("expected drc"),
         }
+    }
+
+    #[test]
+    fn parses_bounded_routing_visualization() {
+        let cli = Cli::try_parse_from([
+            "freerouting",
+            "route",
+            "a.dsn",
+            "-o",
+            "b.ses",
+            "--visualize",
+            "frames",
+            "--visualize-every",
+            "25",
+            "--visualize-max-frames",
+            "80",
+        ])
+        .unwrap();
+        let Command::Route(route) = cli.command else {
+            panic!("expected route");
+        };
+        assert_eq!(route.visualize, Some(PathBuf::from("frames")));
+        assert_eq!(route.visualize_every, 25);
+        assert_eq!(route.visualize_max_frames, 80);
+        assert_eq!((route.visualize_width, route.visualize_height), (1280, 720));
     }
 
     #[test]

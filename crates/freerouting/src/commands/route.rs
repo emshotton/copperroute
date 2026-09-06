@@ -161,6 +161,24 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
         progress: &progress,
         budget,
     };
+    let visualization = match args.visualize.as_ref() {
+        Some(output_dir) => {
+            let mut options = fr_router::RoutingVisualizationOptions::new(output_dir.to_path_buf());
+            options.every = args.visualize_every;
+            options.max_frames = args.visualize_max_frames;
+            options.width = args.visualize_width;
+            options.height = args.visualize_height;
+            match fr_router::start_routing_visualization(options) {
+                Ok(guard) => Some(guard),
+                Err(error) => {
+                    eprintln!("--visualize: {error}");
+                    tracing::warn!("--visualize: {error}");
+                    return ExitCode::UsageError;
+                }
+            }
+        }
+        None => None,
+    };
     let result = match RoutingPipeline::run(&mut board, &ctx) {
         Ok(result) => result,
         Err(error) => {
@@ -173,6 +191,30 @@ pub fn run(args: &RouteArgs, settings_argv: &[String]) -> ExitCode {
             return finish(&job, args, false, ExitCode::Failure, None);
         }
     };
+    if let Some(visualization) = visualization {
+        let summary = visualization.finish();
+        if let Some(error) = summary.error {
+            tracing::warn!("routing visualization stopped after an I/O error: {error}");
+        }
+        tracing::info!(
+            frames = summary.frames_written,
+            observed_steps = summary.observed_steps,
+            capped = summary.reached_frame_limit,
+            output = %summary.output_dir.display(),
+            "routing visualization written"
+        );
+        eprintln!(
+            "Visualization: {} SVG frames from {} routing steps in {}{}",
+            summary.frames_written,
+            summary.observed_steps,
+            summary.output_dir.display(),
+            if summary.reached_frame_limit {
+                " (frame limit reached)"
+            } else {
+                ""
+            }
+        );
+    }
 
     // `:174-184` — `finishedAt`, then the state finalisation. The port has no `STOPPING` arm to
     // take, because nothing outside this stack can request a stop, so the whole ladder reduces to
