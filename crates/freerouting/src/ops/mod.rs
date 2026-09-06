@@ -1,7 +1,9 @@
 pub mod load;
+pub mod route;
 pub mod settings;
 
 pub use load::{BoardSource, LoadRequest, Loaded, load};
+pub use route::{OutputFormat, OutputTarget, RouteOutcome, RouteRequest, route};
 pub use settings::SettingsOverrides;
 
 #[derive(Debug, thiserror::Error)]
