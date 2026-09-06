@@ -536,6 +536,11 @@ fn import_session_inserts_the_wires_and_vias() {
         via.get_padstack(&ctx).expect("registered").name,
         "Via[0-1]_800:400_um"
     );
+    assert!(matches!(
+        via.get_shape_on_layer(0, &ctx),
+        Some(fr_geometry::Shape::Circle(_))
+    ));
+    assert_eq!(via.get_padstack(&ctx).unwrap().drill_diameter, Some(400.0));
     let center = via.get_center().to_float();
     assert_eq!((center.x, center.y), (5000.0, -1000.0));
     assert_eq!(board.get_traces().len(), 1, "the trace is left whole");

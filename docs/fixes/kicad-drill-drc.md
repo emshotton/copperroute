@@ -77,10 +77,30 @@ warnings. All three silkscreen warnings also occur on the untouched upstream
 Nano, which has no unconnected items.
 
 The two additional Rust clearance findings expose a separate importer geometry
-issue, not addressed by this commit: `kicad::reader::via_shape` models round via
+issue identified during that investigation: `kicad::reader::via_shape` models round via
 copper as a square. DRC reports approximately 0.0491 mm for `/PC5` vs `/PC1` and
 `/PC3` vs `/PC4`; measuring the exported track segments against the actual round
 0.50 mm vias gives approximately 0.1527 mm and 0.1526 mm. Both exceed the project
-clearance of 0.128 mm, consistent with KiCad. A follow-up should preserve circular
-via copper geometry through import and DRC, with regression coverage for these
-diagonal gaps. No findings were suppressed to make these results look clean.
+clearance of 0.128 mm, consistent with KiCad. The circular-via follow-up below addresses this geometry mismatch. No findings were suppressed to make these results look clean.
+
+## Circular via copper fix
+
+`kicad::reader::via_shape` now creates a centered `Shape::Circle`, rounding its
+radius to board units. This shared constructor covers default/additional
+net-class via templates, existing board vias and imported session vias. Drill
+metadata remains unchanged. The routing engine can still form conservative
+search shapes from the circle, while DRC receives the actual circular copper
+shape rather than a square invented by the importer.
+
+A diagonal trace/via regression rejects a genuinely insufficient gap but accepts
+the Nano-like gap which the old square shape incorrectly rejected. Session
+import explicitly checks circular copper and preserved drill dimensions. The
+reader port golden updates only the changed via shape rows, with documented
+divergences from the unchanged historical Java transcript.
+
+The revised Nano run, with the same settings, has two incomplete connections and
+eight Rust findings, all on fixed USB footprint geometry. The two routing-related
+clearance false positives are gone. KiCad confirms zero clearance/drill errors,
+two unconnected items, two dangling-via warnings and the same three pre-existing
+silkscreen warnings. This is still a partial route, not a manufacturing-ready
+board.

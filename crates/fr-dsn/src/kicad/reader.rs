@@ -1476,11 +1476,9 @@ fn npe_field(field: &str, receiver: &str) -> BoardReadResult {
 }
 
 fn via_shape(radius: f64) -> Shape {
-    let lower = java_round_to_int(-radius);
-    let upper = java_round_to_int(radius);
-    Shape::Tile(fr_geometry::TileShape::Simplex(
-        IntBox::from_coords(lower, lower, upper, upper).to_simplex(),
-    ))
+    // KiCad vias have circular copper. A bounding square invents copper at
+    // the corners and produces false clearances against diagonal traces.
+    Shape::Circle(Circle::new(IntPoint::ZERO, java_round_to_int(radius)))
 }
 
 fn registered_via_info(rules: &BoardRules, name: &str) -> ViaInfo {
@@ -1691,18 +1689,14 @@ mod tests {
     }
 
     #[test]
-    fn the_via_shape_rounds_each_corner_separately() {
-        let Shape::Tile(fr_geometry::TileShape::Simplex(simplex)) = via_shape(0.5) else {
-            panic!("IntBox::to_simplex answers a Simplex");
-        };
-        let expected = IntBox::from_coords(0, 0, 1, 1).to_simplex();
-        assert_eq!(simplex, expected, "round(-0.5) is 0, not -1");
-        let Shape::Tile(fr_geometry::TileShape::Simplex(simplex)) = via_shape(4000.0) else {
-            panic!("IntBox::to_simplex answers a Simplex");
-        };
+    fn via_copper_is_a_centered_circle_with_a_rounded_radius() {
         assert_eq!(
-            simplex,
-            IntBox::from_coords(-4000, -4000, 4000, 4000).to_simplex()
+            via_shape(0.5),
+            Shape::Circle(Circle::new(IntPoint::ZERO, 1))
+        );
+        assert_eq!(
+            via_shape(4000.0),
+            Shape::Circle(Circle::new(IntPoint::ZERO, 4000))
         );
     }
 

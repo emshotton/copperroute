@@ -6,7 +6,7 @@
 [case] stem=ecc83-v1
 [s9] result=Success
 [s9] padstacks count=6
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] padstack 2 name=Rect[A]Pad_2000x2000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0);Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0)]
 [s9] padstack 3 name=Rect[A]Pad_1600x1600_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-8000.0,-8000.0;8000.0,-8000.0;8000.0,8000.0;-8000.0,8000.0);Simplex(-8000.0,-8000.0;8000.0,-8000.0;8000.0,8000.0;-8000.0,8000.0)]
 [s9] padstack 4 name=Rect[A]Pad_5600x5600_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-28000.0,-28000.0;28000.0,-28000.0;28000.0,28000.0;-28000.0,28000.0);Simplex(-28000.0,-28000.0;28000.0,-28000.0;28000.0,28000.0;-28000.0,28000.0)]
@@ -101,7 +101,7 @@
 [case] stem=ecc83-v2
 [s9] result=Success
 [s9] padstacks count=9
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] padstack 2 name=Rect[A]Pad_2000x2000_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0);Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0)]
 [s9] padstack 3 name=Round[A]Pad_2000x2000_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=10000);Circle(0.0,0.0,r=10000)]
 [s9] padstack 4 name=Round[A]Pad_1600x1600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=8000);Circle(0.0,0.0,r=8000)]
@@ -255,8 +255,8 @@
 [case] stem=complex-hierarchy
 [s9] result=Success
 [s9] padstacks count=19
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
-[s9] padstack 2 name=via_power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-8255.0,-8255.0;8255.0,-8255.0;8255.0,8255.0;-8255.0,8255.0);Simplex(-8255.0,-8255.0;8255.0,-8255.0;8255.0,8255.0;-8255.0,8255.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
+[s9] padstack 2 name=via_power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=8255);Circle(0.0,0.0,r=8255)]
 [s9] padstack 3 name=Rect[A]Pad_2000x2000_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0);Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0)]
 [s9] padstack 4 name=Oval[A]Pad_2000x2000_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4142.0,-10000.0;4142.0,-10000.0;10000.0,-4142.0;10000.0,4142.0;4142.0,10000.0;-4142.0,10000.0;-10000.0,4142.0;-10000.0,-4142.0);Simplex(-4142.0,-10000.0;4142.0,-10000.0;10000.0,-4142.0;10000.0,4142.0;4142.0,10000.0;-4142.0,10000.0;-10000.0,4142.0;-10000.0,-4142.0)]
 [s9] padstack 5 name=Rect[A]Pad_2400x2400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-12000.0,-12000.0;12000.0,-12000.0;12000.0,12000.0;-12000.0,12000.0);Simplex(-12000.0,-12000.0;12000.0,-12000.0;12000.0,12000.0;-12000.0,12000.0)]
@@ -566,8 +566,8 @@
 [case] stem=interf-u
 [s9] result=Success
 [s9] padstacks count=23
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
-[s9] padstack 2 name=via_Power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-8000.0,-8000.0;8000.0,-8000.0;8000.0,8000.0;-8000.0,8000.0);Simplex(-8000.0,-8000.0;8000.0,-8000.0;8000.0,8000.0;-8000.0,8000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
+[s9] padstack 2 name=via_Power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=8000);Circle(0.0,0.0,r=8000)]
 [s9] padstack 3 name=Round[A]Pad_1600x1600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=8000);Circle(0.0,0.0,r=8000)]
 [s9] padstack 4 name=Oval[A]Pad_1600x1600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-3314.0,-8000.0;3314.0,-8000.0;8000.0,-3314.0;8000.0,3314.0;3314.0,8000.0;-3314.0,8000.0;-8000.0,3314.0;-8000.0,-3314.0);Simplex(-3314.0,-8000.0;3314.0,-8000.0;8000.0,-3314.0;8000.0,3314.0;3314.0,8000.0;-3314.0,8000.0;-8000.0,3314.0;-8000.0,-3314.0)]
 [s9] padstack 5 name=Rect[A]Pad_2000x2000_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0);Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0)]
@@ -585,10 +585,10 @@
 [s9] padstack 17 name=Round[A]Pad_1400x1400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=7000);Circle(0.0,0.0,r=7000)]
 [s9] padstack 18 name=Rect[B]Pad_1778x7620_um fromLayer=1 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[<null>;Simplex(-8890.0,-38100.0;8890.0,-38100.0;8890.0,38100.0;-8890.0,38100.0)]
 [s9] padstack 19 name=Rect[T]Pad_1778x7620_um fromLayer=0 toLayer=0 attachAllowed=false placedAbsolute=false shapes=[Simplex(-8890.0,-38100.0;8890.0,-38100.0;8890.0,38100.0;-8890.0,38100.0);<null>]
-[s9] padstack 20 name=Via[0-1]_1397:600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-6985.0,-6985.0;6985.0,-6985.0;6985.0,6985.0;-6985.0,6985.0);Simplex(-6985.0,-6985.0;6985.0,-6985.0;6985.0,6985.0;-6985.0,6985.0)]
-[s9] padstack 21 name=Via[0-1]_1397:635_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-6985.0,-6985.0;6985.0,-6985.0;6985.0,6985.0;-6985.0,6985.0);Simplex(-6985.0,-6985.0;6985.0,-6985.0;6985.0,6985.0;-6985.0,6985.0)]
-[s9] padstack 22 name=Via[0-1]_1524:600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-7620.0,-7620.0;7620.0,-7620.0;7620.0,7620.0;-7620.0,7620.0);Simplex(-7620.0,-7620.0;7620.0,-7620.0;7620.0,7620.0;-7620.0,7620.0)]
-[s9] padstack 23 name=Via[0-1]_1143:600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-5715.0,-5715.0;5715.0,-5715.0;5715.0,5715.0;-5715.0,5715.0);Simplex(-5715.0,-5715.0;5715.0,-5715.0;5715.0,5715.0;-5715.0,5715.0)]
+[s9] padstack 20 name=Via[0-1]_1397:600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=6985);Circle(0.0,0.0,r=6985)]
+[s9] padstack 21 name=Via[0-1]_1397:635_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=6985);Circle(0.0,0.0,r=6985)]
+[s9] padstack 22 name=Via[0-1]_1524:600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=7620);Circle(0.0,0.0,r=7620)]
+[s9] padstack 23 name=Via[0-1]_1143:600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=5715);Circle(0.0,0.0,r=5715)]
 [s9] packages count=16
 [s9] package 1 name=interf_u:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal isFront=true pins=2
 [s9] packagepin 1 0 name=1 padstack=3 rel=0.0,0.0 rot=0.0
@@ -2158,7 +2158,7 @@
 [case] stem=corney-island
 [s9] result=Success
 [s9] padstacks count=6
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] padstack 2 name=Rect[B]Pad_900x1200_um fromLayer=1 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[<null>;Simplex(-4500.0,-6000.0;4500.0,-6000.0;4500.0,6000.0;-4500.0,6000.0)]
 [s9] padstack 3 name=Round[A]Pad_1900x1900_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=9500);Circle(0.0,0.0,r=9500)]
 [s9] padstack 4 name=Round[A]Pad_3000x3000_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=15000);Circle(0.0,0.0,r=15000)]
@@ -2205,7 +2205,7 @@
 [case] stem=corney-island-session
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2214,8 +2214,8 @@
 [case] stem=complex-hierarchy-session
 [s9] result=Success
 [s9] padstacks count=2
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-8255.0,-8255.0;8255.0,-8255.0;8255.0,8255.0;-8255.0,8255.0);Simplex(-8255.0,-8255.0;8255.0,-8255.0;8255.0,8255.0;-8255.0,8255.0)]
-[s9] padstack 2 name=via_power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-8255.0,-8255.0;8255.0,-8255.0;8255.0,8255.0;-8255.0,8255.0);Simplex(-8255.0,-8255.0;8255.0,-8255.0;8255.0,8255.0;-8255.0,8255.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=8255);Circle(0.0,0.0,r=8255)]
+[s9] padstack 2 name=via_power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=8255);Circle(0.0,0.0,r=8255)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=173
@@ -2396,7 +2396,7 @@
 [case] stem=empty-object
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2420,8 +2420,8 @@
 [case] stem=unit-mil
 [s9] result=Success
 [s9] padstacks count=2
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=2 attachAllowed=true placedAbsolute=false shapes=[Simplex(-15.0,-15.0;15.0,-15.0;15.0,15.0;-15.0,15.0);Simplex(-15.0,-15.0;15.0,-15.0;15.0,15.0;-15.0,15.0);Simplex(-15.0,-15.0;15.0,-15.0;15.0,15.0;-15.0,15.0)]
-[s9] padstack 2 name=via_HV fromLayer=0 toLayer=2 attachAllowed=true placedAbsolute=false shapes=[Simplex(-25.0,-25.0;25.0,-25.0;25.0,25.0;-25.0,25.0);Simplex(-25.0,-25.0;25.0,-25.0;25.0,25.0;-25.0,25.0);Simplex(-25.0,-25.0;25.0,-25.0;25.0,25.0;-25.0,25.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=2 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=15);Circle(0.0,0.0,r=15);Circle(0.0,0.0,r=15)]
+[s9] padstack 2 name=via_HV fromLayer=0 toLayer=2 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=25);Circle(0.0,0.0,r=25);Circle(0.0,0.0,r=25)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2430,7 +2430,7 @@
 [case] stem=unit-um
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2439,7 +2439,7 @@
 [case] stem=unit-unknown
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2448,7 +2448,7 @@
 [case] stem=unit-lowercase
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2457,7 +2457,7 @@
 [case] stem=resolution-fractional
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-1.0,-1.0;1.0,-1.0;1.0,1.0;-1.0,1.0);Simplex(-1.0,-1.0;1.0,-1.0;1.0,1.0;-1.0,1.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=1);Circle(0.0,0.0,r=1)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2466,7 +2466,7 @@
 [case] stem=resolution-zero
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(0.0,0.0;0.0,0.0;0.0,0.0;0.0,0.0);Simplex(0.0,0.0;0.0,0.0;0.0,0.0;0.0,0.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=0);Circle(0.0,0.0,r=0)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2475,8 +2475,8 @@
 [case] stem=outline-two-corners
 [s9] result=Success
 [s9] padstacks count=2
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
-[s9] padstack 2 name=Via[0-1]_800:400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
+[s9] padstack 2 name=Via[0-1]_800:400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=2
@@ -2486,7 +2486,7 @@
 [case] stem=outline-unsorted
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2495,7 +2495,7 @@
 [case] stem=y-half-tie
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-15.0,-15.0;15.0,-15.0;15.0,15.0;-15.0,15.0);Simplex(-15.0,-15.0;15.0,-15.0;15.0,15.0;-15.0,15.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=15);Circle(0.0,0.0,r=15)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2504,9 +2504,9 @@
 [case] stem=netclass-duplicate-names
 [s9] result=Success
 [s9] padstacks count=3
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
-[s9] padstack 2 name=via_A fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
-[s9] padstack 3 name=via_A fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
+[s9] padstack 2 name=via_A fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
+[s9] padstack 3 name=via_A fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2515,7 +2515,7 @@
 [case] stem=referenced-nets-only
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=19
@@ -2542,7 +2542,7 @@
 [case] stem=comp-identical-packages
 [s9] result=Success
 [s9] padstacks count=2
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Rect[A]Pad_1000x2000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-500.0,-1000.0;500.0,-1000.0;500.0,1000.0;-500.0,1000.0);Simplex(-500.0,-1000.0;500.0,-1000.0;500.0,1000.0;-500.0,1000.0)]
 [s9] packages count=1
 [s9] package 1 name=SO8 isFront=true pins=1
@@ -2558,7 +2558,7 @@
 [case] stem=comp-differing-packages
 [s9] result=Success
 [s9] padstacks count=4
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Rect[A]Pad_1000x2000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-500.0,-1000.0;500.0,-1000.0;500.0,1000.0;-500.0,1000.0);Simplex(-500.0,-1000.0;500.0,-1000.0;500.0,1000.0;-500.0,1000.0)]
 [s9] padstack 3 name=Rect[A]Pad_3000x4000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-1500.0,-2000.0;1500.0,-2000.0;1500.0,2000.0;-1500.0,2000.0);Simplex(-1500.0,-2000.0;1500.0,-2000.0;1500.0,2000.0;-1500.0,2000.0)]
 [s9] padstack 4 name=Rect[A]Pad_5000x6000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-2500.0,-3000.0;2500.0,-3000.0;2500.0,3000.0;-2500.0,3000.0);Simplex(-2500.0,-3000.0;2500.0,-3000.0;2500.0,3000.0;-2500.0,3000.0)]
@@ -2582,7 +2582,7 @@
 [case] stem=comp-both-sides
 [s9] result=Success
 [s9] padstacks count=2
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Rect[A]Pad_1000x2000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-500.0,-1000.0;500.0,-1000.0;500.0,1000.0;-500.0,1000.0);Simplex(-500.0,-1000.0;500.0,-1000.0;500.0,1000.0;-500.0,1000.0)]
 [s9] packages count=1
 [s9] package 1 name=SO8 isFront=true pins=1
@@ -2598,7 +2598,7 @@
 [case] stem=pad-shape-arms
 [s9] result=Success
 [s9] padstacks count=5
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Round[A]Pad_1000x2000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Circle(0.0,0.0,r=500);Circle(0.0,0.0,r=500)]
 [s9] padstack 3 name=Oval[A]Pad_1000x2000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-207.0,-1000.0;207.0,-1000.0;500.0,-707.0;500.0,707.0;207.0,1000.0;-207.0,1000.0;-500.0,707.0;-500.0,-707.0);Simplex(-207.0,-1000.0;207.0,-1000.0;500.0,-707.0;500.0,707.0;207.0,1000.0;-207.0,1000.0;-500.0,707.0;-500.0,-707.0)]
 [s9] padstack 4 name=Oval[A]Pad_3000x1000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-1207.0,-500.0;1207.0,-500.0;1500.0,-207.0;1500.0,207.0;1207.0,500.0;-1207.0,500.0;-1500.0,207.0;-1500.0,-207.0);Simplex(-1207.0,-500.0;1207.0,-500.0;1500.0,-207.0;1500.0,207.0;1207.0,500.0;-1207.0,500.0;-1500.0,207.0;-1500.0,-207.0)]
@@ -2637,7 +2637,7 @@
 [case] stem=pad-name-half-up
 [s9] result=Success
 [s9] padstacks count=3
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Round[A]Pad_1x1_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Circle(0.0,0.0,r=0);Circle(0.0,0.0,r=0)]
 [s9] padstack 3 name=Rect[A]Pad_3x4_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-1.0,-2.0;1.0,-2.0;1.0,2.0;-1.0,2.0);Simplex(-1.0,-2.0;1.0,-2.0;1.0,2.0;-1.0,2.0)]
 [s9] packages count=1
@@ -2659,7 +2659,7 @@
 [case] stem=comp-no-footprint
 [s9] result=Success
 [s9] padstacks count=2
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Rect[A]Pad_1000x1000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-500.0,-500.0;500.0,-500.0;500.0,500.0;-500.0,500.0);Simplex(-500.0,-500.0;500.0,-500.0;500.0,500.0;-500.0,500.0)]
 [s9] packages count=1
 [s9] package 1 name=Package isFront=true pins=1
@@ -2726,7 +2726,7 @@
 [case] stem=zones
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=3
@@ -2740,7 +2740,7 @@
 [case] stem=zone-negative-layer
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=2
@@ -2750,7 +2750,7 @@
 [case] stem=zone-layer-out-of-range
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=2
@@ -2760,7 +2760,7 @@
 [case] stem=traces
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=4
@@ -2772,7 +2772,7 @@
 [case] stem=trace-layer-out-of-range
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=2
@@ -2782,10 +2782,10 @@
 [case] stem=vias
 [s9] result=Success
 [s9] padstacks count=4
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
-[s9] padstack 2 name=Via[0-1]_800:400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
-[s9] padstack 3 name=Via[0-1]_1:3_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(0.0,0.0;0.0,0.0;0.0,0.0;0.0,0.0);Simplex(0.0,0.0;0.0,0.0;0.0,0.0;0.0,0.0)]
-[s9] padstack 4 name=Via[0-0]_4:2_um fromLayer=0 toLayer=0 attachAllowed=true placedAbsolute=false shapes=[Simplex(-2.0,-2.0;2.0,-2.0;2.0,2.0;-2.0,2.0);<null>]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
+[s9] padstack 2 name=Via[0-1]_800:400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
+[s9] padstack 3 name=Via[0-1]_1:3_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=0);Circle(0.0,0.0,r=0)]
+[s9] padstack 4 name=Via[0-0]_4:2_um fromLayer=0 toLayer=0 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=2);<null>]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=5
@@ -2813,7 +2813,7 @@
 [case] stem=trace-negative-layer
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=2
@@ -2832,9 +2832,9 @@
 [case] stem=mixed
 [s9] result=Success
 [s9] padstacks count=3
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Round[A]Pad_1000x1000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Circle(0.0,0.0,r=500);Circle(0.0,0.0,r=500)]
-[s9] padstack 3 name=Via[0-1]_800:400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 3 name=Via[0-1]_800:400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=1
 [s9] package 1 name=SO8 isFront=true pins=1
 [s9] packagepin 1 0 name=1 padstack=2 rel=0.0,0.0 rot=0.0

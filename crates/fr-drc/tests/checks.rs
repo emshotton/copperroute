@@ -675,3 +675,51 @@ fn drc_uses_physical_pad_shapes_and_does_not_treat_bare_holes_as_copper() {
     assert_eq!(out[0].kind, DrcViolationKind::HoleClearance);
     assert!((out[0].actual - 3000.0).abs() < 2.0);
 }
+
+#[test]
+fn round_kicad_vias_do_not_have_square_corners_but_real_diagonal_gaps_fail() {
+    // Via radius .25 + trace half-width .125 + required clearance .128 = .503 mm.
+    // A diagonal with x+y=.746 is .5275 mm from the origin, safely outside that.
+    // Against a square via it would appear only about .049 mm clear.
+    for (intercept, expect_violation) in [(0.746, false), (0.67, true)] {
+        let json = serde_json::json!({
+            "layers": [{"name":"F.Cu"},{"name":"B.Cu"}],
+            "netClasses": [{"name":"Default","clearance":0.128,"traceWidth":0.25,"viaDiameter":0.5,"viaDrill":0.3}],
+            "nets": [{"id":1,"name":"A"},{"id":2,"name":"B"}],
+            "vias": [{"netName":"A","position":{"x":0,"y":0},"diameter":0.5,"drill":0.3,"startLayerIndex":0,"endLayerIndex":1}],
+            "traces": [{"netName":"B","layerIndex":0,"width":0.25,"points":[{"x":-1,"y":intercept+1.0},{"x":intercept+1.0,"y":-1}]}]
+        });
+        let fr_dsn::BoardReadResult::Success {
+            board: Some(mut board),
+            ..
+        } = fr_dsn::kicad::read_board(&json.to_string(), None)
+        else {
+            panic!("fixture import failed")
+        };
+        let violations = DesignRulesChecker::new(&mut board).get_all_violations();
+        assert_eq!(
+            violations
+                .iter()
+                .any(|v| v.kind == DrcViolationKind::Clearance),
+            expect_violation,
+            "intercept={intercept}: {violations:?}"
+        );
+        let ctx = board.ctx();
+        let fr_board::Item::Via(via) = board.get_item(board.get_vias()[0]).unwrap() else {
+            panic!("via")
+        };
+        assert!(matches!(
+            via.get_shape_on_layer(0, &ctx),
+            Some(fr_geometry::Shape::Circle(_))
+        ));
+        assert!(matches!(
+            board
+                .library
+                .padstacks
+                .get_by_name("defaultVia")
+                .unwrap()
+                .get_shape(0),
+            Some(fr_geometry::Shape::Circle(_))
+        ));
+    }
+}
