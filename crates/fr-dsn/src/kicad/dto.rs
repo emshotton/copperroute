@@ -2,8 +2,15 @@
 
 use serde::{Deserialize, Serialize};
 
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct KiCadBoardJson {
+    /// Explicit permission for newly routed vias to share SMD pad copper.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub viaInPadAllowed: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub designName: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -59,6 +66,8 @@ pub struct LayerJson {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NetClassJson {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub viaInPadAllowed: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(default, deserialize_with = "nullable")]
@@ -202,6 +211,7 @@ pub struct Point2D {
 impl Default for KiCadBoardJson {
     fn default() -> KiCadBoardJson {
         KiCadBoardJson {
+            viaInPadAllowed: false,
             designName: None,
             hostCad: None,
             hostVersion: None,
@@ -223,6 +233,7 @@ impl Default for KiCadBoardJson {
 impl Default for NetClassJson {
     fn default() -> NetClassJson {
         NetClassJson {
+            viaInPadAllowed: None,
             name: None,
             clearance: 0.0,
             traceWidth: 0.0,

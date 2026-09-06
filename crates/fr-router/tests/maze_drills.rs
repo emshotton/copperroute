@@ -342,7 +342,7 @@ fn the_control_carries_a_real_via_rule_and_the_start_ripup_costs() {
     assert_eq!(ctrl.via_infos[0].from_layer, 0);
     assert_eq!(ctrl.via_infos[0].to_layer, 1);
     assert!(!ctrl.via_infos[0].attach_smd_allowed);
-    assert!(!ctrl.attach_smd_allowed);
+    assert!(!ctrl.attach_smd_allowed());
     assert!(ctrl.vias_allowed);
     assert!(!ctrl.ripup_allowed);
     assert_eq!(ctrl.ripup_costs, 1000);
@@ -470,7 +470,7 @@ fn every_drill_of_the_page_whose_room_matches_is_expanded_once() {
     let drills = maze.engine.drill_page_drills(
         &mut fixture.board,
         page,
-        fixture.ctrl.attach_smd_allowed,
+        fixture.ctrl.attach_smd_allowed(),
         &|| counter.check(),
     );
     assert_eq!(drills.len(), 53);
@@ -539,7 +539,7 @@ fn a_drill_from_a_page_door_skips_the_via_cost_and_uses_the_pins_trace_exit_corn
     let drills = maze.engine.drill_page_drills(
         &mut fixture.board,
         page,
-        fixture.ctrl.attach_smd_allowed,
+        fixture.ctrl.attach_smd_allowed(),
         &|| counter.check(),
     );
     let first = drills[0];
@@ -636,7 +636,7 @@ fn a_thin_room_refuses_a_drill_unless_the_backtrack_door_intersects_it() {
     let page_element = maze.queue.iter().next().expect("the page element").clone();
     let drills =
         maze.engine
-            .drill_page_drills(&mut fixture.board, page, ctrl.attach_smd_allowed, &|| {
+            .drill_page_drills(&mut fixture.board, page, ctrl.attach_smd_allowed(), &|| {
                 counter.check()
             });
     let first = drills[0];
@@ -767,7 +767,7 @@ fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span()
         .set_via_rule(Some(via_rule));
     let mut engine = probe_engine(&mut board, 1);
     let base = probe_control(&board, 1);
-    assert!(base.attach_smd_allowed);
+    assert!(base.attach_smd_allowed());
     assert!(base.via_infos[0].attach_smd_allowed);
     let controls: Vec<AutorouteControl> = [false, true]
         .into_iter()
@@ -851,7 +851,7 @@ fn an_attach_smd_via_promotes_the_layer_and_the_via_mask_then_decides_the_span()
     let page = maze.engine.drill_pages().overlapping_pages(&room_shape)[0];
     let page_drills =
         maze.engine
-            .drill_page_drills(&mut board, page, base.attach_smd_allowed, &|| {
+            .drill_page_drills(&mut board, page, base.attach_smd_allowed(), &|| {
                 counter.check()
             });
     assert_eq!(page_drills.len(), 42);

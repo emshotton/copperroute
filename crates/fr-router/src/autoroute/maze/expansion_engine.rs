@@ -198,7 +198,7 @@ impl MazeExpansionEngine {
         let ExpandableRef::Page(drill_page) = from_element.door else {
             return;
         };
-        let attach_smd_allowed = search.ctrl.attach_smd_allowed;
+        let attach_smd_allowed = search.ctrl.attach_smd_allowed();
         let drill_list =
             search
                 .engine

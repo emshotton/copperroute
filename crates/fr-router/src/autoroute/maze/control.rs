@@ -31,7 +31,7 @@ pub struct AutorouteControl {
     pub add_via_costs: Vec<Vec<i32>>,
     pub trace_clearance_class_index: usize,
     pub vias_allowed: bool,
-    pub attach_smd_allowed: bool,
+    legacy_smd_attachment_relaxation: bool,
     pub min_normal_via_cost: f64,
     pub ripup_allowed: bool,
     pub ripup_costs: i32,
@@ -159,7 +159,7 @@ impl AutorouteControl {
             add_via_costs: vec![vec![0; layer_count]; layer_count],
             trace_clearance_class_index: 0,
             vias_allowed: settings.get_vias_allowed(),
-            attach_smd_allowed: false,
+            legacy_smd_attachment_relaxation: false,
             min_normal_via_cost: 0.0,
             ripup_allowed: false,
             ripup_costs: 1000,
@@ -265,6 +265,10 @@ impl AutorouteControl {
         self.rebuild_via_info(board, via_costs, net_number);
     }
 
+    pub fn attach_smd_allowed(&self) -> bool {
+        self.legacy_smd_attachment_relaxation || self.via_infos.iter().any(|v| v.attach_smd_allowed)
+    }
+
     pub fn rebuild_via_info(&mut self, board: &Board, via_costs: i32, net_number: i32) {
         let via_rule = self
             .via_rule
@@ -278,12 +282,8 @@ impl AutorouteControl {
             1
         };
         self.via_infos = Vec::with_capacity(via_rule.via_count());
-        self.attach_smd_allowed = false;
         for i in 0..via_rule.via_count() {
             let current_via = via_rule.get_via(i);
-            if current_via.attach_smd_allowed() {
-                self.attach_smd_allowed = true;
-            }
             let padstack = current_via.get_padstack();
             let from_layer = board.library.padstacks.padstack_from_layer(padstack);
             let to_layer = board.library.padstacks.padstack_to_layer(padstack);
@@ -303,14 +303,10 @@ impl AutorouteControl {
             });
         }
 
-        let pure_smd_net = AutorouteControl::is_pure_smd_net(board, net_number);
-        if self.smd_via_relaxation
-            && !self.attach_smd_allowed
-            && self.layer_count > 1
-            && pure_smd_net
-        {
-            self.attach_smd_allowed = true;
-        }
+        let relaxed_smd_net =
+            self.smd_via_relaxation && AutorouteControl::is_pure_smd_net(board, net_number);
+        self.legacy_smd_attachment_relaxation =
+            !board.rules.strict_smd_via_attachment && self.layer_count > 1 && relaxed_smd_net;
 
         for j in 0..self.layer_count {
             self.via_radii[j] = (self.via_radii[j]).max(f64::from(self.trace_half_width[j]));
@@ -320,7 +316,7 @@ impl AutorouteControl {
             ViaPricing::ByPadstackRadius => (self.max_via_radius).max(1.0),
             ViaPricing::PerMillimetre => self.units_per_mm * self.trace_cost_per_mm,
         };
-        if self.smd_via_relaxation && pure_smd_net {
+        if relaxed_smd_net {
             via_cost_factor *= self.smd_via_cost_factor;
         }
         self.min_normal_via_cost = f64::from(via_costs) * via_cost_factor;

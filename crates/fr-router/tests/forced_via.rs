@@ -2724,3 +2724,67 @@ fn the_five_random_blocks_agree_with_the_jvm() {
     }
     assert!(rows.next().is_none(), "every `rand` row was consumed");
 }
+
+#[test]
+fn kicad_smd_attachment_requires_explicit_permission_at_search_and_insertion() {
+    use fr_router::autoroute::maze::AutorouteControl;
+    for permission in [None, Some(false), Some(true)] {
+        let allowed = permission.unwrap_or(false);
+        let prefix = permission
+            .map(|v| format!("\"viaInPadAllowed\":{v},"))
+            .unwrap_or_default();
+        let json = String::from("{")
+            + &prefix
+            + r#"
+            "layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+            "nets":[{"id":1,"name":"N","className":"Power"}],
+            "netClasses":[{"name":"Default","viaDiameter":0.5,"viaDrill":0.3},
+                {"name":"Power","viaDiameter":0.5,"viaDrill":0.3}],
+            "outline":{"corners":[{"x":0,"y":0},{"x":20,"y":0},{"x":20,"y":20},{"x":0,"y":20}]},
+            "components":[{"reference":"U","position":{"x":10,"y":10},
+                "pads":[{"name":"1","netName":"N","shape":"rect","size":{"x":2,"y":2},"layers":["F.Cu"]}]}]
+        }"#;
+        let fr_dsn::BoardReadResult::Success {
+            board: Some(mut board),
+            ..
+        } = fr_dsn::kicad::read_board(&json, None)
+        else {
+            panic!("import")
+        };
+        let settings = fr_settings::RouterSettings::new();
+        let ctrl = AutorouteControl::new(
+            &board,
+            1,
+            &settings,
+            settings.get_via_costs(),
+            &settings.get_trace_costs(),
+        );
+        assert_eq!(ctrl.attach_smd_allowed(), allowed);
+        assert!(
+            ctrl.via_infos
+                .iter()
+                .all(|v| v.attach_smd_allowed == allowed)
+        );
+        let via = board.rules.via_rules[0].get_via(0).clone();
+        let point = Point::Int(IntPoint::new(100000, -100000));
+        assert_eq!(
+            ForcedViaInserter::check(&mut board, &via, &point, &[1], 2, 2, None, 1),
+            allowed
+        );
+        let count = board.get_vias().len();
+        let inserted = ForcedViaInserter::insert(
+            &mut board,
+            &via,
+            &point,
+            &[1],
+            1,
+            &[1000, 1000],
+            2,
+            2,
+            &|| false,
+        )
+        .unwrap();
+        assert_eq!(inserted, allowed);
+        assert_eq!(board.get_vias().len(), count + usize::from(allowed));
+    }
+}

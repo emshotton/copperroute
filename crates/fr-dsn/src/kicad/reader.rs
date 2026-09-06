@@ -325,7 +325,8 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         Some(host_version),
     );
 
-    let board_rules = BoardRules::new(layer_structure.clone(), clearance_matrix);
+    let mut board_rules = BoardRules::new(layer_structure.clone(), clearance_matrix);
+    board_rules.strict_smd_via_attachment = true;
     let library = BoardLibrary::new(Padstacks::new(layer_structure.clone()), Packages::new());
     let mut board = Board::new(
         outline_shapes,
@@ -427,7 +428,9 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         "defaultVia",
         default_via_padstack,
         default_via_cl_class,
-        true,
+        kicad_default_net_class
+            .and_then(|c| c.viaInPadAllowed)
+            .unwrap_or(board_json.viaInPadAllowed),
     );
     board.rules.via_infos.add(default_via_info);
 
@@ -482,7 +485,14 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             .get(board_net_class)
             .default_item_clearance_classes
             .get(ItemClass::Via);
-        let via_info = ViaInfo::new(via_name.clone(), via_padstack, via_cl_class, true);
+        let via_info = ViaInfo::new(
+            via_name.clone(),
+            via_padstack,
+            via_cl_class,
+            net_class
+                .viaInPadAllowed
+                .unwrap_or(board_json.viaInPadAllowed),
+        );
         board.rules.via_infos.add(via_info);
 
         let mut via_rule = ViaRule::new(net_class_name);
