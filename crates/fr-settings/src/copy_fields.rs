@@ -509,6 +509,12 @@ impl CopyFields for RouterSettings {
             mode,
             report,
         );
+        scalar_copy(
+            &self.connection_search_steps,
+            &mut target.connection_search_steps,
+            mode,
+            report,
+        );
     }
 }
 

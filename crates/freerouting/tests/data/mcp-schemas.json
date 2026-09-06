@@ -15,6 +15,10 @@
         "description": "Narrow a trace to neck_width_um where the full width will not fit.",
         "type": "boolean"
       },
+      "connection_search_steps": {
+        "description": "Cap each connection's search at this many maze-search steps, independent of machine speed. Absent is the default of 250000; 0 lifts the cap.",
+        "type": "integer"
+      },
       "copper_to_edge_clearance_um": {
         "description": "Clearance between copper and the board outline, in micrometres. Applied to the board at load time.",
         "type": "number"

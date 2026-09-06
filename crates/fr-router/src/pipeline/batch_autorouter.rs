@@ -17,6 +17,7 @@ use crate::board_ext::RoutingBoardExt;
 use crate::error::RouterError;
 use crate::pipeline::airline::{ItemDistanceCache, calculate_item_distance_cached};
 use crate::pipeline::board_history::BoardHistory;
+use crate::pipeline::connection_budget::ConnectionBudget;
 use crate::pipeline::failure_log::RoutingFailureLog;
 use crate::pipeline::pass_runner::AutoroutePassRunner;
 use crate::pipeline::stop::{DeterministicWorkBudget, ProgressThrottler, RouterBudget};
@@ -267,6 +268,7 @@ impl<'a> BatchAutorouter<'a> {
         ripup_costs: &mut BTreeMap<ItemId, i32>,
         ripup_pass_no: i32,
         stop: StopCheck<'_>,
+        search_budget: Option<&ConnectionBudget>,
     ) -> AutorouteAttemptResult {
         use crate::visualization::{RoutingPhase, set_route_context};
         set_route_context(
@@ -298,6 +300,7 @@ impl<'a> BatchAutorouter<'a> {
             self.trace_pull_tight_accuracy,
             self.budget,
             stop,
+            search_budget,
         )
     }
 
