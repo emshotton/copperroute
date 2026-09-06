@@ -1,7 +1,11 @@
+pub mod drc;
+pub mod info;
 pub mod load;
 pub mod route;
 pub mod settings;
 
+pub use drc::{DrcOutcome, DrcRequest, drc};
+pub use info::{InfoRequest, info};
 pub use load::{BoardSource, LoadRequest, Loaded, load};
 pub use route::{OutputFormat, OutputTarget, RouteOutcome, RouteRequest, route};
 pub use settings::SettingsOverrides;
