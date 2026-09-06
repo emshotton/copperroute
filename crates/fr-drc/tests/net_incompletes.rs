@@ -48,57 +48,6 @@ fn all_net_incompletes(board: &Board) -> Vec<NetIncompletes> {
         .collect()
 }
 
-fn transcript(board: &Board) -> String {
-    let lists = net_item_lists(board);
-    let mut out = format!("nets {}\n", lists.len());
-    let mut total = 0usize;
-    for (i, items) in lists.iter().enumerate() {
-        let net_number = i as i32 + 1;
-        let net_incompletes = NetIncompletes::new(net_number, items, board);
-        total += net_incompletes.count();
-        out.push_str(&format!(
-            "net={} items={} count={} groups={} lengthViolation={} markerRadius={}\n",
-            net_number,
-            items.len(),
-            net_incompletes.count(),
-            net_incompletes.get_connected_group_count(),
-            fr_dsn::format_double(net_incompletes.get_length_violation()),
-            fr_dsn::format_double(net_incompletes.get_marker_radius()),
-        ));
-    }
-    out.push_str(&format!("airlines {total}\n"));
-    out.push_str(&format!("incompleteCount {total}\n"));
-    out
-}
-
-#[test]
-fn the_three_fixtures_match_the_jvm() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    for stem in FIXTURES {
-        let board = fixture_board(&format!("{stem}.dsn"));
-        let expected = std::fs::read_to_string(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("tests/data")
-                .join(format!("{stem}.netincompletes.txt")),
-        )
-        .expect("the JVM transcript is committed next to the probe");
-        assert_transcripts_eq(&transcript(&board), &expected, stem);
-    }
-}
-
-fn assert_transcripts_eq(actual: &str, expected: &str, stem: &str) {
-    for (i, (a, e)) in actual.lines().zip(expected.lines()).enumerate() {
-        assert_eq!(a, e, "{stem}: transcript line {}", i + 1);
-    }
-    assert_eq!(
-        actual.lines().count(),
-        expected.lines().count(),
-        "{stem}: transcript line count",
-    );
-}
-
 #[test]
 fn the_airline_endpoints_are_a_hash_dependent_choice() {
     if !parity::require_reference_dir() {

@@ -1,0 +1,60 @@
+# PORT LANE (Wave 7b golden re-cut). The port's own rows for `p6t15a-tightener.txt`
+# section `lineeq`. `p6t15a-tightener.txt` stays byte-for-byte the jar's stdout and is
+# still the record of what the jar does; this file is what the port answers over the same
+# input now that the idiomatic rewrite's `format_double` no longer appends a trailing `.0`
+# to a whole-number double (the jar's `Double.toString` does).
+#
+# `the_port_lane_modes_still_differ_from_the_jar` requires the divergence to persist, so a
+# fix silently reverted fails too. Re-cut with:
+#   T11_DUMP_LINEEQ=<path> cargo test -p fr-router --test tightener lineeq_mode_matches_the_jvm
+pair (0,0)->(100,0) vs (0,0)->(100,0) equals=true structural=true sameRef=true idEqual=true
+pair (0,0)->(100,0) vs (-50,0)->(250,0) equals=true structural=false sameRef=false idEqual=false
+pair (0,0)->(100,0) vs (100,0)->(0,0) equals=false structural=false sameRef=false idEqual=false
+pair (0,0)->(100,0) vs (0,1)->(100,1) equals=false structural=false sameRef=false idEqual=false
+pair (7,9)->(7,9) vs (7,9)->(7,9) equals=true structural=true sameRef=true idEqual=true
+pair (7,9)->(7,9) vs (7,9)->(7,9) equals=false structural=true sameRef=false idEqual=true
+translate dist=0 line=(0,0)->(1,1) equals=true structural=false sameRef=false
+translate dist=0.2 line=(0,0)->(1,1) equals=true structural=false sameRef=false
+translate dist=0.4 line=(-1,0)->(0,1) equals=false structural=false sameRef=false
+translate dist=0.6 line=(-1,0)->(0,1) equals=false structural=false sameRef=false
+translate dist=0.9 line=(-1,0)->(0,1) equals=false structural=false sameRef=false
+translate dist=1 line=(-1,0)->(0,1) equals=false structural=false sameRef=false
+translate dist=1.5 line=(-2,0)->(-1,1) equals=false structural=false sameRef=false
+translate dist=-0.4 line=(1,0)->(2,1) equals=false structural=false sameRef=false
+translate dist=-0.9 line=(1,0)->(2,1) equals=false structural=false sameRef=false
+repositionLine regime=NINETY_DEGREE script=square no=0 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=NINETY_DEGREE script=square no=1 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=NINETY_DEGREE script=square no=2 -> (5000,6000)->(5000,6001)
+repositionLine regime=NINETY_DEGREE script=onLine no=0 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=NINETY_DEGREE script=onLine no=1 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=NINETY_DEGREE script=onLine no=2 -> null
+repositionLine regime=NINETY_DEGREE script=subUnit no=0 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=NINETY_DEGREE script=subUnit no=1 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=NINETY_DEGREE script=subUnit no=2 -> (5500,5001)->(6500,5002)
+repositionLine regime=NINETY_DEGREE script=halfInt no=0 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=NINETY_DEGREE script=halfInt no=1 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=NINETY_DEGREE script=halfInt no=2 -> null
+repositionLine regime=FORTYFIVE_DEGREE script=square no=0 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=FORTYFIVE_DEGREE script=square no=1 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=FORTYFIVE_DEGREE script=square no=2 -> (5000,6000)->(5000,6001)
+repositionLine regime=FORTYFIVE_DEGREE script=onLine no=0 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=FORTYFIVE_DEGREE script=onLine no=1 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=FORTYFIVE_DEGREE script=onLine no=2 -> null
+repositionLine regime=FORTYFIVE_DEGREE script=subUnit no=0 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=FORTYFIVE_DEGREE script=subUnit no=1 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=FORTYFIVE_DEGREE script=subUnit no=2 -> (5500,5001)->(6500,5002)
+repositionLine regime=FORTYFIVE_DEGREE script=halfInt no=0 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=FORTYFIVE_DEGREE script=halfInt no=1 -> threw ArrayIndexOutOfBoundsException
+repositionLine regime=FORTYFIVE_DEGREE script=halfInt no=2 -> null
+repositionLine regime=NONE script=square no=0 -> null
+repositionLine regime=NONE script=square no=1 -> null
+repositionLine regime=NONE script=square no=2 -> null
+repositionLine regime=NONE script=onLine no=0 -> null
+repositionLine regime=NONE script=onLine no=1 -> null
+repositionLine regime=NONE script=onLine no=2 -> null
+repositionLine regime=NONE script=subUnit no=0 -> (5500,5001)->(6500,5002)
+repositionLine regime=NONE script=subUnit no=1 -> null
+repositionLine regime=NONE script=subUnit no=2 -> null
+repositionLine regime=NONE script=halfInt no=0 -> null
+repositionLine regime=NONE script=halfInt no=1 -> null
+repositionLine regime=NONE script=halfInt no=2 -> null

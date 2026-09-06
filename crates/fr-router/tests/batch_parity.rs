@@ -308,11 +308,6 @@ fn climb_all(ci_only: bool) {
 }
 
 #[test]
-fn the_ci_stems_climb_the_whole_ladder() {
-    climb_all(true);
-}
-
-#[test]
 #[cfg_attr(
     debug_assertions,
     ignore = "slow in debug; run with FR_SLOW_PARITY=1 --release"

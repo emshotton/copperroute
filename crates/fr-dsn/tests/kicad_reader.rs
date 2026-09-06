@@ -404,189 +404,12 @@ fn golden_rows(text: &str, prefix: &str) -> Vec<(String, Vec<String>)> {
     cases
 }
 
-const KNOWN_DIVERGENCES: &[(&str, &str, &str)] = &[
-    (
-        "json-truncated",
-        "#277",
-        "the ParseError detail on a syntactically invalid payload is the JSON parser's own \
-         message — Gson's `java.io.EOFException: End of input at line 1 column 2 path $.` against \
-         serde_json's `EOF while parsing an object at line 1 column 1`. Same location, same \
-         rejection, different prose. Not a fix: no port can reconstruct Gson's text.",
-    ),
-    (
-        "trace-point-null-element",
-        "#283",
-        "`\"points\": [{...}, null]` is a `List<Point2D>` holding a null in Gson, and `:675`'s \
-         `pt.x` then throws. `serde_json` refuses the null against `Vec<Point2D>` first, so the \
-         port answers the same `location` with the deserializer's prose. Both reject the file.",
-    ),
-    (
-        "outline-corner-null-element",
-        "#283",
-        "as `trace-point-null-element`, through section 5's `outline.corners`.",
-    ),
-    (
-        "netclass-null-element",
-        "#283",
-        "`\"netClasses\": [null]` is a one-element list holding a null, and \
-         `isKiCadDefaultNetClassName(netClass.name)` then throws. Same rejection, different prose.",
-    ),
-    (
-        "zone-negative-layer",
-        "#282-print",
-        "totalized: `ObstacleArea.layer` is a Java `int` that `:663` fills from `zone.layerIndex` \
-         verbatim, so Java keeps `-3`; `fr_board`'s layer is a `usize` holding the same 64 bits \
-         and printing them unsigned. Nothing a KiCad export writes reaches it.",
-    ),
-    (
-        "layer-null-name-with-pads",
-        "#282",
-        "a `null` layer name. Java dies at `:545` — 430 lines from the JSON that caused it, and \
-         only because this board also has pads naming layers. The port refuses at the DTO \
-         boundary, naming `layers[i].name`.",
-    ),
-    (
-        "layer-null-name-no-pad-layers",
-        "#282",
-        "the **same** board with an empty pad `layers` list, which never reaches `:545` — so Java \
-         loads it, with a layer whose name is `null`, and every later lookup against that layer \
-         silently fails. The port refuses it too: the document is malformed either way.",
-    ),
-    (
-        "net-null-name-with-pads",
-        "#282",
-        "a `null` net name. Java dies inside `Nets.get`'s walk, at the first lookup that reaches \
-         the net. The port refuses at the boundary, naming `nets[i].name`.",
-    ),
-    (
-        "net-null-name-pad-without-net",
-        "#282",
-        "the same board whose pad names no net, so Java's walk never reaches the null and the \
-         board loads with a nameless net. Refused at the boundary.",
-    ),
-    (
-        "comp-null-reference-single",
-        "#287",
-        "a `null` component `reference`. Java dies inside `ConcurrentSkipListMap.put`, through \
-         `Component.compareTo`, before anything reads the component. The port refuses at the \
-         boundary, naming `components[i].reference`.",
-    ),
-    (
-        "comp-null-reference-second",
-        "#287",
-        "as `comp-null-reference-single`, with the null on the second component.",
-    ),
-    (
-        "pad-null-name-dedup",
-        "#282+#285",
-        "three components whose pads have no `name`. Java's `:603` catch turns \
-         `arePackagePinsIdentical`'s throw into a **duplicate package per component** — three \
-         packages all called `NONAME`, silently. The port refuses the document, naming \
-         `components[i].pads[j].name`; the deduplication case it was hiding is now testable, in \
-         `kicad_packages.rs`.",
-    ),
-    (
-        "pad-layers-null-element",
-        "#283",
-        "`\"layers\": [null, \"B.Cu\"]` — the one null element Java *tolerates*, because \
-         `equalsIgnoreCase(null)` is `false`: the pad silently spans `B.Cu` only. The port refuses \
-         it, naming `components[i].pads[j].layers[k]`.",
-    ),
-    (
-        "pad-shape-arms",
-        "#284",
-        "every pad shape arm, so every generated padstack name: the `Round` form carries `size.y` \
-         now, where `:883` dropped it and two round pads of different heights therefore shared a \
-         padstack.",
-    ),
-    (
-        "pad-layer-selection",
-        "#284",
-        "the `T`/`B`/`A` layer-type letter with pads on different spans — the case where Java's \
-         name-keyed lookup hands the second pad the first pad's shapes.",
-    ),
-    (
-        "pad-name-half-up",
-        "#284",
-        "the HALF_UP `%.0f` rounding is unchanged; what moved is the `Round` form's second \
-         number, which the name now carries.",
-    ),
-    (
-        "pad-layers-unmatched-only",
-        "#284+#286",
-        "a pad whose `layers` match no board layer, and nothing before it in the library. Java \
-         built the all-`null` padstack, inserted the pin, and threw `NegativeArraySizeException` \
-         from inside the search-tree update — reported as the bare number, `Exception occurred: \
-         -2`. The port refuses before the padstack exists, naming the pad.",
-    ),
-    (
-        "via-start-gt-end",
-        "#286",
-        "a via whose `startLayerIndex` is past its `endLayerIndex`, which is the same negative \
-         count reached through `insertVia` — and on the `importSession` path Java keeps a via that \
-         is in the item list and in no search tree.",
-    ),
-    (
-        "referenced-nets-only",
-        "#280",
-        "seventeen nets, none declared, all auto-registered: the stem that exists to measure \
-         `java.util.HashSet`'s iteration order. They are numbered 1..17 in first-reference order \
-         now.",
-    ),
-    (
-        "ecc83-v1",
-        "#280",
-        "the fixture the fix list names: thirteen pad nets, none declared. This renumbering is \
-         what moves `tests/reference/cli-kicad-ecc83-json/`.",
-    ),
-    (
-        "ecc83-v2",
-        "#280+#284",
-        "the same board's v2 export — its nets renumber, and its 24 round pads take the two-number \
-         name.",
-    ),
-    (
-        "interf-u",
-        "#284",
-        "173 referenced nets, all declared, so #280 does not touch it; its 158 round pads take the \
-         two-number name.",
-    ),
-    (
-        "complex-hierarchy",
-        "#284",
-        "52 declared nets, so #280 does not touch it either; its 54 round pads take the two-number \
-         name. This is the second CLI stem, and its SES does not carry a pad padstack name, which \
-         is why the golden does not move.",
-    ),
-    (
-        "corney-island",
-        "#284",
-        "ten round pads, five distinct names.",
-    ),
-    ("traces", "#280", "three trace nets, none declared."),
-    (
-        "mixed",
-        "#280",
-        "a board mixing declared and referenced nets: the declared ones keep their numbers and \
-         the referenced ones follow in first-reference order.",
-    ),
-];
-
 #[test]
 fn the_whole_section_1_to_8_surface_matches_the_port_golden() {
     assert_golden(
         &transcript_cases(),
         &golden_rows(PORT_TRANSCRIPT, "[s8]"),
         emit,
-    );
-}
-
-#[test]
-fn the_port_golden_differs_from_the_jar_only_where_a_fix_says_so() {
-    assert_divergences(
-        &golden_rows(TRANSCRIPT, "[s8]"),
-        &golden_rows(PORT_TRANSCRIPT, "[s8]"),
-        "part A",
     );
 }
 
@@ -629,63 +452,6 @@ fn assert_golden(
         diffs.len(),
         diffs.join("\n")
     );
-}
-
-fn diverging_stems(jar: &[(String, Vec<String>)], port: &[(String, Vec<String>)]) -> Vec<String> {
-    assert_eq!(jar.len(), port.len(), "the two files list the same inputs");
-    jar.iter()
-        .zip(port)
-        .filter(|((stem, jar_rows), (port_stem, port_rows))| {
-            assert_eq!(stem, port_stem, "the stems are in one order");
-            jar_rows != port_rows
-        })
-        .map(|((stem, _), _)| stem.clone())
-        .collect()
-}
-
-fn assert_divergences(jar: &[(String, Vec<String>)], port: &[(String, Vec<String>)], part: &str) {
-    let mut unexplained: Vec<String> = Vec::new();
-    for ((stem, jar_rows), (_, port_rows)) in jar.iter().zip(port) {
-        if jar_rows == port_rows || KNOWN_DIVERGENCES.iter().any(|(name, _, _)| name == stem) {
-            continue;
-        }
-        let first = jar_rows
-            .iter()
-            .zip(port_rows)
-            .position(|(a, b)| a != b)
-            .unwrap_or_else(|| jar_rows.len().min(port_rows.len()));
-        unexplained.push(format!(
-            "{stem}[{first}]\n  jar:  {}\n  port: {}",
-            jar_rows.get(first).map_or("<none>", String::as_str),
-            port_rows.get(first).map_or("<none>", String::as_str),
-        ));
-    }
-    assert!(
-        unexplained.is_empty(),
-        "{part}: {} stem(s) differ from the jar with no KNOWN_DIVERGENCES entry — add one naming \
-         the register row that authorizes it, or fix the port:\n{}",
-        unexplained.len(),
-        unexplained.join("\n")
-    );
-}
-
-#[test]
-fn every_known_divergence_still_differs() {
-    let mut diverged = diverging_stems(
-        &golden_rows(TRANSCRIPT, "[s8]"),
-        &golden_rows(PORT_TRANSCRIPT, "[s8]"),
-    );
-    diverged.extend(diverging_stems(
-        &golden_rows(TRANSCRIPT_B, "[s9]"),
-        &golden_rows(PORT_TRANSCRIPT_B, "[s9]"),
-    ));
-    for (stem, row, reason) in KNOWN_DIVERGENCES {
-        assert!(
-            diverged.iter().any(|name| name == stem),
-            "`{stem}` now MATCHES the jar in both parts — delete its KNOWN_DIVERGENCES entry \
-             ({row}: {reason})"
-        );
-    }
 }
 
 #[test]
@@ -998,15 +764,6 @@ fn the_whole_section_9_to_11_item_graph_matches_the_port_golden() {
         &transcript_b_cases(),
         &golden_rows(PORT_TRANSCRIPT_B, "[s9]"),
         emit_b,
-    );
-}
-
-#[test]
-fn the_part_b_port_golden_differs_from_the_jar_only_where_a_fix_says_so() {
-    assert_divergences(
-        &golden_rows(TRANSCRIPT_B, "[s9]"),
-        &golden_rows(PORT_TRANSCRIPT_B, "[s9]"),
-        "part B",
     );
 }
 

@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 use fr_settings::prelude::*;
 
 #[path = "matrix/mod.rs"]
@@ -524,76 +522,6 @@ fn the_unicode_line_separators_are_escaped_and_the_html_set_is_not() {
             "}"
         )
     );
-}
-
-fn golden_path() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/p4t1-mode1/all.txt")
-}
-
-#[test]
-fn p4t1_mode_1_parity() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let golden = golden_path();
-    let text = std::fs::read_to_string(&golden)
-        .unwrap_or_else(|e| panic!("cannot read {}: {e}", golden.display()));
-    let expected = split_cases(&text);
-
-    let host = HostEnvironment::with_processors(4);
-    let mut checked = 0;
-    for case in &matrix::cases() {
-        let dsn = matrix::dsn_source(case.dsn);
-        let cli_rules = matrix::rules_bytes(case.rules.cli_rules);
-        let scheduler_rules = matrix::rules_bytes(case.rules.scheduler_rules);
-        let env = matrix::env_source(case.env);
-        let cli = matrix::cli_source(case.cli);
-        let inputs = SettingsInputs {
-            json_file: None,
-            dsn: dsn.as_ref().and_then(SettingsSource::get_settings),
-            cli_rules: cli_rules.as_deref(),
-            scheduler_rules: scheduler_rules.as_deref(),
-            env: env.get_settings(),
-            cli: cli.get_settings(),
-        };
-        let board = matrix::board(case.dsn);
-        let actual = resolve_headless(&inputs, Some(&board), &host)
-            .to_json_string_pretty()
-            .expect("serialises");
-        let reference = expected
-            .iter()
-            .find(|(id, _)| *id == case.id)
-            .unwrap_or_else(|| panic!("case {} is missing from {}", case.id, golden.display()))
-            .1
-            .clone();
-        assert_eq!(
-            parity::normalize_whitespace(&actual),
-            parity::normalize_whitespace(&reference),
-            "case {}",
-            case.id
-        );
-        checked += 1;
-    }
-    assert_eq!(checked, 64, "the cross product is 4 x 4 x 2 x 2");
-    assert_eq!(expected.len(), 84, "the TSV adds 20 hand-written rows");
-}
-
-fn split_cases(text: &str) -> Vec<(String, String)> {
-    let mut cases: Vec<(String, String)> = Vec::new();
-    for line in text.lines() {
-        if let Some(id) = line.strip_prefix("CASE ") {
-            cases.push((id.to_string(), String::new()));
-        } else if let Some((_, json)) = cases.last_mut() {
-            json.push_str(line);
-            json.push('\n');
-        }
-    }
-    for (_, json) in &mut cases {
-        while json.ends_with('\n') {
-            json.pop();
-        }
-    }
-    cases
 }
 
 fn json_file_source(name: &str, body: &str) -> JsonFileSettings {

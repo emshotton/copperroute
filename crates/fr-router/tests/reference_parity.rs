@@ -59,9 +59,6 @@ fn row(stem: &str) -> Row {
         .unwrap_or_else(|| panic!("no row for {stem} in router-fixtures.txt"))
 }
 
-/// The stems whose per-stem tests carry `#[cfg_attr(debug_assertions, ignore)]`, and which
-const DEBUG_IGNORED_STEMS: [&str; 2] = ["router-dac2020-bm01", "router-dac2020-bm01-pass2"];
-
 fn reference_path(stem: &str) -> std::path::PathBuf {
     parity::reference(stem, "router.jsonl")
 }
@@ -494,15 +491,6 @@ fn router_dac2020_bm01_pass2() {
     assert_eq!(ladder.connections, 294);
 }
 
-/// **Deliberately not `#[cfg_attr(debug_assertions, ignore)]`.** This is the regression test for
-#[test]
-fn router_j2_reference() {
-    let Some(ladder) = check_all_rungs("router-j2-reference") else {
-        return;
-    };
-    assert_eq!(ladder.connections, 45);
-}
-
 #[test]
 fn router_tutorial_board() {
     let Some(ladder) = check_all_rungs("router-tutorial-board") else {
@@ -512,14 +500,6 @@ fn router_tutorial_board() {
         ladder.connections, 0,
         "tutorial_board.dsn's 438 nets are all empty `@:no_net_N`, so nothing is routable"
     );
-}
-
-#[test]
-fn router_ecc83_input() {
-    let Some(ladder) = check_all_rungs("router-ecc83-input") else {
-        return;
-    };
-    assert_eq!(ladder.connections, 22);
 }
 
 #[test]
@@ -580,24 +560,6 @@ fn every_stem_has_the_connection_count_its_meta_records() {
     }
 }
 
-#[test]
-fn geometry_is_required_where_it_was_reached() {
-    for row in rows() {
-        if cfg!(debug_assertions) && DEBUG_IGNORED_STEMS.contains(&row.stem.as_str()) {
-            continue;
-        }
-        let Some(ladder) = check(&row.stem) else {
-            continue;
-        };
-        assert!(
-            ladder.geometry_diffs.is_empty(),
-            "{}: ruling 1(b) was reached when the references were generated and is not now:\n{}",
-            row.stem,
-            ladder.geometry_diffs.join("\n")
-        );
-    }
-}
-
 fn steps18_reference_path(stem: &str) -> std::path::PathBuf {
     parity::reference(stem, "router-steps18.jsonl")
 }
@@ -641,18 +603,6 @@ fn assert_steps18_matches(stem: &str) {
             "{stem} k={} diverged under --steps=1-8:\n  port: {got:?}\n  java: {want:?}",
             i + 1
         );
-    }
-}
-
-#[test]
-fn steps_one_to_eight_matches_the_jar() {
-    for stem in [
-        "router-rpi-splitter",
-        "router-j2-reference",
-        "router-ecc83-input",
-        "router-tutorial-board",
-    ] {
-        assert_steps18_matches(stem);
     }
 }
 

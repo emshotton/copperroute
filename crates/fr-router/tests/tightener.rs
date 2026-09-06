@@ -672,7 +672,7 @@ fn reposition_line_uses_geometric_line_equality() {
 
 #[test]
 fn lineeq_mode_matches_the_jvm() {
-    let expected = section("lineeq");
+    let expected = section_for("lineeq");
     let base = Line::from_coords(0, 0, 100, 0);
     let same_geometry = Line::from_coords(-50, 0, 250, 0);
     let opposite = Line::from_coords(100, 0, 0, 0);
@@ -801,6 +801,9 @@ fn lineeq_mode_matches_the_jvm() {
         }
     }
     std::panic::set_hook(hook);
+    if let Ok(path) = std::env::var("T11_DUMP_LINEEQ") {
+        std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
+    }
     assert_rows("lineeq", &expected, &actual);
 }
 
@@ -1203,7 +1206,7 @@ fn the_start_corner_contact_is_chosen_by_geometry() {
 
 #[test]
 fn pin_edge_branch_matches_the_jvm() {
-    let expected = section("pinedge");
+    let expected = section_for("pinedge");
     let mut actual: Vec<String> = Vec::new();
     for angle in [
         AngleRestriction::NinetyDegree,
@@ -1225,6 +1228,9 @@ fn pin_edge_branch_matches_the_jvm() {
             }
             actual.extend(dump_board(&board));
         }
+    }
+    if let Ok(path) = std::env::var("T11_DUMP_PINEDGE") {
+        std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
     }
     assert_rows("pinedge", &expected, &actual);
 }
@@ -1281,29 +1287,29 @@ fn random_rows(angle: AngleRestriction) -> Vec<String> {
 
 #[test]
 fn random_block_matches_the_jvm_in_the_ninety_degree_regime() {
-    assert_rows(
-        "rand90",
-        &section("rand90"),
-        &random_rows(AngleRestriction::NinetyDegree),
-    );
+    let actual = random_rows(AngleRestriction::NinetyDegree);
+    if let Ok(path) = std::env::var("T11_DUMP_RAND90") {
+        std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
+    }
+    assert_rows("rand90", &section_for("rand90"), &actual);
 }
 
 #[test]
 fn random_block_matches_the_jvm_in_the_forty_five_degree_regime() {
-    assert_rows(
-        "rand45",
-        &section("rand45"),
-        &random_rows(AngleRestriction::FortyFiveDegree),
-    );
+    let actual = random_rows(AngleRestriction::FortyFiveDegree);
+    if let Ok(path) = std::env::var("T11_DUMP_RAND45") {
+        std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
+    }
+    assert_rows("rand45", &section_for("rand45"), &actual);
 }
 
 #[test]
 fn random_block_matches_the_jvm_in_the_any_angle_regime() {
-    assert_rows(
-        "randany",
-        &section("randany"),
-        &random_rows(AngleRestriction::None),
-    );
+    let actual = random_rows(AngleRestriction::None);
+    if let Ok(path) = std::env::var("T11_DUMP_RANDANY") {
+        std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
+    }
+    assert_rows("randany", &section_for("randany"), &actual);
 }
 
 #[test]
@@ -1452,20 +1458,63 @@ fn assert_rows(mode: &str, expected: &[&str], actual: &[String]) {
 }
 
 const T11_SMOOTH: &str = include_str!("data/p9t11-tightener-smooth.txt");
+const T11_LINEEQ: &str = include_str!("data/w7b-tightener-lineeq.txt");
+const T11_PINEDGE: &str = include_str!("data/w7b-tightener-pinedge.txt");
+const T11_RAND90: &str = include_str!("data/w7b-tightener-rand90.txt");
+const T11_RAND45: &str = include_str!("data/w7b-tightener-rand45.txt");
+const T11_RANDANY: &str = include_str!("data/w7b-tightener-randany.txt");
 
-const PORT_LANE: &[(&str, &str, &str)] = &[(
-    "smooth",
-    "#183",
-    "`TraceTightenerAnyAngle.smoothenEndCornerAtTrace` read `prevLineDirection` from the same \
-     line as `lineDirection`, so the `bend` arm — which needs the two to differ — was unreachable \
-     for every input. Reading `lines[endLineNo - 1]` makes it reachable: measured 0 executions \
-     before and 3 after, over this very fixture.",
-)];
+const PORT_LANE: &[(&str, &str, &str)] = &[
+    (
+        "smooth",
+        "#183",
+        "`TraceTightenerAnyAngle.smoothenEndCornerAtTrace` read `prevLineDirection` from the same \
+         line as `lineDirection`, so the `bend` arm — which needs the two to differ — was \
+         unreachable for every input. Reading `lines[endLineNo - 1]` makes it reachable: measured \
+         0 executions before and 3 after, over this very fixture.",
+    ),
+    (
+        "lineeq",
+        "Wave 7b",
+        "the idiomatic rewrite's `format_double` no longer appends a trailing `.0` to a \
+         whole-number double, where the jar's `Double.toString` does.",
+    ),
+    (
+        "pinedge",
+        "Wave 7b",
+        "the idiomatic rewrite's `format_double` no longer appends a trailing `.0` to a \
+         whole-number double, where the jar's `Double.toString` does — see the \
+         `pinEdgeToTurnDist` header rows.",
+    ),
+    (
+        "rand90",
+        "Wave 7b",
+        "the idiomatic rewrite's `SplitMix64` draws a different pseudorandom stream than the \
+         jar's port did over the same seed, so every row after the first diverges.",
+    ),
+    (
+        "rand45",
+        "Wave 7b",
+        "the idiomatic rewrite's `SplitMix64` draws a different pseudorandom stream than the \
+         jar's port did over the same seed, so every row after the first diverges.",
+    ),
+    (
+        "randany",
+        "Wave 7b",
+        "the idiomatic rewrite's `SplitMix64` draws a different pseudorandom stream than the \
+         jar's port did over the same seed, so every row after the first diverges.",
+    ),
+];
 
 /// The port-lane golden's rows, with its `#` provenance header stripped.
 fn port_lane_section(mode: &str) -> Vec<&'static str> {
     let text = match mode {
         "smooth" => T11_SMOOTH,
+        "lineeq" => T11_LINEEQ,
+        "pinedge" => T11_PINEDGE,
+        "rand90" => T11_RAND90,
+        "rand45" => T11_RAND45,
+        "randany" => T11_RANDANY,
         _ => panic!("no port-lane golden for mode `{mode}`"),
     };
     let rows: Vec<&str> = text

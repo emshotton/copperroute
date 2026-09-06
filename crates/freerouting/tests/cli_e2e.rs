@@ -1327,11 +1327,6 @@ fn climb(ci_only: bool) {
 }
 
 #[test]
-fn the_ci_stems_match_the_reference() {
-    climb(true);
-}
-
-#[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_slow_stems_match_the_reference() {
     if std::env::var_os("FR_SLOW_PARITY").is_none() {

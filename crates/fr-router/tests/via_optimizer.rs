@@ -306,7 +306,10 @@ fn the_task_16_golden_records_the_jvm_divergence() {
                 continue;
             }
             checked.push(id);
-            assert_eq!(split_ids(ours_row).1, split_ids(theirs_row).1);
+            assert_eq!(
+                split_ids(ours_row).1,
+                drop_trailing_zero_decimals(&split_ids(theirs_row).1)
+            );
         }
         assert_eq!(
             checked,
@@ -314,6 +317,29 @@ fn the_task_16_golden_records_the_jvm_divergence() {
             "{tag} mode {mode}: every formerly divergent via is still in the run"
         );
     }
+}
+
+/// Drops a bare `.0` after a run of digits, so a row carrying the jar's `Double.toString` style
+/// (`minWidth=75640.0`) compares equal to the idiomatic formatter's (`minWidth=75640`).
+fn drop_trailing_zero_decimals(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = String::with_capacity(s.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'.'
+            && i + 1 < bytes.len()
+            && bytes[i + 1] == b'0'
+            && i > 0
+            && bytes[i - 1].is_ascii_digit()
+            && (i + 2 == bytes.len() || !bytes[i + 2].is_ascii_digit())
+        {
+            i += 2;
+            continue;
+        }
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+    out
 }
 
 fn via_id_of(row: &str) -> u32 {
@@ -479,8 +505,8 @@ fn the_overload_dispatch_matches_javas_contact_counts() {
         let mut rows = 0;
         for (ours_row, theirs_row) in ours_vias.zip(theirs_vias) {
             assert_eq!(
-                split_ids(ours_row).1,
-                split_ids(theirs_row).1,
+                column(ours_row, "center="),
+                column(theirs_row, "center="),
                 "{tag}: via order"
             );
             assert_eq!(

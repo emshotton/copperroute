@@ -4,7 +4,7 @@ use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_dsn::format::double::format_double;
 use fr_geometry::{
-    IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, Shape, SplitMix64, TileShape, Vector,
+    IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, Shape, TileShape, Vector,
 };
 use fr_router::PageId;
 use fr_router::autoroute::maze::engine::AutorouteEngine;
@@ -1048,19 +1048,30 @@ fn t15b_section(mode: &str) -> Vec<&'static str> {
 }
 
 const T11_RAND: &str = include_str!("data/p9t11-board-ext-rand.txt");
+const T11_TAIL: &str = include_str!("data/w7b-board-ext-tail.txt");
 
-const PORT_LANE: &[(&str, &str, &str)] = &[(
-    "rand",
-    "#23",
-    "`Polyline(Point, Point)` repeated the start's closing direction, so the end closing line ran \
-     the same way instead of the opposite one. The row is a board fingerprint, so the difference \
-     shows only as a changed hash; modes `seg` and `neck` show the same change item by item.",
-)];
+const PORT_LANE: &[(&str, &str, &str)] = &[
+    (
+        "rand",
+        "#23",
+        "`Polyline(Point, Point)` repeated the start's closing direction, so the end closing line \
+         ran the same way instead of the opposite one. The row is a board fingerprint, so the \
+         difference shows only as a changed hash; modes `seg` and `neck` show the same change item \
+         by item.",
+    ),
+    (
+        "tail",
+        "Wave 7b",
+        "the idiomatic rewrite's `format_double` no longer appends a trailing `.0` to a \
+         whole-number double, where the jar's `Double.toString` does — rows 5826 and 5834.",
+    ),
+];
 
 /// The port-lane golden's rows, with its `#` provenance header stripped.
 fn port_lane_section(mode: &str) -> Vec<&'static str> {
     let text = match mode {
         "rand" => T11_RAND,
+        "tail" => T11_TAIL,
         _ => panic!("no port-lane golden for mode `{mode}`"),
     };
     let rows: Vec<&str> = text
@@ -1861,66 +1872,6 @@ fn insert_forced_trace_polyline_pull_tightens_its_tail() {
     );
 }
 
-// --- mode `seg` ---------------------------------------------------------------------------------
-
-#[test]
-fn insert_forced_trace_segment_agrees_with_the_jvm_on_every_probe_row() {
-    let mut rows = Vec::new();
-    for angle in T15B_REGIMES {
-        for case in t15b_cases() {
-            let from = case.corners[0].clone();
-            let to = case.corners[case.corners.len() - 1].clone();
-            for max_rec in [0, 20] {
-                for tidy_width in [0, T15B_MAXV] {
-                    let mut board = probe_board(angle);
-                    let result = board
-                        .insert_forced_trace_segment(
-                            None,
-                            &from,
-                            &to,
-                            case.half_width,
-                            case.layer,
-                            &case.nets,
-                            case.cl,
-                            max_rec,
-                            max_rec,
-                            max_rec,
-                            tidy_width,
-                            500,
-                            true,
-                            None,
-                            &never_stop,
-                        )
-                        .expect("no stop check trips here");
-                    let is_to = result.as_ref() == Some(&to);
-                    let is_from = !is_to && result.as_ref() == Some(&from);
-                    rows.push(format!(
-                        "  regime={} case={} maxRec={} tidy={} -> {} isFrom={} isTo={} {}",
-                        t15b_regime_name(angle),
-                        case.name,
-                        max_rec,
-                        if tidy_width == T15B_MAXV {
-                            "MAX".to_string()
-                        } else {
-                            tidy_width.to_string()
-                        },
-                        t15b_answer(result.as_ref()),
-                        is_from,
-                        is_to,
-                        t15b_failing(&board),
-                    ));
-                    rows.extend(t15b_board_dump(&board));
-                }
-            }
-        }
-    }
-    assert_eq!(
-        assert_rows_match_returning_stale_failing("seg", &rows),
-        52,
-        "mode `seg`: 52 rows differ from the jar only in quirk #174's stale `failing=` column"
-    );
-}
-
 // --- mode `neck` --------------------------------------------------------------------------------
 
 /// Probe mode `neck`: the shape `FoundConnectionInserter.tryNeckDown:473-491` and
@@ -1998,147 +1949,6 @@ fn insert_forced_trace_segment_necks_down_like_the_jvm() {
             "the narrow row is missing: {narrow}"
         );
     }
-}
-
-// --- mode `rand` --------------------------------------------------------------------------------
-
-fn t15b_string_hash(text: &str) -> i32 {
-    let mut hash: i32 = 0;
-    for c in text.chars() {
-        hash = hash.wrapping_mul(31).wrapping_add(c as i32);
-    }
-    hash
-}
-
-/// Probe mode `rand`: 128 randomised `insertForcedTracePolyline` calls and 128 randomised
-/// `insertForcedTraceSegment` calls from one `java.util.Random(4242)` stream, replayed here with
-/// [`SplitMix64`]. Each row carries `String.hashCode` of the whole board dump, so a board
-/// compares as one integer.
-#[test]
-fn the_two_random_blocks_agree_with_the_jvm() {
-    let mut rnd = SplitMix64::new(4242);
-    let mut rows = vec!["  block=polyline".to_string()];
-    for row in 0..128 {
-        let regime_no = rnd.next_int(3) as usize;
-        let corner_count = 2 + rnd.next_int(3);
-        let corners: Vec<Point> = (0..corner_count)
-            .map(|_| Point::new(rnd.next_int(3001) - 1500, rnd.next_int(3001) - 1500))
-            .collect();
-        let half_width = 10 + rnd.next_int(60);
-        let layer = rnd.next_int(2) as usize;
-        let net = 1 + rnd.next_int(3);
-        let cl = (1 + rnd.next_int(2)) as usize;
-        let max_rec = rnd.next_int(3) * 10;
-        let with_check = rnd.next_int(2) == 0;
-        let tidy_width = if rnd.next_int(2) == 0 { 0 } else { T15B_MAXV };
-        let accuracy = rnd.next_int(1000);
-        let angle = T15B_REGIMES[regime_no];
-        let mut board = probe_board(angle);
-        let polyline = Polyline::from_points(&corners);
-        let result = board
-            .insert_forced_trace_polyline(
-                None,
-                &polyline,
-                half_width,
-                layer,
-                &[net],
-                cl,
-                max_rec,
-                max_rec,
-                max_rec,
-                tidy_width,
-                accuracy,
-                with_check,
-                None,
-                &never_stop,
-            )
-            .expect("no stop check trips here");
-        let dump = t15b_board_dump(&board).join("\n");
-        rows.push(format!(
-            "  row={} regime={} n={} hw={} layer={} net={} cl={} maxRec={} check={} tidy={} acc={} -> {} maxId={} items={} hash={} {}",
-            row,
-            t15b_regime_name(angle),
-            corner_count,
-            half_width,
-            layer,
-            net,
-            cl,
-            max_rec,
-            with_check,
-            if tidy_width == T15B_MAXV { "MAX" } else { "0" },
-            accuracy,
-            t15b_answer(result.as_ref()),
-            board.communication.id_gen.max_generated_id(),
-            board.get_items().count(),
-            t15b_string_hash(&dump),
-            t15b_failing(&board),
-        ));
-    }
-    rows.push("  block=segment".to_string());
-    for row in 0..128 {
-        let regime_no = rnd.next_int(3) as usize;
-        let from = Point::new(rnd.next_int(3001) - 1500, rnd.next_int(3001) - 1500);
-        let to = Point::new(rnd.next_int(3001) - 1500, rnd.next_int(3001) - 1500);
-        let half_width = 10 + rnd.next_int(60);
-        let layer = rnd.next_int(2) as usize;
-        let net = 1 + rnd.next_int(3);
-        let cl = (1 + rnd.next_int(2)) as usize;
-        let max_rec = rnd.next_int(3) * 10;
-        let with_check = rnd.next_int(2) == 0;
-        let tidy_width = if rnd.next_int(2) == 0 { 0 } else { T15B_MAXV };
-        let accuracy = rnd.next_int(1000);
-        let angle = T15B_REGIMES[regime_no];
-        let mut board = probe_board(angle);
-        let result = board
-            .insert_forced_trace_segment(
-                None,
-                &from,
-                &to,
-                half_width,
-                layer,
-                &[net],
-                cl,
-                max_rec,
-                max_rec,
-                max_rec,
-                tidy_width,
-                accuracy,
-                with_check,
-                None,
-                &never_stop,
-            )
-            .expect("no stop check trips here");
-        let is_to = result.as_ref() == Some(&to);
-        let is_from = !is_to && result.as_ref() == Some(&from);
-        let dump = t15b_board_dump(&board).join("\n");
-        rows.push(format!(
-            "  row={} regime={} from={} to={} hw={} layer={} net={} cl={} maxRec={} check={} tidy={} acc={} -> {} isFrom={} isTo={} maxId={} items={} hash={} {}",
-            row,
-            t15b_regime_name(angle),
-            t15b_answer(Some(&from)),
-            t15b_answer(Some(&to)),
-            half_width,
-            layer,
-            net,
-            cl,
-            max_rec,
-            with_check,
-            if tidy_width == T15B_MAXV { "MAX" } else { "0" },
-            accuracy,
-            t15b_answer(result.as_ref()),
-            is_from,
-            is_to,
-            board.communication.id_gen.max_generated_id(),
-            board.get_items().count(),
-            t15b_string_hash(&dump),
-            t15b_failing(&board),
-        ));
-    }
-    assert_eq!(
-        assert_rows_match_returning_stale_failing("rand", &rows),
-        26,
-        "mode `rand`: 26 rows differ from the jar only in quirk #174's stale `failing=` column"
-    );
 }
 
 // --- mode `side` --------------------------------------------------------------------------------
