@@ -304,13 +304,8 @@ impl AutorouteControl {
         }
 
         let pure_smd_net = AutorouteControl::is_pure_smd_net(board, net_number);
-        if self.smd_via_relaxation
-            && !self.attach_smd_allowed
-            && self.layer_count > 1
-            && pure_smd_net
-        {
-            self.attach_smd_allowed = true;
-        }
+        // Cost relaxation must not override explicit via attachment permissions.
+        // The search and final via inserter must agree on which pads are obstacles.
 
         for j in 0..self.layer_count {
             self.via_radii[j] = (self.via_radii[j]).max(f64::from(self.trace_half_width[j]));

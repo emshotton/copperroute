@@ -40,7 +40,7 @@
 [s8] net 12 name=Net-(P4-PM) subnet=1 containsPlane=false class=default
 [s8] net 13 name=unconnected-(P8-Pad1) subnet=1 containsPlane=false class=default
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
@@ -86,7 +86,7 @@
 [s8] net 12 name=unconnected-(P7-Pad1) subnet=1 containsPlane=false class=default
 [s8] net 13 name=unconnected-(P8-Pad1) subnet=1 containsPlane=false class=default
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
@@ -176,8 +176,8 @@
 [s8] net 51 name=unconnected-(U102-LV-Pad6) subnet=1 containsPlane=false class=default
 [s8] net 52 name=unconnected-(U102-OSC-Pad7) subnet=1 containsPlane=false class=default
 [s8] viainfos count=2
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
-[s8] viainfo 1 name=via_power padstack=via_power clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
+[s8] viainfo 1 name=via_power padstack=via_power clearanceClass=1 attachSmd=false
 [s8] viarules count=2
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viarule 1 name=power vias=[via_power]
@@ -393,8 +393,8 @@
 [s8] net 172 name=unconnected-(U9-P-PadN5) subnet=1 containsPlane=false class=default
 [s8] net 173 name=unconnected-(U9-NC-PadN12) subnet=1 containsPlane=false class=default
 [s8] viainfos count=2
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
-[s8] viainfo 1 name=via_Power padstack=via_Power clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
+[s8] viainfo 1 name=via_Power padstack=via_Power clearanceClass=1 attachSmd=false
 [s8] viarules count=2
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viarule 1 name=Power vias=[via_Power]
@@ -435,7 +435,7 @@
 [s8] net 4 name=R2 subnet=1 containsPlane=false class=default
 [s8] net 5 name=R1 subnet=1 containsPlane=false class=default
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
@@ -475,7 +475,7 @@
 [s8] net 4 name=R2 subnet=1 containsPlane=false class=default
 [s8] net 5 name=R1 subnet=1 containsPlane=false class=default
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
@@ -566,8 +566,8 @@
 [s8] net 51 name=unconnected-(U102-LV-Pad6) subnet=1 containsPlane=false class=default
 [s8] net 52 name=unconnected-(U102-OSC-Pad7) subnet=1 containsPlane=false class=default
 [s8] viainfos count=2
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
-[s8] viainfo 1 name=via_power padstack=via_power clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
+[s8] viainfo 1 name=via_power padstack=via_power clearanceClass=1 attachSmd=false
 [s8] viarules count=2
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viarule 1 name=power vias=[via_power]
@@ -603,7 +603,7 @@
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
@@ -664,8 +664,8 @@
 [s8] net 2 name=HV1 subnet=1 containsPlane=false class=HV
 [s8] net 3 name=NC subnet=1 containsPlane=false class=default
 [s8] viainfos count=2
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
-[s8] viainfo 1 name=via_HV padstack=via_HV clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
+[s8] viainfo 1 name=via_HV padstack=via_HV clearanceClass=1 attachSmd=false
 [s8] viarules count=2
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viarule 1 name=HV vias=[via_HV]
@@ -701,7 +701,7 @@
 [s8] nets count=1
 [s8] net 1 name=N1 subnet=1 containsPlane=false class=default
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
@@ -735,7 +735,7 @@
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
@@ -768,7 +768,7 @@
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
@@ -802,7 +802,7 @@
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
@@ -836,7 +836,7 @@
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
@@ -871,7 +871,7 @@
 [s8] nets count=1
 [s8] net 1 name=V subnet=1 containsPlane=false class=default
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
@@ -907,7 +907,7 @@
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
@@ -940,7 +940,7 @@
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
@@ -983,8 +983,8 @@
 [s8] nets count=1
 [s8] net 1 name=n1 subnet=1 containsPlane=false class=A
 [s8] viainfos count=2
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
-[s8] viainfo 1 name=via_A padstack=via_A clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
+[s8] viainfo 1 name=via_A padstack=via_A clearanceClass=1 attachSmd=false
 [s8] viarules count=3
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viarule 1 name=A vias=[via_A]
@@ -1038,7 +1038,7 @@
 [s8] net 16 name=pi subnet=1 containsPlane=false class=default
 [s8] net 17 name=rho subnet=1 containsPlane=false class=default
 [s8] viainfos count=1
-[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
+[s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=false
 [s8] viarules count=1
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1

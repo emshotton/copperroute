@@ -427,7 +427,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         "defaultVia",
         default_via_padstack,
         default_via_cl_class,
-        true,
+        board_json.viaInPadAllowed,
     );
     board.rules.via_infos.add(default_via_info);
 
@@ -482,7 +482,12 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             .get(board_net_class)
             .default_item_clearance_classes
             .get(ItemClass::Via);
-        let via_info = ViaInfo::new(via_name.clone(), via_padstack, via_cl_class, true);
+        let via_info = ViaInfo::new(
+            via_name.clone(),
+            via_padstack,
+            via_cl_class,
+            board_json.viaInPadAllowed,
+        );
         board.rules.via_infos.add(via_info);
 
         let mut via_rule = ViaRule::new(net_class_name);

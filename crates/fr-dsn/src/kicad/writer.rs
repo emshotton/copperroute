@@ -20,6 +20,16 @@ pub fn write(board: &Board, design_name: &str) -> String {
     };
 
     let mut board_json = KiCadBoardJson {
+        // The JSON permission is global: mixed DSN via permissions must not
+        // silently grant attachment to previously restricted via templates.
+        viaInPadAllowed: board.rules.via_infos.count() > 0
+            && (0..board.rules.via_infos.count()).all(|i| {
+                board
+                    .rules
+                    .via_infos
+                    .get(fr_board::ViaInfoId(i))
+                    .attach_smd_allowed()
+            }),
         designName: Some(design_name.to_string()),
         resolution: scale_factor,
         unit: Some(match board.communication.unit {

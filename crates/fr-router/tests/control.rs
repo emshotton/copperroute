@@ -219,7 +219,17 @@ fn every_field_of_the_jvm_transcript_is_reproduced() {
                 .and_then(|r| r.split(' ').next())
                 .and_then(|n| n.parse().ok())
                 .expect("a net number");
-            assert_eq!(dump_control(b, net, s), line);
+            // The port intentionally fixes the old search-only attachment relaxation.
+            let expected = if !control(b, net, s)
+                .via_infos
+                .iter()
+                .any(|v| v.attach_smd_allowed)
+            {
+                line.replace("attachSmdAllowed=true", "attachSmdAllowed=false")
+            } else {
+                line.to_string()
+            };
+            assert_eq!(dump_control(b, net, s), expected);
             ctrl_rows += 1;
         } else {
             panic!("unparsed transcript row: {line}");
@@ -251,7 +261,7 @@ fn first_pure_and_mixed(board: &Board) -> (i32, i32) {
 }
 
 #[test]
-fn pure_smd_relaxes_attach_and_scales_the_via_cost() {
+fn pure_smd_cost_relaxation_preserves_explicit_attachment_permissions() {
     for (name, pure_net, mixed_net, pure_cost, normal_cost) in [
         ("Issue593-BBD_Mars-64.dsn", 1, 0, 400.0, 4000.0),
         ("Issue508-DAC2020_bm01.dsn", 8, 1, 300.0, 3000.0),
@@ -266,8 +276,8 @@ fn pure_smd_relaxes_attach_and_scales_the_via_cost() {
             "{name}: the padstack itself still says attach=false"
         );
         assert!(
-            pure.attach_smd_allowed,
-            "{name}: :263-269 relaxes the routing gate anyway"
+            !pure.attach_smd_allowed,
+            "{name}: cost relaxation cannot grant attachment permission"
         );
         assert_eq!(pure.min_normal_via_cost, pure_cost, "{name}: :277-281");
         assert_eq!(pure.min_cheap_via_cost, 0.8 * pure_cost, "{name}: :283");
@@ -304,8 +314,8 @@ fn the_smd_relaxation_is_a_setting() {
     let on = control(&board, pure_net, &settings);
     assert_eq!(on.min_normal_via_cost, 400.0, "the 0.1 discount when on");
     assert!(
-        on.attach_smd_allowed,
-        "on: forced true even though every via mask says false"
+        !on.attach_smd_allowed,
+        "cost relaxation must not override via masks"
     );
     assert!(
         !on.via_infos.iter().any(|via| via.attach_smd_allowed),
