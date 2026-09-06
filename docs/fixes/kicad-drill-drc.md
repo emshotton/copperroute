@@ -104,3 +104,32 @@ clearance false positives are gone. KiCad confirms zero clearance/drill errors,
 two unconnected items, two dangling-via warnings and the same three pre-existing
 silkscreen warnings. This is still a partial route, not a manufacturing-ready
 board.
+
+## Physical hole-clearance follow-up (2026-09-06)
+
+The earlier clean KiCad 10.0.3 reports were misleading. Reordering only the two
+NPTH pad records to the end of J1, with unchanged geometry and rules, produces
+eight Uno and four Nano hole-clearance reports. KiCad 10.0.3 deduplicates pad
+pairs but does not test both directions of a pad/hole pair; the newer KiCad 10.0
+source adds the missing swapped-direction check. This is not evidence for a
+blanket same-footprint waiver.
+
+Both projects require 0.25 mm. Uno's rectangular GND/Vbus gaps are 0.1751/0.2099
+mm, respectively. Nano's rounded pads give 0.1944/0.2586 mm. Overlapping USB pad
+definitions count each physical gap twice, so the genuine footprint findings
+are eight for Uno and four for Nano. Rounded-pad approximation caused the other
+four Nano findings. These results supersede the earlier characterization of all
+eight reports as footprint approximation artifacts.
+
+KiCad JSON now accepts `shape: "roundrect"` with a `roundRectRatio` between zero
+and one half. Padstacks preserve its corner radius in board units and include it
+in padstack sharing. Routing and non-hole DRC still use enclosing rectangles;
+hole-to-copper DRC measures the physical rounded corners. Circle/pad and
+circle/trace distances also use physical geometry instead of inflated polygon
+intersection thresholds. Original input drills marked estimated remain so;
+slotted holes retain the documented approximation.
+
+Native tests check the analytical USB gaps across both sides, arbitrary and
+right-angle rotations, both pair orders, padstack radius separation, invalid
+radii, and real overlap even when the nominal clearance is zero. No same-footprint
+or net-specific exception was introduced, and the project minima are unchanged.

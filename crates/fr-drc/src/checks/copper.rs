@@ -4,7 +4,8 @@ use fr_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
 use fr_geometry::{FloatLine, FloatPoint, TileShape};
 
 use crate::checks::geometry::{
-    candidates, gap_below, has_copper, hole_of, is_copper, item_shapes, sub_epsilon,
+    candidates, gap_below, has_copper, hole_copper_gap, hole_of, is_copper, item_shapes,
+    sub_epsilon,
 };
 use crate::constraints::{pair_clearance, search_radius, severity};
 use crate::{DrcViolation, DrcViolationKind};
@@ -216,34 +217,30 @@ fn check_pair(
     let Some(hole_clearance) = constraints.hole_clearance else {
         return;
     };
-    for (copper_id, hole_id, copper_shapes) in [
-        (id, other, std::slice::from_ref(shape)),
-        (other, id, other_shapes.as_slice()),
-    ] {
+    for (copper_id, hole_id) in [(id, other), (other, id)] {
         if !has_copper(board, copper_id) {
             continue;
         }
         let Some(hole) = hole_of(board, hole_id) else {
             continue;
         };
-        for copper_shape in copper_shapes {
-            if let Some((actual, position)) = gap_below(
-                copper_shape,
-                &hole.shape,
-                sub_epsilon(hole_clearance, constraints.epsilon),
-            ) {
-                emit.push(
-                    DrcViolationKind::HoleClearance,
-                    copper_id,
-                    hole_id,
-                    Some(layer),
-                    position,
-                    f64::from(hole_clearance),
-                    actual,
-                    hole.estimated,
-                );
-                break;
-            }
+        if let Some((actual, position)) = hole_copper_gap(
+            board,
+            copper_id,
+            layer,
+            &hole,
+            sub_epsilon(hole_clearance, constraints.epsilon),
+        ) {
+            emit.push(
+                DrcViolationKind::HoleClearance,
+                copper_id,
+                hole_id,
+                Some(layer),
+                position,
+                f64::from(hole_clearance),
+                actual,
+                hole.estimated,
+            );
         }
     }
 }

@@ -583,6 +583,33 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             let Some(pad_size) = pad.size.as_ref() else {
                 return npe_field("x", "pad.size");
             };
+            let round_rect_radius = if pad
+                .shape
+                .as_deref()
+                .is_some_and(|s| equals_ignore_case("roundrect", s))
+            {
+                let Some(ratio) = pad.roundRectRatio else {
+                    return parse_error(
+                        "components",
+                        "Rounded rectangular pads require roundRectRatio",
+                    );
+                };
+                if !ratio.is_finite()
+                    || !(0.0..=0.5).contains(&ratio)
+                    || !pad_size.x.is_finite()
+                    || !pad_size.y.is_finite()
+                    || pad_size.x <= 0.0
+                    || pad_size.y <= 0.0
+                {
+                    return parse_error(
+                        "components",
+                        "Invalid rounded rectangular pad dimensions or radius",
+                    );
+                }
+                Some(ratio * pad_size.x.min(pad_size.y) * scale_factor)
+            } else {
+                None
+            };
             let dx = pad_size.x * scale_factor / 2.0;
             let dy = pad_size.y * scale_factor / 2.0;
             let pad_shape = if pad
@@ -664,7 +691,12 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                     .size
                     .as_ref()
                     .is_some_and(|size| size.x.max(size.y) <= pad.drill);
-            let drill_key = (pad.drill, pad.nonPlated, pad.drillEstimated);
+            let drill_key = (
+                pad.drill,
+                pad.nonPlated,
+                pad.drillEstimated,
+                round_rect_radius,
+            );
             let padstack = match pad_padstacks
                 .iter()
                 .find(|(existing, drillable, _)| *drillable == drill_key && *existing == shapes)
@@ -700,6 +732,10 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                         is_drillable,
                         false,
                     );
+                    board
+                        .library
+                        .padstacks
+                        .set_round_rect_radius(id, round_rect_radius);
                     if is_drillable {
                         board.library.padstacks.set_drill(
                             id,
@@ -1382,7 +1418,7 @@ impl ReferencedNets {
     }
 }
 
-type PadDrillKey = (f64, bool, bool);
+type PadDrillKey = (f64, bool, bool, Option<f64>);
 
 fn register_via_padstack(
     padstacks: &mut Padstacks,
