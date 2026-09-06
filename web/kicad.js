@@ -356,6 +356,7 @@ export function importBoard(text, name, rules, options = {}) {
     rebuildZones: !!options.rebuildZones,
     warnings: [...new Set(warnings)],
     board: {
+      viaInPadAllowed: !!options.allowViaInPad,
       designName: name,
       unit: "MM",
       resolution: 10000,

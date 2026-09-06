@@ -35,6 +35,7 @@ self.onmessage = async ({ data }) => {
     const input = importBoard(data.text, data.name, data.rules, {
       rebuildZones: data.rebuildZones,
       ripUpRouting: true,
+      allowViaInPad: data.allowViaInPad,
     });
     applyProject(input, data.project);
     input.routingLayers = EXAMPLES[data.example]?.routingLayers;

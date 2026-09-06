@@ -72,7 +72,7 @@ function isDsn() { return /\.dsn$/i.test(selected?.name ?? ""); }
 function updateRuleControls() {
   const embedded = isDsn();
   for (const id of Object.keys(manualRules)) $(id).disabled = embedded || !!projectFile;
-  for (const id of ["project", "clear-project", "rebuild-zones"]) $(id).disabled = embedded;
+  for (const id of ["project", "clear-project", "rebuild-zones", "allow-via-in-pad"]) $(id).disabled = embedded;
   $("project-name").textContent = embedded
     ? "Using embedded DSN net classes, routing rules and layer settings."
     : projectFile ? projectFile.name : "No project selected — using the manual rules below.";
@@ -101,6 +101,7 @@ function select(file) {
     return;
   }
   selected = file;
+  $("allow-via-in-pad").checked = false;
   updateRuleControls();
   $("filename").textContent = file.name;
   $("badge").textContent = "Board selected";
@@ -324,6 +325,7 @@ $("settings").onsubmit = async (e) => {
         project,
         example: currentExample,
         rebuildZones: $("rebuild-zones").checked,
+        allowViaInPad: $("allow-via-in-pad").checked,
         passes: Number($("passes").value),
         seconds: Number($("seconds").value),
       });

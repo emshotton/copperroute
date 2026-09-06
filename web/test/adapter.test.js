@@ -207,3 +207,8 @@ test("KiCad 10 copper IDs, aliases and plane restrictions survive export", async
   assert.notEqual(layerColor('In1.Cu'), layerColor('In2.Cu'));
   assert.notEqual(layerColor('In1.Cu'), layerColor('F.SilkS'));
 });
+
+test("KiCad via attachment is opt-in independently of project net classes", () => {
+  assert.equal(load(source).board.viaInPadAllowed, false);
+  assert.equal(importBoard(source, "example", rules, {allowViaInPad: true}).board.viaInPadAllowed, true);
+});

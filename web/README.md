@@ -40,6 +40,26 @@ Any static host serving `.wasm` as `application/wasm` can host the page. There
 are no runtime CDN dependencies, backend services, or cross-origin isolation
 requirements. The current release WASM is approximately 2.4 MiB uncompressed.
 
+## Via-in-pad rules
+
+**Allow vias in SMD pads** is off by default for KiCad boards and resets when
+another board is selected. It supplies the Rust KiCad JSON bridge's explicit
+`viaInPadAllowed` permission (absent means false), independently of the project's
+width and clearance rules. This is a router option, not an imported KiCad project
+property.
+
+Rust stores this permission in each `ViaInfo.attach_smd_allowed`, for the default
+via and every net-class via template. Maze search, fanout and forced via insertion
+use those rules. Disallowing attachment keeps the new via's copper clear of SMD
+pad copper, including off-centre overlaps. `smd_via_relaxation` may reduce via costs
+on pure-SMD nets; it no longer overrides attachment permission.
+
+DSN routing continues to use its embedded `(control (via_at_smd on/off))` and
+per-via attachment rules; the browser checkbox is disabled for DSN. Native KiCad
+imports preserve existing vias in place; this setting governs newly routed vias.
+The browser removes existing vias before rerouting. Disallowing via-in-pad may
+require more routing space and can leave connections unrouted.
+
 ## Scope and limits
 
 This proves browser routing, rather than complete native KiCad format support.

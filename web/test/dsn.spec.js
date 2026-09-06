@@ -16,6 +16,7 @@ test("DSN drop previews, reroutes with embedded rules, and downloads DSN/SES/SVG
   await expect(page.locator("#layer-legend")).toContainText("Bottom");
   await expect(page.locator("#traceWidth")).toBeDisabled();
   await expect(page.locator("#project")).toBeDisabled();
+  await expect(page.locator("#allow-via-in-pad")).toBeDisabled();
   await expect(page.locator("#project-name")).toContainText("embedded DSN");
   await page.locator("#route").click();
   await expect(page.locator("#pcb")).toBeVisible({ timeout: 30000 });

@@ -7,6 +7,33 @@ const rules = {
   viaDiameter: 0.6,
   viaDrill: 0.3,
 };
+// Routing uses enclosing rectangles for rounded pads. Check the entire via
+// copper disk, including off-centre overlaps, against that routing envelope.
+function smdViaOverlaps(board) {
+  const overlaps = [];
+  for (const via of board.vias) for (const component of board.components) {
+    for (const pad of component.pads) {
+      if (pad.layers.length !== 1 || pad.drill > 0) continue;
+      const layer = board.layers.findIndex(l => l.name === pad.layers[0]);
+      if (layer < via.startLayerIndex || layer > via.endLayerIndex) continue;
+      const angle = -component.rotation * Math.PI / 180;
+      const dx = via.position.x - component.position.x;
+      const dy = via.position.y - component.position.y;
+      const x = Math.abs(dx * Math.cos(angle) + dy * Math.sin(angle));
+      const y = Math.abs(-dx * Math.sin(angle) + dy * Math.cos(angle));
+      const hx = pad.size.x / 2, hy = pad.size.y / 2;
+      let gap;
+      if (pad.shape === "circle") gap = Math.hypot(x, y) - hx;
+      else if (pad.shape === "oval") {
+        const radius = Math.min(hx, hy);
+        gap = Math.hypot(Math.max(0, x - hx + radius), Math.max(0, y - hy + radius)) - radius;
+      } else gap = Math.hypot(Math.max(0, x - hx), Math.max(0, y - hy));
+      if (gap < via.diameter / 2 - 0.001)
+        overlaps.push({via: via.position, pad: component.reference});
+    }
+  }
+  return overlaps;
+}
 test("routes dropped PCB entirely in a worker and downloads a readable result", async ({
   page,
 }) => {
@@ -349,6 +376,7 @@ test("bundled Uno and Nano load rules and export attributed routing", async ({ p
     expect(text).toContain("tracks and vias replaced");
     const routed = importBoard(text, id, rules, { rebuildZones: true }).board;
     expect(routed.traces.length).toBeGreaterThan(0);
+    expect(smdViaOverlaps(routed)).toEqual([]);
     expect(routed.layers.map(l => l.name)).toEqual(["F.Cu", "In1.Cu", "In2.Cu", "B.Cu"]);
     expect(routed.layers.every(l => l.type === "signal")).toBe(true);
     if (id === "uno") {
@@ -412,6 +440,7 @@ test("Uno DRC and exported vias use actual drills before export", async ({ page 
       worker.postMessage({text, project, example: 'uno', name: 'uno', rules: {traceWidth: .2, clearance: .15, viaDiameter: .5, viaDrill: .3}, rebuildZones: true, passes: 5, seconds: 60});
     });
   });
+  expect(smdViaOverlaps(importBoard(result.pcb, "uno", rules, {rebuildZones: true}).board)).toEqual([]);
   expect(result.initialDrcDetails).toHaveLength(8);
   expect(result.drcDetails).toHaveLength(8);
   expect(result.drcDetails.map(v => Number(v.actual.toFixed(4))).sort()).toEqual(
@@ -430,8 +459,13 @@ test("Nano rounded pads retain real footprint violations and explain them in the
   await page.goto("/");
   await page.locator("#examples").selectOption("nano");
   await expect(page.locator("#filename")).toHaveText("easyduino-nano.kicad_pcb");
+  await expect(page.locator("#allow-via-in-pad")).not.toBeChecked();
   await page.locator("#route").click();
   await expect(page.locator("#pcb")).toBeVisible({ timeout: 80000 });
+  const download = page.waitForEvent("download");
+  await page.locator("#pcb").click();
+  const output = readFileSync(await (await download).path(), "utf8");
+  expect(smdViaOverlaps(importBoard(output, "nano", rules, {rebuildZones: true}).board)).toEqual([]);
   await expect(page.locator("#status")).toContainText("4 router DRC violations");
   await expect(page.locator("#drc-summary")).toHaveText("DRC details: 4 existing before routing · 0 new");
   await page.locator("#drc-summary").click();
@@ -442,4 +476,21 @@ test("Nano rounded pads retain real footprint violations and explain them in the
   }
   await page.locator("#demo").click();
   await expect(page.locator("#drc-results")).toBeHidden();
+});
+
+
+test("via-in-pad requires a browser opt-in and resets for the next board", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#filename")).toHaveText("easyduino-uno.kicad_pcb");
+  await expect(page.locator("#allow-via-in-pad")).not.toBeChecked();
+  await page.locator("#allow-via-in-pad").check();
+  await page.locator("#passes").fill("1");
+  await page.locator("#route").click();
+  await expect(page.locator("#pcb")).toBeVisible({timeout: 80000});
+  const download = page.waitForEvent("download");
+  await page.locator("#pcb").click();
+  const output = readFileSync(await (await download).path(), "utf8");
+  expect(smdViaOverlaps(importBoard(output, "uno", rules, {rebuildZones: true}).board).length).toBeGreaterThan(0);
+  await page.locator("#demo").click();
+  await expect(page.locator("#allow-via-in-pad")).not.toBeChecked();
 });
