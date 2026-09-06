@@ -62,20 +62,10 @@
     (library_out 
       (padstack defaultVia
         (shape
-          (polygon "top_cu" 0
-            -4000 -4000
-            4000 -4000
-            4000 4000
-            -4000 4000
-          )
+          (circle "top_cu" 8000 0 0)
         )
         (shape
-          (polygon F.Mask 0
-            -4000 -4000
-            4000 -4000
-            4000 4000
-            -4000 4000
-          )
+          (circle F.Mask 8000 0 0)
         )
       )
     )
