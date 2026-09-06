@@ -268,7 +268,15 @@ impl<'a> BatchAutorouter<'a> {
         ripup_pass_no: i32,
         stop: StopCheck<'_>,
     ) -> AutorouteAttemptResult {
-        crate::visualization::set_route_context(self.is_optimizer_autorouter, ripup_pass_no);
+        use crate::visualization::{RoutingPhase, set_route_context};
+        set_route_context(
+            if self.is_optimizer_autorouter {
+                RoutingPhase::Optimizer
+            } else {
+                RoutingPhase::Autorouter
+            },
+            ripup_pass_no,
+        );
         let via_pricing = if self.is_optimizer_autorouter {
             ViaPricing::PerMillimetre
         } else {

@@ -19,7 +19,6 @@ impl Deadline {
     pub fn in_seconds(seconds: i64) -> Deadline {
         Deadline::from_base(Instant::now(), seconds)
     }
-
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,9 +50,10 @@ impl CancelToken {
     }
 
     pub fn with_timeout(total: Duration) -> CancelToken {
-        CancelToken::with_deadline(Deadline::in_seconds(
-            total.as_secs().min(i64::MAX as u64) as i64
-        ))
+        let now = Instant::now();
+        CancelToken::with_deadline(Deadline {
+            stop_at: now.checked_add(total).unwrap_or(now),
+        })
     }
 
     pub fn with_deadline(deadline: Deadline) -> CancelToken {
@@ -125,6 +125,21 @@ impl CancelToken {
 mod tests {
     use super::*;
     use fr_router::pipeline::StopRequestState;
+
+    #[test]
+    fn search_poll_observes_new_cancellation() {
+        let token = CancelToken::new();
+        let stop = token.as_router_stop();
+        token.cancel();
+        assert!(stop.is_stopped_or_expired());
+    }
+
+    #[test]
+    fn timeout_preserves_fractional_seconds() {
+        let before = Instant::now();
+        let token = CancelToken::with_timeout(Duration::from_millis(900));
+        assert!(token.deadline().unwrap().stop_at >= before + Duration::from_millis(900));
+    }
 
     #[test]
     fn a_fresh_token_is_a_fresh_router_stop() {

@@ -125,6 +125,7 @@ impl AutorouteBatchLoop {
         let mut continue_autorouting = is_router_enabled;
 
         let mut current_pass: i32 = 1;
+        let mut passes_run = 0;
         let mut consecutive_no_improvement_passes: i32 = 0;
         let mut fanout_recovery_applied = false;
         let mut last_best_score = f32::NEG_INFINITY;
@@ -140,8 +141,9 @@ impl AutorouteBatchLoop {
         while continue_autorouting && !stop.is_stop_auto_router_requested() {
             stop.poll_cancel();
 
-            if stop.poll_deadline() {
-                stop.request_stop_auto_router();
+            stop.poll_deadline();
+            if stop.is_stop_auto_router_requested() {
+                break;
             }
 
             if settings
@@ -150,7 +152,6 @@ impl AutorouteBatchLoop {
             {
                 stop.request_stop_auto_router();
                 exit = Some(BatchLoopExit::MaxPasses);
-                current_pass -= 1;
                 break;
             }
 
@@ -164,6 +165,7 @@ impl AutorouteBatchLoop {
 
             continue_autorouting =
                 router.autoroute_pass(board, &mut failure_log, current_pass, stop, progress)?;
+            passes_run += 1;
 
             let mut board_statistics_after = BoardStatistics::new(board);
             let mut board_score_after = board_statistics_after.normalized_score(scoring);
@@ -283,7 +285,7 @@ impl AutorouteBatchLoop {
         bh.clear();
 
         let exit = exit.unwrap_or({
-            if continue_autorouting {
+            if continue_autorouting || stop.is_stop_auto_router_requested() {
                 BatchLoopExit::Cancelled
             } else {
                 BatchLoopExit::Completed
@@ -299,7 +301,7 @@ impl AutorouteBatchLoop {
             state,
             exit,
             continue_routing: !stop.is_stop_auto_router_requested(),
-            passes_run: current_pass,
+            passes_run,
             fanout: fanout_summary,
             per_pass,
         })
