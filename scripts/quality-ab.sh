@@ -513,20 +513,19 @@ STEMS="$SCRATCH/stems.tsv"
 while IFS='|' read -r stem dsn _max_items _ripup max_passes fanout optimizer || [[ -n "$stem" ]]; do
   [[ -z "$stem" || "$stem" == \#* ]] && continue
   [[ -n "$max_passes" && "$max_passes" != "-" ]] || continue
-  printf 'batch|%s|%s|%s|-mp %s --router.fanout.enabled=%s --router.optimizer.enabled=%s\n' \
+  printf 'batch|%s|%s|%s|--max-passes %s --set router.fanout.enabled=%s --set router.optimizer.enabled=%s\n' \
       "$stem" "$dsn" "$max_passes" "$max_passes" "$(bool_of "$fanout")" "$(bool_of "$optimizer")" \
       >> "$STEMS"
 done < "$REF/router-fixtures.txt"
 
-# 13 CLI stems: `cli-fixtures.txt`, argv verbatim. `-` is a bare run — no `-mp`, which is
-# `DefaultSettings.java:99`'s `maxPasses = 9999`, and the `mp_cap` column says `default` rather
-# than inventing a number.
+# 13 CLI stems: `cli-fixtures.txt`, argv verbatim. `-` is a bare run — no `--max-passes`, so the
+# `mp_cap` column says `default` rather than inventing a number.
 while IFS='|' read -r stem dsn extra _lane || [[ -n "$stem" ]]; do
   [[ -z "$stem" || "$stem" == \#* ]] && continue
   local_extra="$extra"
   [[ "$local_extra" == "-" ]] && local_extra=""
   cap="default"
-  if [[ "$local_extra" =~ -mp\ ([0-9]+) ]]; then cap="${BASH_REMATCH[1]}"; fi
+  if [[ "$local_extra" =~ --max-passes\ ([0-9]+) ]]; then cap="${BASH_REMATCH[1]}"; fi
   printf 'cli|%s|%s|%s|%s\n' "$stem" "$dsn" "$cap" "$local_extra" >> "$STEMS"
 done < "$REF/cli-fixtures.txt"
 
@@ -564,15 +563,31 @@ fi
 run_timed() {
   local log="$1"
   shift
-  local t rc=0
+  # `--drc-report <path>`: `drc` exits 1 when the report it wrote carries violations, so for that
+  # family a written, well-formed report is a completed check and only any other exit is a failure.
+  local report=""
+  if [[ "${1:-}" == "--drc-report" ]]; then
+    report="$2"
+    shift 2
+    rm -f "$report"
+  fi
+  local t
   # The command's own output is redirected **inside** the braces, so what the substitution
-  # captures is the timing line and nothing else. `rc` is carried out through a marker line
-  # rather than lost to `|| true`: a repeat that failed or was killed by `timeout(1)` still burned
-  # CPU, and folding that number into the median would quietly report a hung stem as a fast one.
+  # captures is the timing line and nothing else. The exit code is carried out through a marker
+  # line rather than lost to `|| true`: a repeat that failed or was killed by `timeout(1)` still
+  # burned CPU, and folding that number into the median would quietly report a hung stem as a
+  # fast one.
   t="$( { TIMEFORMAT='%3U %3S'; time { "${TIMEOUT[@]}" "$@" > "$log" 2>&1 < /dev/null || echo "RC=$?"; } ; } 2>&1 )"
   if grep -q '^RC=' <<< "$t"; then
-    printf 'FAILED'
-    return 0
+    local completed_drc=0
+    if [[ -n "$report" && -s "$report" ]] && grep -qx 'RC=1' <<< "$t" \
+        && [[ "$(head -c 1 "$report")" == "{" ]]; then
+      completed_drc=1
+    fi
+    if [[ "$completed_drc" -eq 0 ]]; then
+      printf 'FAILED'
+      return 0
+    fi
   fi
   awk '{ printf "%.3f", $1 + $2 }' <<< "$(tail -1 <<< "$t")"
 }
@@ -819,8 +834,9 @@ timing_phase() {
   local times=() i
   for ((i = 0; i < REPEATS; i++)); do
     if [[ "$family" == drc ]]; then
-      times+=("$(run_timed "$SCRATCH/$family-$stem.t$i.log" "$PORT_BIN" "${REFEREE_ARGV[@]}" \
-          -o "$SCRATCH/$family-$stem.t$i.json")")
+      times+=("$(run_timed "$SCRATCH/$family-$stem.t$i.log" \
+          --drc-report "$SCRATCH/$family-$stem.t$i.json" \
+          "$PORT_BIN" "${REFEREE_ARGV[@]}" -o "$SCRATCH/$family-$stem.t$i.json")")
     else
       # shellcheck disable=SC2206
       local time_extra=($extra_args)
