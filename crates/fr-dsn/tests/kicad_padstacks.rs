@@ -222,3 +222,111 @@ fn via_class_templates_and_existing_vias_preserve_drills_on_export() {
     assert_eq!(output["netClasses"][0]["viaDrill"], 0.3);
     assert_eq!(output["netClasses"][1]["viaDrill"], 0.4);
 }
+
+fn via_padstack_names(board: &Board) -> Vec<String> {
+    let ctx = board.ctx();
+    let mut names: Vec<String> = board
+        .get_vias()
+        .into_iter()
+        .map(|id| match board.get_item(id) {
+            Some(fr_board::Item::Via(via)) => {
+                via.get_padstack(&ctx).expect("registered").name.clone()
+            }
+            _ => panic!("a via"),
+        })
+        .collect();
+    names.sort();
+    names.dedup();
+    names
+}
+
+#[test]
+fn vias_whose_drills_differ_below_the_name_rounding_get_one_distinct_padstack_each() {
+    let via = |x: i32, drill: &str| {
+        format!(
+            r#"{{"netName":"GND","position":{{"x":{x},"y":1}},"diameter":0.6,"drill":{drill},"startLayerIndex":0,"endLayerIndex":1}}"#
+        )
+    };
+    let b = board(&format!(
+        r#"{{"layers":[{{"name":"F.Cu"}},{{"name":"B.Cu"}}],"nets":[{{"id":1,"name":"GND"}}],
+            "vias":[{},{},{}]}}"#,
+        via(1, "0.3"),
+        via(3, "0.30004"),
+        via(5, "0.30004")
+    ));
+    assert_eq!(
+        via_padstack_names(&b),
+        vec![
+            "Via[0-1]_600:300_um".to_string(),
+            "Via[0-1]_600:300_um#2".to_string()
+        ],
+        "the second drill gets one uniquely named padstack that the third via shares"
+    );
+    assert_eq!(
+        b.library.padstacks.count(),
+        3,
+        "defaultVia plus one padstack per distinct drill"
+    );
+}
+
+#[test]
+fn only_non_plated_holes_without_a_copper_ring_are_hole_only() {
+    let b = board(
+        r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+            "components":[
+            {"reference":"H1","position":{"x":0,"y":0},"pads":[{"name":"1","shape":"circle","size":{"x":6,"y":6},"drill":3.2,"nonPlated":true,"layers":["F.Cu","B.Cu"]}]},
+            {"reference":"H2","position":{"x":10,"y":0},"pads":[{"name":"1","shape":"circle","size":{"x":1,"y":1},"drill":1,"nonPlated":true,"layers":["F.Cu","B.Cu"]}]},
+            {"reference":"H3","position":{"x":20,"y":0},"pads":[{"name":"1","shape":"circle","size":{"x":1,"y":1},"nonPlated":true,"layers":["F.Cu","B.Cu"]}]}]}"#,
+    );
+    let hole_only = |index| {
+        b.library
+            .padstacks
+            .get(first_pin_padstack(&b, index))
+            .expect("padstack")
+            .hole_only
+    };
+    assert!(
+        !hole_only(0),
+        "a copper ring around a non-plated hole is still copper"
+    );
+    assert!(
+        hole_only(1),
+        "copper no wider than the drill is a bare hole"
+    );
+    assert!(!hole_only(2), "without a drill there is no hole to be bare");
+}
+
+#[test]
+fn a_via_drill_the_net_class_does_not_declare_is_flagged_estimated() {
+    let b = board(
+        r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+            "netClasses":[{"name":"Default","viaDiameter":0.5},
+                          {"name":"Power","viaDiameter":0.8,"viaDrill":0.4},
+                          {"name":"Signal","viaDiameter":0.6}],
+            "nets":[{"id":1,"name":"GND","className":"Default"}]}"#,
+    );
+    let padstack = |name| b.library.padstacks.get_by_name(name).expect(name);
+    assert_eq!(padstack("defaultVia").drill_diameter, Some(4000.0));
+    assert!(padstack("defaultVia").drill_estimated);
+    assert!(!padstack("via_Power").drill_estimated);
+    assert!(padstack("via_Signal").drill_estimated);
+}
+
+#[test]
+fn a_through_hole_pad_without_a_drill_keeps_no_exact_drill() {
+    let b = board(&two_pads_on(
+        r#""F.Cu","B.Cu""#,
+        r#""F.Cu","B.Cu""#,
+        0.0,
+        0.0,
+    ));
+    let p = b
+        .library
+        .padstacks
+        .get(first_pin_padstack(&b, 0))
+        .expect("padstack");
+    assert_eq!(
+        p.drill_diameter, None,
+        "an absent drill is unknown, not a zero-diameter hole"
+    );
+}

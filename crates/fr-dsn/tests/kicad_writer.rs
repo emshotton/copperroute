@@ -640,3 +640,46 @@ fn an_absent_resolution_in_mm_means_ten_thousand() {
         assert_eq!(trace.get_half_width(), expected_half_width, "for {session}");
     }
 }
+
+#[test]
+fn import_session_reuses_a_padstack_that_lacks_drill_metadata() {
+    let base = "{\"unit\":\"MM\",\"resolution\":1000.0,\
+        \"layers\":[{\"index\":0,\"name\":\"F.Cu\",\"type\":\"signal\"},\
+        {\"index\":1,\"name\":\"B.Cu\",\"type\":\"signal\"}],\
+        \"nets\":[{\"id\":1,\"name\":\"GND\",\"className\":\"default\"}],\
+        \"outline\":{\"corners\":[{\"x\":0.0,\"y\":0.0},{\"x\":50.0,\"y\":0.0},\
+        {\"x\":50.0,\"y\":40.0},{\"x\":0.0,\"y\":40.0}]}}";
+    let session = "{\"unit\":\"MM\",\"resolution\":1000.0,\
+        \"vias\":[{\"id\":1,\"netName\":\"GND\",\"position\":{\"x\":5.0,\"y\":1.0},\
+        \"diameter\":0.8,\"drill\":0.4,\"startLayerIndex\":0,\"endLayerIndex\":1},\
+        {\"id\":2,\"netName\":\"GND\",\"position\":{\"x\":9.0,\"y\":1.0},\
+        \"diameter\":0.8,\"drill\":0.4,\"startLayerIndex\":0,\"endLayerIndex\":1}]}";
+
+    let mut board = board_of(base).expect("the base board reads");
+    let copper =
+        fr_geometry::Shape::Circle(fr_geometry::Circle::new(fr_geometry::IntPoint::ZERO, 400));
+    let legacy = board.library.padstacks.add(
+        "Via[0-1]_800:400_um",
+        vec![Some(copper); board.get_layer_count()],
+        true,
+        false,
+    );
+    let before = board.library.padstacks.count();
+
+    import_session(session, &mut board).expect("the session imports");
+
+    assert_eq!(
+        board.library.padstacks.count(),
+        before,
+        "a same-named padstack without drill metadata is reused, not duplicated"
+    );
+    let ctx = board.ctx();
+    for id in board.get_vias() {
+        let Some(Item::Via(via)) = board.get_item(id) else {
+            panic!("a via")
+        };
+        let padstack = via.get_padstack(&ctx).expect("registered");
+        assert_eq!(fr_board::PadstackId(padstack.no), legacy);
+        assert_eq!(padstack.drill_diameter, Some(400.0));
+    }
+}

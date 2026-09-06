@@ -395,12 +395,14 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
 
     let mut def_via_dia = default_via_diameter;
     let mut def_via_drill = default_via_drill;
+    let mut def_via_drill_estimated = true;
     if let Some(kicad_default) = kicad_default_net_class {
         if kicad_default.viaDiameter > 0.0 {
             def_via_dia = kicad_default.viaDiameter;
         }
         if kicad_default.viaDrill > 0.0 {
             def_via_drill = kicad_default.viaDrill;
+            def_via_drill_estimated = false;
         }
     }
     let def_radius = def_via_dia * scale_factor / 2.0;
@@ -415,7 +417,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         default_via_padstack,
         def_via_drill * scale_factor,
         false,
-        false,
+        def_via_drill_estimated,
     );
     board.library.add_via_padstack(default_via_padstack);
 
@@ -451,10 +453,10 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         } else {
             def_via_dia
         };
-        let via_drill = if net_class.viaDrill > 0.0 {
-            net_class.viaDrill
+        let (via_drill, via_drill_estimated) = if net_class.viaDrill > 0.0 {
+            (net_class.viaDrill, false)
         } else {
-            def_via_drill
+            (def_via_drill, true)
         };
 
         let radius = via_dia * scale_factor / 2.0;
@@ -470,10 +472,12 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 .library
                 .padstacks
                 .add(via_name.clone(), via_shape_arr, true, false);
-        board
-            .library
-            .padstacks
-            .set_drill(via_padstack, via_drill * scale_factor, false, false);
+        board.library.padstacks.set_drill(
+            via_padstack,
+            via_drill * scale_factor,
+            false,
+            via_drill_estimated,
+        );
         board.library.add_via_padstack(via_padstack);
 
         let via_cl_class = board
@@ -564,7 +568,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         }
     }
 
-    let mut pad_padstacks: Vec<(Vec<Option<Shape>>, (f64, bool, bool), PadstackId)> = Vec::new();
+    let mut pad_padstacks: Vec<(Vec<Option<Shape>>, PadDrillKey, PadstackId)> = Vec::new();
 
     let Some(json_components) = board_json.components.as_ref() else {
         return npe("java.util.List.iterator()", "boardJson.components");
@@ -654,6 +658,12 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 return parse_error("components", "Invalid pad drill diameter");
             }
             let is_drillable = pad.drill > 0.0;
+            let hole_only = pad.nonPlated
+                && is_drillable
+                && pad
+                    .size
+                    .as_ref()
+                    .is_some_and(|size| size.x.max(size.y) <= pad.drill);
             let drill_key = (pad.drill, pad.nonPlated, pad.drillEstimated);
             let padstack = match pad_padstacks
                 .iter()
@@ -690,12 +700,14 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                         is_drillable,
                         false,
                     );
-                    board.library.padstacks.set_drill(
-                        id,
-                        pad.drill * scale_factor,
-                        pad.nonPlated,
-                        pad.drillEstimated,
-                    );
+                    if is_drillable {
+                        board.library.padstacks.set_drill(
+                            id,
+                            pad.drill * scale_factor,
+                            hole_only,
+                            pad.drillEstimated,
+                        );
+                    }
                     pad_padstacks.push((shapes, drill_key, id));
                     id
                 }
@@ -932,26 +944,13 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 "its layer span is empty",
             );
         }
-        let existing_padstack = board
-            .library
-            .padstacks
-            .get_by_name(&via_padstack_name)
-            .filter(|p| via.drill <= 0.0 || p.drill_diameter == Some(via.drill * scale_factor))
-            .map(|padstack| PadstackId(padstack.no));
-        let via_padstack = match existing_padstack {
-            Some(id) => id,
-            None => board
-                .library
-                .padstacks
-                .add(via_padstack_name, shapes, true, false),
-        };
+        let via_padstack = register_via_padstack(
+            &mut board.library.padstacks,
+            via_padstack_name,
+            shapes,
+            (via.drill > 0.0).then_some(via.drill * scale_factor),
+        );
         let stop = || false;
-        if via.drill > 0.0 {
-            board
-                .library
-                .padstacks
-                .set_drill(via_padstack, via.drill * scale_factor, false, false);
-        }
         if let Err(error) = board.insert_via_checked(
             via_padstack,
             Point::Int(center),
@@ -1136,28 +1135,13 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
                      shape on any layer, because its layer span is empty"
                 )));
             }
-            let existing = board
-                .library
-                .padstacks
-                .get_by_name(&via_padstack_name)
-                .filter(|p| via.drill <= 0.0 || p.drill_diameter == Some(via.drill * scale_factor))
-                .map(|padstack| PadstackId(padstack.no));
-            let via_padstack = match existing {
-                Some(id) => id,
-                None => board
-                    .library
-                    .padstacks
-                    .add(via_padstack_name, shapes, true, false),
-            };
+            let via_padstack = register_via_padstack(
+                &mut board.library.padstacks,
+                via_padstack_name,
+                shapes,
+                (via.drill > 0.0).then_some(via.drill * scale_factor),
+            );
             let stop = || false;
-            if via.drill > 0.0 {
-                board.library.padstacks.set_drill(
-                    via_padstack,
-                    via.drill * scale_factor,
-                    false,
-                    false,
-                );
-            }
             board
                 .insert_via_checked(
                     via_padstack,
@@ -1398,6 +1382,41 @@ impl ReferencedNets {
     }
 }
 
+type PadDrillKey = (f64, bool, bool);
+
+fn register_via_padstack(
+    padstacks: &mut Padstacks,
+    name: String,
+    shapes: Vec<Option<Shape>>,
+    drill_diameter: Option<f64>,
+) -> PadstackId {
+    let mut candidate = name.clone();
+    let mut suffix = 2usize;
+    loop {
+        let found = padstacks
+            .get_by_name(&candidate)
+            .map(|padstack| (PadstackId(padstack.no), padstack.drill_diameter));
+        let Some((id, existing_drill)) = found else {
+            let id = padstacks.add(candidate, shapes, true, false);
+            if let Some(diameter) = drill_diameter {
+                padstacks.set_drill(id, diameter, false, false);
+            }
+            return id;
+        };
+        match (drill_diameter, existing_drill) {
+            (None, _) => return id,
+            (Some(diameter), None) => {
+                padstacks.set_drill(id, diameter, false, false);
+                return id;
+            }
+            (Some(diameter), Some(existing)) if existing == diameter => return id,
+            _ => {}
+        }
+        candidate = format!("{name}#{suffix}");
+        suffix += 1;
+    }
+}
+
 fn unique_padstack_name(padstacks: &Padstacks, name: String) -> String {
     if padstacks.get_by_name(&name).is_none() {
         return name;
@@ -1476,8 +1495,6 @@ fn npe_field(field: &str, receiver: &str) -> BoardReadResult {
 }
 
 fn via_shape(radius: f64) -> Shape {
-    // KiCad vias have circular copper. A bounding square invents copper at
-    // the corners and produces false clearances against diagonal traces.
     Shape::Circle(Circle::new(IntPoint::ZERO, java_round_to_int(radius)))
 }
 
