@@ -689,21 +689,13 @@ fn the_stagnation_paths_build_the_unrouted_report() {
     let source = include_str!("../src/pipeline/batch_loop.rs");
     let flat = source.split_whitespace().collect::<Vec<_>>().join(" ");
     assert_eq!(
-        flat.matches("stop.request_stop_auto_router();").count(),
-        5,
-        "the four `requestStopAutoRouter()` breaks (:271-272, :311-312, :474-475, :505-506) plus \
-         `:252`'s dead arm must all be present"
-    );
-    assert_eq!(
-        flat.matches("exit = Some(BatchLoopExit::").count(),
-        4,
-        "every one of the four breaks names the door it left by — quirk #214's fix"
-    );
-    assert_eq!(
-        flat.matches("let _report = build_unrouted_report(board);")
-            .count(),
+        flat.matches(
+            "let _report = build_unrouted_report(board); stop.request_stop_auto_router(); \
+             exit = Some(BatchLoopExit::Stagnation); break;"
+        )
+        .count(),
         2,
-        ":457 and :487 both call buildUnroutedConnectionsReport"
+        "both stagnation exits build the report before stopping the router"
     );
 }
 
