@@ -52,11 +52,13 @@ Rust stores this permission in each `ViaInfo.attach_smd_allowed`, for the defaul
 via and every net-class via template. Maze search, fanout and forced via insertion
 use those rules. Disallowing attachment keeps the new via's copper clear of SMD
 pad copper, including off-centre overlaps. `smd_via_relaxation` may reduce via costs
-on pure-SMD nets; it no longer overrides attachment permission.
+on pure-SMD nets; it cannot override attachment permission for KiCad JSON inputs.
 
 DSN routing continues to use its embedded `(control (via_at_smd on/off))` and
-per-via attachment rules; the browser checkbox is disabled for DSN. Native KiCad
-imports preserve existing vias in place; this setting governs newly routed vias.
+per-via attachment rules, including the legacy pure-SMD search relaxation. The
+browser checkbox is disabled for DSN. See the [native permission guide](../docs/fixes/via-in-pad-permissions.md)
+for JSON class overrides and format-conversion behavior. Native KiCad imports
+preserve existing vias in place; this setting governs newly routed vias.
 The browser removes existing vias before rerouting. Disallowing via-in-pad may
 require more routing space and can leave connections unrouted.
 

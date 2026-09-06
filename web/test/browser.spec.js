@@ -16,7 +16,8 @@ function smdViaOverlaps(board) {
       if (pad.layers.length !== 1 || pad.drill > 0) continue;
       const layer = board.layers.findIndex(l => l.name === pad.layers[0]);
       if (layer < via.startLayerIndex || layer > via.endLayerIndex) continue;
-      const angle = -component.rotation * Math.PI / 180;
+      // Adapter rotations already use SVG screen coordinates.
+      const angle = component.rotation * Math.PI / 180;
       const dx = via.position.x - component.position.x;
       const dy = via.position.y - component.position.y;
       const x = Math.abs(dx * Math.cos(angle) + dy * Math.sin(angle));
@@ -34,6 +35,23 @@ function smdViaOverlaps(board) {
   }
   return overlaps;
 }
+test("via overlap checks use the displayed orientation of diagonal pads", () => {
+  for (const [rotation, inside, outside] of [
+    [45, {x: .6, y: .6}, {x: .6, y: -.6}],
+    [-45, {x: .6, y: -.6}, {x: .6, y: .6}],
+  ]) {
+    const board = {
+      layers: [{name: "F.Cu"}, {name: "B.Cu"}],
+      components: [{reference: "U", position: {x: 0, y: 0}, rotation,
+        pads: [{shape: "rect", size: {x: 2, y: .5}, layers: ["F.Cu"]}]}],
+      vias: [{position: inside, diameter: .2, startLayerIndex: 0, endLayerIndex: 1}],
+    };
+    expect(smdViaOverlaps(board)).toHaveLength(1);
+    board.vias[0].position = outside;
+    expect(smdViaOverlaps(board)).toEqual([]);
+  }
+});
+
 test("routes dropped PCB entirely in a worker and downloads a readable result", async ({
   page,
 }) => {
