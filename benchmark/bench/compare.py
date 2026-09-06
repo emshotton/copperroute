@@ -6,7 +6,7 @@ import statistics
 from datetime import datetime, timezone
 from pathlib import Path
 
-from bench import metrics, runner
+from bench import metrics, referee, runner
 from bench.corpus import Board
 
 NUMERIC = ["unrouted", "violations", "vias", "wirelength_mm", "score", "wall_s", "cpu_s",
@@ -74,6 +74,9 @@ def collect(run_dirs: list[Path], names: list[str], metas: dict | None = None) -
     identities = {}
     for rd in run_dirs:
         meta = metas[rd] if metas is not None else runner.load_meta(rd)
+        rescoring = meta.get("referee_rescore", {}).get("status") == "incomplete"
+        if rescoring:
+            warnings.append(f"{meta['run_id']}: full referee rescore is incomplete; rerun bench referee without --only-missing")
         for c in meta["candidates"]:
             if c["name"] in names:
                 identity = (c["sha"], c.get("kind"), c.get("extra_args", []))
@@ -91,6 +94,8 @@ def collect(run_dirs: list[Path], names: list[str], metas: dict | None = None) -
             if mp.exists():
                 m = json.loads(mp.read_text())
                 m["_run"], m["_seed"], m["_candidate"] = meta["run_id"], e["seed"], e["candidate"]
+                if rescoring and m.get("referee", "").startswith("java-drc") and not m.get("referee_identity"):
+                    m["referee_identity"] = {"unverified_during_rescore": True}
                 if not m.get("isolated_config", False):
                     unisolated = True
                 cells[e["candidate"]].setdefault(e["board"], []).append(m)
@@ -158,12 +163,18 @@ def _expected(metas: dict[Path, dict], names: list[str], board_ids: set[str]) ->
     return expected
 
 
-def _normalize_scores(cells: list[dict], board: Board) -> list[dict]:
+def _score_denominator(board: Board, cells: list[dict]) -> int | None:
+    for n in (board.connections, board.nets):
+        if n is not None and n > 0:
+            return n
+    return max((c["score_n"] for c in cells if c.get("score_n") is not None and c["score_n"] > 0), default=None)
+
+
+def _normalize_scores(cells: list[dict], n: int | None) -> list[dict]:
     normalized = []
-    n = board.connections or board.nets
     for cell in cells:
         m = dict(cell)
-        if m.get("score_version") == metrics.SCORE_VERSION and m.get("score_n") is not None:
+        if n is not None and m.get("score_version") == metrics.SCORE_VERSION and m.get("score_n") is not None:
             if m.get("failed") and not m.get("unjudged"):
                 m["unrouted"] = n
             m["score"] = metrics.score(n, m["unrouted"], m["violations"], m.get("bends") or 0,
@@ -180,7 +191,7 @@ def _scoring_issue(cells: list[dict]) -> str | None:
         for c in scored:
             value = c.get(key)
             if key == "referee_identity" and value:
-                value = value.get("jar_sha256") or value.get("exec")
+                value = referee.identity_key(value)
             if value is not None:
                 values.add(json.dumps(value, sort_keys=True))
         if len(values) > 1:
@@ -216,7 +227,7 @@ def compare(run_dirs: list[Path], baseline: str, against: list[str], boards: lis
     config, warnings = _check_config(metas, allow_mixed)
     time_metric = _resolve_time_metric(metas, time_metric)
     config["time_metric"] = time_metric
-    config["score_basis"] = "manifest connections, falling back to manifest nets"
+    config["score_basis"] = "positive manifest connections or nets, falling back to the largest recorded positive score_n"
     config["performance_regression_percent"] = performance_regression_percent
     cells, info, w2 = collect(run_dirs, [baseline, *against], metas)
     warnings += w2
@@ -265,15 +276,16 @@ def compare(run_dirs: list[Path], baseline: str, against: list[str], boards: lis
                 failures.append({"board": bid, "candidate": m["_candidate"], "seed": m["_seed"],
                                  "reason": m.get("failure_reason", ""), "unjudged": bool(m.get("unjudged"))})
 
-        base_cells = _normalize_scores(_judged(base_cells_all), board)
+        score_n = _score_denominator(board, all_cells_for_board)
+        base_cells = _normalize_scores(_judged(base_cells_all), score_n)
         if not base_cells:
             continue  # every baseline seed for this board was unjudged: no baseline aggregate to compare against
         base_agg, nf = aggregate(base_cells), noise(base_cells)
         if len(base_cells) < 3:
             warnings.append(f"{bid}: baseline has {len(base_cells)} judged repetition(s); noise is unmeasured")
-        entry = {"tiers": board.tiers, "referee": board.referee, "noise": nf, "score_n": board.connections or board.nets, "baseline": base_agg, "against": {}}
+        entry = {"tiers": board.tiers, "referee": board.referee, "noise": nf, "score_n": score_n, "baseline": base_agg, "against": {}}
         for name in against:
-            oc = _normalize_scores(_judged(cells[name].get(bid, [])), board)
+            oc = _normalize_scores(_judged(cells[name].get(bid, [])), score_n)
             if bid not in expected[baseline] or bid not in expected[name] or not oc:
                 entry["against"][name] = None
                 continue
@@ -283,15 +295,18 @@ def compare(run_dirs: list[Path], baseline: str, against: list[str], boards: lis
                 entry["against"][name] = None
                 continue
             agg = aggregate(oc)
-            comparable_base = dict(base_agg)
+            comparable_base, comparable_other = dict(base_agg), dict(agg)
             versions = {c.get("score_version") for c in base_cells + oc if not c.get("failed")}
-            if len(versions) > 1:
-                comparable_base["score"] = agg["score"] = None
-                warnings.append(f"{bid}/{name}: different score versions; score comparison omitted")
+            score_comparable = len(versions) <= 1 and score_n is not None
+            if not score_comparable:
+                comparable_base["score"] = comparable_other["score"] = None
+                reason = "different score versions" if len(versions) > 1 else "no positive score denominator"
+                warnings.append(f"{bid}/{name}: {reason}; score comparison omitted")
             delta = {k: (agg[k] - comparable_base[k]) if agg.get(k) is not None and comparable_base.get(k) is not None else None
                      for k in NUMERIC + ["clean_pass_rate"]}
             entry["against"][name] = {"agg": agg, "delta": delta,
-                                      "verdict": verdict(comparable_base, agg, nf, time_metric),
+                                      "score_comparable": score_comparable,
+                                      "verdict": verdict(comparable_base, comparable_other, nf, time_metric),
                                       "performance": _performance_check(base_cells, oc, performance_regression_percent, time_metric)}
         out_boards[bid] = entry
 

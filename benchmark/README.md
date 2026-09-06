@@ -122,7 +122,8 @@ uv run bench compare --baseline rs-head --against rs-change --runs head-vs-chang
 (clean-pass rate, unrouted connections, violations or score), or if no boards can be compared.
 Timing and RSS verdicts remain advisory by default. To gate those too, add
 `--performance-regression-percent 10`: each side needs at least three measured repetitions,
-and a loss must exceed both the specified relative margin and three times the root-sum-square
+and insufficient measured time/RSS samples also fail the gate. A performance loss must
+exceed both the specified relative margin and three times the root-sum-square
 of the two samples' standard deviations. This is a conservative noise allowance, not a
 statistical significance guarantee; repeat borderline results under controlled conditions.
 
@@ -178,12 +179,16 @@ name remain an error: they cannot be pooled into one identity.
 
 Cells judged by different referees or known Java referee jars are excluded for that board and
 candidate pair, without discarding other boards. Re-score those outputs with one referee to
-include them. Different score versions omit the score comparison but retain other metrics.
+include them. Different score versions omit the score comparison but retain stored scores
+for display and keep other metrics. Charts omit incomparable score pairs rather than drawing
+them as zero.
 
 For current-version metrics, comparison recomputes scores in memory using one shared denominator
-per board: its manifest connection count, falling back to its manifest net count. Candidate
-self-reported counts and missing `result.json` files therefore cannot change the denominator
-between candidates. Candidate failures are charged the same shared connection count. Raw
+per board: its positive manifest connection count, falling back to its positive manifest net
+count. If neither exists, use the largest positive recorded `score_n` across the compared
+cells, shared by both sides. If no positive denominator is available, retain the stored scores
+for display and omit the score comparison. This avoids manufacturing zero scores for boards
+with missing net counts. Candidate failures are charged the same shared connection count. Raw
 metrics and exports retain their original scores; the compare JSON records `config.score_basis`
 and each board's `score_n`. `bench corpus connections` measures manifest connection counts
 with the Java referee. Keep the manifest fixed across comparisons and inspect connectivity,
@@ -231,10 +236,29 @@ uv run bench corpus revalidate --origin pcbench --regenerate-projects --rerun-dr
 
 Java-scored runs record the resolved referee command and jar SHA-256 in `meta.json`, and Java
 measurements record the same identity in `metrics.json`. `bench referee --only-missing` reuses
-that recorded referee and refuses a changed jar. To change referees, pass `--candidates-file`
-and rescore the full run without `--only-missing`. For older runs or runs made with
-`--no-referee`, use their original candidates file when first scoring them. KiCad-only runs
-and rescoring do not require a Java referee jar.
+that recorded referee and refuses a changed jar. For a rebuilt jar at the recorded path,
+rescore the full run by dropping `--only-missing`:
+
+```bash
+uv run bench referee --run head-vs-change
+```
+
+Use `--candidates-file local-referee.toml` to select a different referee path. A top-up accepts
+a local copy of a remote jar when its SHA-256 matches; changing the jar requires a full rescore.
+For example, put `[referee.java]` with `exec = ["{java}", "-jar", "/local/reference.jar"]` in
+that file, then run:
+
+```bash
+uv run bench referee --run head-vs-change --only-missing --candidates-file local-referee.toml
+```
+
+An empty top-up does not resolve Java. KiCad-only runs and rescoring do not need a Java jar.
+Full rescoring records an incomplete marker before starting and updates the run's referee
+identity only after all cells are processed. If interrupted, the previous identity and marker
+remain, comparisons warn, and a new full rescore is required; a top-up cannot complete a partial
+replacement of existing metrics. Individual referee failures remain visible as failed/unjudged
+cells even when the rescore attempt finishes. For older runs or runs made with `--no-referee`,
+use their original candidates file when first scoring them.
 
 Revalidation can change corpus membership and ground truth. Finish it before benchmarking and
 keep the corpus fixed between candidates. Compare/export currently use the current manifest;

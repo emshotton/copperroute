@@ -16,3 +16,9 @@ def score_cell(board: Board, cell: Path, java_exec: list[str], allow_kicad: bool
     else:
         java_drc.run(board, cell, java_exec)
     return metrics.build(cell, board)
+
+
+def identity_key(identity: dict | None):
+    if identity is None:
+        return None
+    return identity.get("jar_sha256") or identity.get("exec") or identity

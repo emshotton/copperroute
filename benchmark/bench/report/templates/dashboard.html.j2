@@ -38,6 +38,7 @@ th:first-child,td:first-child{text-align:left} .cards{display:flex;gap:1rem;flex
 {% for b, e in cmp.boards.items() %}<tr><td>{{ b }}</td><td>{{ e.referee }}</td>
 {% for n in names %}{% set a = e.against.get(n) %}<td class="{{ a.verdict.result if a else 'tie' }}">{{ a.verdict.result ~ ' (' ~ a.verdict.level ~ ')' if a else 'missing' }}</td>{% endfor %}</tr>{% endfor %}</table>
 
+<p>Charts omit missing or incomparable pairs; omitted scores are not zero.</p>
 {% for n in names %}
 <h2>Score per board — {{ cmp.baseline }} (grey) vs {{ n }} (blue)</h2>{{ score_bars[n]|safe }}
 <h2>{{ time_heading }} — {{ cmp.baseline }} (grey) vs {{ n }} (blue)</h2>{{ time_bars[n]|safe }}

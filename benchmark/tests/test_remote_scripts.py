@@ -228,4 +228,28 @@ def test_detached_launch_reservation_cannot_be_reused(tmp_path):
                   f'source {shlex.quote(str(scripts / "lib" / "remote-env.sh"))}\n'
                   f'remote_launch_detached local {shlex.quote(str(remote))} reserved "exit 0"', env=env)
     assert result.returncode != 0
-    assert "already launched" in result.stderr
+    assert "already exists" in result.stderr
+
+
+def test_poll_and_launch_share_existence_checks_and_only_start_bash(tmp_path):
+    scripts, remote, env = _local_remote(tmp_path)
+    ssh = tmp_path / "bin" / "ssh"
+    ssh.write_text('#!/usr/bin/env bash\nshift\n[[ "$*" == "bash -s" ]] || exit 97\nexec bash -s\n')
+    lib = str(scripts / "lib" / "remote-env.sh")
+    quoted_remote = remote / "board ' $literal `literal`"
+    (quoted_remote / "results").mkdir(parents=True)
+    for index, suffix in enumerate(("", ".remote.log", ".remote.pid", ".remote.log.exit", ".remote.lock")):
+        job = f"job{index}"
+        artifact = quoted_remote / "results" / (job + suffix)
+        artifact.write_text("0")
+        poll = _run("bash", "-c", 'source "$1"\nremote_poll local "$2" "$3" ""',
+                    "bash", lib, str(quoted_remote), job, env=env)
+        assert poll.returncode == 0, poll.stderr
+        assert "EXISTS=1" in poll.stdout
+        launch = _run("bash", "-c", 'source "$1"\nremote_launch_detached local "$2" "$3" "exit 0"',
+                      "bash", lib, str(quoted_remote), job, env=env)
+        assert launch.returncode != 0 and "already exists" in launch.stderr
+        assert artifact.read_text() == "0"
+    missing = _run("bash", "-c", 'source "$1"\nremote_poll local "$2" absent ""',
+                   "bash", lib, str(remote / "missing"), env=env)
+    assert missing.returncode == 0 and "EXISTS=0" in missing.stdout

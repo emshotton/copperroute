@@ -78,10 +78,19 @@ def render(cmp: dict, history: list[dict]) -> str:
     time_metric = cmp["config"].get("time_metric", "wall_s")
     time_heading = ("Wall time per board" if time_metric == "wall_s" else "CPU time per board") \
         + f" ({time_metric})"
-    score_bars = {n: bar_svg([(b, e["baseline"]["score"] or 0.0, (e["against"].get(n) or {}).get("agg", {}).get("score") or 0.0)
-                              for b, e in cmp["boards"].items()]) for n in names}
-    time_bars = {n: bar_svg([(b, e["baseline"].get(time_metric) or 0.0, (e["against"].get(n) or {}).get("agg", {}).get(time_metric) or 0.0)
-                             for b, e in cmp["boards"].items()]) for n in names}
+    def pairs(name: str, metric: str) -> list[tuple[str, float, float]]:
+        values = []
+        for bid, entry in cmp["boards"].items():
+            other = entry["against"].get(name)
+            if not other or (metric == "score" and not other.get("score_comparable", True)):
+                continue
+            base_value, other_value = entry["baseline"].get(metric), other["agg"].get(metric)
+            if base_value is not None and other_value is not None:
+                values.append((bid, base_value, other_value))
+        return values
+
+    score_bars = {n: bar_svg(pairs(n, "score")) for n in names}
+    time_bars = {n: bar_svg(pairs(n, time_metric)) for n in names}
     cp_series: dict[str, list[tuple[str, float]]] = {}
     score_series: dict[str, list[tuple[str, float]]] = {}
     # `history` is already sorted by created_at (see load_history); the x-axis order for

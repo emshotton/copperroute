@@ -383,3 +383,128 @@ def test_timing_only_losses_are_advisory_unless_requested(tmp_path, monkeypatch)
     assert CliRunner().invoke(cli.main, args).exit_code == 0
     r = CliRunner().invoke(cli.main, [*args, "--performance-regression-percent", "10"])
     assert r.exit_code != 0
+
+
+def _recorded_java_run(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    jar = tmp_path / "referee.jar"
+    jar.write_bytes(b"original")
+    identity = cli._java_identity(["java", "-jar", str(jar)])
+    run = _write_run(tmp_path / "results", "r", {"fake": {"mini": [_cell()] * 3}})
+    meta = runner.load_meta(run)
+    meta["referee_java"] = identity
+    (run / "meta.json").write_text(json.dumps(meta))
+    for seed in (1, 2, 3):
+        mp = runner.cell_dir(run, "fake", "mini", seed) / "metrics.json"
+        mp.write_text(json.dumps(dict(_cell(), referee_identity=identity)))
+    def score(b, c, j):
+        result = _cell()
+        (c / "metrics.json").write_text(json.dumps(result))
+        return result
+    monkeypatch.setattr(cli.referee, "score_cell", score)
+    return run, jar, identity
+
+
+def test_full_rescore_accepts_rebuilt_jar_and_commits_identity_after_scoring(tmp_path, monkeypatch):
+    run, jar, old = _recorded_java_run(tmp_path, monkeypatch)
+    jar.write_bytes(b"rebuilt")
+    def score(b, c, j):
+        assert runner.load_meta(run)["referee_java"] == old
+        assert runner.load_meta(run)["referee_rescore"]["status"] == "incomplete"
+        return _cell()
+    monkeypatch.setattr(cli.referee, "score_cell", score)
+    result = CliRunner().invoke(cli.main, ["referee", "--run", "r"])
+    assert result.exit_code == 0, result.output
+    meta = runner.load_meta(run)
+    assert meta["referee_java"]["jar_sha256"] != old["jar_sha256"]
+    assert meta["referee_rescore"]["status"] == "complete"
+
+
+def test_referee_noop_does_not_resolve_explicit_candidates_file(tmp_path, monkeypatch):
+    run, jar, old = _recorded_java_run(tmp_path, monkeypatch)
+    config = tmp_path / "local.toml"
+    config.write_text(f'[referee.java]\nexec=["java", "-jar", "{jar}"]\n')
+    jar.unlink()
+    before = (run / "meta.json").read_bytes()
+    result = CliRunner().invoke(cli.main, ["referee", "--run", "r", "--only-missing", "--candidates-file", str(config)])
+    assert result.exit_code == 0, result.output
+    assert "nothing left" in result.output
+    assert (run / "meta.json").read_bytes() == before
+
+
+def test_kicad_only_topup_preserves_recorded_java_identity(tmp_path, monkeypatch):
+    run, jar, old = _recorded_java_run(tmp_path, monkeypatch)
+    board = corpus.load_manifest()[0]
+    board.referee = "kicad"
+    corpus.save_manifest([board])
+    (runner.cell_dir(run, "fake", "mini", 3) / "metrics.json").unlink()
+    config = tmp_path / "local.toml"
+    config.write_text('[referee.java]\nexec=["java", "-jar", "/missing.jar"]\n')
+    result = CliRunner().invoke(cli.main, ["referee", "--run", "r", "--only-missing", "--candidates-file", str(config)])
+    assert result.exit_code == 0, result.output
+    assert runner.load_meta(run)["referee_java"] == old
+
+
+def test_topup_accepts_local_copy_of_remote_jar(tmp_path, monkeypatch):
+    run, jar, old = _recorded_java_run(tmp_path, monkeypatch)
+    remote = dict(old, exec=["/remote/java", "-jar", "/remote/referee.jar"])
+    meta = runner.load_meta(run)
+    meta["referee_java"] = remote
+    (run / "meta.json").write_text(json.dumps(meta))
+    (runner.cell_dir(run, "fake", "mini", 3) / "metrics.json").unlink()
+    config = tmp_path / "local.toml"
+    config.write_text(f'[referee.java]\nexec=["java", "-jar", "{jar}"]\n')
+    args = ["referee", "--run", "r", "--only-missing", "--candidates-file", str(config)]
+    jar.write_bytes(b"different")
+    rejected = CliRunner().invoke(cli.main, args)
+    assert rejected.exit_code != 0 and "cannot change" in rejected.output
+    jar.write_bytes(b"original")
+    accepted = CliRunner().invoke(cli.main, args)
+    assert accepted.exit_code == 0, accepted.output
+    assert runner.load_meta(run)["referee_java"] == old
+
+
+def test_interrupted_rescore_keeps_previous_identity_and_is_detected(tmp_path, monkeypatch):
+    run, jar, old = _recorded_java_run(tmp_path, monkeypatch)
+    jar.write_bytes(b"replacement")
+    calls = []
+    def score(b, c, j):
+        calls.append(c)
+        if len(calls) == 2:
+            raise KeyboardInterrupt()
+        return _cell()
+    monkeypatch.setattr(cli.referee, "score_cell", score)
+    result = CliRunner().invoke(cli.main, ["referee", "--run", "r"])
+    assert result.exit_code != 0
+    assert runner.load_meta(run)["referee_java"] == old
+    assert runner.load_meta(run)["referee_rescore"]["status"] == "incomplete"
+    cmp = compare.compare([run], "fake", ["fake"], corpus.load_manifest())
+    assert any("rescore is incomplete" in w for w in cmp["warnings"])
+    assert "mini" in cmp["coverage"]["fake"]["skipped_boards"]
+    result = CliRunner().invoke(cli.main, ["referee", "--run", "r", "--only-missing"])
+    assert result.exit_code != 0 and "rerun without" in result.output
+    monkeypatch.setattr(cli.referee, "score_cell", lambda b, c, j: _cell())
+    result = CliRunner().invoke(cli.main, ["referee", "--run", "r"])
+    assert result.exit_code == 0, result.output
+    assert runner.load_meta(run)["referee_rescore"]["status"] == "complete"
+
+
+def test_referee_missing_jar_argument_is_a_clean_error(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    config = tmp_path / "candidates.toml"
+    config.write_text(config.read_text() + '\n[referee.java]\nexec=["java", "-jar"]\n')
+    result = CliRunner().invoke(cli.main, ["run", "--candidates", "fake"])
+    assert result.exit_code != 0
+    assert "-jar requires a following jar path" in result.output
+
+
+def test_requested_performance_gate_fails_insufficient_samples_and_explains_help(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    _write_run(tmp_path / "results", "r", {"head": {"mini": [_cell()]}, "change": {"mini": [_cell()]}})
+    args = ["compare", "--baseline", "head", "--against", "change", "--runs", "r", "--out", "gate",
+            "--fail-on-regression", "--performance-regression-percent", "10"]
+    result = CliRunner().invoke(cli.main, args)
+    assert result.exit_code != 0
+    report = json.loads((tmp_path / "reports" / "gate.json").read_text())
+    assert report["overall"]["change"]["performance_unmeasured"] == 1
+    assert "also fails" in CliRunner().invoke(cli.main, ["compare", "--help"]).output

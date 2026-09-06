@@ -295,6 +295,7 @@ def test_score_version_mismatch_omits_score_without_discarding_quality(tmp_path)
     cmp = compare.compare([r], "head", ["change"], [BOARD])
     assert cmp["coverage"]["change"]["compared_boards"] == 1
     assert cmp["boards"]["a"]["against"]["change"]["delta"]["score"] is None
+    assert cmp["boards"]["a"]["against"]["change"]["agg"]["score"] == cell()["score"]
 
 
 def test_network_hostname_change_is_advisory(tmp_path):
@@ -368,3 +369,25 @@ def test_optional_performance_gate_requires_margin_and_repeated_evidence(tmp_pat
     assert run_case("slower", [15, 15, 15], 10)["performance_losses"] == 1
     assert run_case("short", [15], 10)["performance_unmeasured"] == 1
     assert run_case("advisory", [15], None)["quality_losses"] == 0
+
+
+def test_zero_net_manifest_uses_positive_shared_recorded_denominator(tmp_path):
+    board = Board(id="a", source="", origin="pcbench", referee="kicad", tiers=[], nets=0, layers=2)
+    base = dict(cell(), score_version=1, score_n=10)
+    other = dict(cell(), score_version=1, score_n=20, wirelength_mm=200.0)
+    r = _write_run(tmp_path, "r", {"head": {"a": [base] * 3}, "change": {"a": [other] * 3}})
+    cmp = compare.compare([r], "head", ["change"], [board])
+    row = cmp["boards"]["a"]
+    assert row["score_n"] == 20
+    assert row["baseline"]["score"] > row["against"]["change"]["agg"]["score"] > 0
+    assert row["against"]["change"]["verdict"]["level"] == "score"
+
+
+def test_unknown_denominator_preserves_score_and_omits_only_score_comparison(tmp_path):
+    board = Board(id="a", source="", origin="pcbench", referee="kicad", tiers=[], nets=0, layers=2)
+    r = _write_run(tmp_path, "r", {"head": {"a": [cell(score=900)] * 3}, "change": {"a": [cell(score=800)] * 3}})
+    cmp = compare.compare([r], "head", ["change"], [board])
+    row = cmp["boards"]["a"]["against"]["change"]
+    assert row["agg"]["score"] == 800
+    assert row["delta"]["score"] is None
+    assert row["score_comparable"] is False

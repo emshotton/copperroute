@@ -27,20 +27,23 @@ def _java_exec(candidates_file: Path | None = None) -> list[str]:
 def _java_identity(command: list[str]) -> dict:
     identity = {"exec": command, "jar_sha256": None}
     if "-jar" in command:
-        jar = Path(command[command.index("-jar") + 1])
+        index = command.index("-jar") + 1
+        if index == len(command) or not command[index] or command[index].startswith("-"):
+            raise ValueError("-jar requires a following jar path")
+        jar = Path(command[index])
         with jar.open("rb") as stream:
             identity["jar_sha256"] = hashlib.file_digest(stream, "sha256").hexdigest()
     return identity
 
 
 def _referee_config(boards: list[corpus.Board], candidates_file: Path | None = None,
-                    recorded: dict | None = None) -> dict | None:
+                    recorded: dict | None = None, verify_recorded: bool = True) -> dict | None:
     if all(b.referee == "kicad" for b in boards):
         return None
     try:
         config = _java_identity(recorded["exec"] if recorded else _java_exec(candidates_file))
-        if recorded and config != recorded:
-            raise click.ClickException("recorded referee jar has changed; use --candidates-file and rescore the full run")
+        if recorded and verify_recorded and referee.identity_key(config) != referee.identity_key(recorded):
+            raise click.ClickException("recorded referee jar has changed; rescore the full run without --only-missing")
         return config
     except (OSError, paths.ToolMissing, ValueError) as e:
         raise click.ClickException(f"Java referee unavailable: {e}") from e
@@ -295,14 +298,22 @@ def referee_cmd(run_id: str, only_missing: bool, jobs: int, candidates_file: Pat
             continue
         todo.append((c, cell))
 
+    if only_missing and meta.get("referee_rescore", {}).get("status") == "incomplete":
+        raise click.ClickException("full rescore is incomplete; rerun without --only-missing")
+    if not todo:
+        click.echo("scored 0 cells: nothing left to score")
+        return
+
     selected_boards = [boards[c["board"]] for c, _ in todo]
     recorded = meta.get("referee_java")
     source = candidates_file or (Path(meta["candidates_file"]) if meta.get("candidates_file") else None)
-    java_config = _referee_config(selected_boards, source, recorded if not candidates_file else None)
-    if candidates_file and only_missing and recorded and java_config != recorded:
+    java_config = _referee_config(selected_boards, source, recorded if not candidates_file else None,
+                                  verify_recorded=only_missing)
+    if java_config is not None and only_missing and recorded and (
+            referee.identity_key(java_config) != referee.identity_key(recorded)):
         raise click.ClickException("cannot change the referee with --only-missing; rescore the full run")
-    if java_config is not None:
-        meta["referee_java"] = java_config
+    if not only_missing:
+        meta["referee_rescore"] = {"status": "incomplete", "referee_java": java_config}
         runner._save_meta(run_dir, meta)
 
     def _score(item: tuple[dict, Path]) -> tuple[dict, dict, str | None]:
@@ -333,6 +344,12 @@ def referee_cmd(run_id: str, only_missing: bool, jobs: int, candidates_file: Pat
     # pattern as `run` uses for meta.json -- regardless of which worker finishes first.
     results = pool.run_cells(todo, _score, jobs, on_done=_print)
 
+    if java_config is not None:
+        meta["referee_java"] = java_config
+    if not only_missing:
+        meta["referee_rescore"]["status"] = "complete"
+    runner._save_meta(run_dir, meta)
+
     scored = len(results)
     clean = sum(1 for _, m, _ in results if m["clean_pass"])
     failed = sum(1 for _, m, error in results if error or m["failed"])
@@ -360,7 +377,8 @@ def _latest_run_for(name: str) -> Path:
 @click.option("--require-complete", is_flag=True,
               help="with --fail-on-regression, also require every shared board and planned repetition")
 @click.option("--performance-regression-percent", type=click.FloatRange(min=0, min_open=True), default=None,
-              help="opt in to time/RSS gating above this percent and a noise allowance; needs 3 samples per side")
+              help="opt in to time/RSS gating above this percent and a noise allowance; "
+                   "with --fail-on-regression, fewer than 3 measured samples per side also fails the gate")
 @click.option("--time-metric", "time_metric", type=click.Choice(["auto", "wall", "cpu"]), default="auto",
              show_default=True,
              help="which time metric decides verdicts and median_time_ratio. 'auto' uses wall time "
