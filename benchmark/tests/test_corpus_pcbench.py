@@ -723,3 +723,48 @@ def test_revalidate_rerun_drc_skips_board_missing_raw_pcb(tmp_path, monkeypatch)
     summary = corpus_pcbench.revalidate("pcbench", rerun_drc=True)
     assert summary["skipped"] == 1
     assert calls == []
+
+
+def test_board_license_reads_the_normalised_shape():
+    meta = {"licenses": {"spdx_id": "CERN-OHL-P-2.0", "status": "licensed", "file": "LICENSE"}}
+    assert corpus_pcbench.board_license(meta) == {"spdx_id": "CERN-OHL-P-2.0", "status": "licensed"}
+
+
+def test_board_license_tolerates_the_old_github_and_kitspace_shapes():
+    assert corpus_pcbench.board_license({"licenses": {"key": "mit", "spdx_id": "MIT"}}) == {"spdx_id": "MIT", "status": "licensed"}
+    assert corpus_pcbench.board_license({"licenses": {"spdx_id": "NOASSERTION"}}) == {"spdx_id": None, "status": "unknown"}
+    assert corpus_pcbench.board_license({"licenses": None}) == {"spdx_id": None, "status": "unknown"}
+    assert corpus_pcbench.board_license({"licenses": [{"name": "GNU", "link": ""}]}) == {"spdx_id": None, "status": "unknown"}
+    assert corpus_pcbench.board_license({}) == {"spdx_id": None, "status": "unknown"}
+
+
+def test_import_records_the_board_license_in_the_manifest(tmp_path, monkeypatch):
+    _write_pcbench_board(tmp_path, "a")
+    (tmp_path / "PCBs" / "a" / "metadata.json").write_text(json.dumps(
+        {"layers": 2, "kicad_version": "7", "licenses": {"spdx_id": "MIT", "status": "licensed"}}))
+    monkeypatch.setattr(corpus, "CORPUS", tmp_path / "corpus")
+    _stub_successful_kicad_pipeline(monkeypatch)
+
+    boards = corpus_pcbench.import_boards(tmp_path, ids=["a"])
+    assert boards[0].license == {"spdx_id": "MIT", "status": "licensed"}
+    assert corpus.load_manifest()[0].license == {"spdx_id": "MIT", "status": "licensed"}
+
+
+def test_import_boards_licensed_only_skips_unlicensed_boards(tmp_path, monkeypatch):
+    _write_pcbench_board(tmp_path, "lic")
+    _write_pcbench_board(tmp_path, "unlic")
+    (tmp_path / "PCBs" / "lic" / "metadata.json").write_text(json.dumps(
+        {"layers": 2, "licenses": {"spdx_id": "MIT", "status": "licensed"}}))
+    (tmp_path / "PCBs" / "unlic" / "metadata.json").write_text(json.dumps(
+        {"layers": 2, "licenses": {"spdx_id": None, "status": "unlicensed"}}))
+    monkeypatch.setattr(corpus, "CORPUS", tmp_path / "corpus")
+    _stub_successful_kicad_pipeline(monkeypatch)
+
+    lines = []
+    boards = corpus_pcbench.import_boards(tmp_path, licensed_only=True, progress=lines.append)
+    assert [b.id for b in boards] == ["pcbench-lic"]
+    assert [b.id for b in corpus.load_manifest()] == ["pcbench-lic"]
+    assert any("unlicensed" in l for l in lines)
+
+    boards = corpus_pcbench.import_boards(tmp_path)
+    assert [b.id for b in boards] == ["pcbench-lic", "pcbench-unlic"]
