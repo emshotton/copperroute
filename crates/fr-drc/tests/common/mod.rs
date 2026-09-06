@@ -1,5 +1,5 @@
-/// `Constants.FREEROUTING_VERSION` of the jar every committed transcript was taken with
+/// The version string every committed DRC transcript was written with.
 #[allow(dead_code)]
-pub const JAR_VERSION: &str = fr_core::PARITY_VERSION;
+pub const JAR_VERSION: &str = "2.3.1-SNAPSHOT";
 
 pub mod synthetic;

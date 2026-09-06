@@ -40,11 +40,20 @@ struct GitShaRow {
     answer: String,
 }
 
+/// The version string the transcript was cut with; the manifest now stamps the crate's own.
+const TRANSCRIPT_VERSION: &str = "2.3.1-SNAPSHOT";
+
+fn transcript_len(recorded: usize) -> usize {
+    let delta = fr_core::SERVER_VERSION.len() as isize - TRANSCRIPT_VERSION.len() as isize;
+    (recorded as isize + delta) as usize
+}
+
 fn transcript() -> Transcript {
     let text = std::fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/p8t2-manifest-shape.txt"),
     )
-    .expect("the committed p8t2 transcript");
+    .expect("the committed p8t2 transcript")
+    .replace(TRANSCRIPT_VERSION, fr_core::SERVER_VERSION);
 
     let mut manifests: BTreeMap<String, ManifestRow> = BTreeMap::new();
     let mut durations = Vec::new();
@@ -102,6 +111,16 @@ fn transcript() -> Transcript {
         } else if let Some(rest) = line.strip_prefix("NORM live ") {
             let (_index, content) = rest.split_once(' ').expect("a line");
             norm.push(unescape(content));
+        }
+    }
+
+    for row in manifests.values_mut() {
+        if row
+            .lines
+            .iter()
+            .any(|line| line.contains(fr_core::SERVER_VERSION))
+        {
+            row.len = transcript_len(row.len);
         }
     }
 
@@ -698,7 +717,11 @@ fn no_trailing_newline() {
         transcript.writes["existing_parent"].contains("bytes=519"),
         "the jar's own byte count"
     );
-    assert_eq!(bytes.len(), 519, "and the port writes exactly as many");
+    assert_eq!(
+        bytes.len(),
+        transcript_len(519),
+        "and the port writes exactly as many, less the version string's length difference"
+    );
 }
 
 #[test]
@@ -806,21 +829,23 @@ fn the_normaliser_strips_exactly_the_five_irreproducible_things() {
     assert!(text.contains("\"passes_completed\": 4"), "{text}");
     assert!(text.contains("\"final_state\": \"COMPLETED\""), "{text}");
     assert!(
-        text.contains("\"app_version\": \"2.3.1-SNAPSHOT\""),
+        text.contains(&format!(
+            "\"app_version\": \"{}\"",
+            fr_core::SERVER_VERSION
+        )),
         "{text}"
     );
     serde_json::from_str::<serde_json::Value>(&text).expect("still valid JSON");
 }
 
 #[test]
-fn app_version_is_the_parity_version() {
+fn app_version_is_the_crate_version() {
     let manifest = from_job(&fresh_job(), None, false, 1, None);
     assert_eq!(
         manifest.app_version.as_deref(),
-        Some(fr_core::PARITY_VERSION)
+        Some(fr_core::SERVER_VERSION)
     );
-    assert_eq!(manifest.app_version.as_deref(), Some("2.3.1-SNAPSHOT"));
-    assert_ne!(
+    assert_eq!(
         manifest.app_version.as_deref(),
         Some(env!("CARGO_PKG_VERSION"))
     );

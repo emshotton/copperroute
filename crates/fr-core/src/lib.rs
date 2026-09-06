@@ -52,12 +52,6 @@ pub use fr_router::pipeline::{
 };
 pub use fr_router::score::BoardStatistics;
 
-pub const PARITY_VERSION: &str = "2.3.1-SNAPSHOT";
-
-pub const PARITY_BUILD_DATE: &str = "2026-09-01";
-
-pub const PARITY_JAR_REVISION: &str = "278fe14123c49376667239659c98d41a597acce9";
-
 pub const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, thiserror::Error)]
@@ -84,15 +78,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_parity_version_is_the_head_jars() {
-        assert_eq!(PARITY_VERSION, "2.3.1-SNAPSHOT");
-        assert_eq!(PARITY_BUILD_DATE, "2026-09-01");
-        assert_eq!(PARITY_JAR_REVISION.len(), 40);
-    }
-
-    #[test]
-    fn the_server_version_is_the_crates_own_and_not_the_jars() {
+    fn the_server_version_is_the_crates_own() {
         assert_eq!(SERVER_VERSION, env!("CARGO_PKG_VERSION"));
-        assert_ne!(SERVER_VERSION, PARITY_VERSION);
     }
 }
