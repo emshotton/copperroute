@@ -1,5 +1,7 @@
+pub mod load;
 pub mod settings;
 
+pub use load::{BoardSource, LoadRequest, Loaded, load};
 pub use settings::SettingsOverrides;
 
 #[derive(Debug, thiserror::Error)]
