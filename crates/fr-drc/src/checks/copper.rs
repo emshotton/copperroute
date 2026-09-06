@@ -37,6 +37,15 @@ fn same_logical_pad(board: &Board, a: &Item, b: &Item) -> bool {
     }
 }
 
+fn has_copper(board: &Board, id: ItemId) -> bool {
+    let ctx = board.ctx();
+    match board.get_item(id) {
+        Some(Item::Pin(pin)) => !pin.get_padstack(&ctx).is_some_and(|p| p.hole_only),
+        Some(item) => is_copper(item),
+        None => false,
+    }
+}
+
 fn segments(item: &Item) -> Vec<FloatLine> {
     let Item::Trace(trace) = item else {
         return Vec::new();
@@ -177,6 +186,8 @@ fn check_pair(
         .collect();
 
     if !same_net
+        && has_copper(board, id)
+        && has_copper(board, other)
         && let Some(clearance) = clearance
         && clearance > 0
     {
@@ -218,6 +229,9 @@ fn check_pair(
         (id, other, std::slice::from_ref(shape)),
         (other, id, other_shapes.as_slice()),
     ] {
+        if !has_copper(board, copper_id) {
+            continue;
+        }
         let Some(hole) = hole_of(board, hole_id) else {
             continue;
         };

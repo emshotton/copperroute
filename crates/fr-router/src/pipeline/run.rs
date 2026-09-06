@@ -16,6 +16,11 @@ pub fn run_pipeline(
     budget: RouterBudget,
     progress: &mut dyn ProgressSink,
 ) -> Result<PipelineResult, RouterError> {
+    // Project rules can be attached after board loading/preparation. Refresh the
+    // routing obstacles before a run so DRC and routing use the same minimums.
+    if board.rules.drc_constraints.is_some() {
+        crate::pipeline::prepare_board(board, settings);
+    }
     let router_enabled =
         settings.get_run_router() && settings.max_passes.is_none_or(|max| max >= 0);
 

@@ -131,7 +131,9 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
                     continue;
                 };
                 let ctx = board.ctx();
-                if let Some(minimum) = constraints.min_via_annular_width {
+                if let Some(minimum) = constraints.min_via_annular_width
+                    && !pin.get_padstack(&ctx).is_some_and(|p| p.hole_only)
+                {
                     let annulus = pin.smallest_radius(&ctx) - hole.radius;
                     push(
                         board,

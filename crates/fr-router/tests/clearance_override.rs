@@ -405,3 +405,42 @@ fn prepare_board_skips_a_none_setting_and_orders_copper_before_hole() {
         "copper runs first, so board_edge takes the lower index ({board_edge} vs {hole_edge})"
     );
 }
+
+#[test]
+fn project_minimums_floor_default_and_explicit_router_clearances() {
+    use fr_board::DrcConstraints;
+    let json = r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+      "outline":{"corners":[{"x":0,"y":0},{"x":20,"y":0},{"x":20,"y":20},{"x":0,"y":20}]},
+      "components":[{"reference":"H1","position":{"x":10,"y":10},"pads":[
+      {"name":"1","shape":"circle","size":{"x":1,"y":1},"drill":1,"nonPlated":true,"layers":["F.Cu","B.Cu"]}]}]}"#;
+    let BoardReadResult::Success {
+        board: Some(mut board),
+        ..
+    } = fr_dsn::kicad::read_board(json, None)
+    else {
+        panic!("fixture import failed")
+    };
+    board.rules.drc_constraints = Some(DrcConstraints {
+        hole_clearance: Some(2500),
+        copper_edge_clearance: Some(6000),
+        ..DrcConstraints::default()
+    });
+    let mut settings = default_settings(); // includes Some(0) for hole clearance
+    assert!(prepare_board(&mut board, &settings));
+    assert_eq!(board.rules.get_hole_clearance(), 2500);
+    let edge = board
+        .rules
+        .clearance_matrix
+        .get_no(fr_board::BOARD_EDGE_CLEARANCE_CLASS_NAME)
+        .unwrap();
+    assert_eq!(
+        board.rules.clearance_matrix.get_value(edge, 1, 0, false),
+        6000
+    );
+    settings.hole_clearance_um = Some(400.0);
+    assert!(prepare_board(&mut board, &settings));
+    assert_eq!(board.rules.get_hole_clearance(), 4000);
+    settings.hole_clearance_um = Some(100.0);
+    assert!(prepare_board(&mut board, &settings));
+    assert_eq!(board.rules.get_hole_clearance(), 2500);
+}

@@ -411,6 +411,12 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             .library
             .padstacks
             .add("defaultVia", def_via_shape_arr, true, false);
+    board.library.padstacks.set_drill(
+        default_via_padstack,
+        def_via_drill * scale_factor,
+        false,
+        false,
+    );
     board.library.add_via_padstack(default_via_padstack);
 
     let default_via_cl_class = board
@@ -450,7 +456,6 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         } else {
             def_via_drill
         };
-        let _ = via_drill;
 
         let radius = via_dia * scale_factor / 2.0;
         let via_shape_arr = vec![Some(via_shape(radius)); layer_count];
@@ -465,6 +470,10 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 .library
                 .padstacks
                 .add(via_name.clone(), via_shape_arr, true, false);
+        board
+            .library
+            .padstacks
+            .set_drill(via_padstack, via_drill * scale_factor, false, false);
         board.library.add_via_padstack(via_padstack);
 
         let via_cl_class = board
@@ -555,7 +564,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         }
     }
 
-    let mut pad_padstacks: Vec<(Vec<Option<Shape>>, bool, PadstackId)> = Vec::new();
+    let mut pad_padstacks: Vec<(Vec<Option<Shape>>, (f64, bool, bool), PadstackId)> = Vec::new();
 
     let Some(json_components) = board_json.components.as_ref() else {
         return npe("java.util.List.iterator()", "boardJson.components");
@@ -641,10 +650,14 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 }
             }
 
+            if !pad.drill.is_finite() || pad.drill < 0.0 {
+                return parse_error("components", "Invalid pad drill diameter");
+            }
             let is_drillable = pad.drill > 0.0;
+            let drill_key = (pad.drill, pad.nonPlated, pad.drillEstimated);
             let padstack = match pad_padstacks
                 .iter()
-                .find(|(existing, drillable, _)| *drillable == is_drillable && *existing == shapes)
+                .find(|(existing, drillable, _)| *drillable == drill_key && *existing == shapes)
             {
                 Some((_, _, id)) => *id,
                 None => {
@@ -677,7 +690,13 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                         is_drillable,
                         false,
                     );
-                    pad_padstacks.push((shapes, is_drillable, id));
+                    board.library.padstacks.set_drill(
+                        id,
+                        pad.drill * scale_factor,
+                        pad.nonPlated,
+                        pad.drillEstimated,
+                    );
+                    pad_padstacks.push((shapes, drill_key, id));
                     id
                 }
             };
@@ -917,6 +936,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             .library
             .padstacks
             .get_by_name(&via_padstack_name)
+            .filter(|p| via.drill <= 0.0 || p.drill_diameter == Some(via.drill * scale_factor))
             .map(|padstack| PadstackId(padstack.no));
         let via_padstack = match existing_padstack {
             Some(id) => id,
@@ -926,6 +946,12 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 .add(via_padstack_name, shapes, true, false),
         };
         let stop = || false;
+        if via.drill > 0.0 {
+            board
+                .library
+                .padstacks
+                .set_drill(via_padstack, via.drill * scale_factor, false, false);
+        }
         if let Err(error) = board.insert_via_checked(
             via_padstack,
             Point::Int(center),
@@ -1114,6 +1140,7 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
                 .library
                 .padstacks
                 .get_by_name(&via_padstack_name)
+                .filter(|p| via.drill <= 0.0 || p.drill_diameter == Some(via.drill * scale_factor))
                 .map(|padstack| PadstackId(padstack.no));
             let via_padstack = match existing {
                 Some(id) => id,
@@ -1123,6 +1150,14 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
                     .add(via_padstack_name, shapes, true, false),
             };
             let stop = || false;
+            if via.drill > 0.0 {
+                board.library.padstacks.set_drill(
+                    via_padstack,
+                    via.drill * scale_factor,
+                    false,
+                    false,
+                );
+            }
             board
                 .insert_via_checked(
                     via_padstack,

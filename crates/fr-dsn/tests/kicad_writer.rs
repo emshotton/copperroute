@@ -118,16 +118,23 @@ fn emit_writer(case: &WriterCase) -> Vec<String> {
 
 const PORT_TRANSCRIPT: &str = include_str!("data/p9t7-kicad-writer.txt");
 
-const KNOWN_DIVERGENCES: &[(&str, &str, &str)] = &[(
-    "ecc83-v1",
-    "#280",
-    "the **one** writer stem of the nine whose board carries auto-registered nets: the \
+const KNOWN_DIVERGENCES: &[(&str, &str, &str)] = &[
+    (
+        "complex-hierarchy-design",
+        "explicit-drills",
+        "KiCad via and net-class drill dimensions are retained in padstacks and exported exactly, instead of estimating half the copper diameter.",
+    ),
+    (
+        "ecc83-v1",
+        "#280",
+        "the **one** writer stem of the nine whose board carries auto-registered nets: the \
          fixture declares no `nets` at all, so all thirteen come from pad `netName`s and their \
          numbers were `String.hashCode`'s. `KiCadJsonWriter:106-120` writes `nets` in net-number \
          order, so 24 of its 145 rows move — the thirteen names, their `id`s, and `[w]bytes=` \
          with them, because the names are of different lengths. The other eight stems declare \
          their nets (or have none) and are byte-identical to the jar.",
-)];
+    ),
+];
 
 #[test]
 fn the_writer_output_matches_the_port_golden_byte_for_byte() {

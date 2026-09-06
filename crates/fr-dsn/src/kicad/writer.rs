@@ -76,6 +76,7 @@ pub fn write(board: &Board, design_name: &str) -> String {
             f64::from(net_class.get_trace_half_width(0).wrapping_mul(2)) / scale_factor;
 
         let mut via_diameter = 0.8;
+        let mut explicit_drill = None;
         if let Some(via_rule) = net_class.get_via_rule()
             && via_rule.via_count() > 0
         {
@@ -84,9 +85,10 @@ pub fn write(board: &Board, design_name: &str) -> String {
                 && let Some(shape) = via_pad.get_shape(0)
             {
                 via_diameter = f64::from(shape.bounding_box().width()) / scale_factor;
+                explicit_drill = via_pad.drill_diameter.map(|d| d / scale_factor);
             }
         }
-        let via_drill = via_diameter * 0.5;
+        let via_drill = explicit_drill.unwrap_or(via_diameter * 0.5);
 
         let mut net_names: Vec<String> = Vec::new();
         for n in 1..=board.rules.nets.max_net_number() {
@@ -219,7 +221,9 @@ pub fn write(board: &Board, design_name: &str) -> String {
                 netName: net_name,
                 position: Some(position),
                 diameter,
-                drill: diameter * 0.5,
+                drill: padstack
+                    .and_then(|p| p.drill_diameter)
+                    .map_or(diameter * 0.5, |d| d / scale_factor),
                 startLayerIndex: i32::try_from(first_layer).unwrap_or(i32::MAX),
                 endLayerIndex: i32::try_from(last_layer).unwrap_or(i32::MAX),
             });

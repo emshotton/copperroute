@@ -617,3 +617,61 @@ fn a_trace_crossing_a_conduction_area_on_another_net_reports_nothing() {
     copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
     assert!(out.is_empty(), "{out:?}");
 }
+
+#[test]
+fn exact_kicad_drills_remove_false_positives_but_still_detect_small_holes() {
+    let json = r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+      "nets":[{"id":1,"name":"GND"}],
+      "components":[{"reference":"USB","position":{"x":0,"y":0},"pads":[
+        {"name":"mount","shape":"circle","size":{"x":0.65,"y":0.65},"drill":0.65,"nonPlated":true,"layers":["F.Cu","B.Cu"]}]}],
+      "vias":[{"netName":"GND","position":{"x":10,"y":10},"diameter":0.5,"drill":0.3,"startLayerIndex":0,"endLayerIndex":1},
+              {"netName":"GND","position":{"x":20,"y":10},"diameter":0.5,"drill":0.2,"startLayerIndex":0,"endLayerIndex":1}] }"#;
+    let fr_dsn::error::BoardReadResult::Success {
+        board: Some(mut board),
+        ..
+    } = fr_dsn::kicad::read_board(json, None)
+    else {
+        panic!("import failed")
+    };
+    let mut constraints = DrcConstraints::default();
+    constraints.min_through_hole_diameter = Some(3000);
+    constraints.min_via_annular_width = Some(1000);
+    let mut out = Vec::new();
+    single::run(&mut board, &constraints, &mut out);
+    assert_eq!(out.len(), 1, "{out:?}");
+    assert_eq!(out[0].kind, DrcViolationKind::DrillOutOfRange);
+    assert_eq!(out[0].actual, 2000.0);
+    assert!(!out[0].estimated);
+}
+
+#[test]
+fn drc_uses_physical_pad_shapes_and_does_not_treat_bare_holes_as_copper() {
+    let json = r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+      "nets":[{"id":1,"name":"N"}],
+      "components":[
+      {"reference":"H","position":{"x":0,"y":0},"pads":[{"name":"1","shape":"circle","size":{"x":1,"y":1},"drill":1,"nonPlated":true,"layers":["F.Cu","B.Cu"]}]},
+      {"reference":"P","position":{"x":1,"y":0},"pads":[{"name":"1","netName":"N","shape":"rect","size":{"x":0.4,"y":0.4},"layers":["F.Cu"]}]}]}"#;
+    let fr_dsn::BoardReadResult::Success {
+        board: Some(mut board),
+        ..
+    } = fr_dsn::kicad::read_board(json, None)
+    else {
+        panic!("fixture import failed")
+    };
+    let hole = board.get_pins()[0];
+    let before = item_shapes(&mut board, hole);
+    board.apply_hole_clearance_override(500.0);
+    assert_eq!(
+        before,
+        item_shapes(&mut board, hole),
+        "routing margins must not change measured copper"
+    );
+    let mut constraints = DrcConstraints::default();
+    constraints.min_clearance = Some(4000);
+    constraints.hole_clearance = Some(5000);
+    let mut out = Vec::new();
+    copper::run(&mut board, &constraints, &mut out);
+    assert_eq!(out.len(), 1, "{out:?}");
+    assert_eq!(out[0].kind, DrcViolationKind::HoleClearance);
+    assert!((out[0].actual - 3000.0).abs() < 2.0);
+}

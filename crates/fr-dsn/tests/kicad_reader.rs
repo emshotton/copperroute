@@ -549,7 +549,8 @@ const KNOWN_DIVERGENCES: &[(&str, &str, &str)] = &[
         "interf-u",
         "#284",
         "173 referenced nets, all declared, so #280 does not touch it; its 158 round pads take the \
-         two-number name.",
+         two-number name. Explicit drill metadata also separates equal-copper pads with \
+         different holes, creating two additional padstacks and changing package/item IDs.",
     ),
     (
         "complex-hierarchy",

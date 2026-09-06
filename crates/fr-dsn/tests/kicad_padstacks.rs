@@ -169,3 +169,56 @@ fn a_via_with_an_empty_layer_span_is_refused_naming_the_via() {
         "the diagnostic names the via and what is wrong: {detail}"
     );
 }
+
+#[test]
+fn equal_copper_with_different_drills_keeps_distinct_exact_padstacks() {
+    let b = board(&two_pads_on(
+        r#""F.Cu","B.Cu""#,
+        r#""F.Cu","B.Cu""#,
+        0.3,
+        0.65,
+    ));
+    let a = first_pin_padstack(&b, 0);
+    let c = first_pin_padstack(&b, 1);
+    assert_ne!(a, c);
+    for (id, diameter) in [(a, 3000.0), (c, 6500.0)] {
+        let p = b.library.padstacks.get(id).unwrap();
+        assert_eq!(p.drill_diameter, Some(diameter));
+        assert_eq!(p.drill_radius(), diameter / 2.0);
+        assert!(!p.drill_estimated);
+    }
+}
+
+#[test]
+fn via_class_templates_and_existing_vias_preserve_drills_on_export() {
+    let b = board(
+        r#"{
+      "layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+      "netClasses":[{"name":"Default","viaDiameter":0.5,"viaDrill":0.3},
+                    {"name":"Power","viaDiameter":0.8,"viaDrill":0.4}],
+      "nets":[{"id":1,"name":"GND","className":"Default"}],
+      "vias":[{"netName":"GND","position":{"x":10,"y":10},"diameter":0.6,"drill":0.35,"startLayerIndex":0,"endLayerIndex":1}]
+    }"#,
+    );
+    assert_eq!(
+        b.library
+            .padstacks
+            .get_by_name("defaultVia")
+            .unwrap()
+            .drill_diameter,
+        Some(3000.0)
+    );
+    assert_eq!(
+        b.library
+            .padstacks
+            .get_by_name("via_Power")
+            .unwrap()
+            .drill_diameter,
+        Some(4000.0)
+    );
+    let output: serde_json::Value =
+        serde_json::from_str(&fr_dsn::kicad::write(&b, "test")).unwrap();
+    assert_eq!(output["vias"][0]["drill"], 0.35);
+    assert_eq!(output["netClasses"][0]["viaDrill"], 0.3);
+    assert_eq!(output["netClasses"][1]["viaDrill"], 0.4);
+}

@@ -1,5 +1,5 @@
 use fr_board::{Board, Item, ItemId, ItemKind, TreeObject};
-use fr_geometry::{Circle, FloatPoint, TileShape, java_round};
+use fr_geometry::{Circle, FloatPoint, Shape, ShapeOps, TileShape, java_round};
 
 pub struct Hole {
     pub shape: TileShape,
@@ -81,7 +81,9 @@ pub fn hole_of(board: &Board, id: ItemId) -> Option<Hole> {
     match board.get_item(id)? {
         Item::Via(via) => {
             let padstack = via.get_padstack(&ctx)?;
-            let estimated = !padstack.name.contains(':');
+            let estimated = padstack
+                .drill_diameter
+                .map_or(!padstack.name.contains(':'), |_| padstack.drill_estimated);
             Some(hole_from(
                 via.get_center().to_float(),
                 padstack.drill_radius(),
@@ -89,11 +91,16 @@ pub fn hole_of(board: &Board, id: ItemId) -> Option<Hole> {
             ))
         }
         Item::Pin(pin) => {
-            if pin.first_layer(&ctx) == pin.last_layer(&ctx) {
+            let padstack = pin.get_padstack(&ctx)?;
+            if padstack.drill_diameter == Some(0.0)
+                || (padstack.drill_diameter.is_none()
+                    && pin.first_layer(&ctx) == pin.last_layer(&ctx))
+            {
                 return None;
             }
-            let padstack = pin.get_padstack(&ctx)?;
-            let estimated = !padstack.name.contains(':');
+            let estimated = padstack
+                .drill_diameter
+                .map_or(!padstack.name.contains(':'), |_| padstack.drill_estimated);
             Some(hole_from(
                 pin.get_center(&ctx).to_float(),
                 padstack.drill_radius(),
@@ -115,6 +122,29 @@ pub fn item_shapes(board: &mut Board, id: ItemId) -> Vec<(usize, TileShape)> {
             .map(|i| item.shape_layer(i, &ctx))
             .collect()
     };
+    // Routing search shapes can be enlarged for hole clearance. DRC must
+    // measure physical copper, not that extra routing obstacle margin.
+    {
+        let ctx = board.ctx();
+        let item = board.get_item(id);
+        if matches!(item, Some(Item::Pin(_) | Item::Via(_))) {
+            return layers
+                .into_iter()
+                .filter_map(|layer| {
+                    let shape = match item? {
+                        Item::Pin(pin) => pin.get_shape_on_layer(layer, &ctx),
+                        Item::Via(via) => via.get_shape_on_layer(layer, &ctx),
+                        _ => None,
+                    }?;
+                    let tile = match shape {
+                        Shape::Tile(tile) => tile,
+                        other => TileShape::Octagon(other.bounding_octagon()?),
+                    };
+                    Some((layer, tile))
+                })
+                .collect();
+        }
+    }
     layers
         .into_iter()
         .enumerate()
