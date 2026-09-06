@@ -76,8 +76,8 @@ impl FloatPoint {
     /// Rounds the coordinates of this point to an `IntPoint`.
     pub fn round(&self) -> IntPoint {
         IntPoint::new(
-            crate::limits::java_round(self.x) as i32,
-            crate::limits::java_round(self.y) as i32,
+            (self.x).round() as i64 as i32,
+            (self.y).round() as i64 as i32,
         )
     }
 
@@ -91,7 +91,7 @@ impl FloatPoint {
         } else if dir_y < 0 {
             self.x.floor() as i32
         } else {
-            crate::limits::java_round(self.x) as i32
+            (self.x).round() as i64 as i32
         };
 
         let rounded_y = if dir_x > 0 {
@@ -99,7 +99,7 @@ impl FloatPoint {
         } else if dir_x < 0 {
             self.y.ceil() as i32
         } else {
-            crate::limits::java_round(self.y) as i32
+            (self.y).round() as i64 as i32
         };
         IntPoint::new(rounded_x, rounded_y)
     }
@@ -128,7 +128,7 @@ impl FloatPoint {
         } else if dir_y < 0 {
             self.x.ceil() as i32
         } else {
-            crate::limits::java_round(self.x) as i32
+            (self.x).round() as i64 as i32
         };
 
         let rounded_y = if dir_x > 0 {
@@ -136,7 +136,7 @@ impl FloatPoint {
         } else if dir_x < 0 {
             self.y.floor() as i32
         } else {
-            crate::limits::java_round(self.y) as i32
+            (self.y).round() as i64 as i32
         };
         IntPoint::new(rounded_x, rounded_y)
     }
@@ -453,8 +453,8 @@ mod tests {
     use crate::int_point::IntPoint;
 
     #[test]
-    fn round_uses_java_semantics() {
-        assert_eq!(FloatPoint::new(1.5, -1.5).round(), IntPoint::new(2, -1));
+    fn round_goes_to_nearest_ties_away_from_zero() {
+        assert_eq!(FloatPoint::new(1.5, -1.5).round(), IntPoint::new(2, -2));
         assert_eq!(FloatPoint::new(2.4, 2.6).round(), IntPoint::new(2, 3));
     }
 

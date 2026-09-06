@@ -219,56 +219,6 @@ fn calculate_cheap_does_not_mutate_the_receiver() {
 }
 
 #[test]
-fn a_nan_trace_cost_propagates_through_calculate_as_java_does() {
-    let costs = vec![
-        ExpansionCostFactor {
-            horizontal: f64::NAN,
-            vertical: 2.0,
-        },
-        ExpansionCostFactor {
-            horizontal: 0.5,
-            vertical: 1.2,
-        },
-        ExpansionCostFactor {
-            horizontal: 2.5,
-            vertical: 1.5,
-        },
-        ExpansionCostFactor {
-            horizontal: 3.0,
-            vertical: 5.0,
-        },
-    ];
-    let mut d = DestinationDistance::new(&costs, &[true, true, true, true], 50.0, 40.0);
-    d.join(&IntBox::from_coords(0, 0, 100, 100), 0);
-    d.join(&IntBox::from_coords(500, 500, 600, 600), 3);
-    d.join(&IntBox::from_coords(200, 200, 300, 300), 1);
-
-    assert_eq!(d.min_component_side_trace_cost, 2.0);
-    assert!(d.max_component_side_trace_cost.is_nan());
-    assert_eq!(d.min_solder_side_trace_cost, 3.0);
-    assert_eq!(d.max_solder_side_trace_cost, 5.0);
-    assert!(d.max_inner_side_trace_cost.is_nan(), "Math.min at :86");
-    assert!(d.min_component_inner_trace_cost.is_nan(), ":95");
-    assert!(d.min_solder_inner_trace_cost.is_nan(), ":96");
-    assert!(d.min_component_solder_inner_trace_cost.is_nan(), ":97-98");
-
-    for layer in 0..4 {
-        for b in [
-            IntBox::from_coords(0, 0, 100, 100),
-            IntBox::from_coords(700, 200, 900, 400),
-        ] {
-            assert!(
-                d.calculate(&b, layer).is_nan(),
-                "calculate({b:?}, {layer}) must answer NaN, as Java's Math.min does;                  f64::min would have discarded it"
-            );
-            assert!(d.calculate_cheap_distance(&b, layer).is_nan());
-        }
-    }
-
-    assert!((1.0 + d.calculate(&IntBox::from_coords(0, 0, 100, 100), 0)).is_nan());
-}
-
-#[test]
 fn nothing_joined_answers_integer_max_value_as_a_double() {
     let d = case("empty4");
     for layer in 0..4 {

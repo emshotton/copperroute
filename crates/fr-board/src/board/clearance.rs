@@ -1,4 +1,4 @@
-use fr_geometry::{TileShape, java_round};
+use fr_geometry::TileShape;
 
 use crate::Board;
 use crate::board::item_ctx;
@@ -127,10 +127,10 @@ impl Board {
                         ),
                     )
                 } else {
-                    let cl_comp1 = java_round(0.5 * minimum_clearance) as i32;
+                    let cl_comp1 = (0.5 * minimum_clearance).round() as i64 as i32;
                     (
                         cl_comp1,
-                        java_round(minimum_clearance - f64::from(cl_comp1)) as i32,
+                        (minimum_clearance - f64::from(cl_comp1)).round() as i64 as i32,
                     )
                 };
 

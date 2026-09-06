@@ -108,7 +108,7 @@ fn door_half_max_width(left_corner: FloatPoint, right_corner: FloatPoint) -> f64
     let door_dx = right_corner.x - left_corner.x;
     let door_dy = right_corner.y - left_corner.y;
     let abs_door_dy = door_dy.abs();
-    let door_max_width = fr_geometry::java_max(door_dx, abs_door_dy);
+    let door_max_width = (door_dx).max(abs_door_dy);
     0.5 * door_max_width
 }
 

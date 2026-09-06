@@ -1,6 +1,5 @@
 use fr_dsn::format::double::{
-    format_placement_rotation, java_double_to_string, java_float_to_string, java_rint, java_round,
-    java_round_to_int,
+    format_placement_rotation, java_double_to_string, java_float_to_string,
 };
 
 #[test]
@@ -90,44 +89,6 @@ fn float_to_string_is_not_the_widened_double() {
     assert_eq!(java_float_to_string(f32::NAN), "NaN");
     assert_eq!(java_float_to_string(f32::INFINITY), "Infinity");
     assert_eq!(java_float_to_string(f32::NEG_INFINITY), "-Infinity");
-}
-
-#[test]
-fn java_round_rounds_half_towards_positive_infinity() {
-    assert_eq!(java_round(2.5), 3);
-    assert_eq!(java_round(-2.5), -2);
-    assert_eq!(java_round(0.5), 1);
-    assert_eq!(java_round(-0.5), 0);
-    assert_eq!(java_round(1.5), 2);
-    assert_eq!(java_round(-1.5), -1);
-    assert_eq!(java_round(-0.4), 0);
-    assert_eq!(java_round(2.6), 3);
-    assert_eq!(java_round(-2.6), -3);
-    assert_eq!(java_round(-0.0), 0);
-    assert_eq!(java_round(f64::NAN), 0);
-    assert_eq!(java_round(1e18), 1_000_000_000_000_000_000);
-    assert_eq!(java_round(0.49999999999999994), 0);
-}
-
-#[test]
-fn java_round_to_int_truncates_the_long_rather_than_saturating() {
-    assert_eq!(java_round_to_int(1e18), -1_486_618_624);
-    assert_eq!(java_round_to_int(-1e18), 1_486_618_624);
-    assert_eq!(java_round_to_int(2.5), 3);
-    assert_eq!(java_round_to_int(-2.5), -2);
-    assert_eq!(java_round_to_int(f64::NAN), 0);
-}
-
-#[test]
-fn java_rint_breaks_ties_to_even() {
-    assert_eq!(java_rint(2.5), 2.0);
-    assert_eq!(java_rint(-2.5), -2.0);
-    assert_eq!(java_rint(0.5), 0.0);
-    assert_eq!(java_rint(-0.5), -0.0);
-    assert_eq!(java_rint(1.5), 2.0);
-    assert!(java_rint(-0.5).is_sign_negative());
-    assert!(java_rint(0.5).is_sign_positive());
-    assert!(java_rint(f64::NAN).is_nan());
 }
 
 #[test]

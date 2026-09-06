@@ -21,7 +21,7 @@ pub use error::{BoardMetadata, BoardReadResult, DsnError, FileFormat};
 pub use format::{
     DSN_RESERVED, IdentifierType, IndentFileWriter, JavaNumberFormatter, SES_RESERVED,
     format_placement_rotation, java_double_to_string, java_float_to_string, java_format_fixed,
-    java_rint, java_round, java_round_to_int, to_gson_string_pretty,
+    to_gson_string_pretty,
 };
 pub use keyword::{Keyword, ScopeKeyword};
 pub use lexer::{DsnScanner, LexicalState, Token};
@@ -43,7 +43,6 @@ pub mod prelude {
         JavaNumberFormatter, Keyword, LexicalState, ReadAreaScopeResult, ReadScopeParameter,
         RuleLayerScope, SES_RESERVED, ScopeKeyword, SesImportSummary, Token, WriteScopeParameter,
         format_placement_rotation, java_double_to_string, java_float_to_string, java_format_fixed,
-        java_rint, java_round, java_round_to_int, read_board, read_metadata, read_scope,
-        skip_scope, to_gson_string_pretty, write,
+        read_board, read_metadata, read_scope, skip_scope, to_gson_string_pretty, write,
     };
 }

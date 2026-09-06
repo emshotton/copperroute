@@ -4,7 +4,7 @@ use std::rc::Rc;
 use fr_board::items::Item;
 use fr_board::{Board, ItemId, StopConnectionOption};
 use fr_drc::DesignRulesChecker;
-use fr_geometry::{FloatPoint, java_min, java_round};
+use fr_geometry::FloatPoint;
 use fr_settings::RouterSettings;
 
 use crate::error::RouterError;
@@ -424,15 +424,12 @@ impl<'a> BatchOptimizer<'a> {
 
         if route_improved {
             self.incomplete_nets = BatchOptimizer::open_nets(board, self.settings, budget);
-            self.min_cumulative_trace_length = java_min(
-                self.min_cumulative_trace_length,
-                f64::from(
-                    board_statistics_after
-                        .traces
-                        .total_weighted_length
-                        .unwrap_or(0.0),
-                ),
-            );
+            self.min_cumulative_trace_length = (self.min_cumulative_trace_length).min(f64::from(
+                board_statistics_after
+                    .traces
+                    .total_weighted_length
+                    .unwrap_or(0.0),
+            ));
             self.carried_connections = Some(board_statistics_after.connections.clone());
             board.discard_undo_journal();
             drop(snapshot);
@@ -474,7 +471,7 @@ pub fn optimizer_ripup_costs(
             .trace_ripup_cost_factor
             .expect("optimizer.traceRipupCostFactor is unboxed at :462");
         ripup_costs =
-            java_round(f64::from(trace_ripup_cost_factor) * f64::from(ripup_costs)) as i32;
+            (f64::from(trace_ripup_cost_factor) * f64::from(ripup_costs)).round() as i64 as i32;
     }
     ripup_costs
 }

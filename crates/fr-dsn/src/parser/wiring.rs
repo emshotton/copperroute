@@ -6,7 +6,7 @@ use fr_board::{Board, BoardError, FixedState, Item, ItemId, NetClassId, Padstack
 use fr_geometry::{Area, FloatPoint, Line, Point, Polygon, Polyline, TileShape};
 
 use crate::error::DsnError;
-use crate::format::{IdentifierType, IndentFileWriter, java_double_to_string, java_round_to_int};
+use crate::format::{IdentifierType, IndentFileWriter, java_double_to_string};
 use crate::keyword::Keyword;
 use crate::lexer::Token;
 use crate::parser::geometry::{self as shape, DsnLayer, DsnPolygonPath, DsnPolylinePath, DsnShape};
@@ -157,7 +157,7 @@ fn read_wire_scope(p: &mut ReadScopeParameter<'_>) -> Result<Option<ItemId>, Dsn
     let (layer_index, half_width) = match (&path, &border_shape) {
         (Some(path), _) => (
             path.layer().no,
-            java_round_to_int(coordinate_transform.dsn_to_board(path_width(path) / 2.0)),
+            (coordinate_transform.dsn_to_board(path_width(path) / 2.0)).round() as i32,
         ),
         (None, Some(border_shape)) => (border_shape.layer().no, 0),
         (None, None) => unreachable!("the `path == null && borderShape == null` exit is above"),

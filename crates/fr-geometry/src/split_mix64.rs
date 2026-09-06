@@ -1,13 +1,13 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct JavaRandom {
+pub struct SplitMix64 {
     state: u64,
 }
 
-impl JavaRandom {
+impl SplitMix64 {
     const DOUBLE_UNIT: f64 = 1.0 / ((1_u64 << 53) as f64);
 
-    pub fn new(seed: i64) -> JavaRandom {
-        JavaRandom { state: seed as u64 }
+    pub fn new(seed: i64) -> SplitMix64 {
+        SplitMix64 { state: seed as u64 }
     }
 
     pub fn set_seed(&mut self, seed: i64) {
@@ -38,7 +38,7 @@ impl JavaRandom {
     }
 
     pub fn next_double(&mut self) -> f64 {
-        (self.next_u64() >> 11) as f64 * JavaRandom::DOUBLE_UNIT
+        (self.next_u64() >> 11) as f64 * SplitMix64::DOUBLE_UNIT
     }
 }
 
@@ -48,8 +48,8 @@ mod tests {
 
     #[test]
     fn new_and_set_seed_produce_the_same_stream() {
-        let mut a = JavaRandom::new(99);
-        let mut b = JavaRandom::new(0);
+        let mut a = SplitMix64::new(99);
+        let mut b = SplitMix64::new(0);
         b.set_seed(99);
         assert_eq!(a, b);
         assert_eq!(a.next_int(7), b.next_int(7));
@@ -57,10 +57,25 @@ mod tests {
 
     #[test]
     fn next_double_lies_in_the_unit_interval() {
-        let mut r = JavaRandom::new(12345);
+        let mut r = SplitMix64::new(12345);
         for _ in 0..1000 {
             let d = r.next_double();
             assert!((0.0..1.0).contains(&d), "{d}");
         }
+    }
+
+    #[test]
+    fn set_seed_resets_a_partly_drawn_generator() {
+        let mut r = SplitMix64::new(1000);
+        let first = r.next_double().to_bits();
+        r.next_int(10);
+        r.set_seed(1000);
+        assert_eq!(r.next_double().to_bits(), first);
+    }
+
+    #[test]
+    #[should_panic(expected = "bound must be positive")]
+    fn next_int_rejects_a_non_positive_bound() {
+        SplitMix64::new(1).next_int(0);
     }
 }

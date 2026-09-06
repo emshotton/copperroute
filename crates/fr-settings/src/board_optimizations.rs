@@ -1,5 +1,4 @@
 use fr_board::Board;
-use fr_geometry::java_round;
 
 use crate::{LayerSettings, RouterSettings, ScoringSettings};
 
@@ -29,9 +28,9 @@ impl RouterSettings {
         }
 
         let horizontal_add_costs_against_preferred_dir =
-            0.1 * java_round(10.0 * horizontal_width / vertical_width) as f64;
+            0.1 * (10.0 * horizontal_width / vertical_width).round() as i64 as f64;
         let vertical_add_costs_against_preferred_dir =
-            0.1 * java_round(10.0 * vertical_width / horizontal_width) as f64;
+            0.1 * (10.0 * vertical_width / horizontal_width).round() as i64 as f64;
 
         if !matches!(&self.layers, Some(layers) if layers.len() == layer_count) {
             self.board_specific_trace_costs_applied = Some(false);

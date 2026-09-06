@@ -4,7 +4,7 @@ use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_dsn::format::double::java_double_to_string;
 use fr_geometry::{
-    IntBox, IntOctagon, IntPoint, IntVector, JavaRandom, Point, Polyline, Shape, TileShape, Vector,
+    IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, Shape, SplitMix64, TileShape, Vector,
 };
 use fr_router::PageId;
 use fr_router::autoroute::maze::engine::AutorouteEngine;
@@ -2022,11 +2022,11 @@ fn t15b_string_hash(text: &str) -> i32 {
 
 /// Probe mode `rand`: 128 randomised `insertForcedTracePolyline` calls and 128 randomised
 /// `insertForcedTraceSegment` calls from one `java.util.Random(4242)` stream, replayed here with
-/// [`JavaRandom`]. Each row carries `String.hashCode` of the whole board dump, so a board
+/// [`SplitMix64`]. Each row carries `String.hashCode` of the whole board dump, so a board
 /// compares as one integer.
 #[test]
 fn the_two_random_blocks_agree_with_the_jvm() {
-    let mut rnd = JavaRandom::new(4242);
+    let mut rnd = SplitMix64::new(4242);
     let mut rows = vec!["  block=polyline".to_string()];
     for row in 0..128 {
         let regime_no = rnd.next_int(3) as usize;

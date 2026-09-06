@@ -1,13 +1,3 @@
-pub use fr_geometry::java_round;
-
-pub fn java_rint(x: f64) -> f64 {
-    x.round_ties_even()
-}
-
-pub fn java_round_to_int(x: f64) -> i32 {
-    java_round(x) as i32
-}
-
 pub fn java_double_to_string(d: f64) -> String {
     if d.is_nan() {
         return "NaN".to_string();
@@ -41,8 +31,8 @@ pub fn java_float_to_string(f: f32) -> String {
 }
 
 pub fn format_placement_rotation(degrees: f64) -> String {
-    let rounded = java_rint(degrees * 1000.0) / 1000.0;
-    if (rounded - java_rint(rounded)).abs() < 1e-9 {
+    let rounded = (degrees * 1000.0).round_ties_even() / 1000.0;
+    if (rounded - (rounded).round_ties_even()).abs() < 1e-9 {
         return java_format_fixed(rounded, 0);
     }
     let formatted = java_format_fixed(rounded, 3);

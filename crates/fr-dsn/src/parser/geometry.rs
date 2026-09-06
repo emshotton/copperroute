@@ -5,7 +5,7 @@ use fr_geometry::{
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
-use crate::format::{IdentifierType, IndentFileWriter, java_double_to_string, java_round_to_int};
+use crate::format::{IdentifierType, IndentFileWriter, java_double_to_string};
 use crate::keyword::{Keyword, ScopeKeyword};
 use crate::lexer::{DsnScanner, Token};
 use crate::parser::dsn_file::read_string_scope;
@@ -152,7 +152,7 @@ impl DsnRectangle {
     pub fn transform_to_board_rel(&self, coordinate_transform: &CoordinateTransform) -> Shape {
         let mut box_coor = [0_i32; 4];
         for (target, source) in box_coor.iter_mut().zip(self.coor) {
-            *target = java_round_to_int(coordinate_transform.dsn_to_board(source));
+            *target = (coordinate_transform.dsn_to_board(source)).round() as i32;
         }
         let result = if box_coor[1] <= box_coor[3] {
             // boxCoor describe lower left and upper right corner
@@ -205,7 +205,7 @@ impl DsnRectangle {
         identifier.write(&self.layer.name, file);
         for c in self.coor {
             file.write(" ");
-            let current_coor = java_round_to_int(c);
+            let current_coor = (c).round() as i32;
             file.write(&current_coor.to_string());
         }
         file.write(")");
@@ -230,15 +230,15 @@ impl DsnCircle {
         let center = coordinate_transform
             .dsn_to_board_point(&[self.coor[1], self.coor[2]])
             .round();
-        let radius = java_round_to_int(coordinate_transform.dsn_to_board(self.coor[0]) / 2.0);
+        let radius = (coordinate_transform.dsn_to_board(self.coor[0]) / 2.0).round() as i32;
         Shape::Circle(Circle::new(center, radius))
     }
 
     #[must_use]
     pub fn transform_to_board_rel(&self, coordinate_transform: &CoordinateTransform) -> Shape {
-        let radius = java_round_to_int(coordinate_transform.dsn_to_board(self.coor[0]) / 2.0);
-        let x = java_round_to_int(coordinate_transform.dsn_to_board(self.coor[1]));
-        let y = java_round_to_int(coordinate_transform.dsn_to_board(self.coor[2]));
+        let radius = (coordinate_transform.dsn_to_board(self.coor[0]) / 2.0).round() as i32;
+        let x = (coordinate_transform.dsn_to_board(self.coor[1])).round() as i32;
+        let y = (coordinate_transform.dsn_to_board(self.coor[2])).round() as i32;
         Shape::Circle(Circle::new(IntPoint::new(x, y), radius))
     }
 
@@ -281,7 +281,7 @@ impl DsnCircle {
         identifier.write(&self.layer.name, file);
         for c in self.coor {
             file.write(" ");
-            let current_coor = java_round_to_int(c);
+            let current_coor = (c).round() as i32;
             file.write(&current_coor.to_string());
         }
         file.write(")");
@@ -324,9 +324,9 @@ impl DsnPolygon {
         let corners: Vec<Point> = (0..self.coor.len() / 2)
             .map(|i| {
                 let current_x =
-                    java_round_to_int(coordinate_transform.dsn_to_board(self.coor[2 * i]));
+                    (coordinate_transform.dsn_to_board(self.coor[2 * i])).round() as i32;
                 let current_y =
-                    java_round_to_int(coordinate_transform.dsn_to_board(self.coor[2 * i + 1]));
+                    (coordinate_transform.dsn_to_board(self.coor[2 * i + 1])).round() as i32;
                 Point::Int(IntPoint::new(current_x, current_y))
             })
             .collect();
@@ -388,10 +388,10 @@ impl DsnPolygon {
         let corner_count = self.coor.len() / 2;
         for i in 0..corner_count {
             file.new_line();
-            let mut current_coor = java_round_to_int(self.coor[2 * i]);
+            let mut current_coor = (self.coor[2 * i]).round() as i32;
             file.write(&current_coor.to_string());
             file.write(" ");
-            current_coor = java_round_to_int(self.coor[2 * i + 1]);
+            current_coor = (self.coor[2 * i + 1]).round() as i32;
             file.write(&current_coor.to_string());
         }
         file.end_scope();
@@ -449,10 +449,10 @@ impl DsnPolygonPath {
         let corner_count = self.coordinate_arr.len() / 2;
         for i in 0..corner_count {
             file.new_line();
-            let mut current_coor = java_round_to_int(self.coordinate_arr[2 * i]);
+            let mut current_coor = (self.coordinate_arr[2 * i]).round() as i32;
             file.write(&current_coor.to_string());
             file.write(" ");
-            current_coor = java_round_to_int(self.coordinate_arr[2 * i + 1]);
+            current_coor = (self.coordinate_arr[2 * i + 1]).round() as i32;
             file.write(&current_coor.to_string());
         }
         file.end_scope();
@@ -578,7 +578,7 @@ impl DsnPolylinePath {
         for i in 0..line_count {
             file.new_line();
             for j in 0..4 {
-                let current_coor = java_round_to_int(self.coordinate_arr[4 * i + j]);
+                let current_coor = (self.coordinate_arr[4 * i + j]).round() as i32;
                 file.write(&current_coor.to_string());
                 file.write(" ");
             }

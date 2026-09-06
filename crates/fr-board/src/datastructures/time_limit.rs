@@ -1,7 +1,5 @@
 use std::time::Instant;
 
-use fr_geometry::java_min;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TimeLimit {
     start: Instant,
@@ -22,11 +20,11 @@ impl TimeLimit {
     }
 
     pub fn multiply(&mut self, factor: f64) {
-        if factor <= 0.0 {
+        if !(factor > 0.0) {
             return;
         }
         let new_limit = factor * f64::from(self.limit_ms);
-        let new_limit = java_min(new_limit, f64::from(i32::MAX));
+        let new_limit = (new_limit).min(f64::from(i32::MAX));
         self.limit_ms = new_limit as i32;
     }
 
@@ -86,10 +84,10 @@ mod tests {
     }
 
     #[test]
-    fn multiply_by_nan_collapses_to_zero_like_java() {
+    fn a_nan_factor_leaves_the_limit_unchanged() {
         let mut limit = TimeLimit::new(1000);
         limit.multiply(f64::NAN);
-        assert_eq!(limit.limit_ms(), 0);
+        assert_eq!(limit.limit_ms(), 1000);
     }
 
     #[test]

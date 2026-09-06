@@ -10,7 +10,7 @@ use crate::float_point::FloatPoint;
 use crate::int_direction::IntDirection;
 use crate::int_point::IntPoint;
 use crate::int_vector::IntVector;
-use crate::limits::{CRIT_INT, java_round};
+use crate::limits::CRIT_INT;
 use crate::point::Point;
 use crate::rational_point::RationalPoint;
 use crate::rational_vector::big_to_f64;
@@ -255,10 +255,10 @@ impl Line {
         let vyvy = v.y as f64 * v.y as f64;
         let length = (vxvx + vyvy).sqrt();
         let new_a = if vxvx <= vyvy {
-            let rel_x = java_round((dist * length) / v.y as f64) as i32;
+            let rel_x = ((dist * length) / v.y as f64).round() as i64 as i32;
             IntPoint::new(ai.x - rel_x, ai.y)
         } else {
-            let rel_y = java_round((dist * length) / v.x as f64) as i32;
+            let rel_y = ((dist * length) / v.x as f64).round() as i64 as i32;
             IntPoint::new(ai.x, ai.y + rel_y)
         };
         Line::from_direction(new_a, &direction)

@@ -2,7 +2,7 @@ use std::sync::OnceLock;
 
 use fr_geometry::{
     Direction, FloatPoint, IntBox, IntPoint, Line, Point, Polyline, Shape, ShapeOps, TileShape,
-    Vector, java_max, java_min,
+    Vector,
 };
 
 use crate::ids::{ItemId, PadstackId, TreeId};
@@ -156,7 +156,7 @@ fn smallest_radius_of<D: DrillItemBase>(item: &D, center: &Point, ctx: &ItemCtx<
     let c = center.to_float();
     for i in 0..tile_shape_count_of(item, ctx) {
         if let Some(shape) = item.shape_of(i, ctx) {
-            result = java_min(result, shape.border_distance(&c));
+            result = (result).min(shape.border_distance(&c));
         }
     }
     result
@@ -173,8 +173,8 @@ fn min_width_of<D: DrillItemBase>(item: &D, ctx: &ItemCtx<'_>) -> f64 {
             }
             if let Some(shape) = shape_on_layer_of(item, current_layer, ctx) {
                 let bounding_box = shape.bounding_box();
-                min_width = java_min(min_width, f64::from(bounding_box.width()));
-                min_width = java_min(min_width, f64::from(bounding_box.height()));
+                min_width = (min_width).min(f64::from(bounding_box.width()));
+                min_width = (min_width).min(f64::from(bounding_box.height()));
             }
         }
         min_width
@@ -752,7 +752,7 @@ impl Pin {
     }
 
     pub fn get_trace_neckdown_halfwidth(&self, layer: usize, ctx: &ItemCtx<'_>) -> i32 {
-        let result = java_max(0.5 * self.get_min_width(layer, ctx) - 1.0, 1.0);
+        let result = (0.5 * self.get_min_width(layer, ctx) - 1.0).max(1.0);
         result as i32
     }
 

@@ -1061,7 +1061,7 @@ fn the_clearance_matrix_stays_asymmetric() {
 }
 
 #[test]
-fn y_is_negated_and_java_rounded() {
+fn y_is_negated_and_rounded_away_from_zero() {
     let json = r#"{"unit":"MIL","resolution":1.0,
         "outline":{"corners":[{"x":0.5,"y":0.5},{"x":10.5,"y":0.5},{"x":10.5,"y":20.5}]}}"#;
     let (board, _, _) = board_of(json);
@@ -1080,12 +1080,8 @@ fn y_is_negated_and_java_rounded() {
             (point.x, point.y)
         })
         .collect();
-    assert_eq!(corners, [(11.0, -20.0), (11.0, 0.0), (1.0, 0.0)]);
-    assert_eq!(
-        f64::round(-20.5),
-        -21.0,
-        "the rounding the port must NOT use"
-    );
+    assert_eq!(corners, [(11.0, -21.0), (11.0, -1.0), (1.0, -1.0)]);
+    assert_eq!(f64::round(-20.5), -21.0, "the rounding the port uses");
     assert!(corners.iter().all(|(_, y)| *y <= 0.0), "{corners:?}");
 }
 

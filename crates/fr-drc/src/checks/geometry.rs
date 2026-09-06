@@ -1,5 +1,5 @@
 use fr_board::{Board, Item, ItemId, ItemKind, TreeObject};
-use fr_geometry::{Circle, FloatPoint, TileShape, java_round};
+use fr_geometry::{Circle, FloatPoint, TileShape};
 
 pub struct Hole {
     pub shape: TileShape,
@@ -66,7 +66,7 @@ pub fn is_microvia(board: &Board, id: ItemId) -> bool {
 }
 
 fn hole_from(center: FloatPoint, radius: f64, estimated: bool) -> Hole {
-    let circle = Circle::new(center.round(), java_round(radius) as i32);
+    let circle = Circle::new(center.round(), (radius).round() as i64 as i32);
     Hole {
         shape: TileShape::Octagon(circle.bounding_octagon()),
         radius,

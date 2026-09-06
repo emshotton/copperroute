@@ -326,7 +326,7 @@ fn an_smd_pin_is_cut_out_unless_attach_smd_and_drill_allowed() {
     let rows = drill_rows(&engine, &with);
     assert_eq!(
         rows[10],
-        (-378, -121, 0, 1, -11377278, (-576, -240, -260, 76))
+        (-379, -122, 0, 1, -11408030, (-576, -240, -260, 76))
     );
     assert_eq!(rows[..10], without_rows[..10]);
 }

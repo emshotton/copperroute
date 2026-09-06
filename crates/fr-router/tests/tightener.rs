@@ -3,7 +3,7 @@ use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_dsn::format::double::java_double_to_string;
 use fr_geometry::{
-    IntBox, IntOctagon, IntPoint, IntVector, JavaRandom, Line, Point, Polyline, Shape, TileShape,
+    IntBox, IntOctagon, IntPoint, IntVector, Line, Point, Polyline, Shape, SplitMix64, TileShape,
 };
 use fr_router::board_ext::{PolylineTraceExt, TraceTightener};
 
@@ -1246,7 +1246,7 @@ fn pin_edge_branch_matches_the_jvm() {
 const RANDOM_COUNT: usize = 256;
 const RANDOM_SEED: i64 = 4242;
 
-/// `P6T15aProbe.randomTable`, replayed with [`JavaRandom`] so the two sides draw the same stream.
+/// `P6T15aProbe.randomTable`, replayed with [`SplitMix64`] so the two sides draw the same stream.
 fn random_rows(angle: AngleRestriction) -> Vec<String> {
     let mut board = probe_board(angle);
     let mut out = vec![format!(
@@ -1255,7 +1255,7 @@ fn random_rows(angle: AngleRestriction) -> Vec<String> {
         RANDOM_COUNT,
         RANDOM_SEED
     )];
-    let mut rnd = JavaRandom::new(RANDOM_SEED);
+    let mut rnd = SplitMix64::new(RANDOM_SEED);
     for i in 0..RANDOM_COUNT {
         let corner_count = 2 + rnd.next_int(7);
         let corners: Vec<Point> = (0..corner_count)

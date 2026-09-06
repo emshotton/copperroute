@@ -10,7 +10,7 @@ use fr_geometry::{Area, Point, ShapeOps, Vector};
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
-use crate::format::{IdentifierType, IndentFileWriter, java_double_to_string, java_round_to_int};
+use crate::format::{IdentifierType, IndentFileWriter, java_double_to_string};
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::dsn_file::{
@@ -709,7 +709,7 @@ fn read_net_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
                 if let DsnRule::Width(wire_width) = current_object {
                     let default_net_rule = board.rules.get_default_net_class();
                     let trace_half_width =
-                        java_round_to_int(coordinate_transform.dsn_to_board(*wire_width) / 2.0);
+                        (coordinate_transform.dsn_to_board(*wire_width) / 2.0).round() as i32;
                     let default_trace_clearance_class = board
                         .rules
                         .net_classes
@@ -1044,7 +1044,7 @@ pub fn insert_net_class(
         match current_rule {
             DsnRule::Width(value) => {
                 let trace_half_width =
-                    java_round_to_int(coordinate_transform.dsn_to_board(value / 2.0));
+                    (coordinate_transform.dsn_to_board(value / 2.0)).round() as i32;
                 board
                     .rules
                     .net_classes
@@ -1067,7 +1067,7 @@ pub fn insert_net_class(
                 match current_rule {
                     DsnRule::Width(value) => {
                         let trace_half_width =
-                            java_round_to_int(coordinate_transform.dsn_to_board(value / 2.0));
+                            (coordinate_transform.dsn_to_board(value / 2.0)).round() as i32;
                         board
                             .rules
                             .net_classes
@@ -1210,7 +1210,7 @@ fn add_mixed_clearance_rule(
     coordinate_transform: &CoordinateTransform,
 ) {
     let current_clearance =
-        java_round_to_int(coordinate_transform.dsn_to_board(clearance_rule.value));
+        (coordinate_transform.dsn_to_board(clearance_rule.value)).round() as i32;
     let first_class_name = board
         .rules
         .net_classes
@@ -1401,7 +1401,7 @@ fn add_clearance_rule(
     layer_index: Option<usize>,
     coordinate_transform: &CoordinateTransform,
 ) {
-    let current_clearance = java_round_to_int(coordinate_transform.dsn_to_board(rule.value));
+    let current_clearance = (coordinate_transform.dsn_to_board(rule.value)).round() as i32;
     let class_name = board
         .rules
         .net_classes

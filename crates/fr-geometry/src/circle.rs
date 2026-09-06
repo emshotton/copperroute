@@ -3,7 +3,6 @@ use crate::int_box::IntBox;
 use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
 use crate::int_vector::IntVector;
-use crate::limits::{java_max, java_round};
 use crate::line::Line;
 use crate::point::Point;
 use crate::polyline::Polyline;
@@ -84,7 +83,7 @@ impl Circle {
 
     pub fn distance(&self, point: &FloatPoint) -> f64 {
         let d = point.distance(&self.center.to_float()) - self.radius as f64;
-        java_max(d, 0.0)
+        (d).max(0.0)
     }
 
     pub fn smallest_radius(&self) -> f64 {
@@ -214,12 +213,12 @@ impl Circle {
 
     pub fn offset(&self, offset: f64) -> Circle {
         let new_radius = self.radius as f64 + offset;
-        Circle::new(self.center, java_round(new_radius) as i32)
+        Circle::new(self.center, (new_radius).round() as i64 as i32)
     }
 
     pub fn shrink(&self, offset: f64) -> Circle {
         let new_radius = self.radius as f64 - offset;
-        Circle::new(self.center, (java_round(new_radius) as i32).max(1))
+        Circle::new(self.center, ((new_radius).round() as i64 as i32).max(1))
     }
 
     pub fn translate_by(&self, vector: &Vector) -> Circle {
@@ -260,7 +259,7 @@ impl Circle {
         if offset == 0.0 {
             return *self;
         }
-        Circle::new(self.center, self.radius + java_round(offset) as i32)
+        Circle::new(self.center, self.radius + (offset).round() as i64 as i32)
     }
 
     pub fn intersects(&self, other: &crate::shape::Shape) -> bool {

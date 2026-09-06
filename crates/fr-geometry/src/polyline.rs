@@ -4,7 +4,6 @@ use crate::int_box::IntBox;
 use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
 use crate::int_vector::IntVector;
-use crate::limits::{java_max, java_min};
 use crate::line::Line;
 use crate::line_segment::LineSegment;
 use crate::point::Point;
@@ -594,10 +593,10 @@ impl Polyline {
             let mut i = from_corner_no;
             while i <= to_corner_no {
                 let current_corner = self.corner_approx_at(i);
-                llx = java_min(llx, current_corner.x);
-                lly = java_min(lly, current_corner.y);
-                urx = java_max(urx, current_corner.x);
-                ury = java_max(ury, current_corner.y);
+                llx = (llx).min(current_corner.x);
+                lly = (lly).min(current_corner.y);
+                urx = (urx).max(current_corner.x);
+                ury = (ury).max(current_corner.y);
                 i += 1;
             }
         }
@@ -628,16 +627,16 @@ impl Polyline {
             let mut i = from_corner_no;
             while i <= to_corner_no {
                 let current = self.corner_approx_at(i);
-                lx = java_min(lx, current.x);
-                ly = java_min(ly, current.y);
-                rx = java_max(rx, current.x);
-                uy = java_max(uy, current.y);
+                lx = (lx).min(current.x);
+                ly = (ly).min(current.y);
+                rx = (rx).max(current.x);
+                uy = (uy).max(current.y);
                 let mut tmp = current.x - current.y;
-                ulx = java_min(ulx, tmp);
-                lrx = java_max(lrx, tmp);
+                ulx = (ulx).min(tmp);
+                lrx = (lrx).max(tmp);
                 tmp = current.x + current.y;
-                llx = java_min(llx, tmp);
-                urx = java_max(urx, tmp);
+                llx = (llx).min(tmp);
+                urx = (urx).max(tmp);
                 i += 1;
             }
         }

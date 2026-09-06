@@ -7,7 +7,7 @@ use fr_geometry::{Area, IntBox, PolylineShapeRef, Shape, TileShape};
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
-use crate::format::{IndentFileWriter, java_round_to_int};
+use crate::format::IndentFileWriter;
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::DsnRouterSettings;
@@ -697,7 +697,7 @@ fn update_board_rules(
     for current_object in &info.default_rules {
         if let DsnRule::Width(wire_width) = current_object {
             let trace_halfwidth =
-                java_round_to_int(coordinate_transform.dsn_to_board(*wire_width) / 2.0);
+                (coordinate_transform.dsn_to_board(*wire_width) / 2.0).round() as i32;
             board_rules.set_default_trace_half_widths(trace_halfwidth);
         }
     }
@@ -710,7 +710,7 @@ fn update_board_rules(
             match current_object {
                 DsnRule::Width(wire_width) => {
                     let trace_halfwidth =
-                        java_round_to_int(coordinate_transform.dsn_to_board(*wire_width) / 2.0);
+                        (coordinate_transform.dsn_to_board(*wire_width) / 2.0).round() as i32;
                     board_rules.set_default_trace_half_width(layer_index, trace_halfwidth);
                 }
                 DsnRule::Clearance(current_rule) => {
@@ -744,7 +744,7 @@ pub fn set_clearance_rule(
     string_quote: &str,
 ) -> bool {
     let mut result = false;
-    let current_clearance = java_round_to_int(coordinate_transform.dsn_to_board(rule.value));
+    let current_clearance = (coordinate_transform.dsn_to_board(rule.value)).round() as i32;
     if rule.clearance_class_pairs.is_empty() {
         match scope {
             RuleLayerScope::AllLayers => board_rules

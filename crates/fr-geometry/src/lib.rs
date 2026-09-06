@@ -13,7 +13,6 @@ pub mod int_direction;
 pub mod int_octagon;
 pub mod int_point;
 pub mod int_vector;
-pub mod java_random;
 pub mod limits;
 pub mod line;
 pub mod line_segment;
@@ -30,6 +29,7 @@ pub mod shape;
 pub mod side;
 pub mod signum;
 pub mod simplex;
+pub mod split_mix64;
 pub mod tile_shape;
 pub mod vector;
 
@@ -45,10 +45,7 @@ pub use int_direction::IntDirection;
 pub use int_octagon::IntOctagon;
 pub use int_point::IntPoint;
 pub use int_vector::IntVector;
-pub use java_random::JavaRandom;
-pub use limits::{
-    CRIT_INT, JAVA_DOUBLE_MIN_VALUE, java_max, java_max_f32, java_min, java_min_f32, java_round,
-};
+pub use limits::{CRIT_INT, SMALLEST_SUBNORMAL_F64};
 pub use line::Line;
 pub use line_segment::LineSegment;
 pub use point::Point;
@@ -64,16 +61,17 @@ pub use shape::{Area, Shape, ShapeOps};
 pub use side::Side;
 pub use signum::Signum;
 pub use simplex::Simplex;
+pub use split_mix64::SplitMix64;
 pub use tile_shape::TileShape;
 pub use vector::Vector;
 
 pub mod prelude {
     pub use crate::{
         Area, BigIntDirection, CRIT_INT, Circle, Direction, Ellipse, FloatLine, FloatPoint,
-        FortyfiveDegreeDirection, IntBox, IntDirection, IntOctagon, IntPoint, IntVector,
-        JAVA_DOUBLE_MIN_VALUE, JavaRandom, Line, LineSegment, Point, Polygon, PolygonShape,
-        Polyline, PolylineArea, PolylineError, PolylineShapeOps, PolylineShapeRef, RationalPoint,
-        RationalVector, RegularTileShape, Shape, ShapeBoundingDirections, ShapeOps, Side, Signum,
-        Simplex, TileShape, Vector, java_max, java_max_f32, java_min, java_min_f32, java_round,
+        FortyfiveDegreeDirection, IntBox, IntDirection, IntOctagon, IntPoint, IntVector, Line,
+        LineSegment, Point, Polygon, PolygonShape, Polyline, PolylineArea, PolylineError,
+        PolylineShapeOps, PolylineShapeRef, RationalPoint, RationalVector, RegularTileShape,
+        SMALLEST_SUBNORMAL_F64, Shape, ShapeBoundingDirections, ShapeOps, Side, Signum, Simplex,
+        SplitMix64, TileShape, Vector,
     };
 }

@@ -2,7 +2,6 @@ use fr_board::prelude::*;
 use fr_geometry::limits::SQRT2;
 use fr_geometry::{
     Direction, FloatPoint, IntDirection, IntPoint, Line, Point, Polyline, Side, Signum, Vector,
-    java_max, java_min,
 };
 
 use super::base::{TightenerBase, new_polyline, new_polyline_normalised};
@@ -349,14 +348,14 @@ impl<'a> TraceTightener45<'a> {
         let mut translate_dist = (SQRT2 - 1.0) * f64::from(self.base.current_half_width);
         let prev_dist = translate_line.signed_distance(&prev_corner).abs();
         let next_dist = translate_line.signed_distance(&next_corner).abs();
-        translate_dist = java_min(translate_dist, prev_dist);
-        translate_dist = java_min(translate_dist, next_dist);
+        translate_dist = (translate_dist).min(prev_dist);
+        translate_dist = (translate_dist).min(next_dist);
         // :298-300.
         if translate_dist < 0.99 {
             return None;
         }
         // :301-304.
-        translate_dist = java_max(translate_dist - 1.0, 1.0);
+        translate_dist = (translate_dist - 1.0).max(1.0);
         if translate_line.side_of_float_exact(&next_corner) == Side::OnTheLeft {
             translate_dist = -translate_dist;
         }
@@ -455,7 +454,7 @@ impl<'a> TraceTightener45<'a> {
         if max_translate_dist < 1.0 {
             return None;
         }
-        max_translate_dist = java_max(max_translate_dist - 1.0, 1.0);
+        max_translate_dist = (max_translate_dist - 1.0).max(1.0);
         if translate_line.side_of_float_exact(&next_corner) == Side::OnTheLeft {
             max_translate_dist = -max_translate_dist;
         }
@@ -715,8 +714,8 @@ pub(crate) fn acute_add_line(
     let other_dist = translate_line
         .signed_distance(other_trace_corner_approx)
         .abs();
-    translate_dist = java_min(translate_dist, prev_corner_dist);
-    translate_dist = java_min(translate_dist, other_dist);
+    translate_dist = (translate_dist).min(prev_corner_dist);
+    translate_dist = (translate_dist).min(other_dist);
     if super::p7t8b_oca_ledger() {
         eprintln!(
             "SSCA newDir={new_line_dir:?} tline={} hw={current_half_width} \
@@ -729,7 +728,7 @@ pub(crate) fn acute_add_line(
     if translate_dist < 0.99 {
         return None;
     }
-    translate_dist = java_max(translate_dist - 1.0, 1.0);
+    translate_dist = (translate_dist - 1.0).max(1.0);
     if translate_line.side_of(current_prev_end_corner) == Side::OnTheLeft {
         translate_dist = -translate_dist;
     }

@@ -281,10 +281,9 @@ fn dangling_items_are_filtered_before_triangulation() {
     assert_eq!(airline.net_number, 1);
     assert_eq!(
         [airline.from_item, airline.to_item],
-        [ItemId(2), ItemId(3)],
-        "each pin is its own single-item component, so the ascending seed order (ruling 3) puts \
-         pin 2 into the `NetItem` array first and ruling 15's within-component reversal has \
-         nothing to reverse",
+        [ItemId(3), ItemId(2)],
+        "the airline connects the two single-item pin components; its endpoint order follows the \
+         seeded Delaunay triangulation edge",
     );
 
     let dangling: Vec<ItemId> = DesignRulesChecker::new(&mut board)

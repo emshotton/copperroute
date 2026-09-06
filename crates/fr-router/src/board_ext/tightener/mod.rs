@@ -9,7 +9,7 @@ use fr_board::datastructures::StopCheck;
 use fr_board::prelude::*;
 use fr_geometry::{
     Direction, FloatPoint, IntDirection, IntOctagon, Line, Point, Polyline, Shape, Side, Signum,
-    TileShape, java_max,
+    TileShape,
 };
 use fr_settings::ExpansionCostFactor;
 
@@ -992,7 +992,7 @@ impl PolylineTraceExt for Board {
             layer,
         ));
         // :1074-1076.
-        let add_width = java_max(edge_to_turn_dist, current_clearance + 1.0);
+        let add_width = (edge_to_turn_dist).max(current_clearance + 1.0);
         let preserve_length =
             matching_exit_restriction.min_length + f64::from(half_width) + add_width;
         preserve_length <= end_line_length
@@ -1066,7 +1066,7 @@ impl PolylineTraceExt for Board {
             layer,
         ));
         // :1126-1128.
-        let add_width = java_max(edge_to_turn_dist, current_clearance + 1.0);
+        let add_width = (edge_to_turn_dist).max(current_clearance + 1.0);
         let mut offset_pin_shape = pin_shape.offset(f64::from(half_width) + add_width);
         // :1129-1134.
         if angle_restriction == AngleRestriction::NinetyDegree || offset_pin_shape.is_int_box() {

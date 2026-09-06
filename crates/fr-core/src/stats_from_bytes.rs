@@ -80,8 +80,8 @@ fn dsn_branch(content: &str, stats: &mut BoardStatistics) {
 
     if let Some(parser_index) = content.find("(parser") {
         let mut search_limit = match content[parser_index..].find(')') {
-            Some(offset) => java_min(content.len(), parser_index + offset + 1),
-            None => java_min(content.len(), parser_index + 1000),
+            Some(offset) => (content.len()).min(parser_index + offset + 1),
+            None => (content.len()).min(parser_index + 1000),
         };
         while !content.is_char_boundary(search_limit) {
             search_limit += 1;
@@ -307,15 +307,11 @@ fn remove_quotes(text: &str) -> &str {
 }
 
 fn slice_totalized(text: &str, begin: usize, end: usize) -> &str {
-    let mut begin = java_min(begin, end);
+    let mut begin = (begin).min(end);
     while !text.is_char_boundary(begin) {
         begin += 1;
     }
     &text[begin..end]
-}
-
-fn java_min(a: usize, b: usize) -> usize {
-    if a < b { a } else { b }
 }
 
 fn java_trim(text: &str) -> &str {

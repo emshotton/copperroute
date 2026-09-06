@@ -2,7 +2,7 @@ use crate::float_point::FloatPoint;
 use crate::int_direction::IntDirection;
 use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
-use crate::limits::{CRIT_INT, java_max, java_round};
+use crate::limits::CRIT_INT;
 use crate::line::Line;
 use crate::side::Side;
 use crate::simplex::Simplex;
@@ -226,9 +226,9 @@ impl IntBox {
         let min_ur_y = self.ur.y.min(other.ur.y) as f64;
 
         if min_ur_x >= max_ll_x {
-            java_max(vertical_weight * (max_ll_y - min_ur_y), 0.0)
+            (vertical_weight * (max_ll_y - min_ur_y)).max(0.0)
         } else if min_ur_y >= max_ll_y {
-            java_max(horizontal_weight * (max_ll_x - min_ur_x), 0.0)
+            (horizontal_weight * (max_ll_x - min_ur_x)).max(0.0)
         } else {
             let delta_x = (max_ll_x - min_ur_x) * horizontal_weight;
             let delta_y = (max_ll_y - min_ur_y) * vertical_weight;
@@ -382,7 +382,7 @@ impl IntBox {
         if dist == 0.0 || self.is_empty() {
             return *self;
         }
-        let rounded_distance = java_round(dist) as i32;
+        let rounded_distance = (dist).round() as i64 as i32;
         IntBox::from_coords(
             self.ll.x - rounded_distance,
             self.ll.y - rounded_distance,
@@ -397,7 +397,7 @@ impl IntBox {
         if dist == 0.0 || self.is_empty() {
             return *self;
         }
-        let rounded_distance = java_round(dist) as i32;
+        let rounded_distance = (dist).round() as i64 as i32;
         IntBox::from_coords(
             self.ll.x - rounded_distance,
             self.ll.y,
@@ -412,7 +412,7 @@ impl IntBox {
         if dist == 0.0 || self.is_empty() {
             return *self;
         }
-        let rounded_distance = java_round(dist) as i32;
+        let rounded_distance = (dist).round() as i64 as i32;
         IntBox::from_coords(
             self.ll.x,
             self.ll.y - rounded_distance,

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use fr_board::{Board, Component, Item, equals_ignore_case};
 
 use crate::error::DsnError;
-use crate::format::{java_double_to_string, java_round_to_int};
+use crate::format::java_double_to_string;
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::dsn_file::read_string_scope;
@@ -259,7 +259,7 @@ pub fn write_component_scope(p: &mut WriteScopeParameter<'_>, component: &Compon
         } else {
             p.file.write(" back ");
         }
-        let rotation = java_round_to_int(component.get_rotation_in_degree());
+        let rotation = (component.get_rotation_in_degree()).round() as i32;
         p.file.write(&rotation.to_string());
     }
     if component.position_fixed {

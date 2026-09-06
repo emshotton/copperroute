@@ -3,7 +3,6 @@ use fr_board::rules::BoardRules;
 use fr_board::structure::{FixedState, Unit};
 use fr_board::{Board, ItemId};
 use fr_drc::{BoardStatisticsClearanceViolations, DesignRulesChecker, DrcViolation};
-use fr_geometry::java_min;
 
 use super::dtos::{
     BoardStatisticsBends, BoardStatisticsBoard, BoardStatisticsComponents,
@@ -106,8 +105,8 @@ impl BoardStatistics {
         stats.board.size = Some(Rectangle2DFloat {
             x: 0.0,
             y: 0.0,
-            width: java_abs_f32(bb.ll.x as f32 - bb.ur.x as f32),
-            height: java_abs_f32(bb.ll.y as f32 - bb.ur.y as f32),
+            width: (bb.ll.x as f32 - bb.ur.x as f32).abs(),
+            height: (bb.ll.y as f32 - bb.ur.y as f32).abs(),
         });
 
         stats.layers.total_count = Some(board.get_layer_count() as i32);
@@ -156,11 +155,11 @@ impl BoardStatistics {
 
         let trace_ids = board.get_traces();
         stats.traces.total_count = Some(trace_ids.len() as i32);
-        let total_length =
-            java_double_stream_sum(trace_ids.iter().map(|id| match board.get_item(*id) {
-                Some(Item::Trace(trace)) => trace.get_length(),
-                _ => 0.0,
-            })) as f32;
+        let total_length = (trace_ids.iter().map(|id| match board.get_item(*id) {
+            Some(Item::Trace(trace)) => trace.get_length(),
+            _ => 0.0,
+        }))
+        .sum::<f64>() as f32;
         stats.traces.total_length = Some(total_length);
 
         let resolution = board.communication.resolution;
@@ -277,7 +276,7 @@ impl BoardStatistics {
                 let dx2 = next.x - current.x;
                 let dy2 = next.y - current.y;
                 let mut angle = (to_degrees(dy2.atan2(dx2) - dy1.atan2(dx1))).abs();
-                angle = java_min(angle, 360.0 - angle);
+                angle = (angle).min(360.0 - angle);
                 angle = if angle > 180.0 { 360.0 - angle } else { angle };
                 if (angle - 90.0).abs() < 1.0 {
                     ninety += 1;
@@ -531,29 +530,6 @@ pub fn unescape_unicode(text: &str) -> String {
         }
     }
     result
-}
-
-pub fn java_double_stream_sum(values: impl Iterator<Item = f64>) -> f64 {
-    let mut sum = 0.0_f64;
-    let mut compensation = 0.0_f64;
-    let mut simple_sum = 0.0_f64;
-    for value in values {
-        let tmp = value - compensation;
-        let velvel = sum + tmp;
-        compensation = (velvel - sum) - tmp;
-        sum = velvel;
-        simple_sum += value;
-    }
-    let tmp = sum - compensation;
-    if tmp.is_nan() && simple_sum.is_infinite() {
-        simple_sum
-    } else {
-        tmp
-    }
-}
-
-fn java_abs_f32(value: f32) -> f32 {
-    value.abs()
 }
 
 fn to_degrees(radians: f64) -> f64 {

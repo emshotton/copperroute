@@ -3,7 +3,7 @@ use fr_board::structure::{FixedState, Unit};
 use fr_drc::{DesignRulesChecker, DrcViolation};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_router::route_connection;
-use fr_router::score::{BoardStatistics, java_double_stream_sum};
+use fr_router::score::BoardStatistics;
 use fr_settings::sources::DefaultSettings;
 use fr_settings::{HostEnvironment, RouterSettings, ScoringSettings, SettingsSource};
 
@@ -511,7 +511,7 @@ fn a_pin_unconnected_on_its_second_net_needs_an_escape() {
 }
 
 #[test]
-fn float_narrowing_matches_java() {
+fn float_narrowing_produces_the_expected_bit_patterns() {
     struct Synth {
         tag: &'static str,
         maximum_count: i32,
@@ -617,7 +617,7 @@ fn float_narrowing_matches_java() {
             bend_penalty: 1.0,
             trace_cost: 1.0,
             via_costs: 1,
-            expected: (f32::NAN, f32::INFINITY, f32::NAN),
+            expected: (f32::NAN, f32::INFINITY, 0.0),
         },
     ];
 
@@ -677,45 +677,4 @@ fn the_connection_counters_are_fr_drcs_own() {
         stats.clearance_violations.total_count,
         Some(routing_involved.len() as i32)
     );
-}
-
-#[test]
-fn the_kahan_sum_subtracts_the_negated_compensation_term() {
-    let cases: [(&str, &[f64], f64); 5] = [
-        (
-            "K0",
-            &[44646902.244757555, 15114766.05020856, 134419886.7378119],
-            1.94181555032778E8,
-        ),
-        (
-            "K1",
-            &[
-                153162863.29820704,
-                22943764.53161407,
-                51720560.6157495,
-                294156676.54173774,
-            ],
-            5.219838649873083E8,
-        ),
-        (
-            "K2",
-            &[29004725.81742059, 21933330.804348517, 86551149.06402807],
-            1.3748920568579715E8,
-        ),
-        ("K3", &[f64::MAX, f64::MAX, -f64::MAX], f64::INFINITY),
-        ("K4", &[], 0.0),
-    ];
-
-    for (tag, values, expected) in cases {
-        let actual = java_double_stream_sum(values.iter().copied());
-        assert_eq!(
-            actual.to_bits(),
-            expected.to_bits(),
-            "{tag}: {actual} != {expected}"
-        );
-    }
-
-    let k0 = cases[0].1;
-    let naive: f64 = k0.iter().sum();
-    assert_ne!(naive.to_bits(), cases[0].2.to_bits());
 }
