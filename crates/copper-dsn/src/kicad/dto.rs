@@ -144,12 +144,20 @@ pub struct PadJson {
     pub drillEstimated: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub roundRectRatio: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shapeOffset: Option<Point2D>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copperPolygon: Option<Vec<Point2D>>,
     #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub layers: Option<Vec<Option<String>>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct OutlineJson {
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ordered: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cutouts: Option<Vec<Vec<Point2D>>>,
     #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub corners: Option<Vec<Point2D>>,
     #[serde(default, deserialize_with = "nullable")]
@@ -273,6 +281,8 @@ impl Default for PadJson {
             nonPlated: false,
             drillEstimated: false,
             roundRectRatio: None,
+            shapeOffset: None,
+            copperPolygon: None,
             layers: empty(),
         }
     }
@@ -281,6 +291,8 @@ impl Default for PadJson {
 impl Default for OutlineJson {
     fn default() -> OutlineJson {
         OutlineJson {
+            ordered: false,
+            cutouts: None,
             corners: empty(),
             clearance: 0.0,
         }

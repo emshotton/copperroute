@@ -137,6 +137,8 @@ pub fn write(board: &Board, design_name: &str) -> String {
             }
         }
         board_json.outline = Some(OutlineJson {
+            ordered: false,
+            cutouts: None,
             corners: Some(corners),
             clearance: f64::from(board.rules.clearance_matrix.get_value(
                 clearance_class_index,

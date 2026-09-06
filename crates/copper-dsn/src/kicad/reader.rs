@@ -5,7 +5,7 @@ use copper_board::{
 };
 use copper_geometry::{
     Area, Circle, FloatPoint, IntBox, IntOctagon, IntPoint, IntVector, Point, PolygonShape,
-    PolylineShapeRef, Shape, TileShape, Vector,
+    PolylineShapeRef, Shape, ShapeOps, TileShape, Vector,
 };
 
 use crate::coordinate_transform::CoordinateTransform;
@@ -268,7 +268,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             .as_ref()
             .expect("outline_missing returned early when it is None")
             .clone();
-        if corners.len() > 2 {
+        if corners.len() > 2 && !board_json.outline.as_ref().is_some_and(|o| o.ordered) {
             let mut sum_x = 0.0;
             let mut sum_y = 0.0;
             for point in &corners {
@@ -300,6 +300,38 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     let outline_clearance_no = board_json.outline.as_ref().map_or(1, |outline| {
         outline_clearance_class(&clearance_matrix, outline.clearance, scale_factor)
     });
+
+    let cutouts = board_json
+        .outline
+        .as_ref()
+        .and_then(|o| o.cutouts.as_ref())
+        .filter(|c| !c.is_empty());
+    let cutout_class = if cutouts.is_some() {
+        let matrix = &mut clearance_matrix;
+        let mut name = "kicad_cutout".to_string();
+        while matrix.get_no(&name).is_some() {
+            name.push('_');
+        }
+        let cutout_class = matrix.get_class_count();
+        matrix.append_class(&name);
+        let minimum =
+            (board_json.outline.as_ref().map_or(0.0, |o| o.clearance) * scale_factor).ceil() as i32;
+        for other in 0..matrix.get_class_count() {
+            for layer in 0..layer_count {
+                let clearance = minimum.max(matrix.get_value(
+                    outline_clearance_no,
+                    other.min(cutout_class - 1),
+                    layer,
+                    false,
+                ));
+                matrix.set_value(cutout_class, other, layer, clearance);
+                matrix.set_value(other, cutout_class, layer, clearance);
+            }
+        }
+        cutout_class
+    } else {
+        outline_clearance_no
+    };
 
     let coordinate_transform = match CoordinateTransform::new(scale_factor, 0.0, 0.0) {
         Ok(coordinate_transform) => coordinate_transform,
@@ -610,7 +642,22 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             };
             let dx = pad_size.x * scale_factor / 2.0;
             let dy = pad_size.y * scale_factor / 2.0;
-            let pad_shape = if shape_name == "circle" {
+            let pad_shape = if let Some(polygon) = &pad.copperPolygon {
+                if polygon.len() < 3 || polygon.iter().any(|p| !p.x.is_finite() || !p.y.is_finite())
+                {
+                    return parse_error("components", "Invalid custom copper polygon");
+                }
+                let points: Vec<Point> = polygon
+                    .iter()
+                    .map(|p| {
+                        Point::Int(IntPoint::new(
+                            (p.x * scale_factor).round() as i32,
+                            (-p.y * scale_factor).round() as i32,
+                        ))
+                    })
+                    .collect();
+                Shape::Polygon(PolygonShape::from_points(&points))
+            } else if shape_name == "circle" {
                 let radius = (pad_size.x).min(pad_size.y) * scale_factor / 2.0;
                 Shape::Circle(Circle::new(IntPoint::ZERO, (radius).round() as i32))
             } else if shape_name == "oval" {
@@ -642,6 +689,35 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                     .to_simplex(),
                 ))
             };
+
+            let pad_shape = if let Some(offset) = &pad.shapeOffset {
+                if !offset.x.is_finite()
+                    || !offset.y.is_finite()
+                    || offset.x.abs() >= pad_size.x / 2.0
+                    || offset.y.abs() >= pad_size.y / 2.0
+                {
+                    return parse_error(
+                        "components",
+                        "Pad shape offset must keep the drill anchor inside the copper shape",
+                    );
+                }
+                pad_shape.translate_by(&Vector::Int(IntVector::new(
+                    (offset.x * scale_factor).round() as i32,
+                    (-offset.y * scale_factor).round() as i32,
+                )))
+            } else {
+                pad_shape
+            };
+
+            if pad.drill > 0.0
+                && (pad.shapeOffset.is_some() || pad.copperPolygon.is_some())
+                && !pad_shape.contains_inside(&Point::Int(IntPoint::ZERO))
+            {
+                return parse_error(
+                    "components",
+                    "Drill anchor must lie inside custom or offset pad copper",
+                );
+            }
 
             let mut start_layer = 0usize;
             let mut end_layer = layer_count - 1;
@@ -677,6 +753,11 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             let is_drillable = pad.drill > 0.0;
             let hole_only = pad.nonPlated
                 && is_drillable
+                && pad.copperPolygon.is_none()
+                && pad
+                    .shapeOffset
+                    .as_ref()
+                    .is_none_or(|offset| offset.x == 0.0 && offset.y == 0.0)
                 && pad
                     .size
                     .as_ref()
@@ -839,6 +920,27 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 outline_clearance_no,
                 FixedState::SystemFixed,
             );
+        }
+    }
+
+    if let Some(cutouts) = cutouts {
+        for polygon in cutouts {
+            if polygon.len() < 3 || polygon.iter().any(|p| !p.x.is_finite() || !p.y.is_finite()) {
+                return parse_error("outline", "Invalid board cutout polygon");
+            }
+            let points: Vec<Point> = polygon
+                .iter()
+                .map(|p| {
+                    Point::Int(IntPoint::new(
+                        (p.x * scale_factor).round() as i32,
+                        (-p.y * scale_factor).round() as i32,
+                    ))
+                })
+                .collect();
+            let area = Area::Shape(Shape::Polygon(PolygonShape::from_points(&points)));
+            for layer in 0..layer_count {
+                board.insert_obstacle(area.clone(), layer, cutout_class, FixedState::SystemFixed);
+            }
         }
     }
 
