@@ -4208,7 +4208,7 @@
 [rt] fixedPoint=true bytes=1457
 
 [wcase] stem=complex-hierarchy-design
-[w]bytes=8720
+[w]bytes=8717
 [w]|{
 [w]|  "designName": "Issue733-kicad_complex_hierarchy_input_design",
 [w]|  "unit": "MM",
@@ -4287,7 +4287,7 @@
 [w]|      "clearance": 0.3,
 [w]|      "traceWidth": 0.6,
 [w]|      "viaDiameter": 1.651,
-[w]|      "viaDrill": 0.8255,
+[w]|      "viaDrill": 0.6,
 [w]|      "netNames": [
 [w]|        "-VAA",
 [w]|        "/12Vext",
@@ -4638,7 +4638,7 @@
 [w]|  "vias": [],
 [w]|  "conductionAreas": []
 [w]|}
-[rt] fixedPoint=true bytes=8684
+[rt] fixedPoint=true bytes=8681
 
 [wcase] stem=mil-full
 [w]bytes=3135

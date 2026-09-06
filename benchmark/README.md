@@ -106,7 +106,7 @@ skepticism rather than treating it as a genuine regression.
 
 ```
 bench corpus init                         # freerouting DSN fixtures → corpus/dsn, manifest entries
-bench corpus pcbench --clone DIR [--boards N | --ids ...] [--jobs N] [--skip-existing/--force]
+bench corpus pcbench --clone DIR [--boards N | --ids ...] [--jobs N] [--skip-existing/--force] [--licensed-only]
 bench corpus kicad-fixtures [--fixtures DIR] [--jobs N] [--skip-existing/--force]  # ../freerouting/fixtures/*/*.kicad_pcb → corpus/kicad, manifest entries
 bench corpus connections [--tier t] [--boards ids]  # measure Java's connection count per board (metrics.score's N)
 bench corpus list [--tier t]
@@ -146,6 +146,13 @@ off instead of re-running the whole (slow) KiCad pipeline for every board; pass 
 re-import everything regardless. Both commands print one line per finished board (id,
 `ok`/`excluded: reason`, elapsed seconds) as it completes -- with `--jobs > 1` these lines
 may interleave across boards, since several may finish close together.
+
+Every imported PCBench board carries its source license in the manifest (`license`:
+`spdx_id` plus a `status` of `licensed`, `licensed-unclassified`, `unlicensed`,
+`source-missing` or `unknown`), read from the board's `metadata.json` in the fork. About half
+the corpus comes from repositories that publish no license at all; those boards are usable
+for local evaluation but not for redistribution, and `--licensed-only` leaves them out of the
+import entirely so a run can be shared along with its inputs.
 
 ### Parallel cells (`--jobs`)
 
@@ -422,8 +429,9 @@ the (possibly just-regenerated) project and rewrites `raw-drc.json` before recom
 need `kicad-cli`. It prints a summary of status changes (`ok` → `excluded`, grouped by reason;
 `excluded` → `ok`).
 
-`bench corpus pcbench` clones and imports the [PCBench](https://github.com/PCBench/PCBench)
-corpus (1183 boards), which is not checked out in this repo's local development environment
+`bench corpus pcbench` clones and imports the [PCBench](https://github.com/emshotton/PCBench)
+corpus (1183 boards; this project's fork of `PCBench/PCBench`), which is not checked out in this
+repo's local development environment
 (the checkout is several GB) — it's imported on a remote host instead, via
 `scripts/remote-corpus.sh` above. `bench corpus kicad-fixtures` needs no external checkout —
 it imports the Java repo's own `fixtures/*/*.kicad_pcb` (+ sibling `.kicad_pro`) directories

@@ -161,6 +161,12 @@ impl RouterSettings {
             "failure_give_up_threshold",
             FieldKind::I32,
         ),
+        spec(
+            "connection_search_steps",
+            "connection_search_steps",
+            "connection_search_steps",
+            FieldKind::I64,
+        ),
     ];
 }
 
@@ -657,6 +663,9 @@ fn set_router_leaf(
         "smd_via_relaxation" => target.smd_via_relaxation = Some(parse_bool(value)),
         "failure_give_up_threshold" => {
             target.failure_give_up_threshold = Some(parse_i32(value, path)?);
+        }
+        "connection_search_steps" => {
+            target.connection_search_steps = Some(parse_i64(value, path)?);
         }
         _ => return Err(type_mismatch(path, value)),
     }

@@ -41,6 +41,9 @@ class Board:
                                          # values are CORPUS-relative posix paths (or absolute, still accepted)
     status: str = "ok"                  # "ok" | "excluded"
     reason: str = ""
+    license: dict | None = None         # {"spdx_id": ..., "status": "licensed" | "licensed-unclassified"
+                                         #  | "unlicensed" | "source-missing" | "unknown"} from the
+                                         # board's PCBench metadata.json
 
     @property
     def path(self) -> Path:

@@ -150,6 +150,7 @@ fn a_rejected_connection_restores_the_pre_route_board_exactly() {
             settings.trace_pull_tight_accuracy.unwrap_or(500),
             RouterBudget::disabled(),
             &|| false,
+            None,
         );
 
         let Some(details) = result.details.as_deref() else {

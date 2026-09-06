@@ -53,6 +53,7 @@ impl DefaultSettings {
         settings.neck_width_um = Some(0.0);
         settings.strict_drc = Some(false);
         settings.smd_via_relaxation = Some(true);
+        settings.connection_search_steps = Some(250_000);
 
         let fanout = settings
             .fanout

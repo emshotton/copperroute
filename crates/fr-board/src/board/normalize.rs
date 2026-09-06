@@ -46,6 +46,14 @@ impl Board {
         net_number: i32,
         stop: StopCheck<'_>,
     ) -> Result<bool, BoardError> {
+        self.with_cached_contacts(|board| board.normalize_traces_cached(net_number, stop))
+    }
+
+    fn normalize_traces_cached(
+        &mut self,
+        net_number: i32,
+        stop: StopCheck<'_>,
+    ) -> Result<bool, BoardError> {
         if self.normalize_suppressed_net_nos.contains(&net_number) {
             return Ok(false);
         }
@@ -98,6 +106,10 @@ impl Board {
         &mut self,
         stop: StopCheck<'_>,
     ) -> Result<bool, BoardError> {
+        self.with_cached_contacts(|board| board.normalize_all_traces_cached(stop))
+    }
+
+    fn normalize_all_traces_cached(&mut self, stop: StopCheck<'_>) -> Result<bool, BoardError> {
         let mut result = false;
         let mut traces_by_net: BTreeMap<i32, Vec<ItemId>> = BTreeMap::new();
         for id in self.items_in_board_order() {

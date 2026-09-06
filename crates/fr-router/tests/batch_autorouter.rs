@@ -205,6 +205,7 @@ fn route_prefix(
             settings.trace_pull_tight_accuracy.unwrap_or(500),
             RouterBudget::disabled(),
             &never,
+            None,
         );
         last_call_duration = last_call_start.elapsed();
         max_ids.push(board.communication.id_gen.max_generated_id().0);
@@ -755,6 +756,7 @@ fn step_six_runs_only_on_routed() {
             settings.trace_pull_tight_accuracy.unwrap_or(500),
             RouterBudget::disabled(),
             &never,
+            None,
         )
     };
 

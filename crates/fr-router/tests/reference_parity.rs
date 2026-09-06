@@ -196,6 +196,7 @@ fn route_stem_with(row: &Row, steps: Steps) -> Vec<RouterConnectionDoc> {
                 settings.trace_pull_tight_accuracy.unwrap_or(500),
                 RouterBudget::disabled(),
                 &|| false,
+                None,
             ),
         };
         let max_id_after = board.communication.id_gen.max_generated_id();

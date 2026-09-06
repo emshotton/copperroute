@@ -6,6 +6,7 @@ use fr_board::{Board, ItemId, StopConnectionOption};
 use crate::autoroute::attempt::AutorouteAttemptState;
 use crate::error::RouterError;
 use crate::pipeline::batch_autorouter::BatchAutorouter;
+use crate::pipeline::connection_budget::ConnectionBudget;
 use crate::pipeline::failure_log::RoutingFailureLog;
 use crate::pipeline::{ProgressSink, RouterCounters, RouterStop, RoutingEvent};
 
@@ -133,6 +134,11 @@ impl AutoroutePassRunner {
 
                 let mut engine = None;
                 let optimizer_work_budget = router.optimizer_work_budget();
+                let connection_budget = if router.is_optimizer_autorouter {
+                    None
+                } else {
+                    Some(ConnectionBudget::start(router.settings()))
+                };
                 let stop_check = &|| {
                     stop.is_stopped_or_expired()
                         || optimizer_work_budget
@@ -148,6 +154,7 @@ impl AutoroutePassRunner {
                     &mut ripped_item_costs,
                     pass_no,
                     stop_check,
+                    connection_budget.as_ref(),
                 );
 
                 match autorouter_result.state {

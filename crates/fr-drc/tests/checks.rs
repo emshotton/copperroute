@@ -617,3 +617,152 @@ fn a_trace_crossing_a_conduction_area_on_another_net_reports_nothing() {
     copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
     assert!(out.is_empty(), "{out:?}");
 }
+
+#[test]
+#[allow(clippy::field_reassign_with_default)]
+fn exact_kicad_drills_remove_false_positives_but_still_detect_small_holes() {
+    let json = r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+      "nets":[{"id":1,"name":"GND"}],
+      "components":[{"reference":"USB","position":{"x":0,"y":0},"pads":[
+        {"name":"mount","shape":"circle","size":{"x":0.65,"y":0.65},"drill":0.65,"nonPlated":true,"layers":["F.Cu","B.Cu"]}]}],
+      "vias":[{"netName":"GND","position":{"x":10,"y":10},"diameter":0.5,"drill":0.3,"startLayerIndex":0,"endLayerIndex":1},
+              {"netName":"GND","position":{"x":20,"y":10},"diameter":0.5,"drill":0.2,"startLayerIndex":0,"endLayerIndex":1}] }"#;
+    let fr_dsn::error::BoardReadResult::Success {
+        board: Some(mut board),
+        ..
+    } = fr_dsn::kicad::read_board(json, None)
+    else {
+        panic!("import failed")
+    };
+    let mut constraints = DrcConstraints::default();
+    constraints.min_through_hole_diameter = Some(3000);
+    constraints.min_via_annular_width = Some(1000);
+    let mut out = Vec::new();
+    single::run(&mut board, &constraints, &mut out);
+    assert_eq!(out.len(), 1, "{out:?}");
+    assert_eq!(out[0].kind, DrcViolationKind::DrillOutOfRange);
+    assert_eq!(out[0].actual, 2000.0);
+    assert!(!out[0].estimated);
+}
+
+#[test]
+#[allow(clippy::field_reassign_with_default)]
+fn drc_uses_physical_pad_shapes_and_does_not_treat_bare_holes_as_copper() {
+    let json = r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+      "nets":[{"id":1,"name":"N"}],
+      "components":[
+      {"reference":"H","position":{"x":0,"y":0},"pads":[{"name":"1","shape":"circle","size":{"x":1,"y":1},"drill":1,"nonPlated":true,"layers":["F.Cu","B.Cu"]}]},
+      {"reference":"P","position":{"x":1,"y":0},"pads":[{"name":"1","netName":"N","shape":"rect","size":{"x":0.4,"y":0.4},"layers":["F.Cu"]}]}]}"#;
+    let fr_dsn::BoardReadResult::Success {
+        board: Some(mut board),
+        ..
+    } = fr_dsn::kicad::read_board(json, None)
+    else {
+        panic!("fixture import failed")
+    };
+    let hole = board.get_pins()[0];
+    let before = item_shapes(&mut board, hole);
+    board.apply_hole_clearance_override(500.0);
+    assert_eq!(
+        before,
+        item_shapes(&mut board, hole),
+        "routing margins must not change measured copper"
+    );
+    let mut constraints = DrcConstraints::default();
+    constraints.min_clearance = Some(4000);
+    constraints.hole_clearance = Some(5000);
+    let mut out = Vec::new();
+    copper::run(&mut board, &constraints, &mut out);
+    assert_eq!(out.len(), 1, "{out:?}");
+    assert_eq!(out[0].kind, DrcViolationKind::HoleClearance);
+    assert!((out[0].actual - 3000.0).abs() < 2.0);
+}
+
+#[test]
+fn round_kicad_vias_do_not_have_square_corners_but_real_diagonal_gaps_fail() {
+    // Via radius .25 + trace half-width .125 + required clearance .128 = .503 mm.
+    // A diagonal with x+y=.746 is .5275 mm from the origin, safely outside that.
+    // Against a square via it would appear only about .049 mm clear.
+    for (intercept, expect_violation) in [(0.746, false), (0.67, true)] {
+        let json = serde_json::json!({
+            "layers": [{"name":"F.Cu"},{"name":"B.Cu"}],
+            "netClasses": [{"name":"Default","clearance":0.128,"traceWidth":0.25,"viaDiameter":0.5,"viaDrill":0.3}],
+            "nets": [{"id":1,"name":"A"},{"id":2,"name":"B"}],
+            "vias": [{"netName":"A","position":{"x":0,"y":0},"diameter":0.5,"drill":0.3,"startLayerIndex":0,"endLayerIndex":1}],
+            "traces": [{"netName":"B","layerIndex":0,"width":0.25,"points":[{"x":-1,"y":intercept+1.0},{"x":intercept+1.0,"y":-1}]}]
+        });
+        let fr_dsn::BoardReadResult::Success {
+            board: Some(mut board),
+            ..
+        } = fr_dsn::kicad::read_board(&json.to_string(), None)
+        else {
+            panic!("fixture import failed")
+        };
+        let violations = DesignRulesChecker::new(&mut board).get_all_violations();
+        assert_eq!(
+            violations
+                .iter()
+                .any(|v| v.kind == DrcViolationKind::Clearance),
+            expect_violation,
+            "intercept={intercept}: {violations:?}"
+        );
+        let ctx = board.ctx();
+        let fr_board::Item::Via(via) = board.get_item(board.get_vias()[0]).unwrap() else {
+            panic!("via")
+        };
+        assert!(matches!(
+            via.get_shape_on_layer(0, &ctx),
+            Some(fr_geometry::Shape::Circle(_))
+        ));
+        assert!(matches!(
+            board
+                .library
+                .padstacks
+                .get_by_name("defaultVia")
+                .unwrap()
+                .get_shape(0),
+            Some(fr_geometry::Shape::Circle(_))
+        ));
+    }
+}
+
+fn kicad_board(json: &str) -> fr_board::Board {
+    match fr_dsn::kicad::read_board(json, None) {
+        fr_dsn::BoardReadResult::Success {
+            board: Some(board), ..
+        } => *board,
+        other => panic!("fixture import failed: {other:?}"),
+    }
+}
+
+#[test]
+fn a_through_hole_pad_without_a_drill_still_has_an_estimated_hole() {
+    let board = kicad_board(
+        r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+          "components":[{"reference":"J","position":{"x":5,"y":5},"pads":[
+          {"name":"1","shape":"circle","size":{"x":1.7,"y":1.7},"layers":["F.Cu","B.Cu"]}]}]}"#,
+    );
+    let pin = board.get_pins()[0];
+    let hole = hole_of(&board, pin).expect("a pad spanning both layers has a hole");
+    assert!(hole.estimated);
+    assert!(hole.radius > 0.0);
+}
+
+#[test]
+#[allow(clippy::field_reassign_with_default)]
+fn a_bare_hole_near_the_board_edge_is_not_a_copper_edge_violation() {
+    let mut board = kicad_board(
+        r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+          "outline":{"corners":[{"x":0,"y":0},{"x":20,"y":0},{"x":20,"y":20},{"x":0,"y":20}]},
+          "components":[{"reference":"H","position":{"x":0.6,"y":10},"pads":[
+          {"name":"1","shape":"circle","size":{"x":1,"y":1},"drill":1,"nonPlated":true,"layers":["F.Cu","B.Cu"]}]}]}"#,
+    );
+    let mut constraints = DrcConstraints::default();
+    constraints.copper_edge_clearance = Some(5000);
+    let mut out = Vec::new();
+    edge::run(&mut board, &constraints, &mut out);
+    assert!(
+        out.is_empty(),
+        "a hole with no copper has no copper to clear: {out:?}"
+    );
+}

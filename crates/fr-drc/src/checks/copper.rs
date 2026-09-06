@@ -4,7 +4,7 @@ use fr_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
 use fr_geometry::{FloatLine, FloatPoint, TileShape};
 
 use crate::checks::geometry::{
-    candidates, gap_below, hole_of, is_copper, item_shapes, sub_epsilon,
+    candidates, gap_below, has_copper, hole_of, is_copper, item_shapes, sub_epsilon,
 };
 use crate::constraints::{pair_clearance, search_radius, severity};
 use crate::{DrcViolation, DrcViolationKind};
@@ -177,6 +177,8 @@ fn check_pair(
         .collect();
 
     if !same_net
+        && has_copper(board, id)
+        && has_copper(board, other)
         && let Some(clearance) = clearance
         && clearance > 0
     {
@@ -218,6 +220,9 @@ fn check_pair(
         (id, other, std::slice::from_ref(shape)),
         (other, id, other_shapes.as_slice()),
     ] {
+        if !has_copper(board, copper_id) {
+            continue;
+        }
         let Some(hole) = hole_of(board, hole_id) else {
             continue;
         };

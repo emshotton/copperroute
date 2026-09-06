@@ -1,6 +1,6 @@
 use fr_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
 
-use crate::checks::geometry::{hole_of, is_microvia, item_position};
+use crate::checks::geometry::{has_copper, hole_of, is_microvia, item_position};
 use crate::constraints::{severity, track_width_min};
 use crate::{DrcViolation, DrcViolationKind};
 
@@ -131,7 +131,9 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
                     continue;
                 };
                 let ctx = board.ctx();
-                if let Some(minimum) = constraints.min_via_annular_width {
+                if let Some(minimum) = constraints.min_via_annular_width
+                    && has_copper(board, id)
+                {
                     let annulus = pin.smallest_radius(&ctx) - hole.radius;
                     push(
                         board,

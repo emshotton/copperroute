@@ -466,6 +466,7 @@ fn populated_router() -> RouterSettings {
     s.opt_changed_area_ms = Some(48);
     s.smd_via_relaxation = Some(false);
     s.failure_give_up_threshold = Some(50);
+    s.connection_search_steps = Some(51);
     s
 }
 
