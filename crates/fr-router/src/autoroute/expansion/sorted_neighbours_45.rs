@@ -3,7 +3,6 @@ use std::cmp::Ordering;
 use fr_board::{Board, TreeId, TreeObject};
 use fr_geometry::{CRIT_INT, IntOctagon, TileShape};
 
-use crate::JavaTreeSet;
 use crate::autoroute::expansion::complete_room::calculate_target_doors;
 use crate::autoroute::expansion::sorted_neighbours::{
     create_overlap_door, insert_door_ok, object_id, object_is_trace_obstacle, object_tree_shape,
@@ -12,11 +11,12 @@ use crate::autoroute::expansion::sorted_neighbours::{
 use crate::autoroute::expansion::{ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom, RoomRef};
 use crate::autoroute::item_info;
 use crate::autoroute::tree_ext::AutorouteSearchTreeExt;
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub struct Sorted45DegreeRoomNeighbours {
     pub completed_room: RoomRef,
-    pub sorted_neighbours: JavaTreeSet<SortedRoomNeighbour>,
+    pub sorted_neighbours: BTreeSet<SortedRoomNeighbour>,
     pub from_room: RoomRef,
     pub room_shape: IntOctagon,
     pub edge_interior_touches_obstacle: [bool; 8],
@@ -30,7 +30,7 @@ impl Sorted45DegreeRoomNeighbours {
     ) -> Sorted45DegreeRoomNeighbours {
         Sorted45DegreeRoomNeighbours {
             completed_room,
-            sorted_neighbours: JavaTreeSet::new(),
+            sorted_neighbours: BTreeSet::new(),
             from_room,
             room_shape,
             edge_interior_touches_obstacle: [false; 8],
@@ -275,7 +275,7 @@ impl Sorted45DegreeRoomNeighbours {
             &mut self.edge_interior_touches_obstacle,
         );
         if new_neighbour.last_touching_side >= 0 {
-            self.sorted_neighbours.add(new_neighbour);
+            self.sorted_neighbours.insert(new_neighbour);
         }
     }
 
@@ -884,19 +884,19 @@ fn remove_not_touching_border_lines(
     .normalize()
 }
 
-fn bounding_octagon_of(shape: &TileShape, java_line: u32) -> IntOctagon {
+fn bounding_octagon_of(shape: &TileShape, source_line: u32) -> IntOctagon {
     shape.bounding_octagon().unwrap_or_else(|| {
         panic!(
-            "Sorted45DegreeRoomNeighbours.java:{java_line}: boundingOctagon answered null for an \
+            "Sorted45DegreeRoomNeighbours:{source_line}: boundingOctagon answered null for an \
              unbounded shape — Java NPEs here too"
         )
     })
 }
 
-fn side_index(no: i32, java_line: u32) -> usize {
+fn side_index(no: i32, source_line: u32) -> usize {
     usize::try_from(no).unwrap_or_else(|_| {
         panic!(
-            "Sorted45DegreeRoomNeighbours.java:{java_line}: the touching side is {no} — Java \
+            "Sorted45DegreeRoomNeighbours:{source_line}: the touching side is {no} — Java \
              throws ArrayIndexOutOfBoundsException here"
         )
     })

@@ -1,19 +1,62 @@
+use std::cmp::Ordering;
+use std::collections::BTreeSet;
+
 use fr_board::Board;
 use fr_board::structure::Unit;
 
 use crate::autoroute::expansion::ExpandableRef;
 use crate::autoroute::maze::{AutorouteControl, AutorouteEngine, MazeListElement};
-use crate::java_tree_set::JavaTreeSet;
+
+/// A [`MazeListElement`] carrying the door id its ordering needs. The id is a
+/// function of the door under a fixed engine, so it is computed once at insert
+/// time and the ordering never needs the engine again.
+#[derive(Debug, Clone)]
+struct QueuedElement {
+    door_id: i32,
+    element: MazeListElement,
+}
+
+impl QueuedElement {
+    fn ordering(&self, other: &QueuedElement) -> Ordering {
+        self.element.compare_to(&other.element, |door| {
+            if door == self.element.door {
+                self.door_id
+            } else {
+                other.door_id
+            }
+        })
+    }
+}
+
+impl PartialEq for QueuedElement {
+    fn eq(&self, other: &QueuedElement) -> bool {
+        self.ordering(other) == Ordering::Equal
+    }
+}
+
+impl Eq for QueuedElement {}
+
+impl PartialOrd for QueuedElement {
+    fn partial_cmp(&self, other: &QueuedElement) -> Option<Ordering> {
+        Some(self.ordering(other))
+    }
+}
+
+impl Ord for QueuedElement {
+    fn cmp(&self, other: &QueuedElement) -> Ordering {
+        self.ordering(other)
+    }
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct MazeQueue {
-    set: JavaTreeSet<MazeListElement>,
+    set: BTreeSet<QueuedElement>,
 }
 
 impl MazeQueue {
     pub fn new() -> MazeQueue {
         MazeQueue {
-            set: JavaTreeSet::new(),
+            set: BTreeSet::new(),
         }
     }
 
@@ -62,28 +105,27 @@ impl MazeQueue {
                 }
             }
         }
-        let door_id = |door: ExpandableRef| engine.expandable_id_no(door);
+        let door_id = engine.expandable_id_no(element.door);
         if p7t14b_maze_ledger() {
-            let (section, sorting, expansion, id, adjustment) = (
+            let (section, sorting, expansion, adjustment) = (
                 element.section_no_of_door,
                 element.sorting_value,
                 element.expansion_value,
-                door_id(element.door),
                 element.adjustment,
             );
-            let added = self.set.add_by(element, |a, b| a.compare_to(b, door_id));
+            let added = self.set.insert(QueuedElement { door_id, element });
             eprintln!(
-                "ADD ok={added} sec={section} sort={sorting:.6} exp={expansion:.6} door={id} \
+                "ADD ok={added} sec={section} sort={sorting:.6} exp={expansion:.6} door={door_id} \
                  adj={adjustment:?} size={}",
                 self.set.len()
             );
             return added;
         }
-        self.set.add_by(element, |a, b| a.compare_to(b, door_id))
+        self.set.insert(QueuedElement { door_id, element })
     }
 
     pub fn pop_first(&mut self) -> Option<MazeListElement> {
-        self.set.poll_first()
+        self.set.pop_first().map(|queued| queued.element)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -95,7 +137,7 @@ impl MazeQueue {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &MazeListElement> {
-        self.set.iter()
+        self.set.iter().map(|queued| &queued.element)
     }
 }
 

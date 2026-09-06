@@ -3,13 +3,13 @@ use crate::float_point::FloatPoint;
 use crate::int_box::IntBox;
 use crate::int_octagon::IntOctagon;
 use crate::int_point::IntPoint;
-use crate::java_random::JavaRandom;
 use crate::line::Line;
 use crate::point::Point;
 use crate::polygon::Polygon;
 use crate::polyline::Polyline;
 use crate::polyline_shape::PolylineShapeOps;
 use crate::side::Side;
+use crate::split_mix64::SplitMix64;
 use crate::tile_shape::TileShape;
 use crate::vector::Vector;
 
@@ -293,10 +293,10 @@ impl PolygonShape {
         let mut ury = i32::MIN as f64;
         for corner in &self.corners {
             let current = corner.to_float();
-            llx = crate::limits::java_min(llx, current.x);
-            lly = crate::limits::java_min(lly, current.y);
-            urx = crate::limits::java_max(urx, current.x);
-            ury = crate::limits::java_max(ury, current.y);
+            llx = (llx).min(current.x);
+            lly = (lly).min(current.y);
+            urx = (urx).max(current.x);
+            ury = (ury).max(current.y);
         }
         let lower_left = IntPoint::new(llx.floor() as i32, lly.floor() as i32);
         let upper_right = IntPoint::new(urx.ceil() as i32, ury.ceil() as i32);
@@ -314,18 +314,18 @@ impl PolygonShape {
         let mut urx = i32::MIN as f64;
         for corner in &self.corners {
             let current = corner.to_float();
-            lx = crate::limits::java_min(lx, current.x);
-            ly = crate::limits::java_min(ly, current.y);
-            rx = crate::limits::java_max(rx, current.x);
-            uy = crate::limits::java_max(uy, current.y);
+            lx = (lx).min(current.x);
+            ly = (ly).min(current.y);
+            rx = (rx).max(current.x);
+            uy = (uy).max(current.y);
 
             let mut tmp = current.x - current.y;
-            ulx = crate::limits::java_min(ulx, tmp);
-            lrx = crate::limits::java_max(lrx, tmp);
+            ulx = (ulx).min(tmp);
+            lrx = (lrx).max(tmp);
 
             tmp = current.x + current.y;
-            llx = crate::limits::java_min(llx, tmp);
-            urx = crate::limits::java_max(urx, tmp);
+            llx = (llx).min(tmp);
+            urx = (urx).max(tmp);
         }
         IntOctagon::new(
             lx.floor() as i32,
@@ -540,7 +540,7 @@ impl PolygonShape {
 
     pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
         // use a fixed seed to get reproducible result
-        let mut random_generator = JavaRandom::new(SEED);
+        let mut random_generator = SplitMix64::new(SEED);
         let convex_pieces = self.split_to_convex_recu(&mut random_generator)?;
         Some(
             convex_pieces
@@ -559,7 +559,7 @@ impl PolygonShape {
             .expect("PolygonShape.splitToConvex failed: the polygon may have selfintersections")
     }
 
-    fn split_to_convex_recu(&self, random_generator: &mut JavaRandom) -> Option<Vec<PolygonShape>> {
+    fn split_to_convex_recu(&self, random_generator: &mut SplitMix64) -> Option<Vec<PolygonShape>> {
         let corners = &self.corners;
         let len = corners.len();
         // start with a hashed corner and search the first concave corner
@@ -885,27 +885,6 @@ mod tests {
         assert_eq!(s.equals_corner(&Point::Int(IntPoint::new(10, 10))), Some(2));
         assert_eq!(s.next_no(3), 0);
         assert_eq!(s.prev_no(0), 3);
-    }
-
-    #[test]
-    fn java_random_reproduces_the_jdk_sequences() {
-        // `new Random(99).nextInt(bound)` for the first 12 draws, taken from a JDK 23 run.
-        let expected: &[(i32, &[i32])] = &[
-            (2, &[1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1]),
-            (3, &[1, 2, 0, 0, 0, 2, 1, 2, 2, 2, 1, 0]),
-            (4, &[2, 1, 1, 2, 3, 1, 3, 2, 3, 0, 1, 2]),
-            (5, &[2, 3, 4, 1, 0, 2, 4, 1, 0, 4, 3, 4]),
-            (6, &[1, 2, 3, 3, 0, 2, 4, 2, 2, 5, 4, 3]),
-            (7, &[4, 6, 4, 0, 1, 1, 5, 1, 0, 6, 0, 3]),
-            (8, &[5, 3, 2, 5, 6, 3, 6, 4, 6, 0, 2, 5]),
-            (16, &[11, 6, 5, 11, 13, 6, 13, 9, 12, 0, 4, 11]),
-            (100, &[87, 58, 29, 11, 0, 62, 74, 6, 20, 99, 68, 39]),
-        ];
-        for (bound, seq) in expected {
-            let mut rng = JavaRandom::new(SEED);
-            let got: Vec<i32> = (0..seq.len()).map(|_| rng.next_int(*bound)).collect();
-            assert_eq!(&got, seq, "bound {bound}");
-        }
     }
 
     #[test]

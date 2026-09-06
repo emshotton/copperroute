@@ -3,7 +3,6 @@ use std::cmp::Ordering;
 use fr_board::{Board, TreeId, TreeObject};
 use fr_geometry::{CRIT_INT, IntBox, TileShape};
 
-use crate::JavaTreeSet;
 use crate::autoroute::expansion::complete_room::calculate_target_doors;
 use crate::autoroute::expansion::sorted_neighbours::{
     create_overlap_door, insert_door_ok, object_id, object_is_trace_obstacle, object_tree_shape,
@@ -12,11 +11,12 @@ use crate::autoroute::expansion::sorted_neighbours::{
 use crate::autoroute::expansion::{ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom, RoomRef};
 use crate::autoroute::item_info;
 use crate::autoroute::tree_ext::AutorouteSearchTreeExt;
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub struct SortedOrthogonalRoomNeighbours {
     pub completed_room: RoomRef,
-    pub sorted_neighbours: JavaTreeSet<SortedRoomNeighbour>,
+    pub sorted_neighbours: BTreeSet<SortedRoomNeighbour>,
     pub from_room: RoomRef,
     pub is_obstacle_expansion_room: bool,
     pub room_shape: IntBox,
@@ -31,7 +31,7 @@ impl SortedOrthogonalRoomNeighbours {
     ) -> SortedOrthogonalRoomNeighbours {
         SortedOrthogonalRoomNeighbours {
             completed_room,
-            sorted_neighbours: JavaTreeSet::new(),
+            sorted_neighbours: BTreeSet::new(),
             from_room,
             is_obstacle_expansion_room: matches!(from_room, RoomRef::Obstacle(_)),
             room_shape,
@@ -269,7 +269,7 @@ impl SortedOrthogonalRoomNeighbours {
             &self.room_shape,
             &mut self.edge_interior_touches_obstacle,
         );
-        self.sorted_neighbours.add(new_neighbour);
+        self.sorted_neighbours.insert(new_neighbour);
     }
 
     fn try_remove_edge(

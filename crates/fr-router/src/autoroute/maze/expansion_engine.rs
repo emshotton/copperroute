@@ -483,8 +483,7 @@ impl MazeExpansionEngine {
                 .padstacks
                 .padstack_shape_max_width(via_padstack, layer_no)
                 .map_or(0.0, |width| 0.5 * width);
-            let required_radius =
-                fr_geometry::java_max(via_radius, f64::from(search.ctrl.trace_half_width[layer]));
+            let required_radius = (via_radius).max(f64::from(search.ctrl.trace_half_width[layer]));
             let result = ForcedViaInserter::check_layer(
                 board,
                 required_radius,

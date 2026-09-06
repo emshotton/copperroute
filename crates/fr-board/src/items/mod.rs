@@ -617,7 +617,7 @@ impl Item {
         }
     }
 
-    pub fn java_clone(&self) -> Option<Item> {
+    pub fn duplicate(&self) -> Option<Item> {
         let mut dup = self.copy(self.id())?;
         dup.set_on_the_board(self.is_on_the_board());
         Some(dup)
@@ -1309,10 +1309,10 @@ mod tests {
     }
 
     #[test]
-    fn java_clone_restores_on_the_board() {
+    fn duplicate_restores_on_the_board() {
         let mut original = trace(1, vec![4]);
         original.set_on_the_board(true);
-        let dup = original.java_clone().expect("a trace clone never fails");
+        let dup = original.duplicate().expect("a trace clone never fails");
         assert_eq!(dup.id(), ItemId(1));
         assert!(dup.is_on_the_board());
     }

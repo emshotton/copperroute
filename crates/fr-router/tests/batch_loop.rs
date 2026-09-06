@@ -21,7 +21,7 @@ const ECC83: &str = "fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn";
 const J2: &str = "fixtures/Issue026-J2_reference.dsn";
 
 fn load_board(rel_path: &str) -> Board {
-    let path: PathBuf = parity::java_dir().join(rel_path);
+    let path: PathBuf = parity::reference_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path
@@ -97,7 +97,7 @@ fn scoring_of(settings: &RouterSettings) -> ScoringSettings {
 
 #[test]
 fn a_board_with_no_signal_layer_errors_and_reports_cancelled() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_board(RPI);
@@ -131,7 +131,7 @@ fn a_board_with_no_signal_layer_errors_and_reports_cancelled() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn an_active_non_signal_layer_is_not_routable() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     const CANIOT: &str = "fixtures/Issue269-caniot-tiny-arm.dsn";
@@ -216,7 +216,7 @@ fn a_normal_finish_reports_finished() {
         );
     }
 
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_board(RPI);
@@ -264,7 +264,7 @@ fn a_normal_finish_reports_finished() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn only_a_pass_that_routes_nothing_reaches_finished() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_board(ECC83);
@@ -295,7 +295,7 @@ fn only_a_pass_that_routes_nothing_reaches_finished() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn max_passes_zero_is_unlimited() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let run_with = |max_passes: i32| {
@@ -410,7 +410,7 @@ fn the_rank_limit_can_never_fire() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn a_full_history_never_ranks_a_board_past_its_cap() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_board(J2);
@@ -453,7 +453,7 @@ fn a_full_history_never_ranks_a_board_past_its_cap() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_rank_the_loop_tests_is_read_after_restore_boards_reorder() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_board(J2);
@@ -561,7 +561,7 @@ fn the_stagnation_counter_resets_only_from_pass_eight() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_final_swap_takes_the_best_board_only_when_it_is_strictly_better() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_board(RPI);
@@ -634,7 +634,7 @@ fn the_final_swap_takes_the_best_board_only_when_it_is_strictly_better() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn an_empty_history_never_swaps() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_board(RPI);
@@ -650,7 +650,7 @@ fn an_empty_history_never_swaps() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn routing_with_fanout_enabled_runs_the_pre_pass() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_board(RPI);
@@ -702,7 +702,7 @@ fn the_stagnation_paths_build_the_unrouted_report() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn one_pass_record_per_completed_pass_in_order() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_board(RPI);

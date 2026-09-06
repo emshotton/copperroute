@@ -4,7 +4,6 @@ pub mod arena;
 pub mod autoroute;
 pub mod board_ext;
 pub mod error;
-pub mod java_tree_set;
 pub mod pipeline;
 pub mod score;
 pub mod visualization;
@@ -25,7 +24,6 @@ pub use board_ext::{
     SpringOverOutcome, TraceShover,
 };
 pub use error::RouterError;
-pub use java_tree_set::JavaTreeSet;
 pub use pipeline::{
     AutoroutePassRunner, BatchAutorouter, BoardHistory, BoardHistoryEntry, ItemFailureInfo,
     ItemRouteResult, NamedAlgorithmType, NoopProgressSink, PassRecord, PipelineResult,
@@ -57,14 +55,14 @@ pub mod prelude {
         DestinationDistance, DoorId, DrillId, DrillItemMover, DrillPage, DrillPageArray,
         ExpandableRef, ExpansionCostFactor, ExpansionDoor, ExpansionDrill, ExpansionRoomStore,
         FoundConnectionInserter, FoundConnectionLocator, FreeSpaceExpansionRoom,
-        IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, JavaTreeSet, MazeAdjustment,
-        MazeExpansionEngine, MazeListElement, MazeQueue, MazeResult, MazeRipupResolver,
-        MazeSearchElement, MazeSearchEngine, NamedAlgorithmType, NoopProgressSink,
-        ObstacleExpansionRoom, PageId, PassRecord, PipelineResult, ProgressSink, ProgressThrottler,
-        Rectangle2DFloat, ResultItem, RoomRef, RouterBudget, RouterCounters, RouterError,
-        RouterStop, RoutingBoardExt, RoutingEvent, RoutingFailureLog, ShoveResult,
-        SpringOverOutcome, StopRequestState, TargetDoorId, TargetItemExpansionDoor, TaskState,
-        TraceShover, ViaMask, build_unrouted_report, normalize_router_algorithm, route_connection,
-        route_connection_full, run_pipeline,
+        IncompleteFreeSpaceExpansionRoom, IncompleteRoomId, MazeAdjustment, MazeExpansionEngine,
+        MazeListElement, MazeQueue, MazeResult, MazeRipupResolver, MazeSearchElement,
+        MazeSearchEngine, NamedAlgorithmType, NoopProgressSink, ObstacleExpansionRoom, PageId,
+        PassRecord, PipelineResult, ProgressSink, ProgressThrottler, Rectangle2DFloat, ResultItem,
+        RoomRef, RouterBudget, RouterCounters, RouterError, RouterStop, RoutingBoardExt,
+        RoutingEvent, RoutingFailureLog, ShoveResult, SpringOverOutcome, StopRequestState,
+        TargetDoorId, TargetItemExpansionDoor, TaskState, TraceShover, ViaMask,
+        build_unrouted_report, normalize_router_algorithm, route_connection, route_connection_full,
+        run_pipeline,
     };
 }

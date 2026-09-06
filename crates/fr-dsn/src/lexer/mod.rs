@@ -141,10 +141,14 @@ impl DsnScanner {
                 }
                 5 => {
                     let text = self.yytext();
-                    let value: i32 = text.parse().map_err(|_| {
-                        DsnError::Scan(format!("For input string: \"{text}\" (Integer.valueOf)"))
-                    })?;
-                    return Ok(Some(Token::Int(i64::from(value))));
+                    return Ok(Some(match text.parse::<i32>() {
+                        Ok(value) => Token::Int(i64::from(value)),
+                        Err(_) => Token::Float(text.parse::<f64>().map_err(|_| {
+                            DsnError::Scan(format!(
+                                "For input string: \"{text}\" (Integer.valueOf)"
+                            ))
+                        })?),
+                    }));
                 }
                 6 => {
                     self.string_buffer.clear();
@@ -650,7 +654,7 @@ impl DsnScanner {
 
     pub fn next_double(&mut self) -> Option<f64> {
         let s = self.next_string();
-        java_number_format_parse(&s)
+        parse_number(&s)
     }
 
     pub fn next_closing_bracket(&mut self) -> Result<bool, DsnError> {
@@ -661,7 +665,7 @@ impl DsnScanner {
     }
 }
 
-pub fn java_number_format_parse(text: &str) -> Option<f64> {
+pub fn parse_number(text: &str) -> Option<f64> {
     let chars: Vec<char> = text.chars().collect();
     let mut pos = 0usize;
 
@@ -748,10 +752,10 @@ mod tests {
     #[test]
     fn non_ascii_unicode_digits_are_not_parsed() {
         for text in ["\u{ff11}\u{ff12}", "\u{663}", "\u{661}\u{662}\u{663}"] {
-            assert_eq!(java_number_format_parse(text), None, "{text:?}");
+            assert_eq!(parse_number(text), None, "{text:?}");
         }
-        assert_eq!(java_number_format_parse("1\u{ff12}3"), Some(1.0));
-        assert_eq!(java_number_format_parse("12"), Some(12.0));
+        assert_eq!(parse_number("1\u{ff12}3"), Some(1.0));
+        assert_eq!(parse_number("12"), Some(12.0));
     }
 
     #[test]

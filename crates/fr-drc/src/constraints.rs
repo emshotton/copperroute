@@ -1,6 +1,5 @@
 use fr_board::{Board, DrcConstraints, DrcSeverity, Item, Unit};
 use fr_dsn::CoordinateTransform;
-use fr_geometry::java_round;
 use serde_json::Value;
 
 use crate::{DrcError, DrcViolationKind};
@@ -38,10 +37,9 @@ pub fn from_dsn(board: &Board) -> DrcConstraints {
             constraints.netclass_track_width.insert(name, width);
         }
     }
-    constraints.epsilon = java_round(
-        Unit::scale(DRC_EPSILON_MM, Unit::Mm, board.communication.unit)
-            * f64::from(board.communication.resolution.max(1)),
-    ) as i32;
+    constraints.epsilon = (Unit::scale(DRC_EPSILON_MM, Unit::Mm, board.communication.unit)
+        * f64::from(board.communication.resolution.max(1)))
+    .round() as i64 as i32;
     constraints
 }
 
@@ -125,7 +123,7 @@ pub fn search_radius(constraints: &DrcConstraints) -> i32 {
 
 fn to_board_units(mm: f64, board: &Board, transform: &CoordinateTransform) -> i32 {
     let dsn_value = Unit::scale(mm, Unit::Mm, board.communication.unit);
-    java_round(transform.dsn_to_board(dsn_value)) as i32
+    (transform.dsn_to_board(dsn_value)).round() as i64 as i32
 }
 
 fn rule(rules: &Value, key: &str, board: &Board, transform: &CoordinateTransform) -> Option<i32> {

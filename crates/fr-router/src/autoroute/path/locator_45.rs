@@ -84,14 +84,14 @@ fn calc_horizontal_first_to_door(
 
 fn door_corners(
     door_shape: &TileShape,
-    java_method: &str,
-    java_line: u32,
+    caller: &str,
+    source_line: u32,
 ) -> (FloatPoint, FloatPoint) {
     let door_line_segment = door_shape.diagonal_corner_segment().unwrap_or_else(|| {
         panic!(
-            "FoundConnectionLocator45Degree.{java_method}: diagonalCornerSegment is null for an \
+            "FoundConnectionLocator45Degree.{caller}: diagonalCornerSegment is null for an \
              empty door shape — Java throws a NullPointerException at \
-             FoundConnectionLocator45Degree.java:{java_line}"
+             FoundConnectionLocator45Degree:{source_line}"
         )
     });
     if door_line_segment.a.x < door_line_segment.b.x
@@ -108,7 +108,7 @@ fn door_half_max_width(left_corner: FloatPoint, right_corner: FloatPoint) -> f64
     let door_dx = right_corner.x - left_corner.x;
     let door_dy = right_corner.y - left_corner.y;
     let abs_door_dy = door_dy.abs();
-    let door_max_width = fr_geometry::java_max(door_dx, abs_door_dy);
+    let door_max_width = (door_dx).max(abs_door_dy);
     0.5 * door_max_width
 }
 

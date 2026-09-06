@@ -294,7 +294,7 @@ impl MazeTraceShover {
         }
 
         if segment_shortened {
-            shove_width = fr_geometry::java_min(shove_width, to_corner.distance(&from_corner));
+            shove_width = (shove_width).min(to_corner.distance(&from_corner));
         }
 
         let shove_line = shove_line_segment.get_line();

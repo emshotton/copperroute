@@ -1,7 +1,7 @@
 use fr_board::structure::Unit;
 use fr_board::{Board, DrcSeverity, Item, ItemId, ItemKind};
 use fr_dsn::CoordinateTransform;
-use fr_dsn::format::double::java_format_fixed;
+use fr_dsn::format::double::format_fixed;
 use fr_geometry::TileShape;
 
 use crate::checker::DesignRulesChecker;
@@ -312,5 +312,5 @@ fn item_position(
 }
 
 fn format_length(board_length: f64, coords: &DrcCoordinates, coordinate_unit: &str) -> String {
-    java_format_fixed(coords.convert_coordinate(board_length, coordinate_unit), 4)
+    format_fixed(coords.convert_coordinate(board_length, coordinate_unit), 4)
 }

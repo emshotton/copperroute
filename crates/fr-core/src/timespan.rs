@@ -93,7 +93,7 @@ mod tests {
     }
 
     #[test]
-    fn java_split_drops_the_trailing_empty_run() {
+    fn split_drops_the_trailing_empty_run() {
         assert_eq!(convert_from_timespan_to_duration_format("1:"), "PT1S");
         assert_eq!(convert_from_timespan_to_duration_format(":1"), "PTM1S");
     }

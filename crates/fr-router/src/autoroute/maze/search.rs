@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use fr_board::datastructures::StopCheck;
 use fr_board::structure::AngleRestriction;
 use fr_board::{Board, Item, ItemId, TreeId};
-use fr_geometry::{FloatLine, FloatPoint, JavaRandom, Point};
+use fr_geometry::{FloatLine, FloatPoint, Point, SplitMix64};
 
 use crate::arena::DoorId;
 use crate::autoroute::expansion::{ExpandableRef, RoomRef};
@@ -28,7 +28,7 @@ pub struct MazeSearchEngine<'a> {
 
     pub search_tree: TreeId,
 
-    pub random_generator: JavaRandom,
+    pub random_generator: SplitMix64,
 
     destination_door: Option<ExpandableRef>,
 
@@ -40,7 +40,7 @@ impl<'a> MazeSearchEngine<'a> {
         engine: &'a mut AutorouteEngine,
         ctrl: &'a AutorouteControl,
     ) -> MazeSearchEngine<'a> {
-        let mut random_generator = JavaRandom::new(0);
+        let mut random_generator = SplitMix64::new(0);
         random_generator.set_seed(i64::from(ctrl.ripup_costs));
         MazeSearchEngine {
             search_tree: engine.tree,

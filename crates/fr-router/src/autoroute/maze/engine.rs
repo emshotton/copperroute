@@ -7,7 +7,7 @@ use fr_board::{
     Board, Item, ItemId, RoomId, ShapeSearchTree, StopCheck, StopConnectionOption, TimeLimit,
     TreeId,
 };
-use fr_geometry::{Simplex, TileShape, java_min, java_round};
+use fr_geometry::{Simplex, TileShape};
 use fr_settings::{ExpansionCostFactor, RouterSettings};
 
 use crate::Arena;
@@ -1045,10 +1045,8 @@ enum Steps1To5 {
 }
 
 fn connection_time_limit(ripup_pass_no: i32) -> TimeLimit {
-    let max_milliseconds = java_min(
-        100_000.0 * f64::powf(2.0, f64::from(ripup_pass_no - 1)),
-        f64::from(i32::MAX),
-    );
+    let max_milliseconds =
+        (100_000.0 * f64::powf(2.0, f64::from(ripup_pass_no - 1))).min(f64::from(i32::MAX));
     TimeLimit::new(max_milliseconds as i32)
 }
 
@@ -1330,11 +1328,12 @@ fn retry_connection_necked(
     let original_control = &context.autoroute_control;
 
     let board_resolution = board.communication.resolution.max(1);
-    let neck_width = java_round(Unit::scale(
+    let neck_width = (Unit::scale(
         settings.get_neck_width_um() * f64::from(board_resolution),
         Unit::Um,
         board.communication.unit,
-    )) as i32;
+    ))
+    .round() as i64 as i32;
     let neck_half_width = std::cmp::max(1, neck_width / 2);
 
     let narrower_somewhere = (0..original_control.layer_count).any(|i| {

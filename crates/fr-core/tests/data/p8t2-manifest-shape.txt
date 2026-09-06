@@ -28,17 +28,17 @@ MAN no_input 013     "autorouter": {},
 MAN no_input 014     "optimizer": {}
 MAN no_input 015   },
 MAN no_input 016   "resource_usage": {
-MAN no_input 017     "cpu_time": 0.0,
-MAN no_input 018     "max_memory": 0.0,
-MAN no_input 019     "peak_memory": 0.0,
-MAN no_input 020     "io_read": 0.0,
-MAN no_input 021     "io_written": 0.0
+MAN no_input 017     "cpu_time": 0,
+MAN no_input 018     "max_memory": 0,
+MAN no_input 019     "peak_memory": 0,
+MAN no_input 020     "io_read": 0,
+MAN no_input 021     "io_written": 0
 MAN no_input 022   },
 MAN no_input 023   "final_state": "INVALID",
 MAN no_input 024   "exit_code": 1,
 MAN no_input 025   "output_written": false
 MAN no_input 026 }
-MAN no_input len 519
+MAN no_input len 509
 MAN input_present 000 {
 MAN input_present 001   "schema_version": 1,
 MAN input_present 002   "generated_at": "1970-01-01T00:00:00Z",
@@ -59,17 +59,17 @@ MAN input_present 016     "autorouter": {},
 MAN input_present 017     "optimizer": {}
 MAN input_present 018   },
 MAN input_present 019   "resource_usage": {
-MAN input_present 020     "cpu_time": 0.0,
-MAN input_present 021     "max_memory": 0.0,
-MAN input_present 022     "peak_memory": 0.0,
-MAN input_present 023     "io_read": 0.0,
-MAN input_present 024     "io_written": 0.0
+MAN input_present 020     "cpu_time": 0,
+MAN input_present 021     "max_memory": 0,
+MAN input_present 022     "peak_memory": 0,
+MAN input_present 023     "io_read": 0,
+MAN input_present 024     "io_written": 0
 MAN input_present 025   },
 MAN input_present 026   "final_state": "INVALID",
 MAN input_present 027   "exit_code": 0,
 MAN input_present 028   "output_written": true
 MAN input_present 029 }
-MAN input_present len 637
+MAN input_present len 627
 MAN input_missing 000 {
 MAN input_missing 001   "schema_version": 1,
 MAN input_missing 002   "generated_at": "1970-01-01T00:00:00Z",
@@ -89,17 +89,17 @@ MAN input_missing 015     "autorouter": {},
 MAN input_missing 016     "optimizer": {}
 MAN input_missing 017   },
 MAN input_missing 018   "resource_usage": {
-MAN input_missing 019     "cpu_time": 0.0,
-MAN input_missing 020     "max_memory": 0.0,
-MAN input_missing 021     "peak_memory": 0.0,
-MAN input_missing 022     "io_read": 0.0,
-MAN input_missing 023     "io_written": 0.0
+MAN input_missing 019     "cpu_time": 0,
+MAN input_missing 020     "max_memory": 0,
+MAN input_missing 021     "peak_memory": 0,
+MAN input_missing 022     "io_read": 0,
+MAN input_missing 023     "io_written": 0
 MAN input_missing 024   },
 MAN input_missing 025   "final_state": "INVALID",
 MAN input_missing 026   "exit_code": 1,
 MAN input_missing 027   "output_written": false
 MAN input_missing 028 }
-MAN input_missing len 557
+MAN input_missing len 547
 MAN input_directory 000 {
 MAN input_directory 001   "schema_version": 1,
 MAN input_directory 002   "generated_at": "1970-01-01T00:00:00Z",
@@ -119,17 +119,17 @@ MAN input_directory 015     "autorouter": {},
 MAN input_directory 016     "optimizer": {}
 MAN input_directory 017   },
 MAN input_directory 018   "resource_usage": {
-MAN input_directory 019     "cpu_time": 0.0,
-MAN input_directory 020     "max_memory": 0.0,
-MAN input_directory 021     "peak_memory": 0.0,
-MAN input_directory 022     "io_read": 0.0,
-MAN input_directory 023     "io_written": 0.0
+MAN input_directory 019     "cpu_time": 0,
+MAN input_directory 020     "max_memory": 0,
+MAN input_directory 021     "peak_memory": 0,
+MAN input_directory 022     "io_read": 0,
+MAN input_directory 023     "io_written": 0
 MAN input_directory 024   },
 MAN input_directory 025   "final_state": "INVALID",
 MAN input_directory 026   "exit_code": 1,
 MAN input_directory 027   "output_written": false
 MAN input_directory 028 }
-MAN input_directory len 549
+MAN input_directory len 539
 MAN root_input 000 XDIFF java=NullPointerException rust=fixture.filename=""
 MAN passes_7 000 {
 MAN passes_7 001   "schema_version": 1,
@@ -153,17 +153,17 @@ MAN passes_7 018     },
 MAN passes_7 019     "optimizer": {}
 MAN passes_7 020   },
 MAN passes_7 021   "resource_usage": {
-MAN passes_7 022     "cpu_time": 0.0,
-MAN passes_7 023     "max_memory": 0.0,
-MAN passes_7 024     "peak_memory": 0.0,
-MAN passes_7 025     "io_read": 0.0,
-MAN passes_7 026     "io_written": 0.0
+MAN passes_7 022     "cpu_time": 0,
+MAN passes_7 023     "max_memory": 0,
+MAN passes_7 024     "peak_memory": 0,
+MAN passes_7 025     "io_read": 0,
+MAN passes_7 026     "io_written": 0
 MAN passes_7 027   },
 MAN passes_7 028   "final_state": "INVALID",
 MAN passes_7 029   "exit_code": 0,
 MAN passes_7 030   "output_written": true
 MAN passes_7 031 }
-MAN passes_7 len 670
+MAN passes_7 len 660
 MAN passes_0 000 {
 MAN passes_0 001   "schema_version": 1,
 MAN passes_0 002   "generated_at": "1970-01-01T00:00:00Z",
@@ -184,17 +184,17 @@ MAN passes_0 016     "autorouter": {},
 MAN passes_0 017     "optimizer": {}
 MAN passes_0 018   },
 MAN passes_0 019   "resource_usage": {
-MAN passes_0 020     "cpu_time": 0.0,
-MAN passes_0 021     "max_memory": 0.0,
-MAN passes_0 022     "peak_memory": 0.0,
-MAN passes_0 023     "io_read": 0.0,
-MAN passes_0 024     "io_written": 0.0
+MAN passes_0 020     "cpu_time": 0,
+MAN passes_0 021     "max_memory": 0,
+MAN passes_0 022     "peak_memory": 0,
+MAN passes_0 023     "io_read": 0,
+MAN passes_0 024     "io_written": 0
 MAN passes_0 025   },
 MAN passes_0 026   "final_state": "INVALID",
 MAN passes_0 027   "exit_code": 0,
 MAN passes_0 028   "output_written": true
 MAN passes_0 029 }
-MAN passes_0 len 637
+MAN passes_0 len 627
 MAN completed_run 000 {
 MAN completed_run 001   "schema_version": 1,
 MAN completed_run 002   "generated_at": "1970-01-01T00:00:00Z",
@@ -218,17 +218,17 @@ MAN completed_run 019     },
 MAN completed_run 020     "optimizer": {}
 MAN completed_run 021   },
 MAN completed_run 022   "resource_usage": {
-MAN completed_run 023     "cpu_time": 0.0,
-MAN completed_run 024     "max_memory": 0.0,
-MAN completed_run 025     "peak_memory": 0.0,
-MAN completed_run 026     "io_read": 0.0,
-MAN completed_run 027     "io_written": 0.0
+MAN completed_run 023     "cpu_time": 0,
+MAN completed_run 024     "max_memory": 0,
+MAN completed_run 025     "peak_memory": 0,
+MAN completed_run 026     "io_read": 0,
+MAN completed_run 027     "io_written": 0
 MAN completed_run 028   },
 MAN completed_run 029   "final_state": "COMPLETED",
 MAN completed_run 030   "exit_code": 0,
 MAN completed_run 031   "output_written": true
 MAN completed_run 032 }
-MAN completed_run len 705
+MAN completed_run len 695
 MAN started_only 000 {
 MAN started_only 001   "schema_version": 1,
 MAN started_only 002   "generated_at": "1970-01-01T00:00:00Z",
@@ -249,17 +249,17 @@ MAN started_only 016     "autorouter": {},
 MAN started_only 017     "optimizer": {}
 MAN started_only 018   },
 MAN started_only 019   "resource_usage": {
-MAN started_only 020     "cpu_time": 0.0,
-MAN started_only 021     "max_memory": 0.0,
-MAN started_only 022     "peak_memory": 0.0,
-MAN started_only 023     "io_read": 0.0,
-MAN started_only 024     "io_written": 0.0
+MAN started_only 020     "cpu_time": 0,
+MAN started_only 021     "max_memory": 0,
+MAN started_only 022     "peak_memory": 0,
+MAN started_only 023     "io_read": 0,
+MAN started_only 024     "io_written": 0
 MAN started_only 025   },
 MAN started_only 026   "final_state": "INVALID",
 MAN started_only 027   "exit_code": 1,
 MAN started_only 028   "output_written": false
 MAN started_only 029 }
-MAN started_only len 638
+MAN started_only len 628
 MAN timed_out 000 {
 MAN timed_out 001   "schema_version": 1,
 MAN timed_out 002   "generated_at": "1970-01-01T00:00:00Z",
@@ -280,17 +280,17 @@ MAN timed_out 016     "autorouter": {},
 MAN timed_out 017     "optimizer": {}
 MAN timed_out 018   },
 MAN timed_out 019   "resource_usage": {
-MAN timed_out 020     "cpu_time": 0.0,
-MAN timed_out 021     "max_memory": 0.0,
-MAN timed_out 022     "peak_memory": 0.0,
-MAN timed_out 023     "io_read": 0.0,
-MAN timed_out 024     "io_written": 0.0
+MAN timed_out 020     "cpu_time": 0,
+MAN timed_out 021     "max_memory": 0,
+MAN timed_out 022     "peak_memory": 0,
+MAN timed_out 023     "io_read": 0,
+MAN timed_out 024     "io_written": 0
 MAN timed_out 025   },
 MAN timed_out 026   "final_state": "TIMED_OUT",
 MAN timed_out 027   "exit_code": 0,
 MAN timed_out 028   "output_written": true
 MAN timed_out 029 }
-MAN timed_out len 639
+MAN timed_out len 629
 MAN result_json_path 000 {
 MAN result_json_path 001   "schema_version": 1,
 MAN result_json_path 002   "generated_at": "1970-01-01T00:00:00Z",
@@ -312,17 +312,17 @@ MAN result_json_path 017     "autorouter": {},
 MAN result_json_path 018     "optimizer": {}
 MAN result_json_path 019   },
 MAN result_json_path 020   "resource_usage": {
-MAN result_json_path 021     "cpu_time": 0.0,
-MAN result_json_path 022     "max_memory": 0.0,
-MAN result_json_path 023     "peak_memory": 0.0,
-MAN result_json_path 024     "io_read": 0.0,
-MAN result_json_path 025     "io_written": 0.0
+MAN result_json_path 021     "cpu_time": 0,
+MAN result_json_path 022     "max_memory": 0,
+MAN result_json_path 023     "peak_memory": 0,
+MAN result_json_path 024     "io_read": 0,
+MAN result_json_path 025     "io_written": 0
 MAN result_json_path 026   },
 MAN result_json_path 027   "final_state": "INVALID",
 MAN result_json_path 028   "exit_code": 0,
 MAN result_json_path 029   "output_written": true
 MAN result_json_path 030 }
-MAN result_json_path len 681
+MAN result_json_path len 671
 MAN empty_board 000 {
 MAN empty_board 001   "schema_version": 1,
 MAN empty_board 002   "generated_at": "1970-01-01T00:00:00Z",
@@ -336,10 +336,10 @@ MAN empty_board 009   "settings_snapshot": {
 MAN empty_board 010     "fanout": {},
 MAN empty_board 011     "optimizer": {},
 MAN empty_board 012     "scoring": {
-MAN empty_board 013       "default_preferred_direction_trace_cost": 1.0,
+MAN empty_board 013       "default_preferred_direction_trace_cost": 1,
 MAN empty_board 014       "via_costs": 42,
-MAN empty_board 015       "unrouted_net_penalty": 10.0,
-MAN empty_board 016       "clearance_violation_penalty": 5.0,
+MAN empty_board 015       "unrouted_net_penalty": 10,
+MAN empty_board 016       "clearance_violation_penalty": 5,
 MAN empty_board 017       "bend_penalty": 0.5
 MAN empty_board 018     }
 MAN empty_board 019   },
@@ -362,10 +362,10 @@ MAN empty_board 035         "width": 1294.4,
 MAN empty_board 036         "height": -1080.5
 MAN empty_board 037       },
 MAN empty_board 038       "size": {
-MAN empty_board 039         "x": 0.0,
-MAN empty_board 040         "y": 0.0,
+MAN empty_board 039         "x": 0,
+MAN empty_board 040         "y": 0,
 MAN empty_board 041         "width": 573.5,
-MAN empty_board 042         "height": 510.0
+MAN empty_board 042         "height": 510
 MAN empty_board 043       }
 MAN empty_board 044     },
 MAN empty_board 045     "layers": {
@@ -399,13 +399,13 @@ MAN empty_board 072     },
 MAN empty_board 073     "traces": {
 MAN empty_board 074       "total_count": 0,
 MAN empty_board 075       "total_segment_count": 0,
-MAN empty_board 076       "total_length": 0.0,
-MAN empty_board 077       "total_length_mm": 0.0,
-MAN empty_board 078       "total_weighted_length": 0.0,
-MAN empty_board 079       "average_length": 0.0,
-MAN empty_board 080       "total_vertical_length": 0.0,
-MAN empty_board 081       "total_horizontal_length": 0.0,
-MAN empty_board 082       "total_angled_length": 0.0
+MAN empty_board 076       "total_length": -0,
+MAN empty_board 077       "total_length_mm": -0,
+MAN empty_board 078       "total_weighted_length": 0,
+MAN empty_board 079       "average_length": 0,
+MAN empty_board 080       "total_vertical_length": 0,
+MAN empty_board 081       "total_horizontal_length": 0,
+MAN empty_board 082       "total_angled_length": 0
 MAN empty_board 083     },
 MAN empty_board 084     "bends": {
 MAN empty_board 085       "total_count": 0,
@@ -421,9 +421,9 @@ MAN empty_board 094       "buried_count": 0
 MAN empty_board 095     },
 MAN empty_board 096     "clearance_violations": {
 MAN empty_board 097       "total_count": 0,
-MAN empty_board 098       "min_violation_um": 0.0,
-MAN empty_board 099       "max_violation_um": 0.0,
-MAN empty_board 100       "avg_violation_um": 0.0
+MAN empty_board 098       "min_violation_um": 0,
+MAN empty_board 099       "max_violation_um": 0,
+MAN empty_board 100       "avg_violation_um": 0
 MAN empty_board 101     },
 MAN empty_board 102     "fanout": {
 MAN empty_board 103       "total_smd_pins": 0,
@@ -431,19 +431,19 @@ MAN empty_board 104       "pins_to_escape": 0,
 MAN empty_board 105       "escaped_count": 0
 MAN empty_board 106     }
 MAN empty_board 107   },
-MAN empty_board 108   "normalized_score": 0.0,
+MAN empty_board 108   "normalized_score": 0,
 MAN empty_board 109   "resource_usage": {
-MAN empty_board 110     "cpu_time": 0.0,
-MAN empty_board 111     "max_memory": 0.0,
-MAN empty_board 112     "peak_memory": 0.0,
-MAN empty_board 113     "io_read": 0.0,
-MAN empty_board 114     "io_written": 0.0
+MAN empty_board 110     "cpu_time": 0,
+MAN empty_board 111     "max_memory": 0,
+MAN empty_board 112     "peak_memory": 0,
+MAN empty_board 113     "io_read": 0,
+MAN empty_board 114     "io_written": 0
 MAN empty_board 115   },
 MAN empty_board 116   "final_state": "COMPLETED",
 MAN empty_board 117   "exit_code": 0,
 MAN empty_board 118   "output_written": true
 MAN empty_board 119 }
-MAN empty_board len 2603
+MAN empty_board len 2561
 MAN board_without_scoring 000 {
 MAN board_without_scoring 001   "schema_version": 1,
 MAN board_without_scoring 002   "generated_at": "1970-01-01T00:00:00Z",
@@ -473,10 +473,10 @@ MAN board_without_scoring 025         "width": 1294.4,
 MAN board_without_scoring 026         "height": -1080.5
 MAN board_without_scoring 027       },
 MAN board_without_scoring 028       "size": {
-MAN board_without_scoring 029         "x": 0.0,
-MAN board_without_scoring 030         "y": 0.0,
+MAN board_without_scoring 029         "x": 0,
+MAN board_without_scoring 030         "y": 0,
 MAN board_without_scoring 031         "width": 573.5,
-MAN board_without_scoring 032         "height": 510.0
+MAN board_without_scoring 032         "height": 510
 MAN board_without_scoring 033       }
 MAN board_without_scoring 034     },
 MAN board_without_scoring 035     "layers": {
@@ -510,13 +510,13 @@ MAN board_without_scoring 062     },
 MAN board_without_scoring 063     "traces": {
 MAN board_without_scoring 064       "total_count": 0,
 MAN board_without_scoring 065       "total_segment_count": 0,
-MAN board_without_scoring 066       "total_length": 0.0,
-MAN board_without_scoring 067       "total_length_mm": 0.0,
-MAN board_without_scoring 068       "total_weighted_length": 0.0,
-MAN board_without_scoring 069       "average_length": 0.0,
-MAN board_without_scoring 070       "total_vertical_length": 0.0,
-MAN board_without_scoring 071       "total_horizontal_length": 0.0,
-MAN board_without_scoring 072       "total_angled_length": 0.0
+MAN board_without_scoring 066       "total_length": -0,
+MAN board_without_scoring 067       "total_length_mm": -0,
+MAN board_without_scoring 068       "total_weighted_length": 0,
+MAN board_without_scoring 069       "average_length": 0,
+MAN board_without_scoring 070       "total_vertical_length": 0,
+MAN board_without_scoring 071       "total_horizontal_length": 0,
+MAN board_without_scoring 072       "total_angled_length": 0
 MAN board_without_scoring 073     },
 MAN board_without_scoring 074     "bends": {
 MAN board_without_scoring 075       "total_count": 0,
@@ -532,9 +532,9 @@ MAN board_without_scoring 084       "buried_count": 0
 MAN board_without_scoring 085     },
 MAN board_without_scoring 086     "clearance_violations": {
 MAN board_without_scoring 087       "total_count": 0,
-MAN board_without_scoring 088       "min_violation_um": 0.0,
-MAN board_without_scoring 089       "max_violation_um": 0.0,
-MAN board_without_scoring 090       "avg_violation_um": 0.0
+MAN board_without_scoring 088       "min_violation_um": 0,
+MAN board_without_scoring 089       "max_violation_um": 0,
+MAN board_without_scoring 090       "avg_violation_um": 0
 MAN board_without_scoring 091     },
 MAN board_without_scoring 092     "fanout": {
 MAN board_without_scoring 093       "total_smd_pins": 0,
@@ -543,17 +543,17 @@ MAN board_without_scoring 095       "escaped_count": 0
 MAN board_without_scoring 096     }
 MAN board_without_scoring 097   },
 MAN board_without_scoring 098   "resource_usage": {
-MAN board_without_scoring 099     "cpu_time": 0.0,
-MAN board_without_scoring 100     "max_memory": 0.0,
-MAN board_without_scoring 101     "peak_memory": 0.0,
-MAN board_without_scoring 102     "io_read": 0.0,
-MAN board_without_scoring 103     "io_written": 0.0
+MAN board_without_scoring 099     "cpu_time": 0,
+MAN board_without_scoring 100     "max_memory": 0,
+MAN board_without_scoring 101     "peak_memory": 0,
+MAN board_without_scoring 102     "io_read": 0,
+MAN board_without_scoring 103     "io_written": 0
 MAN board_without_scoring 104   },
 MAN board_without_scoring 105   "final_state": "INVALID",
 MAN board_without_scoring 106   "exit_code": 0,
 MAN board_without_scoring 107   "output_written": true
 MAN board_without_scoring 108 }
-MAN board_without_scoring len 2306
+MAN board_without_scoring len 2272
 MAN connected_board 000 {
 MAN connected_board 001   "schema_version": 1,
 MAN connected_board 002   "generated_at": "1970-01-01T00:00:00Z",
@@ -567,10 +567,10 @@ MAN connected_board 009   "settings_snapshot": {
 MAN connected_board 010     "fanout": {},
 MAN connected_board 011     "optimizer": {},
 MAN connected_board 012     "scoring": {
-MAN connected_board 013       "default_preferred_direction_trace_cost": 0.0,
+MAN connected_board 013       "default_preferred_direction_trace_cost": 0,
 MAN connected_board 014       "via_costs": 1,
-MAN connected_board 015       "unrouted_net_penalty": 10.0,
-MAN connected_board 016       "clearance_violation_penalty": 5.0,
+MAN connected_board 015       "unrouted_net_penalty": 10,
+MAN connected_board 016       "clearance_violation_penalty": 5,
 MAN connected_board 017       "bend_penalty": 0.5
 MAN connected_board 018     }
 MAN connected_board 019   },
@@ -588,12 +588,12 @@ MAN connected_board 030     "board": {
 MAN connected_board 031       "bounding_box": {
 MAN connected_board 032         "x": 1995.9,
 MAN connected_board 033         "y": -138.5,
-MAN connected_board 034         "width": 125.0,
+MAN connected_board 034         "width": 125,
 MAN connected_board 035         "height": -1792.7
 MAN connected_board 036       },
 MAN connected_board 037       "size": {
-MAN connected_board 038         "x": 0.0,
-MAN connected_board 039         "y": 0.0,
+MAN connected_board 038         "x": 0,
+MAN connected_board 039         "y": 0,
 MAN connected_board 040         "width": 1870.9,
 MAN connected_board 041         "height": 1654.2
 MAN connected_board 042       }
@@ -631,7 +631,7 @@ MAN connected_board 073       "total_count": 2326,
 MAN connected_board 074       "total_segment_count": 7443,
 MAN connected_board 075       "total_length": 297032.2,
 MAN connected_board 076       "total_length_mm": 29703.219,
-MAN connected_board 077       "total_weighted_length": 9.512442E8,
+MAN connected_board 077       "total_weighted_length": 951244200,
 MAN connected_board 078       "average_length": 127.70086,
 MAN connected_board 079       "total_vertical_length": 83579.84,
 MAN connected_board 080       "total_horizontal_length": 101771.31,
@@ -651,9 +651,9 @@ MAN connected_board 093       "buried_count": 0
 MAN connected_board 094     },
 MAN connected_board 095     "clearance_violations": {
 MAN connected_board 096       "total_count": 0,
-MAN connected_board 097       "min_violation_um": 0.0,
-MAN connected_board 098       "max_violation_um": 0.0,
-MAN connected_board 099       "avg_violation_um": 0.0
+MAN connected_board 097       "min_violation_um": 0,
+MAN connected_board 098       "max_violation_um": 0,
+MAN connected_board 099       "avg_violation_um": 0
 MAN connected_board 100     },
 MAN connected_board 101     "fanout": {
 MAN connected_board 102       "total_smd_pins": 60,
@@ -663,29 +663,29 @@ MAN connected_board 105     }
 MAN connected_board 106   },
 MAN connected_board 107   "normalized_score": 572.4359,
 MAN connected_board 108   "resource_usage": {
-MAN connected_board 109     "cpu_time": 0.0,
-MAN connected_board 110     "max_memory": 0.0,
-MAN connected_board 111     "peak_memory": 0.0,
-MAN connected_board 112     "io_read": 0.0,
-MAN connected_board 113     "io_written": 0.0
+MAN connected_board 109     "cpu_time": 0,
+MAN connected_board 110     "max_memory": 0,
+MAN connected_board 111     "peak_memory": 0,
+MAN connected_board 112     "io_read": 0,
+MAN connected_board 113     "io_written": 0
 MAN connected_board 114   },
 MAN connected_board 115   "final_state": "COMPLETED",
 MAN connected_board 116   "exit_code": 0,
 MAN connected_board 117   "output_written": true
 MAN connected_board 118 }
-MAN connected_board len 2707
+MAN connected_board len 2678
 [dur]
-DUR 0->0 0.0
+DUR 0->0 0
 DUR 0->1 0.001
 DUR 0->3 0.003
 DUR 0->33 0.033
 DUR 0->100 0.1
 DUR 0->999 0.999
-DUR 0->1000 1.0
+DUR 0->1000 1
 DUR 0->1234 1.234
 DUR 0->3661500 3661.5
-DUR 0->86400000 86400.0
-DUR 0->86399999 86400.0
+DUR 0->86400000 86400
+DUR 0->86399999 86400
 DUR 5->1239 1.234
 DUR 1234->0 XDIFF java=-1.234 rust=unreachable(monotonic clock)
 [gitsha]
@@ -700,15 +700,15 @@ GITSHA prop_padded in=prop:freerouting.git.sha=" cafebabe " out=cafebabe
 GITSHA env_beats_prop in=env:FREEROUTING_GIT_SHA="deadbeef"|prop:freerouting.git.sha="cafebabe" out=deadbeef
 GITSHA blank_env_falls_to_prop in=env:FREEROUTING_GIT_SHA="   "|prop:freerouting.git.sha="cafebabe" out=cafebabe
 GITSHA legacy_prop_only in=prop:FREEROUTING_GIT_SHA="0badc0de" out=0badc0de
-GITSHA file_separators_only in=env:FREEROUTING_GIT_SHA="\u001c\u001d\u001e\u001f" out=unknown
-GITSHA file_separators_around in=env:FREEROUTING_GIT_SHA="\u001cdeadbeef\u001f" out=deadbeef
-GITSHA nbsp_only in=env:FREEROUTING_GIT_SHA="\u00a0" out=\u00a0
-GITSHA nel_only in=env:FREEROUTING_GIT_SHA="\u0085" out=\u0085
-GITSHA nel_around in=env:FREEROUTING_GIT_SHA="\u0085deadbeef\u0085" out=\u0085deadbeef\u0085
-GITSHA figure_space_only in=env:FREEROUTING_GIT_SHA="\u2007" out=\u2007
-GITSHA narrow_nbsp_only in=env:FREEROUTING_GIT_SHA="\u202f" out=\u202f
+GITSHA file_separators_only in=env:FREEROUTING_GIT_SHA="\u001c\u001d\u001e\u001f" out=\u001c\u001d\u001e\u001f
+GITSHA file_separators_around in=env:FREEROUTING_GIT_SHA="\u001cdeadbeef\u001f" out=\u001cdeadbeef\u001f
+GITSHA nbsp_only in=env:FREEROUTING_GIT_SHA="\u00a0" out=unknown
+GITSHA nel_only in=env:FREEROUTING_GIT_SHA="\u0085" out=unknown
+GITSHA nel_around in=env:FREEROUTING_GIT_SHA="\u0085deadbeef\u0085" out=deadbeef
+GITSHA figure_space_only in=env:FREEROUTING_GIT_SHA="\u2007" out=unknown
+GITSHA narrow_nbsp_only in=env:FREEROUTING_GIT_SHA="\u202f" out=unknown
 GITSHA ideographic_space_only in=env:FREEROUTING_GIT_SHA="\u3000" out=unknown
-GITSHA nbsp_around in=env:FREEROUTING_GIT_SHA="\u00a0deadbeef\u00a0" out=\u00a0deadbeef\u00a0
+GITSHA nbsp_around in=env:FREEROUTING_GIT_SHA="\u00a0deadbeef\u00a0" out=deadbeef
 GITSHA legacy_prop_beats_blank_env XDIFF java=0badc0de rust=unknown (resolveGitSha:156-159 renames onto arm 1's variable)
 GITSHA prop_beats_legacy_prop XDIFF java=cafebabe rust=0badc0de (arm 3 renames onto arm 1, which outranks arm 2)
 [sha256]

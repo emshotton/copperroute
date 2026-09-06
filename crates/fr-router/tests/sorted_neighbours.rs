@@ -1,9 +1,8 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::ids::TreeObject;
 use fr_board::prelude::*;
 use fr_geometry::{Area, IntBox, IntOctagon, IntVector, Point, Polyline, Shape, TileShape};
-use fr_router::JavaTreeSet;
 use fr_router::autoroute::expansion::sorted_neighbours::{
     SortedRoomNeighbour, SortedRoomNeighbours,
 };
@@ -69,37 +68,27 @@ fn five_neighbours_at_one_corner_are_all_kept_and_sort() {
         .map(|&(b, tsr, tsn, ntc, id)| corner_neighbour(&room, b, tsr, tsn, ntc, id))
         .collect();
 
-    let mut set = JavaTreeSet::new();
+    #[allow(clippy::mutable_key_type)]
+    let mut set = BTreeSet::new();
     for (i, neighbour) in built.iter().enumerate() {
         assert!(
-            set.add(neighbour.clone()),
-            "the jar's add[{i}] answered true and so must the port's"
+            set.insert(neighbour.clone()),
+            "insert[{i}] must succeed: all five compare distinct"
         );
         assert_eq!(set.len(), i + 1);
     }
-    assert_eq!(set.len(), 5);
-
-    #[allow(clippy::mutable_key_type)]
-    let mut btree = std::collections::BTreeSet::new();
-    for neighbour in &built {
-        btree.insert(neighbour.clone());
-    }
     assert_eq!(
-        btree.len(),
+        set.len(),
         5,
-        "a BTreeSet dropped one of the five before the fix; it keeps all five now"
+        "the comparator is a total order; the BTreeSet keeps all five"
     );
-    let describe = |n: &SortedRoomNeighbour| {
-        (
-            n.touching_side_no_of_neighbour_room,
-            n.neighbour_room_touch_is_corner,
-            n.object_id,
-        )
-    };
+
+    let mut by_compare_to = built.clone();
+    by_compare_to.sort_by(SortedRoomNeighbour::compare_to);
     assert_eq!(
-        set.iter().map(describe).collect::<Vec<_>>(),
-        btree.iter().map(describe).collect::<Vec<_>>(),
-        "the two containers agree once the comparator is a total order"
+        set.iter().collect::<Vec<_>>(),
+        by_compare_to.iter().collect::<Vec<_>>(),
+        "the BTreeSet's Ord-driven order matches sorting by compare_to directly"
     );
 
     use std::cmp::Ordering;
@@ -128,8 +117,9 @@ fn five_neighbours_at_one_corner_are_all_kept_and_sort() {
 #[test]
 fn a_tie_on_geometry_no_longer_drops_the_neighbour() {
     let room = TileShape::Box(IntBox::from_coords(656, 685, 1281, 2671));
-    let mut set = JavaTreeSet::new();
-    assert!(set.add(corner_neighbour(
+    #[allow(clippy::mutable_key_type)]
+    let mut set = BTreeSet::new();
+    assert!(set.insert(corner_neighbour(
         &room,
         IntBox::from_coords(-2928, 954, -2418, 1931),
         1,
@@ -137,7 +127,7 @@ fn a_tie_on_geometry_no_longer_drops_the_neighbour() {
         true,
         4
     )));
-    assert!(set.add(corner_neighbour(
+    assert!(set.insert(corner_neighbour(
         &room,
         IntBox::from_coords(756, 1893, 2108, 2443),
         3,
@@ -145,7 +135,7 @@ fn a_tie_on_geometry_no_longer_drops_the_neighbour() {
         false,
         2
     )));
-    assert!(set.add(corner_neighbour(
+    assert!(set.insert(corner_neighbour(
         &room,
         IntBox::from_coords(1639, 1220, 1818, 1470),
         0,
@@ -154,7 +144,7 @@ fn a_tie_on_geometry_no_longer_drops_the_neighbour() {
         3
     )));
     assert!(
-        set.add(corner_neighbour(
+        set.insert(corner_neighbour(
             &room,
             IntBox::from_coords(-2824, -2164, -2591, -1506),
             3,
@@ -199,15 +189,16 @@ fn a_room_id_is_never_subtracted_from_an_item_id() {
         std::cmp::Ordering::Greater,
         "and the relation is antisymmetric"
     );
-    let mut set = JavaTreeSet::new();
-    assert!(set.add(as_item));
+    #[allow(clippy::mutable_key_type)]
+    let mut set = BTreeSet::new();
+    assert!(set.insert(as_item));
     assert!(
-        set.add(as_room),
+        set.insert(as_room),
         "the room is no longer dropped for colliding with the item"
     );
     assert_eq!(set.len(), 2);
     let as_room_4 = make(TreeObject::Room(RoomId(0)), 4);
-    assert!(set.add(as_room_4));
+    assert!(set.insert(as_room_4));
     assert_eq!(set.len(), 3);
 }
 
@@ -249,7 +240,6 @@ impl Xorshift64 {
 #[test]
 fn the_neighbour_comparator_is_a_total_order() {
     let mut rng = Xorshift64::new(42);
-    let mut drops_java = 0usize;
     let mut case_520_room = None;
     let mut drops_btree = 0usize;
     let mut neighbours_built = 0usize;
@@ -293,12 +283,6 @@ fn the_neighbour_comparator_is_a_total_order() {
         };
         let distinct: std::collections::BTreeSet<_> = built.iter().map(value_of).collect();
 
-        let mut java = JavaTreeSet::new();
-        for neighbour in &built {
-            java.add(neighbour.clone());
-        }
-        drops_java += distinct.len() - java.len();
-
         #[allow(clippy::mutable_key_type)]
         let mut btree = std::collections::BTreeSet::new();
         for neighbour in &built {
@@ -340,11 +324,9 @@ fn the_neighbour_comparator_is_a_total_order() {
         "3 + rnd(3) over 2 000 cases; the jar's own draw split 665/670/665"
     );
     assert_eq!(
-        (drops_java, drops_btree),
-        (0, 0),
-        "the pre-fix tree drops 481 of the 8 000 in a JavaTreeSet and 482 in a BTreeSet — \
-         measured, by stashing the comparator and running this same test; the post-fix number \
-         is 0 in both, which is what makes the JavaTreeSet replaceable"
+        drops_btree, 0,
+        "the comparator is a total order: the BTreeSet drops none of the 8 000 distinct \
+         neighbours built (the pre-fix comparator dropped 482 of them)"
     );
 }
 

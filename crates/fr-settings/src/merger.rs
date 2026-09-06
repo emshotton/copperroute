@@ -84,7 +84,7 @@ impl SettingsMerger {
                 continue;
             };
             match merged.as_mut() {
-                None => merged = Some(settings.java_clone()),
+                None => merged = Some(settings.duplicate()),
                 Some(target) => {
                     let _report = target.apply_new_values_from(settings);
                 }

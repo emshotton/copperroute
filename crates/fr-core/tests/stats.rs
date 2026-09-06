@@ -2,7 +2,7 @@ use fr_core::{
     BoardStatistics, BoardStatisticsExt, FileFormat, count_occurrences, to_gson_json,
     to_gson_string,
 };
-use fr_dsn::{java_double_to_string, java_float_to_string};
+use fr_dsn::{format_double, format_float};
 use fr_router::score::{BoardStatisticsFanout, Rectangle2DFloat};
 
 const FIELD_PATHS: &[&str] = &[
@@ -257,11 +257,11 @@ const TRANSCRIPT: &[&str] = &[
     "FLD\t60\t\"KiCad\"\"\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t0\t0\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t60\t{\\n  \"host\": \"KiCad\\\\\"\",\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 0\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 0,\\n    \"class_count\": 0\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t61\ttrim keeps NBSP\tDSN\ttxt:(parser (hostCad K  ))",
-    "FLD\t61\t\"K \"\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t0\t0\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
-    "JSON\t61\t{\\n  \"host\": \"K \",\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 0\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 0,\\n    \"class_count\": 0\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
+    "FLD\t61\t\"K\"\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t0\t0\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
+    "JSON\t61\t{\\n  \"host\": \"K\",\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 0\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 0,\\n    \"class_count\": 0\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t62\ttrim drops the control char\tDSN\thex:287061727365722028686f7374436164204b01202929",
-    "FLD\t62\t\"K\"\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t0\t0\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
-    "JSON\t62\t{\\n  \"host\": \"K\",\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 0\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 0,\\n    \"class_count\": 0\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
+    "FLD\t62\t\"K\"\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t0\t0\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
+    "JSON\t62\t{\\n  \"host\": \"K\\\\u0001\",\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 0\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 0,\\n    \"class_count\": 0\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t63\tcamelCase, unquoted\tDSN\ttxt:(parser (hostCad KiCad (hostVersion 8.0 ))",
     "FLD\t63\t\"KiCad (hostVersion 8.0,8.0\"\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t0\t0\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t63\t{\\n  \"host\": \"KiCad (hostVersion 8.0,8.0\",\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 0\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 0,\\n    \"class_count\": 0\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
@@ -344,8 +344,8 @@ const TRANSCRIPT: &[&str] = &[
     "FLD\t89\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t89\t{\\n  \"board\": {},\\n  \"layers\": {},\\n  \"items\": {},\\n  \"components\": {},\\n  \"pads\": {},\\n  \"nets\": {},\\n  \"connections\": {},\\n  \"traces\": {},\\n  \"bends\": {},\\n  \"vias\": {},\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t90\tpopulated\t<none>\tsynth:populated",
-    "FLD\t90\t\"KiCad's \"Pcbnew\",8.0.4 é\"\t\"um\"\t1.5\t-2.25\t-1000000.5\t0.1\t0.0\t0.0\t1.0E8\t3.0E-4\t4\t2\t11\t12\t13\t14\t15\t16\t17\t18\t19\t20\t21\t22\t23\t24\t25\t26\t0.1\t1.0E7\t9.999999E-4\t-0.0\t1234567.9\t3.4028235E38\t1.4E-45\t27\t28\t29\t30\t31\t32\t33\t34\t35\t0.1\t1.0E7\t-9.999999999999998E-4\t36\t37\t38",
-    "JSON\t90\t{\\n  \"host\": \"KiCad's \\\\\"Pcbnew\\\\\",8.0.4 é\",\\n  \"unit\": \"um\",\\n  \"board\": {\\n    \"bounding_box\": {\\n      \"x\": 1.5,\\n      \"y\": -2.25,\\n      \"width\": -1000000.5,\\n      \"height\": 0.1\\n    },\\n    \"size\": {\\n      \"x\": 0.0,\\n      \"y\": 0.0,\\n      \"width\": 1.0E8,\\n      \"height\": 3.0E-4\\n    }\\n  },\\n  \"layers\": {\\n    \"total_count\": 4,\\n    \"signal_count\": 2\\n  },\\n  \"items\": {\\n    \"total_count\": 11,\\n    \"trace_count\": 12,\\n    \"via_count\": 13,\\n    \"conduction_area_count\": 14,\\n    \"drill_item_count\": 15,\\n    \"pin_count\": 16,\\n    \"component_count\": 17,\\n    \"other_count\": 18\\n  },\\n  \"components\": {\\n    \"total_count\": 19\\n  },\\n  \"pads\": {\\n    \"total_count\": 20\\n  },\\n  \"nets\": {\\n    \"total_count\": 21,\\n    \"class_count\": 22\\n  },\\n  \"connections\": {\\n    \"maximum_count\": 23,\\n    \"incomplete_count\": 24\\n  },\\n  \"traces\": {\\n    \"total_count\": 25,\\n    \"total_segment_count\": 26,\\n    \"total_length\": 0.1,\\n    \"total_length_mm\": 1.0E7,\\n    \"total_weighted_length\": 9.999999E-4,\\n    \"average_length\": -0.0,\\n    \"total_vertical_length\": 1234567.9,\\n    \"total_horizontal_length\": 3.4028235E38,\\n    \"total_angled_length\": 1.4E-45\\n  },\\n  \"bends\": {\\n    \"total_count\": 27,\\n    \"90_degree_count\": 28,\\n    \"45_degree_count\": 29,\\n    \"other_angle_count\": 30\\n  },\\n  \"vias\": {\\n    \"total_count\": 31,\\n    \"through_hole_count\": 32,\\n    \"blind_count\": 33,\\n    \"buried_count\": 34\\n  },\\n  \"clearance_violations\": {\\n    \"total_count\": 35,\\n    \"min_violation_um\": 0.1,\\n    \"max_violation_um\": 1.0E7,\\n    \"avg_violation_um\": -9.999999999999998E-4\\n  },\\n  \"fanout\": {\\n    \"total_smd_pins\": 36,\\n    \"pins_to_escape\": 37,\\n    \"escaped_count\": 38\\n  }\\n}",
+    "FLD\t90\t\"KiCad's \"Pcbnew\",8.0.4 é\"\t\"um\"\t1.5\t-2.25\t-1000000.5\t0.1\t0\t0\t100000000\t0.0003\t4\t2\t11\t12\t13\t14\t15\t16\t17\t18\t19\t20\t21\t22\t23\t24\t25\t26\t0.1\t10000000\t0.0009999999\t-0\t1234567.9\t340282350000000000000000000000000000000\t0.000000000000000000000000000000000000000000001\t27\t28\t29\t30\t31\t32\t33\t34\t35\t0.1\t10000000\t-0.0009999999999999998\t36\t37\t38",
+    "JSON\t90\t{\\n  \"host\": \"KiCad's \\\\\"Pcbnew\\\\\",8.0.4 é\",\\n  \"unit\": \"um\",\\n  \"board\": {\\n    \"bounding_box\": {\\n      \"x\": 1.5,\\n      \"y\": -2.25,\\n      \"width\": -1000000.5,\\n      \"height\": 0.1\\n    },\\n    \"size\": {\\n      \"x\": 0,\\n      \"y\": 0,\\n      \"width\": 100000000,\\n      \"height\": 0.0003\\n    }\\n  },\\n  \"layers\": {\\n    \"total_count\": 4,\\n    \"signal_count\": 2\\n  },\\n  \"items\": {\\n    \"total_count\": 11,\\n    \"trace_count\": 12,\\n    \"via_count\": 13,\\n    \"conduction_area_count\": 14,\\n    \"drill_item_count\": 15,\\n    \"pin_count\": 16,\\n    \"component_count\": 17,\\n    \"other_count\": 18\\n  },\\n  \"components\": {\\n    \"total_count\": 19\\n  },\\n  \"pads\": {\\n    \"total_count\": 20\\n  },\\n  \"nets\": {\\n    \"total_count\": 21,\\n    \"class_count\": 22\\n  },\\n  \"connections\": {\\n    \"maximum_count\": 23,\\n    \"incomplete_count\": 24\\n  },\\n  \"traces\": {\\n    \"total_count\": 25,\\n    \"total_segment_count\": 26,\\n    \"total_length\": 0.1,\\n    \"total_length_mm\": 10000000,\\n    \"total_weighted_length\": 0.0009999999,\\n    \"average_length\": -0,\\n    \"total_vertical_length\": 1234567.9,\\n    \"total_horizontal_length\": 340282350000000000000000000000000000000,\\n    \"total_angled_length\": 0.000000000000000000000000000000000000000000001\\n  },\\n  \"bends\": {\\n    \"total_count\": 27,\\n    \"90_degree_count\": 28,\\n    \"45_degree_count\": 29,\\n    \"other_angle_count\": 30\\n  },\\n  \"vias\": {\\n    \"total_count\": 31,\\n    \"through_hole_count\": 32,\\n    \"blind_count\": 33,\\n    \"buried_count\": 34\\n  },\\n  \"clearance_violations\": {\\n    \"total_count\": 35,\\n    \"min_violation_um\": 0.1,\\n    \"max_violation_um\": 10000000,\\n    \"avg_violation_um\": -0.0009999999999999998\\n  },\\n  \"fanout\": {\\n    \"total_smd_pins\": 36,\\n    \"pins_to_escape\": 37,\\n    \"escaped_count\": 38\\n  }\\n}",
     "BS\t91\tfanout only\t<none>\tsynth:fanout-only",
     "FLD\t91\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t7\t0\t0",
     "JSON\t91\t{\\n  \"board\": {},\\n  \"layers\": {},\\n  \"items\": {},\\n  \"components\": {},\\n  \"pads\": {},\\n  \"nets\": {},\\n  \"connections\": {},\\n  \"traces\": {},\\n  \"bends\": {},\\n  \"vias\": {},\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 7,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
@@ -369,7 +369,7 @@ fn the_committed_transcript_still_says_what_this_table_says() {
 
 #[test]
 fn the_port_reproduces_every_transcript_row() {
-    let have_java = parity::require_java_dir();
+    let have_java = parity::require_reference_dir();
     let mut mismatches = Vec::new();
     let mut skipped = 0usize;
     let mut checked = 0usize;
@@ -520,7 +520,7 @@ fn the_dsn_host_scrape_finds_nothing_on_a_real_dsn() {
 }
 
 #[test]
-fn the_three_totalised_answers_are_the_values_java_would_have_held() {
+fn the_three_totalised_answers_use_unicode_whitespace_trimming() {
     let inverted = BoardStatistics::from_bytes(b"(parser (hostCad))", FileFormat::Dsn);
     assert_eq!(inverted.host, "");
     assert!(!to_gson_string(&inverted).contains("\"host\""));
@@ -529,10 +529,10 @@ fn the_three_totalised_answers_are_the_values_java_would_have_held() {
 
     let nbsp =
         BoardStatistics::from_bytes("(parser (hostCad K\u{a0} ))".as_bytes(), FileFormat::Dsn);
-    assert_eq!(nbsp.host, "K\u{a0}");
+    assert_eq!(nbsp.host, "K");
     let control =
         BoardStatistics::from_bytes("(parser (hostCad K\u{1} ))".as_bytes(), FileFormat::Dsn);
-    assert_eq!(control.host, "K");
+    assert_eq!(control.host, "K\u{1}");
 }
 
 #[test]
@@ -721,8 +721,8 @@ fn the_fanout_and_clearance_violation_objects_serialise() {
     assert!(
         json.contains(
             "  \"clearance_violations\": {\n    \"total_count\": 35,\n    \
-             \"min_violation_um\": 0.1,\n    \"max_violation_um\": 1.0E7,\n    \
-             \"avg_violation_um\": -9.999999999999998E-4\n  },"
+             \"min_violation_um\": 0.1,\n    \"max_violation_um\": 10000000,\n    \
+             \"avg_violation_um\": -0.0009999999999999998\n  },"
         ),
         "{json}"
     );
@@ -754,7 +754,7 @@ fn statistics_of(format: &str, source: &str) -> BoardStatistics {
         "synth:fanout-only" => fanout_only(),
         _ => {
             let data = bytes_of(source);
-            match FileFormat::from_java_name(format) {
+            match FileFormat::from_name(format) {
                 None => BoardStatistics::default(),
                 Some(format) => BoardStatistics::from_bytes(&data, format),
             }
@@ -772,7 +772,7 @@ fn bytes_of(source: &str) -> Vec<u8> {
             .collect();
     }
     let path = if let Some(relative) = source.strip_prefix("java:") {
-        parity::java_dir().join(relative)
+        parity::reference_dir().join(relative)
     } else if let Some(relative) = source.strip_prefix("ref:") {
         parity::workspace_root()
             .join("tests/reference")
@@ -841,10 +841,10 @@ fn rect(v: &mut Vec<String>, r: Option<&Rectangle2DFloat>) {
     match r {
         None => v.extend(std::iter::repeat_n("<null>".to_string(), 4)),
         Some(r) => {
-            v.push(java_float_to_string(r.x));
-            v.push(java_float_to_string(r.y));
-            v.push(java_float_to_string(r.width));
-            v.push(java_float_to_string(r.height));
+            v.push(format_float(r.x));
+            v.push(format_float(r.y));
+            v.push(format_float(r.width));
+            v.push(format_float(r.height));
         }
     }
 }
@@ -854,11 +854,11 @@ fn int(n: Option<i32>) -> String {
 }
 
 fn float(n: Option<f32>) -> String {
-    n.map_or_else(|| "<null>".to_string(), java_float_to_string)
+    n.map_or_else(|| "<null>".to_string(), format_float)
 }
 
 fn double(n: Option<f64>) -> String {
-    n.map_or_else(|| "<null>".to_string(), java_double_to_string)
+    n.map_or_else(|| "<null>".to_string(), format_double)
 }
 
 fn string_field(s: &str) -> String {

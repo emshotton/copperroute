@@ -18,13 +18,13 @@
 [s8] bbox 1211850 -1366250 1734550 -900700
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=3
-[s8] corner 0 0 1212850.0 -1365250.0
-[s8] corner 0 1 1733550.0 -901700.0
-[s8] corner 0 2 1212850.0 -901700.0
+[s8] corner 0 0 1212850 -1365250
+[s8] corner 0 1 1733550 -901700
+[s8] corner 0 2 1212850 -901700
 [s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10000 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=13
 [s8] net 1 name=Net-(P3-P1) subnet=1 containsPlane=false class=default
 [s8] net 2 name=GND subnet=1 containsPlane=false class=default
@@ -64,13 +64,13 @@
 [s8] bbox 1211850 -1366250 1734550 -900700
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=3
-[s8] corner 0 0 1212850.0 -1365250.0
-[s8] corner 0 1 1733550.0 -901700.0
-[s8] corner 0 2 1212850.0 -901700.0
+[s8] corner 0 0 1212850 -1365250
+[s8] corner 0 1 1733550 -901700
+[s8] corner 0 2 1212850 -901700
 [s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10000 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=13
 [s8] net 1 name=Net-(P3-P1) subnet=1 containsPlane=false class=default
 [s8] net 2 name=Net-(P2-P1) subnet=1 containsPlane=false class=default
@@ -113,15 +113,15 @@
 [s8] bbox 878000 -1319260 1886950 -517000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=4
-[s8] corner 0 0 879000.0 -1318260.0
-[s8] corner 0 1 1885950.0 -1318260.0
-[s8] corner 0 2 1885950.0 -518160.0
-[s8] corner 0 3 879000.0 -518000.0
+[s8] corner 0 0 879000 -1318260
+[s8] corner 0 1 1885950 -1318260
+[s8] corner 0 2 1885950 -518160
+[s8] corner 0 3 879000 -518000
 [s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10000 baseX=0 baseY=0
 [s8] netclasses count=2
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
-[s8] netclass 1 name=power traceClearanceClass=2 halfWidths=[3000,3000] activeLayers=[true,true] viaRule=power shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 1 name=power traceClearanceClass=2 halfWidths=[3000,3000] activeLayers=[true,true] viaRule=power shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=52
 [s8] net 1 name=-VAA subnet=1 containsPlane=false class=power
 [s8] net 2 name=/12Vext subnet=1 containsPlane=false class=power
@@ -206,18 +206,18 @@
 [s8] bbox 792750 -1425940 1950450 -341900
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=7
-[s8] corner 0 0 908050.0 -1424940.0
-[s8] corner 0 1 1720850.0 -1424940.0
-[s8] corner 0 2 1720850.0 -1333500.0
-[s8] corner 0 3 1949450.0 -1333500.0
-[s8] corner 0 4 793750.0 -342900.0
-[s8] corner 0 5 793750.0 -1333500.0
-[s8] corner 0 6 908050.0 -1333500.0
+[s8] corner 0 0 908050 -1424940
+[s8] corner 0 1 1720850 -1424940
+[s8] corner 0 2 1720850 -1333500
+[s8] corner 0 3 1949450 -1333500
+[s8] corner 0 4 793750 -342900
+[s8] corner 0 5 793750 -1333500
+[s8] corner 0 6 908050 -1333500
 [s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10000 baseX=0 baseY=0
 [s8] netclasses count=2
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
-[s8] netclass 1 name=Power traceClearanceClass=2 halfWidths=[2500,2500] activeLayers=[true,true] viaRule=Power shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 1 name=Power traceClearanceClass=2 halfWidths=[2500,2500] activeLayers=[true,true] viaRule=Power shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=173
 [s8] net 1 name=/8MH-OUT subnet=1 containsPlane=false class=default
 [s8] net 2 name=/ACK subnet=1 containsPlane=false class=default
@@ -420,14 +420,14 @@
 [s8] bbox 1899000 -1027250 2075000 -722000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=4
-[s8] corner 0 0 1900000.0 -1026250.0
-[s8] corner 0 1 2074000.0 -1026250.0
-[s8] corner 0 2 2074000.0 -723000.0
-[s8] corner 0 3 1900000.0 -723000.0
+[s8] corner 0 0 1900000 -1026250
+[s8] corner 0 1 2074000 -1026250
+[s8] corner 0 2 2074000 -723000
+[s8] corner 0 3 1900000 -723000
 [s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10000 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=5
 [s8] net 1 name=C5 subnet=1 containsPlane=false class=default
 [s8] net 2 name=inner_bottom_B subnet=1 containsPlane=false class=default
@@ -460,14 +460,14 @@
 [s8] bbox -51000 -51000 52000 52000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=4
-[s8] corner 0 0 -50000.0 -50000.0
-[s8] corner 0 1 51000.0 -50000.0
-[s8] corner 0 2 51000.0 51000.0
-[s8] corner 0 3 -50000.0 51000.0
+[s8] corner 0 0 -50000 -50000
+[s8] corner 0 1 51000 -50000
+[s8] corner 0 2 51000 51000
+[s8] corner 0 3 -50000 51000
 [s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10000 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=5
 [s8] net 1 name=C5 subnet=1 containsPlane=false class=default
 [s8] net 2 name=inner_bottom_B subnet=1 containsPlane=false class=default
@@ -503,15 +503,15 @@
 [s8] bbox 878000 -1319260 1886950 -517000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=4
-[s8] corner 0 0 879000.0 -1318260.0
-[s8] corner 0 1 1885950.0 -1318260.0
-[s8] corner 0 2 1885950.0 -518160.0
-[s8] corner 0 3 879000.0 -518000.0
+[s8] corner 0 0 879000 -1318260
+[s8] corner 0 1 1885950 -1318260
+[s8] corner 0 2 1885950 -518160
+[s8] corner 0 3 879000 -518000
 [s8] comm unit=um resolution=10 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10 baseX=0 baseY=0
 [s8] netclasses count=2
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[2000,2000] activeLayers=[false,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
-[s8] netclass 1 name=power traceClearanceClass=2 halfWidths=[3000,3000] activeLayers=[false,true] viaRule=power shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[2000,2000] activeLayers=[false,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 1 name=power traceClearanceClass=2 halfWidths=[3000,3000] activeLayers=[false,true] viaRule=power shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=52
 [s8] net 1 name=-VAA subnet=1 containsPlane=false class=power
 [s8] net 2 name=/12Vext subnet=1 containsPlane=false class=power
@@ -593,14 +593,14 @@
 [s8] bbox -51000 -51000 52000 52000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=4
-[s8] corner 0 0 -50000.0 -50000.0
-[s8] corner 0 1 51000.0 -50000.0
-[s8] corner 0 2 51000.0 51000.0
-[s8] corner 0 3 -50000.0 51000.0
+[s8] corner 0 0 -50000 -50000
+[s8] corner 0 1 51000 -50000
+[s8] corner 0 2 51000 51000
+[s8] corner 0 3 -50000 51000
 [s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10000 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
 [s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
@@ -650,15 +650,15 @@
 [s8] bbox -1000 -1080 1100 1000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=4
-[s8] corner 0 0 0.0 -80.0
-[s8] corner 0 1 100.0 -80.0
-[s8] corner 0 2 100.0 0.0
-[s8] corner 0 3 0.0 0.0
+[s8] corner 0 0 0 -80
+[s8] corner 0 1 100 -80
+[s8] corner 0 2 100 0
+[s8] corner 0 3 0 0
 [s8] comm unit=mil resolution=1 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=1.0 baseX=0.0 baseY=0.0
+[s8] transform scale=1 baseX=0 baseY=0
 [s8] netclasses count=2
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[8,8,8] activeLayers=[true,false,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
-[s8] netclass 1 name=HV traceClearanceClass=2 halfWidths=[13,13,13] activeLayers=[true,false,true] viaRule=HV shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[8,8,8] activeLayers=[true,false,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 1 name=HV traceClearanceClass=2 halfWidths=[13,13,13] activeLayers=[true,false,true] viaRule=HV shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=3
 [s8] net 1 name=GND subnet=1 containsPlane=true class=default
 [s8] net 2 name=HV1 subnet=1 containsPlane=false class=HV
@@ -691,13 +691,13 @@
 [s8] bbox -1000 -41000 51000 1000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=3
-[s8] corner 0 0 50000.0 -40000.0
-[s8] corner 0 1 50000.0 0.0
-[s8] corner 0 2 0.0 0.0
+[s8] corner 0 0 50000 -40000
+[s8] corner 0 1 50000 0
+[s8] corner 0 2 0 0
 [s8] comm unit=um resolution=10 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1250,1250] activeLayers=[false,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1250,1250] activeLayers=[false,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=1
 [s8] net 1 name=N1 subnet=1 containsPlane=false class=default
 [s8] viainfos count=1
@@ -725,14 +725,14 @@
 [s8] bbox -1000 -101000 101000 1000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=4
-[s8] corner 0 0 0.0 -100000.0
-[s8] corner 0 1 100000.0 -100000.0
-[s8] corner 0 2 100000.0 0.0
-[s8] corner 0 3 0.0 0.0
+[s8] corner 0 0 0 -100000
+[s8] corner 0 1 100000 -100000
+[s8] corner 0 2 100000 0
+[s8] corner 0 3 0 0
 [s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10000 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
 [s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
@@ -759,13 +759,13 @@
 [s8] bbox -1000 -101000 101000 1000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=3
-[s8] corner 0 0 100000.0 -100000.0
-[s8] corner 0 1 100000.0 0.0
-[s8] corner 0 2 0.0 0.0
+[s8] corner 0 0 100000 -100000
+[s8] corner 0 1 100000 0
+[s8] corner 0 2 0 0
 [s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10000 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
 [s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
@@ -792,14 +792,14 @@
 [s8] bbox -1000 -1020 1020 1000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=4
-[s8] corner 0 0 0.0 -20.0
-[s8] corner 0 1 20.0 -20.0
-[s8] corner 0 2 20.0 0.0
-[s8] corner 0 3 0.0 0.0
+[s8] corner 0 0 0 -20
+[s8] corner 0 1 20 -20
+[s8] corner 0 2 20 0
+[s8] corner 0 3 0 0
 [s8] comm unit=mm resolution=2 stringQuote=" hostCad=KiCad hostVersion=9.9 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=2.0 baseX=0.0 baseY=0.0
+[s8] transform scale=2 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
 [s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
@@ -826,14 +826,14 @@
 [s8] bbox -1000 -1010 1010 1000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=4
-[s8] corner 0 0 0.0 -10.0
-[s8] corner 0 1 10.0 -10.0
-[s8] corner 0 2 10.0 0.0
-[s8] corner 0 3 0.0 0.0
+[s8] corner 0 0 0 -10
+[s8] corner 0 1 10 -10
+[s8] corner 0 2 10 0
+[s8] corner 0 3 0 0
 [s8] comm unit=mm resolution=1 stringQuote=" hostCad=Altium hostVersion=v24 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=1.0 baseX=0.0 baseY=0.0
+[s8] transform scale=1 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
 [s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
@@ -860,14 +860,14 @@
 [s8] bbox -21000 -91000 81000 11000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=4
-[s8] corner 0 0 -20000.0 -90000.0
-[s8] corner 0 1 80000.0 -90000.0
-[s8] corner 0 2 80000.0 10000.0
-[s8] corner 0 3 -20000.0 10000.0
+[s8] corner 0 0 -20000 -90000
+[s8] corner 0 1 80000 -90000
+[s8] corner 0 2 80000 10000
+[s8] corner 0 3 -20000 10000
 [s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10000 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=1
 [s8] net 1 name=V subnet=1 containsPlane=false class=default
 [s8] viainfos count=1
@@ -896,15 +896,15 @@
 [s8] bbox -1000 -101000 101000 31000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=5
-[s8] corner 0 0 0.0 -100000.0
-[s8] corner 0 1 100000.0 -100000.0
-[s8] corner 0 2 100000.0 0.0
-[s8] corner 0 3 50000.0 30000.0
-[s8] corner 0 4 0.0 0.0
+[s8] corner 0 0 0 -100000
+[s8] corner 0 1 100000 -100000
+[s8] corner 0 2 100000 0
+[s8] corner 0 3 50000 30000
+[s8] corner 0 4 0 0
 [s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10000 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
 [s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
@@ -928,16 +928,16 @@
 [s8] cl 0 1 0 8
 [s8] cl 1 0 0 0
 [s8] cl 1 1 0 8
-[s8] bbox -999 -1020 1011 1000
+[s8] bbox -999 -1021 1011 999
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=3
-[s8] corner 0 0 11.0 -20.0
-[s8] corner 0 1 11.0 0.0
-[s8] corner 0 2 1.0 0.0
+[s8] corner 0 0 11 -21
+[s8] corner 0 1 11 -1
+[s8] corner 0 2 1 -1
 [s8] comm unit=mil resolution=1 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=1.0 baseX=0.0 baseY=0.0
+[s8] transform scale=1 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=0
 [s8] viainfos count=1
 [s8] viainfo 0 name=defaultVia padstack=defaultVia clearanceClass=1 attachSmd=true
@@ -970,16 +970,16 @@
 [s8] bbox -1000 -101000 101000 1000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=4
-[s8] corner 0 0 0.0 -100000.0
-[s8] corner 0 1 100000.0 -100000.0
-[s8] corner 0 2 100000.0 0.0
-[s8] corner 0 3 0.0 0.0
+[s8] corner 0 0 0 -100000
+[s8] corner 0 1 100000 -100000
+[s8] corner 0 2 100000 0
+[s8] corner 0 3 0 0
 [s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10000 baseX=0 baseY=0
 [s8] netclasses count=3
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
-[s8] netclass 1 name=A traceClearanceClass=2 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=A shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
-[s8] netclass 2 name=A traceClearanceClass=3 halfWidths=[2500,2500] activeLayers=[true,true] viaRule=A shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 1 name=A traceClearanceClass=2 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=A shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 2 name=A traceClearanceClass=3 halfWidths=[2500,2500] activeLayers=[true,true] viaRule=A shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=1
 [s8] net 1 name=n1 subnet=1 containsPlane=false class=A
 [s8] viainfos count=2
@@ -1011,14 +1011,14 @@
 [s8] bbox -1000 -301000 401000 1000
 [s8] outline shapes=1 clearanceClass=1
 [s8] outlineshape 0 PolygonShape corners=4
-[s8] corner 0 0 0.0 -300000.0
-[s8] corner 0 1 400000.0 -300000.0
-[s8] corner 0 2 400000.0 0.0
-[s8] corner 0 3 0.0 0.0
+[s8] corner 0 0 0 -300000
+[s8] corner 0 1 400000 -300000
+[s8] corner 0 2 400000 0
+[s8] corner 0 3 0 0
 [s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
-[s8] transform scale=10000.0 baseX=0.0 baseY=0.0
+[s8] transform scale=10000 baseX=0 baseY=0
 [s8] netclasses count=1
-[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
+[s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0 maxTraceLength=0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
 [s8] nets count=17
 [s8] net 1 name=alpha subnet=1 containsPlane=false class=default
 [s8] net 2 name=beta subnet=1 containsPlane=false class=default

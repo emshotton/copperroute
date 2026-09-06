@@ -1,7 +1,7 @@
 use crate::float_point::FloatPoint;
 use crate::int_box::IntBox;
 use crate::int_point::IntPoint;
-use crate::limits::{CRIT_INT, SQRT2, java_max, java_min, java_round};
+use crate::limits::{CRIT_INT, SQRT2};
 use crate::line::Line;
 use crate::side::Side;
 use crate::simplex::Simplex;
@@ -274,7 +274,7 @@ impl IntOctagon {
         let width2 = (self.upper_right_diagonal_x - self.lower_left_diagonal_x)
             .max(self.lower_right_diagonal_x - self.upper_left_diagonal_x)
             as f64;
-        java_max(width1, width2 / SQRT2)
+        (width1).max(width2 / SQRT2)
     }
 
     pub fn min_width(&self) -> f64 {
@@ -282,17 +282,17 @@ impl IntOctagon {
         let width2 = (self.upper_right_diagonal_x - self.lower_left_diagonal_x)
             .min(self.lower_right_diagonal_x - self.upper_left_diagonal_x)
             as f64;
-        java_min(width1, width2 / SQRT2)
+        (width1).min(width2 / SQRT2)
     }
 
     /// Returns this octagon offsetted by `distance`. If `distance > 0` the offset is to the
     /// outside, else to the inside. The diagonal border lines move by `sqrt(2) * distance`.
     pub fn offset(&self, distance: f64) -> IntOctagon {
-        let width = java_round(distance) as i32;
+        let width = (distance).round() as i64 as i32;
         if width == 0 {
             return *self;
         }
-        let dia_width = java_round(SQRT2 * distance) as i32;
+        let dia_width = (SQRT2 * distance).round() as i64 as i32;
         let result = IntOctagon::new(
             self.left_x - width,
             self.bottom_y - width,

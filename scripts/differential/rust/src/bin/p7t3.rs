@@ -22,7 +22,7 @@ use std::time::UNIX_EPOCH;
 use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_dsn::parser::scope_parameter::DsnReadOptions;
-use fr_dsn::{java_double_to_string, BoardReadResult};
+use fr_dsn::{format_double, BoardReadResult};
 use fr_geometry::{Line, Point, Polyline};
 use fr_router::board_ext::RoutingBoardExt;
 use fr_router::pipeline::RouterBudget;
@@ -78,7 +78,7 @@ fn main() {
         out,
         "sweep regime={} pinEdgeToTurnDist={} traceCosts={}",
         regime_name(regime),
-        java_double_to_string(board.rules.get_pin_edge_to_turn_dist()),
+        format_double(board.rules.get_pin_edge_to_turn_dist()),
         match &trace_costs {
             Some(costs) => costs.len().to_string(),
             None => "null".to_string(),
@@ -303,8 +303,8 @@ fn dump_corner(polyline: &Polyline, no: usize) -> String {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }

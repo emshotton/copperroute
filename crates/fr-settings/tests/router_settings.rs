@@ -73,7 +73,7 @@ fn null_scoring_safety() {
     settings.set_layer_count(2);
     settings.scoring = None;
 
-    assert!(settings.java_clone().scoring.is_some());
+    assert!(settings.duplicate().scoring.is_some());
 
     assert_eq!(settings.get_start_ripup_costs(), 1);
     settings.set_start_ripup_costs(5);
@@ -95,7 +95,7 @@ fn neck_width() {
 
     let mut settings = RouterSettings::new();
     settings.neck_width_um = Some(130.0);
-    assert_eq!(settings.java_clone().get_neck_width_um(), 130.0);
+    assert_eq!(settings.duplicate().get_neck_width_um(), 130.0);
 
     settings.neck_width_um = Some(-5.0);
     assert_eq!(settings.get_neck_width_um(), 0.0);
@@ -382,7 +382,7 @@ fn set_layer_count_rewipes_costs() {
 }
 
 #[test]
-fn java_clone_replays_javas_sequence() {
+fn duplicate_replays_the_assignment_sequence() {
     let source = populated();
 
     let mut replay = RouterSettings::new();
@@ -412,17 +412,17 @@ fn java_clone_replays_javas_sequence() {
     replay.scoring = Some(source.scoring.clone().unwrap_or_default());
     replay.fanout = Some(source.fanout.clone().unwrap_or_default());
 
-    let cloned = source.java_clone();
+    let cloned = source.duplicate();
     assert_eq!(cloned.result_json_path, None);
     assert_eq!(replay.result_json_path, None);
     assert_eq!(cloned, replay);
 }
 
 #[test]
-fn java_clone_differs_from_the_derived_clone() {
+fn duplicate_differs_from_the_derived_clone() {
     let source = populated();
     assert_eq!(source.result_json_path.as_deref(), Some("/tmp/result.json"));
-    assert_eq!(source.java_clone().result_json_path, None);
+    assert_eq!(source.duplicate().result_json_path, None);
     assert_eq!(
         source.clone().result_json_path.as_deref(),
         Some("/tmp/result.json"),
@@ -433,7 +433,7 @@ fn java_clone_differs_from_the_derived_clone() {
     nulled.scoring = None;
     nulled.optimizer = None;
     nulled.fanout = None;
-    let cloned = nulled.java_clone();
+    let cloned = nulled.duplicate();
     assert_eq!(cloned.scoring, Some(ScoringSettings::default()));
     assert_eq!(cloned.optimizer, Some(OptimizerSettings::default()));
     assert_eq!(cloned.fanout, Some(FanoutSettings::default()));
@@ -441,9 +441,9 @@ fn java_clone_differs_from_the_derived_clone() {
 }
 
 #[test]
-fn java_clone_carries_every_other_field() {
+fn duplicate_carries_every_other_field() {
     let source = populated();
-    let cloned = source.java_clone();
+    let cloned = source.duplicate();
 
     assert_eq!(cloned.algorithm.as_deref(), Some("alg"));
     assert_eq!(cloned.job_timeout_string.as_deref(), Some("1:00:00"));

@@ -74,7 +74,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652
 [itemcount] 3
 
 
-[ses ses] bytes=885
+[ses ses] bytes=869
 [ses ses]|(session "p8t13-conduction-area"
 [ses ses]|  (base_design "p8t13-conduction-area")
 [ses ses]|  (placement
@@ -111,10 +111,10 @@ HEADER jar=freerouting-current-executable.jar size=63288652
 [ses ses]|          )
 [ses ses]|          (window
 [ses ses]|            (polygon F.Cu 0
-[ses ses]|              1300005.0 1300005.0
-[ses ses]|              1700005.0 1300005.0
-[ses ses]|              1700005.0 1700005.0
-[ses ses]|              1300005.0 1700005.0
+[ses ses]|              1300005 1300005
+[ses ses]|              1700005 1300005
+[ses ses]|              1700005 1700005
+[ses ses]|              1300005 1700005
 [ses ses]|            )
 [ses ses]|          )
 [ses ses]|        )

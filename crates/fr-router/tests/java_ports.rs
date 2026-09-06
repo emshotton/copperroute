@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use fr_board::prelude::*;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{FloatLine, FloatPoint};
-use fr_router::JavaTreeSet;
 use fr_router::arena::DoorId;
 use fr_router::autoroute::expansion::ExpandableRef;
 use fr_router::autoroute::expansion::sorted_neighbours::{
@@ -56,13 +55,11 @@ mod maze_list_element_test {
         let lower_cost = element(1, 0.0, 1.0);
         let higher_cost = element(2, 0.0, 2.0);
 
-        let mut queue: JavaTreeSet<MazeListElement> = JavaTreeSet::new();
-        queue.add_by(higher_cost, |a, b| a.compare_to(b, &ids));
-        queue.add_by(lower_cost.clone(), |a, b| a.compare_to(b, &ids));
+        let mut v = vec![higher_cost, lower_cost.clone()];
+        v.sort_by(|a, b| a.compare_to(b, &ids));
 
-        let first = queue.iter().next().expect("a non-empty queue");
         assert_eq!(
-            first, &lower_cost,
+            &v[0], &lower_cost,
             "Lower sortingValue must be expanded first"
         );
     }

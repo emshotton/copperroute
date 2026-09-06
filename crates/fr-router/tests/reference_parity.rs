@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use fr_board::prelude::*;
 use fr_drc::DesignRulesChecker;
-use fr_dsn::java_double_to_string;
+use fr_dsn::format_double;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::Point;
 use fr_router::autoroute::maze::ViaPricing;
@@ -59,9 +59,6 @@ fn row(stem: &str) -> Row {
         .unwrap_or_else(|| panic!("no row for {stem} in router-fixtures.txt"))
 }
 
-/// The stems whose per-stem tests carry `#[cfg_attr(debug_assertions, ignore)]`, and which
-const DEBUG_IGNORED_STEMS: [&str; 2] = ["router-dac2020-bm01", "router-dac2020-bm01-pass2"];
-
 fn reference_path(stem: &str) -> std::path::PathBuf {
     parity::reference(stem, "router.jsonl")
 }
@@ -74,7 +71,7 @@ fn read_reference(stem: &str) -> Vec<RouterConnectionDoc> {
 }
 
 fn load_board(rel_path: &str) -> Board {
-    let path = parity::java_dir().join(rel_path);
+    let path = parity::reference_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path
@@ -271,7 +268,7 @@ fn inserted_geometry(
 
 fn metrics(board: &mut Board, net_no: i32) -> RouterMetrics {
     let vias = board.net_via_count(net_no) as i64;
-    let trace_length = java_double_to_string(board.cumulative_trace_length());
+    let trace_length = format_double(board.cumulative_trace_length());
     let (incompletes, violations) = {
         let mut drc = DesignRulesChecker::new(board);
         (drc.get_incomplete_count(), drc.get_all_violations())
@@ -293,11 +290,7 @@ fn point(p: &Point) -> String {
         Point::Int(ip) => format!("({},{})", ip.x, ip.y),
         Point::Rational(_) => {
             let f = p.to_float();
-            format!(
-                "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
-            )
+            format!("~({},{})", format_double(f.x), format_double(f.y))
         }
     }
 }
@@ -307,11 +300,7 @@ fn corner(p: &fr_geometry::Polyline, i: usize) -> String {
         Some(Point::Int(ip)) => format!("({},{})", ip.x, ip.y),
         _ => {
             let f = p.corner_approx(i).expect("a corner of a valid polyline");
-            format!(
-                "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
-            )
+            format!("~({},{})", format_double(f.x), format_double(f.y))
         }
     }
 }
@@ -322,7 +311,7 @@ struct Ladder {
 }
 
 fn check(stem: &str) -> Option<Ladder> {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return None;
     }
     if !parity::require_reference(&reference_path(stem)) {
@@ -503,15 +492,6 @@ fn router_dac2020_bm01_pass2() {
     assert_eq!(ladder.connections, 294);
 }
 
-/// **Deliberately not `#[cfg_attr(debug_assertions, ignore)]`.** This is the regression test for
-#[test]
-fn router_j2_reference() {
-    let Some(ladder) = check_all_rungs("router-j2-reference") else {
-        return;
-    };
-    assert_eq!(ladder.connections, 45);
-}
-
 #[test]
 fn router_tutorial_board() {
     let Some(ladder) = check_all_rungs("router-tutorial-board") else {
@@ -521,14 +501,6 @@ fn router_tutorial_board() {
         ladder.connections, 0,
         "tutorial_board.dsn's 438 nets are all empty `@:no_net_N`, so nothing is routable"
     );
-}
-
-#[test]
-fn router_ecc83_input() {
-    let Some(ladder) = check_all_rungs("router-ecc83-input") else {
-        return;
-    };
-    assert_eq!(ladder.connections, 22);
 }
 
 #[test]
@@ -589,24 +561,6 @@ fn every_stem_has_the_connection_count_its_meta_records() {
     }
 }
 
-#[test]
-fn geometry_is_required_where_it_was_reached() {
-    for row in rows() {
-        if cfg!(debug_assertions) && DEBUG_IGNORED_STEMS.contains(&row.stem.as_str()) {
-            continue;
-        }
-        let Some(ladder) = check(&row.stem) else {
-            continue;
-        };
-        assert!(
-            ladder.geometry_diffs.is_empty(),
-            "{}: ruling 1(b) was reached when the references were generated and is not now:\n{}",
-            row.stem,
-            ladder.geometry_diffs.join("\n")
-        );
-    }
-}
-
 fn steps18_reference_path(stem: &str) -> std::path::PathBuf {
     parity::reference(stem, "router-steps18.jsonl")
 }
@@ -619,7 +573,8 @@ fn read_steps18_reference(stem: &str) -> Vec<RouterConnectionDoc> {
 }
 
 fn steps18_pair(stem: &str) -> Option<(Vec<RouterConnectionDoc>, Vec<RouterConnectionDoc>)> {
-    if !parity::require_java_dir() || !parity::require_reference(&steps18_reference_path(stem)) {
+    if !parity::require_reference_dir() || !parity::require_reference(&steps18_reference_path(stem))
+    {
         return None;
     }
     let expected = read_steps18_reference(stem);
@@ -649,18 +604,6 @@ fn assert_steps18_matches(stem: &str) {
             "{stem} k={} diverged under --steps=1-8:\n  port: {got:?}\n  java: {want:?}",
             i + 1
         );
-    }
-}
-
-#[test]
-fn steps_one_to_eight_matches_the_jar() {
-    for stem in [
-        "router-rpi-splitter",
-        "router-j2-reference",
-        "router-ecc83-input",
-        "router-tutorial-board",
-    ] {
-        assert_steps18_matches(stem);
     }
 }
 

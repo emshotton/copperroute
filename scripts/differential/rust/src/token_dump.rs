@@ -6,7 +6,7 @@
 
 use std::io::Write;
 
-use fr_dsn::format::double::java_double_to_string;
+use fr_dsn::format::double::format_double;
 use fr_dsn::keyword::Keyword;
 use fr_dsn::lexer::{DsnScanner, Token};
 
@@ -53,7 +53,7 @@ fn describe(token: &Token) -> String {
         Token::Kw(keyword) => format!("KW {}", java_constant_name(*keyword)),
         Token::Str(s) => format!("STR {}", escape(s)),
         Token::Int(i) => format!("INT {i}"),
-        Token::Float(d) => format!("DBL {}", java_double_to_string(*d)),
+        Token::Float(d) => format!("DBL {}", format_double(*d)),
     }
 }
 

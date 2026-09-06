@@ -42,7 +42,7 @@ pub fn count_occurrences(haystack: &str, needle: &str) -> usize {
     count
 }
 
-fn java_split_literal<'a>(s: &'a str, separator: &str) -> Vec<&'a str> {
+fn split_dropping_trailing_empty<'a>(s: &'a str, separator: &str) -> Vec<&'a str> {
     if !s.contains(separator) {
         return vec![s];
     }
@@ -54,11 +54,11 @@ fn java_split_literal<'a>(s: &'a str, separator: &str) -> Vec<&'a str> {
 }
 
 fn ses_branch(content: &str, stats: &mut BoardStatistics) {
-    let lines = java_split_literal(content, "(path ");
+    let lines = split_dropping_trailing_empty(content, "(path ");
 
     let mut layers: Vec<&str> = Vec::new();
     for (i, line) in lines.iter().enumerate() {
-        let words = java_split_literal(line, " ");
+        let words = split_dropping_trailing_empty(line, " ");
         if i > 0 && words.len() >= 2 {
             let layer = words[0];
             if !layers.contains(&layer) {
@@ -80,8 +80,8 @@ fn dsn_branch(content: &str, stats: &mut BoardStatistics) {
 
     if let Some(parser_index) = content.find("(parser") {
         let mut search_limit = match content[parser_index..].find(')') {
-            Some(offset) => java_min(content.len(), parser_index + offset + 1),
-            None => java_min(content.len(), parser_index + 1000),
+            Some(offset) => (content.len()).min(parser_index + offset + 1),
+            None => (content.len()).min(parser_index + 1000),
         };
         while !content.is_char_boundary(search_limit) {
             search_limit += 1;
@@ -92,13 +92,13 @@ fn dsn_branch(content: &str, stats: &mut BoardStatistics) {
             && let Some(hc_end) = parser_scope[hc_idx..].find(')').map(|o| hc_idx + o)
         {
             let value = slice_totalized(parser_scope, hc_idx + 9, hc_end);
-            host_cad = Some(remove_quotes(java_trim(value)).to_string());
+            host_cad = Some(remove_quotes((value).trim()).to_string());
         }
         if let Some(hv_idx) = parser_scope.find("(hostVersion")
             && let Some(hv_end) = parser_scope[hv_idx..].find(')').map(|o| hv_idx + o)
         {
             let value = slice_totalized(parser_scope, hv_idx + 13, hv_end);
-            host_version = Some(remove_quotes(java_trim(value)).to_string());
+            host_version = Some(remove_quotes((value).trim()).to_string());
         }
     }
 
@@ -307,17 +307,9 @@ fn remove_quotes(text: &str) -> &str {
 }
 
 fn slice_totalized(text: &str, begin: usize, end: usize) -> &str {
-    let mut begin = java_min(begin, end);
+    let mut begin = (begin).min(end);
     while !text.is_char_boundary(begin) {
         begin += 1;
     }
     &text[begin..end]
-}
-
-fn java_min(a: usize, b: usize) -> usize {
-    if a < b { a } else { b }
-}
-
-fn java_trim(text: &str) -> &str {
-    text.trim_matches(|c: char| c <= '\u{20}')
 }

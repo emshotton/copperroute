@@ -10,7 +10,7 @@ use fr_geometry::{Area, Point, ShapeOps, Vector};
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
-use crate::format::{IdentifierType, IndentFileWriter, java_double_to_string, java_round_to_int};
+use crate::format::{IdentifierType, IndentFileWriter, format_double};
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::dsn_file::{
@@ -18,7 +18,7 @@ use crate::parser::dsn_file::{
 };
 use crate::parser::geometry::DsnLayerStructure;
 use crate::parser::library::strip_dot_digits;
-use crate::parser::part_library::{DsnLogicalPart, DsnLogicalPartMapping, java_string_cmp};
+use crate::parser::part_library::{DsnLogicalPart, DsnLogicalPartMapping, utf16_cmp};
 use crate::parser::placement::ComponentLocation;
 use crate::parser::scope_parameter::{ReadScopeParameter, WriteScopeParameter, skip_scope};
 use crate::parser::structure::{contains_wire_clearance_pair, read_via_padstacks};
@@ -351,8 +351,8 @@ pub struct PinRef {
 
 impl Ord for PinRef {
     fn cmp(&self, other: &PinRef) -> std::cmp::Ordering {
-        java_string_cmp(&self.component_name, &other.component_name)
-            .then_with(|| java_string_cmp(&self.pin_name, &other.pin_name))
+        utf16_cmp(&self.component_name, &other.component_name)
+            .then_with(|| utf16_cmp(&self.pin_name, &other.pin_name))
     }
 }
 
@@ -386,7 +386,7 @@ pub struct NetId {
 
 impl Ord for NetId {
     fn cmp(&self, other: &NetId) -> std::cmp::Ordering {
-        java_string_cmp(&self.name, &other.name).then_with(|| self.subnet_no.cmp(&other.subnet_no))
+        utf16_cmp(&self.name, &other.name).then_with(|| self.subnet_no.cmp(&other.subnet_no))
     }
 }
 
@@ -575,7 +575,7 @@ pub fn read_network_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnErr
 const BOARD_EXPECTED: &str =
     "Network.readScope: the structure scope must have created the board (Java NPEs here too)";
 
-fn java_split_underscore(text: &str) -> Vec<&str> {
+fn split_underscore_dropping_trailing_empty(text: &str) -> Vec<&str> {
     if !text.contains('_') {
         return vec![text];
     }
@@ -709,7 +709,7 @@ fn read_net_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnError> {
                 if let DsnRule::Width(wire_width) = current_object {
                     let default_net_rule = board.rules.get_default_net_class();
                     let trace_half_width =
-                        java_round_to_int(coordinate_transform.dsn_to_board(*wire_width) / 2.0);
+                        (coordinate_transform.dsn_to_board(*wire_width) / 2.0).round() as i32;
                     let default_trace_clearance_class = board
                         .rules
                         .net_classes
@@ -1044,7 +1044,7 @@ pub fn insert_net_class(
         match current_rule {
             DsnRule::Width(value) => {
                 let trace_half_width =
-                    java_round_to_int(coordinate_transform.dsn_to_board(value / 2.0));
+                    (coordinate_transform.dsn_to_board(value / 2.0)).round() as i32;
                 board
                     .rules
                     .net_classes
@@ -1067,7 +1067,7 @@ pub fn insert_net_class(
                 match current_rule {
                     DsnRule::Width(value) => {
                         let trace_half_width =
-                            java_round_to_int(coordinate_transform.dsn_to_board(value / 2.0));
+                            (coordinate_transform.dsn_to_board(value / 2.0)).round() as i32;
                         board
                             .rules
                             .net_classes
@@ -1210,7 +1210,7 @@ fn add_mixed_clearance_rule(
     coordinate_transform: &CoordinateTransform,
 ) {
     let current_clearance =
-        java_round_to_int(coordinate_transform.dsn_to_board(clearance_rule.value));
+        (coordinate_transform.dsn_to_board(clearance_rule.value)).round() as i32;
     let first_class_name = board
         .rules
         .net_classes
@@ -1259,7 +1259,7 @@ fn add_mixed_clearance_rule(
         return;
     }
     for current_string in &clearance_rule.clearance_class_pairs {
-        let current_pair = java_split_underscore(current_string);
+        let current_pair = split_underscore_dropping_trailing_empty(current_string);
         if current_pair.len() != 2 {
             continue;
         }
@@ -1401,7 +1401,7 @@ fn add_clearance_rule(
     layer_index: Option<usize>,
     coordinate_transform: &CoordinateTransform,
 ) {
-    let current_clearance = java_round_to_int(coordinate_transform.dsn_to_board(rule.value));
+    let current_clearance = (coordinate_transform.dsn_to_board(rule.value)).round() as i32;
     let class_name = board
         .rules
         .net_classes
@@ -1470,7 +1470,7 @@ fn add_clearance_rule(
         create_default_clearance_classes(board, net_class);
     }
     for current_string in &rule.clearance_class_pairs {
-        let current_pair = java_split_underscore(current_string);
+        let current_pair = split_underscore_dropping_trailing_empty(current_string);
         if current_pair.len() != 2 {
             continue;
         }
@@ -1963,7 +1963,7 @@ pub fn write_rule_scope(net_class: &NetClass, p: &mut WriteScopeParameter<'_>) {
             .board_to_dsn(f64::from(default_trace_half_width));
     p.file.new_line();
     p.file.write("(width ");
-    p.file.write(&java_double_to_string(trace_width));
+    p.file.write(&format_double(trace_width));
     p.file.write(")");
     p.file.end_scope();
     for i in 1..p.board.layer_structure().count() {
@@ -1991,7 +1991,7 @@ fn write_layer_rule(net_class: &NetClass, layer_index: usize, p: &mut WriteScope
             .board_to_dsn(f64::from(current_trace_half_width));
     p.file.new_line();
     p.file.write("(width ");
-    p.file.write(&java_double_to_string(trace_width));
+    p.file.write(&format_double(trace_width));
     p.file.write(") ");
     p.file.end_scope();
     p.file.end_scope();
@@ -2007,7 +2007,7 @@ pub fn write_default_rule(p: &mut WriteScopeParameter<'_>, layer: usize) {
             .board_to_dsn(f64::from(default_half_width));
     p.file.new_line();
     p.file.write("(width ");
-    p.file.write(&java_double_to_string(trace_width));
+    p.file.write(&format_double(trace_width));
     p.file.write(")");
     let default_cl_no = BoardRules::default_clearance_class();
     let default_board_clearance =
@@ -2020,14 +2020,14 @@ pub fn write_default_rule(p: &mut WriteScopeParameter<'_>, layer: usize) {
         .board_to_dsn(f64::from(default_board_clearance));
     p.file.new_line();
     p.file.write("(clearance ");
-    p.file.write(&java_double_to_string(default_clearance));
+    p.file.write(&format_double(default_clearance));
     p.file.write(")");
     let smd_to_turn_dist = p
         .coordinate_transform
         .board_to_dsn(p.board.rules.get_pin_edge_to_turn_dist());
     p.file.new_line();
     p.file.write("(clearance ");
-    p.file.write(&java_double_to_string(smd_to_turn_dist));
+    p.file.write(&format_double(smd_to_turn_dist));
     p.file.write(" (type smd_to_turn_gap))");
 
     write_named_clearance_rules(p, layer);
@@ -2061,7 +2061,7 @@ fn write_non_default_clearance_rules(
             let name_j = clearance_class_name(&p.board.rules, j).to_string();
             p.file.new_line();
             p.file.write("(clearance ");
-            p.file.write(&java_double_to_string(current_clearance));
+            p.file.write(&format_double(current_clearance));
             p.file.write(" (type ");
             p.identifier_type.write(&name_i, &mut p.file);
             p.file.write(CLASS_CLEARANCE_SEPARATOR_STR);
@@ -2087,7 +2087,7 @@ fn write_named_clearance_rules(p: &mut WriteScopeParameter<'_>, layer: usize) {
 
         p.file.new_line();
         p.file.write("(clearance ");
-        p.file.write(&java_double_to_string(current_clearance));
+        p.file.write(&format_double(current_clearance));
         p.file.write(" (type ");
         p.identifier_type.write(&name_i, &mut p.file);
         p.file.write("))");
@@ -2336,14 +2336,14 @@ fn write_circuit(net_class: &NetClass, p: &mut WriteScopeParameter<'_>) {
         } else {
             p.coordinate_transform.board_to_dsn(max_trace_length)
         };
-        p.file.write(&java_double_to_string(transformed_max_length));
+        p.file.write(&format_double(transformed_max_length));
         p.file.write(" ");
         let transformed_min_length = if min_trace_length <= 0.0 {
             0.0
         } else {
             p.coordinate_transform.board_to_dsn(min_trace_length)
         };
-        p.file.write(&java_double_to_string(transformed_min_length));
+        p.file.write(&format_double(transformed_min_length));
         p.file.write(")");
     }
     p.file.end_scope();
@@ -2556,15 +2556,33 @@ mod tests {
     }
 
     #[test]
-    fn java_split_underscore_drops_trailing_empties_the_way_javas_split_does() {
-        assert_eq!(java_split_underscore("via_smd"), vec!["via", "smd"]);
-        assert_eq!(java_split_underscore("smd_via_same_net").len(), 4);
-        assert_eq!(java_split_underscore("via_"), vec!["via"]);
-        assert_eq!(java_split_underscore("_via"), vec!["", "via"]);
-        assert_eq!(java_split_underscore("a__b"), vec!["a", "", "b"]);
-        assert!(java_split_underscore("_").is_empty());
-        assert_eq!(java_split_underscore(""), vec![""]);
-        assert_eq!(java_split_underscore("wire"), vec!["wire"]);
+    fn split_underscore_dropping_trailing_empty_drops_trailing_empties_the_way_javas_split_does() {
+        assert_eq!(
+            split_underscore_dropping_trailing_empty("via_smd"),
+            vec!["via", "smd"]
+        );
+        assert_eq!(
+            split_underscore_dropping_trailing_empty("smd_via_same_net").len(),
+            4
+        );
+        assert_eq!(
+            split_underscore_dropping_trailing_empty("via_"),
+            vec!["via"]
+        );
+        assert_eq!(
+            split_underscore_dropping_trailing_empty("_via"),
+            vec!["", "via"]
+        );
+        assert_eq!(
+            split_underscore_dropping_trailing_empty("a__b"),
+            vec!["a", "", "b"]
+        );
+        assert!(split_underscore_dropping_trailing_empty("_").is_empty());
+        assert_eq!(split_underscore_dropping_trailing_empty(""), vec![""]);
+        assert_eq!(
+            split_underscore_dropping_trailing_empty("wire"),
+            vec!["wire"]
+        );
     }
 
     #[test]

@@ -11,10 +11,8 @@
 
 use fr_board::items::Item;
 use fr_board::prelude::*;
-use fr_dsn::java_double_to_string;
-use fr_geometry::{
-    IntBox, IntPoint, IntVector, JavaRandom, Line, Point, Polyline, Shape, TileShape,
-};
+use fr_dsn::format_double;
+use fr_geometry::{IntBox, IntPoint, IntVector, Line, Point, Polyline, Shape, TileShape};
 use fr_router::board_ext::{PolylineTraceExt, TraceTightener};
 use std::io::{BufWriter, Write};
 
@@ -39,6 +37,49 @@ const EDGE_DISTS: [f64; 4] = [-1.0, 0.0, 100.0, 500.0];
 
 const RANDOM_COUNT: i32 = 128;
 const RANDOM_SEED: i64 = 70605;
+
+struct JavaRandom {
+    seed: i64,
+}
+
+impl JavaRandom {
+    const MULTIPLIER: i64 = 0x5DEECE66D_i64;
+    const ADDEND: i64 = 0xB;
+    const MASK: i64 = (1 << 48) - 1;
+
+    fn new(seed: i64) -> JavaRandom {
+        JavaRandom {
+            seed: (seed ^ JavaRandom::MULTIPLIER) & JavaRandom::MASK,
+        }
+    }
+
+    fn next(&mut self, bits: u32) -> i32 {
+        self.seed = self
+            .seed
+            .wrapping_mul(JavaRandom::MULTIPLIER)
+            .wrapping_add(JavaRandom::ADDEND)
+            & JavaRandom::MASK;
+        (self.seed >> (48 - bits)) as i32
+    }
+
+    fn next_int(&mut self, bound: i32) -> i32 {
+        let mut r = self.next(31);
+        let m = bound - 1;
+        if bound & m == 0 {
+            r = ((bound as i64 * r as i64) >> 31) as i32;
+        } else {
+            let mut u = r;
+            loop {
+                r = u % bound;
+                if u.wrapping_sub(r).wrapping_add(m) >= 0 {
+                    break;
+                }
+                u = self.next(31);
+            }
+        }
+        r
+    }
+}
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -138,8 +179,8 @@ fn dump_corner(polyline: &Polyline, no: usize) -> String {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }
@@ -343,7 +384,7 @@ fn check_mode(out: &mut impl Write) {
                     out,
                     "regime={} edge={} case={} atStart={} atEnd={}",
                     regime_name(angle),
-                    java_double_to_string(edge),
+                    format_double(edge),
                     case.name,
                     <Board as PolylineTraceExt>::check_connection_to_pin(&board, trace, true),
                     <Board as PolylineTraceExt>::check_connection_to_pin(&board, trace, false),
@@ -371,7 +412,7 @@ fn correct_mode(out: &mut impl Write) {
                         out,
                         "regime={} edge={} case={} atStart={at_start} changed={changed}",
                         regime_name(angle),
-                        java_double_to_string(edge),
+                        format_double(edge),
                         case.name,
                     )
                     .expect("stdout");
@@ -485,7 +526,7 @@ fn swap_mode(out: &mut impl Write) {
                         out,
                         "regime={} edge={} case={} atStart={at_start} changed={changed}",
                         regime_name(angle),
-                        java_double_to_string(edge),
+                        format_double(edge),
                         case.name,
                     )
                     .expect("stdout");
@@ -540,7 +581,7 @@ fn rand_mode(out: &mut impl Write) {
             writeln!(
                 out,
                 "row {i} hw={half_width} edge={} atStart={at_start} check={checked}",
-                java_double_to_string(edge),
+                format_double(edge),
             )
             .expect("stdout");
             writeln!(out, "  in  {}", dump_polyline(&polyline)).expect("stdout");
@@ -628,7 +669,7 @@ fn edge_mode(out: &mut impl Write) {
                     out,
                     "regime={} edge={} case={} pullTight={changed}",
                     regime_name(angle),
-                    java_double_to_string(edge),
+                    format_double(edge),
                     case.name,
                 )
                 .expect("stdout");

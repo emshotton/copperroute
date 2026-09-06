@@ -139,7 +139,7 @@ fn a_non_improving_pass_still_drops_the_increased_ripup_costs_once() {
 }
 
 fn load_rpi() -> Board {
-    let path = parity::java_dir().join(RPI);
+    let path = parity::reference_dir().join(RPI);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     match fr_dsn::read_board(
@@ -171,7 +171,7 @@ fn rpi_settings(board: &Board) -> RouterSettings {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_history_ranks_boards_by_penalty_ascending() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut unrouted = load_rpi();
@@ -203,7 +203,7 @@ fn the_history_ranks_boards_by_penalty_ascending() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn a_fully_routed_board_still_gets_an_optimizer_pass() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_rpi();
@@ -245,7 +245,7 @@ fn a_fully_routed_board_still_gets_an_optimizer_pass() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_job_deadline_ends_the_optimizer_stage_on_a_routed_board() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_rpi();
@@ -297,7 +297,7 @@ fn the_job_deadline_ends_the_optimizer_stage_on_a_routed_board() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_statistics_incomplete_count_is_the_drc_incomplete_count() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_rpi();
@@ -347,7 +347,7 @@ fn the_search_stop_check_sees_an_expired_job_deadline_without_a_poll() {
 
 #[test]
 fn the_routing_decision_statistics_skip_the_fanout_census() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_rpi();
@@ -373,7 +373,7 @@ fn the_routing_decision_statistics_skip_the_fanout_census() {
 #[test]
 #[cfg_attr(debug_assertions, ignore = "routes rpi_splitter; run with --release")]
 fn the_optimizers_carried_incomplete_counts_match_a_full_count() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_rpi();

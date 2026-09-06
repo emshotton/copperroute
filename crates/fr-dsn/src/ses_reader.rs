@@ -5,7 +5,6 @@ use fr_geometry::{IntPoint, Point, Polyline};
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
-use crate::format::java_round_to_int;
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::geometry::{DsnLayerStructure, DsnPolygonPath, read_polygon_path_scope};
@@ -207,13 +206,13 @@ impl SesReader<'_> {
         let mut points: Vec<Point> = Vec::with_capacity(coordinate_arr.len() / 2);
         for i in 0..coordinate_arr.len() / 2 {
             points.push(Point::Int(IntPoint::new(
-                java_round_to_int(coordinate_arr[2 * i] / denominator),
-                java_round_to_int(coordinate_arr[2 * i + 1] / denominator),
+                (coordinate_arr[2 * i] / denominator).round() as i32,
+                (coordinate_arr[2 * i + 1] / denominator).round() as i32,
             )));
         }
 
         let polyline = Polyline::from_points(&points);
-        let half_width = java_round_to_int(wire_path.width / (2.0 * denominator));
+        let half_width = (wire_path.width / (2.0 * denominator)).round() as i32;
 
         let layer_index = usize::try_from(wire_path.layer.no).unwrap_or(0);
 
@@ -271,8 +270,8 @@ impl SesReader<'_> {
 
         let denominator = self.session_file_scale_denominator;
         let via_location = Point::Int(IntPoint::new(
-            java_round_to_int(location[0] / denominator),
-            java_round_to_int(location[1] / denominator),
+            (location[0] / denominator).round() as i32,
+            (location[1] / denominator).round() as i32,
         ));
 
         let clearance_class = self.default_clearance_class(ItemClass::Via);
@@ -314,7 +313,7 @@ fn describe_token(token: Option<&Token>) -> String {
         Some(Token::Kw(keyword)) => keyword.name().to_string(),
         Some(Token::Str(value)) => value.clone(),
         Some(Token::Int(value)) => value.to_string(),
-        Some(Token::Float(value)) => crate::format::java_double_to_string(*value),
+        Some(Token::Float(value)) => crate::format::format_double(*value),
     }
 }
 

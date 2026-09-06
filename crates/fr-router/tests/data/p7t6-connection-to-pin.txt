@@ -1639,1158 +1639,1158 @@ regime=NONE edge=500.0 case=two-corner atStart=false changed=false
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
 ######## swap
-regime=NINETY_DEGREE edge=-1.0 case=left-stub-sharp atStart=true changed=false
+regime=NINETY_DEGREE edge=-1 case=left-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=left-stub-sharp atStart=false changed=false
+regime=NINETY_DEGREE edge=-1 case=left-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=left-stub-blunt atStart=true changed=false
+regime=NINETY_DEGREE edge=-1 case=left-stub-blunt atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,-2),(-800,0)->(-1400,300),(-1400,300)->(-1399,302)] corners=[(-800,0),(-1400,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=left-stub-blunt atStart=false changed=false
+regime=NINETY_DEGREE edge=-1 case=left-stub-blunt atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1400,300)->(-1399,302),(-1400,300)->(-800,0),(-800,0)->(-801,-2)] corners=[(-1400,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=right-stub-sharp atStart=true changed=false
+regime=NINETY_DEGREE edge=-1 case=right-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,0)->(-201,-2),(-200,0)->(-800,300),(-800,300)->(-799,302)] corners=[(-200,0),(-800,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=right-stub-sharp atStart=false changed=false
+regime=NINETY_DEGREE edge=-1 case=right-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,300)->(-799,302),(-800,300)->(-200,0),(-200,0)->(-201,-2)] corners=[(-800,300),(-200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=left-stub-long atStart=true changed=false
+regime=NINETY_DEGREE edge=-1 case=left-stub-long atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1200,0)->(-1207,9),(-1200,0)->(-300,700),(-300,700)->(-293,691)] corners=[(-1200,0),(-300,700)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=left-stub-long atStart=false changed=false
+regime=NINETY_DEGREE edge=-1 case=left-stub-long atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-300,700)->(-293,691),(-300,700)->(-1200,0),(-1200,0)->(-1207,9)] corners=[(-300,700),(-1200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=left-stub-kink atStart=true changed=false
+regime=NINETY_DEGREE edge=-1 case=left-stub-kink atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,0)->(-801,1),(-800,0)->(-780,20),(-780,20)->(-200,400),(-200,400)->(-181,371)] corners=[(-800,0),(-780,20),(-200,400)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=left-stub-kink atStart=false changed=false
+regime=NINETY_DEGREE edge=-1 case=left-stub-kink atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,400)->(-181,371),(-200,400)->(-780,20),(-780,20)->(-800,0),(-800,0)->(-801,1)] corners=[(-200,400),(-780,20),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=left-stub-fat atStart=true changed=false
+regime=NINETY_DEGREE edge=-1 case=left-stub-fat atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-900,0)->(-905,7),(-900,0)->(-200,500),(-200,500)->(-195,493)] corners=[(-900,0),(-200,500)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=left-stub-fat atStart=false changed=false
+regime=NINETY_DEGREE edge=-1 case=left-stub-fat atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-200,500)->(-195,493),(-200,500)->(-900,0),(-900,0)->(-905,7)] corners=[(-200,500),(-900,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=wide-stub atStart=true changed=false
+regime=NINETY_DEGREE edge=-1 case=wide-stub atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=wide-stub atStart=false changed=false
+regime=NINETY_DEGREE edge=-1 case=wide-stub atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=left-stub-sharp atStart=true changed=false
+regime=NINETY_DEGREE edge=0 case=left-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=left-stub-sharp atStart=false changed=false
+regime=NINETY_DEGREE edge=0 case=left-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=left-stub-blunt atStart=true changed=false
+regime=NINETY_DEGREE edge=0 case=left-stub-blunt atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,-2),(-800,0)->(-1400,300),(-1400,300)->(-1399,302)] corners=[(-800,0),(-1400,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=left-stub-blunt atStart=false changed=false
+regime=NINETY_DEGREE edge=0 case=left-stub-blunt atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1400,300)->(-1399,302),(-1400,300)->(-800,0),(-800,0)->(-801,-2)] corners=[(-1400,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=right-stub-sharp atStart=true changed=false
+regime=NINETY_DEGREE edge=0 case=right-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,0)->(-201,-2),(-200,0)->(-800,300),(-800,300)->(-799,302)] corners=[(-200,0),(-800,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=right-stub-sharp atStart=false changed=false
+regime=NINETY_DEGREE edge=0 case=right-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,300)->(-799,302),(-800,300)->(-200,0),(-200,0)->(-201,-2)] corners=[(-800,300),(-200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=left-stub-long atStart=true changed=false
+regime=NINETY_DEGREE edge=0 case=left-stub-long atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1200,0)->(-1207,9),(-1200,0)->(-300,700),(-300,700)->(-293,691)] corners=[(-1200,0),(-300,700)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=left-stub-long atStart=false changed=false
+regime=NINETY_DEGREE edge=0 case=left-stub-long atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-300,700)->(-293,691),(-300,700)->(-1200,0),(-1200,0)->(-1207,9)] corners=[(-300,700),(-1200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=left-stub-kink atStart=true changed=false
+regime=NINETY_DEGREE edge=0 case=left-stub-kink atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,0)->(-801,1),(-800,0)->(-780,20),(-780,20)->(-200,400),(-200,400)->(-181,371)] corners=[(-800,0),(-780,20),(-200,400)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=left-stub-kink atStart=false changed=false
+regime=NINETY_DEGREE edge=0 case=left-stub-kink atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,400)->(-181,371),(-200,400)->(-780,20),(-780,20)->(-800,0),(-800,0)->(-801,1)] corners=[(-200,400),(-780,20),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=left-stub-fat atStart=true changed=false
+regime=NINETY_DEGREE edge=0 case=left-stub-fat atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-900,0)->(-905,7),(-900,0)->(-200,500),(-200,500)->(-195,493)] corners=[(-900,0),(-200,500)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=left-stub-fat atStart=false changed=false
+regime=NINETY_DEGREE edge=0 case=left-stub-fat atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-200,500)->(-195,493),(-200,500)->(-900,0),(-900,0)->(-905,7)] corners=[(-200,500),(-900,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=wide-stub atStart=true changed=false
+regime=NINETY_DEGREE edge=0 case=wide-stub atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=wide-stub atStart=false changed=false
+regime=NINETY_DEGREE edge=0 case=wide-stub atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=left-stub-sharp atStart=true changed=true
+regime=NINETY_DEGREE edge=100 case=left-stub-sharp atStart=true changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-500,0),(-800,0),(-200,300)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=left-stub-sharp atStart=false changed=true
+regime=NINETY_DEGREE edge=100 case=left-stub-sharp atStart=false changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-500,0),(-500,-1)->(-500,0)] corners=[(-200,300),(-800,0),(-500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=left-stub-blunt atStart=true changed=false
+regime=NINETY_DEGREE edge=100 case=left-stub-blunt atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,-2),(-800,0)->(-1400,300),(-1400,300)->(-1399,302)] corners=[(-800,0),(-1400,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=left-stub-blunt atStart=false changed=false
+regime=NINETY_DEGREE edge=100 case=left-stub-blunt atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1400,300)->(-1399,302),(-1400,300)->(-800,0),(-800,0)->(-801,-2)] corners=[(-1400,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=right-stub-sharp atStart=true changed=true
+regime=NINETY_DEGREE edge=100 case=right-stub-sharp atStart=true changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-800,300),(-800,300)->(-799,302)] corners=[(-500,0),(-200,0),(-800,300)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=right-stub-sharp atStart=false changed=true
+regime=NINETY_DEGREE edge=100 case=right-stub-sharp atStart=false changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,300)->(-799,302),(-800,300)->(-200,0),(-200,0)->(-500,0),(-500,1)->(-500,0)] corners=[(-800,300),(-200,0),(-500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=left-stub-long atStart=true changed=false
+regime=NINETY_DEGREE edge=100 case=left-stub-long atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1200,0)->(-1207,9),(-1200,0)->(-300,700),(-300,700)->(-293,691)] corners=[(-1200,0),(-300,700)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=left-stub-long atStart=false changed=false
+regime=NINETY_DEGREE edge=100 case=left-stub-long atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-300,700)->(-293,691),(-300,700)->(-1200,0),(-1200,0)->(-1207,9)] corners=[(-300,700),(-1200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=left-stub-kink atStart=true changed=false
+regime=NINETY_DEGREE edge=100 case=left-stub-kink atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,0)->(-801,1),(-800,0)->(-780,20),(-780,20)->(-200,400),(-200,400)->(-181,371)] corners=[(-800,0),(-780,20),(-200,400)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=left-stub-kink atStart=false changed=false
+regime=NINETY_DEGREE edge=100 case=left-stub-kink atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,400)->(-181,371),(-200,400)->(-780,20),(-780,20)->(-800,0),(-800,0)->(-801,1)] corners=[(-200,400),(-780,20),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=left-stub-fat atStart=true changed=false
+regime=NINETY_DEGREE edge=100 case=left-stub-fat atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-900,0)->(-905,7),(-900,0)->(-200,500),(-200,500)->(-195,493)] corners=[(-900,0),(-200,500)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=left-stub-fat atStart=false changed=false
+regime=NINETY_DEGREE edge=100 case=left-stub-fat atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-200,500)->(-195,493),(-200,500)->(-900,0),(-900,0)->(-905,7)] corners=[(-200,500),(-900,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=wide-stub atStart=true changed=true
+regime=NINETY_DEGREE edge=100 case=wide-stub atStart=true changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=wide-stub atStart=false changed=true
+regime=NINETY_DEGREE edge=100 case=wide-stub atStart=false changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=left-stub-sharp atStart=true changed=false
+regime=NINETY_DEGREE edge=500 case=left-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=left-stub-sharp atStart=false changed=false
+regime=NINETY_DEGREE edge=500 case=left-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=left-stub-blunt atStart=true changed=false
+regime=NINETY_DEGREE edge=500 case=left-stub-blunt atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,-2),(-800,0)->(-1400,300),(-1400,300)->(-1399,302)] corners=[(-800,0),(-1400,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=left-stub-blunt atStart=false changed=false
+regime=NINETY_DEGREE edge=500 case=left-stub-blunt atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1400,300)->(-1399,302),(-1400,300)->(-800,0),(-800,0)->(-801,-2)] corners=[(-1400,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=right-stub-sharp atStart=true changed=false
+regime=NINETY_DEGREE edge=500 case=right-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,0)->(-201,-2),(-200,0)->(-800,300),(-800,300)->(-799,302)] corners=[(-200,0),(-800,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=right-stub-sharp atStart=false changed=false
+regime=NINETY_DEGREE edge=500 case=right-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,300)->(-799,302),(-800,300)->(-200,0),(-200,0)->(-201,-2)] corners=[(-800,300),(-200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=left-stub-long atStart=true changed=true
+regime=NINETY_DEGREE edge=500 case=left-stub-long atStart=true changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-300,700),(-300,700)->(-293,691)] corners=[(-500,0),(-1200,0),(-300,700)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=left-stub-long atStart=false changed=true
+regime=NINETY_DEGREE edge=500 case=left-stub-long atStart=false changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-300,700)->(-293,691),(-300,700)->(-1200,0),(-1200,0)->(-500,0),(-500,-1)->(-500,0)] corners=[(-300,700),(-1200,0),(-500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=left-stub-kink atStart=true changed=false
+regime=NINETY_DEGREE edge=500 case=left-stub-kink atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,0)->(-801,1),(-800,0)->(-780,20),(-780,20)->(-200,400),(-200,400)->(-181,371)] corners=[(-800,0),(-780,20),(-200,400)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=left-stub-kink atStart=false changed=false
+regime=NINETY_DEGREE edge=500 case=left-stub-kink atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,400)->(-181,371),(-200,400)->(-780,20),(-780,20)->(-800,0),(-800,0)->(-801,1)] corners=[(-200,400),(-780,20),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=left-stub-fat atStart=true changed=false
+regime=NINETY_DEGREE edge=500 case=left-stub-fat atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-900,0)->(-905,7),(-900,0)->(-200,500),(-200,500)->(-195,493)] corners=[(-900,0),(-200,500)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=left-stub-fat atStart=false changed=false
+regime=NINETY_DEGREE edge=500 case=left-stub-fat atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-200,500)->(-195,493),(-200,500)->(-900,0),(-900,0)->(-905,7)] corners=[(-200,500),(-900,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=wide-stub atStart=true changed=false
+regime=NINETY_DEGREE edge=500 case=wide-stub atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=wide-stub atStart=false changed=false
+regime=NINETY_DEGREE edge=500 case=wide-stub atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=left-stub-sharp atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=left-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=left-stub-sharp atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=left-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=left-stub-blunt atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=left-stub-blunt atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,-2),(-800,0)->(-1400,300),(-1400,300)->(-1399,302)] corners=[(-800,0),(-1400,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=left-stub-blunt atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=left-stub-blunt atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1400,300)->(-1399,302),(-1400,300)->(-800,0),(-800,0)->(-801,-2)] corners=[(-1400,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=right-stub-sharp atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=right-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,0)->(-201,-2),(-200,0)->(-800,300),(-800,300)->(-799,302)] corners=[(-200,0),(-800,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=right-stub-sharp atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=right-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,300)->(-799,302),(-800,300)->(-200,0),(-200,0)->(-201,-2)] corners=[(-800,300),(-200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=left-stub-long atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=left-stub-long atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1200,0)->(-1207,9),(-1200,0)->(-300,700),(-300,700)->(-293,691)] corners=[(-1200,0),(-300,700)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=left-stub-long atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=left-stub-long atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-300,700)->(-293,691),(-300,700)->(-1200,0),(-1200,0)->(-1207,9)] corners=[(-300,700),(-1200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=left-stub-kink atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=left-stub-kink atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,0)->(-801,1),(-800,0)->(-780,20),(-780,20)->(-200,400),(-200,400)->(-181,371)] corners=[(-800,0),(-780,20),(-200,400)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=left-stub-kink atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=left-stub-kink atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,400)->(-181,371),(-200,400)->(-780,20),(-780,20)->(-800,0),(-800,0)->(-801,1)] corners=[(-200,400),(-780,20),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=left-stub-fat atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=left-stub-fat atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-900,0)->(-905,7),(-900,0)->(-200,500),(-200,500)->(-195,493)] corners=[(-900,0),(-200,500)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=left-stub-fat atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=left-stub-fat atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-200,500)->(-195,493),(-200,500)->(-900,0),(-900,0)->(-905,7)] corners=[(-200,500),(-900,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=wide-stub atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=wide-stub atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=wide-stub atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=-1 case=wide-stub atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=left-stub-sharp atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=left-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=left-stub-sharp atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=left-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=left-stub-blunt atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=left-stub-blunt atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,-2),(-800,0)->(-1400,300),(-1400,300)->(-1399,302)] corners=[(-800,0),(-1400,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=left-stub-blunt atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=left-stub-blunt atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1400,300)->(-1399,302),(-1400,300)->(-800,0),(-800,0)->(-801,-2)] corners=[(-1400,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=right-stub-sharp atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=right-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,0)->(-201,-2),(-200,0)->(-800,300),(-800,300)->(-799,302)] corners=[(-200,0),(-800,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=right-stub-sharp atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=right-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,300)->(-799,302),(-800,300)->(-200,0),(-200,0)->(-201,-2)] corners=[(-800,300),(-200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=left-stub-long atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=left-stub-long atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1200,0)->(-1207,9),(-1200,0)->(-300,700),(-300,700)->(-293,691)] corners=[(-1200,0),(-300,700)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=left-stub-long atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=left-stub-long atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-300,700)->(-293,691),(-300,700)->(-1200,0),(-1200,0)->(-1207,9)] corners=[(-300,700),(-1200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=left-stub-kink atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=left-stub-kink atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,0)->(-801,1),(-800,0)->(-780,20),(-780,20)->(-200,400),(-200,400)->(-181,371)] corners=[(-800,0),(-780,20),(-200,400)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=left-stub-kink atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=left-stub-kink atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,400)->(-181,371),(-200,400)->(-780,20),(-780,20)->(-800,0),(-800,0)->(-801,1)] corners=[(-200,400),(-780,20),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=left-stub-fat atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=left-stub-fat atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-900,0)->(-905,7),(-900,0)->(-200,500),(-200,500)->(-195,493)] corners=[(-900,0),(-200,500)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=left-stub-fat atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=left-stub-fat atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-200,500)->(-195,493),(-200,500)->(-900,0),(-900,0)->(-905,7)] corners=[(-200,500),(-900,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=wide-stub atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=wide-stub atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=wide-stub atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=0 case=wide-stub atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=left-stub-sharp atStart=true changed=true
+regime=FORTYFIVE_DEGREE edge=100 case=left-stub-sharp atStart=true changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-500,0),(-800,0),(-200,300)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=left-stub-sharp atStart=false changed=true
+regime=FORTYFIVE_DEGREE edge=100 case=left-stub-sharp atStart=false changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-500,0),(-500,-1)->(-500,0)] corners=[(-200,300),(-800,0),(-500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=left-stub-blunt atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=100 case=left-stub-blunt atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,-2),(-800,0)->(-1400,300),(-1400,300)->(-1399,302)] corners=[(-800,0),(-1400,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=left-stub-blunt atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=100 case=left-stub-blunt atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1400,300)->(-1399,302),(-1400,300)->(-800,0),(-800,0)->(-801,-2)] corners=[(-1400,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=right-stub-sharp atStart=true changed=true
+regime=FORTYFIVE_DEGREE edge=100 case=right-stub-sharp atStart=true changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-800,300),(-800,300)->(-799,302)] corners=[(-500,0),(-200,0),(-800,300)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=right-stub-sharp atStart=false changed=true
+regime=FORTYFIVE_DEGREE edge=100 case=right-stub-sharp atStart=false changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,300)->(-799,302),(-800,300)->(-200,0),(-200,0)->(-500,0),(-500,1)->(-500,0)] corners=[(-800,300),(-200,0),(-500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=left-stub-long atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=100 case=left-stub-long atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1200,0)->(-1207,9),(-1200,0)->(-300,700),(-300,700)->(-293,691)] corners=[(-1200,0),(-300,700)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=left-stub-long atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=100 case=left-stub-long atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-300,700)->(-293,691),(-300,700)->(-1200,0),(-1200,0)->(-1207,9)] corners=[(-300,700),(-1200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=left-stub-kink atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=100 case=left-stub-kink atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,0)->(-801,1),(-800,0)->(-780,20),(-780,20)->(-200,400),(-200,400)->(-181,371)] corners=[(-800,0),(-780,20),(-200,400)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=left-stub-kink atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=100 case=left-stub-kink atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,400)->(-181,371),(-200,400)->(-780,20),(-780,20)->(-800,0),(-800,0)->(-801,1)] corners=[(-200,400),(-780,20),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=left-stub-fat atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=100 case=left-stub-fat atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-900,0)->(-905,7),(-900,0)->(-200,500),(-200,500)->(-195,493)] corners=[(-900,0),(-200,500)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=left-stub-fat atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=100 case=left-stub-fat atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-200,500)->(-195,493),(-200,500)->(-900,0),(-900,0)->(-905,7)] corners=[(-200,500),(-900,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=wide-stub atStart=true changed=true
+regime=FORTYFIVE_DEGREE edge=100 case=wide-stub atStart=true changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=wide-stub atStart=false changed=true
+regime=FORTYFIVE_DEGREE edge=100 case=wide-stub atStart=false changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=left-stub-sharp atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=500 case=left-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=left-stub-sharp atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=500 case=left-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=left-stub-blunt atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=500 case=left-stub-blunt atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,-2),(-800,0)->(-1400,300),(-1400,300)->(-1399,302)] corners=[(-800,0),(-1400,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=left-stub-blunt atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=500 case=left-stub-blunt atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1400,300)->(-1399,302),(-1400,300)->(-800,0),(-800,0)->(-801,-2)] corners=[(-1400,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=right-stub-sharp atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=500 case=right-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,0)->(-201,-2),(-200,0)->(-800,300),(-800,300)->(-799,302)] corners=[(-200,0),(-800,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=right-stub-sharp atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=500 case=right-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,300)->(-799,302),(-800,300)->(-200,0),(-200,0)->(-201,-2)] corners=[(-800,300),(-200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=left-stub-long atStart=true changed=true
+regime=FORTYFIVE_DEGREE edge=500 case=left-stub-long atStart=true changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-300,700),(-300,700)->(-293,691)] corners=[(-500,0),(-1200,0),(-300,700)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=left-stub-long atStart=false changed=true
+regime=FORTYFIVE_DEGREE edge=500 case=left-stub-long atStart=false changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-300,700)->(-293,691),(-300,700)->(-1200,0),(-1200,0)->(-500,0),(-500,-1)->(-500,0)] corners=[(-300,700),(-1200,0),(-500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=left-stub-kink atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=500 case=left-stub-kink atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,0)->(-801,1),(-800,0)->(-780,20),(-780,20)->(-200,400),(-200,400)->(-181,371)] corners=[(-800,0),(-780,20),(-200,400)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=left-stub-kink atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=500 case=left-stub-kink atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,400)->(-181,371),(-200,400)->(-780,20),(-780,20)->(-800,0),(-800,0)->(-801,1)] corners=[(-200,400),(-780,20),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=left-stub-fat atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=500 case=left-stub-fat atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-900,0)->(-905,7),(-900,0)->(-200,500),(-200,500)->(-195,493)] corners=[(-900,0),(-200,500)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=left-stub-fat atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=500 case=left-stub-fat atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-200,500)->(-195,493),(-200,500)->(-900,0),(-900,0)->(-905,7)] corners=[(-200,500),(-900,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=wide-stub atStart=true changed=false
+regime=FORTYFIVE_DEGREE edge=500 case=wide-stub atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=wide-stub atStart=false changed=false
+regime=FORTYFIVE_DEGREE edge=500 case=wide-stub atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=left-stub-sharp atStart=true changed=false
+regime=NONE edge=-1 case=left-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=left-stub-sharp atStart=false changed=false
+regime=NONE edge=-1 case=left-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=left-stub-blunt atStart=true changed=false
+regime=NONE edge=-1 case=left-stub-blunt atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,-2),(-800,0)->(-1400,300),(-1400,300)->(-1399,302)] corners=[(-800,0),(-1400,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=left-stub-blunt atStart=false changed=false
+regime=NONE edge=-1 case=left-stub-blunt atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1400,300)->(-1399,302),(-1400,300)->(-800,0),(-800,0)->(-801,-2)] corners=[(-1400,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=right-stub-sharp atStart=true changed=false
+regime=NONE edge=-1 case=right-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,0)->(-201,-2),(-200,0)->(-800,300),(-800,300)->(-799,302)] corners=[(-200,0),(-800,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=right-stub-sharp atStart=false changed=false
+regime=NONE edge=-1 case=right-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,300)->(-799,302),(-800,300)->(-200,0),(-200,0)->(-201,-2)] corners=[(-800,300),(-200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=left-stub-long atStart=true changed=false
+regime=NONE edge=-1 case=left-stub-long atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1200,0)->(-1207,9),(-1200,0)->(-300,700),(-300,700)->(-293,691)] corners=[(-1200,0),(-300,700)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=left-stub-long atStart=false changed=false
+regime=NONE edge=-1 case=left-stub-long atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-300,700)->(-293,691),(-300,700)->(-1200,0),(-1200,0)->(-1207,9)] corners=[(-300,700),(-1200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=left-stub-kink atStart=true changed=false
+regime=NONE edge=-1 case=left-stub-kink atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,0)->(-801,1),(-800,0)->(-780,20),(-780,20)->(-200,400),(-200,400)->(-181,371)] corners=[(-800,0),(-780,20),(-200,400)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=left-stub-kink atStart=false changed=false
+regime=NONE edge=-1 case=left-stub-kink atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,400)->(-181,371),(-200,400)->(-780,20),(-780,20)->(-800,0),(-800,0)->(-801,1)] corners=[(-200,400),(-780,20),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=left-stub-fat atStart=true changed=false
+regime=NONE edge=-1 case=left-stub-fat atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-900,0)->(-905,7),(-900,0)->(-200,500),(-200,500)->(-195,493)] corners=[(-900,0),(-200,500)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=left-stub-fat atStart=false changed=false
+regime=NONE edge=-1 case=left-stub-fat atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-200,500)->(-195,493),(-200,500)->(-900,0),(-900,0)->(-905,7)] corners=[(-200,500),(-900,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=wide-stub atStart=true changed=false
+regime=NONE edge=-1 case=wide-stub atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=wide-stub atStart=false changed=false
+regime=NONE edge=-1 case=wide-stub atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=left-stub-sharp atStart=true changed=false
+regime=NONE edge=0 case=left-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=left-stub-sharp atStart=false changed=false
+regime=NONE edge=0 case=left-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=left-stub-blunt atStart=true changed=false
+regime=NONE edge=0 case=left-stub-blunt atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,-2),(-800,0)->(-1400,300),(-1400,300)->(-1399,302)] corners=[(-800,0),(-1400,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=left-stub-blunt atStart=false changed=false
+regime=NONE edge=0 case=left-stub-blunt atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1400,300)->(-1399,302),(-1400,300)->(-800,0),(-800,0)->(-801,-2)] corners=[(-1400,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=right-stub-sharp atStart=true changed=false
+regime=NONE edge=0 case=right-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,0)->(-201,-2),(-200,0)->(-800,300),(-800,300)->(-799,302)] corners=[(-200,0),(-800,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=right-stub-sharp atStart=false changed=false
+regime=NONE edge=0 case=right-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,300)->(-799,302),(-800,300)->(-200,0),(-200,0)->(-201,-2)] corners=[(-800,300),(-200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=left-stub-long atStart=true changed=false
+regime=NONE edge=0 case=left-stub-long atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1200,0)->(-1207,9),(-1200,0)->(-300,700),(-300,700)->(-293,691)] corners=[(-1200,0),(-300,700)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=left-stub-long atStart=false changed=false
+regime=NONE edge=0 case=left-stub-long atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-300,700)->(-293,691),(-300,700)->(-1200,0),(-1200,0)->(-1207,9)] corners=[(-300,700),(-1200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=left-stub-kink atStart=true changed=false
+regime=NONE edge=0 case=left-stub-kink atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,0)->(-801,1),(-800,0)->(-780,20),(-780,20)->(-200,400),(-200,400)->(-181,371)] corners=[(-800,0),(-780,20),(-200,400)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=left-stub-kink atStart=false changed=false
+regime=NONE edge=0 case=left-stub-kink atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,400)->(-181,371),(-200,400)->(-780,20),(-780,20)->(-800,0),(-800,0)->(-801,1)] corners=[(-200,400),(-780,20),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=left-stub-fat atStart=true changed=false
+regime=NONE edge=0 case=left-stub-fat atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-900,0)->(-905,7),(-900,0)->(-200,500),(-200,500)->(-195,493)] corners=[(-900,0),(-200,500)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=left-stub-fat atStart=false changed=false
+regime=NONE edge=0 case=left-stub-fat atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-200,500)->(-195,493),(-200,500)->(-900,0),(-900,0)->(-905,7)] corners=[(-200,500),(-900,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=wide-stub atStart=true changed=false
+regime=NONE edge=0 case=wide-stub atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=wide-stub atStart=false changed=false
+regime=NONE edge=0 case=wide-stub atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=left-stub-sharp atStart=true changed=true
+regime=NONE edge=100 case=left-stub-sharp atStart=true changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-500,0),(-800,0),(-200,300)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=left-stub-sharp atStart=false changed=true
+regime=NONE edge=100 case=left-stub-sharp atStart=false changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-500,0),(-500,-1)->(-500,0)] corners=[(-200,300),(-800,0),(-500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=left-stub-blunt atStart=true changed=false
+regime=NONE edge=100 case=left-stub-blunt atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,-2),(-800,0)->(-1400,300),(-1400,300)->(-1399,302)] corners=[(-800,0),(-1400,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=left-stub-blunt atStart=false changed=false
+regime=NONE edge=100 case=left-stub-blunt atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1400,300)->(-1399,302),(-1400,300)->(-800,0),(-800,0)->(-801,-2)] corners=[(-1400,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=right-stub-sharp atStart=true changed=true
+regime=NONE edge=100 case=right-stub-sharp atStart=true changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-800,300),(-800,300)->(-799,302)] corners=[(-500,0),(-200,0),(-800,300)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=right-stub-sharp atStart=false changed=true
+regime=NONE edge=100 case=right-stub-sharp atStart=false changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,300)->(-799,302),(-800,300)->(-200,0),(-200,0)->(-500,0),(-500,1)->(-500,0)] corners=[(-800,300),(-200,0),(-500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=left-stub-long atStart=true changed=false
+regime=NONE edge=100 case=left-stub-long atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1200,0)->(-1207,9),(-1200,0)->(-300,700),(-300,700)->(-293,691)] corners=[(-1200,0),(-300,700)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=left-stub-long atStart=false changed=false
+regime=NONE edge=100 case=left-stub-long atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-300,700)->(-293,691),(-300,700)->(-1200,0),(-1200,0)->(-1207,9)] corners=[(-300,700),(-1200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-1200,1)] corners=[(-500,0),(-1200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=left-stub-kink atStart=true changed=false
+regime=NONE edge=100 case=left-stub-kink atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,0)->(-801,1),(-800,0)->(-780,20),(-780,20)->(-200,400),(-200,400)->(-181,371)] corners=[(-800,0),(-780,20),(-200,400)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=left-stub-kink atStart=false changed=false
+regime=NONE edge=100 case=left-stub-kink atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,400)->(-181,371),(-200,400)->(-780,20),(-780,20)->(-800,0),(-800,0)->(-801,1)] corners=[(-200,400),(-780,20),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=left-stub-fat atStart=true changed=false
+regime=NONE edge=100 case=left-stub-fat atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-900,0)->(-905,7),(-900,0)->(-200,500),(-200,500)->(-195,493)] corners=[(-900,0),(-200,500)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=left-stub-fat atStart=false changed=false
+regime=NONE edge=100 case=left-stub-fat atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-200,500)->(-195,493),(-200,500)->(-900,0),(-900,0)->(-905,7)] corners=[(-200,500),(-900,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=wide-stub atStart=true changed=true
+regime=NONE edge=100 case=wide-stub atStart=true changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=wide-stub atStart=false changed=true
+regime=NONE edge=100 case=wide-stub atStart=false changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=left-stub-sharp atStart=true changed=false
+regime=NONE edge=500 case=left-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=left-stub-sharp atStart=false changed=false
+regime=NONE edge=500 case=left-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=left-stub-blunt atStart=true changed=false
+regime=NONE edge=500 case=left-stub-blunt atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,-2),(-800,0)->(-1400,300),(-1400,300)->(-1399,302)] corners=[(-800,0),(-1400,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=left-stub-blunt atStart=false changed=false
+regime=NONE edge=500 case=left-stub-blunt atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-1400,300)->(-1399,302),(-1400,300)->(-800,0),(-800,0)->(-801,-2)] corners=[(-1400,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=right-stub-sharp atStart=true changed=false
+regime=NONE edge=500 case=right-stub-sharp atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,0)->(-201,-2),(-200,0)->(-800,300),(-800,300)->(-799,302)] corners=[(-200,0),(-800,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=right-stub-sharp atStart=false changed=false
+regime=NONE edge=500 case=right-stub-sharp atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,300)->(-799,302),(-800,300)->(-200,0),(-200,0)->(-201,-2)] corners=[(-800,300),(-200,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,-1)] corners=[(-500,0),(-200,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=left-stub-long atStart=true changed=true
+regime=NONE edge=500 case=left-stub-long atStart=true changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,-1),(-500,0)->(-1200,0),(-1200,0)->(-300,700),(-300,700)->(-293,691)] corners=[(-500,0),(-1200,0),(-300,700)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=left-stub-long atStart=false changed=true
+regime=NONE edge=500 case=left-stub-long atStart=false changed=true
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-300,700)->(-293,691),(-300,700)->(-1200,0),(-1200,0)->(-500,0),(-500,-1)->(-500,0)] corners=[(-300,700),(-1200,0),(-500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=left-stub-kink atStart=true changed=false
+regime=NONE edge=500 case=left-stub-kink atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-800,0)->(-801,1),(-800,0)->(-780,20),(-780,20)->(-200,400),(-200,400)->(-181,371)] corners=[(-800,0),(-780,20),(-200,400)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=left-stub-kink atStart=false changed=false
+regime=NONE edge=500 case=left-stub-kink atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-200,400)->(-181,371),(-200,400)->(-780,20),(-780,20)->(-800,0),(-800,0)->(-801,1)] corners=[(-200,400),(-780,20),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=left-stub-fat atStart=true changed=false
+regime=NONE edge=500 case=left-stub-fat atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-900,0)->(-905,7),(-900,0)->(-200,500),(-200,500)->(-195,493)] corners=[(-900,0),(-200,500)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=left-stub-fat atStart=false changed=false
+regime=NONE edge=500 case=left-stub-fat atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-200,500)->(-195,493),(-200,500)->(-900,0),(-900,0)->(-905,7)] corners=[(-200,500),(-900,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-900,0),(-900,0)->(-900,1)] corners=[(-500,0),(-900,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=wide-stub atStart=true changed=false
+regime=NONE edge=500 case=wide-stub atStart=true changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-800,0)->(-801,2),(-800,0)->(-200,300),(-200,300)->(-199,298)] corners=[(-800,0),(-200,300)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=wide-stub atStart=false changed=false
+regime=NONE edge=500 case=wide-stub atStart=false changed=false
     maxId=5
     item id=5 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-200,300)->(-199,298),(-200,300)->(-800,0),(-800,0)->(-801,2)] corners=[(-200,300),(-800,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-500,-1),(-500,0)->(-800,0),(-800,0)->(-800,1)] corners=[(-500,0),(-800,0)]
@@ -8043,725 +8043,725 @@ row 127 hw=10 edge=-1.0 atStart=false check=true
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
 ######## edge
-regime=NINETY_DEGREE edge=-1.0 case=short-right pullTight=false
+regime=NINETY_DEGREE edge=-1 case=short-right pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-200,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=mid-right pullTight=false
+regime=NINETY_DEGREE edge=-1 case=mid-right pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(100,0),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=long-right pullTight=false
+regime=NINETY_DEGREE edge=-1 case=long-right pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,800),(500,800)->(501,800)] corners=[(-500,0),(500,0),(500,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=up-out pullTight=false
+regime=NINETY_DEGREE edge=-1 case=up-out pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-501,0),(-500,0)->(-500,800),(-500,800)->(300,800),(300,800)->(300,799)] corners=[(-500,0),(-500,800),(300,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=diag-out pullTight=false
+regime=NINETY_DEGREE edge=-1 case=diag-out pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-501,1),(-500,0)->(-100,400),(-100,400)->(600,400),(600,400)->(600,399)] corners=[(-500,0),(-100,400),(600,400)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=pin-to-pin-short pullTight=true
+regime=NINETY_DEGREE edge=-1 case=pin-to-pin-short pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,1),(500,0)->(501,0),(500,0)->(499,-1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=pin-to-pin-long pullTight=true
+regime=NINETY_DEGREE edge=-1 case=pin-to-pin-long pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,900),(500,0)->(501,0),(500,900)->(500,0)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=wide-class pullTight=false
+regime=NINETY_DEGREE edge=-1 case=wide-class pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=2 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-200,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=fat pullTight=false
+regime=NINETY_DEGREE edge=-1 case=fat pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(100,0),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=-1.0 case=two-corner pullTight=false
+regime=NINETY_DEGREE edge=-1 case=two-corner pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,-1)] corners=[(-500,0),(0,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=short-right pullTight=false
+regime=NINETY_DEGREE edge=0 case=short-right pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-200,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=mid-right pullTight=false
+regime=NINETY_DEGREE edge=0 case=mid-right pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(100,0),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=long-right pullTight=false
+regime=NINETY_DEGREE edge=0 case=long-right pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,800),(500,800)->(501,800)] corners=[(-500,0),(500,0),(500,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=up-out pullTight=false
+regime=NINETY_DEGREE edge=0 case=up-out pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-501,0),(-500,0)->(-500,800),(-500,800)->(300,800),(300,800)->(300,799)] corners=[(-500,0),(-500,800),(300,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=diag-out pullTight=false
+regime=NINETY_DEGREE edge=0 case=diag-out pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-501,1),(-500,0)->(-100,400),(-100,400)->(600,400),(600,400)->(600,399)] corners=[(-500,0),(-100,400),(600,400)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=pin-to-pin-short pullTight=true
+regime=NINETY_DEGREE edge=0 case=pin-to-pin-short pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,1),(500,0)->(501,0),(500,0)->(499,-1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=pin-to-pin-long pullTight=true
+regime=NINETY_DEGREE edge=0 case=pin-to-pin-long pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,900),(500,0)->(501,0),(500,900)->(500,0)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=wide-class pullTight=false
+regime=NINETY_DEGREE edge=0 case=wide-class pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=2 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-200,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=fat pullTight=false
+regime=NINETY_DEGREE edge=0 case=fat pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(100,0),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=0.0 case=two-corner pullTight=false
+regime=NINETY_DEGREE edge=0 case=two-corner pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,-1)] corners=[(-500,0),(0,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=short-right pullTight=false
+regime=NINETY_DEGREE edge=100 case=short-right pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-200,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=mid-right pullTight=false
+regime=NINETY_DEGREE edge=100 case=mid-right pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(100,0),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=long-right pullTight=false
+regime=NINETY_DEGREE edge=100 case=long-right pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,800),(500,800)->(501,800)] corners=[(-500,0),(500,0),(500,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=up-out pullTight=false
+regime=NINETY_DEGREE edge=100 case=up-out pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-501,0),(-500,0)->(-500,800),(-500,800)->(300,800),(300,800)->(300,799)] corners=[(-500,0),(-500,800),(300,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=diag-out pullTight=false
+regime=NINETY_DEGREE edge=100 case=diag-out pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-501,1),(-500,0)->(-100,400),(-100,400)->(600,400),(600,400)->(600,399)] corners=[(-500,0),(-100,400),(600,400)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=pin-to-pin-short pullTight=true
+regime=NINETY_DEGREE edge=100 case=pin-to-pin-short pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,1),(500,0)->(501,0),(500,0)->(499,-1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=pin-to-pin-long pullTight=true
+regime=NINETY_DEGREE edge=100 case=pin-to-pin-long pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,900),(500,0)->(501,0),(500,900)->(500,0)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=wide-class pullTight=false
+regime=NINETY_DEGREE edge=100 case=wide-class pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=2 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-200,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=fat pullTight=false
+regime=NINETY_DEGREE edge=100 case=fat pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(100,0),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=100.0 case=two-corner pullTight=false
+regime=NINETY_DEGREE edge=100 case=two-corner pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,-1)] corners=[(-500,0),(0,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=short-right pullTight=false
+regime=NINETY_DEGREE edge=500 case=short-right pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-200,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=mid-right pullTight=false
+regime=NINETY_DEGREE edge=500 case=mid-right pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(100,0),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=long-right pullTight=false
+regime=NINETY_DEGREE edge=500 case=long-right pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,800),(500,800)->(501,800)] corners=[(-500,0),(500,0),(500,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=up-out pullTight=false
+regime=NINETY_DEGREE edge=500 case=up-out pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-501,0),(-500,0)->(-500,800),(-500,800)->(300,800),(300,800)->(300,799)] corners=[(-500,0),(-500,800),(300,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=diag-out pullTight=false
+regime=NINETY_DEGREE edge=500 case=diag-out pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-501,1),(-500,0)->(-100,400),(-100,400)->(600,400),(600,400)->(600,399)] corners=[(-500,0),(-100,400),(600,400)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=pin-to-pin-short pullTight=true
+regime=NINETY_DEGREE edge=500 case=pin-to-pin-short pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,1),(500,0)->(501,0),(500,0)->(499,-1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=pin-to-pin-long pullTight=true
+regime=NINETY_DEGREE edge=500 case=pin-to-pin-long pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,900),(500,0)->(501,0),(500,900)->(500,0)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=wide-class pullTight=false
+regime=NINETY_DEGREE edge=500 case=wide-class pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=2 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-200,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=fat pullTight=false
+regime=NINETY_DEGREE edge=500 case=fat pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(100,0),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NINETY_DEGREE edge=500.0 case=two-corner pullTight=false
+regime=NINETY_DEGREE edge=500 case=two-corner pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,-1)] corners=[(-500,0),(0,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=short-right pullTight=true
+regime=FORTYFIVE_DEGREE edge=-1 case=short-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-499,1),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-200,300),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=mid-right pullTight=true
+regime=FORTYFIVE_DEGREE edge=-1 case=mid-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-499,1),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,600),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=long-right pullTight=true
+regime=FORTYFIVE_DEGREE edge=-1 case=long-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,800)->(501,801),(500,800)->(501,800)] corners=[(-500,0),(-300,0),(500,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=up-out pullTight=true
+regime=FORTYFIVE_DEGREE edge=-1 case=up-out pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,0),(300,800)->(301,801),(300,800)->(300,799)] corners=[(-500,0),(300,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=diag-out pullTight=false
+regime=FORTYFIVE_DEGREE edge=-1 case=diag-out pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-501,1),(-500,0)->(-100,400),(-100,400)->(600,400),(600,400)->(600,399)] corners=[(-500,0),(-100,400),(600,400)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=pin-to-pin-short pullTight=true
+regime=FORTYFIVE_DEGREE edge=-1 case=pin-to-pin-short pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,1),(500,0)->(501,0),(500,0)->(499,-1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=pin-to-pin-long pullTight=true
+regime=FORTYFIVE_DEGREE edge=-1 case=pin-to-pin-long pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,-1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=wide-class pullTight=true
+regime=FORTYFIVE_DEGREE edge=-1 case=wide-class pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=2 fix=UNFIXED layer=0 hw=30 n=5 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-216,0)->(-215,1),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-216,0),(-200,16),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=fat pullTight=true
+regime=FORTYFIVE_DEGREE edge=-1 case=fat pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-499,1),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,600),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=-1.0 case=two-corner pullTight=false
+regime=FORTYFIVE_DEGREE edge=-1 case=two-corner pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,-1)] corners=[(-500,0),(0,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=short-right pullTight=true
+regime=FORTYFIVE_DEGREE edge=0 case=short-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-499,1),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-200,300),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=mid-right pullTight=true
+regime=FORTYFIVE_DEGREE edge=0 case=mid-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-499,1),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,600),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=long-right pullTight=true
+regime=FORTYFIVE_DEGREE edge=0 case=long-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,800)->(501,801),(500,800)->(501,800)] corners=[(-500,0),(-300,0),(500,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=up-out pullTight=true
+regime=FORTYFIVE_DEGREE edge=0 case=up-out pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,0),(300,800)->(301,801),(300,800)->(300,799)] corners=[(-500,0),(300,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=diag-out pullTight=false
+regime=FORTYFIVE_DEGREE edge=0 case=diag-out pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-501,1),(-500,0)->(-100,400),(-100,400)->(600,400),(600,400)->(600,399)] corners=[(-500,0),(-100,400),(600,400)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=pin-to-pin-short pullTight=true
+regime=FORTYFIVE_DEGREE edge=0 case=pin-to-pin-short pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,1),(500,0)->(501,0),(500,0)->(499,-1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=pin-to-pin-long pullTight=true
+regime=FORTYFIVE_DEGREE edge=0 case=pin-to-pin-long pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,-1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=wide-class pullTight=true
+regime=FORTYFIVE_DEGREE edge=0 case=wide-class pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=2 fix=UNFIXED layer=0 hw=30 n=5 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-216,0)->(-215,1),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-216,0),(-200,16),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=fat pullTight=true
+regime=FORTYFIVE_DEGREE edge=0 case=fat pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-499,1),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,600),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=0.0 case=two-corner pullTight=false
+regime=FORTYFIVE_DEGREE edge=0 case=two-corner pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,-1)] corners=[(-500,0),(0,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=short-right pullTight=true
+regime=FORTYFIVE_DEGREE edge=100 case=short-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-499,1),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-200,300),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=mid-right pullTight=true
+regime=FORTYFIVE_DEGREE edge=100 case=mid-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-499,1),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,600),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=long-right pullTight=true
+regime=FORTYFIVE_DEGREE edge=100 case=long-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,800)->(501,801),(500,800)->(501,800)] corners=[(-500,0),(-300,0),(500,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=up-out pullTight=true
+regime=FORTYFIVE_DEGREE edge=100 case=up-out pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,0),(300,800)->(301,801),(300,800)->(300,799)] corners=[(-500,0),(300,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=diag-out pullTight=true
+regime=FORTYFIVE_DEGREE edge=100 case=diag-out pullTight=true
     maxId=6
     item id=6 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-499,0),(-53,0)->(-53,1)] corners=[(-500,0),(-53,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=5 lines=[(-53,0)->(-54,0),(-53,0)->(-53,281),(-53,281)->(66,400),(66,400)->(600,400),(600,400)->(600,399)] corners=[(-53,0),(-53,281),(66,400),(600,400)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=pin-to-pin-short pullTight=true
+regime=FORTYFIVE_DEGREE edge=100 case=pin-to-pin-short pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,1),(500,0)->(501,0),(500,0)->(499,-1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=pin-to-pin-long pullTight=true
+regime=FORTYFIVE_DEGREE edge=100 case=pin-to-pin-long pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,-1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=wide-class pullTight=true
+regime=FORTYFIVE_DEGREE edge=100 case=wide-class pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=2 fix=UNFIXED layer=0 hw=30 n=5 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-216,0)->(-215,1),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-216,0),(-200,16),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=fat pullTight=true
+regime=FORTYFIVE_DEGREE edge=100 case=fat pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-499,1),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,600),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=100.0 case=two-corner pullTight=false
+regime=FORTYFIVE_DEGREE edge=100 case=two-corner pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,-1)] corners=[(-500,0),(0,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=short-right pullTight=true
+regime=FORTYFIVE_DEGREE edge=500 case=short-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-499,1),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-200,300),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=mid-right pullTight=true
+regime=FORTYFIVE_DEGREE edge=500 case=mid-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-499,1),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,600),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=long-right pullTight=true
+regime=FORTYFIVE_DEGREE edge=500 case=long-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,800)->(501,801),(500,800)->(501,800)] corners=[(-500,0),(-300,0),(500,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=up-out pullTight=true
+regime=FORTYFIVE_DEGREE edge=500 case=up-out pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,0),(300,800)->(301,801),(300,800)->(300,799)] corners=[(-500,0),(300,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=diag-out pullTight=true
+regime=FORTYFIVE_DEGREE edge=500 case=diag-out pullTight=true
     maxId=6
     item id=6 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-499,0),(230,0)->(230,1)] corners=[(-500,0),(230,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-499,0),(230,0)->(230,1),(600,400)->(601,401),(600,400)->(600,399)] corners=[(230,0),(230,30),(600,400)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=pin-to-pin-short pullTight=true
+regime=FORTYFIVE_DEGREE edge=500 case=pin-to-pin-short pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,1),(500,0)->(501,0),(500,0)->(499,-1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=pin-to-pin-long pullTight=true
+regime=FORTYFIVE_DEGREE edge=500 case=pin-to-pin-long pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,-1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=wide-class pullTight=true
+regime=FORTYFIVE_DEGREE edge=500 case=wide-class pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=2 fix=UNFIXED layer=0 hw=30 n=5 lines=[(-500,0)->(-500,1),(-500,0)->(-200,0),(-216,0)->(-215,1),(-200,0)->(-200,800),(-200,800)->(-199,800)] corners=[(-500,0),(-216,0),(-200,16),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=fat pullTight=true
+regime=FORTYFIVE_DEGREE edge=500 case=fat pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=4 lines=[(-500,0)->(-500,1),(-500,0)->(-499,1),(100,0)->(100,800),(100,800)->(101,800)] corners=[(-500,0),(100,600),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=FORTYFIVE_DEGREE edge=500.0 case=two-corner pullTight=false
+regime=FORTYFIVE_DEGREE edge=500 case=two-corner pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,-1)] corners=[(-500,0),(0,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=short-right pullTight=true
+regime=NONE edge=-1 case=short-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-508,3),(-500,0)->(-200,800),(-200,800)->(-208,803)] corners=[(-500,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=mid-right pullTight=true
+regime=NONE edge=-1 case=mid-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-504,3),(-500,0)->(100,800),(100,800)->(96,803)] corners=[(-500,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=long-right pullTight=true
+regime=NONE edge=-1 case=long-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-504,5),(-500,0)->(500,800),(500,800)->(496,805)] corners=[(-500,0),(500,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=up-out pullTight=true
+regime=NONE edge=-1 case=up-out pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,1),(-500,0)->(300,800),(300,800)->(299,801)] corners=[(-500,0),(300,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=diag-out pullTight=false
+regime=NONE edge=-1 case=diag-out pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-501,1),(-500,0)->(-100,400),(-100,400)->(600,400),(600,400)->(600,399)] corners=[(-500,0),(-100,400),(600,400)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=pin-to-pin-short pullTight=true
+regime=NONE edge=-1 case=pin-to-pin-short pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=pin-to-pin-long pullTight=true
+regime=NONE edge=-1 case=pin-to-pin-long pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=wide-class pullTight=true
+regime=NONE edge=-1 case=wide-class pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=2 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-508,3),(-500,0)->(-200,800),(-200,800)->(-208,803)] corners=[(-500,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=fat pullTight=true
+regime=NONE edge=-1 case=fat pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-504,3),(-500,0)->(100,800),(100,800)->(96,803)] corners=[(-500,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=-1.0 case=two-corner pullTight=false
+regime=NONE edge=-1 case=two-corner pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,-1)] corners=[(-500,0),(0,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=short-right pullTight=true
+regime=NONE edge=0 case=short-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-508,3),(-500,0)->(-200,800),(-200,800)->(-208,803)] corners=[(-500,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=mid-right pullTight=true
+regime=NONE edge=0 case=mid-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-504,3),(-500,0)->(100,800),(100,800)->(96,803)] corners=[(-500,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=long-right pullTight=true
+regime=NONE edge=0 case=long-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-504,5),(-500,0)->(500,800),(500,800)->(496,805)] corners=[(-500,0),(500,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=up-out pullTight=true
+regime=NONE edge=0 case=up-out pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,1),(-500,0)->(300,800),(300,800)->(299,801)] corners=[(-500,0),(300,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=diag-out pullTight=false
+regime=NONE edge=0 case=diag-out pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-500,0)->(-501,1),(-500,0)->(-100,400),(-100,400)->(600,400),(600,400)->(600,399)] corners=[(-500,0),(-100,400),(600,400)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=pin-to-pin-short pullTight=true
+regime=NONE edge=0 case=pin-to-pin-short pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=pin-to-pin-long pullTight=true
+regime=NONE edge=0 case=pin-to-pin-long pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=wide-class pullTight=true
+regime=NONE edge=0 case=wide-class pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=2 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-508,3),(-500,0)->(-200,800),(-200,800)->(-208,803)] corners=[(-500,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=fat pullTight=true
+regime=NONE edge=0 case=fat pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-504,3),(-500,0)->(100,800),(100,800)->(96,803)] corners=[(-500,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=0.0 case=two-corner pullTight=false
+regime=NONE edge=0 case=two-corner pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,-1)] corners=[(-500,0),(0,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=short-right pullTight=true
+regime=NONE edge=100 case=short-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-508,3),(-500,0)->(-200,800),(-200,800)->(-208,803)] corners=[(-500,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=mid-right pullTight=true
+regime=NONE edge=100 case=mid-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-504,3),(-500,0)->(100,800),(100,800)->(96,803)] corners=[(-500,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=long-right pullTight=true
+regime=NONE edge=100 case=long-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-504,5),(-500,0)->(500,800),(500,800)->(496,805)] corners=[(-500,0),(500,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=up-out pullTight=true
+regime=NONE edge=100 case=up-out pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,1),(-500,0)->(300,800),(300,800)->(299,801)] corners=[(-500,0),(300,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=diag-out pullTight=true
+regime=NONE edge=100 case=diag-out pullTight=true
     maxId=6
     item id=6 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-499,0),(-53,0)->(-53,1)] corners=[(-500,0),(-53,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=4 lines=[(-53,0)->(-453,103),(-53,0)->(50,400),(-100,400)->(600,400),(600,400)->(600,399)] corners=[(-53,0),(50,400),(600,400)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=pin-to-pin-short pullTight=true
+regime=NONE edge=100 case=pin-to-pin-short pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=pin-to-pin-long pullTight=true
+regime=NONE edge=100 case=pin-to-pin-long pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=wide-class pullTight=true
+regime=NONE edge=100 case=wide-class pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=2 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-508,3),(-500,0)->(-200,800),(-200,800)->(-208,803)] corners=[(-500,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=fat pullTight=true
+regime=NONE edge=100 case=fat pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-504,3),(-500,0)->(100,800),(100,800)->(96,803)] corners=[(-500,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=100.0 case=two-corner pullTight=false
+regime=NONE edge=100 case=two-corner pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,-1)] corners=[(-500,0),(0,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=short-right pullTight=true
+regime=NONE edge=500 case=short-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-508,3),(-500,0)->(-200,800),(-200,800)->(-208,803)] corners=[(-500,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=mid-right pullTight=true
+regime=NONE edge=500 case=mid-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-504,3),(-500,0)->(100,800),(100,800)->(96,803)] corners=[(-500,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=long-right pullTight=true
+regime=NONE edge=500 case=long-right pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-504,5),(-500,0)->(500,800),(500,800)->(496,805)] corners=[(-500,0),(500,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=up-out pullTight=true
+regime=NONE edge=500 case=up-out pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-501,1),(-500,0)->(300,800),(300,800)->(299,801)] corners=[(-500,0),(300,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=diag-out pullTight=true
+regime=NONE edge=500 case=diag-out pullTight=true
     maxId=6
     item id=6 type=PolylineTrace nets=[1] cl=1 fix=SHOVE_FIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(-499,0),(230,0)->(230,1)] corners=[(-500,0),(230,0)]
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(230,0)->(190,37),(230,0)->(600,400),(600,400)->(560,437)] corners=[(230,0),(600,400)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=pin-to-pin-short pullTight=true
+regime=NONE edge=500 case=pin-to-pin-short pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=pin-to-pin-long pullTight=true
+regime=NONE edge=500 case=pin-to-pin-long pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(500,0),(500,0)->(500,1)] corners=[(-500,0),(500,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=wide-class pullTight=true
+regime=NONE edge=500 case=wide-class pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=2 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-508,3),(-500,0)->(-200,800),(-200,800)->(-208,803)] corners=[(-500,0),(-200,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=fat pullTight=true
+regime=NONE edge=500 case=fat pullTight=true
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=90 n=3 lines=[(-500,0)->(-504,3),(-500,0)->(100,800),(100,800)->(96,803)] corners=[(-500,0),(100,800)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)
     item id=2 type=Pin nets=[1] cl=1 fix=UNFIXED center=(-500,0)
     item id=1 type=BoardOutline nets=[] cl=0 fix=SYSTEM_FIXED
-regime=NONE edge=500.0 case=two-corner pullTight=false
+regime=NONE edge=500 case=two-corner pullTight=false
     maxId=4
     item id=4 type=PolylineTrace nets=[1] cl=1 fix=UNFIXED layer=0 hw=30 n=3 lines=[(-500,0)->(-500,1),(-500,0)->(0,0),(0,0)->(0,-1)] corners=[(-500,0),(0,0)]
     item id=3 type=Pin nets=[1] cl=1 fix=UNFIXED center=(500,0)

@@ -4,7 +4,6 @@ use std::fmt;
 use crate::bigint_direction::BigIntDirection;
 use crate::int_direction::IntDirection;
 use crate::int_vector::IntVector;
-use crate::limits::java_round;
 use crate::point::Point;
 use crate::side::Side;
 use crate::signum::Signum;
@@ -30,8 +29,8 @@ impl Direction {
 
     pub fn from_angle_approx(angle: f64) -> Direction {
         const SCALE_FACTOR: f64 = 10000.0;
-        let x = java_round(angle.cos() * SCALE_FACTOR) as i32;
-        let y = java_round(angle.sin() * SCALE_FACTOR) as i32;
+        let x = (angle.cos() * SCALE_FACTOR).round() as i64 as i32;
+        let y = (angle.sin() * SCALE_FACTOR).round() as i64 as i32;
         Direction::Int(IntVector::new(x, y).to_normalized_direction())
     }
 
@@ -91,8 +90,8 @@ impl Direction {
         let y = v1.y / length1 + v2.y / length2;
         const SCALE_FACTOR: f64 = 1000.0;
         let vm = IntVector::new(
-            java_round(x * SCALE_FACTOR) as i32,
-            java_round(y * SCALE_FACTOR) as i32,
+            (x * SCALE_FACTOR).round() as i64 as i32,
+            (y * SCALE_FACTOR).round() as i64 as i32,
         );
         Direction::Int(vm.to_normalized_direction())
     }

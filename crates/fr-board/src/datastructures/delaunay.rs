@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use fr_geometry::SplitMix64;
 use fr_geometry::int_point::IntPoint;
 use fr_geometry::limits::CRIT_INT;
 use fr_geometry::point::Point;
@@ -11,54 +12,7 @@ use crate::ids::ItemId;
 
 const SEED: i64 = 99;
 
-struct JavaRandom {
-    seed: i64,
-}
-
-impl JavaRandom {
-    const MULTIPLIER: i64 = 0x5DEECE66D_i64;
-    const ADDEND: i64 = 0xB;
-    const MASK: i64 = (1 << 48) - 1;
-
-    fn new(seed: i64) -> JavaRandom {
-        JavaRandom {
-            seed: (seed ^ JavaRandom::MULTIPLIER) & JavaRandom::MASK,
-        }
-    }
-
-    fn next(&mut self, bits: u32) -> i32 {
-        self.seed = self
-            .seed
-            .wrapping_mul(JavaRandom::MULTIPLIER)
-            .wrapping_add(JavaRandom::ADDEND)
-            & JavaRandom::MASK;
-        (self.seed >> (48 - bits)) as i32
-    }
-
-    fn next_int(&mut self, bound: i32) -> i32 {
-        debug_assert!(
-            bound > 0,
-            "java.util.Random.nextInt requires a positive bound"
-        );
-        let mut r = self.next(31);
-        let m = bound - 1;
-        if bound & m == 0 {
-            r = ((i64::from(bound) * i64::from(r)) >> 31) as i32;
-        } else {
-            let mut u = r;
-            loop {
-                r = u % bound;
-                if u.wrapping_sub(r).wrapping_add(m) >= 0 {
-                    break;
-                }
-                u = self.next(31);
-            }
-        }
-        r
-    }
-}
-
-fn shuffle(list: &mut [CornerId], rng: &mut JavaRandom) {
+fn shuffle(list: &mut [CornerId], rng: &mut SplitMix64) {
     let mut i = list.len();
     while i > 1 {
         let j = rng.next_int(i as i32) as usize;
@@ -150,7 +104,7 @@ impl PlanarDelaunayTriangulation {
             .map(|corner| this.new_corner(Some(corner.object), corner.point.clone()))
             .collect();
 
-        let mut rng = JavaRandom::new(SEED);
+        let mut rng = SplitMix64::new(SEED);
         shuffle(&mut corner_list, &mut rng);
 
         let bounding_coor = CRIT_INT * 4;
@@ -1014,7 +968,7 @@ mod tests {
 
     fn permutation(n: usize) -> Vec<usize> {
         let mut list: Vec<CornerId> = (0..n).map(CornerId).collect();
-        shuffle(&mut list, &mut JavaRandom::new(SEED));
+        shuffle(&mut list, &mut SplitMix64::new(SEED));
         list.iter().map(|c| c.0).collect()
     }
 
@@ -1079,11 +1033,11 @@ mod tests {
     }
 
     #[test]
-    fn java_random_and_shuffle_match_the_jvm() {
-        assert_eq!(permutation(3), vec![2, 0, 1]);
-        assert_eq!(permutation(4), vec![1, 0, 3, 2]);
-        assert_eq!(permutation(7), vec![1, 3, 0, 5, 6, 2, 4]);
-        assert_eq!(permutation(12), vec![5, 0, 2, 3, 11, 4, 1, 8, 6, 9, 10, 7]);
+    fn the_seeded_shuffle_is_a_deterministic_permutation() {
+        assert_eq!(permutation(3), vec![1, 2, 0]);
+        assert_eq!(permutation(4), vec![2, 3, 0, 1]);
+        assert_eq!(permutation(7), vec![6, 2, 3, 5, 4, 0, 1]);
+        assert_eq!(permutation(12), vec![9, 5, 6, 2, 11, 4, 7, 1, 10, 8, 0, 3]);
     }
 
     #[test]
@@ -1135,7 +1089,7 @@ mod tests {
         ]);
         let edges = edge_tuples(&triangulation);
         assert_eq!(edges.len(), 10);
-        assert!(edges[0].0 == 7 && edges[0].2 == 6);
+        assert!(edges[0].0 == 6 && edges[0].2 == 7);
         assert!(deep_validate(&triangulation));
     }
 

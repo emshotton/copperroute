@@ -1,4 +1,4 @@
-use fr_geometry::{Area, Shape, java_round};
+use fr_geometry::{Area, Shape};
 
 use crate::Board;
 use crate::board::item_ctx;
@@ -16,11 +16,12 @@ pub const DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM: f64 = 500.0;
 impl Board {
     pub fn clearance_override_board_units(&self, clearance_um: f64) -> i32 {
         let board_resolution = self.communication.resolution.max(1);
-        java_round(Unit::scale(
+        (Unit::scale(
             clearance_um * f64::from(board_resolution),
             Unit::Um,
             self.communication.unit,
-        )) as i32
+        ))
+        .round() as i64 as i32
     }
 
     pub fn apply_copper_to_edge_clearance_override(&mut self, clearance_um: f64) -> bool {

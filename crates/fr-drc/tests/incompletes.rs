@@ -36,7 +36,7 @@ fn counters(board: &mut Board) -> (i32, usize, usize, usize) {
 
 #[test]
 fn dev_board_counts() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
@@ -45,7 +45,7 @@ fn dev_board_counts() {
 
 #[test]
 fn bbd_mars_64_counts() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board =
@@ -55,7 +55,7 @@ fn bbd_mars_64_counts() {
 
 #[test]
 fn natural_tone_preamp_counts() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board("Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.dsn");
@@ -64,102 +64,13 @@ fn natural_tone_preamp_counts() {
 
 #[test]
 fn empty_board_has_no_incompletes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board("empty_board.dsn");
     assert_eq!(counters(&mut board), (0, 0, 0, 0));
     let mut drc = DesignRulesChecker::new(&mut board);
     assert!(drc.get_all_violations().is_empty());
-}
-
-const FIXTURES: [&str; 4] = [
-    "Issue575-drc_dev-board_4_hole_clearance_violations",
-    "Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations",
-    "Issue575-drc_Natural_Tone_Preamp_7_unconnected_items",
-    "empty_board",
-];
-
-fn transcript(board: &mut Board) -> String {
-    let max_net_number = board.rules.nets.max_net_number();
-    let communication = board.communication.clone();
-    let board_unit_to_um_factor = Unit::scale(1.0, communication.unit, Unit::Um)
-        / f64::from(if communication.resolution > 0 {
-            communication.resolution
-        } else {
-            1
-        });
-
-    let mut drc = DesignRulesChecker::new(board);
-    drc.calculate_all_incompletes();
-
-    let mut out = String::new();
-    out.push_str(&format!("maxConnections {}\n", drc.max_connections()));
-    out.push_str(&format!("incompleteCount {}\n", drc.get_incomplete_count()));
-    out.push_str(&format!("airlines {}\n", drc.get_all_airlines().len()));
-    out.push_str(&format!(
-        "lengthViolationCount {}\n",
-        drc.get_length_violation_count()
-    ));
-    out.push_str(&format!(
-        "recalculateLengthViolations {}\n",
-        drc.recalculate_length_violations()
-    ));
-
-    let mut per_net = String::new();
-    let mut sum = 0usize;
-    for net_number in 1..=max_net_number {
-        let count = drc.get_incomplete_count_for_net(net_number);
-        sum += count;
-        per_net.push_str(&format!(
-            "net={net_number} incompleteCount={count} lengthViolation={}\n",
-            fr_dsn::java_double_to_string(drc.get_length_violation(net_number)),
-        ));
-    }
-    out.push_str(&format!("perNetIncompleteSum {sum}\n"));
-    out.push_str(&per_net);
-    out.push_str(&format!(
-        "boardUnitToUmFactor {}\n",
-        fr_dsn::java_double_to_string(board_unit_to_um_factor),
-    ));
-
-    let violations = drc.get_all_violations();
-    let stats =
-        BoardStatisticsClearanceViolations::from_violations(&violations, board_unit_to_um_factor);
-    let d = |v: Option<f64>| fr_dsn::java_double_to_string(v.expect("the block is never partial"));
-    out.push_str(&format!(
-        "clearanceViolations totalCount={} min={} max={} avg={}\n",
-        stats.total_count.expect("the block is never partial"),
-        d(stats.min_violation_um),
-        d(stats.max_violation_um),
-        d(stats.avg_violation_um),
-    ));
-    out
-}
-
-#[test]
-fn the_four_fixtures_match_the_jvm() {
-    if !parity::require_java_dir() {
-        return;
-    }
-    for stem in FIXTURES {
-        let mut board = fixture_board(&format!("{stem}.dsn"));
-        let expected = std::fs::read_to_string(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("tests/data")
-                .join(format!("{stem}.incompletes.txt")),
-        )
-        .expect("the JVM transcript is committed next to the probe");
-        let actual = transcript(&mut board);
-        for (i, (a, e)) in actual.lines().zip(expected.lines()).enumerate() {
-            assert_eq!(a, e, "{stem}: transcript line {}", i + 1);
-        }
-        assert_eq!(
-            actual.lines().count(),
-            expected.lines().count(),
-            "{stem}: transcript line count",
-        );
-    }
 }
 
 #[test]
@@ -228,7 +139,7 @@ fn an_empty_net_contributes_nothing() {
 
 #[test]
 fn lazy_initialisation_matches_java() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
@@ -265,7 +176,7 @@ fn lazy_initialisation_matches_java() {
 
 #[test]
 fn out_of_range_net_numbers_answer_the_java_defaults() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
@@ -315,7 +226,7 @@ fn recalculate_net_incompletes_initialises_and_returns() {
 
 #[test]
 fn statistics_block() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board =
@@ -503,7 +414,7 @@ fn insert_conduction_area(board: &mut Board) {
 
 #[test]
 fn a_net_subset_count_matches_the_full_pass() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");

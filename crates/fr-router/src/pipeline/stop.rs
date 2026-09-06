@@ -190,13 +190,13 @@ impl Default for RouterBudget {
     fn default() -> Self {
         RouterBudget {
             opt_changed_area_ms: 0,
-            ..RouterBudget::java_literals()
+            ..RouterBudget::from_fixed_budget()
         }
     }
 }
 
 impl RouterBudget {
-    pub fn java_literals() -> RouterBudget {
+    pub fn from_fixed_budget() -> RouterBudget {
         RouterBudget {
             opt_changed_area_ms: 1000,
             fanout_ms_per_pin: 10000,

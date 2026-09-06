@@ -3,7 +3,7 @@ use fr_geometry::{Area, Circle, IntVector, Shape, ShapeOps, TileShape, Vector};
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
-use crate::format::{java_double_to_string, java_round_to_int};
+use crate::format::format_double;
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::dsn_file::read_on_off_scope;
@@ -225,9 +225,9 @@ pub fn write_package_scope(p: &mut WriteScopeParameter<'_>, board_package: &fr_b
             .board_to_dsn_vector(&current_pin.relative_location);
         for coordinate in rel_coor {
             p.file.write(" ");
-            p.file.write(&java_double_to_string(coordinate));
+            p.file.write(&format_double(coordinate));
         }
-        let rotation = java_round_to_int(current_pin.rotation_in_degree);
+        let rotation = (current_pin.rotation_in_degree).round() as i32;
         if rotation != 0 {
             p.file.write("(rotate ");
             p.file.write(&rotation.to_string());
@@ -608,8 +608,8 @@ pub fn read_library_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnErr
     for mut current_package in package_list {
         let mut pins: Vec<PackagePin> = Vec::with_capacity(current_package.pin_info_arr.len());
         for pin_info in &current_package.pin_info_arr {
-            let rel_x = java_round_to_int(coordinate_transform.dsn_to_board(pin_info.rel_coor[0]));
-            let rel_y = java_round_to_int(coordinate_transform.dsn_to_board(pin_info.rel_coor[1]));
+            let rel_x = (coordinate_transform.dsn_to_board(pin_info.rel_coor[0])).round() as i32;
+            let rel_y = (coordinate_transform.dsn_to_board(pin_info.rel_coor[1])).round() as i32;
             let rel_coor = Vector::Int(IntVector::new(rel_x, rel_y));
             let cleaned_lookup_name = strip_dot_digits(&pin_info.padstack_name);
             let Some(board_padstack) = board.library.padstacks.get_by_name(&cleaned_lookup_name)

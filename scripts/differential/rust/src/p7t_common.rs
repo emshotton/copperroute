@@ -17,7 +17,7 @@ use std::time::UNIX_EPOCH;
 use fr_board::prelude::*;
 use fr_board::StopConnectionOption;
 use fr_drc::DesignRulesChecker;
-use fr_dsn::java_double_to_string;
+use fr_dsn::format_double;
 use fr_dsn::parser::scope_parameter::DsnReadOptions;
 use fr_dsn::BoardReadResult;
 use fr_geometry::{Point, Polyline};
@@ -477,7 +477,7 @@ pub fn board_shape(board: &mut Board) -> String {
     let incompletes = drc.get_incomplete_count();
     format!(
         "items={items} traces={traces} vias={vias} incompletes={incompletes} traceLength=\"{}\"",
-        java_double_to_string(board.cumulative_trace_length())
+        format_double(board.cumulative_trace_length())
     )
 }
 
@@ -548,8 +548,8 @@ pub fn pt(p: &Point) -> String {
             let f = p.to_float();
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }
@@ -565,8 +565,8 @@ pub fn corners(p: &Polyline) -> String {
                 let f = p.corner_approx(i).expect("a corner of a valid polyline");
                 rendered.push(format!(
                     "\"~({},{})\"",
-                    java_double_to_string(f.x),
-                    java_double_to_string(f.y)
+                    format_double(f.x),
+                    format_double(f.y)
                 ));
             }
         }
@@ -665,8 +665,8 @@ pub fn poly_corner(p: &fr_geometry::Polyline, no: usize) -> String {
             let f = p.corner_approx(no).expect("a corner of a valid polyline");
             format!(
                 "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
+                format_double(f.x),
+                format_double(f.y)
             )
         }
     }

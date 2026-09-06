@@ -14,18 +14,18 @@ pub fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
-pub fn java_dir() -> PathBuf {
+pub fn reference_dir() -> PathBuf {
     std::env::var_os("FREEROUTING_JAVA_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|| workspace_root().join("..").join("freerouting"))
 }
 
 pub fn fixture(name: &str) -> PathBuf {
-    java_dir().join("fixtures").join(name)
+    reference_dir().join("fixtures").join(name)
 }
 
 pub fn example(name: &str) -> PathBuf {
-    java_dir().join("examples").join(name)
+    reference_dir().join("examples").join(name)
 }
 
 /// `Path.of(args[0]).getFileName().toString().replaceAll("\\.dsn$", "")`
@@ -99,8 +99,8 @@ pub fn normalize_whitespace(s: &str) -> String {
 /// were generated from live in `../freerouting/fixtures` (or `$FREEROUTING_JAVA_DIR`), which is
 /// not vendored. A suite that reads a fixture must call this first and return early, so
 /// `cargo test` on a bare checkout skips loudly instead of panicking on a missing file.
-pub fn require_java_dir() -> bool {
-    let dir = java_dir();
+pub fn require_reference_dir() -> bool {
+    let dir = reference_dir();
     if dir.join("fixtures").is_dir() {
         true
     } else {
@@ -755,7 +755,7 @@ pub fn cli_argv(stem: &str, out_dir: &Path) -> Vec<String> {
         .filter(|line| !line.is_empty())
         .map(|token| {
             token
-                .replace("<JAVA_DIR>", &java_dir().to_string_lossy())
+                .replace("<JAVA_DIR>", &reference_dir().to_string_lossy())
                 .replace("<OUT>", &out_dir.to_string_lossy())
         })
         .collect()

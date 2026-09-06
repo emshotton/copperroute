@@ -352,8 +352,8 @@ fn pt(polyline: &Polyline, no: usize) -> String {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
             format!(
                 "~({},{})",
-                fr_dsn::format::double::java_double_to_string(f.x),
-                fr_dsn::format::double::java_double_to_string(f.y)
+                fr_dsn::format::double::format_double(f.x),
+                fr_dsn::format::double::format_double(f.y)
             )
         }
     }

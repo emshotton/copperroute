@@ -3,7 +3,7 @@ use std::io::Write;
 use fr_board::LayerStructure;
 
 use crate::error::DsnError;
-use crate::format::{IdentifierType, IndentFileWriter, java_float_to_string};
+use crate::format::{IdentifierType, IndentFileWriter, format_float};
 use crate::keyword::Keyword;
 use crate::lexer::{DsnScanner, LexicalState, Token};
 use crate::parser::dsn_file::{read_float_scope, read_integer_scope, read_on_off_scope};
@@ -454,13 +454,13 @@ pub fn write_autoroute_settings_scope<W: Write>(
         file.write("(preferred_direction_trace_costs ");
         #[allow(clippy::cast_possible_truncation)]
         let trace_costs = settings.get_preferred_direction_trace_costs(i) as f32;
-        file.write(&java_float_to_string(trace_costs));
+        file.write(&format_float(trace_costs));
         file.write(")");
         file.new_line();
         file.write("(against_preferred_direction_trace_costs ");
         #[allow(clippy::cast_possible_truncation)]
         let trace_costs = settings.get_against_preferred_direction_trace_costs(i) as f32;
-        file.write(&java_float_to_string(trace_costs));
+        file.write(&format_float(trace_costs));
         file.write(")");
         file.end_scope();
     }

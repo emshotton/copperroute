@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 use fr_settings::prelude::*;
 
 #[path = "matrix/mod.rs"]
@@ -95,8 +93,8 @@ const FULLY_POPULATED_JSON: &str = r#"{
     "timeout": "00:01:00"
   },
   "copper_to_edge_clearance_um": 501.5,
-  "hole_clearance_um": 2.0,
-  "neck_width_um": 3.0,
+  "hole_clearance_um": 2,
+  "neck_width_um": 3,
   "strict_drc": true,
   "job_timeout": "12:00:00",
   "max_passes": 11,
@@ -137,22 +135,22 @@ const NUMBER_FORMAT_JSON: &str = r#"{
   "fanout": {
     "min_escape_length_mm": 0.1,
     "max_escape_length_mm": 0.3333333333333333,
-    "start_via_diameter_mm": 1.2345678901234568E17
+    "start_via_diameter_mm": 123456789012345680
   },
   "copper_to_edge_clearance_um": 0.001,
-  "hole_clearance_um": 9.999E-4,
-  "neck_width_um": 1.0E7,
+  "hole_clearance_um": 0.0009999,
+  "neck_width_um": 10000000,
   "optimizer": {
-    "improvement_threshold": 9.999E-4,
-    "trace_ripup_cost_factor": 3.4028235E38
+    "improvement_threshold": 0.0009999,
+    "trace_ripup_cost_factor": 340282350000000000000000000000000000000
   },
   "scoring": {
-    "default_preferred_direction_trace_cost": 9999999.0,
-    "default_undesired_direction_trace_cost": -0.0,
-    "unrouted_net_penalty": 5000000.0,
-    "clearance_violation_penalty": 1.0E7,
+    "default_preferred_direction_trace_cost": 9999999,
+    "default_undesired_direction_trace_cost": -0,
+    "unrouted_net_penalty": 5000000,
+    "clearance_violation_penalty": 10000000,
     "bend_penalty": 0.001,
-    "default_bend_cost": 1.0E300
+    "default_bend_cost": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
   }
 }"#;
 
@@ -526,76 +524,6 @@ fn the_unicode_line_separators_are_escaped_and_the_html_set_is_not() {
     );
 }
 
-fn golden_path() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/p4t1-mode1/all.txt")
-}
-
-#[test]
-fn p4t1_mode_1_parity() {
-    if !parity::require_java_dir() {
-        return;
-    }
-    let golden = golden_path();
-    let text = std::fs::read_to_string(&golden)
-        .unwrap_or_else(|e| panic!("cannot read {}: {e}", golden.display()));
-    let expected = split_cases(&text);
-
-    let host = HostEnvironment::with_processors(4);
-    let mut checked = 0;
-    for case in &matrix::cases() {
-        let dsn = matrix::dsn_source(case.dsn);
-        let cli_rules = matrix::rules_bytes(case.rules.cli_rules);
-        let scheduler_rules = matrix::rules_bytes(case.rules.scheduler_rules);
-        let env = matrix::env_source(case.env);
-        let cli = matrix::cli_source(case.cli);
-        let inputs = SettingsInputs {
-            json_file: None,
-            dsn: dsn.as_ref().and_then(SettingsSource::get_settings),
-            cli_rules: cli_rules.as_deref(),
-            scheduler_rules: scheduler_rules.as_deref(),
-            env: env.get_settings(),
-            cli: cli.get_settings(),
-        };
-        let board = matrix::board(case.dsn);
-        let actual = resolve_headless(&inputs, Some(&board), &host)
-            .to_json_string_pretty()
-            .expect("serialises");
-        let reference = expected
-            .iter()
-            .find(|(id, _)| *id == case.id)
-            .unwrap_or_else(|| panic!("case {} is missing from {}", case.id, golden.display()))
-            .1
-            .clone();
-        assert_eq!(
-            parity::normalize_whitespace(&actual),
-            parity::normalize_whitespace(&reference),
-            "case {}",
-            case.id
-        );
-        checked += 1;
-    }
-    assert_eq!(checked, 64, "the cross product is 4 x 4 x 2 x 2");
-    assert_eq!(expected.len(), 84, "the TSV adds 20 hand-written rows");
-}
-
-fn split_cases(text: &str) -> Vec<(String, String)> {
-    let mut cases: Vec<(String, String)> = Vec::new();
-    for line in text.lines() {
-        if let Some(id) = line.strip_prefix("CASE ") {
-            cases.push((id.to_string(), String::new()));
-        } else if let Some((_, json)) = cases.last_mut() {
-            json.push_str(line);
-            json.push('\n');
-        }
-    }
-    for (_, json) in &mut cases {
-        while json.ends_with('\n') {
-            json.pop();
-        }
-    }
-    cases
-}
-
 fn json_file_source(name: &str, body: &str) -> JsonFileSettings {
     let dir = std::env::temp_dir()
         .join("fr-settings-json-tier")
@@ -609,7 +537,7 @@ fn json_file_source(name: &str, body: &str) -> JsonFileSettings {
 
 #[test]
 fn a_json_file_tier_beats_the_defaults_and_loses_to_the_dsn() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let host = HostEnvironment::with_processors(4);

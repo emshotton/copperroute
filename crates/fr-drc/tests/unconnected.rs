@@ -36,7 +36,7 @@ fn fixture_entries(fixture: &str) -> (Board, Vec<UnconnectedItems>) {
 
 #[test]
 fn dev_board_phase_counts() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (_, entries) = fixture_entries(DEV_BOARD);
@@ -45,7 +45,7 @@ fn dev_board_phase_counts() {
 
 #[test]
 fn bbd_mars_64_phase_counts() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (_, entries) = fixture_entries(BBD_MARS_64);
@@ -54,7 +54,7 @@ fn bbd_mars_64_phase_counts() {
 
 #[test]
 fn natural_tone_preamp_phase_counts() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (_, entries) = fixture_entries(NATURAL_TONE_PREAMP);
@@ -63,7 +63,7 @@ fn natural_tone_preamp_phase_counts() {
 
 #[test]
 fn natural_tone_preamp_matches_the_java_test_lower_bounds() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (_, entries) = fixture_entries(NATURAL_TONE_PREAMP);
@@ -78,7 +78,7 @@ fn natural_tone_preamp_matches_the_java_test_lower_bounds() {
 
 #[test]
 fn spot_checked_dangling_track_ids() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (board, entries) = fixture_entries(NATURAL_TONE_PREAMP);
@@ -103,7 +103,7 @@ fn spot_checked_dangling_track_ids() {
 
 #[test]
 fn the_three_fixtures_match_the_jvm() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     for fixture in [DEV_BOARD, BBD_MARS_64, NATURAL_TONE_PREAMP] {
@@ -186,7 +186,7 @@ fn render(board: &Board, entries: &[UnconnectedItems]) -> String {
 
 #[test]
 fn entries_are_ordered_by_ascending_net_number() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (board, entries) = fixture_entries(DEV_BOARD);
@@ -258,7 +258,7 @@ fn a_first_item_trace_is_the_one_case_the_dedup_catches() {
 
 #[test]
 fn the_via_phase_has_no_dedup_at_all() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (board, entries) = fixture_entries(BBD_MARS_64);
@@ -310,7 +310,7 @@ fn every_dangling_trace_precedes_every_dangling_via() {
         ],
     );
 
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (_, entries) = fixture_entries(BBD_MARS_64);
@@ -345,7 +345,7 @@ fn a_net_with_one_item_is_never_unconnected() {
 
 #[test]
 fn empty_board_has_nothing_unconnected() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (_, entries) = fixture_entries("empty_board.dsn");

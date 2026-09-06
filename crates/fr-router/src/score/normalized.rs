@@ -1,4 +1,3 @@
-use fr_geometry::java_max_f32;
 use fr_settings::ScoringSettings;
 
 use super::statistics::BoardStatistics;
@@ -72,7 +71,7 @@ impl BoardStatistics {
         if maximum_score <= 0.0 {
             return 0.0;
         }
-        java_max_f32(0.0, self.calculate_score(scoring) / maximum_score) * 1000.0
+        (self.calculate_score(scoring) / maximum_score).max(0.0) * 1000.0
     }
 
     /// The score's cost term — trace length, vias and bends at the scoring weights — in `f64`,

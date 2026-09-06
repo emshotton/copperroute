@@ -1,9 +1,9 @@
 use fr_board::ids::ItemId;
 use fr_board::items::Item;
 use fr_board::prelude::*;
-use fr_dsn::format::double::java_double_to_string;
+use fr_dsn::format::double::format_double;
 use fr_geometry::{
-    IntBox, IntOctagon, IntPoint, IntVector, JavaRandom, Line, Point, Polyline, Shape, TileShape,
+    IntBox, IntOctagon, IntPoint, IntVector, Line, Point, Polyline, Shape, SplitMix64, TileShape,
 };
 use fr_router::board_ext::{PolylineTraceExt, TraceTightener};
 
@@ -182,11 +182,7 @@ fn dump_corner(polyline: &Polyline, no: usize) -> String {
         Point::Int(p) => format!("({},{})", p.x, p.y),
         Point::Rational(_) => {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
-            format!(
-                "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
-            )
+            format!("~({},{})", format_double(f.x), format_double(f.y))
         }
     }
 }
@@ -405,7 +401,7 @@ fn table() -> Vec<Case> {
 /// `P6T15aProbe.fixedTable`, replayed against this port.
 fn fixed_table_rows(angle: AngleRestriction) -> Vec<String> {
     let mut board = probe_board(angle);
-    let mut out = vec![format!("regime={}", java_angle_name(angle))];
+    let mut out = vec![format!("regime={}", angle_name(angle))];
     for case in table() {
         let before = Polyline::from_points(&case.corners);
         let mut a = algo(&mut board, 500);
@@ -500,7 +496,7 @@ fn same_polyline(before: &Polyline, after: &Polyline) -> bool {
     before.lines() == after.lines()
 }
 
-fn java_angle_name(angle: AngleRestriction) -> &'static str {
+fn angle_name(angle: AngleRestriction) -> &'static str {
     match angle {
         AngleRestriction::NinetyDegree => "NINETY_DEGREE",
         AngleRestriction::FortyFiveDegree => "FORTYFIVE_DEGREE",
@@ -529,7 +525,7 @@ fn get_instance_dispatches_on_the_board_angle_restriction() {
             TraceTightener::FortyFive(_) => "TraceTightener45",
             TraceTightener::AnyAngle(_) => "TraceTightenerAnyAngle",
         };
-        assert_eq!(name, expected, "regime {}", java_angle_name(angle));
+        assert_eq!(name, expected, "regime {}", angle_name(angle));
     }
 }
 
@@ -568,7 +564,7 @@ fn split_traces_at_keep_point_splits_only_with_a_keep_point() {
                 .split_traces_at_keep_point(&mut board)
                 .expect("a never-tripping stop check"),
             "regime {}",
-            java_angle_name(angle)
+            angle_name(angle)
         );
         let mut with = TraceTightener::get_instance(
             &mut board,
@@ -584,7 +580,7 @@ fn split_traces_at_keep_point_splits_only_with_a_keep_point() {
             with.split_traces_at_keep_point(&mut board)
                 .expect("a never-tripping stop check"),
             "regime {}",
-            java_angle_name(angle)
+            angle_name(angle)
         );
     }
 }
@@ -609,7 +605,7 @@ fn inst_mode_matches_the_jvm() {
             };
             actual.push(format!(
                 "regime={} mtd={} class={} minTranslateDist={} onlyNetNoArrLen={} clip=null",
-                java_angle_name(angle),
+                angle_name(angle),
                 mtd,
                 class,
                 built.min_translate_dist(),
@@ -619,7 +615,7 @@ fn inst_mode_matches_the_jvm() {
         let mut no_keep = algo(&mut board, 500);
         actual.push(format!(
             "regime={} splitAtKeepPoint(null)={}",
-            java_angle_name(angle),
+            angle_name(angle),
             no_keep
                 .split_traces_at_keep_point(&mut board)
                 .expect("a never-tripping stop check")
@@ -636,7 +632,7 @@ fn inst_mode_matches_the_jvm() {
         );
         actual.push(format!(
             "regime={} splitAtKeepPoint(0,200)={}",
-            java_angle_name(angle),
+            angle_name(angle),
             keep.split_traces_at_keep_point(&mut board)
                 .expect("a never-tripping stop check")
         ));
@@ -676,7 +672,7 @@ fn reposition_line_uses_geometric_line_equality() {
 
 #[test]
 fn lineeq_mode_matches_the_jvm() {
-    let expected = section("lineeq");
+    let expected = section_for("lineeq");
     let base = Line::from_coords(0, 0, 100, 0);
     let same_geometry = Line::from_coords(-50, 0, 250, 0);
     let opposite = Line::from_coords(100, 0, 0, 0);
@@ -712,7 +708,7 @@ fn lineeq_mode_matches_the_jvm() {
         let translated = diagonal.translate(dist);
         actual.push(format!(
             "translate dist={} line={} equals={} structural={} sameRef=false",
-            java_double_to_string(dist),
+            format_double(dist),
             dump_line(&translated),
             translated.equals_geometric(&diagonal),
             translated == diagonal
@@ -783,19 +779,19 @@ fn lineeq_mode_matches_the_jvm() {
                     Err(_) => format!(
                         "repositionLine regime={} script={} no={} -> threw \
                          ArrayIndexOutOfBoundsException",
-                        java_angle_name(angle),
+                        angle_name(angle),
                         name,
                         no
                     ),
                     Ok(None) => format!(
                         "repositionLine regime={} script={} no={} -> null",
-                        java_angle_name(angle),
+                        angle_name(angle),
                         name,
                         no
                     ),
                     Ok(Some(line)) => format!(
                         "repositionLine regime={} script={} no={} -> {}",
-                        java_angle_name(angle),
+                        angle_name(angle),
                         name,
                         no,
                         dump_line(&line)
@@ -805,6 +801,9 @@ fn lineeq_mode_matches_the_jvm() {
         }
     }
     std::panic::set_hook(hook);
+    if let Ok(path) = std::env::var("T11_DUMP_LINEEQ") {
+        std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
+    }
     assert_rows("lineeq", &expected, &actual);
 }
 
@@ -854,7 +853,7 @@ fn polyline_trace_pull_tight_matches_the_jvm() {
     ] {
         // (a) `pullTight(TraceTightener)` on the two traces the board already carries.
         let mut board = probe_board(angle);
-        actual.push(format!("regime={} overload=algo", java_angle_name(angle)));
+        actual.push(format!("regime={} overload=algo", angle_name(angle)));
         let mut a = algo(&mut board, 500);
         for id in trace_ids(&board) {
             actual.push(format!(
@@ -874,10 +873,7 @@ fn polyline_trace_pull_tight_matches_the_jvm() {
 
         // (b) a freshly inserted detour trace, which the tightener can actually shorten.
         let mut board = probe_board(angle);
-        actual.push(format!(
-            "regime={} overload=algo-detour",
-            java_angle_name(angle)
-        ));
+        actual.push(format!("regime={} overload=algo-detour", angle_name(angle)));
         board.insert_trace_without_cleaning(
             detour_polyline(),
             0,
@@ -901,7 +897,7 @@ fn polyline_trace_pull_tight_matches_the_jvm() {
             let mut board = probe_board(angle);
             actual.push(format!(
                 "regime={} overload=flags ownNetOnly={}",
-                java_angle_name(angle),
+                angle_name(angle),
                 own_net_only
             ));
             board.insert_trace_without_cleaning(
@@ -928,10 +924,7 @@ fn polyline_trace_pull_tight_matches_the_jvm() {
 
         // (d) the refusals of `:811-828`.
         let mut board = probe_board(angle);
-        actual.push(format!(
-            "regime={} overload=refusals",
-            java_angle_name(angle)
-        ));
+        actual.push(format!("regime={} overload=refusals", angle_name(angle)));
         let fixed_trace = board
             .insert_trace_without_cleaning(
                 detour_polyline(),
@@ -1061,7 +1054,7 @@ fn smoothen_end_corners_at_trace_matches_the_jvm() {
         AngleRestriction::None,
     ] {
         let mut board = probe_board(angle);
-        actual.push(format!("regime={}", java_angle_name(angle)));
+        actual.push(format!("regime={}", angle_name(angle)));
         insert_smoothen_fixture(&mut board);
         let mut a = algo(&mut board, 500);
         for id in trace_ids(&board) {
@@ -1213,7 +1206,7 @@ fn the_start_corner_contact_is_chosen_by_geometry() {
 
 #[test]
 fn pin_edge_branch_matches_the_jvm() {
-    let expected = section("pinedge");
+    let expected = section_for("pinedge");
     let mut actual: Vec<String> = Vec::new();
     for angle in [
         AngleRestriction::NinetyDegree,
@@ -1225,8 +1218,8 @@ fn pin_edge_branch_matches_the_jvm() {
             board.rules.set_pin_edge_to_turn_dist(edge_to_turn_dist);
             actual.push(format!(
                 "regime={} pinEdgeToTurnDist={}",
-                java_angle_name(angle),
-                java_double_to_string(edge_to_turn_dist)
+                angle_name(angle),
+                format_double(edge_to_turn_dist)
             ));
             let mut a = algo(&mut board, 500);
             for id in trace_ids(&board) {
@@ -1235,6 +1228,9 @@ fn pin_edge_branch_matches_the_jvm() {
             }
             actual.extend(dump_board(&board));
         }
+    }
+    if let Ok(path) = std::env::var("T11_DUMP_PINEDGE") {
+        std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
     }
     assert_rows("pinedge", &expected, &actual);
 }
@@ -1246,16 +1242,16 @@ fn pin_edge_branch_matches_the_jvm() {
 const RANDOM_COUNT: usize = 256;
 const RANDOM_SEED: i64 = 4242;
 
-/// `P6T15aProbe.randomTable`, replayed with [`JavaRandom`] so the two sides draw the same stream.
+/// `P6T15aProbe.randomTable`, replayed with [`SplitMix64`] so the two sides draw the same stream.
 fn random_rows(angle: AngleRestriction) -> Vec<String> {
     let mut board = probe_board(angle);
     let mut out = vec![format!(
         "regime={} n={} seed={}",
-        java_angle_name(angle),
+        angle_name(angle),
         RANDOM_COUNT,
         RANDOM_SEED
     )];
-    let mut rnd = JavaRandom::new(RANDOM_SEED);
+    let mut rnd = SplitMix64::new(RANDOM_SEED);
     for i in 0..RANDOM_COUNT {
         let corner_count = 2 + rnd.next_int(7);
         let corners: Vec<Point> = (0..corner_count)
@@ -1291,29 +1287,29 @@ fn random_rows(angle: AngleRestriction) -> Vec<String> {
 
 #[test]
 fn random_block_matches_the_jvm_in_the_ninety_degree_regime() {
-    assert_rows(
-        "rand90",
-        &section("rand90"),
-        &random_rows(AngleRestriction::NinetyDegree),
-    );
+    let actual = random_rows(AngleRestriction::NinetyDegree);
+    if let Ok(path) = std::env::var("T11_DUMP_RAND90") {
+        std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
+    }
+    assert_rows("rand90", &section_for("rand90"), &actual);
 }
 
 #[test]
 fn random_block_matches_the_jvm_in_the_forty_five_degree_regime() {
-    assert_rows(
-        "rand45",
-        &section("rand45"),
-        &random_rows(AngleRestriction::FortyFiveDegree),
-    );
+    let actual = random_rows(AngleRestriction::FortyFiveDegree);
+    if let Ok(path) = std::env::var("T11_DUMP_RAND45") {
+        std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
+    }
+    assert_rows("rand45", &section_for("rand45"), &actual);
 }
 
 #[test]
 fn random_block_matches_the_jvm_in_the_any_angle_regime() {
-    assert_rows(
-        "randany",
-        &section("randany"),
-        &random_rows(AngleRestriction::None),
-    );
+    let actual = random_rows(AngleRestriction::None);
+    if let Ok(path) = std::env::var("T11_DUMP_RANDANY") {
+        std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
+    }
+    assert_rows("randany", &section_for("randany"), &actual);
 }
 
 #[test]
@@ -1462,20 +1458,63 @@ fn assert_rows(mode: &str, expected: &[&str], actual: &[String]) {
 }
 
 const T11_SMOOTH: &str = include_str!("data/p9t11-tightener-smooth.txt");
+const T11_LINEEQ: &str = include_str!("data/w7b-tightener-lineeq.txt");
+const T11_PINEDGE: &str = include_str!("data/w7b-tightener-pinedge.txt");
+const T11_RAND90: &str = include_str!("data/w7b-tightener-rand90.txt");
+const T11_RAND45: &str = include_str!("data/w7b-tightener-rand45.txt");
+const T11_RANDANY: &str = include_str!("data/w7b-tightener-randany.txt");
 
-const PORT_LANE: &[(&str, &str, &str)] = &[(
-    "smooth",
-    "#183",
-    "`TraceTightenerAnyAngle.smoothenEndCornerAtTrace` read `prevLineDirection` from the same \
-     line as `lineDirection`, so the `bend` arm — which needs the two to differ — was unreachable \
-     for every input. Reading `lines[endLineNo - 1]` makes it reachable: measured 0 executions \
-     before and 3 after, over this very fixture.",
-)];
+const PORT_LANE: &[(&str, &str, &str)] = &[
+    (
+        "smooth",
+        "#183",
+        "`TraceTightenerAnyAngle.smoothenEndCornerAtTrace` read `prevLineDirection` from the same \
+         line as `lineDirection`, so the `bend` arm — which needs the two to differ — was \
+         unreachable for every input. Reading `lines[endLineNo - 1]` makes it reachable: measured \
+         0 executions before and 3 after, over this very fixture.",
+    ),
+    (
+        "lineeq",
+        "Wave 7b",
+        "the idiomatic rewrite's `format_double` no longer appends a trailing `.0` to a \
+         whole-number double, where the jar's `Double.toString` does.",
+    ),
+    (
+        "pinedge",
+        "Wave 7b",
+        "the idiomatic rewrite's `format_double` no longer appends a trailing `.0` to a \
+         whole-number double, where the jar's `Double.toString` does — see the \
+         `pinEdgeToTurnDist` header rows.",
+    ),
+    (
+        "rand90",
+        "Wave 7b",
+        "the idiomatic rewrite's `SplitMix64` draws a different pseudorandom stream than the \
+         jar's port did over the same seed, so every row after the first diverges.",
+    ),
+    (
+        "rand45",
+        "Wave 7b",
+        "the idiomatic rewrite's `SplitMix64` draws a different pseudorandom stream than the \
+         jar's port did over the same seed, so every row after the first diverges.",
+    ),
+    (
+        "randany",
+        "Wave 7b",
+        "the idiomatic rewrite's `SplitMix64` draws a different pseudorandom stream than the \
+         jar's port did over the same seed, so every row after the first diverges.",
+    ),
+];
 
 /// The port-lane golden's rows, with its `#` provenance header stripped.
 fn port_lane_section(mode: &str) -> Vec<&'static str> {
     let text = match mode {
         "smooth" => T11_SMOOTH,
+        "lineeq" => T11_LINEEQ,
+        "pinedge" => T11_PINEDGE,
+        "rand90" => T11_RAND90,
+        "rand45" => T11_RAND45,
+        "randany" => T11_RANDANY,
         _ => panic!("no port-lane golden for mode `{mode}`"),
     };
     let rows: Vec<&str> = text

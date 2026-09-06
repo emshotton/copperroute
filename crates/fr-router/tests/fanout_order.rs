@@ -3,7 +3,6 @@ use std::path::PathBuf;
 
 use fr_board::prelude::*;
 use fr_geometry::{FloatPoint, IntBox, IntOctagon, IntPoint, IntVector, Point, Shape, TileShape};
-use fr_router::JavaTreeSet;
 use fr_router::board_ext::{combined_fallback_via_rule, sorted_unconnected_targets};
 use fr_router::pipeline::{BatchFanout, EscapeStatistics, FanoutComponent, FanoutPin};
 use fr_router::score::BoardStatisticsFanout;
@@ -17,7 +16,7 @@ fn load_board(rel_path: &str) -> Board {
 }
 
 fn load_board_with_rules(rel_path: &str, rules: Option<&str>) -> (Board, bool) {
-    let path: PathBuf = parity::java_dir().join(rel_path);
+    let path: PathBuf = parity::reference_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path
@@ -90,15 +89,24 @@ fn pin(
     }
 }
 
-fn tree_of(pins: &[FanoutPin], order: Option<&str>) -> JavaTreeSet<FanoutPin> {
-    let mut set = JavaTreeSet::new();
+/// Reproduces a `TreeSet`'s `add`-with-comparator semantics: an element that
+/// compares equal to one already present is dropped, and the survivors come
+/// back in comparator order.
+fn tree_of(pins: &[FanoutPin], order: Option<&str>) -> Vec<FanoutPin> {
+    let mut set: Vec<FanoutPin> = Vec::new();
     for p in pins {
-        set.add_by(p.clone(), |a, b| a.compare_to(b, order).cmp(&0));
+        if !set
+            .iter()
+            .any(|existing| existing.compare_to(p, order) == 0)
+        {
+            set.push(p.clone());
+        }
     }
+    set.sort_by(|a, b| a.compare_to(b, order).cmp(&0));
     set
 }
 
-fn pin_ids(set: &JavaTreeSet<FanoutPin>) -> Vec<u32> {
+fn pin_ids(set: &[FanoutPin]) -> Vec<u32> {
     set.iter().map(|p| p.pin.0).collect()
 }
 
@@ -106,7 +114,7 @@ fn component(id: i32, smd_pin_count: i32) -> FanoutComponent {
     FanoutComponent {
         component: id,
         component_name: format!("C{id}"),
-        smd_pins: JavaTreeSet::new(),
+        smd_pins: BTreeSet::new(),
         gravity_center_of_smd_pins: FloatPoint::new(0.0, 0.0),
         smd_pin_count,
         pin_sorting_order: None,
@@ -249,7 +257,7 @@ fn the_constructor_orders_a_real_boards_components_and_pins_like_the_jvm() {
             (
                 c.component,
                 c.smd_pin_count,
-                c.smd_pins.iter().map(|p| p.pin.0).collect(),
+                c.smd_pins.iter().map(|p| p.inner.pin.0).collect(),
             )
         })
         .collect();
@@ -273,15 +281,15 @@ fn a_net_with_one_pin_has_no_closest_distance() {
         .sorted_components
         .iter()
         .flat_map(|c| c.smd_pins.iter())
-        .find(|p| p.pin == ItemId(29))
+        .find(|p| p.inner.pin == ItemId(29))
         .expect("J3-VBUS is an SMD pin with a net");
-    assert_eq!(lonely.distance_to_closest_on_net, None);
+    assert_eq!(lonely.inner.distance_to_closest_on_net, None);
 
     let maxed = fanout
         .sorted_components
         .iter()
         .flat_map(|c| c.smd_pins.iter())
-        .filter(|p| p.distance_to_closest_on_net.is_none())
+        .filter(|p| p.inner.distance_to_closest_on_net.is_none())
         .count();
     assert_eq!(maxed, 1);
 }
@@ -330,7 +338,7 @@ fn the_five_sorting_orders_do_not_all_agree_on_a_real_board() {
                 .sorted_components
                 .iter()
                 .flat_map(|c| c.smd_pins.iter())
-                .map(|p| p.pin.0)
+                .map(|p| p.inner.pin.0)
                 .collect(),
         );
     }
@@ -450,7 +458,11 @@ fn the_gravity_centre_is_the_mean_of_the_components_smd_pads() {
         component.gravity_center_of_smd_pins,
         FloatPoint::new(0.0, 1000.0)
     );
-    let ordered: Vec<i32> = component.smd_pins.iter().map(|p| p.pin_index).collect();
+    let ordered: Vec<i32> = component
+        .smd_pins
+        .iter()
+        .map(|p| p.inner.pin_index)
+        .collect();
     assert_eq!(ordered, [2, 0, 1], "outer_first: T, then L before R");
 }
 
@@ -598,7 +610,7 @@ fn fanout_escapes_every_smd_pin_of_the_corpus_board() {
             .sorted_components
             .iter()
             .flat_map(|c| c.smd_pins.iter())
-            .map(|p| p.pin)
+            .map(|p| p.inner.pin)
             .collect()
     };
     assert_eq!(

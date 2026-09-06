@@ -1,7 +1,7 @@
 use fr_board::items::Item;
 use fr_board::prelude::*;
 use fr_board::{BoardError, ItemId};
-use fr_geometry::{FloatLine, FloatPoint, IntPoint, Point, Side, Vector, java_min};
+use fr_geometry::{FloatLine, FloatPoint, IntPoint, Point, Side, Vector};
 use fr_settings::ExpansionCostFactor;
 
 use crate::board_ext::drill_item_mover::DrillItemMover;
@@ -356,7 +356,7 @@ impl ViaOptimizer {
             return Some(new_to_location);
         }
         let min_length = 0.3 * f64::from(trace_half_width) + 1.0;
-        ok_length = java_min(ok_length, float_from_location.distance(&float_to_location));
+        ok_length = (ok_length).min(float_from_location.distance(&float_to_location));
         let mut current_length = ok_length / 2.0;
         ok_length = 0.0;
         let mut result: Option<Point> = None;

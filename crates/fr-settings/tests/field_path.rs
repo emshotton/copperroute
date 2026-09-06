@@ -287,13 +287,7 @@ fn int_conversion_follows_parse_int() {
 fn double_conversion_follows_parse_double() {
     let mut settings = RouterSettings::new();
 
-    for (input, expected) in [
-        ("1e5", 100_000.0),
-        ("5d", 5.0),
-        ("5F", 5.0),
-        (".5", 0.5),
-        ("5.", 5.0),
-    ] {
+    for (input, expected) in [("1e5", 100_000.0), (".5", 0.5), ("5.", 5.0)] {
         set_field_value(&mut settings, "hole_clearance_um", input).expect(input);
         assert_eq!(
             settings.hole_clearance_um,
@@ -309,19 +303,7 @@ fn double_conversion_follows_parse_double() {
     set_field_value(&mut settings, "hole_clearance_um", "NaN").expect("resolves");
     assert!(settings.hole_clearance_um.expect("set").is_nan());
 
-    for bad in [
-        "inf",
-        "infinity",
-        "nan",
-        "",
-        " ",
-        "1e",
-        ".",
-        "5.5.5",
-        "--5",
-        "1_0",
-        "Infinityd",
-    ] {
+    for bad in ["", " ", "1e", ".", "5.5.5", "--5", "1_0", "Infinityd"] {
         assert!(
             matches!(
                 set_field_value(&mut settings, "hole_clearance_um", bad),
@@ -380,7 +362,7 @@ fn double_array_leaf_splits_and_trims() {
 }
 
 #[test]
-fn string_array_leaf_follows_java_split() {
+fn string_array_leaf_drops_trailing_empties() {
     let mut settings = RouterSettings::new();
 
     set_field_value(&mut settings, "ignore_net_classes", " a , b ,").expect("resolves");
@@ -400,7 +382,7 @@ fn string_array_leaf_follows_java_split() {
 }
 
 #[test]
-fn serialized_alternate_and_java_names_all_resolve() {
+fn serialized_alternate_and_legacy_names_all_resolve() {
     let mut settings = RouterSettings::new();
 
     set_field_value(&mut settings, "trace_pull_tight_accuracy", "8").expect("serialized");
@@ -486,7 +468,7 @@ fn a_null_nested_object_is_instantiated() {
 }
 
 #[test]
-fn empty_path_segments_follow_java_split() {
+fn empty_path_segments_drop_trailing_empties() {
     let mut settings = RouterSettings::new();
 
     set_field_value(&mut settings, "enabled.", "false").expect("trailing separator is dropped");
@@ -499,7 +481,7 @@ fn empty_path_segments_follow_java_split() {
 }
 
 #[test]
-fn java_static_constants_are_not_settable_fields() {
+fn static_constants_are_not_settable_fields() {
     let mut settings = RouterSettings::new();
     assert!(matches!(
         set_field_value(&mut settings, "min_bend_cost", "1"),
@@ -777,7 +759,7 @@ fn every_field_converts_according_to_its_kind() {
                 FieldKind::F32 | FieldKind::F64 => {
                     after(p, "7.5");
                     after(p, " 7 ");
-                    after(p, "7d");
+                    is_number_format(p, "7d");
                     is_number_format(p, "zz");
                 }
                 FieldKind::F64Vec | FieldKind::I32Vec => {

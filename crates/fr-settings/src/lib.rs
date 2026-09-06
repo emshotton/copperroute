@@ -16,7 +16,7 @@ pub mod router_settings;
 pub mod scoring_settings;
 pub mod sources;
 
-pub use copy_fields::{CopyFields, JavaEnum, MergeMode};
+pub use copy_fields::{CopyFields, MergeMode, NamedEnum};
 pub use drc_settings::{DebugSettings, DesignRulesCheckerSettings};
 pub use error::{MergeError, MergeReport, SettingsError};
 pub use fanout_settings::FanoutSettings;
@@ -47,7 +47,7 @@ pub mod prelude {
     pub use crate::{
         BoardUpdateStrategy, CopyFields, DebugSettings, DesignRulesCheckerSettings,
         ExpansionCostFactor, FanoutSettings, FieldKind, FieldSpec, HostEnvironment,
-        ItemSelectionStrategy, JavaEnum, LayerSettings, MergeError, MergeMode, MergeReport,
+        ItemSelectionStrategy, LayerSettings, MergeError, MergeMode, MergeReport, NamedEnum,
         OptimizerSettings, RouterSettings, ScoringSettings, SettingsError, SettingsInputs,
         SettingsMerger, SettingsSource, SourceKind, priority, resolve_headless,
         resolve_scheduler_rules_path, resolve_scheduler_rules_path_with, set_field_value,

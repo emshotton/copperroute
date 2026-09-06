@@ -214,7 +214,7 @@ struct Run {
 /// reproduced exactly, because a run that loaded the board differently would route a different
 /// board and the guard counts would be of something else.
 fn route_stem(stem: &Stem, instrumented: bool) -> Run {
-    let dsn = parity::java_dir().join(stem.dsn);
+    let dsn = parity::reference_dir().join(stem.dsn);
     let bytes =
         std::fs::read(&dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
     let file_name = dsn
@@ -319,7 +319,7 @@ fn stems(ci_only: bool) -> impl Iterator<Item = &'static Stem> {
     ignore = "slow in debug; run with FR_SLOW_PARITY=1 --release for all eight stems"
 )]
 fn the_three_guards_are_counted_on_every_router_stem() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let ci_only = std::env::var_os("FR_SLOW_PARITY").is_none();
@@ -384,7 +384,7 @@ fn the_three_guards_are_counted_on_every_router_stem() {
     ignore = "slow in debug; run with FR_SLOW_PARITY=1 --release for all eight stems"
 )]
 fn instrumentation_changes_no_board_byte() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let ci_only = std::env::var_os("FR_SLOW_PARITY").is_none();
@@ -421,7 +421,7 @@ fn instrumentation_changes_no_board_byte() {
     ignore = "needs a routed board; run with FR_SLOW_PARITY=1 --release"
 )]
 fn a_shortened_trace_makes_a_recorded_index_stale_and_clears_the_array_that_held_it() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let stem = STEMS

@@ -7,7 +7,6 @@ use fr_board::{Board, BoardError, ItemId};
 use fr_geometry::FloatPoint;
 use fr_settings::RouterSettings;
 
-use crate::JavaTreeSet;
 use crate::autoroute::AutorouteAttemptState;
 use crate::board_ext::RoutingBoardExt;
 use crate::error::RouterError;
@@ -187,11 +186,41 @@ impl FanoutPin {
     }
 }
 
+/// A [`FanoutPin`] carrying the sort order its comparison needs. The order is
+/// fixed for a component, so the ordered set orders by `compare_to` directly.
+#[derive(Debug, Clone)]
+pub struct OrderedFanoutPin {
+    order: Option<String>,
+    pub inner: FanoutPin,
+}
+
+impl PartialEq for OrderedFanoutPin {
+    fn eq(&self, other: &OrderedFanoutPin) -> bool {
+        self.cmp(other) == std::cmp::Ordering::Equal
+    }
+}
+
+impl Eq for OrderedFanoutPin {}
+
+impl PartialOrd for OrderedFanoutPin {
+    fn partial_cmp(&self, other: &OrderedFanoutPin) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for OrderedFanoutPin {
+    fn cmp(&self, other: &OrderedFanoutPin) -> std::cmp::Ordering {
+        self.inner
+            .compare_to(&other.inner, self.order.as_deref())
+            .cmp(&0)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct FanoutComponent {
     pub component: i32,
     pub component_name: String,
-    pub smd_pins: JavaTreeSet<FanoutPin>,
+    pub smd_pins: BTreeSet<OrderedFanoutPin>,
     pub gravity_center_of_smd_pins: FloatPoint,
     pub smd_pin_count: i32,
     pub pin_sorting_order: Option<String>,
@@ -236,12 +265,13 @@ impl FanoutComponent {
         }
         let gravity_center_of_smd_pins = FloatPoint::new(x, y);
 
-        let mut smd_pins = JavaTreeSet::new();
+        let mut smd_pins = BTreeSet::new();
         for pin in &current_pin_list {
             let fanout_pin =
                 FanoutPin::new(board, *pin, board_smd_pin_list, &gravity_center_of_smd_pins);
-            smd_pins.add_by(fanout_pin, |a, b| {
-                a.compare_to(b, pin_sorting_order).cmp(&0)
+            smd_pins.insert(OrderedFanoutPin {
+                order: pin_sorting_order.map(str::to_owned),
+                inner: fanout_pin,
             });
         }
 
@@ -335,12 +365,12 @@ impl<'a> BatchFanout<'a> {
         let mut already_connected = 0_i32;
         for component in &sorted_components {
             pin_count += component.smd_pin_count;
-            for pin in &component.smd_pins {
-                let Some(item) = board.get_item(pin.pin) else {
+            for op in &component.smd_pins {
+                let Some(item) = board.get_item(op.inner.pin) else {
                     continue;
                 };
                 let net_number = item.get_net_number(0);
-                if board.unconnected_set(pin.pin, net_number).is_empty() {
+                if board.unconnected_set(op.inner.pin, net_number).is_empty() {
                     already_connected += 1;
                 }
             }
@@ -733,7 +763,7 @@ impl<'a> BatchFanout<'a> {
         let walk: Vec<Vec<ItemId>> = self
             .sorted_components
             .iter()
-            .map(|component| component.smd_pins.iter().map(|pin| pin.pin).collect())
+            .map(|component| component.smd_pins.iter().map(|op| op.inner.pin).collect())
             .collect();
         let mut max_limit_reached = false;
         'pins: for component_pins in &walk {

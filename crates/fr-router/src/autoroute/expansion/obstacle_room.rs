@@ -53,7 +53,7 @@ impl ObstacleExpansionRoom {
         self.id_no
     }
 
-    pub fn java_id(item: ItemId, index_in_item: usize) -> i32 {
+    pub fn id(item: ItemId, index_in_item: usize) -> i32 {
         (item.0 as i32).wrapping_shl(10) | (index_in_item as i32)
     }
 
@@ -122,29 +122,29 @@ mod tests {
     #[test]
     fn the_id_is_an_or_not_a_sum_so_a_wide_index_aliases() {
         assert_eq!(
-            ObstacleExpansionRoom::java_id(ItemId(1), 1024),
-            ObstacleExpansionRoom::java_id(ItemId(1), 0)
+            ObstacleExpansionRoom::id(ItemId(1), 1024),
+            ObstacleExpansionRoom::id(ItemId(1), 0)
         );
         assert_eq!(
-            ObstacleExpansionRoom::java_id(ItemId(1), 2048),
-            ObstacleExpansionRoom::java_id(ItemId(3), 0)
+            ObstacleExpansionRoom::id(ItemId(1), 2048),
+            ObstacleExpansionRoom::id(ItemId(3), 0)
         );
         assert_ne!(
-            ObstacleExpansionRoom::java_id(ItemId(1), 1023),
-            ObstacleExpansionRoom::java_id(ItemId(1), 1022)
+            ObstacleExpansionRoom::id(ItemId(1), 1023),
+            ObstacleExpansionRoom::id(ItemId(1), 1022)
         );
         assert_ne!(
-            ObstacleExpansionRoom::java_id(ItemId(1), 0),
-            ObstacleExpansionRoom::java_id(ItemId(2), 0)
+            ObstacleExpansionRoom::id(ItemId(1), 0),
+            ObstacleExpansionRoom::id(ItemId(2), 0)
         );
     }
 
     #[test]
     fn the_shift_overflows_a_java_int_at_two_to_the_twenty_first() {
-        assert!(ObstacleExpansionRoom::java_id(ItemId(1 << 21), 0) < 0);
+        assert!(ObstacleExpansionRoom::id(ItemId(1 << 21), 0) < 0);
         assert_eq!(
-            ObstacleExpansionRoom::java_id(ItemId(1 << 22), 0),
-            ObstacleExpansionRoom::java_id(ItemId(0), 0)
+            ObstacleExpansionRoom::id(ItemId(1 << 22), 0),
+            ObstacleExpansionRoom::id(ItemId(0), 0)
         );
     }
 }

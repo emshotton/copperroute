@@ -516,7 +516,7 @@ fn a_missing_via_padstack_fails_the_read_and_loses_its_warning() {
 }
 
 fn corpus_dir() -> std::path::PathBuf {
-    parity::java_dir().join("fixtures")
+    parity::reference_dir().join("fixtures")
 }
 
 const NAMED_CORPUS_FIXTURES: [&str; 5] = [
@@ -590,7 +590,7 @@ fn the_corpus_golden_parses_and_the_named_fixtures_read_to_its_variant() {
         );
     }
 
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let options = DsnReadOptions::default();
@@ -621,11 +621,11 @@ fn the_corpus_golden_parses_and_the_named_fixtures_read_to_its_variant() {
     ignore = "~90 s in debug; run with --release or --ignored"
 )]
 fn every_fixture_in_the_corpus_matches_javas_result_and_warnings() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut paths: Vec<std::path::PathBuf> = std::fs::read_dir(corpus_dir())
-        .expect("fixture directory (existence already checked by require_java_dir)")
+        .expect("fixture directory (existence already checked by require_reference_dir)")
         .filter_map(Result::ok)
         .map(|e| e.path())
         .filter(|p| p.extension().is_some_and(|e| e == "dsn"))

@@ -1,4 +1,3 @@
-use crate::limits::java_round;
 use crate::point::Point;
 use crate::side::Side;
 
@@ -86,7 +85,7 @@ impl Polygon {
         }
         angle_sum += prev_side_vector.angle_approx_to(&first_side_vector);
         angle_sum /= 2.0 * std::f64::consts::PI;
-        java_round(angle_sum) as i32
+        (angle_sum).round() as i64 as i32
     }
 }
 

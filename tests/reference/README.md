@@ -366,7 +366,7 @@ generated under `-XX:hashCode=2` for the same hygiene reason the DRC ones are.
 `crates/fr-router/tests/reference_parity.rs` compares them rung by rung (plan-6
 ruling 1: state + ripped set, then geometry, then spec §9's metrics), but nothing
 is rewritten on either side. Coordinates and `traceLength` are compared as the
-**strings** `Double.toString` and `java_double_to_string` produced, so no
+**strings** `Double.toString` and `format_double` produced, so no
 re-parse can round a value into agreement.
 
 ## Wall clock

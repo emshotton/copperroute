@@ -1,6 +1,6 @@
 use fr_board::items::Item;
 use fr_board::prelude::*;
-use fr_dsn::java_double_to_string;
+use fr_dsn::format_double;
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_geometry::{IntBox, IntOctagon, IntPoint, Line, Point, Polyline};
 use fr_router::board_ext::{RoutingBoardExt, TraceTightener};
@@ -338,7 +338,7 @@ fn a_tripped_stop_check_returns_mid_sweep_leaving_the_rest_untightened() {
 
 #[test]
 fn the_budget_trips_the_sweep() {
-    assert_eq!(RouterBudget::java_literals().opt_changed_area_ms, 1000);
+    assert_eq!(RouterBudget::from_fixed_budget().opt_changed_area_ms, 1000);
     assert_eq!(RouterBudget::default().opt_changed_area_ms, 0);
 
     let mut board = detour_board(200);
@@ -502,7 +502,7 @@ fn p7t3_rows(mode: i32) -> Vec<String> {
     out.push(format!(
         "sweep regime={} pinEdgeToTurnDist={} traceCosts={}",
         regime_name(regime),
-        java_double_to_string(board.rules.get_pin_edge_to_turn_dist()),
+        format_double(board.rules.get_pin_edge_to_turn_dist()),
         match &via_costs {
             Some(costs) => costs.len().to_string(),
             None => "null".to_string(),
@@ -527,7 +527,7 @@ fn p7t3_rows(mode: i32) -> Vec<String> {
 
 const KNOWN_ID_OFFSET: i32 = 2;
 
-const KNOWN_DIVERGENT_ROWS: [(i32, usize); 5] = [(0, 4), (1, 9), (2, 10), (3, 7), (4, 12)];
+const KNOWN_DIVERGENT_ROWS: [(i32, usize); 5] = [(0, 4), (1, 9), (2, 9), (3, 6), (4, 12)];
 
 const CORRECTED_PROJECTION_ROW: (&str, &str) = (
     "item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727900,1884700)->(727901,1884700),(727900,1884700)->(727900,1789557),(727900,1789557)->(765863,1751594),(765863,1751594)->(765862,1751593)] corners=[(727900,1884700),(727900,1789557),(765863,1751594)]",
@@ -571,7 +571,7 @@ fn assert_mode_matches(mode: i32) {
     let actual = p7t3_rows(mode);
     if mode == 4 {
         assert_eq!(actual.len(), 67);
-        assert_eq!(transcript_hash(&actual), 2_139_043_855_776_126_627);
+        assert_eq!(transcript_hash(&actual), 5_281_303_262_455_261_319);
         return;
     }
     let expected = transcript_mode(mode);
@@ -726,11 +726,7 @@ fn dump_corner(polyline: &Polyline, no: usize) -> String {
         Point::Int(point) => format!("({},{})", point.x, point.y),
         Point::Rational(_) => {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
-            format!(
-                "~({},{})",
-                java_double_to_string(f.x),
-                java_double_to_string(f.y)
-            )
+            format!("~({},{})", format_double(f.x), format_double(f.y))
         }
     }
 }

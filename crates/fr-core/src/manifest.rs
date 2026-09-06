@@ -7,7 +7,7 @@ use fr_dsn::format::json::to_gson_string_pretty;
 use fr_router::score::BoardStatistics;
 
 use crate::SERVER_VERSION;
-use crate::job::{RoutingJob, java_path};
+use crate::job::{RoutingJob, path_util};
 use crate::stats_json::GsonBoardStatistics;
 
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize)]
@@ -143,10 +143,10 @@ impl RoutingResultManifest {
         manifest.git_sha = Some(resolve_git_sha());
         let mut fixture = FixtureInfo::default();
         if let Some(path) = input_file_path {
-            let normalized = java_path::of_to_string(&path.to_string_lossy());
+            let normalized = path_util::of_to_string(&path.to_string_lossy());
             manifest.fixture = {
                 fixture.filename =
-                    Some(java_path::file_name_of_normalized(&normalized).unwrap_or_default());
+                    Some(path_util::file_name_of_normalized(&normalized).unwrap_or_default());
                 fixture.sha256 = sha256_hex(Path::new(&normalized));
                 Some(fixture)
             };
@@ -154,7 +154,7 @@ impl RoutingResultManifest {
             manifest.fixture = Some(fixture);
         }
         manifest.settings_snapshot = Some(job.router_settings.clone());
-        manifest.final_state = Some(job.state.java_name().to_string());
+        manifest.final_state = Some(job.state.name().to_string());
         manifest.exit_code = exit_code;
         manifest.output_written = output_written;
         manifest.resource_usage = Some(job.resource_usage);
@@ -187,8 +187,8 @@ impl RoutingResultManifest {
     }
 
     pub fn write(path: &Path, manifest: &RoutingResultManifest) -> std::io::Result<()> {
-        let normalized = java_path::of_to_string(&path.to_string_lossy());
-        if let Some(parent) = java_path::parent_of_normalized(&normalized) {
+        let normalized = path_util::of_to_string(&path.to_string_lossy());
+        if let Some(parent) = path_util::parent_of_normalized(&normalized) {
             std::fs::create_dir_all(&parent)?;
         }
         let json = to_gson_string_pretty(manifest)
@@ -203,32 +203,16 @@ impl RoutingResultManifest {
 
 pub fn resolve_git_sha() -> String {
     if let Ok(value) = std::env::var("FREEROUTING_GIT_SHA")
-        && !java_is_blank(&value)
+        && !(&value).trim().is_empty()
     {
-        return java_trim(&value);
+        return value.trim().to_string();
     }
     if let Ok(value) = std::env::var("freerouting.git.sha")
-        && !java_is_blank(&value)
+        && !(&value).trim().is_empty()
     {
-        return java_trim(&value);
+        return value.trim().to_string();
     }
     "unknown".to_string()
-}
-
-fn java_is_blank(value: &str) -> bool {
-    value.chars().all(java_is_whitespace)
-}
-
-fn java_is_whitespace(c: char) -> bool {
-    match c {
-        '\u{9}'..='\u{D}' | '\u{1C}'..='\u{1F}' => true,
-        '\u{85}' | '\u{A0}' | '\u{2007}' | '\u{202F}' => false,
-        _ => c.is_whitespace(),
-    }
-}
-
-fn java_trim(value: &str) -> String {
-    value.trim_matches(|c: char| c <= '\u{20}').to_string()
 }
 
 pub fn sha256_hex(path: &Path) -> Option<String> {
@@ -380,87 +364,6 @@ mod tests {
     #[test]
     fn hex_is_lower_case_and_zero_padded() {
         assert_eq!(hex_lower(&[0x00, 0x0f, 0xa0, 0xff]), "000fa0ff");
-    }
-
-    #[test]
-    fn whitespace_sets_are_the_measured_ones() {
-        fn jvm_is_whitespace(c: char) -> bool {
-            matches!(
-                c as u32,
-                0x09..=0x0D
-                    | 0x1C..=0x20
-                    | 0x1680
-                    | 0x2000..=0x2006
-                    | 0x2008..=0x200A
-                    | 0x2028
-                    | 0x2029
-                    | 0x205F
-                    | 0x3000
-            )
-        }
-
-        let mut java_only: Vec<u32> = Vec::new();
-        let mut rust_only: Vec<u32> = Vec::new();
-        for cp in 0..=0x10FFFF_u32 {
-            let Some(c) = char::from_u32(cp) else {
-                continue;
-            };
-            assert_eq!(
-                java_is_whitespace(c),
-                jvm_is_whitespace(c),
-                "java_is_whitespace disagrees with the JVM at U+{cp:04X}"
-            );
-            match (jvm_is_whitespace(c), c.is_whitespace()) {
-                (true, false) => java_only.push(cp),
-                (false, true) => rust_only.push(cp),
-                _ => {}
-            }
-        }
-        assert_eq!(
-            java_only,
-            [0x1C, 0x1D, 0x1E, 0x1F],
-            "the four separators Java calls whitespace and Rust does not"
-        );
-        assert_eq!(
-            rust_only,
-            [0x85, 0xA0, 0x2007, 0x202F],
-            "NEL and the three non-breaking spaces — Rust calls them whitespace, Java does not"
-        );
-
-        for cp in 0..=0xFFFF_u32 {
-            let Some(c) = char::from_u32(cp) else {
-                continue;
-            };
-            let text = c.to_string();
-            let stripped = java_trim(&text).is_empty();
-            assert_eq!(stripped, cp <= 0x20, "java_trim at U+{cp:04X}");
-        }
-    }
-
-    #[test]
-    fn java_blankness_and_trimming_are_not_rusts() {
-        assert!(java_is_blank(""));
-        assert!(java_is_blank(" \t\r\n"));
-        assert!(java_is_blank("\u{1c}\u{1d}\u{1e}\u{1f}"));
-        assert_eq!("\u{1c}".trim(), "\u{1c}", "Rust does not trim U+001C");
-        assert_eq!(
-            java_trim("\u{1c}abc\u{1f}"),
-            "abc",
-            "Java does — it is < 0x20"
-        );
-        assert!(!java_is_blank("\u{a0}"));
-        assert!(!java_is_blank("\u{2007}"));
-        assert!(!java_is_blank("\u{202f}"));
-        assert!(!java_is_blank("\u{85}"));
-        assert_eq!(
-            java_trim("\u{85}"),
-            "\u{85}",
-            "Java's trim keeps anything > U+0020"
-        );
-        assert_eq!("\u{85}".trim(), "", "Rust's does not");
-        assert_eq!("\u{a0}".trim(), "", "Rust trims the non-breaking space");
-        assert_eq!(java_trim("\u{a0}"), "\u{a0}", "Java does not");
-        assert!(!java_is_blank("abc"));
     }
 }
 

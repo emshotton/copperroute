@@ -8,7 +8,7 @@ pub enum BoardUpdateStrategy {
 }
 
 impl BoardUpdateStrategy {
-    pub fn java_name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             Self::Greedy => "GREEDY",
             Self::GlobalOptimal => "GLOBAL_OPTIMAL",
@@ -25,7 +25,7 @@ pub enum ItemSelectionStrategy {
 }
 
 impl ItemSelectionStrategy {
-    pub fn java_name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             Self::Sequential => "SEQUENTIAL",
             Self::Random => "RANDOM",

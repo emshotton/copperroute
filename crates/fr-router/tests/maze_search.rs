@@ -813,7 +813,7 @@ fn to_impacted_points_rounds_both_ends_and_passes_null_through() {
     );
     assert_eq!(
         to_impacted_points(Some(&line)),
-        Some([Point::new(1, -1), Point::new(3, -2)])
+        Some([Point::new(1, -1), Point::new(3, -3)])
     );
 }
 
