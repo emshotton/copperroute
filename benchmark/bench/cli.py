@@ -72,7 +72,7 @@ def corpus_pcbench_cmd(root: Path, max_boards, ids, jobs, skip_existing):
     from bench import corpus_pcbench
     if not (root / "PCBs").exists():
         click.echo(f"cloning PCBench into {root} ...")
-        subprocess.run(["git", "clone", "--depth", "1", "https://github.com/PCBench/PCBench", str(root)], check=True)
+        subprocess.run(["git", "clone", "--depth", "1", "https://github.com/emshotton/PCBench", str(root)], check=True)
     boards = corpus_pcbench.import_boards(root, ids=ids.split(",") if ids else None, max_boards=max_boards,
                                           jobs=jobs, skip_existing=skip_existing, progress=click.echo)
     ok = sum(1 for b in boards if b.status == "ok")

@@ -422,8 +422,9 @@ the (possibly just-regenerated) project and rewrites `raw-drc.json` before recom
 need `kicad-cli`. It prints a summary of status changes (`ok` → `excluded`, grouped by reason;
 `excluded` → `ok`).
 
-`bench corpus pcbench` clones and imports the [PCBench](https://github.com/PCBench/PCBench)
-corpus (1183 boards), which is not checked out in this repo's local development environment
+`bench corpus pcbench` clones and imports the [PCBench](https://github.com/emshotton/PCBench)
+corpus (1183 boards; this project's fork of `PCBench/PCBench`), which is not checked out in this
+repo's local development environment
 (the checkout is several GB) — it's imported on a remote host instead, via
 `scripts/remote-corpus.sh` above. `bench corpus kicad-fixtures` needs no external checkout —
 it imports the Java repo's own `fixtures/*/*.kicad_pcb` (+ sibling `.kicad_pro`) directories
