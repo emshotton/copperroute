@@ -15,6 +15,8 @@ cargo run --release -p freerouting -- route board.dsn -o routed.ses \
 
 Open `/tmp/board-frames/viewer.html` to scrub through or play the captured SVGs. The left/right
 arrow keys advance one frame and the space bar starts or stops playback.
+Each frame's overlay identifies the current stage (`autorouter` or `optimizer`), pass, event, net,
+layer, queue depth, and search costs.
 
 The output directory must be absent or empty, so an accidental rerun cannot overwrite an earlier
 capture. The visualizer writes:

@@ -1,13 +1,15 @@
 //! Opt-in, disk-bounded SVG capture for inspecting the maze router.
 //!
-//! Rendering is deliberately isolated here. The routing algorithm only calls the two cheap
-//! capture hooks below; when no recorder is active they return after one thread-local lookup.
+//! Rendering is deliberately isolated here. The routing algorithm only calls the cheap capture
+//! hooks below; when no recorder is active they return after one relaxed atomic load.
 
 use std::cell::RefCell;
 use std::fmt::Write as _;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, File};
 use std::io::{self, BufWriter, Write};
+use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use fr_board::{Board, Item};
@@ -33,9 +35,9 @@ pub struct RoutingVisualizationOptions {
 }
 
 impl RoutingVisualizationOptions {
-    pub fn new(output_dir: PathBuf) -> Self {
+    pub fn new(output_dir: impl Into<PathBuf>) -> Self {
         Self {
-            output_dir,
+            output_dir: output_dir.into(),
             width: 1280,
             height: 720,
             every: 1,
@@ -57,6 +59,7 @@ pub struct RoutingVisualizationSummary {
 pub struct RoutingVisualizationGuard {
     active: bool,
     output_dir: PathBuf,
+    _not_send: PhantomData<Rc<()>>,
 }
 
 impl RoutingVisualizationGuard {
@@ -87,58 +90,55 @@ pub fn start_routing_visualization(
             "a routing visualization is already active on this thread",
         ));
     }
-    if options.width < 64 || options.height < 64 {
+    validate_options(&options)?;
+    fs::create_dir_all(&options.output_dir)?;
+    if fs::read_dir(&options.output_dir)?
+        .next()
+        .transpose()?
+        .is_some()
+    {
         return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "visualization width and height must both be at least 64 pixels",
-        ));
-    }
-    if options.every == 0 || options.max_frames == 0 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "visualization every and max-frames must both be greater than zero",
+            io::ErrorKind::AlreadyExists,
+            format!(
+                "visualization directory '{}' is not empty",
+                options.output_dir.display()
+            ),
         ));
     }
 
-    if options.output_dir.exists() {
-        if fs::read_dir(&options.output_dir)?
-            .next()
-            .transpose()?
-            .is_some()
-        {
-            return Err(io::Error::new(
-                io::ErrorKind::AlreadyExists,
-                format!(
-                    "visualization directory '{}' is not empty",
-                    options.output_dir.display()
-                ),
-            ));
-        }
-    } else {
-        fs::create_dir_all(&options.output_dir)?;
-    }
-
-    let index = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(options.output_dir.join("frames.jsonl"))?;
+    let index = File::create_new(options.output_dir.join("frames.jsonl"))?;
     let output_dir = options.output_dir.clone();
     let recorder = SvgRecorder {
         options,
         index: BufWriter::new(index),
         observed_steps: 0,
         frames_written: 0,
-        reached_frame_limit: false,
         error: None,
         phase: "autorouter",
         pass: 0,
     };
     RECORDER.with(|slot| *slot.borrow_mut() = Some(recorder));
-    ACTIVE_RECORDERS.fetch_add(1, Ordering::Release);
+    ACTIVE_RECORDERS.fetch_add(1, Ordering::Relaxed);
     Ok(RoutingVisualizationGuard {
         active: true,
         output_dir,
+        _not_send: PhantomData,
     })
+}
+
+fn validate_options(options: &RoutingVisualizationOptions) -> io::Result<()> {
+    let invalid = |message| io::Error::new(io::ErrorKind::InvalidInput, message);
+    if options.width < 64 || options.height < 64 {
+        return Err(invalid(
+            "visualization width and height must both be at least 64 pixels",
+        ));
+    }
+    if options.every == 0 || options.max_frames == 0 {
+        return Err(invalid(
+            "visualization every and max-frames must both be greater than zero",
+        ));
+    }
+    Ok(())
 }
 
 fn finish_recorder(output_dir: &Path) -> RoutingVisualizationSummary {
@@ -152,7 +152,7 @@ fn finish_recorder(output_dir: &Path) -> RoutingVisualizationSummary {
                 error: Some("visualization recorder was not active".to_string()),
             };
         };
-        ACTIVE_RECORDERS.fetch_sub(1, Ordering::Release);
+        ACTIVE_RECORDERS.fetch_sub(1, Ordering::Relaxed);
         if let Err(error) = recorder.index.flush() {
             recorder.note_error(error);
         }
@@ -165,7 +165,7 @@ fn finish_recorder(output_dir: &Path) -> RoutingVisualizationSummary {
             output_dir: recorder.options.output_dir,
             observed_steps: recorder.observed_steps,
             frames_written: recorder.frames_written,
-            reached_frame_limit: recorder.reached_frame_limit,
+            reached_frame_limit: recorder.frames_written >= recorder.options.max_frames,
             error: recorder.error,
         }
     })
@@ -195,13 +195,13 @@ pub(crate) fn capture_maze_step(
     );
 }
 
-pub(crate) fn set_route_context(phase: &'static str, pass: i32) {
+pub(crate) fn set_route_context(is_optimizer: bool, pass: i32) {
     if ACTIVE_RECORDERS.load(Ordering::Relaxed) == 0 {
         return;
     }
     RECORDER.with(|slot| {
         if let Some(recorder) = slot.borrow_mut().as_mut() {
-            recorder.phase = phase;
+            recorder.phase = is_optimizer.then_some("optimizer").unwrap_or("autorouter");
             recorder.pass = pass;
         }
     });
@@ -239,7 +239,6 @@ fn capture(context: FrameContext<'_>, force: bool) {
             return;
         }
         if recorder.frames_written >= recorder.options.max_frames {
-            recorder.reached_frame_limit = true;
             return;
         }
         if let Err(error) = recorder.write_frame(context) {
@@ -253,7 +252,6 @@ struct SvgRecorder {
     index: BufWriter<File>,
     observed_steps: u64,
     frames_written: u64,
-    reached_frame_limit: bool,
     error: Option<String>,
     phase: &'static str,
     pass: i32,
@@ -263,7 +261,6 @@ impl SvgRecorder {
     fn write_frame(&mut self, context: FrameContext<'_>) -> io::Result<()> {
         let frame_no = self.frames_written + 1;
         let filename = format!("frame-{frame_no:08}.svg");
-        let path = self.options.output_dir.join(&filename);
         let svg = render_svg(
             &context,
             self.phase,
@@ -271,7 +268,7 @@ impl SvgRecorder {
             self.options.width,
             self.options.height,
         );
-        let mut file = OpenOptions::new().write(true).create_new(true).open(path)?;
+        let mut file = File::create_new(self.options.output_dir.join(&filename))?;
         file.write_all(svg.as_bytes())?;
         writeln!(
             self.index,
@@ -312,6 +309,23 @@ impl FrameContext<'_> {
         self.current_room
             .and_then(|room| self.engine.rooms.room_layer(self.board, room))
     }
+
+    fn render_room(
+        &self,
+        svg: &mut String,
+        room: RoomRef,
+        shape: Option<&TileShape>,
+        styles: RoomStyles,
+        view: Viewport,
+    ) {
+        let Some(shape) = shape else { return };
+        let style = if self.current_room == Some(room) {
+            styles.1
+        } else {
+            styles.0
+        };
+        render_shape(svg, shape, view, style);
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -331,18 +345,15 @@ impl Viewport {
         let min_y = f64::from(bounds.ll.y);
         let board_width = f64::from(bounds.ur.x - bounds.ll.x).abs().max(1.0);
         let board_height = f64::from(bounds.ur.y - bounds.ll.y).abs().max(1.0);
-        let padding = 24.0;
-        let drawable_width = (f64::from(width) - 2.0 * padding).max(1.0);
-        let drawable_height = (f64::from(height) - 2.0 * padding).max(1.0);
+        let drawable_width = (f64::from(width) - 48.0).max(1.0);
+        let drawable_height = (f64::from(height) - 48.0).max(1.0);
         let scale = (drawable_width / board_width).min(drawable_height / board_height);
-        let used_width = board_width * scale;
-        let used_height = board_height * scale;
         Self {
             min_x,
             min_y,
             scale,
-            offset_x: (f64::from(width) - used_width) / 2.0,
-            offset_y: (f64::from(height) - used_height) / 2.0,
+            offset_x: (f64::from(width) - board_width * scale) / 2.0,
+            offset_y: (f64::from(height) - board_height * scale) / 2.0,
             height: f64::from(height),
         }
     }
@@ -353,6 +364,21 @@ impl Viewport {
         (x, self.height - from_bottom)
     }
 }
+
+#[derive(Clone, Copy)]
+struct Style(&'static str, &'static str, f64, f64);
+type RoomStyles = (Style, Style);
+
+const ACTIVE_ROOM: Style = Style("#fff176", "#fffde7", 0.30, 3.0);
+const COMPLETE_ROOM: RoomStyles = (Style("#35d0ba", "#73f5df", 0.10, 1.2), ACTIVE_ROOM);
+const OBSTACLE_ROOM: RoomStyles = (
+    Style("#ff5964", "#ff8b93", 0.11, 1.0),
+    Style("#fff176", "#fffde7", 0.34, 3.0),
+);
+const INCOMPLETE_ROOM: RoomStyles = (
+    Style("none", "#d3baff", 0.72, 1.0),
+    Style("none", "#fff176", 1.0, 3.0),
+);
 
 fn render_svg(
     context: &FrameContext<'_>,
@@ -396,7 +422,7 @@ fn render_svg(
     let _ = writeln!(
         svg,
         r##"<rect x="12" y="12" width="450" height="60" rx="6" fill="#080b10" fill-opacity=".88"/>
-<text x="24" y="36" fill="#ffffff" font-family="ui-monospace,monospace" font-size="16">{} pass {} · {} · net {} · layer {} · queue {}</text>
+<text x="24" y="36" fill="#ffffff" font-family="ui-monospace,monospace" font-size="16">stage: {} · pass: {} · {} · net {} · layer {} · queue {}</text>
 <text x="24" y="59" fill="#aab8ca" font-family="ui-monospace,monospace" font-size="14">expansion {} · priority {}</text>
 </svg>"##,
         phase,
@@ -422,16 +448,16 @@ fn render_board_items(
         let Some(item) = board.get_item(id) else {
             continue;
         };
-        let (fill, stroke, opacity) = match item {
-            Item::Trace(_) => ("#48b8ff", "#8bd3ff", 0.78),
-            Item::Via(_) => ("#ffd166", "#fff0a8", 0.92),
-            Item::Pin(_) => ("#ff9f43", "#ffd0a1", 0.82),
-            Item::ConductionArea(_) => ("#375d49", "#68a77e", 0.40),
-            Item::BoardOutline(_) => ("none", "#e8eef7", 0.95),
+        let style = match item {
+            Item::Trace(_) => Style("#48b8ff", "#8bd3ff", 0.78, 1.0),
+            Item::Via(_) => Style("#ffd166", "#fff0a8", 0.92, 1.0),
+            Item::Pin(_) => Style("#ff9f43", "#ffd0a1", 0.82, 1.0),
+            Item::ConductionArea(_) => Style("#375d49", "#68a77e", 0.40, 1.0),
+            Item::BoardOutline(_) => Style("none", "#e8eef7", 0.95, 1.0),
             Item::ObstacleArea(_)
             | Item::ViaObstacleArea(_)
             | Item::ComponentObstacleArea(_)
-            | Item::ComponentOutline(_) => ("#566171", "#8290a3", 0.48),
+            | Item::ComponentOutline(_) => Style("#566171", "#8290a3", 0.48, 1.0),
         };
         let shape_count = item.tile_shape_count(&board.ctx());
         for index in 0..shape_count {
@@ -445,7 +471,7 @@ fn render_board_items(
             let Some(shape) = board.item_tree_shape_ref(id, engine.tree, index) else {
                 continue;
             };
-            render_shape(svg, &shape, view, fill, stroke, opacity, 1.0);
+            render_shape(svg, &shape, view, style);
         }
     }
 }
@@ -461,92 +487,47 @@ fn render_rooms(
         if layer.is_some_and(|wanted| room.get_layer() != wanted) {
             continue;
         }
-        if let Some(shape) = room.get_shape() {
-            let highlighted = context.current_room == Some(room_ref);
-            render_shape(
-                svg,
-                shape,
-                view,
-                if highlighted { "#fff176" } else { "#35d0ba" },
-                if highlighted { "#fffde7" } else { "#73f5df" },
-                if highlighted { 0.30 } else { 0.10 },
-                if highlighted { 3.0 } else { 1.2 },
-            );
-        }
+        context.render_room(svg, room_ref, room.get_shape(), COMPLETE_ROOM, view);
     }
     for (id, room) in context.engine.rooms.obstacle_rooms.iter() {
         let room_ref = RoomRef::Obstacle(fr_board::ObstacleRoomId(id));
         if layer.is_some_and(|wanted| room.get_layer(context.board) != Some(wanted)) {
             continue;
         }
-        if let Some(shape) = room.get_shape() {
-            let highlighted = context.current_room == Some(room_ref);
-            render_shape(
-                svg,
-                shape,
-                view,
-                if highlighted { "#fff176" } else { "#ff5964" },
-                if highlighted { "#fffde7" } else { "#ff8b93" },
-                if highlighted { 0.34 } else { 0.11 },
-                if highlighted { 3.0 } else { 1.0 },
-            );
-        }
+        context.render_room(svg, room_ref, room.get_shape(), OBSTACLE_ROOM, view);
     }
     for (id, room) in context.engine.rooms.incomplete_rooms.iter() {
         let room_ref = RoomRef::Incomplete(crate::IncompleteRoomId(id));
         if layer.is_some_and(|wanted| room.get_layer() != wanted) {
             continue;
         }
-        if let Some(shape) = room.get_shape() {
-            let highlighted = context.current_room == Some(room_ref);
-            render_shape(
-                svg,
-                shape,
-                view,
-                "none",
-                if highlighted { "#fff176" } else { "#d3baff" },
-                if highlighted { 1.0 } else { 0.72 },
-                if highlighted { 3.0 } else { 1.0 },
-            );
-        }
+        context.render_room(svg, room_ref, room.get_shape(), INCOMPLETE_ROOM, view);
     }
 }
 
-fn render_shape(
-    svg: &mut String,
-    shape: &TileShape,
-    view: Viewport,
-    fill: &str,
-    stroke: &str,
-    opacity: f64,
-    stroke_width: f64,
-) {
+fn render_shape(svg: &mut String, shape: &TileShape, view: Viewport, style: Style) {
     let corners = shape.corner_approx_arr();
     if corners.len() < 2 {
         return;
     }
-    let mut points = String::new();
+    svg.push_str("<polygon points=\"");
     for corner in corners {
         let (x, y) = view.point(corner);
-        let _ = write!(points, "{x:.2},{y:.2} ");
+        let _ = write!(svg, "{x:.2},{y:.2} ");
     }
+    let Style(fill, stroke, opacity, width) = style;
     let _ = writeln!(
         svg,
-        r##"<polygon points="{}" fill="{}" stroke="{}" fill-opacity="{:.3}" stroke-opacity="{:.3}" stroke-width="{:.2}" vector-effect="non-scaling-stroke"/>"##,
-        points.trim_end(),
+        r##"" fill="{}" stroke="{}" fill-opacity="{:.3}" stroke-opacity="{:.3}" stroke-width="{:.2}" vector-effect="non-scaling-stroke"/>"##,
         fill,
         stroke,
         opacity,
         opacity.max(0.55),
-        stroke_width
+        width
     );
 }
 
 fn write_viewer(directory: &Path, frame_count: u64) -> io::Result<()> {
-    let frames = (1..=frame_count)
-        .map(|frame| format!("'frame-{frame:08}.svg'"))
-        .collect::<Vec<_>>()
-        .join(",");
     let html = format!(
         r##"<!doctype html>
 <meta charset="utf-8">
@@ -559,14 +540,14 @@ img{{width:100%;height:100%;object-fit:contain;min-height:0}} input[type=range]{
 <header><button id="play">Play</button><input id="seek" type="range" min="0" max="{}" value="0"><span id="label"></span></header>
 <img id="frame" alt="routing frame">
 <script>
-const frames=[{}], image=document.querySelector('#frame'), seek=document.querySelector('#seek'), label=document.querySelector('#label'), play=document.querySelector('#play');
-let current=0,timer=null; function show(n){{if(!frames.length)return;current=Math.max(0,Math.min(frames.length-1,n));seek.value=current;image.src=frames[current];label.textContent=`${{current+1}} / ${{frames.length}}`;}}
-function stop(){{clearInterval(timer);timer=null;play.textContent='Play';}} play.onclick=()=>{{if(timer){{stop();return}}play.textContent='Pause';timer=setInterval(()=>{{if(current+1>=frames.length)stop();else show(current+1)}},83)}};
+const frameCount={}, image=document.querySelector('#frame'), seek=document.querySelector('#seek'), label=document.querySelector('#label'), play=document.querySelector('#play');
+let current=0,timer=null; function show(n){{if(!frameCount)return;current=Math.max(0,Math.min(frameCount-1,n));seek.value=current;image.src=`frame-${{String(current+1).padStart(8,'0')}}.svg`;label.textContent=`${{current+1}} / ${{frameCount}}`;}}
+function stop(){{clearInterval(timer);timer=null;play.textContent='Play';}} play.onclick=()=>{{if(timer){{stop();return}}play.textContent='Pause';timer=setInterval(()=>{{if(current+1>=frameCount)stop();else show(current+1)}},83)}};
 seek.oninput=()=>show(+seek.value); addEventListener('keydown',e=>{{if(e.key==='ArrowRight')show(current+1);if(e.key==='ArrowLeft')show(current-1);if(e.key===' '){{e.preventDefault();play.click()}}}}); show(0);
 </script>
 "##,
         frame_count.saturating_sub(1),
-        frames
+        frame_count
     );
     fs::write(directory.join("viewer.html"), html)
 }
@@ -584,7 +565,7 @@ mod tests {
     }
 
     #[test]
-    fn viewer_uses_fixed_width_frame_names() {
+    fn viewer_generates_fixed_width_frame_names() {
         let directory = std::env::temp_dir().join(format!(
             "fr-router-visualization-viewer-{}",
             std::process::id()
@@ -593,8 +574,8 @@ mod tests {
         fs::create_dir(&directory).unwrap();
         write_viewer(&directory, 2).unwrap();
         let viewer = fs::read_to_string(directory.join("viewer.html")).unwrap();
-        assert!(viewer.contains("frame-00000001.svg"));
-        assert!(viewer.contains("frame-00000002.svg"));
+        assert!(viewer.contains("const frameCount=2"));
+        assert!(viewer.contains("padStart(8,'0')"));
         fs::remove_dir_all(directory).unwrap();
     }
 }
