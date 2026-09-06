@@ -142,47 +142,12 @@ on a `final BoardParserCallback` field, `HeadlessBoardManager` implements `Board
 override. `P8T3Probe`'s `[createboard]` rows measure `headless_create_board_calls=0` on all three
 fixtures. That is quirk **#253**, and #232's text was corrected in place around it.
 
-## The deadline, and Java's monitor thread
+## Job deadlines
 
-The port has **no watchdog thread** (ruling AI). `Deadline` is the monitor's *observable* effect,
-which is two instants rather than one:
-
-| Java | `Deadline` |
-|---|---|
-| `job.thread.requestStop()` at `RoutingJobSchedulerActionThread.java:75` | `stop_at` |
-| `job.state = TIMED_OUT` at `:84`, one `GRACE_PERIOD` later | `timed_out_at` |
-
-By the time anything can read `TIMED_OUT`, the flag is already `ALL` — which is why
-`AutorouteBatchLoop.java:251-253`'s `requestStopAutoRouter()` is dead code (quirk #203).
-
-The ladder that builds it, `threadAction:43-52`, is exactly: parse; clamp **from above only** at
-`MAX_TIMEOUT` (`:24` = `24 * 60 * 60`); `startedAt.plusSeconds(timeout)`. There is **no lower
-clamp**, so `--job-timeout -1` is a deadline in the past — measured, not reasoned
-(`tests/data/p8t0-timespans.txt`, row `"-1"`). `GRACE_PERIOD` (`:25` = `30`) is *not* applied
-there; it lands on `timed_out_at` and never on `stop_at`.
-
-### `Deadline::timed_out_at` vs Plan 7's `RouterStop::is_timed_out` — they are two flags
-
-*(Controller sweep item N5, reconciled by Plan 8 Task 14.)* Both spell "timed out" and neither is
-the other. Read them as **whose** deadline expired:
-
-| | `fr_core::Deadline::is_timed_out_at` | `fr_router::pipeline::RouterStop::is_timed_out` |
-|---|---|---|
-| whose deadline | the **job's** — `--router.job_timeout`, i.e. the monitor thread's `job.timeoutAt` | the **stage's** — a `RouterBudget`, the fanout per-pin budget, the optimizer's own deadline |
-| when it rises | `stop_at` + `GRACE_PERIOD` (30 s), because Java writes `job.state = TIMED_OUT` 30 s after `requestStop()` | the instant `RouterStop::poll_deadline` first observes expiry, because that one call collapses Java's two writes |
-| Java site | `RoutingJobSchedulerActionThread.java:75` then `:84` | `AutorouteBatchLoop.java:251-253`, `BatchFanout`, `BatchOptimizer` |
-
-Plan 7's collapse is right for `RouterStop`: a stage budget has no monitor thread behind it, so
-there is no second write to be 30 s late. The grace exists only on the job deadline, and only
-`Deadline` carries it.
-
-**What the CLI reports is the job flag alone.** `commands::route` reads `Deadline`, never
-`PipelineResult::timed_out` — which deliberately folds all three stage budgets together, since
-that is what a *router* caller wants to know. Reading the folded flag is exactly the bug
-`crates/freerouting/tests/cli_e2e.rs::a_stage_timeout_is_not_a_job_timeout` was written to catch:
-the port answered `"TIMED_OUT"` where the jar answers `"COMPLETED"` on a board whose optimizer
-stage ran out of budget. `crates/fr-core/tests/cancel.rs` pins the 30 s offset itself, and
-`tests/data/p8t0-timespans.txt`'s `GRACE_PERIOD	30` row is the jar's own value.
+`Deadline` has one instant: when routing must stop. `RoutingPipeline` records the reason that a
+run stopped as either `Deadline` or `Cancelled`; stage-local fanout and optimizer limits remain
+separate pipeline outcomes. CLI and MCP callers use that reason directly, so a cooperatively
+stopped job reports `TIMED_OUT` as soon as it returns a partial board.
 
 ## `Ctx` has no rng seed and no `max_threads`
 

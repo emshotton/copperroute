@@ -1,7 +1,9 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use fr_core::{CancelToken, Ctx, Deadline, RoutingPipeline, StopRequestState, SyncProgressSink};
+use fr_core::{
+    CancelToken, Ctx, Deadline, JobStopReason, RoutingPipeline, StopRequestState, SyncProgressSink,
+};
 use fr_dsn::{BoardReadResult, DsnReadOptions};
 use fr_settings::sources::{CliSettings, DsnFileSettings, EnvironmentVariablesSource};
 use fr_settings::{HostEnvironment, SettingsInputs, SettingsSource, resolve_headless};
@@ -83,6 +85,7 @@ fn a_cancel_from_a_second_thread_stops_a_run() {
     );
 
     let cancelled = route(&token);
+    assert_eq!(cancelled.stop_reason, Some(JobStopReason::Cancelled));
     assert_eq!(
         cancelled.passes_run, 0,
         "a run entered with the stop already at ALL never starts the routing stage \
@@ -116,6 +119,16 @@ fn an_expired_deadline_reaches_the_router_stop() {
 }
 
 #[test]
+fn an_observed_job_deadline_is_the_routing_stop_reason() {
+    if !parity::require_java_dir() {
+        return;
+    }
+    let result = route(&CancelToken::with_deadline(Deadline::in_seconds(-1)));
+    assert_eq!(result.stop_reason, Some(JobStopReason::Deadline));
+    assert!(result.timed_out);
+}
+
+#[test]
 fn a_sync_sink_sees_the_runs_events() {
     if !parity::require_java_dir() {
         return;
@@ -135,6 +148,8 @@ fn a_sync_sink_sees_the_runs_events() {
 struct Run {
     passes_run: i32,
     incompletes: Option<i32>,
+    stop_reason: Option<JobStopReason>,
+    timed_out: bool,
 }
 
 fn route(token: &CancelToken) -> Run {
@@ -196,5 +211,7 @@ fn route_with(token: &CancelToken, sink: &SyncProgressSink) -> Run {
     Run {
         passes_run: result.pipeline.router_passes_completed,
         incompletes: result.incomplete_count(),
+        stop_reason: result.stop_reason,
+        timed_out: result.timed_out,
     }
 }

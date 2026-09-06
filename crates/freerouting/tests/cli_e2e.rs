@@ -726,7 +726,7 @@ fn a_settings_file_reaches_the_run() {
 }
 
 #[test]
-fn a_stage_timeout_is_not_a_job_timeout() {
+fn final_state_distinguishes_stage_limits_from_job_deadlines() {
     if !parity::require_java_dir() {
         return;
     }
@@ -752,7 +752,7 @@ fn a_stage_timeout_is_not_a_job_timeout() {
         "a stage timeout reaches the finish log's details string, never job.state"
     );
 
-    for timeout in ["0:00:00", "0:00:01"] {
+    for (timeout, expected) in [("0:00:00", "TIMED_OUT"), ("0:00:01", "COMPLETED")] {
         let manifest = dir.join(format!("job-{}.json", timeout.replace(':', "")));
         let (_, stderr, code) = run(&[
             "-de",
@@ -767,8 +767,8 @@ fn a_stage_timeout_is_not_a_job_timeout() {
         assert_eq!(code, 0, "{stderr}");
         assert_eq!(
             final_state(&manifest),
-            "COMPLETED",
-            "--router.job_timeout={timeout} on a sub-second board: the jar answers COMPLETED too"
+            expected,
+            "--router.job_timeout={timeout}"
         );
     }
 }

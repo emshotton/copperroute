@@ -36,6 +36,22 @@ fn load_board(rel_path: &str) -> Board {
     }
 }
 
+fn load_test_board(rel_path: &str) -> Board {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel_path);
+    let file = std::fs::File::open(&path)
+        .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
+    match fr_dsn::read_board(
+        file,
+        None,
+        path.file_name().and_then(std::ffi::OsStr::to_str),
+        &fr_dsn::DsnReadOptions::default(),
+    ) {
+        fr_dsn::BoardReadResult::Success { board, .. }
+        | fr_dsn::BoardReadResult::OutlineMissing { board, .. } => *board.expect("a board"),
+        other => panic!("{} did not read: {other:?}", path.display()),
+    }
+}
+
 fn build_settings(board: &Board) -> RouterSettings {
     let mut settings = DefaultSettings::new(&HostEnvironment::detect())
         .get_settings()
@@ -332,6 +348,28 @@ fn the_stage_deadline_never_touches_the_stop_flag() {
         "and it is not the job-level `TIMED_OUT` either"
     );
     assert_eq!(board.get_vias().len(), 0, "no pass ran, so nothing escaped");
+}
+
+#[test]
+#[cfg_attr(debug_assertions, ignore)]
+fn an_expired_job_deadline_stops_fanout_and_clears_the_changed_area() {
+    let mut board = load_test_board("tests/data/p9t13-multi-net-smd-pin.dsn");
+    let settings = build_settings(&board);
+    let stop = RouterStop::with_deadline(-1);
+    let mut sink = NoopProgressSink;
+
+    let summary = BatchFanout::fanout_board(
+        &mut board,
+        &settings,
+        &stop,
+        RouterBudget::disabled(),
+        &mut sink,
+    )
+    .expect("a job deadline is a normal fanout stop");
+
+    assert!(summary.is_timed_out);
+    assert!(stop.is_timed_out());
+    assert!(board.changed_area.is_none());
 }
 
 #[test]

@@ -611,15 +611,17 @@ fn fanout_escapes_every_smd_pin_of_the_corpus_board() {
     let mut states = Vec::new();
     for pin in &order {
         board.start_marking_changed_area();
-        let result = board.fanout(
-            &mut engine,
-            *pin,
-            &settings,
-            settings.get_start_ripup_costs(),
-            stop,
-            Some(TimeLimit::new(i32::MAX)),
-            RouterBudget::disabled(),
-        );
+        let result = board
+            .fanout(
+                &mut engine,
+                *pin,
+                &settings,
+                settings.get_start_ripup_costs(),
+                stop,
+                Some(TimeLimit::new(i32::MAX)),
+                RouterBudget::disabled(),
+            )
+            .expect("fanout completes");
         states.push(result.state);
     }
     assert_eq!(

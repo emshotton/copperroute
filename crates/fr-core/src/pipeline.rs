@@ -1,6 +1,7 @@
 use fr_board::Board;
 
 use crate::Error;
+use crate::cancel::JobStopReason;
 use crate::ctx::{Ctx, RoutingResult};
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -18,13 +19,22 @@ impl RoutingPipeline {
 
         let drc_violations = fr_drc::DesignRulesChecker::new(board).get_all_violations();
 
-        let timed_out = pipeline.timed_out || stop.is_timed_out() || ctx.cancel.is_timed_out();
+        stop.poll_deadline();
+        let stop_reason = if stop.is_timed_out() {
+            Some(JobStopReason::Deadline)
+        } else if ctx.cancel.is_cancelled() {
+            Some(JobStopReason::Cancelled)
+        } else {
+            None
+        };
+        let timed_out = stop_reason == Some(JobStopReason::Deadline);
 
         Ok(RoutingResult {
             stats: pipeline.final_statistics.clone(),
             unrouted_report,
             drc_violations,
             timed_out,
+            stop_reason,
             pipeline,
         })
     }
