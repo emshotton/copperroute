@@ -286,6 +286,24 @@ def _import_board(src_pcb: Path, project: Path | None, dst: Path, board_id: str,
     return board
 
 
+def board_license(meta: dict) -> dict:
+    """The board's license as ``{"spdx_id", "status"}`` from its PCBench ``metadata.json``.
+
+    The fork's ``licenses`` entry carries ``spdx_id`` and ``status``; boards still holding the
+    original GitHub license object have only ``spdx_id`` (``NOASSERTION`` when GitHub could not
+    classify the text), and kitspace-scraped boards hold a list of name/link pairs that pins
+    down nothing. Anything but a usable SPDX id is reported as ``unknown``.
+    """
+    entry = meta.get("licenses")
+    if not isinstance(entry, dict):
+        return {"spdx_id": None, "status": "unknown"}
+    spdx_id = entry.get("spdx_id")
+    if spdx_id == "NOASSERTION":
+        spdx_id = None
+    status = entry.get("status") or ("licensed" if spdx_id else "unknown")
+    return {"spdx_id": spdx_id, "status": status}
+
+
 def import_one(root: Path, bid: str) -> Board:
     src = root / "PCBs" / bid
     dst = corpus.CORPUS / "pcbench" / bid
@@ -294,9 +312,15 @@ def import_one(root: Path, bid: str) -> Board:
     # raw_pcb_src is the board's own "ideal" reference board -- distinct from src_pcb
     # (processed.kicad_pcb, the routing-stripped input) -- so _import_board copies it into
     # dst/raw.kicad_pcb itself rather than reusing whatever's already there.
-    return _import_board(src / "processed.kicad_pcb", project, dst, f"pcbench-{bid}", "pcbench",
-                         ["pcbench"], layers_hint=int(meta.get("layers", 0) or 0),
-                         kicad_version=meta.get("kicad_version"), raw_pcb_src=src / "raw.kicad_pcb")
+    board = _import_board(src / "processed.kicad_pcb", project, dst, f"pcbench-{bid}", "pcbench",
+                          ["pcbench"], layers_hint=int(meta.get("layers", 0) or 0),
+                          kicad_version=meta.get("kicad_version"), raw_pcb_src=src / "raw.kicad_pcb")
+    board.license = board_license(meta)
+    return board
+
+
+def _license_status(root: Path, bid: str) -> str:
+    return board_license(json.loads((root / "PCBs" / bid / "metadata.json").read_text()))["status"]
 
 
 def _already_imported(existing: dict[str, Board], board_id: str, dst: Path) -> bool:
@@ -313,9 +337,14 @@ def _progress_line(b: Board, elapsed: float) -> str:
 
 
 def import_boards(root: Path, ids: list[str] | None = None, max_boards: int | None = None,
-                  jobs: int = 1, skip_existing: bool = True,
+                  jobs: int = 1, skip_existing: bool = True, licensed_only: bool = False,
                   progress: Progress | None = None) -> list[Board]:
     ids = ids or list_board_ids(root)
+    if licensed_only:
+        unlicensed = [bid for bid in ids if _license_status(root, bid) != "licensed"]
+        ids = [bid for bid in ids if bid not in unlicensed]
+        if progress and unlicensed:
+            progress(f"skipped {len(unlicensed)} board(s) whose license is unlicensed, unclassified or unknown")
     if max_boards:
         ids = ids[:max_boards]
     existing = {b.id: b for b in corpus.load_manifest()}

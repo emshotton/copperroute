@@ -60,7 +60,10 @@ def corpus_list(tier: str | None) -> None:
              help="skip boards already imported ok (manifest status ok + unrouted.dsn + "
                   "ground_truth.json on disk) so an interrupted import can resume; "
                   "--force re-imports everything.")
-def corpus_pcbench_cmd(root: Path, max_boards, ids, jobs, skip_existing):
+@click.option("--licensed-only", is_flag=True, default=False,
+              help="import only boards whose metadata.json records a classified license; "
+                   "unlicensed, unclassified and unknown boards are skipped.")
+def corpus_pcbench_cmd(root: Path, max_boards, ids, jobs, skip_existing, licensed_only):
     """Import PCBench boards (strip -> DSN -> ground truth)."""
     if jobs < 1:
         raise click.ClickException("--jobs must be >= 1")
@@ -74,7 +77,8 @@ def corpus_pcbench_cmd(root: Path, max_boards, ids, jobs, skip_existing):
         click.echo(f"cloning PCBench into {root} ...")
         subprocess.run(["git", "clone", "--depth", "1", "https://github.com/emshotton/PCBench", str(root)], check=True)
     boards = corpus_pcbench.import_boards(root, ids=ids.split(",") if ids else None, max_boards=max_boards,
-                                          jobs=jobs, skip_existing=skip_existing, progress=click.echo)
+                                          jobs=jobs, skip_existing=skip_existing, licensed_only=licensed_only,
+                                          progress=click.echo)
     ok = sum(1 for b in boards if b.status == "ok")
     click.echo(f"imported {ok}/{len(boards)} boards")
     for b in boards:
