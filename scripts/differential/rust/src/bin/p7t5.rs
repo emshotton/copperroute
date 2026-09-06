@@ -284,7 +284,8 @@ fn dump_fanout_run<W: Write>(
                 &|| false,
                 Some(time_limit),
                 budget,
-            );
+            )
+            .expect("fanout completes");
             let after: Vec<ItemId> = board.get_items().map(Item::id).collect();
 
             let mut sb = String::new();
@@ -524,7 +525,8 @@ fn transcribe_pass<W: Write>(
                 &|| false,
                 Some(time_limit),
                 RouterBudget::disabled(),
-            );
+            )
+            .expect("fanout completes");
             let after: Vec<ItemId> = board.get_items().map(Item::id).collect();
 
             // `:286-381`.

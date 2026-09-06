@@ -36,6 +36,22 @@ fn load_board(rel_path: &str) -> Board {
     }
 }
 
+fn load_test_board(rel_path: &str) -> Board {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel_path);
+    let file = std::fs::File::open(&path)
+        .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
+    match fr_dsn::read_board(
+        file,
+        None,
+        path.file_name().and_then(std::ffi::OsStr::to_str),
+        &fr_dsn::DsnReadOptions::default(),
+    ) {
+        fr_dsn::BoardReadResult::Success { board, .. }
+        | fr_dsn::BoardReadResult::OutlineMissing { board, .. } => *board.expect("a board"),
+        other => panic!("{} did not read: {other:?}", path.display()),
+    }
+}
+
 fn build_settings(board: &Board, max_passes: i32) -> RouterSettings {
     let mut settings = DefaultSettings::new(&HostEnvironment::detect())
         .get_settings()
@@ -280,6 +296,32 @@ fn an_empty_board_errors_with_no_routable_layer() {
         vec![(NamedAlgorithmType::Router, TaskState::Cancelled)],
         "AutorouteBatchLoop.java:53-54 fires CANCELLED before the throw, and nothing else runs"
     );
+}
+
+#[test]
+#[cfg_attr(debug_assertions, ignore)]
+fn a_job_deadline_during_fanout_returns_a_timed_out_board() {
+    let mut board = load_test_board("tests/data/p9t13-multi-net-smd-pin.dsn");
+    let mut settings = build_settings(&board, 10);
+    settings.fanout.get_or_insert_with(Default::default).enabled = Some(true);
+    settings.set_run_optimizer(true);
+    let stop = RouterStop::with_deadline(-1);
+    let mut sink = NoopProgressSink;
+
+    let result = run_pipeline(
+        &mut board,
+        &settings,
+        &stop,
+        RouterBudget::disabled(),
+        &mut sink,
+    )
+    .expect("a job deadline is a successful partial routing result");
+
+    assert_eq!(result.router_state, TaskState::TimedOut);
+    assert_eq!(result.optimizer_state, Some(TaskState::Idle));
+    assert!(result.timed_out);
+    assert!(result.fanout.expect("fanout ran").is_timed_out);
+    assert!(board.changed_area.is_none());
 }
 
 #[test]

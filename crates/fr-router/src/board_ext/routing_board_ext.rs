@@ -127,7 +127,7 @@ pub trait RoutingBoardExt {
         stop: StopCheck<'_>,
         time_limit: Option<TimeLimit>,
         budget: RouterBudget,
-    ) -> AutorouteAttemptResult;
+    ) -> Result<AutorouteAttemptResult, BoardError>;
 }
 
 impl RoutingBoardExt for Board {
@@ -736,7 +736,7 @@ impl RoutingBoardExt for Board {
         stop: StopCheck<'_>,
         time_limit: Option<TimeLimit>,
         budget: RouterBudget,
-    ) -> AutorouteAttemptResult {
+    ) -> Result<AutorouteAttemptResult, BoardError> {
         let ctx = self.ctx();
         let pin_item = self
             .get_item(pin)
@@ -748,7 +748,7 @@ impl RoutingBoardExt for Board {
             )
         };
         if pin_item.first_layer(&ctx) != pin_item.last_layer(&ctx) || pin_item.net_count() != 1 {
-            return already_connected();
+            return Ok(already_connected());
         }
         let pin_net_no = pin_item.get_net_number(0);
         let pin_layer = pin_item.first_layer(&ctx);
@@ -758,15 +758,15 @@ impl RoutingBoardExt for Board {
                 continue;
             };
             if item.first_layer(&ctx) != pin_layer || item.last_layer(&ctx) != pin_layer {
-                return already_connected();
+                return Ok(already_connected());
             }
         }
         let unconnected_set = self.unconnected_set(pin, pin_net_no);
         if unconnected_set.is_empty() {
-            return AutorouteAttemptResult::with_details(
+            return Ok(AutorouteAttemptResult::with_details(
                 AutorouteAttemptState::NoUnconnectedNets,
                 format!("The pin '{pin_item}' is already connected."),
-            );
+            ));
         }
 
         let pin_center = pin_center_of(self, pin).to_float();
@@ -879,7 +879,7 @@ impl RoutingBoardExt for Board {
 
         if result.state == AutorouteAttemptState::Routed {
             let trace_costs = ctrl_settings.trace_costs.clone();
-            self.opt_changed_area(
+            let opt_result = self.opt_changed_area(
                 engine.as_mut(),
                 &[pin_net_no],
                 None,
@@ -889,10 +889,13 @@ impl RoutingBoardExt for Board {
                 Some(&trace_costs),
                 stop,
                 budget.opt_changed_area_ms,
-            )
-            .expect("optChangedArea throws out of RoutingBoard.fanout in Java too");
+            );
+            if opt_result.is_err() {
+                self.changed_area = None;
+            }
+            opt_result?;
         }
-        result
+        Ok(result)
     }
 }
 
