@@ -2,7 +2,6 @@ use fr_board::{
     Board, BoardLibrary, BoardRules, ClearanceMatrix, Communication, Components, FixedState,
     ItemClass, ItemIdGenerator, Layer, LayerStructure, NetClassId, Nets, Package, PackagePin,
     Packages, Padstack, PadstackId, Padstacks, Unit, ViaInfo, ViaRule, equals_ignore_case,
-    java_to_lower, java_to_upper,
 };
 use fr_geometry::{
     Area, Circle, FloatPoint, IntBox, IntOctagon, IntPoint, IntVector, Point, PolygonShape,
@@ -20,7 +19,7 @@ use crate::parser::network::is_kicad_default_net_class_name;
 pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardReadResult {
     let id_generator = id_generator.unwrap_or_default();
 
-    let board_json: KiCadBoardJson = if json.chars().all(java_is_whitespace) {
+    let board_json: KiCadBoardJson = if json.trim().is_empty() {
         return parse_error("json_root", "JSON payload is empty or invalid");
     } else {
         match serde_json::from_str::<Option<KiCadBoardJson>>(json) {
@@ -309,13 +308,13 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     let host_cad = board_json
         .hostCad
         .as_deref()
-        .filter(|host| !java_is_blank(host))
+        .filter(|host| !(host).trim().is_empty())
         .unwrap_or("KiCad")
         .to_string();
     let host_version = board_json
         .hostVersion
         .as_deref()
-        .filter(|version| !java_is_blank(version))
+        .filter(|version| !(version).trim().is_empty())
         .unwrap_or("v10.0")
         .to_string();
     let communication = Communication::new(
@@ -1274,9 +1273,9 @@ fn get_descriptive_padstack_name(
                 return Err("Range [0, 1) out of bounds for length 0".to_string());
             };
             fall_through = String::new();
-            fall_through.push(java_to_upper(first));
+            fall_through.push(first.to_ascii_uppercase());
             for c in chars {
-                fall_through.push(java_to_lower(c));
+                fall_through.push(c.to_ascii_lowercase());
             }
             shape_str = &fall_through;
         }
@@ -1453,15 +1452,6 @@ fn registered_via_info(rules: &BoardRules, name: &str) -> ViaInfo {
         .expect("ViaInfos::add was called with this name immediately above")
 }
 
-fn java_is_blank(text: &str) -> bool {
-    text.chars().all(java_is_whitespace)
-}
-
-fn java_is_whitespace(c: char) -> bool {
-    matches!(c, '\u{1c}'..='\u{1f}')
-        || (c.is_whitespace() && !matches!(c, '\u{a0}' | '\u{85}' | '\u{2007}' | '\u{202f}'))
-}
-
 #[allow(dead_code)]
 fn java_string_hash(text: &str) -> i32 {
     let mut hash: i32 = 0;
@@ -1558,18 +1548,6 @@ impl JavaStringMap {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn java_is_blank_matches_character_is_whitespace() {
-        assert!(java_is_blank(""));
-        assert!(java_is_blank("  \t\r\n\u{b}\u{c}"));
-        assert!(java_is_blank("\u{1c}\u{1d}\u{1e}\u{1f}"));
-        assert!(!java_is_blank("\u{a0}"));
-        assert!(!java_is_blank("\u{85}"));
-        assert!(!java_is_blank("\u{2007}"));
-        assert!(!java_is_blank("\u{202f}"));
-        assert!(!java_is_blank("KiCad"));
-    }
 
     #[test]
     fn java_string_hash_matches_the_jvm() {

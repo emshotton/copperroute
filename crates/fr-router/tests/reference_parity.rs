@@ -292,11 +292,7 @@ fn point(p: &Point) -> String {
         Point::Int(ip) => format!("({},{})", ip.x, ip.y),
         Point::Rational(_) => {
             let f = p.to_float();
-            format!(
-                "~({},{})",
-                format_double(f.x),
-                format_double(f.y)
-            )
+            format!("~({},{})", format_double(f.x), format_double(f.y))
         }
     }
 }
@@ -306,11 +302,7 @@ fn corner(p: &fr_geometry::Polyline, i: usize) -> String {
         Some(Point::Int(ip)) => format!("({},{})", ip.x, ip.y),
         _ => {
             let f = p.corner_approx(i).expect("a corner of a valid polyline");
-            format!(
-                "~({},{})",
-                format_double(f.x),
-                format_double(f.y)
-            )
+            format!("~({},{})", format_double(f.x), format_double(f.y))
         }
     }
 }

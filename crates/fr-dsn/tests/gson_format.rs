@@ -30,7 +30,10 @@ fn f32_field_uses_format_float() {
         value: 3.402_823_5e38_f32,
     })
     .expect("serialises");
-    assert_eq!(text, "{\n  \"value\": 340282350000000000000000000000000000000\n}");
+    assert_eq!(
+        text,
+        "{\n  \"value\": 340282350000000000000000000000000000000\n}"
+    );
 }
 
 #[test]

@@ -520,7 +520,7 @@ fn the_dsn_host_scrape_finds_nothing_on_a_real_dsn() {
 }
 
 #[test]
-fn the_three_totalised_answers_are_the_values_java_would_have_held() {
+fn the_three_totalised_answers_use_unicode_whitespace_trimming() {
     let inverted = BoardStatistics::from_bytes(b"(parser (hostCad))", FileFormat::Dsn);
     assert_eq!(inverted.host, "");
     assert!(!to_gson_string(&inverted).contains("\"host\""));
@@ -529,10 +529,10 @@ fn the_three_totalised_answers_are_the_values_java_would_have_held() {
 
     let nbsp =
         BoardStatistics::from_bytes("(parser (hostCad K\u{a0} ))".as_bytes(), FileFormat::Dsn);
-    assert_eq!(nbsp.host, "K\u{a0}");
+    assert_eq!(nbsp.host, "K");
     let control =
         BoardStatistics::from_bytes("(parser (hostCad K\u{1} ))".as_bytes(), FileFormat::Dsn);
-    assert_eq!(control.host, "K");
+    assert_eq!(control.host, "K\u{1}");
 }
 
 #[test]
@@ -721,8 +721,8 @@ fn the_fanout_and_clearance_violation_objects_serialise() {
     assert!(
         json.contains(
             "  \"clearance_violations\": {\n    \"total_count\": 35,\n    \
-             \"min_violation_um\": 0.1,\n    \"max_violation_um\": 1.0E7,\n    \
-             \"avg_violation_um\": -9.999999999999998E-4\n  },"
+             \"min_violation_um\": 0.1,\n    \"max_violation_um\": 10000000,\n    \
+             \"avg_violation_um\": -0.0009999999999999998\n  },"
         ),
         "{json}"
     );

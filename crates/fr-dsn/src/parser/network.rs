@@ -575,7 +575,7 @@ pub fn read_network_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnErr
 const BOARD_EXPECTED: &str =
     "Network.readScope: the structure scope must have created the board (Java NPEs here too)";
 
-fn java_split_underscore(text: &str) -> Vec<&str> {
+fn split_underscore_dropping_trailing_empty(text: &str) -> Vec<&str> {
     if !text.contains('_') {
         return vec![text];
     }
@@ -1259,7 +1259,7 @@ fn add_mixed_clearance_rule(
         return;
     }
     for current_string in &clearance_rule.clearance_class_pairs {
-        let current_pair = java_split_underscore(current_string);
+        let current_pair = split_underscore_dropping_trailing_empty(current_string);
         if current_pair.len() != 2 {
             continue;
         }
@@ -1470,7 +1470,7 @@ fn add_clearance_rule(
         create_default_clearance_classes(board, net_class);
     }
     for current_string in &rule.clearance_class_pairs {
-        let current_pair = java_split_underscore(current_string);
+        let current_pair = split_underscore_dropping_trailing_empty(current_string);
         if current_pair.len() != 2 {
             continue;
         }
@@ -2556,15 +2556,33 @@ mod tests {
     }
 
     #[test]
-    fn java_split_underscore_drops_trailing_empties_the_way_javas_split_does() {
-        assert_eq!(java_split_underscore("via_smd"), vec!["via", "smd"]);
-        assert_eq!(java_split_underscore("smd_via_same_net").len(), 4);
-        assert_eq!(java_split_underscore("via_"), vec!["via"]);
-        assert_eq!(java_split_underscore("_via"), vec!["", "via"]);
-        assert_eq!(java_split_underscore("a__b"), vec!["a", "", "b"]);
-        assert!(java_split_underscore("_").is_empty());
-        assert_eq!(java_split_underscore(""), vec![""]);
-        assert_eq!(java_split_underscore("wire"), vec!["wire"]);
+    fn split_underscore_dropping_trailing_empty_drops_trailing_empties_the_way_javas_split_does() {
+        assert_eq!(
+            split_underscore_dropping_trailing_empty("via_smd"),
+            vec!["via", "smd"]
+        );
+        assert_eq!(
+            split_underscore_dropping_trailing_empty("smd_via_same_net").len(),
+            4
+        );
+        assert_eq!(
+            split_underscore_dropping_trailing_empty("via_"),
+            vec!["via"]
+        );
+        assert_eq!(
+            split_underscore_dropping_trailing_empty("_via"),
+            vec!["", "via"]
+        );
+        assert_eq!(
+            split_underscore_dropping_trailing_empty("a__b"),
+            vec!["a", "", "b"]
+        );
+        assert!(split_underscore_dropping_trailing_empty("_").is_empty());
+        assert_eq!(split_underscore_dropping_trailing_empty(""), vec![""]);
+        assert_eq!(
+            split_underscore_dropping_trailing_empty("wire"),
+            vec!["wire"]
+        );
     }
 
     #[test]

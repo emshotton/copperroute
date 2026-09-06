@@ -95,8 +95,8 @@ const FULLY_POPULATED_JSON: &str = r#"{
     "timeout": "00:01:00"
   },
   "copper_to_edge_clearance_um": 501.5,
-  "hole_clearance_um": 2.0,
-  "neck_width_um": 3.0,
+  "hole_clearance_um": 2,
+  "neck_width_um": 3,
   "strict_drc": true,
   "job_timeout": "12:00:00",
   "max_passes": 11,
@@ -137,22 +137,22 @@ const NUMBER_FORMAT_JSON: &str = r#"{
   "fanout": {
     "min_escape_length_mm": 0.1,
     "max_escape_length_mm": 0.3333333333333333,
-    "start_via_diameter_mm": 1.2345678901234568E17
+    "start_via_diameter_mm": 123456789012345680
   },
   "copper_to_edge_clearance_um": 0.001,
-  "hole_clearance_um": 9.999E-4,
-  "neck_width_um": 1.0E7,
+  "hole_clearance_um": 0.0009999,
+  "neck_width_um": 10000000,
   "optimizer": {
-    "improvement_threshold": 9.999E-4,
-    "trace_ripup_cost_factor": 3.4028235E38
+    "improvement_threshold": 0.0009999,
+    "trace_ripup_cost_factor": 340282350000000000000000000000000000000
   },
   "scoring": {
-    "default_preferred_direction_trace_cost": 9999999.0,
-    "default_undesired_direction_trace_cost": -0.0,
-    "unrouted_net_penalty": 5000000.0,
-    "clearance_violation_penalty": 1.0E7,
+    "default_preferred_direction_trace_cost": 9999999,
+    "default_undesired_direction_trace_cost": -0,
+    "unrouted_net_penalty": 5000000,
+    "clearance_violation_penalty": 10000000,
     "bend_penalty": 0.001,
-    "default_bend_cost": 1.0E300
+    "default_bend_cost": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
   }
 }"#;
 

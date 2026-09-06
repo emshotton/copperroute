@@ -319,7 +319,7 @@ fn ses_writer_mixes_integer_boundary_and_double_hole_coordinates() {
         "the boundary is written through `writeScopeInt`: plain integers"
     );
     assert!(
-        actual.contains("              1300005.0 1300005.0\n"),
-        "each hole is written through `writeHoleScope` -> `writeScope`: `Double.toString`"
+        actual.contains("              1300005 1300005\n"),
+        "each hole is written through `writeHoleScope` -> `writeScope`, dropping the trailing .0"
     );
 }

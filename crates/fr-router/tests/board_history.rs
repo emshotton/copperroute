@@ -516,7 +516,7 @@ fn under_capacity_any_distinct_board_enters() {
     assert_eq!(h.size(), 2, "under capacity there is no score gate");
     assert!(h.contains(&b0));
     assert_eq!(format_float(h.entries()[0].score), "199.99464");
-    assert_eq!(format_float(h.entries()[1].score), "0.0");
+    assert_eq!(format_float(h.entries()[1].score), "0");
 }
 
 #[test]
@@ -605,13 +605,13 @@ fn entries_are_score_ordered_before_restore() {
     h.add(&mut b0);
     h.add(&mut b1);
     assert_eq!(format_float(h.entries()[0].score), "199.99464");
-    assert_eq!(format_float(h.entries()[1].score), "0.0");
+    assert_eq!(format_float(h.entries()[1].score), "0");
     assert_eq!(h.entries()[0].restore_count, 0);
 
     let restored = h.restore_board(0).expect("a two-entry history restores");
 
     assert_eq!(format_float(h.entries()[0].score), "199.99464");
-    assert_eq!(format_float(h.entries()[1].score), "0.0");
+    assert_eq!(format_float(h.entries()[1].score), "0");
     assert_eq!(h.entries()[0].restore_count, 1, "the winner's count rose");
     assert_eq!(h.entries()[1].restore_count, 0, "and only the winner's");
     assert_eq!(restored.structural_hash(), b1.structural_hash());
@@ -676,7 +676,7 @@ fn add_and_restore_board() {
     let mut history = BoardHistory::new(&scoring);
     history.add(&mut board1);
     assert_eq!(history.size(), 1);
-    assert_eq!(format_float(history.entries()[0].score), "0.0");
+    assert_eq!(format_float(history.entries()[0].score), "0");
 
     let restored = history.restore_best_board().expect("assertNotNull(:60)");
 

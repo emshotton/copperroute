@@ -379,11 +379,10 @@ impl FanoutSettings {
     ];
 }
 
-pub(crate) fn java_trim(value: &str) -> &str {
-    value.trim_matches(|c: char| c <= '\u{20}')
-}
-
-pub(crate) fn java_split(value: &str, is_separator: impl Fn(char) -> bool + Copy) -> Vec<&str> {
+pub(crate) fn split_dropping_trailing_empty(
+    value: &str,
+    is_separator: impl Fn(char) -> bool + Copy,
+) -> Vec<&str> {
     if !value.contains(is_separator) {
         return vec![value];
     }
@@ -398,7 +397,7 @@ fn snake_to_lower_camel(name: &str) -> String {
     if !name.contains('_') {
         return name.to_string();
     }
-    let parts = java_split(name, |c| c == '_');
+    let parts = split_dropping_trailing_empty(name, |c| c == '_');
     let Some((first, rest)) = parts.split_first() else {
         return String::new();
     };
@@ -545,7 +544,7 @@ fn java_float_lexeme(value: &str) -> Option<FloatLexeme<'_>> {
 }
 
 pub fn java_parse_f64(value: &str, path: &str) -> Result<f64, MergeError> {
-    match java_float_lexeme(java_trim(value)) {
+    match java_float_lexeme((value).trim()) {
         Some(FloatLexeme::Nan) => Ok(f64::NAN),
         Some(FloatLexeme::Infinity(negative)) => Ok(if negative {
             f64::NEG_INFINITY
@@ -560,7 +559,7 @@ pub fn java_parse_f64(value: &str, path: &str) -> Result<f64, MergeError> {
 }
 
 pub fn java_parse_f32(value: &str, path: &str) -> Result<f32, MergeError> {
-    match java_float_lexeme(java_trim(value)) {
+    match java_float_lexeme((value).trim()) {
         Some(FloatLexeme::Nan) => Ok(f32::NAN),
         Some(FloatLexeme::Infinity(negative)) => Ok(if negative {
             f32::NEG_INFINITY
@@ -587,7 +586,7 @@ pub fn java_parse_bool(value: &str) -> bool {
 
 #[must_use]
 pub fn java_enum_constant(constants: &[&'static str], value: &str) -> Option<&'static str> {
-    let trimmed = java_trim(value);
+    let trimmed = (value).trim();
     constants
         .iter()
         .copied()
@@ -608,35 +607,35 @@ fn convert_enum<T: JavaEnum>(kind: FieldKind, value: &str, path: &str) -> Result
 
 #[must_use]
 pub fn java_parse_string_vec(value: &str) -> Vec<String> {
-    let raw = java_trim(value);
+    let raw = (value).trim();
     if raw.is_empty() {
         return Vec::new();
     }
-    java_split(raw, |c| c == ',')
+    split_dropping_trailing_empty(raw, |c| c == ',')
         .into_iter()
-        .map(|token| java_trim(token).to_string())
+        .map(|token| (token).trim().to_string())
         .collect()
 }
 
 pub fn java_parse_f64_vec(value: &str, path: &str) -> Result<Vec<f64>, MergeError> {
-    let raw = java_trim(value);
+    let raw = (value).trim();
     if raw.is_empty() {
         return Ok(Vec::new());
     }
-    java_split(raw, |c| c == ',')
+    split_dropping_trailing_empty(raw, |c| c == ',')
         .into_iter()
-        .map(|token| java_parse_f64(java_trim(token), path))
+        .map(|token| java_parse_f64((token).trim(), path))
         .collect()
 }
 
 pub fn java_parse_i32_vec(value: &str, path: &str) -> Result<Vec<i32>, MergeError> {
-    let raw = java_trim(value);
+    let raw = (value).trim();
     if raw.is_empty() {
         return Ok(Vec::new());
     }
-    java_split(raw, |c| c == ',')
+    split_dropping_trailing_empty(raw, |c| c == ',')
         .into_iter()
-        .map(|token| java_parse_i32(java_trim(token), path))
+        .map(|token| java_parse_i32((token).trim(), path))
         .collect()
 }
 
@@ -645,7 +644,7 @@ pub fn set_field_value(
     property_path: &str,
     value: &str,
 ) -> Result<(), MergeError> {
-    let segments = java_split(property_path, |c| matches!(c, '.' | ':' | '-'));
+    let segments = split_dropping_trailing_empty(property_path, |c| matches!(c, '.' | ':' | '-'));
     if segments.is_empty() {
         return Err(no_such_field(property_path));
     }
@@ -668,13 +667,13 @@ fn set_router_property(
 
     match field.rust_name {
         "layers" => {
-            let tokens = java_split(value, |c| c == ',');
+            let tokens = split_dropping_trailing_empty(value, |c| c == ',');
             let layers = target
                 .layers
                 .get_or_insert_with(|| vec![LayerSettings::default(); tokens.len()]);
             let limit = layers.len().min(tokens.len());
             for (element, token) in layers.iter_mut().zip(tokens).take(limit) {
-                set_layer_property(element, segments, index + 1, java_trim(token), path)?;
+                set_layer_property(element, segments, index + 1, (token).trim(), path)?;
             }
             Ok(())
         }
@@ -916,24 +915,17 @@ mod tests {
     }
 
     #[test]
-    fn java_split_matches_java() {
+    fn split_dropping_trailing_empty_matches_java() {
         let comma = |c: char| c == ',';
-        assert_eq!(java_split("a,b", comma), ["a", "b"]);
-        assert_eq!(java_split("a,,b", comma), ["a", "", "b"]);
-        assert_eq!(java_split("a,b,", comma), ["a", "b"]);
-        assert_eq!(java_split("a,b,,", comma), ["a", "b"]);
-        assert_eq!(java_split(",a", comma), ["", "a"]);
-        assert_eq!(java_split("abc", comma), ["abc"]);
-        assert_eq!(java_split("", comma), [""]);
-        assert!(java_split(",", comma).is_empty());
-        assert!(java_split(",,", comma).is_empty());
-    }
-
-    #[test]
-    fn java_trim_is_not_rust_trim() {
-        assert_eq!(java_trim("\t 7 \n"), "7");
-        assert_eq!(java_trim("\u{a0}7"), "\u{a0}7");
-        assert!(java_parse_f64("\u{a0}7", "x").is_err());
+        assert_eq!(split_dropping_trailing_empty("a,b", comma), ["a", "b"]);
+        assert_eq!(split_dropping_trailing_empty("a,,b", comma), ["a", "", "b"]);
+        assert_eq!(split_dropping_trailing_empty("a,b,", comma), ["a", "b"]);
+        assert_eq!(split_dropping_trailing_empty("a,b,,", comma), ["a", "b"]);
+        assert_eq!(split_dropping_trailing_empty(",a", comma), ["", "a"]);
+        assert_eq!(split_dropping_trailing_empty("abc", comma), ["abc"]);
+        assert_eq!(split_dropping_trailing_empty("", comma), [""]);
+        assert!(split_dropping_trailing_empty(",", comma).is_empty());
+        assert!(split_dropping_trailing_empty(",,", comma).is_empty());
     }
 
     #[test]

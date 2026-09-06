@@ -287,11 +287,7 @@ fn dump_corner(polyline: &Polyline, no: usize) -> String {
         Point::Int(point) => format!("({},{})", point.x, point.y),
         Point::Rational(_) => {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
-            format!(
-                "~({},{})",
-                format_double(f.x),
-                format_double(f.y)
-            )
+            format!("~({},{})", format_double(f.x), format_double(f.y))
         }
     }
 }

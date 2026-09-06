@@ -957,11 +957,7 @@ fn emit_b(result: &BoardReadResult) -> Vec<String> {
                             .polyline()
                             .corner_approx(c)
                             .expect("c < corner_count()");
-                        format!(
-                            "{},{}",
-                            format_double(corner.x),
-                            format_double(corner.y)
-                        )
+                        format!("{},{}", format_double(corner.x), format_double(corner.y))
                     })
                     .collect();
                 format!(
@@ -1117,7 +1113,7 @@ fn the_host_fallbacks_are_kicad_and_v10() {
 
     let json = format!("{{\"hostCad\":\"\u{a0}\",{outline}}}");
     let (board, _, _) = board_of(&json);
-    assert_eq!(board.communication.host_cad.as_deref(), Some("\u{a0}"));
+    assert_eq!(board.communication.host_cad.as_deref(), Some("KiCad"));
 }
 
 #[test]

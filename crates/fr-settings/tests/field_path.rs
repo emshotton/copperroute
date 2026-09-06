@@ -380,7 +380,7 @@ fn double_array_leaf_splits_and_trims() {
 }
 
 #[test]
-fn string_array_leaf_follows_java_split() {
+fn string_array_leaf_drops_trailing_empties() {
     let mut settings = RouterSettings::new();
 
     set_field_value(&mut settings, "ignore_net_classes", " a , b ,").expect("resolves");
@@ -486,7 +486,7 @@ fn a_null_nested_object_is_instantiated() {
 }
 
 #[test]
-fn empty_path_segments_follow_java_split() {
+fn empty_path_segments_drop_trailing_empties() {
     let mut settings = RouterSettings::new();
 
     set_field_value(&mut settings, "enabled.", "false").expect("trailing separator is dropped");

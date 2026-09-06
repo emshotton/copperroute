@@ -476,11 +476,7 @@ fn t15_corner(polyline: &Polyline, no: usize) -> String {
         Some(Point::Int(p)) => format!("({},{})", p.x, p.y),
         _ => {
             let f = polyline.corner_approx(no).expect("no is below cornerCount");
-            format!(
-                "~({},{})",
-                format_double(f.x),
-                format_double(f.y)
-            )
+            format!("~({},{})", format_double(f.x), format_double(f.y))
         }
     }
 }

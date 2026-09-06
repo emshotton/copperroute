@@ -1058,7 +1058,7 @@ impl TraceShover {
             None => None,
         };
 
-        let reversed = java_reverse(polyline);
+        let reversed = reverse_polyline(polyline);
         let clock_wise_result = match Self::spring_over(
             board,
             reversed.clone(),
@@ -1079,20 +1079,20 @@ impl TraceShover {
         match (clock_wise_result, counter_clock_wise_result) {
             (Some(clock_wise), Some(counter_clock_wise)) => {
                 if clock_wise.length_approx() <= counter_clock_wise.length_approx() {
-                    Some(java_reverse(&clock_wise))
+                    Some(reverse_polyline(&clock_wise))
                 } else {
                     Some(counter_clock_wise)
                 }
             }
-            (Some(clock_wise), None) => Some(java_reverse(&clock_wise)),
+            (Some(clock_wise), None) => Some(reverse_polyline(&clock_wise)),
             (None, Some(counter_clock_wise)) => Some(counter_clock_wise),
             (None, None) => None,
         }
     }
 }
 
-fn java_reverse(polyline: &Polyline) -> Polyline {
+fn reverse_polyline(polyline: &Polyline) -> Polyline {
     polyline
         .reverse()
-        .unwrap_or_else(|e| panic!("Polyline.reverse() threw (Polyline.java:148, quirk #22): {e}"))
+        .unwrap_or_else(|e| panic!("Polyline::reverse failed: {e}"))
 }

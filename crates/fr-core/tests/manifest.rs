@@ -622,7 +622,7 @@ fn a_connectionless_board_scores_zero_not_nan() {
 
     let manifest = from_job(&job, Some(&dsn), true, 0, Some(&stats));
     assert_eq!(manifest.normalized_score, Some(0.0));
-    assert!(json_of(&manifest).contains("\"normalized_score\": 0.0"));
+    assert!(json_of(&manifest).contains("\"normalized_score\": 0"));
 
     let mut no_scoring = fresh_job();
     no_scoring.router_settings.scoring = None;
@@ -920,8 +920,8 @@ fn resource_usage_writes_all_five_fields_including_the_two_dead_ones() {
     let json = json_of(&from_job(&fresh_job(), None, false, 1, None));
     assert!(
         json.contains(
-            "\"resource_usage\": {\n    \"cpu_time\": 0.0,\n    \"max_memory\": 0.0,\n    \
-             \"peak_memory\": 0.0,\n    \"io_read\": 0.0,\n    \"io_written\": 0.0\n  },"
+            "\"resource_usage\": {\n    \"cpu_time\": 0,\n    \"max_memory\": 0,\n    \
+             \"peak_memory\": 0,\n    \"io_read\": 0,\n    \"io_written\": 0\n  },"
         ),
         "{json}"
     );

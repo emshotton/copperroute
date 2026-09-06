@@ -1,7 +1,7 @@
 //! | target | `RouterSettings` — reaches the router | the `@Deprecated` bridge — reaches nothing |
 use std::collections::BTreeMap;
 
-use crate::field_path::{java_parse_f32, java_split, java_trim};
+use crate::field_path::{java_parse_f32, split_dropping_trailing_empty};
 use crate::{
     BoardUpdateStrategy, ItemSelectionStrategy, MergeError, RouterSettings, SettingsSource,
     SourceKind, merger::priority, set_field_value,
@@ -298,7 +298,7 @@ pub fn apply_command_line_arguments(args: &[String]) -> LegacyBridge {
             }
         } else if arg.starts_with("-us") {
             if let Some(value) = value_of(i) {
-                let op = java_trim(&value.to_lowercase()).to_string();
+                let op = (&value.to_lowercase()).trim().to_string();
                 bridge.board_update_strategy = Some(match op.as_str() {
                     "global" => BoardUpdateStrategy::GlobalOptimal,
                     "hybrid" => BoardUpdateStrategy::Hybrid,
@@ -308,7 +308,7 @@ pub fn apply_command_line_arguments(args: &[String]) -> LegacyBridge {
             }
         } else if arg.starts_with("-is") {
             if let Some(value) = value_of(i) {
-                let op = java_trim(&value.to_lowercase()).to_string();
+                let op = (&value.to_lowercase()).trim().to_string();
                 bridge.item_selection_strategy = Some(if op.starts_with("seq") {
                     ItemSelectionStrategy::Sequential
                 } else if op.starts_with("rand") {
@@ -320,7 +320,7 @@ pub fn apply_command_line_arguments(args: &[String]) -> LegacyBridge {
             }
         } else if arg.starts_with("-hr") {
             if let Some(value) = value_of(i) {
-                bridge.hybrid_ratio = Some(java_trim(value).to_string());
+                bridge.hybrid_ratio = Some((value).trim().to_string());
                 i += 1;
             }
         } else if arg == "-l" {
@@ -335,7 +335,7 @@ pub fn apply_command_line_arguments(args: &[String]) -> LegacyBridge {
         } else if arg.starts_with("-inc") {
             if let Some(value) = value_of(i) {
                 bridge.ignore_net_classes = Some(
-                    java_split(value, |c| c == ',')
+                    split_dropping_trailing_empty(value, |c| c == ',')
                         .into_iter()
                         .map(str::to_string)
                         .collect(),
@@ -446,12 +446,12 @@ pub fn classify_de_arguments_reporting(args: &[String]) -> (DeSlots, Vec<String>
         let mut files: Vec<String> = Vec::new();
         let mut j = i + 1;
         while j < args.len() && !args[j].starts_with('-') {
-            let raw_arg = java_trim(&args[j]).to_string();
+            let raw_arg = (&args[j]).trim().to_string();
             if std::path::Path::new(&raw_arg).exists() {
                 files.push(raw_arg);
             } else if raw_arg.contains('+') {
-                for part in java_split(&raw_arg, |c| c == '+') {
-                    let part = java_trim(part);
+                for part in split_dropping_trailing_empty(&raw_arg, |c| c == '+') {
+                    let part = (part).trim();
                     if !part.is_empty() {
                         files.push(part.to_string());
                     }
@@ -466,7 +466,7 @@ pub fn classify_de_arguments_reporting(args: &[String]) -> (DeSlots, Vec<String>
         let mut has_ses = false;
         let mut has_rules = false;
         for file in files {
-            let file = java_trim(&file).to_string();
+            let file = (&file).trim().to_string();
             if file.is_empty() {
                 continue;
             }
