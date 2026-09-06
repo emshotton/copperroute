@@ -57,7 +57,8 @@ subset of the native S-expression format into that existing representation.
   become non-routing planes in Rust. Unsupported layer types are rejected.
   Export rejects changed layer mappings and traces on non-routing layers.
   The preview legend lists every copper layer, including aliases and plane status.
-- Rounded rectangular pads are conservatively modeled as rectangles. The core
+- Rounded pads preserve corner radii for physical hole-clearance DRC, while routing
+  and other DRC checks still use enclosing rectangles. The core
   approximates oval pads with its existing polygon representation.
 - Plated oval slots retain their original geometry in downloads. Routing uses
   the copper pad shape and the smaller drill dimension; slot-specific DRC needs
@@ -244,3 +245,11 @@ native writer; it is not a byte-preserving copy of the source. Artwork and
 source-editor metadata are outside this interchange format. Run the source
 editor's DRC after importing the SES. Partially imported DSNs can be previewed
 but are rejected for routing.
+
+
+USB hole-clearance follow-up: see [the investigation](docs/usb-hole-clearance-investigation.md).
+The bridge now preserves rounded-pad corner radii and hole-to-copper DRC uses
+physical circle, segment, rectangle and rounded-rectangle distances. Routing
+retains enclosing rectangles for rounded pads. Result details distinguish
+findings already present before routing from new findings; the original project
+minimum is not reduced to hide existing footprint violations.

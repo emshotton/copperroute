@@ -286,7 +286,8 @@ export function importBoard(text, name, rules, options = {}) {
           {
             name: String(pi),
             netName: netName(pad),
-            shape: shape === "roundrect" ? "rect" : shape,
+            shape,
+            ...(shape === "roundrect" ? { roundRectRatio: number(val(pad, "roundrect_rratio", 0.25)) } : {}),
             size,
             offset: { x: 0, y: 0 },
             position,
@@ -299,7 +300,7 @@ export function importBoard(text, name, rules, options = {}) {
       });
       if (shape === "roundrect")
         warnings.push(
-          "Rounded rectangular pads use conservative rectangular obstacles.",
+          "Rounded pads retain their corner radius for hole DRC; routing uses enclosing rectangles.",
         );
     }
   }

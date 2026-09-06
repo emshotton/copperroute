@@ -31,7 +31,30 @@ function showLayers(layers) {
   pads.append(dot, document.createTextNode(" Pads & vias"));
   legend.append(pads);
 }
+function showDrc(data) {
+  const panel = $("drc-results");
+  const list = $("drc-list");
+  list.replaceChildren();
+  panel.hidden = !data.drcDetails?.length;
+  if (panel.hidden) return "";
+  const key = (v) => JSON.stringify([v.kind, v.layer, v.items.map(i => i.id).sort()]);
+  const initial = new Set((data.initialDrcDetails ?? []).map(key));
+  let existing = 0;
+  for (const v of data.drcDetails) {
+    const preexisting = initial.has(key(v));
+    if (preexisting) existing++;
+    const row = document.createElement("li");
+    const names = v.items.map(i => i.description).join(" ↔ ");
+    row.textContent = `${preexisting ? "Existing" : "New"} · ${v.kind.replaceAll("_", " ")} · ${names} · ${v.layer ?? "all layers"} · ${v.actual.toFixed(4)} mm (required ${v.expected.toFixed(4)} mm) · at ${v.position.map(n => n.toFixed(3)).join(", ")} mm${v.estimated ? " · estimated drill" : ""}`;
+    list.append(row);
+  }
+  const text = `${existing} existing before routing · ${data.drcDetails.length - existing} new`;
+  $("drc-summary").textContent = `DRC details: ${text}`;
+  return ` (${text})`;
+}
 function clearDownloads() {
+  $("drc-results").hidden = true;
+  $("drc-list").replaceChildren();
   urls.forEach(URL.revokeObjectURL);
   urls = [];
   for (const id of ["pcb", "ses", "svg"]) {
@@ -269,8 +292,9 @@ $("settings").onsubmit = async (e) => {
         : data.incomplete === 0
           ? "Routing complete"
           : "Partial route";
+      const drcSummary = showDrc(data);
       status(
-        `${data.incomplete ?? "Unknown"} unrouted connections · ${data.violations} router DRC violations · ${data.passes} passes${data.timedOut ? " · Time limit reached" : ""}. Review in ${data.dsn ? "the source PCB editor" : "KiCad"} and run DRC.`,
+        `${data.incomplete ?? "Unknown"} unrouted connections · ${data.violations} router DRC violations${drcSummary} · ${data.passes} passes${data.timedOut ? " · Time limit reached" : ""}. Review in ${data.dsn ? "the source PCB editor" : "KiCad"} and run DRC.`,
       );
       for (const [id, content, mime, ext] of [
         ["pcb", data.dsn ?? data.pcb, "text/plain", data.dsn ? ".dsn" : ".kicad_pcb"],

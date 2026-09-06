@@ -158,8 +158,8 @@
             <p>DSN uses the native Rust importer and embedded rules, net classes and layer settings. Download the SES session to import routing into the source PCB editor. DSN preview shows routing geometry; source-editor artwork is not included.</p>
             <p>
               Supports standard pads, straight tracks, through vias, and a
-              single closed Edge.Cuts outline. Rounded rectangular pads use
-              rectangular obstacles. Keepouts that restrict tracks or vias,
+              single closed Edge.Cuts outline. Rounded pads retain their corner radius for hole DRC; routing uses
+              enclosing rectangles. Keepouts that restrict tracks or vias,
               cutouts, custom pads and offset holes are
               rejected. Existing tracks (including arcs) and vias are removed,
               even when locked.
@@ -205,6 +205,10 @@
             Choose a board to get started.
           </p>
           <p id="warnings"></p>
+          <details id="drc-results" hidden>
+            <summary id="drc-summary"></summary>
+            <ul id="drc-list"></ul>
+          </details>
         </div>
         <div class="downloads">
           <a id="pcb" hidden>Download routed PCB ↓</a

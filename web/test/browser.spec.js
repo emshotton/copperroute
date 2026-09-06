@@ -412,6 +412,10 @@ test("Uno DRC and exported vias use actual drills before export", async ({ page 
       worker.postMessage({text, project, example: 'uno', name: 'uno', rules: {traceWidth: .2, clearance: .15, viaDiameter: .5, viaDrill: .3}, rebuildZones: true, passes: 5, seconds: 60});
     });
   });
+  expect(result.initialDrcDetails).toHaveLength(8);
+  expect(result.drcDetails).toHaveLength(8);
+  expect(result.drcDetails.map(v => Number(v.actual.toFixed(4))).sort()).toEqual(
+    [0.1751, 0.1751, 0.1751, 0.1751, 0.2099, 0.2099, 0.2099, 0.2099]);
   expect(result.drcDetails.filter(v => v.kind === 'drill_out_of_range')).toEqual([]);
   expect(result.initialDrcDetails.filter(v => v.kind === 'drill_out_of_range')).toEqual([]);
   expect(result.board.vias.length).toBeGreaterThan(0);
@@ -420,4 +424,22 @@ test("Uno DRC and exported vias use actual drills before export", async ({ page 
   const { writeFileSync } = await import('node:fs');
   writeFileSync('/tmp/uno-exact-drills.kicad_pcb', result.pcb);
   writeFileSync('/tmp/uno-exact-drills.json', JSON.stringify(result, null, 2));
+});
+
+test("Nano rounded pads retain real footprint violations and explain them in the UI", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#examples").selectOption("nano");
+  await expect(page.locator("#filename")).toHaveText("easyduino-nano.kicad_pcb");
+  await page.locator("#route").click();
+  await expect(page.locator("#pcb")).toBeVisible({ timeout: 80000 });
+  await expect(page.locator("#status")).toContainText("4 router DRC violations");
+  await expect(page.locator("#drc-summary")).toHaveText("DRC details: 4 existing before routing · 0 new");
+  await page.locator("#drc-summary").click();
+  await expect(page.locator("#drc-list li")).toHaveCount(4);
+  for (const row of await page.locator("#drc-list li").all()) {
+    await expect(row).toContainText("0.1944 mm (required 0.2500 mm)");
+    await expect(row).toContainText("Pin [GND]");
+  }
+  await page.locator("#demo").click();
+  await expect(page.locator("#drc-results")).toBeHidden();
 });
