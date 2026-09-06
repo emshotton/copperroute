@@ -151,12 +151,17 @@ fi
 # list through the `+`-split at `:573-579`; two arguments is the form that needs no split and
 # survives a path containing `+`.)
 ARGS=()
+PORT_ARGS=()
 drc_args() {
   local dsn="$1" rules="$2" ses="$3" out="$4"
   ARGS=(-de "$JAVA_DIR/$dsn")
   [[ -n "$ses" ]] && ARGS+=("$JAVA_DIR/$ses")
   [[ -n "$rules" ]] && ARGS+=(-dr "$JAVA_DIR/$rules")
   ARGS+=(-drc "$out")
+  PORT_ARGS=(drc "$JAVA_DIR/$dsn")
+  [[ -n "$ses" ]] && PORT_ARGS+=(--ses "$JAVA_DIR/$ses")
+  [[ -n "$rules" ]] && PORT_ARGS+=(--rules "$JAVA_DIR/$rules")
+  PORT_ARGS+=(-o "$out")
 }
 
 wanted() {
@@ -170,11 +175,10 @@ run_drc() {
   local log="$1" mode="$2"
   shift 2
   if [[ "$LANE" == port ]]; then
-    # The same argv, and only the program in front of it changes. `-drc` is the one mode where
-    # that substitution is the whole difference: no JVM flags to translate, no driver to compile,
-    # no `-Xmx`. `< /dev/null` for `run_jar`'s reason — `each_row` drives the fixture table
-    # through a `while read` whose stdin is the file.
-    "$PORT_BIN" "$@" > "$log" 2>&1 < /dev/null
+    # The port's native form; `drc` exits 1 when the report carries violations, and the caller's
+    # `[[ -s "$out" ]]` decides. `< /dev/null` because `each_row` drives the fixture table through
+    # a `while read` whose stdin is the file.
+    "$PORT_BIN" "${PORT_ARGS[@]}" > "$log" 2>&1 < /dev/null || true
   else
     "$JAVA_BIN" "${LOCALE_FLAGS[@]}" -XX:+UnlockExperimentalVMOptions "-XX:hashCode=$mode" \
         -jar "$JAR" "$@" > "$log" 2>&1 < /dev/null

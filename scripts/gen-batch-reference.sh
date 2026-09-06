@@ -323,9 +323,9 @@ run_bare_program() {
   local log="$1" hash="$2" dsn="$3" max_passes="$4" fanout="$5" optimizer="$6" ses="$7"
   if [[ "$LANE" == port ]]; then
     "${TIMEOUT[@]}" "$PORT_BIN" \
-        -de "$dsn" -do "$ses" -mp "$max_passes" \
-        "--router.fanout.enabled=$fanout" \
-        "--router.optimizer.enabled=$optimizer" \
+        route "$dsn" -o "$ses" --max-passes "$max_passes" \
+        --set "router.fanout.enabled=$fanout" \
+        --set "router.optimizer.enabled=$optimizer" \
         > "$log" 2>&1 < /dev/null
     return $?
   fi
