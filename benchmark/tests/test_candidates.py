@@ -39,18 +39,24 @@ def test_load_candidates_resolves_exec_and_sha(toml_path):
     assert cands["java-x"].exec[-1].endswith("fr.jar")
 
 
-def test_argv_is_identical_shape_for_both_kinds(toml_path):
+def test_argv_is_legacy_for_java_and_native_for_rust(toml_path):
     cands = load_candidates(toml_path)
     common = dict(in_dsn=Path("a.dsn"), out_ses=Path("a.ses"), result_json=Path("r.json"),
                   max_passes=100, timeout_s=300, threads=1, seed=2)
     j = cands["java-x"].argv(**common)
+    assert j[3:] == ["-de", "a.dsn", "-do", "a.ses", "-mp", "100",
+                     "--router.job_timeout=00:05:00", "--router.max_threads=1",
+                     "--router.result_json=r.json", "--gui.enabled=false",
+                     "--api_server.enabled=false", "--mcp_server.enabled=false"]
     r = cands["rs-x"].argv(**common)
-    tail = ["-de", "a.dsn", "-do", "a.ses", "-mp", "100", "--router.job_timeout=00:05:00",
-            "--router.max_threads=1", "--router.result_json=r.json",
-            "--gui.enabled=false", "--api_server.enabled=false", "--mcp_server.enabled=false"]
-    assert j[3:] == tail
-    assert r[1:1 + len(tail)] == tail
-    assert r[-1] == "--router.seed=2"
+    assert r[1:] == ["route", "a.dsn", "-o", "a.ses", "--max-passes", "100",
+                     "--timeout", "00:05:00", "--result-json", "r.json",
+                     "--set", "router.seed=2"]
+
+
+def test_rust_extra_args_keep_the_dotted_spelling_in_the_table(toml_path):
+    cands = load_candidates(toml_path)
+    assert cands["rs-x"].extra_args == ["--router.seed={seed}"]
 
 
 def test_missing_exec_fails_fast(tmp_path):

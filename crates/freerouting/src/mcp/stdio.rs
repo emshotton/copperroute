@@ -8,8 +8,8 @@ use std::sync::mpsc::{Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
-pub fn run(settings_argv: &[String]) -> i32 {
-    let mut state = State::with_settings_argv(settings_argv);
+pub fn run(overrides: crate::ops::SettingsOverrides) -> i32 {
+    let mut state = State::with_overrides(overrides);
     super::tools::register_all(&mut state);
     run_with(
         state,

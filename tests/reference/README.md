@@ -473,19 +473,18 @@ and `batch.passes.jsonl` both exist is skipped unless `--force` is given.
 # Whole-**program** CLI references (`cli-<stem>/*`, Plan 8 Task 6)
 
 `tests/reference/cli-<stem>/` is the **fifth** reference family, and the only one
-that is the output of a whole program rather than of a driver: what the **bare
-HEAD jar** wrote for one complete command line. `scripts/gen-cli-reference.sh`
-writes it from `tests/reference/cli-fixtures.txt`, and
-`crates/freerouting/tests/cli_e2e.rs` reads it.
+that is the output of a whole program rather than of a driver: what the binary
+wrote for one complete command line. `crates/freerouting/tests/cli_e2e.rs` reads
+it, and `FR_REGOLDEN=<label> cargo test -p freerouting --test cli_e2e` re-cuts it
+from `tests/reference/cli-fixtures.txt`.
 
 | file | what |
 |---|---|
-| `argv.txt` | the argv, one token per line, with `<JAVA_DIR>` and `<OUT>` placeholders so the file is the same on every machine |
-| `route.ses` | the jar's SES, **verbatim** |
+| `argv.txt` | the argv, one token per line — `route <dsn> -o <out> …` — with `<JAVA_DIR>` and `<OUT>` placeholders so the file is the same on every machine |
+| `route.ses` | the SES, **verbatim** |
 | `route.exit` | its exit code |
-| `route.log` | its stdout followed by its stderr, machine-specific prefixes replaced |
-| `manifest.json` | the manifest a **second** run with `--router.result_json=<f>` wrote |
-| `meta.txt` | the jar identity, `java -version`, the hash mode, the budget note, both command lines, and the `batch.ses` cross-check verdict |
+| `manifest.json` | the manifest a **second** run with `--result-json <f>` wrote |
+| `meta.txt` | the provenance of the cut: the lane, the sha, the hash mode, the budget note, both command lines, and the `batch.ses` cross-check verdict |
 
 **Eleven stems**: Plan 7's eight batch stems on *the same argv*
 `batch.meta.txt`'s `bare jar` line records (scan ruling R1 — the `-mp` cap is

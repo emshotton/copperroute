@@ -1,4 +1,4 @@
-"""Candidate routers: black-box commands invoked with the Java legacy CLI flags."""
+"""Candidate routers: black-box commands, invoked in each kind's own command-line form."""
 from __future__ import annotations
 
 import subprocess
@@ -26,6 +26,9 @@ class Candidate:
 
     def argv(self, *, in_dsn: Path, out_ses: Path, result_json: Path,
              max_passes: int, timeout_s: int, threads: int, seed: int) -> list[str]:
+        if self.kind == "rust":
+            return self._native_argv(in_dsn=in_dsn, out_ses=out_ses, result_json=result_json,
+                                     max_passes=max_passes, timeout_s=timeout_s, seed=seed)
         args = [
             *self.exec,
             "-de", str(in_dsn),
@@ -39,6 +42,24 @@ class Candidate:
             "--mcp_server.enabled=false",
         ]
         args += [a.format(seed=seed) for a in self.extra_args]
+        return args
+
+    def _native_argv(self, *, in_dsn: Path, out_ses: Path, result_json: Path,
+                     max_passes: int, timeout_s: int, seed: int) -> list[str]:
+        args = [
+            *self.exec,
+            "route", str(in_dsn),
+            "-o", str(out_ses),
+            "--max-passes", str(max_passes),
+            "--timeout", self.hms(timeout_s),
+            "--result-json", str(result_json),
+        ]
+        for extra in self.extra_args:
+            extra = extra.format(seed=seed)
+            if extra.startswith("--router."):
+                args += ["--set", extra[2:]]
+            else:
+                args.append(extra)
         return args
 
     def to_json(self) -> dict:

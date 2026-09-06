@@ -1,32 +1,19 @@
-use crate::cli::InfoArgs;
-use crate::legacy::ExitCode;
-use fr_core::{RoutingJob, SessionId};
+use crate::ExitCode;
+use crate::cli::{Cli, InfoArgs};
+use crate::ops::info::{InfoRequest, info};
+use crate::ops::load::{BoardSource, LoadRequest};
 
-pub fn run(args: &InfoArgs, settings_argv: &[String]) -> ExitCode {
-    let _ = settings_argv;
-
-    let mut job = RoutingJob::new(SessionId::NIL);
-    if let Err(error) = job.set_input(&args.input) {
-        tracing::error!(
-            "Couldn't load the input file '{}': {error}",
-            args.input.display()
-        );
-        return ExitCode::Failure;
-    }
-
-    let loaded = match fr_core::load_board_if_needed(&mut job) {
-        Ok(loaded) => loaded,
+pub fn run(cli: &Cli, args: &InfoArgs) -> ExitCode {
+    let mut load = LoadRequest::for_board(BoardSource::Path(args.input.clone()));
+    load.settings = super::overrides(cli, &[]);
+    match info(&InfoRequest { load }) {
+        Ok(summary) => {
+            println!("{}", summary.to_json_pretty());
+            ExitCode::Ok
+        }
         Err(error) => {
             tracing::error!("{error}");
-            return ExitCode::Failure;
+            ExitCode::Failure
         }
-    };
-    let mut board = loaded.board;
-    for warning in &loaded.warnings {
-        tracing::warn!("{warning}");
     }
-
-    let summary = fr_core::summarise(&mut board, loaded.metadata.as_ref());
-    println!("{}", summary.to_json_pretty());
-    ExitCode::Ok
 }

@@ -698,15 +698,8 @@ struct Pipes {
 
 impl Pipes {
     fn start() -> Pipes {
-        Pipes::start_with_env(&[])
-    }
-
-    fn start_with_env(env: &[(&str, &str)]) -> Pipes {
         let mut command = Command::new(env!("CARGO_BIN_EXE_freerouting"));
         command.arg("mcp");
-        for (key, value) in env {
-            command.env(key, value);
-        }
         let mut child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -938,52 +931,6 @@ fn every_settings_field_is_in_the_schema_and_vice_versa() {
             properties(node)
         );
     }
-}
-
-#[test]
-fn an_unreadable_router_budget_is_an_error_and_the_server_survives() {
-    if !parity::require_java_dir() {
-        return;
-    }
-    let board = dsn("fixtures/empty_board.dsn");
-    let mut pipes = Pipes::start_with_env(&[("FR_ROUTER_BUDGET", "banana")]);
-
-    pipes.request(
-        1,
-        "initialize",
-        json!({"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "t", "version": "0"}}),
-    );
-    pipes.write(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
-
-    let answer = pipes.request(
-        2,
-        "tools/call",
-        json!({"name": "route_board", "arguments": {"dsn_path": board}}),
-    );
-    assert_eq!(
-        answer["result"]["isError"], true,
-        "an unreadable FR_ROUTER_BUDGET must refuse the call: {answer}"
-    );
-    let message = answer["result"]["content"][0]["text"]
-        .as_str()
-        .unwrap_or_default();
-    assert!(
-        message.contains("FR_ROUTER_BUDGET") && message.contains("banana"),
-        "the refusal must name the variable and the value the operator set: {message}"
-    );
-    assert!(
-        message.contains("disabled"),
-        "…and the values it would have accepted: {message}"
-    );
-
-    assert_eq!(pipes.request(3, "ping", json!({}))["result"], json!({}));
-    assert_tool_list(&pipes.request(4, "tools/list", json!({}))["result"]["tools"]);
-
-    assert_eq!(
-        pipes.finish(),
-        0,
-        "EOF exits 0 — the server was never killed by the env var"
-    );
 }
 
 fn dsn(relative: &str) -> String {

@@ -169,8 +169,8 @@ the legacy short flags (`-mp`, `-mt`, `-oit`, `-us`, `-is`, `-hr`, `-inc`,
 `-drc`). It writes a `LegacyBridge` that nothing on the routing path reads:
 those flags are parsed for their effect on argument positions and
 diagnostics, and the values that actually reach the router come through the
-priority-60 `CliSettings` spelling. `crates/freerouting/README.md` has the
-whole story.
+priority-60 `CliSettings` spelling. The `freerouting` binary no longer accepts
+that form; nothing in the workspace calls this table any more.
 
 ## Tests
 

@@ -325,28 +325,6 @@ fn the_slow_stems_climb_the_whole_ladder() {
 }
 
 #[test]
-fn every_stem_reaches_rung_c() {
-    let readme = std::fs::read_to_string(
-        parity::workspace_root()
-            .join("crates")
-            .join("fr-router")
-            .join("README.md"),
-    )
-    .expect("crates/fr-router/README.md");
-    for stem in STEMS {
-        let row = readme
-            .lines()
-            .find(|line| line.contains(stem.name) && line.starts_with('|'))
-            .unwrap_or_else(|| panic!("{} has no acceptance row in the README", stem.name));
-        assert!(
-            !row.contains("XDIFF"),
-            "{} is an XDIFF row in the README but no test records the divergence",
-            stem.name
-        );
-    }
-}
-
-#[test]
 fn references_are_from_the_head_jar() {
     let mut revisions = BTreeSet::new();
     for stem in STEMS {

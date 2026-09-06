@@ -149,18 +149,14 @@ The two board steps run **once** per load, after the design is read.
 ## Versions
 
 ```
-PARITY_VERSION      = "2.3.1-SNAPSHOT"
-PARITY_BUILD_DATE   = "2026-09-01"
-PARITY_JAR_REVISION = "278fe14123c49376667239659c98d41a597acce9"
-SERVER_VERSION      = env!("CARGO_PKG_VERSION")
+SERVER_VERSION = env!("CARGO_PKG_VERSION")
 ```
 
-`PARITY_VERSION` is the version string written into the DRC report's
-`freerouting_version` and the manifest's `app_version`, so documents the
-binary writes stay comparable with the committed references. The
-SES/DSN `(host_cad …)`/`(host_version …)` are echoed back **from the input
-file** and never carry it. `SERVER_VERSION` reaches the MCP `serverInfo` and
-nothing else.
+The crate's own version is what the manifest's `app_version`, the DRC
+report's `freerouting_version` and the MCP `serverInfo` carry. The SES/DSN
+`(host_cad …)`/`(host_version …)` are echoed back **from the input file** and
+never carry it. `tests/parity`'s manifest normaliser drops `app_version`, so
+a committed manifest golden does not move when the crate version does.
 
 ## The result manifest (`manifest.rs`)
 

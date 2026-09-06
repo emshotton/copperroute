@@ -419,7 +419,7 @@ fn an_auto_router_only_stop_ends_the_item_loop() {
 }
 
 #[test]
-fn a_panicking_item_ends_the_pass_and_returns_false() {
+fn a_panicking_item_ends_the_pass_and_returns_an_error() {
     let mut board = empty_board();
     add_net(&mut board, "N1", false);
     let undeclared = trace(
@@ -445,22 +445,14 @@ fn a_panicking_item_ends_the_pass_and_returns_false() {
     let mut router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
     let stop = RouterStop::new();
 
-    let hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(|_| {}));
     let answer = run_one_pass(&mut board, &mut router, &stop);
-    std::panic::set_hook(hook);
-
-    assert!(
-        !answer.expect("the boundary degrades rather than propagating"),
-        "AutoroutePassRunner.java:331-335 catches and returns false"
-    );
-
-    let hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(|_| {}));
+    let Err(fr_router::RouterError::Panicked(message)) = answer else {
+        panic!("an unexpected item panic must fail the pass, got {answer:?}");
+    };
+    assert!(message.contains("Item.hasIgnoredNets"), "{message}");
     let direct = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         board.has_ignored_nets(undeclared)
     }));
-    std::panic::set_hook(hook);
     assert!(
         direct.is_err(),
         "Item.java:1244 has no null guard, so the undeclared net is what panics"

@@ -1,8 +1,10 @@
--de
+route
 <JAVA_DIR>/fixtures/Issue730-DAC2020_bm11.dsn
--do
+-o
 <OUT>/route.ses
--mp
+--max-passes
 2
---router.fanout.enabled=true
---router.optimizer.enabled=false
+--set
+router.fanout.enabled=true
+--set
+router.optimizer.enabled=false

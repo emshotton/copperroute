@@ -294,9 +294,9 @@ The sweep adds `-XX:+UnlockExperimentalVMOptions -XX:hashCode=$h` for `h` in `0.
 
 `qualityScore` is `null` in every transcript: the CLI fills it from `BoardStatistics`
 (Freerouting.java:343-352), which is Plan 8's (ruling 5). `freeroutingVersion` is
-`Freerouting 2.3.1-SNAPSHOT`, i.e. `Constants.FREEROUTING_VERSION` of the jar below; the Rust
-side injects the same literal, so a rebuilt jar with a new version needs `JAR_VERSION` in
-`tests/report.rs` updated alongside the transcripts.
+`Freerouting 2.3.1-SNAPSHOT`; the Rust side injects the same literal, `JAR_VERSION` in
+`tests/common/mod.rs`, so a transcript cut with a different version needs that literal updated
+alongside it.
 
 `three_fixtures_match_the_jvm_byte_for_byte` (`tests/report.rs`) compares the dev board, BBD
 Mars-64 and the empty board byte for byte. **Natural Tone Preamp cannot be one of them**: its
@@ -390,8 +390,8 @@ $J/java -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
 ```
 
 Regenerating the goldens changes their `date`, which is fine — the test reads it back out. A
-rebuilt jar with a new `Constants.FREEROUTING_VERSION` also needs `JAR_VERSION` in
-`tests/report_json.rs` updated, exactly as `tests/report.rs` does.
+golden cut with a different version string also needs `JAR_VERSION` in `tests/common/mod.rs`
+updated.
 
 ## Recorded command for `ReportProbe`
 

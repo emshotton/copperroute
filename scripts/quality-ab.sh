@@ -46,10 +46,10 @@
 # * **The quality lane** runs with `RouterBudget::disabled()` — ruling AI, which survives the
 #   Plan 9 switch: *time is out of every quality measurement*, because a live wall-clock budget
 #   makes the routed board depend on how fast the machine is, and an A/B between two tasks would
-#   then be comparing two machine loads. The CLI reads `FR_ROUTER_BUDGET=disabled` at exactly one
-#   site (`crates/freerouting/src/commands/route.rs::run_budget`), and that variable is a **test
-#   harness seam**, not a user surface — it is not a setting, it cannot be merged, and it does not
-#   appear in a manifest's `settings_snapshot`.
+#   then be comparing two machine loads. The lane passes the two clock settings explicitly
+#   (`QUALITY_LANE_ARGS` below): `router.opt_changed_area_ms=0` and
+#   `router.fanout.max_milliseconds_per_pin=2147483647`, both of which appear in the manifest's
+#   `settings_snapshot`.
 #
 #   **Task 1's #234 makes half of this seam redundant, and only half** (ruling BR). Since
 #   `opt_changed_area_ms` defaults to `0`, an unset run and a `disabled` run already agree about
@@ -227,12 +227,12 @@
 #  3. **The quality lane's budget is disabled.** §3.1's contention hazard — `fanout_ms_per_pin`
 #     being a *wall-clock* per-pin budget, so N concurrent routes lengthen each other's fanout and
 #     a board that trips the limit under load routes differently — **cannot fire on a lane whose
-#     budget is `disabled`** (`i32::MAX` per pin). This lane sets `FR_ROUTER_BUDGET=disabled`
-#     already, for ruling AI's reasons, and W17 rides on that.
+#     budget is `disabled`** (`i32::MAX` per pin). This lane passes
+#     `router.fanout.max_milliseconds_per_pin=2147483647` already, and W17 rides on that.
 #
 # Leg 3 is load-bearing, so the survey asks for it as **an assertion and not a comment**, and
-# `QUALITY_LANE_BUDGET` below is it: it is the value the quality route is actually launched with,
-# and `--jobs > 1` refuses to run unless it reads `disabled`. Anyone who later makes this lane run
+# `QUALITY_LANE_ARGS` below is it: it is what the quality route is actually launched with, and
+# `--jobs > 1` refuses to run unless it carries the fanout override. Anyone who later makes this lane run
 # a live budget gets a refusal at the top of the script rather than a board that routes differently
 # on a loaded machine. **The generators (`gen-*-reference.sh`) do not have this protection** and
 # are survey item 3's separate problem — they run the *default* budget on purpose.
@@ -298,11 +298,11 @@ CPU_CORPUS_ESCALATE="1.20"
 # 7 significant digits and well below any score change a routing fix produces.
 SCORE_NOISE="0.00001"
 
-# The quality lane's budget, as a value rather than as a literal at the call site: the `--jobs`
-# preflight below asserts on it (header §7, leg 3). `disabled` is ruling AI; nothing but Task 24
-# may change it, and changing it to anything else makes `--jobs > 1` refuse rather than silently
-# measure a board that routed differently because the machine was busy.
-QUALITY_LANE_BUDGET="disabled"
+# The quality lane's clocks, off: the pull-tight budget at 0 and the fanout per-pin budget at
+# i32::MAX. The `--jobs` preflight below asserts on the second (header §7, leg 3): removing it
+# makes `--jobs > 1` refuse rather than silently measure a board that routed differently because
+# the machine was busy.
+QUALITY_LANE_ARGS=(--set router.opt_changed_area_ms=0 --set router.fanout.max_milliseconds_per_pin=2147483647)
 
 # `min(4, cores / 2)`, floor 1 — header §7. `nproc` is coreutils and is not on a stock macOS;
 # `sysctl -n hw.ncpu` is, and `getconf` is the last resort.
@@ -364,9 +364,9 @@ fi
 # Header §7, leg 3, as an assertion rather than a comment (survey §4.1's own instruction). The
 # quality lane is parallelisable *because* its budget is disabled; a live `fanout_ms_per_pin` is a
 # wall-clock per-pin budget and N concurrent routes would change each other's boards.
-if [[ "$JOBS" -gt 1 && "$QUALITY_LANE_BUDGET" != "disabled" ]]; then
-  echo "error: --jobs $JOBS asks for a parallel quality lane, but that lane's budget is" >&2
-  echo "       '$QUALITY_LANE_BUDGET' and not 'disabled'. A live fanout_ms_per_pin is a" >&2
+if [[ "$JOBS" -gt 1 && " ${QUALITY_LANE_ARGS[*]} " != *" router.fanout.max_milliseconds_per_pin=2147483647 "* ]]; then
+  echo "error: --jobs $JOBS asks for a parallel quality lane, but that lane's fanout budget is" >&2
+  echo "       live ('${QUALITY_LANE_ARGS[*]}'). A live fanout_ms_per_pin is a" >&2
   echo "       wall-clock per-pin budget: concurrent routes lengthen each other's fanout and a" >&2
   echo "       board that trips the limit under load routes differently from one that did not" >&2
   echo "       (survey §3.1). Run with --jobs 1, or restore the disabled budget." >&2
@@ -477,8 +477,8 @@ echo "== building the port's binary (release)"
 # generators compute the same pair, and for the same reason: `port-sha` is the one provenance line
 # the measurement spine has, and a bare HEAD sha on a dirty tree names a commit that does not
 # contain the code that was measured. (Task 0's own first run is the standing example: it recorded
-# the base sha, which does not carry `run_budget()` — at that sha `FR_ROUTER_BUDGET=disabled`
-# is ignored and the quality lane would have run with the clock live.)
+# the base sha, at which the quality lane's clock overrides were not yet honoured, so the lane
+# would have run with the clock live.)
 PORT_SHA="$(cd "$ROOT" && git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
 if ! (cd "$ROOT" && git diff --quiet HEAD -- crates 2>/dev/null); then
   PORT_SHA="$PORT_SHA +uncommitted-changes-under-crates"
@@ -513,20 +513,19 @@ STEMS="$SCRATCH/stems.tsv"
 while IFS='|' read -r stem dsn _max_items _ripup max_passes fanout optimizer || [[ -n "$stem" ]]; do
   [[ -z "$stem" || "$stem" == \#* ]] && continue
   [[ -n "$max_passes" && "$max_passes" != "-" ]] || continue
-  printf 'batch|%s|%s|%s|-mp %s --router.fanout.enabled=%s --router.optimizer.enabled=%s\n' \
+  printf 'batch|%s|%s|%s|--max-passes %s --set router.fanout.enabled=%s --set router.optimizer.enabled=%s\n' \
       "$stem" "$dsn" "$max_passes" "$max_passes" "$(bool_of "$fanout")" "$(bool_of "$optimizer")" \
       >> "$STEMS"
 done < "$REF/router-fixtures.txt"
 
-# 13 CLI stems: `cli-fixtures.txt`, argv verbatim. `-` is a bare run — no `-mp`, which is
-# `DefaultSettings.java:99`'s `maxPasses = 9999`, and the `mp_cap` column says `default` rather
-# than inventing a number.
+# 13 CLI stems: `cli-fixtures.txt`, argv verbatim. `-` is a bare run — no `--max-passes`, so the
+# `mp_cap` column says `default` rather than inventing a number.
 while IFS='|' read -r stem dsn extra _lane || [[ -n "$stem" ]]; do
   [[ -z "$stem" || "$stem" == \#* ]] && continue
   local_extra="$extra"
   [[ "$local_extra" == "-" ]] && local_extra=""
   cap="default"
-  if [[ "$local_extra" =~ -mp\ ([0-9]+) ]]; then cap="${BASH_REMATCH[1]}"; fi
+  if [[ "$local_extra" =~ --max-passes\ ([0-9]+) ]]; then cap="${BASH_REMATCH[1]}"; fi
   printf 'cli|%s|%s|%s|%s\n' "$stem" "$dsn" "$cap" "$local_extra" >> "$STEMS"
 done < "$REF/cli-fixtures.txt"
 
@@ -564,15 +563,31 @@ fi
 run_timed() {
   local log="$1"
   shift
-  local t rc=0
+  # `--drc-report <path>`: `drc` exits 1 when the report it wrote carries violations, so for that
+  # family a written, well-formed report is a completed check and only any other exit is a failure.
+  local report=""
+  if [[ "${1:-}" == "--drc-report" ]]; then
+    report="$2"
+    shift 2
+    rm -f "$report"
+  fi
+  local t
   # The command's own output is redirected **inside** the braces, so what the substitution
-  # captures is the timing line and nothing else. `rc` is carried out through a marker line
-  # rather than lost to `|| true`: a repeat that failed or was killed by `timeout(1)` still burned
-  # CPU, and folding that number into the median would quietly report a hung stem as a fast one.
+  # captures is the timing line and nothing else. The exit code is carried out through a marker
+  # line rather than lost to `|| true`: a repeat that failed or was killed by `timeout(1)` still
+  # burned CPU, and folding that number into the median would quietly report a hung stem as a
+  # fast one.
   t="$( { TIMEFORMAT='%3U %3S'; time { "${TIMEOUT[@]}" "$@" > "$log" 2>&1 < /dev/null || echo "RC=$?"; } ; } 2>&1 )"
   if grep -q '^RC=' <<< "$t"; then
-    printf 'FAILED'
-    return 0
+    local completed_drc=0
+    if [[ -n "$report" && -s "$report" ]] && grep -qx 'RC=1' <<< "$t" \
+        && [[ "$(head -c 1 "$report")" == "{" ]]; then
+      completed_drc=1
+    fi
+    if [[ "$completed_drc" -eq 0 ]]; then
+      printf 'FAILED'
+      return 0
+    fi
   fi
   awk '{ printf "%.3f", $1 + $2 }' <<< "$(tail -1 <<< "$t")"
 }
@@ -582,7 +597,7 @@ run_referee() {
   local report="$1"; shift
   local log="$1"; shift
   rm -f "$report"
-  "${TIMEOUT[@]}" "$PORT_BIN" "$@" -drc "$report" > "$log" 2>&1 < /dev/null || true
+  "${TIMEOUT[@]}" "$PORT_BIN" "$@" -o "$report" > "$log" 2>&1 < /dev/null || true
   [[ -s "$report" ]]
 }
 
@@ -707,12 +722,12 @@ mkdir -p "$PARTS"
 # and it is a pure function of the fixture row, so it is rebuilt rather than passed between them.
 referee_argv_for() {
   local family="$1" stem="$2" board="$3" rules="$4" sesfile="$5"
-  REFEREE_ARGV=(-de "$JAVA_DIR/$board")
+  REFEREE_ARGV=(drc "$JAVA_DIR/$board")
   if [[ "$family" == drc ]]; then
-    [[ -n "$sesfile" ]] && REFEREE_ARGV+=("$JAVA_DIR/$sesfile")
-    [[ -n "$rules" ]] && REFEREE_ARGV+=(-dr "$JAVA_DIR/$rules")
+    [[ -n "$sesfile" ]] && REFEREE_ARGV+=(--ses "$JAVA_DIR/$sesfile")
+    [[ -n "$rules" ]] && REFEREE_ARGV+=(--rules "$JAVA_DIR/$rules")
   else
-    REFEREE_ARGV+=("$SCRATCH/$family-$stem.ses")
+    REFEREE_ARGV+=(--ses "$SCRATCH/$family-$stem.ses")
   fi
   # Explicit, and load-bearing under `set -e`: the DRC branch's last statement is a `[[ … ]] && …`
   # that is legitimately false whenever a fixture's `rules` column is empty (`drc-issue593-ses`),
@@ -744,9 +759,9 @@ quality_phase() {
   if [[ "$family" != drc ]]; then
     # shellcheck disable=SC2206  -- the fixture's extra_args is a space-separated argv fragment
     local extra=($extra_args)
-    local -a route_argv=(-de "$JAVA_DIR/$board" -do "$ses" ${extra+"${extra[@]}"}
-                         "--router.result_json=$manifest")
-    if ! FR_ROUTER_BUDGET="$QUALITY_LANE_BUDGET" "${TIMEOUT[@]}" "$PORT_BIN" "${route_argv[@]}" \
+    local -a route_argv=(route "$JAVA_DIR/$board" -o "$ses" "${QUALITY_LANE_ARGS[@]}"
+                         ${extra+"${extra[@]}"} --result-json "$manifest")
+    if ! "${TIMEOUT[@]}" "$PORT_BIN" "${route_argv[@]}" \
         > "$qlog" 2>&1 < /dev/null || [[ ! -s "$ses" ]]; then
       echo "   FAILED: the quality run wrote no SES; see $qlog" >> "$msg"
       return 0
@@ -819,13 +834,14 @@ timing_phase() {
   local times=() i
   for ((i = 0; i < REPEATS; i++)); do
     if [[ "$family" == drc ]]; then
-      times+=("$(run_timed "$SCRATCH/$family-$stem.t$i.log" "$PORT_BIN" "${REFEREE_ARGV[@]}" \
-          -drc "$SCRATCH/$family-$stem.t$i.json")")
+      times+=("$(run_timed "$SCRATCH/$family-$stem.t$i.log" \
+          --drc-report "$SCRATCH/$family-$stem.t$i.json" \
+          "$PORT_BIN" "${REFEREE_ARGV[@]}" -o "$SCRATCH/$family-$stem.t$i.json")")
     else
       # shellcheck disable=SC2206
       local time_extra=($extra_args)
       times+=("$(run_timed "$SCRATCH/$family-$stem.t$i.log" "$PORT_BIN" \
-          -de "$JAVA_DIR/$board" -do "$SCRATCH/$family-$stem.t$i.ses" \
+          route "$JAVA_DIR/$board" -o "$SCRATCH/$family-$stem.t$i.ses" \
           ${time_extra+"${time_extra[@]}"})")
     fi
   done
@@ -1188,7 +1204,7 @@ with open(out_path, "w", encoding="utf-8") as fh:
              f"{'' if os.path.exists(times_path) else '  [absent — this run seeds it]'}\n")
     fh.write(f"# corpus-median-cpu-ratio: {corpus_note or '(no time baseline)'}\n")
     fh.write("# source-of-incomplete-and-violations: the referee's DRC document"
-             " (`-de <board> <ses> -drc <report>`), NEVER the manifest (survey §4.1)\n")
+             " (`drc <board> --ses <ses> -o <report>`), NEVER the manifest (survey §4.1)\n")
     fh.write("# forbidden-inputs: traces.total_{vertical,horizontal,angled}_length (#195),"
              " board.bounding_box.width/height (#196)\n")
     fh.write("# quality-lane-budget: RouterBudget::disabled() (ruling AI);"

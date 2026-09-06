@@ -628,46 +628,19 @@ pub fn normalize_ses_head_tokens(s: &str) -> String {
 }
 
 // =================================================================================================
-// The CLI end-to-end harness (Plan 8 Task 6, ruling 13)
+// The CLI end-to-end harness
 // =================================================================================================
 //
-// `tests/reference/cli-<stem>/` is the **bare HEAD jar**'s answer to one whole command line —
-// `argv.txt`, `route.ses`, `route.exit`, `route.log`, `manifest.json`, `meta.txt` — written by
-// `scripts/gen-cli-reference.sh`. The four helpers below are what compare a run against it:
-// [`run_jar`] and [`run_port`] start the two programs, and [`normalize_log`] and
-// [`normalize_manifest`] reduce their two non-deterministic outputs to what a comparison can
-// legitimately assert on. **Neither runner normalises anything**, so a caller that wants the raw
-// bytes — `p8t1`'s SES rung does — has them.
+// `tests/reference/cli-<stem>/` holds one whole command line's answer — `argv.txt`, `route.ses`,
+// `route.exit`, `manifest.json`, `meta.txt` — cut from the binary itself under `FR_REGOLDEN`.
+// [`run_port`] starts the binary and [`normalize_manifest`] reduces the one non-deterministic
+// output to what a comparison can assert on. The runner normalises nothing.
 
-/// The HEAD jar `run_jar` starts: `$FREEROUTING_JAR`, else the clone's own build output.
-#[must_use]
-pub fn jar_path() -> PathBuf {
-    std::env::var_os("FREEROUTING_JAR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            java_dir()
-                .join("build")
-                .join("libs")
-                .join("freerouting-current-executable.jar")
-        })
-}
-
-/// The `java` binary. JDK 25 is required — the jar's class files are version 69 — and the pinned
-/// Homebrew `opt` symlink is the harness-wide default (`scripts/differential/run.sh`'s
-/// `JAVA25_HOME`, `scripts/gen-batch-reference.sh`'s `JAVA_BIN`).
-#[must_use]
-pub fn java_binary() -> PathBuf {
-    std::env::var_os("JAVA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("/opt/homebrew/opt/openjdk@25/bin/java"))
-}
-
-/// The port's own binary: `$FREEROUTING_BIN`, else `target/release/freerouting`, else
+/// The binary: `$FREEROUTING_BIN`, else `target/release/freerouting`, else
 /// `target/debug/freerouting`.
 ///
 /// A test inside `crates/freerouting` should pass `env!("CARGO_BIN_EXE_freerouting")` instead —
-/// Cargo builds and names the binary for it. This search exists for callers outside that package
-/// (the `p8t1`/`p8t2` drivers, which live in their own workspace).
+/// Cargo builds and names the binary for it. This search exists for callers outside that package.
 #[must_use]
 pub fn port_binary() -> PathBuf {
     if let Some(path) = std::env::var_os("FREEROUTING_BIN") {
@@ -681,59 +654,6 @@ pub fn port_binary() -> PathBuf {
     target.join("debug").join("freerouting")
 }
 
-/// The JVM flags every reference and every parity run uses — `scripts/gen-cli-reference.sh`'s
-/// `LOCALE_FLAGS` plus the constant-hash mode.
-///
-/// The locale pair is load-bearing rather than hygiene: every `%.4f` in a DRC violation
-/// description goes through `String.formatted`, which uses the default FORMAT locale, so a German
-/// JVM writes `0,0500 mm` (plan-5 ruling 6). `-XX:hashCode=2` is plan-5 ruling 3/4's constant
-/// mode, and `--verify-hash-modes` is what proves the SES does not depend on it.
-const JVM_FLAGS: [&str; 5] = [
-    "-Djava.awt.headless=true",
-    "-Duser.language=en",
-    "-Duser.country=US",
-    "-XX:+UnlockExperimentalVMOptions",
-    "-XX:hashCode=2",
-];
-
-/// Ruling 13's jar runner: `java <flags> -jar <jar> <argv>`, answering
-/// `(stdout, stderr, exit code)` **raw**.
-///
-/// An exit code of `-1` means the process was killed by a signal, which `ExitStatus::code`
-/// reports as `None`; no reference run has ever produced one, and a caller that sees it should
-/// stop rather than compare.
-///
-/// # Panics
-///
-/// If the JVM cannot be started at all — a missing jar or a missing `java` is a broken harness,
-/// not a parity difference.
-#[must_use]
-pub fn run_jar(argv: &[&str]) -> (Vec<u8>, Vec<u8>, i32) {
-    let jar = jar_path();
-    let mut command = std::process::Command::new(java_binary());
-    command
-        .args(JVM_FLAGS)
-        .arg("-jar")
-        .arg(&jar)
-        .args(argv)
-        .stdin(std::process::Stdio::null());
-    let output = command.output().unwrap_or_else(|e| {
-        panic!(
-            "cannot run {} -jar {}: {e}",
-            java_binary().display(),
-            jar.display()
-        )
-    });
-    (
-        output.stdout,
-        output.stderr,
-        output.status.code().unwrap_or(-1),
-    )
-}
-
-/// Ruling 13's port runner: `freerouting <argv>`, answering `(stdout, stderr, exit code)` **raw**.
-///
-/// # Panics
 ///
 /// If the binary cannot be started — see [`port_binary`].
 #[must_use]
@@ -768,7 +688,7 @@ pub struct CliStem {
     pub name: String,
     /// The DSN, relative to the Java checkout.
     pub dsn: String,
-    /// Everything after `-de <dsn> -do <out>`, already split; empty for a bare run.
+    /// Everything after `route <dsn> -o <out>`, already split; empty for a bare run.
     pub extra: Vec<String>,
     /// `true` for the `ci` lane, `false` for the `slow` one.
     pub ci: bool,
@@ -842,160 +762,6 @@ pub fn cli_argv(stem: &str, out_dir: &Path) -> Vec<String> {
 }
 
 // -------------------------------------------------------------------------------------------------
-// normalize_log
-// -------------------------------------------------------------------------------------------------
-
-/// The log projection both sides are compared through: **one `<LEVEL> <Java call site>` line per
-/// `FRLogger` message `freerouting::logging::MESSAGE_MAP` names, in order.**
-///
-/// # What is removed, and why each removal is not a tolerance
-///
-/// 1. **log4j2's timestamp.** The layout is
-///    `"%d{yyyy-MM-dd HH:mm:ss.SSS} %-6level %msg%n"` (`Log4j2ConfigurationFactory.java:29`).
-///    A wall-clock stamp can never match across two processes. The port emits none at all
-///    (`crate::logging`'s `.without_time()`), which is why this parser treats the prefix as
-///    optional rather than requiring it on both sides.
-/// 2. **Java's two console streams are merged** — quirk label AI / `docs/java-quirks.md` #261.
-///    `Log4j2ConfigurationFactory` builds a `Console` appender on `SYSTEM_OUT` (`:58`) *and* a
-///    second one on `SYSTEM_ERR` at `Level.ERROR` (`:88-96`), so every `ERROR` is written twice
-///    to the console (three times counting the file appender). The port writes everything once,
-///    to stderr. The merge is therefore: concatenate, then drop a repeated `ERROR` entry that has
-///    already been seen. Only `ERROR` is deduped, because only `ERROR` is duplicated.
-/// 3. **Everything the map does not name is dropped.** That is most of a successful run: the
-///    version banner, the headless screen-resolution warning, the update check, and every
-///    `job.logInfo` progress line the pipeline emits — board hashes, per-pass scores, CPU
-///    seconds, allocated gigabytes, elapsed durations and two ISO instants. Controller ruling AK
-///    replaced Java's listener mechanism with `ProgressSink` and ruling 11 records that nothing
-///    downstream reads it, so the port emits none of them; comparing them would be comparing a
-///    thing the port deliberately does not have. What is left is the CLI's own message set, which
-///    **is** a parity surface.
-/// 4. **The donation banner** (`Freerouting.java:164-183`, `docs/java-quirks.md` #266,
-///    quirk label H) — six box-drawing lines on **stdout**. It is un-suppressible in Java and the port
-///    does not print it (see `commands/route.rs`'s roster). Dropped here so a machine whose
-///    persisted `statistics.jobsCompleted` has passed 5 does not fail the comparison.
-/// 5. **The startup version line**, `Freerouting.java:1120`'s `FRLogger.info("Freerouting " +
-///    VERSION_NUMBER_STRING)` — `[`SUPPRESSED_SITES`]. It is in `MESSAGE_MAP` because it is a
-///    real `FRLogger` call the map's job is to enumerate, but it is **not** a message the port
-///    can emit: controller ruling AT forbids the port claiming to be the jar, so it would have to
-///    print its own version, which is a different string that no normaliser could match without
-///    erasing the comparison. Recorded as a divergence at `freerouting::run`'s
-///    `// not ported:` marker rather than smoothed away silently.
-/// 6. **The message arguments.** A mapped line renders as `<LEVEL> <site>` and its interpolated
-///    values are discarded, because they are absolute paths (which differ by scratch directory)
-///    and exception texts (`java.io.FileNotFoundException: … (No such file or directory)` against
-///    `No such file or directory (os error 2)`) that the two runtimes cannot spell the same way.
-///    The *identity* of the message is the site key, and that is what is compared. Java's
-///    following stack-trace lines are dropped with them.
-///
-/// Matching is by the map's literal segments in order: the line must begin with the template's
-/// first literal and contain the rest, in sequence, after it. `{}` marks where a runtime value
-/// lands (Java builds these with `+`), so the segments are the only fixed part.
-#[must_use]
-pub fn normalize_log(stdout: &[u8], stderr: &[u8]) -> String {
-    let mut combined = String::from_utf8_lossy(stdout).into_owned();
-    combined.push_str(&String::from_utf8_lossy(stderr));
-
-    let mut seen_errors: Vec<String> = Vec::new();
-    let mut out = String::new();
-    for line in combined.lines() {
-        let Some((level, message)) = split_log_line(line) else {
-            continue;
-        };
-        let Some(site) = message_site(message) else {
-            continue;
-        };
-        if SUPPRESSED_SITES.contains(&site) {
-            continue;
-        }
-        let entry = format!("{level} {site}");
-        if level == "ERROR" {
-            if seen_errors.contains(&entry) {
-                continue;
-            }
-            seen_errors.push(entry.clone());
-        }
-        out.push_str(&entry);
-        out.push('\n');
-    }
-    out
-}
-
-/// The `MESSAGE_MAP` sites `normalize_log` drops rather than compares, each with the reason it
-/// cannot be a parity surface.
-///
-/// | site | Java | why |
-/// |---|---|---|
-/// | `Freerouting.java:1120` | `FRLogger.info("Freerouting " + VERSION_NUMBER_STRING)` at startup | the port must not print the jar's version (controller ruling AT) and printing its own would be a different string |
-///
-/// Kept as a named constant so the list is one line to read and one line to grow, and so a site
-/// that is dropped can never be mistaken for a site the map never had.
-const SUPPRESSED_SITES: [&str; 1] = ["Freerouting.java:1120"];
-
-/// `(level, message)` for a console line of either program, or `None` for a line that is not one
-/// — a stack-trace frame, an exception header, a banner row, a blank line.
-fn split_log_line(line: &str) -> Option<(&str, &str)> {
-    // The optional log4j2 timestamp: `yyyy-MM-dd HH:mm:ss.SSS`, 23 characters, then whitespace.
-    let rest = match line.as_bytes() {
-        [y0, y1, y2, y3, b'-', m0, m1, b'-', d0, d1, b' ', ..]
-            if y0.is_ascii_digit()
-                && y1.is_ascii_digit()
-                && y2.is_ascii_digit()
-                && y3.is_ascii_digit()
-                && m0.is_ascii_digit()
-                && m1.is_ascii_digit()
-                && d0.is_ascii_digit()
-                && d1.is_ascii_digit() =>
-        {
-            line.get(23..)?
-        }
-        _ => line,
-    };
-    let rest = rest.trim_start();
-    // `%-6level` on the Java side, `tracing`'s right-aligned five on the port's; either way the
-    // level is the first whitespace-delimited token.
-    let (level, message) = rest.split_once(char::is_whitespace)?;
-    let level = match level {
-        "OFF" | "FATAL" | "ERROR" | "WARN" | "INFO" | "DEBUG" | "TRACE" => level,
-        _ => return None,
-    };
-    Some((level, message.trim_start()))
-}
-
-/// The `MESSAGE_MAP` key whose template `message` matches, or `None`.
-fn message_site(message: &str) -> Option<&'static str> {
-    freerouting::logging::MESSAGE_MAP
-        .iter()
-        .find(|(_, template)| template_matches(template, message))
-        .map(|(site, _)| *site)
-}
-
-/// Whether `template`'s literal segments occur in `message`, in order, with the first anchored at
-/// the start. `{}` is a runtime value of any length, including empty.
-fn template_matches(template: &str, message: &str) -> bool {
-    let mut rest = message;
-    let mut first = true;
-    for segment in template.split("{}") {
-        if segment.is_empty() {
-            first = false;
-            continue;
-        }
-        if first {
-            let Some(tail) = rest.strip_prefix(segment) else {
-                return false;
-            };
-            rest = tail;
-            first = false;
-        } else {
-            let Some(at) = rest.find(segment) else {
-                return false;
-            };
-            rest = &rest[at + segment.len()..];
-        }
-    }
-    true
-}
-
-// -------------------------------------------------------------------------------------------------
 // normalize_manifest
 // -------------------------------------------------------------------------------------------------
 
@@ -1050,6 +816,7 @@ pub fn normalize_manifest(json: &str) -> ManifestDoc {
             .expect("a manifest is a JSON object (RoutingResultManifest.java:21-171)");
         object.remove("generated_at");
         object.remove("git_sha");
+        object.remove("app_version");
         object.remove("resource_usage");
         if let Some(phases) = object.get_mut("phases").and_then(|p| p.as_object_mut()) {
             for (_, phase) in phases.iter_mut() {

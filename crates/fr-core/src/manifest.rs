@@ -6,7 +6,7 @@ use serde::{Serialize, Serializer};
 use fr_dsn::format::json::to_gson_string_pretty;
 use fr_router::score::BoardStatistics;
 
-use crate::PARITY_VERSION;
+use crate::SERVER_VERSION;
 use crate::job::{RoutingJob, java_path};
 use crate::stats_json::GsonBoardStatistics;
 
@@ -139,7 +139,7 @@ impl RoutingResultManifest {
     ) -> RoutingResultManifest {
         let mut manifest = RoutingResultManifest::default();
         manifest.generated_at = Some(now());
-        manifest.app_version = Some(PARITY_VERSION.to_string());
+        manifest.app_version = Some(SERVER_VERSION.to_string());
         manifest.git_sha = Some(resolve_git_sha());
         let mut fixture = FixtureInfo::default();
         if let Some(path) = input_file_path {
