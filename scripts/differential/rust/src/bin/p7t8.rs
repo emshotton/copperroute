@@ -39,8 +39,8 @@ use std::io::{BufWriter, Write};
 
 use fr_board::prelude::*;
 use fr_board::StopConnectionOption;
-use fr_dsn::{java_double_to_string, java_float_to_string};
-use fr_geometry::{java_round, FloatPoint};
+use fr_dsn::{format_double, format_float};
+use fr_geometry::FloatPoint;
 use fr_router::pipeline::{
     AutorouteBatchLoop, BatchOptimizer, NoopProgressSink, ReadSortedRouteItems, RouterBudget,
     RouterStop,
@@ -264,8 +264,8 @@ fn pos(p: Option<FloatPoint>) -> String {
         None => "null".to_string(),
         Some(p) => format!(
             "({},{})",
-            java_double_to_string(p.x),
-            java_double_to_string(p.y)
+            format_double(p.x),
+            format_double(p.y)
         ),
     }
 }
@@ -297,7 +297,7 @@ fn dump_items<W: Write>(
         out,
         "SEED useIncreasedRipupCosts={} minCumulativeTraceLength={}",
         optimizer.use_increased_ripup_costs,
-        java_double_to_string(optimizer.min_cumulative_trace_length)
+        format_double(optimizer.min_cumulative_trace_length)
     )
     .expect("write");
 
@@ -349,13 +349,12 @@ fn dump_items<W: Write>(
             );
         }
         if item_is_trace {
-            ripup_costs = java_round(
-                f64::from(
-                    optimizer_settings
-                        .trace_ripup_cost_factor
-                        .expect("a default value"),
-                ) * f64::from(ripup_costs),
-            ) as i32;
+            ripup_costs = (f64::from(
+                optimizer_settings
+                    .trace_ripup_cost_factor
+                    .expect("a default value"),
+            ) * f64::from(ripup_costs))
+            .round() as i32;
         }
         let max_autoroute_passes = optimizer_settings.max_autoroute_passes;
 
@@ -405,13 +404,13 @@ fn dump_items<W: Write>(
             result.item_id().0,
             result.improved(),
             result.via_count(),
-            java_double_to_string(result.trace_length()),
+            format_double(result.trace_length()),
             result.incomplete_count_before(),
             result.incomplete_count(),
             result.via_count_reduced(),
-            java_double_to_string(result.length_reduced()),
-            java_float_to_string(result.improvement_percentage()),
-            java_double_to_string(optimizer.min_cumulative_trace_length),
+            format_double(result.length_reduced()),
+            format_float(result.improvement_percentage()),
+            format_double(optimizer.min_cumulative_trace_length),
         )
         .expect("write");
         writeln!(

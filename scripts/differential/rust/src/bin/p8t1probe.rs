@@ -245,8 +245,8 @@ fn sniff_table() {
         };
         let hangs = content
             .as_deref()
-            .is_some_and(FileFormat::java_shift_loop_hangs);
-        let format = FileFormat::sniff_bytes_opt(content.as_deref()).java_name();
+            .is_some_and(FileFormat::shift_loop_would_hang);
+        let format = FileFormat::sniff_bytes_opt(content.as_deref()).name();
         let answer = if hangs {
             format!("XDIFF\t{JAVA_HANG_MARKER}\trust={format}")
         } else {
@@ -261,7 +261,7 @@ fn sniff_table() {
 
 fn ext_table() {
     for (i, raw) in EXT_INPUTS.iter().enumerate() {
-        let answer = FileFormat::from_path(Path::new(raw)).java_name();
+        let answer = FileFormat::from_path(Path::new(raw)).name();
         println!("EXT\t{i}\t{}\t{answer}", quote(raw));
     }
 }
@@ -311,7 +311,7 @@ fn setfn_table(ctx: &Ctx) {
         let arg = if *raw == "<null>" { None } else { Some(*raw) };
         let mut d = BoardFileDetails::default();
         if *preset != "-" {
-            d.format = FileFormat::from_java_name(preset).unwrap();
+            d.format = FileFormat::from_name(preset).unwrap();
         }
         // `setFilename("/")` is Java's NPE (neither a parent nor a file name); the port totalises
         // both nulls to "" and every derived value comes out empty.
@@ -321,7 +321,7 @@ fn setfn_table(ctx: &Ctx) {
             "dir={}\tname={}\tformat={}\tabs={}\tstem={}",
             quote(&norm(ctx, d.get_directory_path())),
             quote(&norm(ctx, d.get_filename())),
-            d.format.java_name(),
+            d.format.name(),
             quote(&norm(ctx, &d.get_absolute_path())),
             quote(&norm(ctx, &d.get_filename_without_extension())),
         );
@@ -370,7 +370,7 @@ fn tsi_table() {
         println!(
             "TSI\t{i}\t{}\tok={ok}\tformat={}\tsize={}\tcrc32={}",
             content.as_ref().map_or("<null>".to_string(), |c| hex(c)),
-            input.format.java_name(),
+            input.format.name(),
             input.size,
             input.crc32
         );
@@ -393,7 +393,7 @@ fn tsof_table(ctx: &Ctx) {
             None => "output=<null>".to_string(),
             Some(o) => format!(
                 "format={}\tdir={}\tname={}\tsize={}\tcrc32={}",
-                o.format.java_name(),
+                o.format.name(),
                 quote(&norm(ctx, o.get_directory_path())),
                 quote(&norm(ctx, o.get_filename())),
                 o.size,
@@ -426,14 +426,14 @@ fn sif_table(ctx: &Ctx) {
                     None => "out=<null>".to_string(),
                     Some(o) => format!(
                         "out.format={}\tout.dir={}\tout.name={}",
-                        o.format.java_name(),
+                        o.format.name(),
                         quote(&norm(ctx, o.get_directory_path())),
                         quote(&norm(ctx, o.get_filename()))
                     ),
                 };
                 format!(
                     "in.format={}\tin.dir={}\tin.name={}\tin.size={}\tin.crc32={}\t{out}\tjob.name={}",
-                    input.format.java_name(),
+                    input.format.name(),
                     quote(&norm(ctx, input.get_directory_path())),
                     quote(&norm(ctx, input.get_filename())),
                     input.size,

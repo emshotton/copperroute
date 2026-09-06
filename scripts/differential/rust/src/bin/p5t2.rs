@@ -14,7 +14,7 @@ use fr_board::ids::ItemId;
 use fr_board::items::{Item, ItemKind};
 use fr_drc::unconnected::UnconnectedKind;
 use fr_drc::DesignRulesChecker;
-use fr_dsn::format::double::java_double_to_string;
+use fr_dsn::format::double::format_double;
 
 #[path = "../drc_common.rs"]
 mod drc_common;
@@ -76,8 +76,8 @@ fn clearance_violations<W: Write>(out: &mut W, board: &mut Board) {
             violation.first_item.0,
             violation.second_item.map_or(0, |id| id.0),
             violation.layer.map_or(-1, |layer| layer as i64),
-            java_double_to_string(violation.expected),
-            java_double_to_string(violation.actual),
+            format_double(violation.expected),
+            format_double(violation.actual),
         )
         .expect("write");
     }
@@ -133,7 +133,7 @@ fn ratsnest<W: Write>(out: &mut W, board: &mut Board, directional: bool) {
             "NET {net_number} {} {} {}",
             net_incompletes.count(),
             net_incompletes.get_connected_group_count(),
-            java_double_to_string(net_incompletes.get_length_violation()),
+            format_double(net_incompletes.get_length_violation()),
         )
         .expect("write");
     }

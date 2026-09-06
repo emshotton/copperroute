@@ -21,7 +21,7 @@ fn main() {
 
     for input in INPUTS {
         let conv = fr_core::convert_from_timespan_to_duration_format(input);
-        let value = fr_core::parse_timespan_seconds(input);
+        let value = fr_core::parse_timespan_seconds_java(input);
         let parsed = value.map_or_else(|| "null".to_string(), |v| v.to_string());
 
         // RoutingJobSchedulerActionThread.java:45-51.

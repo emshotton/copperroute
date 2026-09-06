@@ -14,7 +14,7 @@
 
 use fr_board::ids::TreeObject;
 use fr_board::prelude::*;
-use fr_dsn::format::java_double_to_string;
+use fr_dsn::format::format_double;
 use fr_geometry::{
     Area, IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, PolylineShapeRef, Shape,
     TileShape,
@@ -820,7 +820,7 @@ fn comparator_probe(rng: &mut Rng, case_count: i32, stress: bool) {
             "probe c={c} room={} n={count} stress={stress}",
             shp(&room_shape)
         );
-        let mut set = fr_router::JavaTreeSet::new();
+        let mut set = std::collections::BTreeSet::new();
         for i in 0..count {
             let side = if stress { fixed_side } else { rng.rnd(4) };
             let span = 20 + rng.rnd(400);
@@ -886,7 +886,7 @@ fn comparator_probe(rng: &mut Rng, case_count: i32, stress: bool) {
                 room_shape.clone(),
             );
             let description = describe_neighbour(&neighbour, &rooms);
-            let added = set.add(neighbour);
+            let added = set.insert(neighbour);
             println!(
                 "    add[{i}] added={added} size={} {description}",
                 set.len()
@@ -907,7 +907,7 @@ fn corner_touch_probe(rng: &mut Rng, case_count: i32) {
         let room_shape = TileShape::Box(room_box);
         let count = 3 + rng.rnd(3);
         println!("corner c={c} room={} n={count}", shp(&room_shape));
-        let mut set = fr_router::JavaTreeSet::new();
+        let mut set = std::collections::BTreeSet::new();
         for i in 0..count {
             let neighbour_box = rng.box_(3000, 100, 1500);
             let neighbour_shape = TileShape::Box(neighbour_box);
@@ -928,7 +928,7 @@ fn corner_touch_probe(rng: &mut Rng, case_count: i32) {
                 room_shape.clone(),
             );
             let description = describe_neighbour(&neighbour, &rooms);
-            let added = set.add(neighbour);
+            let added = set.insert(neighbour);
             println!(
                 "    add[{i}] added={added} size={} {description}",
                 set.len()
@@ -1004,8 +1004,8 @@ fn pt(p: &Point) -> String {
     let f = p.to_float();
     format!(
         "({},{})",
-        java_double_to_string(f.x),
-        java_double_to_string(f.y)
+        format_double(f.x),
+        format_double(f.y)
     )
 }
 
@@ -1018,9 +1018,9 @@ fn corners(shape: Option<&TileShape>) -> String {
         if i > 0 {
             out.push(';');
         }
-        out.push_str(&java_double_to_string(corner.x));
+        out.push_str(&format_double(corner.x));
         out.push(',');
-        out.push_str(&java_double_to_string(corner.y));
+        out.push_str(&format_double(corner.y));
     }
     out.push(')');
     out
