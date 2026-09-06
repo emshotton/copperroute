@@ -35,9 +35,9 @@ made will find it in `fr-router`, even though the call came through here.
 
 | Module | What it holds |
 |---|---|
-| `ctx.rs` | `Ctx { settings, cancel, progress, budget }` and `RoutingResult { stats, unrouted_report, drc_violations, timed_out, pipeline }` |
+| `ctx.rs` | `Ctx { settings, cancel, progress, budget }` and `RoutingResult { stats, unrouted_report, drc_violations, timed_out, stop_reason, pipeline }` |
 | `pipeline.rs` | `RoutingPipeline::run(&mut Board, &Ctx) -> Result<RoutingResult, Error>` |
-| `cancel.rs` | `CancelToken` and `Deadline` |
+| `cancel.rs` | `CancelToken`, `Deadline` and `JobStopReason { Deadline, Cancelled }` |
 | `progress.rs` | `SyncProgressSink`, a `ProgressSink` that can be read from another thread, and its `SyncProgressSinkView` |
 | `job.rs`, `file_details.rs` | `RoutingJob`, `BoardFileDetails`, `FileFormat`, `RoutingJobState`, `RoutingStage`, `JobId`/`SessionId` (`Uuid128`) |
 | `load.rs` | `load_from_specctra_dsn`, `load_from_kicad_json`, `parse_board_result`, `apply_router_settings_for_loaded_board`, `load_board_if_needed` |
@@ -78,21 +78,28 @@ between passes is not a cancellation an operator can use.
 
 ## The job deadline
 
-`Deadline` has two instants, not one: `stop_at`, when the token flips to
-`ALL`, and `timed_out_at`, thirty seconds later, when the job is reported as
-timed out. The ladder that builds it from `--timeout` / `router.job_timeout`
-is: parse; clamp **from above only** at `MAX_TIMEOUT_SECONDS` (24 h);
-`started_at + timeout`. There is **no lower clamp**, so a negative timeout is
-a deadline in the past.
+`Deadline` has one instant, `stop_at`: when routing must stop. The ladder
+that builds it from `--timeout` / `router.job_timeout` is: parse; clamp
+**from above only** at `MAX_TIMEOUT_SECONDS` (24 h); `started_at + timeout`.
+There is **no lower clamp**, so a negative timeout is a deadline in the past.
+`CancelToken::with_deadline` carries it into the run, and the router polls it
+at the same sites it polls cancellation.
 
-`Deadline::is_timed_out_at` and `RouterStop::is_timed_out` are two flags for
-two questions. The first is the **job's** deadline; the second is a
-**stage's** budget (the tightener's, the fanout per-pin clock, the
-optimizer's own deadline), which rises the moment the stage observes
-expiry. What the CLI reports is the job flag alone: `commands::route` reads
-`Deadline`, never `PipelineResult::timed_out`, which folds the stage budgets
-together. `crates/freerouting/tests/cli_e2e.rs::a_stage_timeout_is_not_a_job_timeout`
-is the test that keeps them apart.
+`RoutingPipeline::run` records **why** a run stopped as
+`RoutingResult::stop_reason`: `Some(JobStopReason::Deadline)` when the job
+deadline expired, `Some(JobStopReason::Cancelled)` when the token was
+cancelled, `None` for a run that finished on its own.
+`RoutingResult::timed_out` is `stop_reason == Some(Deadline)`. The CLI and the
+MCP tools map that reason straight onto the job state (`TIMED_OUT`,
+`CANCELLED`, `COMPLETED`), so a cooperatively stopped job reports
+`TIMED_OUT` as soon as it returns its partial board.
+
+The job deadline is not the same flag as a stage's budget. The tightener's
+time limit, the fanout per-pin clock and the optimizer's own deadline are
+`RouterBudget` knobs that end their stage and surface as
+`PipelineResult::timed_out`; they never set the job's stop reason.
+`crates/freerouting/tests/cli_e2e.rs::final_state_distinguishes_stage_limits_from_job_deadlines`
+is the test that keeps the two apart.
 
 ## `Ctx` has no rng seed and no `max_threads`
 

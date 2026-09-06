@@ -30,8 +30,12 @@ and its project, for the KiCad-JSON path), `--max-passes`, `--timeout`
 (seconds), `--result-json <file>` (the result manifest), the optimizer knobs
 (`--optimizer-improvement-threshold`, `--update-strategy`, `--hybrid-ratio`,
 `--item-selection`), `--ignore-net-classes`, `--threads` (parsed, and read by
-nothing — the router is single-threaded), and the generic override
-`--set <section>.<field>=<value>`, repeatable. `drc` takes `--ses`,
+nothing — the router is single-threaded), the generic override
+`--set <section>.<field>=<value>`, repeatable, and the maze visualizer:
+`--visualize <dir>` writes one SVG frame per sampled routing step into an
+absent or empty directory, with `--visualize-every N`,
+`--visualize-max-frames N`, `--visualize-width` and `--visualize-height`
+bounding what it writes (`docs/routing-visualizer.md`). `drc` takes `--ses`,
 `--rules`, `--kicad-json`, `--kicad-project`, `-o` and
 `--schema <kicad|freerouting>`.
 

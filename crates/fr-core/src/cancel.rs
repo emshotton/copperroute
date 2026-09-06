@@ -4,34 +4,27 @@ use std::time::{Duration, Instant};
 
 use fr_router::pipeline::RouterStop;
 
-use crate::timespan::GRACE_PERIOD_SECONDS;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Deadline {
     pub stop_at: Instant,
-    pub timed_out_at: Instant,
 }
 
 impl Deadline {
     pub fn from_base(base: Instant, seconds: i64) -> Deadline {
-        let stop_at = offset(base, seconds);
         Deadline {
-            stop_at,
-            timed_out_at: offset(stop_at, GRACE_PERIOD_SECONDS),
+            stop_at: offset(base, seconds),
         }
     }
 
     pub fn in_seconds(seconds: i64) -> Deadline {
         Deadline::from_base(Instant::now(), seconds)
     }
+}
 
-    pub fn is_stop_due_at(&self, now: Instant) -> bool {
-        now >= self.stop_at
-    }
-
-    pub fn is_timed_out_at(&self, now: Instant) -> bool {
-        now >= self.timed_out_at
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JobStopReason {
+    Deadline,
+    Cancelled,
 }
 
 fn offset(base: Instant, seconds: i64) -> Instant {
@@ -57,9 +50,10 @@ impl CancelToken {
     }
 
     pub fn with_timeout(total: Duration) -> CancelToken {
-        CancelToken::with_deadline(Deadline::in_seconds(
-            total.as_secs().min(i64::MAX as u64) as i64
-        ))
+        let now = Instant::now();
+        CancelToken::with_deadline(Deadline {
+            stop_at: now.checked_add(total).unwrap_or(now),
+        })
     }
 
     pub fn with_deadline(deadline: Deadline) -> CancelToken {
@@ -95,11 +89,6 @@ impl CancelToken {
 
     pub fn is_auto_router_cancelled(&self) -> bool {
         self.cancel_auto_router.load(Ordering::SeqCst)
-    }
-
-    pub fn is_timed_out(&self) -> bool {
-        self.deadline
-            .is_some_and(|d| d.is_timed_out_at(Instant::now()))
     }
 
     pub fn apply_to(&self, stop: &RouterStop) {
@@ -138,19 +127,26 @@ mod tests {
     use fr_router::pipeline::StopRequestState;
 
     #[test]
+    fn search_poll_observes_new_cancellation() {
+        let token = CancelToken::new();
+        let stop = token.as_router_stop();
+        token.cancel();
+        assert!(stop.is_stopped_or_expired());
+    }
+
+    #[test]
+    fn timeout_preserves_fractional_seconds() {
+        let before = Instant::now();
+        let token = CancelToken::with_timeout(Duration::from_millis(900));
+        assert!(token.deadline().unwrap().stop_at >= before + Duration::from_millis(900));
+    }
+
+    #[test]
     fn a_fresh_token_is_a_fresh_router_stop() {
         let token = CancelToken::new();
         let stop = token.as_router_stop();
         assert_eq!(stop.state(), StopRequestState::None);
         assert!(!stop.is_timed_out());
         assert!(!stop.poll_deadline());
-    }
-
-    #[test]
-    fn the_grace_period_lands_on_timed_out_at_and_never_on_stop_at() {
-        let base = Instant::now();
-        let deadline = Deadline::from_base(base, 60);
-        assert_eq!(deadline.stop_at, base + Duration::from_secs(60));
-        assert_eq!(deadline.timed_out_at, base + Duration::from_secs(90));
     }
 }

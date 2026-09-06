@@ -19,6 +19,7 @@ fr-core = { path = "../fr-core" }
 fr-dsn = { path = "../fr-dsn" }
 fr-board = { path = "../fr-board" }
 fr-drc = { path = "../fr-drc" }
+fr-router = { path = "../fr-router" }
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true

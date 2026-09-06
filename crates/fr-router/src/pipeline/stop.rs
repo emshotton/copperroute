@@ -161,6 +161,7 @@ impl RouterStop {
     /// deadline seen to have passed since the last poll. A connection that starts just before
     /// the deadline would otherwise search for its whole per-connection time limit.
     pub fn is_stopped_or_expired(&self) -> bool {
+        self.poll_cancel();
         self.poll_deadline();
         self.is_stop_requested()
     }

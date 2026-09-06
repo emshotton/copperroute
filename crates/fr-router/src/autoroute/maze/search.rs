@@ -344,6 +344,12 @@ impl<'a> MazeSearchEngine<'a> {
                 );
             }
             if !is_occupied {
+                crate::visualization::capture_maze_step(
+                    board,
+                    self.engine,
+                    &popped,
+                    self.queue.len(),
+                );
                 list_element = Some(popped);
                 break;
             }

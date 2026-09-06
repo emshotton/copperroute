@@ -55,6 +55,7 @@ rollback and the failure-log write around it.
 | `autoroute/tree_ext.rs` | `AutorouteSearchTreeExt` — `complete_shape` and `divide_large_room`, the two search-tree operations only the router needs |
 | `board_ext/` | `RoutingBoardExt`, the extension trait over `fr_board::Board` for everything that needs an engine or a shove: `init_autoroute`/`finish_autoroute`, `insert_forced_trace_polyline`/`_segment`, `opt_changed_area`, `remove_items_and_pull_tight`, `fanout`; and the classes it drives — `TraceShover`, `DrillItemMover`, `ForcedPadRouter`, `ForcedViaInserter`, `ViaOptimizer`, and the pull-tight family in `tightener/` (base, 90°, 45°, any-angle) |
 | `score/` | `BoardStatistics` and its blocks, `normalized_score`, the JSON DTOs |
+| `visualization.rs` | opt-in SVG capture of the maze search: `RoutingVisualizationOptions`, `start_routing_visualization`, the `RoutingVisualizationGuard` whose `finish()` returns a `RoutingVisualizationSummary`. When no recorder is active the capture hooks the search calls cost one relaxed atomic load; `docs/routing-visualizer.md` describes the frames and the viewer |
 | `arena.rs` | `Arena<T>` and its index newtypes |
 | `java_tree_set.rs` | `JavaTreeSet`, a red-black tree used where a comparator is not a total order (below) |
 | `error.rs` | `RouterError` |

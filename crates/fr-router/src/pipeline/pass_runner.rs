@@ -33,8 +33,18 @@ impl AutoroutePassRunner {
             )
         }));
         match outcome {
-            Ok(Ok(any_progress)) => Ok(any_progress),
-            Ok(Err(_)) | Err(_) => Ok(false),
+            Ok(Err(RouterError::Board(fr_board::BoardError::Stopped) | RouterError::Stopped)) => {
+                Ok(false)
+            }
+            Ok(result) => result,
+            Err(payload) => {
+                let message = payload
+                    .downcast_ref::<String>()
+                    .cloned()
+                    .or_else(|| payload.downcast_ref::<&str>().map(|s| (*s).to_owned()))
+                    .unwrap_or_else(|| "routing pass panicked without a message".to_owned());
+                Err(RouterError::Panicked(message))
+            }
         }
     }
 

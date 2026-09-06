@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use fr_board::items::Item;
 use fr_board::structure::Unit;
-use fr_board::{Board, ItemId};
+use fr_board::{Board, BoardError, ItemId};
 use fr_geometry::FloatPoint;
 use fr_settings::RouterSettings;
 
@@ -622,6 +622,11 @@ impl<'a> BatchFanout<'a> {
         let mut i = 0_i32;
         while i < max_passes {
             stop.poll_cancel();
+            stop.poll_deadline();
+            if stop.is_stop_auto_router_requested() {
+                fanout_instance.is_timed_out = stop.is_timed_out();
+                break;
+            }
             if fanout_instance.is_deadline_reached() {
                 fanout_instance.is_timed_out = true;
                 break;
@@ -676,6 +681,10 @@ impl<'a> BatchFanout<'a> {
         budget: RouterBudget,
         progress: &mut dyn ProgressSink,
     ) -> Result<i32, RouterError> {
+        crate::visualization::set_route_context(
+            crate::visualization::RoutingPhase::Fanout,
+            pass_no + 1,
+        );
         let pass_start = Instant::now();
         let mut pins_to_go = self.total_smd_pin_count;
         let mut routed_count = 0_i32;
@@ -727,7 +736,7 @@ impl<'a> BatchFanout<'a> {
             .map(|component| component.smd_pins.iter().map(|pin| pin.pin).collect())
             .collect();
         let mut max_limit_reached = false;
-        for component_pins in &walk {
+        'pins: for component_pins in &walk {
             for current_pin in component_pins {
                 if self.max_items_reached() {
                     max_limit_reached = true;
@@ -744,7 +753,7 @@ impl<'a> BatchFanout<'a> {
 
                 board.start_marking_changed_area();
                 let mut engine = None;
-                let current_result = board.fanout(
+                let current_result = match board.fanout(
                     &mut engine,
                     *current_pin,
                     self.settings,
@@ -752,7 +761,15 @@ impl<'a> BatchFanout<'a> {
                     &|| stop.is_stopped_or_expired(),
                     Some(time_limit),
                     budget,
-                );
+                ) {
+                    Ok(result) => result,
+                    Err(BoardError::Stopped) => {
+                        self.is_timed_out = stop.is_timed_out();
+                        board.changed_area = None;
+                        break 'pins;
+                    }
+                    Err(error) => return Err(error.into()),
+                };
 
                 match current_result.state {
                     AutorouteAttemptState::Routed => {
@@ -808,6 +825,8 @@ impl<'a> BatchFanout<'a> {
                     return Ok(routed_count);
                 }
                 if stop.is_stop_auto_router_requested() {
+                    self.is_timed_out = stop.is_timed_out();
+                    board.changed_area = None;
                     let pass_stats = BoardStatistics::with_options(board, None, false);
                     let escape_stats = EscapeStatistics::from_board_statistics(&pass_stats);
                     self.publish_progress(

@@ -13,6 +13,125 @@ use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
 const RPI: &str = "fixtures/Issue143-rpi_splitter.dsn";
 const EMPTY_BOARD: &str = "fixtures/empty_board.dsn";
 
+#[test]
+fn fanout_frames_identify_their_stage_and_pass() {
+    let mut board = load_test_board("tests/data/p9t13-multi-net-smd-pin.dsn");
+    let mut settings = build_settings(&board, 1);
+    settings.set_run_router(false);
+    settings.fanout.as_mut().unwrap().enabled = Some(true);
+    let directory = std::env::temp_dir().join(format!(
+        "fr-fanout-frames-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let mut options = fr_router::RoutingVisualizationOptions::new(directory.clone());
+    options.max_frames = 1;
+    options.width = 160;
+    options.height = 120;
+    let guard = fr_router::start_routing_visualization(options).unwrap();
+    let result = run_pipeline(
+        &mut board,
+        &settings,
+        &RouterStop::new(),
+        RouterBudget::disabled(),
+        &mut NoopProgressSink,
+    )
+    .unwrap();
+    let summary = guard.finish();
+    let frames = std::fs::read_to_string(directory.join("frames.jsonl")).unwrap();
+    std::fs::remove_dir_all(&directory).unwrap();
+    assert_eq!(summary.frames_written, 1);
+    assert!(frames.contains("\"phase\":\"fanout\""), "{frames}");
+    assert!(frames.contains("\"pass\":1,"), "{frames}");
+    assert_eq!(result.router_passes_completed, 0);
+}
+
+#[test]
+fn expired_fanout_does_not_count_an_autorouter_pass() {
+    let mut board = load_test_board("tests/data/p9t13-multi-net-smd-pin.dsn");
+    let mut settings = build_settings(&board, 10);
+    settings.fanout.as_mut().unwrap().enabled = Some(true);
+    let result = run_pipeline(
+        &mut board,
+        &settings,
+        &RouterStop::with_deadline(-1),
+        RouterBudget::disabled(),
+        &mut NoopProgressSink,
+    )
+    .unwrap();
+    assert_eq!(result.router_state, TaskState::TimedOut);
+    assert_eq!(result.router_passes_completed, 0);
+}
+
+#[test]
+fn pass_panic_is_a_pipeline_error() {
+    struct PanicSink;
+    impl ProgressSink for PanicSink {
+        fn on_event(&mut self, event: &RoutingEvent) {
+            if matches!(event, RoutingEvent::BoardUpdated { .. }) {
+                panic!("injected pass failure");
+            }
+        }
+    }
+    let mut board = load_test_board("tests/data/p9t13-multi-net-smd-pin.dsn");
+    let settings = build_settings(&board, 1);
+    let result = run_pipeline(
+        &mut board,
+        &settings,
+        &RouterStop::new(),
+        RouterBudget::disabled(),
+        &mut PanicSink,
+    );
+    assert!(
+        matches!(result, Err(RouterError::Panicked(message)) if message == "injected pass failure")
+    );
+}
+
+#[test]
+fn cancellation_during_a_pass_is_not_reported_as_finished() {
+    struct CancelSink<'a>(&'a RouterStop);
+    impl ProgressSink for CancelSink<'_> {
+        fn on_event(&mut self, event: &RoutingEvent) {
+            if matches!(event, RoutingEvent::BoardUpdated { .. }) {
+                self.0.request_stop();
+            }
+        }
+    }
+    let mut board = load_test_board("tests/data/p9t13-multi-net-smd-pin.dsn");
+    let settings = build_settings(&board, 10);
+    let stop = RouterStop::new();
+    let result = run_pipeline(
+        &mut board,
+        &settings,
+        &stop,
+        RouterBudget::disabled(),
+        &mut CancelSink(&stop),
+    )
+    .unwrap();
+    assert_eq!(result.router_state, TaskState::Cancelled);
+    assert!(!result.timed_out);
+    assert_eq!(result.router_passes_completed, 1);
+}
+
+#[test]
+fn a_single_pass_limit_reports_one_pass() {
+    let mut board = load_test_board("tests/data/p9t13-multi-net-smd-pin.dsn");
+    let settings = build_settings(&board, 1);
+    let result = run_pipeline(
+        &mut board,
+        &settings,
+        &RouterStop::new(),
+        RouterBudget::disabled(),
+        &mut NoopProgressSink,
+    )
+    .unwrap();
+    assert_eq!(result.router_state, TaskState::Finished);
+    assert_eq!(result.router_passes_completed, 1);
+}
+
 fn load_board(rel_path: &str) -> Board {
     let path: PathBuf = parity::java_dir().join(rel_path);
     let file = std::fs::File::open(&path)
@@ -33,6 +152,22 @@ fn load_board(rel_path: &str) -> Board {
             *board.unwrap_or_else(|| panic!("{design_name} produced no board"))
         }
         other => panic!("{design_name} did not read: {other:?}"),
+    }
+}
+
+fn load_test_board(rel_path: &str) -> Board {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel_path);
+    let file = std::fs::File::open(&path)
+        .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
+    match fr_dsn::read_board(
+        file,
+        None,
+        path.file_name().and_then(std::ffi::OsStr::to_str),
+        &fr_dsn::DsnReadOptions::default(),
+    ) {
+        fr_dsn::BoardReadResult::Success { board, .. }
+        | fr_dsn::BoardReadResult::OutlineMissing { board, .. } => *board.expect("a board"),
+        other => panic!("{} did not read: {other:?}", path.display()),
     }
 }
 
@@ -280,6 +415,32 @@ fn an_empty_board_errors_with_no_routable_layer() {
         vec![(NamedAlgorithmType::Router, TaskState::Cancelled)],
         "AutorouteBatchLoop.java:53-54 fires CANCELLED before the throw, and nothing else runs"
     );
+}
+
+#[test]
+#[cfg_attr(debug_assertions, ignore)]
+fn a_job_deadline_during_fanout_returns_a_timed_out_board() {
+    let mut board = load_test_board("tests/data/p9t13-multi-net-smd-pin.dsn");
+    let mut settings = build_settings(&board, 10);
+    settings.fanout.get_or_insert_with(Default::default).enabled = Some(true);
+    settings.set_run_optimizer(true);
+    let stop = RouterStop::with_deadline(-1);
+    let mut sink = NoopProgressSink;
+
+    let result = run_pipeline(
+        &mut board,
+        &settings,
+        &stop,
+        RouterBudget::disabled(),
+        &mut sink,
+    )
+    .expect("a job deadline is a successful partial routing result");
+
+    assert_eq!(result.router_state, TaskState::TimedOut);
+    assert_eq!(result.optimizer_state, Some(TaskState::Idle));
+    assert!(result.timed_out);
+    assert!(result.fanout.expect("fanout ran").is_timed_out);
+    assert!(board.changed_area.is_none());
 }
 
 #[test]

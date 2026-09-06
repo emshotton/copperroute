@@ -1,6 +1,6 @@
 use fr_core::{
-    GRACE_PERIOD_SECONDS, MAX_TIMEOUT_SECONDS, convert_from_timespan_to_duration_format,
-    job_timeout_deadline_from, parse_timespan, parse_timespan_seconds, parse_timespan_seconds_java,
+    MAX_TIMEOUT_SECONDS, convert_from_timespan_to_duration_format, job_timeout_deadline_from,
+    parse_timespan, parse_timespan_seconds,
 };
 
 struct Row {
@@ -194,7 +194,7 @@ const ROWS: &[Row] = &[
 ];
 
 #[test]
-fn the_grammar_matches_the_jar_on_all_thirty_rows() {
+fn timespan_conversion_handles_the_input_table() {
     for row in ROWS {
         assert_eq!(
             convert_from_timespan_to_duration_format(row.input),
@@ -207,54 +207,25 @@ fn the_grammar_matches_the_jar_on_all_thirty_rows() {
 }
 
 #[test]
-fn parse_timespan_string_matches_the_jar_on_all_thirty_rows() {
+fn timespan_parser_handles_the_input_table() {
     for row in ROWS {
-        assert_eq!(
-            parse_timespan_seconds_java(row.input),
-            row.parse,
-            "parseTimespanString({:?})",
-            row.input
-        );
-    }
-}
-
-#[test]
-fn the_fix_only_adds_acceptances_and_refusals() {
-    let mut refused = 0;
-    for row in ROWS {
-        match (parse_timespan_seconds(row.input), row.parse) {
-            (Ok(ours), theirs) => assert_eq!(
-                ours, theirs,
-                "#224 must not change an answer the jar gave for {:?}",
+        match row.parse {
+            Some(expected) => assert_eq!(parse_timespan_seconds(row.input), Ok(Some(expected))),
+            None if row.input.trim().is_empty() => {
+                assert_eq!(parse_timespan_seconds(row.input), Ok(None));
+            }
+            None => assert_eq!(
+                parse_timespan_seconds(row.input)
+                    .expect_err("invalid input")
+                    .input,
                 row.input
             ),
-            (Err(error), theirs) => {
-                assert_eq!(
-                    theirs, None,
-                    "#224 may only refuse where the jar answered null; it refused {:?}, which \
-                     the jar parsed",
-                    row.input
-                );
-                assert_eq!(error.input, row.input);
-                refused += 1;
-            }
         }
     }
-    let jar_nulls = ROWS.iter().filter(|r| r.parse.is_none()).count();
-    let blanks = ROWS.iter().filter(|r| r.input.trim().is_empty()).count();
-    assert_eq!(
-        refused,
-        jar_nulls - blanks,
-        "every row the jar answered null for, except the blank ones, must now be a refusal"
-    );
-    assert!(
-        refused > 0,
-        "the transcript must exercise the refusal at all"
-    );
 }
 
 #[test]
-fn the_timeout_ladder_matches_the_jar_on_all_thirty_rows() {
+fn timeout_inputs_produce_the_expected_deadlines() {
     let base = std::time::Instant::now();
     for row in ROWS {
         let deadline = job_timeout_deadline_from(Some(row.input), base);
@@ -262,7 +233,7 @@ fn the_timeout_ladder_matches_the_jar_on_all_thirty_rows() {
             None => match deadline {
                 Ok(none) => assert!(
                     none.is_none() && row.input.trim().is_empty(),
-                    "job_timeout_deadline({:?}) should be Java's null timeoutAt",
+                    "job_timeout_deadline({:?}) should have no deadline",
                     row.input
                 ),
                 Err(error) => assert_eq!(error.input, row.input),
@@ -281,12 +252,6 @@ fn the_timeout_ladder_matches_the_jar_on_all_thirty_rows() {
                     "stop_at for {:?}",
                     row.input
                 );
-                assert_eq!(
-                    deadline.timed_out_at,
-                    expected_stop + std::time::Duration::from_secs(GRACE_PERIOD_SECONDS as u64),
-                    "timed_out_at for {:?}",
-                    row.input
-                );
             }
         }
     }
@@ -301,45 +266,8 @@ fn a_null_timeout_string_is_no_deadline() {
 }
 
 #[test]
-fn the_two_literals_agree_with_the_jar() {
-    let transcript = transcript();
-    assert!(
-        transcript.contains(&format!("MAX_TIMEOUT\t{MAX_TIMEOUT_SECONDS}\n")),
-        "MAX_TIMEOUT disagrees with the jar's"
-    );
-    assert!(
-        transcript.contains(&format!("GRACE_PERIOD\t{GRACE_PERIOD_SECONDS}\n")),
-        "GRACE_PERIOD disagrees with the jar's"
-    );
-}
-
-#[test]
-fn the_committed_transcript_still_says_what_this_table_says() {
-    let transcript = transcript();
-    let rows: Vec<&str> = transcript
-        .lines()
-        .filter(|line| line.starts_with("RAW\t"))
-        .collect();
-    assert_eq!(rows.len(), ROWS.len(), "row count");
-
-    for (line, row) in rows.iter().zip(ROWS) {
-        let fields: Vec<&str> = line.split('\t').collect();
-        assert_eq!(fields.len(), 10, "malformed transcript row: {line}");
-        assert_eq!(fields[1], quote(row.input), "RAW column of {line}");
-        assert_eq!(fields[3], row.conv, "CONV column of {line}");
-        assert_eq!(
-            fields[5],
-            row.parse
-                .map_or_else(|| "null".to_string(), |v| v.to_string()),
-            "PARSE column of {line}"
-        );
-        assert_eq!(
-            fields[7],
-            row.capped
-                .map_or_else(|| "null".to_string(), |v| v.to_string()),
-            "CAPPED column of {line}"
-        );
-    }
+fn the_timeout_cap_is_one_day() {
+    assert_eq!(MAX_TIMEOUT_SECONDS, 86_400);
 }
 
 #[test]
@@ -354,31 +282,9 @@ fn the_duration_view_loses_exactly_the_negatives() {
     let base = std::time::Instant::now();
     let deadline = job_timeout_deadline_from(Some("-1"), base)
         .expect("`-1` parses")
-        .expect("Java answers -1, not null");
+        .expect("negative timeouts produce expired deadlines");
     assert!(
         deadline.stop_at < base,
         "a negative timeout is already expired"
     );
-}
-
-fn transcript() -> String {
-    let path =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/p8t0-timespans.txt");
-    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()))
-}
-
-fn quote(s: &str) -> String {
-    let mut out = String::from("\"");
-    for c in s.chars() {
-        if c == '"' || c == '\\' {
-            out.push('\\');
-            out.push(c);
-        } else if (c as u32) < 0x20 || (c as u32) > 0x7e {
-            out.push_str(&format!("\\u{:04x}", c as u32));
-        } else {
-            out.push(c);
-        }
-    }
-    out.push('"');
-    out
 }
