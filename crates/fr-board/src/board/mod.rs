@@ -961,6 +961,7 @@ impl Board {
         from_entry_no: usize,
         to_entry_no: usize,
     ) -> bool {
+        self.invalidate_cached_contacts();
         self.with_two_traces(from_trace, to_trace, |trees, rules, from, to| {
             trees.merge_entries_in_front(
                 from,
@@ -981,6 +982,7 @@ impl Board {
         from_entry_no: usize,
         to_entry_no: usize,
     ) -> bool {
+        self.invalidate_cached_contacts();
         self.with_two_traces(from_trace, to_trace, |trees, rules, from, to| {
             trees.merge_entries_at_end(
                 from,

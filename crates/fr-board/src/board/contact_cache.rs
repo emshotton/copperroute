@@ -223,6 +223,55 @@ mod tests {
     }
 
     #[test]
+    fn merging_tree_entries_in_front_invalidates_contacts() {
+        assert_merge_invalidates_contacts(true);
+    }
+
+    #[test]
+    fn merging_tree_entries_at_end_invalidates_contacts() {
+        assert_merge_invalidates_contacts(false);
+    }
+
+    fn assert_merge_invalidates_contacts(in_front: bool) {
+        let mut board = board();
+        let first = trace(&mut board, (100, 100), (300, 100));
+        let second = trace(&mut board, (300, 100), (300, 300));
+        let joined = Polyline::from_points(&[
+            Point::new(100, 100),
+            Point::new(300, 100),
+            Point::new(300, 300),
+        ]);
+        board.with_cached_contacts(|board| {
+            assert_fresh(board);
+            assert!(
+                !board
+                    .contact_cache
+                    .0
+                    .as_ref()
+                    .unwrap()
+                    .lock()
+                    .unwrap()
+                    .is_empty()
+            );
+            assert!(if in_front {
+                board.merge_trace_entries_in_front(first, second, &joined, 0, 3)
+            } else {
+                board.merge_trace_entries_at_end(second, first, &joined, 0, 3)
+            });
+            assert!(
+                board
+                    .contact_cache
+                    .0
+                    .as_ref()
+                    .unwrap()
+                    .lock()
+                    .unwrap()
+                    .is_empty()
+            );
+        });
+    }
+
+    #[test]
     fn repeated_queries_share_contacts_but_new_scopes_do_not() {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<Board>();
