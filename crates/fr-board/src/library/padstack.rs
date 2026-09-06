@@ -18,6 +18,9 @@ pub struct Padstack {
     /// Drill diameter in board units. None means legacy data without drill metadata.
     pub drill_diameter: Option<f64>,
     pub drill_estimated: bool,
+    /// Physical rounded-rectangle corner radius in board units. Routing shapes
+    /// remain enclosing rectangles; hole DRC uses this radius with the placed shape.
+    pub round_rect_radius: Option<f64>,
 }
 
 impl Padstack {
@@ -37,6 +40,7 @@ impl Padstack {
             hole_only: false,
             drill_diameter: None,
             drill_estimated: true,
+            round_rect_radius: None,
         }
     }
 
@@ -210,6 +214,11 @@ impl Padstacks {
         pad.drill_diameter = Some(diameter);
         pad.drill_estimated = estimated;
         pad.hole_only = hole_only;
+    }
+
+    pub fn set_round_rect_radius(&mut self, id: PadstackId, radius: Option<f64>) {
+        assert!(radius.is_none_or(|r| r.is_finite() && r >= 0.0));
+        self.list[id.0 - 1].round_rect_radius = radius;
     }
 
     pub fn count(&self) -> usize {

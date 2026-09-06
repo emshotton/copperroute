@@ -142,6 +142,8 @@ pub struct PadJson {
     pub nonPlated: bool,
     #[serde(default)]
     pub drillEstimated: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub roundRectRatio: Option<f64>,
     #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub layers: Option<Vec<Option<String>>>,
 }
@@ -270,6 +272,7 @@ impl Default for PadJson {
             drill: 0.0,
             nonPlated: false,
             drillEstimated: false,
+            roundRectRatio: None,
             layers: empty(),
         }
     }

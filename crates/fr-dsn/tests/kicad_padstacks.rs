@@ -330,3 +330,51 @@ fn a_through_hole_pad_without_a_drill_keeps_no_exact_drill() {
         "an absent drill is unknown, not a zero-diameter hole"
     );
 }
+
+#[test]
+fn rounded_pad_radii_are_validated_and_part_of_padstack_identity() {
+    let input = |ratio: f64| {
+        serde_json::json!({"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+        "components":[{"reference":"J","pads":[
+            {"name":"1","shape":"roundrect","roundRectRatio":ratio,"size":{"x":1.2,"y":0.6},"layers":["F.Cu"]},
+            {"name":"2","shape":"roundrect","roundRectRatio":0.1,"size":{"x":1.2,"y":0.6},"layers":["F.Cu"]}
+        ]}]}).to_string()
+    };
+    let b = board(&input(0.25));
+    let ctx = b.ctx();
+    let mut radii: Vec<_> = b
+        .get_pins()
+        .into_iter()
+        .map(|id| {
+            let Some(fr_board::Item::Pin(pin)) = b.get_item(id) else {
+                panic!("pin")
+            };
+            pin.get_padstack(&ctx).unwrap().round_rect_radius.unwrap()
+        })
+        .collect();
+    radii.sort_by(f64::total_cmp);
+    assert_eq!(radii, vec![600.0, 1500.0]);
+    for ratio in [-0.1, 0.6] {
+        assert!(!matches!(
+            fr_dsn::kicad::read_board(&input(ratio), None),
+            fr_dsn::BoardReadResult::Success { .. }
+        ));
+    }
+}
+
+#[test]
+fn rounded_pads_without_radius_metadata_keep_the_legacy_rectangle() {
+    let input = r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+        "components":[{"reference":"J","pads":[
+            {"name":"1","shape":"ROUNDRECT","size":{"x":1.2,"y":0.6},"layers":["F.Cu"]},
+            {"name":"2","shape":"rect","size":{"x":1.2,"y":0.6},"layers":["F.Cu"]}
+        ]}]} "#;
+    let b = board(input);
+    let first = first_pin_padstack(&b, 0);
+    let package = b.library.packages.get(b.components.get(1).get_package());
+    assert_eq!(first, package.get_pin(1).unwrap().padstack_no);
+    assert_eq!(
+        b.library.padstacks.get(first).unwrap().round_rect_radius,
+        None
+    );
+}

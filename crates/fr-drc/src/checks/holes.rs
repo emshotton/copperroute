@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use fr_board::{Board, DrcConstraints, DrcSeverity};
 
-use crate::checks::geometry::{candidates, gap_below, hole_of, sub_epsilon};
+use crate::checks::geometry::{candidates, hole_of, sub_epsilon};
 use crate::constraints::severity;
 use crate::{DrcViolation, DrcViolationKind};
 
@@ -29,11 +29,19 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
             if !seen.insert((id.0, other.0)) {
                 continue;
             }
-            if let Some((actual, position)) = gap_below(
-                &hole.shape,
-                &other_hole.shape,
-                sub_epsilon(minimum, constraints.epsilon),
-            ) {
+            let gap = hole.gap_to(&other_hole);
+            if gap < f64::from(sub_epsilon(minimum, constraints.epsilon)) {
+                let actual = gap.max(0.0);
+                let distance = hole.center.distance(&other_hole.center);
+                let along = if distance > 0.0 {
+                    ((hole.radius + actual / 2.0) / distance).min(1.0)
+                } else {
+                    0.0
+                };
+                let position = fr_geometry::FloatPoint::new(
+                    hole.center.x + (other_hole.center.x - hole.center.x) * along,
+                    hole.center.y + (other_hole.center.y - hole.center.y) * along,
+                );
                 out.push(DrcViolation {
                     kind: DrcViolationKind::HoleToHole,
                     severity,

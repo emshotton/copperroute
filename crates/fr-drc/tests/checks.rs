@@ -766,3 +766,135 @@ fn a_bare_hole_near_the_board_edge_is_not_a_copper_edge_violation() {
         "a hole with no copper has no copper to clear: {out:?}"
     );
 }
+
+#[test]
+fn usb_hole_clearance_uses_physical_rectangles_and_rounded_corners_in_both_pair_orders() {
+    for (shape, dy, expected_gap) in [
+        ("rect", 0.31, 0.1750999900),
+        ("rect", 0.49, 0.2098831648),
+        ("roundrect", 0.31, 0.1944027188),
+        ("roundrect", 0.49, 0.2585529974),
+    ] {
+        for rotation in [0.0, 45.0, 90.0, 135.0, 37.0] {
+            for side in ["F.Cu", "B.Cu"] {
+                for reverse in [false, true] {
+                    let hole = serde_json::json!({"name":"H","shape":"circle","size":{"x":0.65,"y":0.65},
+                        "drill":0.65,"nonPlated":true,"layers":["F.Cu","B.Cu"]});
+                    let pad = serde_json::json!({"name":"1","shape":shape,"roundRectRatio":0.25,
+                        "size":{"x":1.24,"y":0.6},"offset":{"x":1.12,"y":dy},
+                        "netName":"GND","layers":[side]});
+                    let pads = if reverse {
+                        vec![pad, hole]
+                    } else {
+                        vec![hole, pad]
+                    };
+                    let json = serde_json::json!({"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+                        "nets":[{"id":1,"name":"GND"}],
+                        "components":[{"reference":"J1","position":{"x":10,"y":10},
+                            "rotation":rotation,"layer":side,"pads":pads}]});
+                    let mut board = kicad_board(&json.to_string());
+                    let constraints = DrcConstraints {
+                        hole_clearance: Some(2500),
+                        ..Default::default()
+                    };
+                    let mut violations = Vec::new();
+                    copper::run(&mut board, &constraints, &mut violations);
+                    let holes: Vec<_> = violations
+                        .iter()
+                        .filter(|v| v.kind == DrcViolationKind::HoleClearance)
+                        .collect();
+                    let label =
+                        format!("{shape} {dy} rotation={rotation} {side} reverse={reverse}");
+                    assert_eq!(
+                        holes.len(),
+                        usize::from(expected_gap < 0.25),
+                        "{label}: {holes:?}"
+                    );
+                    if let Some(v) = holes.first() {
+                        assert!(
+                            (v.actual / 10000.0 - expected_gap).abs() < 0.001,
+                            "{label}: {}",
+                            v.actual
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn physical_hole_overlap_is_not_hidden_by_a_zero_clearance_setting() {
+    let mut board = kicad_board(
+        r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+      "components":[{"reference":"J","position":{"x":5,"y":5},"pads":[
+        {"name":"H","shape":"circle","size":{"x":1,"y":1},"drill":1,"nonPlated":true,"layers":["F.Cu","B.Cu"]},
+        {"name":"1","shape":"rect","size":{"x":1,"y":1},"layers":["F.Cu"],"offset":{"x":0.75,"y":0}}
+      ]}]}"#,
+    );
+    let constraints = DrcConstraints {
+        hole_clearance: Some(0),
+        ..Default::default()
+    };
+    let mut violations = Vec::new();
+    copper::run(&mut board, &constraints, &mut violations);
+    let holes: Vec<_> = violations
+        .iter()
+        .filter(|v| v.kind == DrcViolationKind::HoleClearance)
+        .collect();
+    assert_eq!(holes.len(), 1);
+    assert_eq!(holes[0].actual, 0.0);
+}
+
+#[test]
+fn diagonal_hole_spacing_uses_circular_drills() {
+    for (distance, minimum, expected_count) in [(1.53, 0.5, 0), (1.53, 0.55, 1), (0.9, 0.0, 1)] {
+        let angle = std::f64::consts::PI / 8.0;
+        let json = serde_json::json!({"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+        "components":[{"reference":"H","position":{"x":5,"y":5},"pads":[
+            {"name":"1","shape":"circle","size":{"x":1,"y":1},"drill":1,"nonPlated":true,"layers":["F.Cu","B.Cu"]},
+            {"name":"2","shape":"circle","size":{"x":1,"y":1},"drill":1,"nonPlated":true,
+                "offset":{"x":distance*angle.cos(),"y":distance*angle.sin()},"layers":["F.Cu","B.Cu"]}
+        ]}]});
+        let mut board = kicad_board(&json.to_string());
+        let constraints = DrcConstraints {
+            hole_to_hole: Some((minimum * 10000.0) as i32),
+            ..Default::default()
+        };
+        let mut out = Vec::new();
+        holes::run(&mut board, &constraints, &mut out);
+        assert_eq!(out.len(), expected_count, "{distance} {minimum}: {out:?}");
+        if let Some(v) = out.first() {
+            assert!((v.actual / 10000.0 - (distance - 1.0).max(0.0)).abs() < 0.0002);
+        }
+    }
+}
+
+#[test]
+fn a_multisegment_trace_reports_the_nearest_hole_gap_once_in_both_item_orders() {
+    for trace_first in [false, true] {
+        let mut s = SyntheticBoard::new(&[], 2, 100);
+        if !trace_first {
+            s.via(0, 0, 1);
+        }
+        s.trace(
+            &[(-10000, 4200), (10000, 4200), (10000, 4000), (-10000, 4000)],
+            0,
+            300,
+            2,
+        );
+        if trace_first {
+            s.via(0, 0, 1);
+        }
+        let mut constraints = constraints_with(100);
+        constraints.hole_clearance = Some(2500);
+        let mut out = Vec::new();
+        copper::run(&mut s.board, &constraints, &mut out);
+        let holes: Vec<_> = out
+            .iter()
+            .filter(|v| v.kind == DrcViolationKind::HoleClearance)
+            .collect();
+        assert_eq!(holes.len(), 1, "{trace_first}: {out:?}");
+        assert!((holes[0].actual - 2200.0).abs() < 1.0, "{holes:?}");
+    }
+}

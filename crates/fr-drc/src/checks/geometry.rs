@@ -1,11 +1,17 @@
 use fr_board::{Board, Item, ItemId, ItemKind, TreeObject};
-use fr_geometry::{Circle, FloatPoint, ShapeOps, TileShape};
+use fr_geometry::{Circle, FloatPoint, Shape, ShapeOps, TileShape};
 
 pub struct Hole {
     pub shape: TileShape,
     pub radius: f64,
     pub estimated: bool,
     pub center: FloatPoint,
+}
+
+impl Hole {
+    pub fn gap_to(&self, other: &Self) -> f64 {
+        self.center.distance(&other.center) - self.radius - other.radius
+    }
 }
 
 /// KiCad's `DRC_TEST_PROVIDER_COPPER_CLEARANCE::sub_e` (and the hole-to-hole and
@@ -184,4 +190,57 @@ pub fn item_position(board: &Board, id: ItemId) -> FloatPoint {
         Some(item) => TileShape::Box(item.bounding_box(&ctx)).centre_of_gravity(),
         None => FloatPoint::new(0.0, 0.0),
     }
+}
+
+pub fn hole_copper_gap(
+    board: &Board,
+    copper_id: ItemId,
+    layer: usize,
+    hole: &Hole,
+    clearance: i32,
+) -> Option<(f64, FloatPoint)> {
+    let ctx = board.ctx();
+    let item = board.get_item(copper_id)?;
+    let p = hole.center;
+    let (nearest, copper_radius) = match item {
+        Item::Trace(trace) => (
+            trace.polyline().nearest_point_approx(&p)?,
+            f64::from(trace.get_half_width()),
+        ),
+        _ => {
+            let (shape, radius) = match item {
+                Item::Pin(pin) => (
+                    pin.get_shape_on_layer(layer, &ctx)?,
+                    pin.get_padstack(&ctx)?.round_rect_radius,
+                ),
+                Item::Via(via) => (via.get_shape_on_layer(layer, &ctx)?, None),
+                _ => return None,
+            };
+            if let Shape::Circle(circle) = &shape {
+                (circle.center.to_float(), f64::from(circle.radius))
+            } else {
+                let tile = shape.bounding_tile();
+                let rounded =
+                    radius.and_then(|r| tile.offset(-r).nearest_point_approx(&p).map(|q| (q, r)));
+                // Integer rounding can collapse an inset; keep checking the enclosing copper.
+                rounded.unwrap_or_else(|| (tile.nearest_point_approx(&p).unwrap_or(p), 0.0))
+            }
+        }
+    };
+    let distance = p.distance(&nearest);
+    let signed_gap = distance - copper_radius - hole.radius;
+    let actual = signed_gap.max(0.0);
+    if signed_gap >= f64::from(clearance) {
+        return None;
+    }
+    let position = if distance > 0.0 {
+        let along = ((hole.radius + actual / 2.0) / distance).min(1.0);
+        FloatPoint::new(
+            p.x + (nearest.x - p.x) * along,
+            p.y + (nearest.y - p.y) * along,
+        )
+    } else {
+        p
+    };
+    Some((actual, position))
 }
