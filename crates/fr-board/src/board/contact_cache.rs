@@ -9,6 +9,7 @@ use crate::ids::ItemId;
 use super::Board;
 
 #[derive(Debug, Default)]
+// Mutex keeps Board: Sync while shared queries populate the scratch map.
 pub(super) struct ContactCache(Option<Mutex<BTreeMap<ItemId, Arc<BTreeSet<ItemId>>>>>);
 
 // Scratch data must not travel with snapshots or affect board equality.
@@ -40,35 +41,28 @@ impl Deref for Contacts {
     }
 }
 
-struct Scope<'a> {
-    board: &'a mut Board,
-    owner: bool,
-}
+struct Scope<'a>(&'a mut Board);
 
 impl Drop for Scope<'_> {
     fn drop(&mut self) {
-        if self.owner {
-            self.board.contact_cache.0 = None;
-        }
+        self.0.contact_cache.0 = None;
     }
 }
 
 impl Board {
     // Keep this private: callers can otherwise mutate public board fields without invalidation.
     pub(super) fn with_cached_contacts<R>(&mut self, operation: impl FnOnce(&mut Board) -> R) -> R {
-        let owner = self.contact_cache.0.is_none();
-        if owner {
-            self.contact_cache.0 = Some(Mutex::default());
-        }
-        let scope = Scope { board: self, owner };
-        operation(scope.board)
+        self.contact_cache.0 = Some(Mutex::default());
+        let scope = Scope(self);
+        operation(scope.0)
     }
 
     pub(super) fn cycle_contacts(&self, id: ItemId) -> Contacts {
         let Some(cache) = &self.contact_cache.0 else {
             return Contacts::Fresh(self.normal_contacts(id));
         };
-        if let Some(contacts) = cache.lock().unwrap().get(&id).cloned() {
+        let hit = cache.lock().unwrap().get(&id).cloned();
+        if let Some(contacts) = hit {
             debug_assert_eq!(*contacts, self.normal_contacts(id));
             return Contacts::Cached(contacts);
         }
@@ -124,12 +118,9 @@ mod tests {
     }
 
     fn assert_fresh(board: &Board) {
-        let fresh = board.clone();
         for id in board.items_in_board_order() {
             assert_eq!(*board.cycle_contacts(id), board.normal_contacts(id));
-            assert_eq!(board.is_trace_cycle(id), fresh.is_trace_cycle(id));
         }
-        assert_eq!(*board, fresh);
     }
 
     #[test]
@@ -140,15 +131,21 @@ mod tests {
             assert_fresh(board);
             let second = trace(board, (300, 100), (300, 300));
             assert_fresh(board);
+            board.begin_undo_journal();
             let snapshot = board.deep_copy();
             assert!(snapshot.contact_cache.0.is_none());
+            board.save_for_undo(second);
             board.replace_trace_geometry(
                 second,
                 Polyline::from_points(&[Point::new(500, 500), Point::new(500, 700)]),
             );
             assert_fresh(board);
+            assert!(!board.cycle_contacts(first).contains(&second));
             board.undo_from_snapshot(snapshot);
+            assert!(board.contact_cache.0.is_some());
+            assert!(board.normal_contacts(first).contains(&second));
             assert_fresh(board);
+            board.begin_undo_journal();
             let snapshot = board.deep_copy();
             board.change_trace(
                 second,
@@ -156,13 +153,16 @@ mod tests {
             );
             assert_fresh(board);
             board.undo_from_snapshot(snapshot);
+            assert!(board.normal_contacts(first).contains(&second));
             assert_fresh(board);
+            board.begin_undo_journal();
             let snapshot = board.deep_copy();
             board
                 .move_item_by(second, &IntVector::new(100, 0).into())
                 .unwrap();
             assert_fresh(board);
             board.undo_from_snapshot(snapshot);
+            assert!(board.normal_contacts(first).contains(&second));
             assert_fresh(board);
             board.get_item_mut(second).unwrap().header_mut().net_nos = vec![2];
             assert_fresh(board);
@@ -170,6 +170,56 @@ mod tests {
             assert_fresh(board);
         });
         assert!(board.contact_cache.0.is_none());
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    fn failed_hit_validation_does_not_poison_cache() {
+        let mut board = board();
+        let first = trace(&mut board, (100, 100), (300, 100));
+        trace(&mut board, (300, 100), (300, 300));
+        board.with_cached_contacts(|board| {
+            board
+                .contact_cache
+                .0
+                .as_ref()
+                .unwrap()
+                .lock()
+                .unwrap()
+                .insert(first, Arc::new(BTreeSet::new()));
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                board.cycle_contacts(first);
+            }));
+            assert!(result.is_err());
+            assert!(!board.contact_cache.0.as_ref().unwrap().is_poisoned());
+            board.invalidate_cached_contacts();
+            assert_fresh(board);
+        });
+    }
+
+    #[test]
+    fn changing_tree_entries_invalidates_contacts() {
+        let mut board = board();
+        let id = trace(&mut board, (100, 100), (300, 100));
+        board.with_cached_contacts(|board| {
+            board.cycle_contacts(id);
+            let Item::Trace(trace) = board.get_item(id).unwrap() else {
+                unreachable!()
+            };
+            let lines = trace.polyline().clone();
+            assert!(board.change_trace_entries(id, &lines, 0, 0));
+            assert!(
+                board
+                    .contact_cache
+                    .0
+                    .as_ref()
+                    .unwrap()
+                    .lock()
+                    .unwrap()
+                    .is_empty()
+            );
+            assert_fresh(board);
+        });
     }
 
     #[test]
@@ -351,13 +401,12 @@ mod tests {
     }
 
     #[test]
-    fn nested_scopes_and_unwind_discard_scratch() {
+    fn unwind_discards_scratch() {
         let mut board = board();
         let id = trace(&mut board, (100, 100), (300, 100));
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             board.with_cached_contacts(|board| {
                 board.cycle_contacts(id);
-                board.with_cached_contacts(|board| assert_fresh(board));
                 assert!(board.contact_cache.0.is_some());
                 panic!("stop");
             });

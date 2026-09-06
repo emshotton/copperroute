@@ -1000,6 +1000,7 @@ impl Board {
         keep_at_start_count: usize,
         keep_at_end_count: usize,
     ) -> bool {
+        self.invalidate_cached_contacts();
         let Some(Item::Trace(_)) = self.items.get(&id) else {
             return false;
         };

@@ -7,8 +7,6 @@ use fr_router::score::BoardStatistics;
 use fr_settings::sources::DsnFileSettings;
 use fr_settings::{HostEnvironment, SettingsInputs, SettingsSource};
 
-mod support;
-
 fn quality(stats: &BoardStatistics) -> serde_json::Value {
     serde_json::json!({
         "unrouted": stats.connections.incomplete_count,
@@ -22,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     if !(5..=6).contains(&args.len()) {
         return Err(
-            "usage: optimizer_bench INPUT.dsn INPUT.ses MAX_ITEMS|cache DEADLINE_MS|QUERY_LIMIT [REPEAT_WINDOW_MS]"
+            "usage: optimizer_bench INPUT.dsn INPUT.ses MAX_ITEMS DEADLINE_MS [REPEAT_WINDOW_MS]"
                 .into(),
         );
     }
@@ -39,27 +37,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn run_once(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
     let bytes = std::fs::read(&args[1])?;
-    let (mut board, transform) = match fr_dsn::read_board(
+    let fr_core::ParsedBoard {
+        mut board,
+        transform,
+        warnings,
+        ..
+    } = fr_core::parse_board_result(fr_dsn::read_board(
         &bytes[..],
         None,
         Some(&args[1]),
         &fr_dsn::DsnReadOptions::default(),
-    ) {
-        fr_dsn::BoardReadResult::Success {
-            board,
-            coordinate_transform,
-            ..
-        }
-        | fr_dsn::BoardReadResult::OutlineMissing {
-            board,
-            coordinate_transform,
-            ..
-        } => (
-            board.ok_or("missing board")?,
-            coordinate_transform.ok_or("missing transform")?,
-        ),
-        other => return Err(format!("could not load board: {other:?}").into()),
-    };
+    ))?;
+    for warning in warnings {
+        eprintln!("{warning}");
+    }
     let dsn = DsnFileSettings::new(&bytes[..], &args[1]);
     let mut settings = fr_settings::resolve_headless(
         &SettingsInputs {
@@ -69,23 +60,18 @@ fn run_once(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
         Some(&board),
         &HostEnvironment::detect(),
     );
-    settings.set_run_router(false);
-    settings.set_run_optimizer(true);
     let optimizer_settings = settings
         .optimizer
         .as_mut()
         .ok_or("missing optimizer settings")?;
     optimizer_settings.max_threads = Some(1);
-    optimizer_settings.max_items = Some(if args[3] == "cache" {
-        20
-    } else {
-        args[3].parse()?
-    });
+    optimizer_settings.max_items = Some(args[3].parse()?);
     optimizer_settings.max_passes = Some(1);
     if let Ok(limit) = std::env::var("FR_BENCH_SEARCH_STEPS") {
         optimizer_settings.max_search_steps = Some(limit.parse()?);
     }
     fr_core::prepare_board(&mut board, &settings);
+    fr_core::apply_immediate_post_load_processing(&mut board);
     let original: BTreeSet<_> = board.items_in_board_order().into_iter().collect();
     let imported =
         fr_dsn::ses_reader::read(std::fs::File::open(&args[2])?, &mut board, &transform)?;
@@ -100,9 +86,6 @@ fn run_once(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
             item.header_mut().set_fixed_state(FixedState::Unfixed);
             unlocked += 1;
         }
-    }
-    if args[3] == "cache" {
-        return support::benchmark_cache(&board, args[4].parse()?);
     }
     let before = BoardStatistics::new(&mut board);
     let mut optimizer = BatchOptimizer::new(&settings);

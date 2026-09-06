@@ -9,92 +9,6 @@ use crate::items::Item;
 
 use super::{Board, item_ctx};
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::prelude::*;
-    use fr_geometry::IntBox;
-
-    #[test]
-    fn split_snapshots_refresh_and_preserve_removed_items() {
-        let layers = LayerStructure::new(vec![Layer::new("Top", true)]);
-        let mut rules = BoardRules::new(
-            layers.clone(),
-            ClearanceMatrix::get_default_instance(&layers, 10),
-        );
-        rules.create_default_net_class();
-        let class = rules.get_default_net_class();
-        rules.nets.add("N1", 1, false, class);
-        let bounds = IntBox::from_coords(0, 0, 1000, 1000);
-        let mut board = Board::new(
-            Vec::new(),
-            0,
-            bounds,
-            rules,
-            BoardLibrary::new(Padstacks::new(layers), Packages::new()),
-            Components::new(),
-            Communication::default(),
-        );
-        let mut ids = Vec::new();
-        for y in [100, 300] {
-            ids.push(
-                board
-                    .insert_trace_without_cleaning(
-                        Polyline::from_points(&[
-                            Point::new(100, y),
-                            Point::new(200, y),
-                            Point::new(200, y + 100),
-                        ]),
-                        0,
-                        10,
-                        vec![1],
-                        0,
-                        FixedState::Unfixed,
-                    )
-                    .unwrap(),
-            );
-        }
-        let shape = TileShape::Box(bounds);
-        let mut snapshots = BTreeMap::new();
-        let entries = board.split_overlapping_entries(&shape, 0, &mut snapshots);
-        assert!(entries.windows(2).all(|pair| pair[0] < pair[1]));
-        assert_eq!(snapshots.len(), ids.len());
-        for id in &ids {
-            assert!(
-                entries
-                    .iter()
-                    .filter(|e| e.object == TreeObject::Item(*id))
-                    .count()
-                    > 1
-            );
-            assert_eq!(snapshots.get(id), board.get_item(*id));
-        }
-        let removed = snapshots[&ids[0]].clone();
-        assert!(board.remove_item(ids[0]));
-        board
-            .get_item_mut(ids[1])
-            .unwrap()
-            .header_mut()
-            .set_fixed_state(FixedState::UserFixed);
-        let refreshed = board.split_overlapping_entries(&shape, 0, &mut snapshots);
-        assert_eq!(
-            refreshed,
-            entries
-                .into_iter()
-                .filter(|e| e.object != TreeObject::Item(ids[0]))
-                .collect::<Vec<_>>()
-        );
-        assert_eq!(snapshots[&ids[0]], removed);
-        assert_eq!(snapshots.get(&ids[1]), board.get_item(ids[1]));
-        assert!(
-            board
-                .split_overlapping_entries(&shape, 1, &mut snapshots)
-                .is_empty()
-        );
-        assert_eq!(snapshots.len(), 2);
-    }
-}
-
 /// `P7T8B_CHANGE` — one `CHG` line per `change_trace` call that reaches the identity comparison.
 fn p7t8b_change_ledger() -> bool {
     static ON: std::sync::LazyLock<bool> =
@@ -241,7 +155,6 @@ impl Board {
         corner: &Point,
     ) -> Result<bool, BoardError> {
         self.save_for_undo(id);
-        self.invalidate_cached_contacts();
         let (this_lines, layer) = match self.items.get(&id) {
             Some(Item::Trace(t)) => (t.polyline().lines().to_vec(), t.get_layer()),
             _ => return Ok(false),
@@ -329,6 +242,7 @@ impl Board {
             if let Some(Item::Trace(this)) = self.items.get_mut(&id) {
                 this.set_polyline(joined_polyline);
             }
+            self.invalidate_cached_contacts();
         }
         let collapsed = matches!(
             self.items.get(&id),
@@ -878,5 +792,91 @@ impl Board {
         }
         let clip_shape = self.changed_area.as_ref().map(|area| area.get_area(layer));
         let _ = self.normalize_trace(id, clip_shape.as_ref());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::prelude::*;
+    use fr_geometry::IntBox;
+
+    #[test]
+    fn split_snapshots_refresh_and_preserve_removed_items() {
+        let layers = LayerStructure::new(vec![Layer::new("Top", true)]);
+        let mut rules = BoardRules::new(
+            layers.clone(),
+            ClearanceMatrix::get_default_instance(&layers, 10),
+        );
+        rules.create_default_net_class();
+        let class = rules.get_default_net_class();
+        rules.nets.add("N1", 1, false, class);
+        let bounds = IntBox::from_coords(0, 0, 1000, 1000);
+        let mut board = Board::new(
+            Vec::new(),
+            0,
+            bounds,
+            rules,
+            BoardLibrary::new(Padstacks::new(layers), Packages::new()),
+            Components::new(),
+            Communication::default(),
+        );
+        let mut ids = Vec::new();
+        for y in [100, 300] {
+            ids.push(
+                board
+                    .insert_trace_without_cleaning(
+                        Polyline::from_points(&[
+                            Point::new(100, y),
+                            Point::new(200, y),
+                            Point::new(200, y + 100),
+                        ]),
+                        0,
+                        10,
+                        vec![1],
+                        0,
+                        FixedState::Unfixed,
+                    )
+                    .unwrap(),
+            );
+        }
+        let shape = TileShape::Box(bounds);
+        let mut snapshots = BTreeMap::new();
+        let entries = board.split_overlapping_entries(&shape, 0, &mut snapshots);
+        assert!(entries.windows(2).all(|pair| pair[0] < pair[1]));
+        assert_eq!(snapshots.len(), ids.len());
+        for id in &ids {
+            assert!(
+                entries
+                    .iter()
+                    .filter(|e| e.object == TreeObject::Item(*id))
+                    .count()
+                    > 1
+            );
+            assert_eq!(snapshots.get(id), board.get_item(*id));
+        }
+        let removed = snapshots[&ids[0]].clone();
+        assert!(board.remove_item(ids[0]));
+        board
+            .get_item_mut(ids[1])
+            .unwrap()
+            .header_mut()
+            .set_fixed_state(FixedState::UserFixed);
+        let refreshed = board.split_overlapping_entries(&shape, 0, &mut snapshots);
+        assert_eq!(
+            refreshed,
+            entries
+                .into_iter()
+                .filter(|e| e.object != TreeObject::Item(ids[0]))
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(snapshots[&ids[0]], removed);
+        assert_eq!(snapshots.get(&ids[1]), board.get_item(ids[1]));
+        assert!(
+            board
+                .split_overlapping_entries(&shape, 1, &mut snapshots)
+                .is_empty()
+        );
+        assert_eq!(snapshots.len(), 2);
     }
 }
