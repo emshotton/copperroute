@@ -475,7 +475,10 @@ fn set_reaches_the_run_and_the_dotted_spelling_is_a_usage_error() {
     ] {
         let manifest = dir.join(format!("{name}.json"));
         let manifest_text = manifest.to_string_lossy().into_owned();
-        let ses = dir.join(format!("{name}.ses")).to_string_lossy().into_owned();
+        let ses = dir
+            .join(format!("{name}.ses"))
+            .to_string_lossy()
+            .into_owned();
         let mut argv = vec![
             "route",
             &dsn,
@@ -669,11 +672,7 @@ fn the_via_net_number_fixture_routes_instead_of_hanging() {
     assert_eq!(code, 0, "the fixture must route: {stderr}");
 
     let bytes = std::fs::read(&ses).expect("the run must write a .ses");
-    assert_eq!(
-        bytes.len(),
-        1_843,
-        "the routed SES with the optimizer off"
-    );
+    assert_eq!(bytes.len(), 1_843, "the routed SES with the optimizer off");
 
     let text = String::from_utf8(bytes).expect("the SES is UTF-8");
     assert!(text.starts_with("(session \"p8t13-via-net-numbers\""));

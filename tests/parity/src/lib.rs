@@ -654,7 +654,6 @@ pub fn port_binary() -> PathBuf {
     target.join("debug").join("freerouting")
 }
 
-
 ///
 /// If the binary cannot be started — see [`port_binary`].
 #[must_use]

@@ -86,7 +86,10 @@ fn an_explicit_rules_file_reaches_the_settings_and_an_adjacent_one_only_when_ask
     request.discover_adjacent_rules = false;
     request.rules = Some(dir.join("board.rules"));
     let explicit = load(&request).unwrap();
-    assert_eq!(explicit.settings.scoring.as_ref().unwrap().via_costs, Some(99));
+    assert_eq!(
+        explicit.settings.scoring.as_ref().unwrap().via_costs,
+        Some(99)
+    );
 }
 
 #[test]

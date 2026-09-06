@@ -48,9 +48,9 @@ pub fn drc(request: &DrcRequest) -> Result<DrcOutcome, OpError> {
     let mut report = DesignRulesChecker::new(&mut board).generate_report(&coords, &options);
     report.quality_score = quality_score(&mut board, &job, &request.load.settings).map(f64::from);
 
-    let json = report.to_json(request.flavor).map_err(|error| {
-        OpError::Load(format!("Couldn't serialise the DRC report: {error}"))
-    })?;
+    let json = report
+        .to_json(request.flavor)
+        .map_err(|error| OpError::Load(format!("Couldn't serialise the DRC report: {error}")))?;
     let violation_count = report.violations.len();
     Ok(DrcOutcome {
         report,

@@ -161,21 +161,14 @@ fn read_scheduler_rules(job: &RoutingJob, explicit: Option<&Path>) -> Option<Vec
     }
 }
 
-fn apply_kicad_project(
-    project: Option<&Path>,
-    board: &mut Board,
-    transform: &CoordinateTransform,
-) {
+fn apply_kicad_project(project: Option<&Path>, board: &mut Board, transform: &CoordinateTransform) {
     let Some(project) = project else {
         return;
     };
     let text = match std::fs::read_to_string(project) {
         Ok(text) => text,
         Err(error) => {
-            tracing::warn!(
-                "KiCad project file {} not read: {error}",
-                project.display()
-            );
+            tracing::warn!("KiCad project file {} not read: {error}", project.display());
             return;
         }
     };

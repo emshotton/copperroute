@@ -60,7 +60,11 @@ fn drc_counts_the_dev_boards_violations_in_both_flavors() {
         "{}",
         outcome.json
     );
-    assert!(outcome.json.contains("\"freerouting_version\": \"Freerouting "));
+    assert!(
+        outcome
+            .json
+            .contains("\"freerouting_version\": \"Freerouting ")
+    );
     assert!(outcome.json.contains(env!("CARGO_PKG_VERSION")));
 
     let head = DrcRequest {

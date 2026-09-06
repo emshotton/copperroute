@@ -61,16 +61,10 @@ pub fn run(
                 "ses_text".into(),
                 json!(String::from_utf8_lossy(&outcome.session).into_owned()),
             );
-            object.insert(
-                "data".into(),
-                json!(super::base64_encode(&outcome.session)),
-            );
+            object.insert("data".into(), json!(super::base64_encode(&outcome.session)));
         }
     }
-    object.insert(
-        "stats".into(),
-        fr_core::to_gson_json(&outcome.result.stats),
-    );
+    object.insert("stats".into(), fr_core::to_gson_json(&outcome.result.stats));
     object.insert(
         "incompletes".into(),
         json!(outcome.result.incomplete_count()),

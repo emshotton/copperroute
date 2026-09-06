@@ -829,10 +829,7 @@ fn the_normaliser_strips_exactly_the_five_irreproducible_things() {
     assert!(text.contains("\"passes_completed\": 4"), "{text}");
     assert!(text.contains("\"final_state\": \"COMPLETED\""), "{text}");
     assert!(
-        text.contains(&format!(
-            "\"app_version\": \"{}\"",
-            fr_core::SERVER_VERSION
-        )),
+        text.contains(&format!("\"app_version\": \"{}\"", fr_core::SERVER_VERSION)),
         "{text}"
     );
     serde_json::from_str::<serde_json::Value>(&text).expect("still valid JSON");

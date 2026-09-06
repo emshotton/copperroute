@@ -157,8 +157,8 @@ mod tests {
     #[test]
     fn the_output_must_be_a_session_extension() {
         for bad in ["b.dsn", "b.txt", "b"] {
-            let error = Cli::try_parse_from(["freerouting", "route", "a.dsn", "-o", bad])
-                .expect_err(bad);
+            let error =
+                Cli::try_parse_from(["freerouting", "route", "a.dsn", "-o", bad]).expect_err(bad);
             assert_eq!(
                 error.kind(),
                 clap::error::ErrorKind::ValueValidation,
@@ -181,16 +181,9 @@ mod tests {
             "--item-selection",
             "--ignore-net-classes",
         ] {
-            let error = Cli::try_parse_from([
-                "freerouting",
-                "route",
-                "a.dsn",
-                "-o",
-                "b.ses",
-                flag,
-                "1",
-            ])
-            .expect_err(flag);
+            let error =
+                Cli::try_parse_from(["freerouting", "route", "a.dsn", "-o", "b.ses", flag, "1"])
+                    .expect_err(flag);
             assert_eq!(
                 error.kind(),
                 clap::error::ErrorKind::UnknownArgument,
