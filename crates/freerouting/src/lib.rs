@@ -5,6 +5,7 @@ pub mod commands;
 pub mod legacy;
 pub mod logging;
 pub mod mcp;
+pub mod ops;
 
 use clap::Parser;
 
