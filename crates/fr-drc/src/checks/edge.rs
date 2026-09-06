@@ -1,7 +1,7 @@
 use fr_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
 use fr_geometry::TileShape;
 
-use crate::checks::geometry::{gap_below, is_copper, item_shapes, sub_epsilon};
+use crate::checks::geometry::{gap_below, has_copper, item_shapes, sub_epsilon};
 use crate::constraints::severity;
 use crate::{DrcViolation, DrcViolationKind};
 
@@ -36,7 +36,7 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
     let ids: Vec<ItemId> = board
         .items_in_board_order()
         .into_iter()
-        .filter(|id| board.get_item(*id).is_some_and(is_copper))
+        .filter(|id| has_copper(board, *id))
         .collect();
     for id in ids {
         for (layer, shape) in item_shapes(board, id) {

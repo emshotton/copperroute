@@ -404,6 +404,8 @@ fn golden_rows(text: &str, prefix: &str) -> Vec<(String, Vec<String>)> {
     cases
 }
 
+// Circular via copper also updates the shape rows in the existing divergence
+// cases below. The round-via DRC regression covers why this geometry matters.
 const KNOWN_DIVERGENCES: &[(&str, &str, &str)] = &[
     (
         "json-truncated",
@@ -549,7 +551,8 @@ const KNOWN_DIVERGENCES: &[(&str, &str, &str)] = &[
         "interf-u",
         "#284",
         "173 referenced nets, all declared, so #280 does not touch it; its 158 round pads take the \
-         two-number name.",
+         two-number name. Explicit drill metadata also separates equal-copper pads with \
+         different holes, creating two additional padstacks and changing package/item IDs.",
     ),
     (
         "complex-hierarchy",
@@ -569,6 +572,116 @@ const KNOWN_DIVERGENCES: &[(&str, &str, &str)] = &[
         "#280",
         "a board mixing declared and referenced nets: the declared ones keep their numbers and \
          the referenced ones follow in first-reference order.",
+    ),
+    (
+        "comp-both-sides",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "comp-differing-packages",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "comp-identical-packages",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "comp-no-footprint",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "complex-hierarchy-session",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "corney-island-session",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "empty-object",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "netclass-duplicate-names",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "outline-two-corners",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "outline-unsorted",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "resolution-fractional",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "resolution-zero",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "trace-layer-out-of-range",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "trace-negative-layer",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "unit-lowercase",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "unit-mil",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "unit-um",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "unit-unknown",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "vias",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "y-half-tie",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "zone-layer-out-of-range",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
+    ),
+    (
+        "zones",
+        "circular-vias",
+        "KiCad via copper is circular, not the legacy square approximation; routing geometry and item normalization reflect the actual shape.",
     ),
 ];
 

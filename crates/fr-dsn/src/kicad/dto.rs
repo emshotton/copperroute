@@ -129,6 +129,10 @@ pub struct PadJson {
     pub position: Option<Point2D>,
     #[serde(default, deserialize_with = "nullable")]
     pub drill: f64,
+    #[serde(default)]
+    pub nonPlated: bool,
+    #[serde(default)]
+    pub drillEstimated: bool,
     #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub layers: Option<Vec<Option<String>>>,
 }
@@ -253,6 +257,8 @@ impl Default for PadJson {
             offset: point_default(),
             position: None,
             drill: 0.0,
+            nonPlated: false,
+            drillEstimated: false,
             layers: empty(),
         }
     }

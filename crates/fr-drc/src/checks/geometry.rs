@@ -1,5 +1,5 @@
 use fr_board::{Board, Item, ItemId, ItemKind, TreeObject};
-use fr_geometry::{Circle, FloatPoint, TileShape, java_round};
+use fr_geometry::{Circle, FloatPoint, ShapeOps, TileShape, java_round};
 
 pub struct Hole {
     pub shape: TileShape,
@@ -43,6 +43,16 @@ pub fn is_copper(item: &Item) -> bool {
 }
 
 #[must_use]
+pub fn has_copper(board: &Board, id: ItemId) -> bool {
+    let ctx = board.ctx();
+    match board.get_item(id) {
+        Some(Item::Pin(pin)) => !pin.get_padstack(&ctx).is_some_and(|p| p.hole_only),
+        Some(item) => is_copper(item),
+        None => false,
+    }
+}
+
+#[must_use]
 pub fn is_through_hole_pin(board: &Board, id: ItemId) -> bool {
     let ctx = board.ctx();
     match board.get_item(id) {
@@ -81,7 +91,9 @@ pub fn hole_of(board: &Board, id: ItemId) -> Option<Hole> {
     match board.get_item(id)? {
         Item::Via(via) => {
             let padstack = via.get_padstack(&ctx)?;
-            let estimated = !padstack.name.contains(':');
+            let estimated = padstack
+                .drill_diameter
+                .map_or(!padstack.name.contains(':'), |_| padstack.drill_estimated);
             Some(hole_from(
                 via.get_center().to_float(),
                 padstack.drill_radius(),
@@ -89,11 +101,16 @@ pub fn hole_of(board: &Board, id: ItemId) -> Option<Hole> {
             ))
         }
         Item::Pin(pin) => {
-            if pin.first_layer(&ctx) == pin.last_layer(&ctx) {
+            let padstack = pin.get_padstack(&ctx)?;
+            if padstack.drill_diameter == Some(0.0)
+                || (padstack.drill_diameter.is_none()
+                    && pin.first_layer(&ctx) == pin.last_layer(&ctx))
+            {
                 return None;
             }
-            let padstack = pin.get_padstack(&ctx)?;
-            let estimated = !padstack.name.contains(':');
+            let estimated = padstack
+                .drill_diameter
+                .map_or(!padstack.name.contains(':'), |_| padstack.drill_estimated);
             Some(hole_from(
                 pin.get_center(&ctx).to_float(),
                 padstack.drill_radius(),
@@ -115,6 +132,22 @@ pub fn item_shapes(board: &mut Board, id: ItemId) -> Vec<(usize, TileShape)> {
             .map(|i| item.shape_layer(i, &ctx))
             .collect()
     };
+    // The search tree enlarges pin and via shapes by the routing hole clearance;
+    // DRC measures the copper itself.
+    {
+        let ctx = board.ctx();
+        let copper_on = |layer: usize| match board.get_item(id) {
+            Some(Item::Pin(pin)) => pin.get_shape_on_layer(layer, &ctx),
+            Some(Item::Via(via)) => via.get_shape_on_layer(layer, &ctx),
+            _ => None,
+        };
+        if matches!(board.get_item(id), Some(Item::Pin(_) | Item::Via(_))) {
+            return layers
+                .into_iter()
+                .filter_map(|layer| Some((layer, copper_on(layer)?.bounding_tile())))
+                .collect();
+        }
+    }
     layers
         .into_iter()
         .enumerate()

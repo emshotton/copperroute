@@ -6,7 +6,7 @@
 [case] stem=ecc83-v1
 [s9] result=Success
 [s9] padstacks count=6
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] padstack 2 name=Rect[A]Pad_2000x2000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0);Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0)]
 [s9] padstack 3 name=Rect[A]Pad_1600x1600_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-8000.0,-8000.0;8000.0,-8000.0;8000.0,8000.0;-8000.0,8000.0);Simplex(-8000.0,-8000.0;8000.0,-8000.0;8000.0,8000.0;-8000.0,8000.0)]
 [s9] padstack 4 name=Rect[A]Pad_5600x5600_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-28000.0,-28000.0;28000.0,-28000.0;28000.0,28000.0;-28000.0,28000.0);Simplex(-28000.0,-28000.0;28000.0,-28000.0;28000.0,28000.0;-28000.0,28000.0)]
@@ -101,7 +101,7 @@
 [case] stem=ecc83-v2
 [s9] result=Success
 [s9] padstacks count=9
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] padstack 2 name=Rect[A]Pad_2000x2000_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0);Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0)]
 [s9] padstack 3 name=Round[A]Pad_2000x2000_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=10000);Circle(0.0,0.0,r=10000)]
 [s9] padstack 4 name=Round[A]Pad_1600x1600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=8000);Circle(0.0,0.0,r=8000)]
@@ -255,8 +255,8 @@
 [case] stem=complex-hierarchy
 [s9] result=Success
 [s9] padstacks count=19
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
-[s9] padstack 2 name=via_power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-8255.0,-8255.0;8255.0,-8255.0;8255.0,8255.0;-8255.0,8255.0);Simplex(-8255.0,-8255.0;8255.0,-8255.0;8255.0,8255.0;-8255.0,8255.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
+[s9] padstack 2 name=via_power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=8255);Circle(0.0,0.0,r=8255)]
 [s9] padstack 3 name=Rect[A]Pad_2000x2000_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0);Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0)]
 [s9] padstack 4 name=Oval[A]Pad_2000x2000_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4142.0,-10000.0;4142.0,-10000.0;10000.0,-4142.0;10000.0,4142.0;4142.0,10000.0;-4142.0,10000.0;-10000.0,4142.0;-10000.0,-4142.0);Simplex(-4142.0,-10000.0;4142.0,-10000.0;10000.0,-4142.0;10000.0,4142.0;4142.0,10000.0;-4142.0,10000.0;-10000.0,4142.0;-10000.0,-4142.0)]
 [s9] padstack 5 name=Rect[A]Pad_2400x2400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-12000.0,-12000.0;12000.0,-12000.0;12000.0,12000.0;-12000.0,12000.0);Simplex(-12000.0,-12000.0;12000.0,-12000.0;12000.0,12000.0;-12000.0,12000.0)]
@@ -565,9 +565,9 @@
 
 [case] stem=interf-u
 [s9] result=Success
-[s9] padstacks count=21
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
-[s9] padstack 2 name=via_Power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-8000.0,-8000.0;8000.0,-8000.0;8000.0,8000.0;-8000.0,8000.0);Simplex(-8000.0,-8000.0;8000.0,-8000.0;8000.0,8000.0;-8000.0,8000.0)]
+[s9] padstacks count=23
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
+[s9] padstack 2 name=via_Power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=8000);Circle(0.0,0.0,r=8000)]
 [s9] padstack 3 name=Round[A]Pad_1600x1600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=8000);Circle(0.0,0.0,r=8000)]
 [s9] padstack 4 name=Oval[A]Pad_1600x1600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-3314.0,-8000.0;3314.0,-8000.0;8000.0,-3314.0;8000.0,3314.0;3314.0,8000.0;-3314.0,8000.0;-8000.0,3314.0;-8000.0,-3314.0);Simplex(-3314.0,-8000.0;3314.0,-8000.0;8000.0,-3314.0;8000.0,3314.0;3314.0,8000.0;-3314.0,8000.0;-8000.0,3314.0;-8000.0,-3314.0)]
 [s9] padstack 5 name=Rect[A]Pad_2000x2000_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0);Simplex(-10000.0,-10000.0;10000.0,-10000.0;10000.0,10000.0;-10000.0,10000.0)]
@@ -579,14 +579,16 @@
 [s9] padstack 11 name=Rect[A]Pad_1800x1800_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-9000.0,-9000.0;9000.0,-9000.0;9000.0,9000.0;-9000.0,9000.0);Simplex(-9000.0,-9000.0;9000.0,-9000.0;9000.0,9000.0;-9000.0,9000.0)]
 [s9] padstack 12 name=Round[A]Pad_1800x1800_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=9000);Circle(0.0,0.0,r=9000)]
 [s9] padstack 13 name=Round[A]Pad_4000x4000_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=20000);Circle(0.0,0.0,r=20000)]
-[s9] padstack 14 name=Rect[A]Pad_1400x1400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-7000.0,-7000.0;7000.0,-7000.0;7000.0,7000.0;-7000.0,7000.0);Simplex(-7000.0,-7000.0;7000.0,-7000.0;7000.0,7000.0;-7000.0,7000.0)]
-[s9] padstack 15 name=Round[A]Pad_1400x1400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=7000);Circle(0.0,0.0,r=7000)]
-[s9] padstack 16 name=Rect[B]Pad_1778x7620_um fromLayer=1 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[<null>;Simplex(-8890.0,-38100.0;8890.0,-38100.0;8890.0,38100.0;-8890.0,38100.0)]
-[s9] padstack 17 name=Rect[T]Pad_1778x7620_um fromLayer=0 toLayer=0 attachAllowed=false placedAbsolute=false shapes=[Simplex(-8890.0,-38100.0;8890.0,-38100.0;8890.0,38100.0;-8890.0,38100.0);<null>]
-[s9] padstack 18 name=Via[0-1]_1397:600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-6985.0,-6985.0;6985.0,-6985.0;6985.0,6985.0;-6985.0,6985.0);Simplex(-6985.0,-6985.0;6985.0,-6985.0;6985.0,6985.0;-6985.0,6985.0)]
-[s9] padstack 19 name=Via[0-1]_1397:635_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-6985.0,-6985.0;6985.0,-6985.0;6985.0,6985.0;-6985.0,6985.0);Simplex(-6985.0,-6985.0;6985.0,-6985.0;6985.0,6985.0;-6985.0,6985.0)]
-[s9] padstack 20 name=Via[0-1]_1524:600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-7620.0,-7620.0;7620.0,-7620.0;7620.0,7620.0;-7620.0,7620.0);Simplex(-7620.0,-7620.0;7620.0,-7620.0;7620.0,7620.0;-7620.0,7620.0)]
-[s9] padstack 21 name=Via[0-1]_1143:600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-5715.0,-5715.0;5715.0,-5715.0;5715.0,5715.0;-5715.0,5715.0);Simplex(-5715.0,-5715.0;5715.0,-5715.0;5715.0,5715.0;-5715.0,5715.0)]
+[s9] padstack 14 name=Rect[A]Pad_1600x1600_um#2 fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-8000.0,-8000.0;8000.0,-8000.0;8000.0,8000.0;-8000.0,8000.0);Simplex(-8000.0,-8000.0;8000.0,-8000.0;8000.0,8000.0;-8000.0,8000.0)]
+[s9] padstack 15 name=Round[A]Pad_1600x1600_um#2 fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=8000);Circle(0.0,0.0,r=8000)]
+[s9] padstack 16 name=Rect[A]Pad_1400x1400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-7000.0,-7000.0;7000.0,-7000.0;7000.0,7000.0;-7000.0,7000.0);Simplex(-7000.0,-7000.0;7000.0,-7000.0;7000.0,7000.0;-7000.0,7000.0)]
+[s9] padstack 17 name=Round[A]Pad_1400x1400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=7000);Circle(0.0,0.0,r=7000)]
+[s9] padstack 18 name=Rect[B]Pad_1778x7620_um fromLayer=1 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[<null>;Simplex(-8890.0,-38100.0;8890.0,-38100.0;8890.0,38100.0;-8890.0,38100.0)]
+[s9] padstack 19 name=Rect[T]Pad_1778x7620_um fromLayer=0 toLayer=0 attachAllowed=false placedAbsolute=false shapes=[Simplex(-8890.0,-38100.0;8890.0,-38100.0;8890.0,38100.0;-8890.0,38100.0);<null>]
+[s9] padstack 20 name=Via[0-1]_1397:600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=6985);Circle(0.0,0.0,r=6985)]
+[s9] padstack 21 name=Via[0-1]_1397:635_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=6985);Circle(0.0,0.0,r=6985)]
+[s9] padstack 22 name=Via[0-1]_1524:600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=7620);Circle(0.0,0.0,r=7620)]
+[s9] padstack 23 name=Via[0-1]_1143:600_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=5715);Circle(0.0,0.0,r=5715)]
 [s9] packages count=16
 [s9] package 1 name=interf_u:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal isFront=true pins=2
 [s9] packagepin 1 0 name=1 padstack=3 rel=0.0,0.0 rot=0.0
@@ -705,31 +707,31 @@
 [s9] package 11 name=interf_u:DSUB-25_Female_Horizontal_P2.77x2.84mm_EdgePinOffset9.90mm_Housed_MountingHolesOffset11.32mm isFront=true pins=27
 [s9] packagepin 11 0 name=0 padstack=13 rel=401700.0,14200.0 rot=0.0
 [s9] packagepin 11 1 name=0 padstack=13 rel=-69300.0,14200.0 rot=0.0
-[s9] packagepin 11 2 name=1 padstack=9 rel=0.0,0.0 rot=0.0
-[s9] packagepin 11 3 name=2 padstack=3 rel=27700.0,0.0 rot=0.0
-[s9] packagepin 11 4 name=3 padstack=3 rel=55400.0,0.0 rot=0.0
-[s9] packagepin 11 5 name=4 padstack=3 rel=83100.0,0.0 rot=0.0
-[s9] packagepin 11 6 name=5 padstack=3 rel=110800.0,0.0 rot=0.0
-[s9] packagepin 11 7 name=6 padstack=3 rel=138500.0,0.0 rot=0.0
-[s9] packagepin 11 8 name=7 padstack=3 rel=166200.0,0.0 rot=0.0
-[s9] packagepin 11 9 name=8 padstack=3 rel=193900.0,0.0 rot=0.0
-[s9] packagepin 11 10 name=9 padstack=3 rel=221600.0,0.0 rot=0.0
-[s9] packagepin 11 11 name=10 padstack=3 rel=249300.0,0.0 rot=0.0
-[s9] packagepin 11 12 name=11 padstack=3 rel=277000.0,0.0 rot=0.0
-[s9] packagepin 11 13 name=12 padstack=3 rel=304700.0,0.0 rot=0.0
-[s9] packagepin 11 14 name=13 padstack=3 rel=332400.0,0.0 rot=0.0
-[s9] packagepin 11 15 name=14 padstack=3 rel=13850.0,28400.0 rot=0.0
-[s9] packagepin 11 16 name=15 padstack=3 rel=41550.0,28400.0 rot=0.0
-[s9] packagepin 11 17 name=16 padstack=3 rel=69250.0,28400.0 rot=0.0
-[s9] packagepin 11 18 name=17 padstack=3 rel=96950.0,28400.0 rot=0.0
-[s9] packagepin 11 19 name=18 padstack=3 rel=124650.0,28400.0 rot=0.0
-[s9] packagepin 11 20 name=19 padstack=3 rel=152350.0,28400.0 rot=0.0
-[s9] packagepin 11 21 name=20 padstack=3 rel=180050.0,28400.0 rot=0.0
-[s9] packagepin 11 22 name=21 padstack=3 rel=207750.0,28400.0 rot=0.0
-[s9] packagepin 11 23 name=22 padstack=3 rel=235450.0,28400.0 rot=0.0
-[s9] packagepin 11 24 name=23 padstack=3 rel=263150.0,28400.0 rot=0.0
-[s9] packagepin 11 25 name=24 padstack=3 rel=290850.0,28400.0 rot=0.0
-[s9] packagepin 11 26 name=25 padstack=3 rel=318550.0,28400.0 rot=0.0
+[s9] packagepin 11 2 name=1 padstack=14 rel=0.0,0.0 rot=0.0
+[s9] packagepin 11 3 name=2 padstack=15 rel=27700.0,0.0 rot=0.0
+[s9] packagepin 11 4 name=3 padstack=15 rel=55400.0,0.0 rot=0.0
+[s9] packagepin 11 5 name=4 padstack=15 rel=83100.0,0.0 rot=0.0
+[s9] packagepin 11 6 name=5 padstack=15 rel=110800.0,0.0 rot=0.0
+[s9] packagepin 11 7 name=6 padstack=15 rel=138500.0,0.0 rot=0.0
+[s9] packagepin 11 8 name=7 padstack=15 rel=166200.0,0.0 rot=0.0
+[s9] packagepin 11 9 name=8 padstack=15 rel=193900.0,0.0 rot=0.0
+[s9] packagepin 11 10 name=9 padstack=15 rel=221600.0,0.0 rot=0.0
+[s9] packagepin 11 11 name=10 padstack=15 rel=249300.0,0.0 rot=0.0
+[s9] packagepin 11 12 name=11 padstack=15 rel=277000.0,0.0 rot=0.0
+[s9] packagepin 11 13 name=12 padstack=15 rel=304700.0,0.0 rot=0.0
+[s9] packagepin 11 14 name=13 padstack=15 rel=332400.0,0.0 rot=0.0
+[s9] packagepin 11 15 name=14 padstack=15 rel=13850.0,28400.0 rot=0.0
+[s9] packagepin 11 16 name=15 padstack=15 rel=41550.0,28400.0 rot=0.0
+[s9] packagepin 11 17 name=16 padstack=15 rel=69250.0,28400.0 rot=0.0
+[s9] packagepin 11 18 name=17 padstack=15 rel=96950.0,28400.0 rot=0.0
+[s9] packagepin 11 19 name=18 padstack=15 rel=124650.0,28400.0 rot=0.0
+[s9] packagepin 11 20 name=19 padstack=15 rel=152350.0,28400.0 rot=0.0
+[s9] packagepin 11 21 name=20 padstack=15 rel=180050.0,28400.0 rot=0.0
+[s9] packagepin 11 22 name=21 padstack=15 rel=207750.0,28400.0 rot=0.0
+[s9] packagepin 11 23 name=22 padstack=15 rel=235450.0,28400.0 rot=0.0
+[s9] packagepin 11 24 name=23 padstack=15 rel=263150.0,28400.0 rot=0.0
+[s9] packagepin 11 25 name=24 padstack=15 rel=290850.0,28400.0 rot=0.0
+[s9] packagepin 11 26 name=25 padstack=15 rel=318550.0,28400.0 rot=0.0
 [s9] package 12 name=interf_u:R_Array_SIP10 isFront=true pins=10
 [s9] packagepin 12 0 name=1 padstack=9 rel=0.0,0.0 rot=0.0
 [s9] packagepin 12 1 name=2 padstack=4 rel=25400.0,0.0 rot=0.0
@@ -742,189 +744,189 @@
 [s9] packagepin 12 8 name=9 padstack=4 rel=203200.0,0.0 rot=0.0
 [s9] packagepin 12 9 name=10 padstack=4 rel=228600.0,0.0 rot=0.0
 [s9] package 13 name=interf_u:PGA120 isFront=true pins=120
-[s9] packagepin 13 0 name=A1 padstack=14 rel=152400.0,-152400.0 rot=0.0
-[s9] packagepin 13 1 name=A2 padstack=15 rel=127000.0,-152400.0 rot=0.0
-[s9] packagepin 13 2 name=A3 padstack=15 rel=101600.0,-152400.0 rot=0.0
-[s9] packagepin 13 3 name=A4 padstack=15 rel=76200.0,-152400.0 rot=0.0
-[s9] packagepin 13 4 name=A5 padstack=15 rel=50800.0,-152400.0 rot=0.0
-[s9] packagepin 13 5 name=A6 padstack=15 rel=25400.0,-152400.0 rot=0.0
-[s9] packagepin 13 6 name=A7 padstack=15 rel=0.0,-152400.0 rot=0.0
-[s9] packagepin 13 7 name=A8 padstack=15 rel=-25400.0,-152400.0 rot=0.0
-[s9] packagepin 13 8 name=A9 padstack=15 rel=-50800.0,-152400.0 rot=0.0
-[s9] packagepin 13 9 name=A10 padstack=15 rel=-76200.0,-152400.0 rot=0.0
-[s9] packagepin 13 10 name=A11 padstack=15 rel=-101600.0,-152400.0 rot=0.0
-[s9] packagepin 13 11 name=A12 padstack=15 rel=-127000.0,-152400.0 rot=0.0
-[s9] packagepin 13 12 name=A13 padstack=15 rel=-152400.0,-152400.0 rot=0.0
-[s9] packagepin 13 13 name=B1 padstack=15 rel=152400.0,-127000.0 rot=0.0
-[s9] packagepin 13 14 name=B2 padstack=15 rel=127000.0,-127000.0 rot=0.0
-[s9] packagepin 13 15 name=B3 padstack=15 rel=101600.0,-127000.0 rot=0.0
-[s9] packagepin 13 16 name=B4 padstack=15 rel=76200.0,-127000.0 rot=0.0
-[s9] packagepin 13 17 name=B5 padstack=15 rel=50800.0,-127000.0 rot=0.0
-[s9] packagepin 13 18 name=B6 padstack=15 rel=25400.0,-127000.0 rot=0.0
-[s9] packagepin 13 19 name=B7 padstack=15 rel=0.0,-127000.0 rot=0.0
-[s9] packagepin 13 20 name=B8 padstack=15 rel=-25400.0,-127000.0 rot=0.0
-[s9] packagepin 13 21 name=B9 padstack=15 rel=-50800.0,-127000.0 rot=0.0
-[s9] packagepin 13 22 name=B10 padstack=15 rel=-76200.0,-127000.0 rot=0.0
-[s9] packagepin 13 23 name=B11 padstack=15 rel=-101600.0,-127000.0 rot=0.0
-[s9] packagepin 13 24 name=B12 padstack=15 rel=-127000.0,-127000.0 rot=0.0
-[s9] packagepin 13 25 name=B13 padstack=15 rel=-152400.0,-127000.0 rot=0.0
-[s9] packagepin 13 26 name=C1 padstack=15 rel=152400.0,-101600.0 rot=0.0
-[s9] packagepin 13 27 name=C2 padstack=15 rel=127000.0,-101600.0 rot=0.0
-[s9] packagepin 13 28 name=C3 padstack=15 rel=101600.0,-101600.0 rot=0.0
-[s9] packagepin 13 29 name=C4 padstack=15 rel=76200.0,-101600.0 rot=0.0
-[s9] packagepin 13 30 name=C5 padstack=15 rel=50800.0,-101600.0 rot=0.0
-[s9] packagepin 13 31 name=C6 padstack=15 rel=25400.0,-101600.0 rot=0.0
-[s9] packagepin 13 32 name=C7 padstack=15 rel=0.0,-101600.0 rot=0.0
-[s9] packagepin 13 33 name=C8 padstack=15 rel=-25400.0,-101600.0 rot=0.0
-[s9] packagepin 13 34 name=C9 padstack=15 rel=-50800.0,-101600.0 rot=0.0
-[s9] packagepin 13 35 name=C10 padstack=15 rel=-76200.0,-101600.0 rot=0.0
-[s9] packagepin 13 36 name=C11 padstack=15 rel=-101600.0,-101600.0 rot=0.0
-[s9] packagepin 13 37 name=C12 padstack=15 rel=-127000.0,-101600.0 rot=0.0
-[s9] packagepin 13 38 name=C13 padstack=15 rel=-152400.0,-101600.0 rot=0.0
-[s9] packagepin 13 39 name=D1 padstack=15 rel=152400.0,-76200.0 rot=0.0
-[s9] packagepin 13 40 name=D2 padstack=15 rel=127000.0,-76200.0 rot=0.0
-[s9] packagepin 13 41 name=D3 padstack=15 rel=101600.0,-76200.0 rot=0.0
-[s9] packagepin 13 42 name=D11 padstack=15 rel=-101600.0,-76200.0 rot=0.0
-[s9] packagepin 13 43 name=D12 padstack=15 rel=-127000.0,-76200.0 rot=0.0
-[s9] packagepin 13 44 name=D13 padstack=15 rel=-152400.0,-76200.0 rot=0.0
-[s9] packagepin 13 45 name=E1 padstack=15 rel=152400.0,-50800.0 rot=0.0
-[s9] packagepin 13 46 name=E2 padstack=15 rel=127000.0,-50800.0 rot=0.0
-[s9] packagepin 13 47 name=E3 padstack=15 rel=101600.0,-50800.0 rot=0.0
-[s9] packagepin 13 48 name=E11 padstack=15 rel=-101600.0,-50800.0 rot=0.0
-[s9] packagepin 13 49 name=E12 padstack=15 rel=-127000.0,-50800.0 rot=0.0
-[s9] packagepin 13 50 name=E13 padstack=15 rel=-152400.0,-50800.0 rot=0.0
-[s9] packagepin 13 51 name=F1 padstack=15 rel=152400.0,-25400.0 rot=0.0
-[s9] packagepin 13 52 name=F2 padstack=15 rel=127000.0,-25400.0 rot=0.0
-[s9] packagepin 13 53 name=F3 padstack=15 rel=101600.0,-25400.0 rot=0.0
-[s9] packagepin 13 54 name=F11 padstack=15 rel=-101600.0,-25400.0 rot=0.0
-[s9] packagepin 13 55 name=F12 padstack=15 rel=-127000.0,-25400.0 rot=0.0
-[s9] packagepin 13 56 name=F13 padstack=15 rel=-152400.0,-25400.0 rot=0.0
-[s9] packagepin 13 57 name=G1 padstack=15 rel=152400.0,0.0 rot=0.0
-[s9] packagepin 13 58 name=G2 padstack=15 rel=127000.0,0.0 rot=0.0
-[s9] packagepin 13 59 name=G3 padstack=15 rel=101600.0,0.0 rot=0.0
-[s9] packagepin 13 60 name=G11 padstack=15 rel=-101600.0,0.0 rot=0.0
-[s9] packagepin 13 61 name=G12 padstack=15 rel=-127000.0,0.0 rot=0.0
-[s9] packagepin 13 62 name=G13 padstack=15 rel=-152400.0,0.0 rot=0.0
-[s9] packagepin 13 63 name=H1 padstack=15 rel=152400.0,25400.0 rot=0.0
-[s9] packagepin 13 64 name=H2 padstack=15 rel=127000.0,25400.0 rot=0.0
-[s9] packagepin 13 65 name=H3 padstack=15 rel=101600.0,25400.0 rot=0.0
-[s9] packagepin 13 66 name=H11 padstack=15 rel=-101600.0,25400.0 rot=0.0
-[s9] packagepin 13 67 name=H12 padstack=15 rel=-127000.0,25400.0 rot=0.0
-[s9] packagepin 13 68 name=H13 padstack=15 rel=-152400.0,25400.0 rot=0.0
-[s9] packagepin 13 69 name=J1 padstack=15 rel=152400.0,50800.0 rot=0.0
-[s9] packagepin 13 70 name=J2 padstack=15 rel=127000.0,50800.0 rot=0.0
-[s9] packagepin 13 71 name=J3 padstack=15 rel=101600.0,50800.0 rot=0.0
-[s9] packagepin 13 72 name=J11 padstack=15 rel=-101600.0,50800.0 rot=0.0
-[s9] packagepin 13 73 name=J12 padstack=15 rel=-127000.0,50800.0 rot=0.0
-[s9] packagepin 13 74 name=J13 padstack=15 rel=-152400.0,50800.0 rot=0.0
-[s9] packagepin 13 75 name=K1 padstack=15 rel=152400.0,76200.0 rot=0.0
-[s9] packagepin 13 76 name=K2 padstack=15 rel=127000.0,76200.0 rot=0.0
-[s9] packagepin 13 77 name=K3 padstack=15 rel=101600.0,76200.0 rot=0.0
-[s9] packagepin 13 78 name=K11 padstack=15 rel=-101600.0,76200.0 rot=0.0
-[s9] packagepin 13 79 name=K12 padstack=15 rel=-127000.0,76200.0 rot=0.0
-[s9] packagepin 13 80 name=K13 padstack=15 rel=-152400.0,76200.0 rot=0.0
-[s9] packagepin 13 81 name=L1 padstack=15 rel=152400.0,101600.0 rot=0.0
-[s9] packagepin 13 82 name=L2 padstack=15 rel=127000.0,101600.0 rot=0.0
-[s9] packagepin 13 83 name=L3 padstack=15 rel=101600.0,101600.0 rot=0.0
-[s9] packagepin 13 84 name=L4 padstack=15 rel=76200.0,101600.0 rot=0.0
-[s9] packagepin 13 85 name=L5 padstack=15 rel=50800.0,101600.0 rot=0.0
-[s9] packagepin 13 86 name=L6 padstack=15 rel=25400.0,101600.0 rot=0.0
-[s9] packagepin 13 87 name=L7 padstack=15 rel=0.0,101600.0 rot=0.0
-[s9] packagepin 13 88 name=L8 padstack=15 rel=-25400.0,101600.0 rot=0.0
-[s9] packagepin 13 89 name=L9 padstack=15 rel=-50800.0,101600.0 rot=0.0
-[s9] packagepin 13 90 name=L10 padstack=15 rel=-76200.0,101600.0 rot=0.0
-[s9] packagepin 13 91 name=L11 padstack=15 rel=-101600.0,101600.0 rot=0.0
-[s9] packagepin 13 92 name=L12 padstack=15 rel=-127000.0,101600.0 rot=0.0
-[s9] packagepin 13 93 name=L13 padstack=15 rel=-152400.0,101600.0 rot=0.0
-[s9] packagepin 13 94 name=M1 padstack=15 rel=152400.0,127000.0 rot=0.0
-[s9] packagepin 13 95 name=M2 padstack=15 rel=127000.0,127000.0 rot=0.0
-[s9] packagepin 13 96 name=M3 padstack=15 rel=101600.0,127000.0 rot=0.0
-[s9] packagepin 13 97 name=M4 padstack=15 rel=76200.0,127000.0 rot=0.0
-[s9] packagepin 13 98 name=M5 padstack=15 rel=50800.0,127000.0 rot=0.0
-[s9] packagepin 13 99 name=M6 padstack=15 rel=25400.0,127000.0 rot=0.0
-[s9] packagepin 13 100 name=M7 padstack=15 rel=0.0,127000.0 rot=0.0
-[s9] packagepin 13 101 name=M8 padstack=15 rel=-25400.0,127000.0 rot=0.0
-[s9] packagepin 13 102 name=M9 padstack=15 rel=-50800.0,127000.0 rot=0.0
-[s9] packagepin 13 103 name=M10 padstack=15 rel=-76200.0,127000.0 rot=0.0
-[s9] packagepin 13 104 name=M11 padstack=15 rel=-101600.0,127000.0 rot=0.0
-[s9] packagepin 13 105 name=M12 padstack=15 rel=-127000.0,127000.0 rot=0.0
-[s9] packagepin 13 106 name=M13 padstack=15 rel=-152400.0,127000.0 rot=0.0
-[s9] packagepin 13 107 name=N1 padstack=15 rel=152400.0,152400.0 rot=0.0
-[s9] packagepin 13 108 name=N2 padstack=15 rel=127000.0,152400.0 rot=0.0
-[s9] packagepin 13 109 name=N3 padstack=15 rel=101600.0,152400.0 rot=0.0
-[s9] packagepin 13 110 name=N4 padstack=15 rel=76200.0,152400.0 rot=0.0
-[s9] packagepin 13 111 name=N5 padstack=15 rel=50800.0,152400.0 rot=0.0
-[s9] packagepin 13 112 name=N6 padstack=15 rel=25400.0,152400.0 rot=0.0
-[s9] packagepin 13 113 name=N7 padstack=15 rel=0.0,152400.0 rot=0.0
-[s9] packagepin 13 114 name=N8 padstack=15 rel=-25400.0,152400.0 rot=0.0
-[s9] packagepin 13 115 name=N9 padstack=15 rel=-50800.0,152400.0 rot=0.0
-[s9] packagepin 13 116 name=N10 padstack=15 rel=-76200.0,152400.0 rot=0.0
-[s9] packagepin 13 117 name=N11 padstack=15 rel=-101600.0,152400.0 rot=0.0
-[s9] packagepin 13 118 name=N12 padstack=15 rel=-127000.0,152400.0 rot=0.0
-[s9] packagepin 13 119 name=N13 padstack=15 rel=-152400.0,152400.0 rot=0.0
+[s9] packagepin 13 0 name=A1 padstack=16 rel=152400.0,-152400.0 rot=0.0
+[s9] packagepin 13 1 name=A2 padstack=17 rel=127000.0,-152400.0 rot=0.0
+[s9] packagepin 13 2 name=A3 padstack=17 rel=101600.0,-152400.0 rot=0.0
+[s9] packagepin 13 3 name=A4 padstack=17 rel=76200.0,-152400.0 rot=0.0
+[s9] packagepin 13 4 name=A5 padstack=17 rel=50800.0,-152400.0 rot=0.0
+[s9] packagepin 13 5 name=A6 padstack=17 rel=25400.0,-152400.0 rot=0.0
+[s9] packagepin 13 6 name=A7 padstack=17 rel=0.0,-152400.0 rot=0.0
+[s9] packagepin 13 7 name=A8 padstack=17 rel=-25400.0,-152400.0 rot=0.0
+[s9] packagepin 13 8 name=A9 padstack=17 rel=-50800.0,-152400.0 rot=0.0
+[s9] packagepin 13 9 name=A10 padstack=17 rel=-76200.0,-152400.0 rot=0.0
+[s9] packagepin 13 10 name=A11 padstack=17 rel=-101600.0,-152400.0 rot=0.0
+[s9] packagepin 13 11 name=A12 padstack=17 rel=-127000.0,-152400.0 rot=0.0
+[s9] packagepin 13 12 name=A13 padstack=17 rel=-152400.0,-152400.0 rot=0.0
+[s9] packagepin 13 13 name=B1 padstack=17 rel=152400.0,-127000.0 rot=0.0
+[s9] packagepin 13 14 name=B2 padstack=17 rel=127000.0,-127000.0 rot=0.0
+[s9] packagepin 13 15 name=B3 padstack=17 rel=101600.0,-127000.0 rot=0.0
+[s9] packagepin 13 16 name=B4 padstack=17 rel=76200.0,-127000.0 rot=0.0
+[s9] packagepin 13 17 name=B5 padstack=17 rel=50800.0,-127000.0 rot=0.0
+[s9] packagepin 13 18 name=B6 padstack=17 rel=25400.0,-127000.0 rot=0.0
+[s9] packagepin 13 19 name=B7 padstack=17 rel=0.0,-127000.0 rot=0.0
+[s9] packagepin 13 20 name=B8 padstack=17 rel=-25400.0,-127000.0 rot=0.0
+[s9] packagepin 13 21 name=B9 padstack=17 rel=-50800.0,-127000.0 rot=0.0
+[s9] packagepin 13 22 name=B10 padstack=17 rel=-76200.0,-127000.0 rot=0.0
+[s9] packagepin 13 23 name=B11 padstack=17 rel=-101600.0,-127000.0 rot=0.0
+[s9] packagepin 13 24 name=B12 padstack=17 rel=-127000.0,-127000.0 rot=0.0
+[s9] packagepin 13 25 name=B13 padstack=17 rel=-152400.0,-127000.0 rot=0.0
+[s9] packagepin 13 26 name=C1 padstack=17 rel=152400.0,-101600.0 rot=0.0
+[s9] packagepin 13 27 name=C2 padstack=17 rel=127000.0,-101600.0 rot=0.0
+[s9] packagepin 13 28 name=C3 padstack=17 rel=101600.0,-101600.0 rot=0.0
+[s9] packagepin 13 29 name=C4 padstack=17 rel=76200.0,-101600.0 rot=0.0
+[s9] packagepin 13 30 name=C5 padstack=17 rel=50800.0,-101600.0 rot=0.0
+[s9] packagepin 13 31 name=C6 padstack=17 rel=25400.0,-101600.0 rot=0.0
+[s9] packagepin 13 32 name=C7 padstack=17 rel=0.0,-101600.0 rot=0.0
+[s9] packagepin 13 33 name=C8 padstack=17 rel=-25400.0,-101600.0 rot=0.0
+[s9] packagepin 13 34 name=C9 padstack=17 rel=-50800.0,-101600.0 rot=0.0
+[s9] packagepin 13 35 name=C10 padstack=17 rel=-76200.0,-101600.0 rot=0.0
+[s9] packagepin 13 36 name=C11 padstack=17 rel=-101600.0,-101600.0 rot=0.0
+[s9] packagepin 13 37 name=C12 padstack=17 rel=-127000.0,-101600.0 rot=0.0
+[s9] packagepin 13 38 name=C13 padstack=17 rel=-152400.0,-101600.0 rot=0.0
+[s9] packagepin 13 39 name=D1 padstack=17 rel=152400.0,-76200.0 rot=0.0
+[s9] packagepin 13 40 name=D2 padstack=17 rel=127000.0,-76200.0 rot=0.0
+[s9] packagepin 13 41 name=D3 padstack=17 rel=101600.0,-76200.0 rot=0.0
+[s9] packagepin 13 42 name=D11 padstack=17 rel=-101600.0,-76200.0 rot=0.0
+[s9] packagepin 13 43 name=D12 padstack=17 rel=-127000.0,-76200.0 rot=0.0
+[s9] packagepin 13 44 name=D13 padstack=17 rel=-152400.0,-76200.0 rot=0.0
+[s9] packagepin 13 45 name=E1 padstack=17 rel=152400.0,-50800.0 rot=0.0
+[s9] packagepin 13 46 name=E2 padstack=17 rel=127000.0,-50800.0 rot=0.0
+[s9] packagepin 13 47 name=E3 padstack=17 rel=101600.0,-50800.0 rot=0.0
+[s9] packagepin 13 48 name=E11 padstack=17 rel=-101600.0,-50800.0 rot=0.0
+[s9] packagepin 13 49 name=E12 padstack=17 rel=-127000.0,-50800.0 rot=0.0
+[s9] packagepin 13 50 name=E13 padstack=17 rel=-152400.0,-50800.0 rot=0.0
+[s9] packagepin 13 51 name=F1 padstack=17 rel=152400.0,-25400.0 rot=0.0
+[s9] packagepin 13 52 name=F2 padstack=17 rel=127000.0,-25400.0 rot=0.0
+[s9] packagepin 13 53 name=F3 padstack=17 rel=101600.0,-25400.0 rot=0.0
+[s9] packagepin 13 54 name=F11 padstack=17 rel=-101600.0,-25400.0 rot=0.0
+[s9] packagepin 13 55 name=F12 padstack=17 rel=-127000.0,-25400.0 rot=0.0
+[s9] packagepin 13 56 name=F13 padstack=17 rel=-152400.0,-25400.0 rot=0.0
+[s9] packagepin 13 57 name=G1 padstack=17 rel=152400.0,0.0 rot=0.0
+[s9] packagepin 13 58 name=G2 padstack=17 rel=127000.0,0.0 rot=0.0
+[s9] packagepin 13 59 name=G3 padstack=17 rel=101600.0,0.0 rot=0.0
+[s9] packagepin 13 60 name=G11 padstack=17 rel=-101600.0,0.0 rot=0.0
+[s9] packagepin 13 61 name=G12 padstack=17 rel=-127000.0,0.0 rot=0.0
+[s9] packagepin 13 62 name=G13 padstack=17 rel=-152400.0,0.0 rot=0.0
+[s9] packagepin 13 63 name=H1 padstack=17 rel=152400.0,25400.0 rot=0.0
+[s9] packagepin 13 64 name=H2 padstack=17 rel=127000.0,25400.0 rot=0.0
+[s9] packagepin 13 65 name=H3 padstack=17 rel=101600.0,25400.0 rot=0.0
+[s9] packagepin 13 66 name=H11 padstack=17 rel=-101600.0,25400.0 rot=0.0
+[s9] packagepin 13 67 name=H12 padstack=17 rel=-127000.0,25400.0 rot=0.0
+[s9] packagepin 13 68 name=H13 padstack=17 rel=-152400.0,25400.0 rot=0.0
+[s9] packagepin 13 69 name=J1 padstack=17 rel=152400.0,50800.0 rot=0.0
+[s9] packagepin 13 70 name=J2 padstack=17 rel=127000.0,50800.0 rot=0.0
+[s9] packagepin 13 71 name=J3 padstack=17 rel=101600.0,50800.0 rot=0.0
+[s9] packagepin 13 72 name=J11 padstack=17 rel=-101600.0,50800.0 rot=0.0
+[s9] packagepin 13 73 name=J12 padstack=17 rel=-127000.0,50800.0 rot=0.0
+[s9] packagepin 13 74 name=J13 padstack=17 rel=-152400.0,50800.0 rot=0.0
+[s9] packagepin 13 75 name=K1 padstack=17 rel=152400.0,76200.0 rot=0.0
+[s9] packagepin 13 76 name=K2 padstack=17 rel=127000.0,76200.0 rot=0.0
+[s9] packagepin 13 77 name=K3 padstack=17 rel=101600.0,76200.0 rot=0.0
+[s9] packagepin 13 78 name=K11 padstack=17 rel=-101600.0,76200.0 rot=0.0
+[s9] packagepin 13 79 name=K12 padstack=17 rel=-127000.0,76200.0 rot=0.0
+[s9] packagepin 13 80 name=K13 padstack=17 rel=-152400.0,76200.0 rot=0.0
+[s9] packagepin 13 81 name=L1 padstack=17 rel=152400.0,101600.0 rot=0.0
+[s9] packagepin 13 82 name=L2 padstack=17 rel=127000.0,101600.0 rot=0.0
+[s9] packagepin 13 83 name=L3 padstack=17 rel=101600.0,101600.0 rot=0.0
+[s9] packagepin 13 84 name=L4 padstack=17 rel=76200.0,101600.0 rot=0.0
+[s9] packagepin 13 85 name=L5 padstack=17 rel=50800.0,101600.0 rot=0.0
+[s9] packagepin 13 86 name=L6 padstack=17 rel=25400.0,101600.0 rot=0.0
+[s9] packagepin 13 87 name=L7 padstack=17 rel=0.0,101600.0 rot=0.0
+[s9] packagepin 13 88 name=L8 padstack=17 rel=-25400.0,101600.0 rot=0.0
+[s9] packagepin 13 89 name=L9 padstack=17 rel=-50800.0,101600.0 rot=0.0
+[s9] packagepin 13 90 name=L10 padstack=17 rel=-76200.0,101600.0 rot=0.0
+[s9] packagepin 13 91 name=L11 padstack=17 rel=-101600.0,101600.0 rot=0.0
+[s9] packagepin 13 92 name=L12 padstack=17 rel=-127000.0,101600.0 rot=0.0
+[s9] packagepin 13 93 name=L13 padstack=17 rel=-152400.0,101600.0 rot=0.0
+[s9] packagepin 13 94 name=M1 padstack=17 rel=152400.0,127000.0 rot=0.0
+[s9] packagepin 13 95 name=M2 padstack=17 rel=127000.0,127000.0 rot=0.0
+[s9] packagepin 13 96 name=M3 padstack=17 rel=101600.0,127000.0 rot=0.0
+[s9] packagepin 13 97 name=M4 padstack=17 rel=76200.0,127000.0 rot=0.0
+[s9] packagepin 13 98 name=M5 padstack=17 rel=50800.0,127000.0 rot=0.0
+[s9] packagepin 13 99 name=M6 padstack=17 rel=25400.0,127000.0 rot=0.0
+[s9] packagepin 13 100 name=M7 padstack=17 rel=0.0,127000.0 rot=0.0
+[s9] packagepin 13 101 name=M8 padstack=17 rel=-25400.0,127000.0 rot=0.0
+[s9] packagepin 13 102 name=M9 padstack=17 rel=-50800.0,127000.0 rot=0.0
+[s9] packagepin 13 103 name=M10 padstack=17 rel=-76200.0,127000.0 rot=0.0
+[s9] packagepin 13 104 name=M11 padstack=17 rel=-101600.0,127000.0 rot=0.0
+[s9] packagepin 13 105 name=M12 padstack=17 rel=-127000.0,127000.0 rot=0.0
+[s9] packagepin 13 106 name=M13 padstack=17 rel=-152400.0,127000.0 rot=0.0
+[s9] packagepin 13 107 name=N1 padstack=17 rel=152400.0,152400.0 rot=0.0
+[s9] packagepin 13 108 name=N2 padstack=17 rel=127000.0,152400.0 rot=0.0
+[s9] packagepin 13 109 name=N3 padstack=17 rel=101600.0,152400.0 rot=0.0
+[s9] packagepin 13 110 name=N4 padstack=17 rel=76200.0,152400.0 rot=0.0
+[s9] packagepin 13 111 name=N5 padstack=17 rel=50800.0,152400.0 rot=0.0
+[s9] packagepin 13 112 name=N6 padstack=17 rel=25400.0,152400.0 rot=0.0
+[s9] packagepin 13 113 name=N7 padstack=17 rel=0.0,152400.0 rot=0.0
+[s9] packagepin 13 114 name=N8 padstack=17 rel=-25400.0,152400.0 rot=0.0
+[s9] packagepin 13 115 name=N9 padstack=17 rel=-50800.0,152400.0 rot=0.0
+[s9] packagepin 13 116 name=N10 padstack=17 rel=-76200.0,152400.0 rot=0.0
+[s9] packagepin 13 117 name=N11 padstack=17 rel=-101600.0,152400.0 rot=0.0
+[s9] packagepin 13 118 name=N12 padstack=17 rel=-127000.0,152400.0 rot=0.0
+[s9] packagepin 13 119 name=N13 padstack=17 rel=-152400.0,152400.0 rot=0.0
 [s9] package 14 name=interf_u:BUS_PC isFront=true pins=62
-[s9] packagepin 14 0 name=1 padstack=16 rel=381000.0,0.0 rot=0.0
-[s9] packagepin 14 1 name=2 padstack=16 rel=355600.0,0.0 rot=0.0
-[s9] packagepin 14 2 name=3 padstack=16 rel=330200.0,0.0 rot=0.0
-[s9] packagepin 14 3 name=4 padstack=16 rel=304800.0,0.0 rot=0.0
-[s9] packagepin 14 4 name=5 padstack=16 rel=279400.0,0.0 rot=0.0
-[s9] packagepin 14 5 name=6 padstack=16 rel=254000.0,0.0 rot=0.0
-[s9] packagepin 14 6 name=7 padstack=16 rel=228600.0,0.0 rot=0.0
-[s9] packagepin 14 7 name=8 padstack=16 rel=203200.0,0.0 rot=0.0
-[s9] packagepin 14 8 name=9 padstack=16 rel=177800.0,0.0 rot=0.0
-[s9] packagepin 14 9 name=10 padstack=16 rel=152400.0,0.0 rot=0.0
-[s9] packagepin 14 10 name=11 padstack=16 rel=127000.0,0.0 rot=0.0
-[s9] packagepin 14 11 name=12 padstack=16 rel=101600.0,0.0 rot=0.0
-[s9] packagepin 14 12 name=13 padstack=16 rel=76200.0,0.0 rot=0.0
-[s9] packagepin 14 13 name=14 padstack=16 rel=50800.0,0.0 rot=0.0
-[s9] packagepin 14 14 name=15 padstack=16 rel=25400.0,0.0 rot=0.0
-[s9] packagepin 14 15 name=16 padstack=16 rel=0.0,0.0 rot=0.0
-[s9] packagepin 14 16 name=17 padstack=16 rel=-25400.0,0.0 rot=0.0
-[s9] packagepin 14 17 name=18 padstack=16 rel=-50800.0,0.0 rot=0.0
-[s9] packagepin 14 18 name=19 padstack=16 rel=-76200.0,0.0 rot=0.0
-[s9] packagepin 14 19 name=20 padstack=16 rel=-101600.0,0.0 rot=0.0
-[s9] packagepin 14 20 name=21 padstack=16 rel=-127000.0,0.0 rot=0.0
-[s9] packagepin 14 21 name=22 padstack=16 rel=-152400.0,0.0 rot=0.0
-[s9] packagepin 14 22 name=23 padstack=16 rel=-177800.0,0.0 rot=0.0
-[s9] packagepin 14 23 name=24 padstack=16 rel=-203200.0,0.0 rot=0.0
-[s9] packagepin 14 24 name=25 padstack=16 rel=-228600.0,0.0 rot=0.0
-[s9] packagepin 14 25 name=26 padstack=16 rel=-254000.0,0.0 rot=0.0
-[s9] packagepin 14 26 name=27 padstack=16 rel=-279400.0,0.0 rot=0.0
-[s9] packagepin 14 27 name=28 padstack=16 rel=-304800.0,0.0 rot=0.0
-[s9] packagepin 14 28 name=29 padstack=16 rel=-330200.0,0.0 rot=0.0
-[s9] packagepin 14 29 name=30 padstack=16 rel=-355600.0,0.0 rot=0.0
-[s9] packagepin 14 30 name=31 padstack=16 rel=-381000.0,0.0 rot=0.0
-[s9] packagepin 14 31 name=32 padstack=17 rel=381000.0,0.0 rot=0.0
-[s9] packagepin 14 32 name=33 padstack=17 rel=355600.0,0.0 rot=0.0
-[s9] packagepin 14 33 name=34 padstack=17 rel=330200.0,0.0 rot=0.0
-[s9] packagepin 14 34 name=35 padstack=17 rel=304800.0,0.0 rot=0.0
-[s9] packagepin 14 35 name=36 padstack=17 rel=279400.0,0.0 rot=0.0
-[s9] packagepin 14 36 name=37 padstack=17 rel=254000.0,0.0 rot=0.0
-[s9] packagepin 14 37 name=38 padstack=17 rel=228600.0,0.0 rot=0.0
-[s9] packagepin 14 38 name=39 padstack=17 rel=203200.0,0.0 rot=0.0
-[s9] packagepin 14 39 name=40 padstack=17 rel=177800.0,0.0 rot=0.0
-[s9] packagepin 14 40 name=41 padstack=17 rel=152400.0,0.0 rot=0.0
-[s9] packagepin 14 41 name=42 padstack=17 rel=127000.0,0.0 rot=0.0
-[s9] packagepin 14 42 name=43 padstack=17 rel=101600.0,0.0 rot=0.0
-[s9] packagepin 14 43 name=44 padstack=17 rel=76200.0,0.0 rot=0.0
-[s9] packagepin 14 44 name=45 padstack=17 rel=50800.0,0.0 rot=0.0
-[s9] packagepin 14 45 name=46 padstack=17 rel=25400.0,0.0 rot=0.0
-[s9] packagepin 14 46 name=47 padstack=17 rel=0.0,0.0 rot=0.0
-[s9] packagepin 14 47 name=48 padstack=17 rel=-25400.0,0.0 rot=0.0
-[s9] packagepin 14 48 name=49 padstack=17 rel=-50800.0,0.0 rot=0.0
-[s9] packagepin 14 49 name=50 padstack=17 rel=-76200.0,0.0 rot=0.0
-[s9] packagepin 14 50 name=51 padstack=17 rel=-101600.0,0.0 rot=0.0
-[s9] packagepin 14 51 name=52 padstack=17 rel=-127000.0,0.0 rot=0.0
-[s9] packagepin 14 52 name=53 padstack=17 rel=-152400.0,0.0 rot=0.0
-[s9] packagepin 14 53 name=54 padstack=17 rel=-177800.0,0.0 rot=0.0
-[s9] packagepin 14 54 name=55 padstack=17 rel=-203200.0,0.0 rot=0.0
-[s9] packagepin 14 55 name=56 padstack=17 rel=-228600.0,0.0 rot=0.0
-[s9] packagepin 14 56 name=57 padstack=17 rel=-254000.0,0.0 rot=0.0
-[s9] packagepin 14 57 name=58 padstack=17 rel=-279400.0,0.0 rot=0.0
-[s9] packagepin 14 58 name=59 padstack=17 rel=-304800.0,0.0 rot=0.0
-[s9] packagepin 14 59 name=60 padstack=17 rel=-330200.0,0.0 rot=0.0
-[s9] packagepin 14 60 name=61 padstack=17 rel=-355600.0,0.0 rot=0.0
-[s9] packagepin 14 61 name=62 padstack=17 rel=-381000.0,0.0 rot=0.0
+[s9] packagepin 14 0 name=1 padstack=18 rel=381000.0,0.0 rot=0.0
+[s9] packagepin 14 1 name=2 padstack=18 rel=355600.0,0.0 rot=0.0
+[s9] packagepin 14 2 name=3 padstack=18 rel=330200.0,0.0 rot=0.0
+[s9] packagepin 14 3 name=4 padstack=18 rel=304800.0,0.0 rot=0.0
+[s9] packagepin 14 4 name=5 padstack=18 rel=279400.0,0.0 rot=0.0
+[s9] packagepin 14 5 name=6 padstack=18 rel=254000.0,0.0 rot=0.0
+[s9] packagepin 14 6 name=7 padstack=18 rel=228600.0,0.0 rot=0.0
+[s9] packagepin 14 7 name=8 padstack=18 rel=203200.0,0.0 rot=0.0
+[s9] packagepin 14 8 name=9 padstack=18 rel=177800.0,0.0 rot=0.0
+[s9] packagepin 14 9 name=10 padstack=18 rel=152400.0,0.0 rot=0.0
+[s9] packagepin 14 10 name=11 padstack=18 rel=127000.0,0.0 rot=0.0
+[s9] packagepin 14 11 name=12 padstack=18 rel=101600.0,0.0 rot=0.0
+[s9] packagepin 14 12 name=13 padstack=18 rel=76200.0,0.0 rot=0.0
+[s9] packagepin 14 13 name=14 padstack=18 rel=50800.0,0.0 rot=0.0
+[s9] packagepin 14 14 name=15 padstack=18 rel=25400.0,0.0 rot=0.0
+[s9] packagepin 14 15 name=16 padstack=18 rel=0.0,0.0 rot=0.0
+[s9] packagepin 14 16 name=17 padstack=18 rel=-25400.0,0.0 rot=0.0
+[s9] packagepin 14 17 name=18 padstack=18 rel=-50800.0,0.0 rot=0.0
+[s9] packagepin 14 18 name=19 padstack=18 rel=-76200.0,0.0 rot=0.0
+[s9] packagepin 14 19 name=20 padstack=18 rel=-101600.0,0.0 rot=0.0
+[s9] packagepin 14 20 name=21 padstack=18 rel=-127000.0,0.0 rot=0.0
+[s9] packagepin 14 21 name=22 padstack=18 rel=-152400.0,0.0 rot=0.0
+[s9] packagepin 14 22 name=23 padstack=18 rel=-177800.0,0.0 rot=0.0
+[s9] packagepin 14 23 name=24 padstack=18 rel=-203200.0,0.0 rot=0.0
+[s9] packagepin 14 24 name=25 padstack=18 rel=-228600.0,0.0 rot=0.0
+[s9] packagepin 14 25 name=26 padstack=18 rel=-254000.0,0.0 rot=0.0
+[s9] packagepin 14 26 name=27 padstack=18 rel=-279400.0,0.0 rot=0.0
+[s9] packagepin 14 27 name=28 padstack=18 rel=-304800.0,0.0 rot=0.0
+[s9] packagepin 14 28 name=29 padstack=18 rel=-330200.0,0.0 rot=0.0
+[s9] packagepin 14 29 name=30 padstack=18 rel=-355600.0,0.0 rot=0.0
+[s9] packagepin 14 30 name=31 padstack=18 rel=-381000.0,0.0 rot=0.0
+[s9] packagepin 14 31 name=32 padstack=19 rel=381000.0,0.0 rot=0.0
+[s9] packagepin 14 32 name=33 padstack=19 rel=355600.0,0.0 rot=0.0
+[s9] packagepin 14 33 name=34 padstack=19 rel=330200.0,0.0 rot=0.0
+[s9] packagepin 14 34 name=35 padstack=19 rel=304800.0,0.0 rot=0.0
+[s9] packagepin 14 35 name=36 padstack=19 rel=279400.0,0.0 rot=0.0
+[s9] packagepin 14 36 name=37 padstack=19 rel=254000.0,0.0 rot=0.0
+[s9] packagepin 14 37 name=38 padstack=19 rel=228600.0,0.0 rot=0.0
+[s9] packagepin 14 38 name=39 padstack=19 rel=203200.0,0.0 rot=0.0
+[s9] packagepin 14 39 name=40 padstack=19 rel=177800.0,0.0 rot=0.0
+[s9] packagepin 14 40 name=41 padstack=19 rel=152400.0,0.0 rot=0.0
+[s9] packagepin 14 41 name=42 padstack=19 rel=127000.0,0.0 rot=0.0
+[s9] packagepin 14 42 name=43 padstack=19 rel=101600.0,0.0 rot=0.0
+[s9] packagepin 14 43 name=44 padstack=19 rel=76200.0,0.0 rot=0.0
+[s9] packagepin 14 44 name=45 padstack=19 rel=50800.0,0.0 rot=0.0
+[s9] packagepin 14 45 name=46 padstack=19 rel=25400.0,0.0 rot=0.0
+[s9] packagepin 14 46 name=47 padstack=19 rel=0.0,0.0 rot=0.0
+[s9] packagepin 14 47 name=48 padstack=19 rel=-25400.0,0.0 rot=0.0
+[s9] packagepin 14 48 name=49 padstack=19 rel=-50800.0,0.0 rot=0.0
+[s9] packagepin 14 49 name=50 padstack=19 rel=-76200.0,0.0 rot=0.0
+[s9] packagepin 14 50 name=51 padstack=19 rel=-101600.0,0.0 rot=0.0
+[s9] packagepin 14 51 name=52 padstack=19 rel=-127000.0,0.0 rot=0.0
+[s9] packagepin 14 52 name=53 padstack=19 rel=-152400.0,0.0 rot=0.0
+[s9] packagepin 14 53 name=54 padstack=19 rel=-177800.0,0.0 rot=0.0
+[s9] packagepin 14 54 name=55 padstack=19 rel=-203200.0,0.0 rot=0.0
+[s9] packagepin 14 55 name=56 padstack=19 rel=-228600.0,0.0 rot=0.0
+[s9] packagepin 14 56 name=57 padstack=19 rel=-254000.0,0.0 rot=0.0
+[s9] packagepin 14 57 name=58 padstack=19 rel=-279400.0,0.0 rot=0.0
+[s9] packagepin 14 58 name=59 padstack=19 rel=-304800.0,0.0 rot=0.0
+[s9] packagepin 14 59 name=60 padstack=19 rel=-330200.0,0.0 rot=0.0
+[s9] packagepin 14 60 name=61 padstack=19 rel=-355600.0,0.0 rot=0.0
+[s9] packagepin 14 61 name=62 padstack=19 rel=-381000.0,0.0 rot=0.0
 [s9] package 15 name=interf_u:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal::1 isFront=true pins=2
 [s9] packagepin 15 0 name=1 padstack=3 rel=0.0,0.0 rot=0.0
 [s9] packagepin 15 1 name=2 padstack=4 rel=-76200.0,0.0 rot=0.0
@@ -956,90 +958,90 @@
 [s9] component 24 name=R1 id=24 location=1174750.0,-990600.0 rotation=270.0 onFront=true package=15 positionFixed=true partNumber=100K
 [s9] component 25 name=G1 id=25 location=1340000.0,-470000.0 rotation=-0.0 onFront=true package=16 positionFixed=true partNumber=LOGO
 [s9] items count=1196
-[s9] item 1196 Via nets=[101] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1657350.0,-1333500.0 attachAllowed=true
-[s9] item 1195 Via nets=[101] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1708150.0,-1193800.0 attachAllowed=true
-[s9] item 1194 Via nets=[101] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=984250.0,-1320800.0 attachAllowed=true
-[s9] item 1193 Via nets=[101] cl=1 comp=0 fixed=USER_FIXED padstack=21 center=1657350.0,-749300.0 attachAllowed=true
-[s9] item 1192 Via nets=[100] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1581150.0,-901700.0 attachAllowed=true
-[s9] item 1191 Via nets=[100] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=984250.0,-927100.0 attachAllowed=true
-[s9] item 1190 Via nets=[100] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1212850.0,-1054100.0 attachAllowed=true
-[s9] item 1189 Via nets=[100] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1238250.0,-520700.0 attachAllowed=true
-[s9] item 1188 Via nets=[98] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1733550.0,-457200.0 attachAllowed=true
-[s9] item 1187 Via nets=[98] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=946150.0,-444500.0 attachAllowed=true
-[s9] item 1186 Via nets=[96] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1784350.0,-762000.0 attachAllowed=true
-[s9] item 1185 Via nets=[82] cl=1 comp=0 fixed=USER_FIXED padstack=19 center=1556365.0,-1139571.0 attachAllowed=true
-[s9] item 1184 Via nets=[80] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1492250.0,-1104900.0 attachAllowed=true
-[s9] item 1183 Via nets=[80] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1619250.0,-1054100.0 attachAllowed=true
-[s9] item 1182 Via nets=[80] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1428750.0,-1104900.0 attachAllowed=true
-[s9] item 1181 Via nets=[79] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1390650.0,-1333500.0 attachAllowed=true
-[s9] item 1180 Via nets=[78] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1365250.0,-1333500.0 attachAllowed=true
-[s9] item 1179 Via nets=[69] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1631950.0,-1282700.0 attachAllowed=true
-[s9] item 1178 Via nets=[69] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1441450.0,-1282700.0 attachAllowed=true
-[s9] item 1177 Via nets=[68] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1085850.0,-1320800.0 attachAllowed=true
-[s9] item 1176 Via nets=[68] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1162050.0,-1320800.0 attachAllowed=true
-[s9] item 1175 Via nets=[68] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1543050.0,-1320800.0 attachAllowed=true
-[s9] item 1174 Via nets=[67] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1035050.0,-1308100.0 attachAllowed=true
-[s9] item 1173 Via nets=[67] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1136650.0,-1308100.0 attachAllowed=true
-[s9] item 1172 Via nets=[67] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1022350.0,-850900.0 attachAllowed=true
-[s9] item 1171 Via nets=[66] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1123950.0,-838200.0 attachAllowed=true
-[s9] item 1170 Via nets=[65] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1073150.0,-876300.0 attachAllowed=true
-[s9] item 1169 Via nets=[64] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1060450.0,-1263650.0 attachAllowed=true
-[s9] item 1168 Via nets=[64] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=965200.0,-895350.0 attachAllowed=true
-[s9] item 1167 Via nets=[63] cl=1 comp=0 fixed=USER_FIXED padstack=19 center=1035050.0,-1195959.0 attachAllowed=true
-[s9] item 1166 Via nets=[63] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1517650.0,-1193800.0 attachAllowed=true
-[s9] item 1165 Via nets=[62] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1009650.0,-1320800.0 attachAllowed=true
-[s9] item 1164 Via nets=[62] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1327150.0,-1333500.0 attachAllowed=true
-[s9] item 1163 Via nets=[62] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1352550.0,-914400.0 attachAllowed=true
-[s9] item 1162 Via nets=[61] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=996950.0,-1219200.0 attachAllowed=true
-[s9] item 1161 Via nets=[61] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1301750.0,-965200.0 attachAllowed=true
-[s9] item 1160 Via nets=[60] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1212850.0,-1257300.0 attachAllowed=true
-[s9] item 1159 Via nets=[59] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1187450.0,-952500.0 attachAllowed=true
-[s9] item 1158 Via nets=[58] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1327150.0,-990600.0 attachAllowed=true
-[s9] item 1157 Via nets=[58] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=958850.0,-1295400.0 attachAllowed=true
-[s9] item 1156 Via nets=[58] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1263650.0,-1295400.0 attachAllowed=true
-[s9] item 1155 Via nets=[57] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1289050.0,-1206500.0 attachAllowed=true
-[s9] item 1154 Via nets=[57] cl=1 comp=0 fixed=USER_FIXED padstack=19 center=914400.0,-1206500.0 attachAllowed=true
-[s9] item 1153 Via nets=[57] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1492250.0,-1257300.0 attachAllowed=true
-[s9] item 1152 Via nets=[56] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1644650.0,-469900.0 attachAllowed=true
-[s9] item 1151 Via nets=[56] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1073150.0,-469900.0 attachAllowed=true
-[s9] item 1150 Via nets=[55] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1593850.0,-596900.0 attachAllowed=true
-[s9] item 1149 Via nets=[54] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1631950.0,-558800.0 attachAllowed=true
-[s9] item 1148 Via nets=[54] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1174750.0,-558800.0 attachAllowed=true
-[s9] item 1147 Via nets=[53] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1200150.0,-495300.0 attachAllowed=true
-[s9] item 1146 Via nets=[53] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1606550.0,-495300.0 attachAllowed=true
-[s9] item 1145 Via nets=[52] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1581150.0,-457200.0 attachAllowed=true
-[s9] item 1144 Via nets=[52] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1225550.0,-457200.0 attachAllowed=true
-[s9] item 1143 Via nets=[51] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1555750.0,-609600.0 attachAllowed=true
-[s9] item 1142 Via nets=[50] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1212850.0,-546100.0 attachAllowed=true
-[s9] item 1141 Via nets=[50] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1517650.0,-546100.0 attachAllowed=true
-[s9] item 1140 Via nets=[49] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1187450.0,-673100.0 attachAllowed=true
-[s9] item 1139 Via nets=[48] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1162050.0,-711200.0 attachAllowed=true
-[s9] item 1138 Via nets=[46] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1504950.0,-622300.0 attachAllowed=true
-[s9] item 1137 Via nets=[45] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1009650.0,-825500.0 attachAllowed=true
-[s9] item 1136 Via nets=[44] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1466850.0,-533400.0 attachAllowed=true
-[s9] item 1135 Via nets=[44] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=958850.0,-533400.0 attachAllowed=true
-[s9] item 1134 Via nets=[42] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1009650.0,-635000.0 attachAllowed=true
-[s9] item 1133 Via nets=[42] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1746250.0,-635000.0 attachAllowed=true
-[s9] item 1132 Via nets=[40] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1060450.0,-736600.0 attachAllowed=true
-[s9] item 1131 Via nets=[38] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=882650.0,-482600.0 attachAllowed=true
-[s9] item 1130 Via nets=[38] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1619250.0,-482600.0 attachAllowed=true
-[s9] item 1129 Via nets=[37] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1377950.0,-660400.0 attachAllowed=true
-[s9] item 1128 Via nets=[35] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=971550.0,-685800.0 attachAllowed=true
-[s9] item 1127 Via nets=[33] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1390650.0,-698500.0 attachAllowed=true
-[s9] item 1126 Via nets=[33] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1047750.0,-685800.0 attachAllowed=true
-[s9] item 1125 Via nets=[32] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1670050.0,-647700.0 attachAllowed=true
-[s9] item 1124 Via nets=[32] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1098550.0,-647700.0 attachAllowed=true
-[s9] item 1123 Via nets=[31] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1111250.0,-685800.0 attachAllowed=true
-[s9] item 1122 Via nets=[30] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1682750.0,-571500.0 attachAllowed=true
-[s9] item 1121 Via nets=[30] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1136650.0,-571500.0 attachAllowed=true
-[s9] item 1120 Via nets=[25] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1543050.0,-1079500.0 attachAllowed=true
-[s9] item 1119 Via nets=[25] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1289050.0,-1079500.0 attachAllowed=true
-[s9] item 1118 Via nets=[23] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1492250.0,-1206500.0 attachAllowed=true
-[s9] item 1117 Via nets=[23] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1403350.0,-1206500.0 attachAllowed=true
-[s9] item 1116 Via nets=[15] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1454150.0,-1009650.0 attachAllowed=true
-[s9] item 1115 Via nets=[15] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1568450.0,-1009650.0 attachAllowed=true
-[s9] item 1114 Via nets=[14] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1657350.0,-584200.0 attachAllowed=true
-[s9] item 1113 Via nets=[11] cl=1 comp=0 fixed=USER_FIXED padstack=18 center=1784350.0,-838200.0 attachAllowed=true
+[s9] item 1196 Via nets=[101] cl=1 comp=0 fixed=USER_FIXED padstack=22 center=1657350.0,-1333500.0 attachAllowed=true
+[s9] item 1195 Via nets=[101] cl=1 comp=0 fixed=USER_FIXED padstack=22 center=1708150.0,-1193800.0 attachAllowed=true
+[s9] item 1194 Via nets=[101] cl=1 comp=0 fixed=USER_FIXED padstack=22 center=984250.0,-1320800.0 attachAllowed=true
+[s9] item 1193 Via nets=[101] cl=1 comp=0 fixed=USER_FIXED padstack=23 center=1657350.0,-749300.0 attachAllowed=true
+[s9] item 1192 Via nets=[100] cl=1 comp=0 fixed=USER_FIXED padstack=22 center=1581150.0,-901700.0 attachAllowed=true
+[s9] item 1191 Via nets=[100] cl=1 comp=0 fixed=USER_FIXED padstack=22 center=984250.0,-927100.0 attachAllowed=true
+[s9] item 1190 Via nets=[100] cl=1 comp=0 fixed=USER_FIXED padstack=22 center=1212850.0,-1054100.0 attachAllowed=true
+[s9] item 1189 Via nets=[100] cl=1 comp=0 fixed=USER_FIXED padstack=22 center=1238250.0,-520700.0 attachAllowed=true
+[s9] item 1188 Via nets=[98] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1733550.0,-457200.0 attachAllowed=true
+[s9] item 1187 Via nets=[98] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=946150.0,-444500.0 attachAllowed=true
+[s9] item 1186 Via nets=[96] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1784350.0,-762000.0 attachAllowed=true
+[s9] item 1185 Via nets=[82] cl=1 comp=0 fixed=USER_FIXED padstack=21 center=1556365.0,-1139571.0 attachAllowed=true
+[s9] item 1184 Via nets=[80] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1492250.0,-1104900.0 attachAllowed=true
+[s9] item 1183 Via nets=[80] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1619250.0,-1054100.0 attachAllowed=true
+[s9] item 1182 Via nets=[80] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1428750.0,-1104900.0 attachAllowed=true
+[s9] item 1181 Via nets=[79] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1390650.0,-1333500.0 attachAllowed=true
+[s9] item 1180 Via nets=[78] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1365250.0,-1333500.0 attachAllowed=true
+[s9] item 1179 Via nets=[69] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1631950.0,-1282700.0 attachAllowed=true
+[s9] item 1178 Via nets=[69] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1441450.0,-1282700.0 attachAllowed=true
+[s9] item 1177 Via nets=[68] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1085850.0,-1320800.0 attachAllowed=true
+[s9] item 1176 Via nets=[68] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1162050.0,-1320800.0 attachAllowed=true
+[s9] item 1175 Via nets=[68] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1543050.0,-1320800.0 attachAllowed=true
+[s9] item 1174 Via nets=[67] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1035050.0,-1308100.0 attachAllowed=true
+[s9] item 1173 Via nets=[67] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1136650.0,-1308100.0 attachAllowed=true
+[s9] item 1172 Via nets=[67] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1022350.0,-850900.0 attachAllowed=true
+[s9] item 1171 Via nets=[66] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1123950.0,-838200.0 attachAllowed=true
+[s9] item 1170 Via nets=[65] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1073150.0,-876300.0 attachAllowed=true
+[s9] item 1169 Via nets=[64] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1060450.0,-1263650.0 attachAllowed=true
+[s9] item 1168 Via nets=[64] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=965200.0,-895350.0 attachAllowed=true
+[s9] item 1167 Via nets=[63] cl=1 comp=0 fixed=USER_FIXED padstack=21 center=1035050.0,-1195959.0 attachAllowed=true
+[s9] item 1166 Via nets=[63] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1517650.0,-1193800.0 attachAllowed=true
+[s9] item 1165 Via nets=[62] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1009650.0,-1320800.0 attachAllowed=true
+[s9] item 1164 Via nets=[62] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1327150.0,-1333500.0 attachAllowed=true
+[s9] item 1163 Via nets=[62] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1352550.0,-914400.0 attachAllowed=true
+[s9] item 1162 Via nets=[61] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=996950.0,-1219200.0 attachAllowed=true
+[s9] item 1161 Via nets=[61] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1301750.0,-965200.0 attachAllowed=true
+[s9] item 1160 Via nets=[60] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1212850.0,-1257300.0 attachAllowed=true
+[s9] item 1159 Via nets=[59] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1187450.0,-952500.0 attachAllowed=true
+[s9] item 1158 Via nets=[58] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1327150.0,-990600.0 attachAllowed=true
+[s9] item 1157 Via nets=[58] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=958850.0,-1295400.0 attachAllowed=true
+[s9] item 1156 Via nets=[58] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1263650.0,-1295400.0 attachAllowed=true
+[s9] item 1155 Via nets=[57] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1289050.0,-1206500.0 attachAllowed=true
+[s9] item 1154 Via nets=[57] cl=1 comp=0 fixed=USER_FIXED padstack=21 center=914400.0,-1206500.0 attachAllowed=true
+[s9] item 1153 Via nets=[57] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1492250.0,-1257300.0 attachAllowed=true
+[s9] item 1152 Via nets=[56] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1644650.0,-469900.0 attachAllowed=true
+[s9] item 1151 Via nets=[56] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1073150.0,-469900.0 attachAllowed=true
+[s9] item 1150 Via nets=[55] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1593850.0,-596900.0 attachAllowed=true
+[s9] item 1149 Via nets=[54] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1631950.0,-558800.0 attachAllowed=true
+[s9] item 1148 Via nets=[54] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1174750.0,-558800.0 attachAllowed=true
+[s9] item 1147 Via nets=[53] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1200150.0,-495300.0 attachAllowed=true
+[s9] item 1146 Via nets=[53] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1606550.0,-495300.0 attachAllowed=true
+[s9] item 1145 Via nets=[52] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1581150.0,-457200.0 attachAllowed=true
+[s9] item 1144 Via nets=[52] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1225550.0,-457200.0 attachAllowed=true
+[s9] item 1143 Via nets=[51] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1555750.0,-609600.0 attachAllowed=true
+[s9] item 1142 Via nets=[50] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1212850.0,-546100.0 attachAllowed=true
+[s9] item 1141 Via nets=[50] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1517650.0,-546100.0 attachAllowed=true
+[s9] item 1140 Via nets=[49] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1187450.0,-673100.0 attachAllowed=true
+[s9] item 1139 Via nets=[48] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1162050.0,-711200.0 attachAllowed=true
+[s9] item 1138 Via nets=[46] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1504950.0,-622300.0 attachAllowed=true
+[s9] item 1137 Via nets=[45] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1009650.0,-825500.0 attachAllowed=true
+[s9] item 1136 Via nets=[44] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1466850.0,-533400.0 attachAllowed=true
+[s9] item 1135 Via nets=[44] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=958850.0,-533400.0 attachAllowed=true
+[s9] item 1134 Via nets=[42] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1009650.0,-635000.0 attachAllowed=true
+[s9] item 1133 Via nets=[42] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1746250.0,-635000.0 attachAllowed=true
+[s9] item 1132 Via nets=[40] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1060450.0,-736600.0 attachAllowed=true
+[s9] item 1131 Via nets=[38] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=882650.0,-482600.0 attachAllowed=true
+[s9] item 1130 Via nets=[38] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1619250.0,-482600.0 attachAllowed=true
+[s9] item 1129 Via nets=[37] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1377950.0,-660400.0 attachAllowed=true
+[s9] item 1128 Via nets=[35] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=971550.0,-685800.0 attachAllowed=true
+[s9] item 1127 Via nets=[33] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1390650.0,-698500.0 attachAllowed=true
+[s9] item 1126 Via nets=[33] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1047750.0,-685800.0 attachAllowed=true
+[s9] item 1125 Via nets=[32] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1670050.0,-647700.0 attachAllowed=true
+[s9] item 1124 Via nets=[32] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1098550.0,-647700.0 attachAllowed=true
+[s9] item 1123 Via nets=[31] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1111250.0,-685800.0 attachAllowed=true
+[s9] item 1122 Via nets=[30] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1682750.0,-571500.0 attachAllowed=true
+[s9] item 1121 Via nets=[30] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1136650.0,-571500.0 attachAllowed=true
+[s9] item 1120 Via nets=[25] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1543050.0,-1079500.0 attachAllowed=true
+[s9] item 1119 Via nets=[25] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1289050.0,-1079500.0 attachAllowed=true
+[s9] item 1118 Via nets=[23] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1492250.0,-1206500.0 attachAllowed=true
+[s9] item 1117 Via nets=[23] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1403350.0,-1206500.0 attachAllowed=true
+[s9] item 1116 Via nets=[15] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1454150.0,-1009650.0 attachAllowed=true
+[s9] item 1115 Via nets=[15] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1568450.0,-1009650.0 attachAllowed=true
+[s9] item 1114 Via nets=[14] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1657350.0,-584200.0 attachAllowed=true
+[s9] item 1113 Via nets=[11] cl=1 comp=0 fixed=USER_FIXED padstack=20 center=1784350.0,-838200.0 attachAllowed=true
 [s9] item 1112 PolylineTrace nets=[146] cl=1 comp=0 fixed=USER_FIXED layer=0 halfWidth=2159 corners=[1289050.0,-1168400.0;1289050.0,-1130300.0]
 [s9] item 1111 PolylineTrace nets=[145] cl=1 comp=0 fixed=USER_FIXED layer=0 halfWidth=2159 corners=[1314450.0,-1168400.0;1314450.0,-1130300.0]
 [s9] item 1110 PolylineTrace nets=[144] cl=1 comp=0 fixed=USER_FIXED layer=0 halfWidth=2159 corners=[1339850.0,-1168400.0;1339850.0,-1130300.0]
@@ -2156,7 +2158,7 @@
 [case] stem=corney-island
 [s9] result=Success
 [s9] padstacks count=6
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] padstack 2 name=Rect[B]Pad_900x1200_um fromLayer=1 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[<null>;Simplex(-4500.0,-6000.0;4500.0,-6000.0;4500.0,6000.0;-4500.0,6000.0)]
 [s9] padstack 3 name=Round[A]Pad_1900x1900_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=9500);Circle(0.0,0.0,r=9500)]
 [s9] padstack 4 name=Round[A]Pad_3000x3000_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=15000);Circle(0.0,0.0,r=15000)]
@@ -2203,7 +2205,7 @@
 [case] stem=corney-island-session
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2212,8 +2214,8 @@
 [case] stem=complex-hierarchy-session
 [s9] result=Success
 [s9] padstacks count=2
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-8255.0,-8255.0;8255.0,-8255.0;8255.0,8255.0;-8255.0,8255.0);Simplex(-8255.0,-8255.0;8255.0,-8255.0;8255.0,8255.0;-8255.0,8255.0)]
-[s9] padstack 2 name=via_power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-8255.0,-8255.0;8255.0,-8255.0;8255.0,8255.0;-8255.0,8255.0);Simplex(-8255.0,-8255.0;8255.0,-8255.0;8255.0,8255.0;-8255.0,8255.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=8255);Circle(0.0,0.0,r=8255)]
+[s9] padstack 2 name=via_power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=8255);Circle(0.0,0.0,r=8255)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=173
@@ -2394,7 +2396,7 @@
 [case] stem=empty-object
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2418,8 +2420,8 @@
 [case] stem=unit-mil
 [s9] result=Success
 [s9] padstacks count=2
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=2 attachAllowed=true placedAbsolute=false shapes=[Simplex(-15.0,-15.0;15.0,-15.0;15.0,15.0;-15.0,15.0);Simplex(-15.0,-15.0;15.0,-15.0;15.0,15.0;-15.0,15.0);Simplex(-15.0,-15.0;15.0,-15.0;15.0,15.0;-15.0,15.0)]
-[s9] padstack 2 name=via_HV fromLayer=0 toLayer=2 attachAllowed=true placedAbsolute=false shapes=[Simplex(-25.0,-25.0;25.0,-25.0;25.0,25.0;-25.0,25.0);Simplex(-25.0,-25.0;25.0,-25.0;25.0,25.0;-25.0,25.0);Simplex(-25.0,-25.0;25.0,-25.0;25.0,25.0;-25.0,25.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=2 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=15);Circle(0.0,0.0,r=15);Circle(0.0,0.0,r=15)]
+[s9] padstack 2 name=via_HV fromLayer=0 toLayer=2 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=25);Circle(0.0,0.0,r=25);Circle(0.0,0.0,r=25)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2428,7 +2430,7 @@
 [case] stem=unit-um
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2437,7 +2439,7 @@
 [case] stem=unit-unknown
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2446,7 +2448,7 @@
 [case] stem=unit-lowercase
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2455,7 +2457,7 @@
 [case] stem=resolution-fractional
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-1.0,-1.0;1.0,-1.0;1.0,1.0;-1.0,1.0);Simplex(-1.0,-1.0;1.0,-1.0;1.0,1.0;-1.0,1.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=1);Circle(0.0,0.0,r=1)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2464,7 +2466,7 @@
 [case] stem=resolution-zero
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(0.0,0.0;0.0,0.0;0.0,0.0;0.0,0.0);Simplex(0.0,0.0;0.0,0.0;0.0,0.0;0.0,0.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=0);Circle(0.0,0.0,r=0)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2473,8 +2475,8 @@
 [case] stem=outline-two-corners
 [s9] result=Success
 [s9] padstacks count=2
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
-[s9] padstack 2 name=Via[0-1]_800:400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
+[s9] padstack 2 name=Via[0-1]_800:400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=2
@@ -2484,7 +2486,7 @@
 [case] stem=outline-unsorted
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2493,7 +2495,7 @@
 [case] stem=y-half-tie
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-15.0,-15.0;15.0,-15.0;15.0,15.0;-15.0,15.0);Simplex(-15.0,-15.0;15.0,-15.0;15.0,15.0;-15.0,15.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=15);Circle(0.0,0.0,r=15)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2502,9 +2504,9 @@
 [case] stem=netclass-duplicate-names
 [s9] result=Success
 [s9] padstacks count=3
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
-[s9] padstack 2 name=via_A fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
-[s9] padstack 3 name=via_A fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
+[s9] padstack 2 name=via_A fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
+[s9] padstack 3 name=via_A fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=1
@@ -2513,7 +2515,7 @@
 [case] stem=referenced-nets-only
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0);Simplex(-4000.0,-4000.0;4000.0,-4000.0;4000.0,4000.0;-4000.0,4000.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=4000);Circle(0.0,0.0,r=4000)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=19
@@ -2540,7 +2542,7 @@
 [case] stem=comp-identical-packages
 [s9] result=Success
 [s9] padstacks count=2
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Rect[A]Pad_1000x2000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-500.0,-1000.0;500.0,-1000.0;500.0,1000.0;-500.0,1000.0);Simplex(-500.0,-1000.0;500.0,-1000.0;500.0,1000.0;-500.0,1000.0)]
 [s9] packages count=1
 [s9] package 1 name=SO8 isFront=true pins=1
@@ -2556,7 +2558,7 @@
 [case] stem=comp-differing-packages
 [s9] result=Success
 [s9] padstacks count=4
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Rect[A]Pad_1000x2000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-500.0,-1000.0;500.0,-1000.0;500.0,1000.0;-500.0,1000.0);Simplex(-500.0,-1000.0;500.0,-1000.0;500.0,1000.0;-500.0,1000.0)]
 [s9] padstack 3 name=Rect[A]Pad_3000x4000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-1500.0,-2000.0;1500.0,-2000.0;1500.0,2000.0;-1500.0,2000.0);Simplex(-1500.0,-2000.0;1500.0,-2000.0;1500.0,2000.0;-1500.0,2000.0)]
 [s9] padstack 4 name=Rect[A]Pad_5000x6000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-2500.0,-3000.0;2500.0,-3000.0;2500.0,3000.0;-2500.0,3000.0);Simplex(-2500.0,-3000.0;2500.0,-3000.0;2500.0,3000.0;-2500.0,3000.0)]
@@ -2580,7 +2582,7 @@
 [case] stem=comp-both-sides
 [s9] result=Success
 [s9] padstacks count=2
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Rect[A]Pad_1000x2000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-500.0,-1000.0;500.0,-1000.0;500.0,1000.0;-500.0,1000.0);Simplex(-500.0,-1000.0;500.0,-1000.0;500.0,1000.0;-500.0,1000.0)]
 [s9] packages count=1
 [s9] package 1 name=SO8 isFront=true pins=1
@@ -2596,7 +2598,7 @@
 [case] stem=pad-shape-arms
 [s9] result=Success
 [s9] padstacks count=5
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Round[A]Pad_1000x2000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Circle(0.0,0.0,r=500);Circle(0.0,0.0,r=500)]
 [s9] padstack 3 name=Oval[A]Pad_1000x2000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-207.0,-1000.0;207.0,-1000.0;500.0,-707.0;500.0,707.0;207.0,1000.0;-207.0,1000.0;-500.0,707.0;-500.0,-707.0);Simplex(-207.0,-1000.0;207.0,-1000.0;500.0,-707.0;500.0,707.0;207.0,1000.0;-207.0,1000.0;-500.0,707.0;-500.0,-707.0)]
 [s9] padstack 4 name=Oval[A]Pad_3000x1000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-1207.0,-500.0;1207.0,-500.0;1500.0,-207.0;1500.0,207.0;1207.0,500.0;-1207.0,500.0;-1500.0,207.0;-1500.0,-207.0);Simplex(-1207.0,-500.0;1207.0,-500.0;1500.0,-207.0;1500.0,207.0;1207.0,500.0;-1207.0,500.0;-1500.0,207.0;-1500.0,-207.0)]
@@ -2635,7 +2637,7 @@
 [case] stem=pad-name-half-up
 [s9] result=Success
 [s9] padstacks count=3
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Round[A]Pad_1x1_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Circle(0.0,0.0,r=0);Circle(0.0,0.0,r=0)]
 [s9] padstack 3 name=Rect[A]Pad_3x4_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-1.0,-2.0;1.0,-2.0;1.0,2.0;-1.0,2.0);Simplex(-1.0,-2.0;1.0,-2.0;1.0,2.0;-1.0,2.0)]
 [s9] packages count=1
@@ -2657,7 +2659,7 @@
 [case] stem=comp-no-footprint
 [s9] result=Success
 [s9] padstacks count=2
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Rect[A]Pad_1000x1000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Simplex(-500.0,-500.0;500.0,-500.0;500.0,500.0;-500.0,500.0);Simplex(-500.0,-500.0;500.0,-500.0;500.0,500.0;-500.0,500.0)]
 [s9] packages count=1
 [s9] package 1 name=Package isFront=true pins=1
@@ -2724,7 +2726,7 @@
 [case] stem=zones
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=3
@@ -2738,7 +2740,7 @@
 [case] stem=zone-negative-layer
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=2
@@ -2748,7 +2750,7 @@
 [case] stem=zone-layer-out-of-range
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=2
@@ -2758,7 +2760,7 @@
 [case] stem=traces
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=4
@@ -2770,7 +2772,7 @@
 [case] stem=trace-layer-out-of-range
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=2
@@ -2780,10 +2782,10 @@
 [case] stem=vias
 [s9] result=Success
 [s9] padstacks count=4
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
-[s9] padstack 2 name=Via[0-1]_800:400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
-[s9] padstack 3 name=Via[0-1]_1:3_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(0.0,0.0;0.0,0.0;0.0,0.0;0.0,0.0);Simplex(0.0,0.0;0.0,0.0;0.0,0.0;0.0,0.0)]
-[s9] padstack 4 name=Via[0-0]_4:2_um fromLayer=0 toLayer=0 attachAllowed=true placedAbsolute=false shapes=[Simplex(-2.0,-2.0;2.0,-2.0;2.0,2.0;-2.0,2.0);<null>]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
+[s9] padstack 2 name=Via[0-1]_800:400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
+[s9] padstack 3 name=Via[0-1]_1:3_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=0);Circle(0.0,0.0,r=0)]
+[s9] padstack 4 name=Via[0-0]_4:2_um fromLayer=0 toLayer=0 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=2);<null>]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=5
@@ -2811,7 +2813,7 @@
 [case] stem=trace-negative-layer
 [s9] result=Success
 [s9] padstacks count=1
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=0
 [s9] components count=0
 [s9] items count=2
@@ -2830,9 +2832,9 @@
 [case] stem=mixed
 [s9] result=Success
 [s9] padstacks count=3
-[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 1 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] padstack 2 name=Round[A]Pad_1000x1000_um fromLayer=0 toLayer=1 attachAllowed=false placedAbsolute=false shapes=[Circle(0.0,0.0,r=500);Circle(0.0,0.0,r=500)]
-[s9] padstack 3 name=Via[0-1]_800:400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0);Simplex(-400.0,-400.0;400.0,-400.0;400.0,400.0;-400.0,400.0)]
+[s9] padstack 3 name=Via[0-1]_800:400_um fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false shapes=[Circle(0.0,0.0,r=400);Circle(0.0,0.0,r=400)]
 [s9] packages count=1
 [s9] package 1 name=SO8 isFront=true pins=1
 [s9] packagepin 1 0 name=1 padstack=2 rel=0.0,0.0 rot=0.0

@@ -15,6 +15,9 @@ pub struct Padstack {
     pub placed_absolute: bool,
     shapes: Vec<Option<Shape>>,
     pub hole_only: bool,
+    /// Drill diameter in board units. None means legacy data without drill metadata.
+    pub drill_diameter: Option<f64>,
+    pub drill_estimated: bool,
 }
 
 impl Padstack {
@@ -32,6 +35,8 @@ impl Padstack {
             placed_absolute,
             shapes,
             hole_only: false,
+            drill_diameter: None,
+            drill_estimated: true,
         }
     }
 
@@ -67,6 +72,9 @@ impl Padstack {
     }
 
     pub fn drill_radius(&self) -> f64 {
+        if let Some(diameter) = self.drill_diameter {
+            return diameter / 2.0;
+        }
         if let Some(colon_index) = self.name.find(':') {
             let underscore_index = self.name[colon_index..]
                 .find('_')
@@ -193,6 +201,15 @@ impl Padstacks {
             "Padstacks.get: inconsistent padstack ID (Padstacks.java:41-43)"
         );
         Some(result)
+    }
+
+    /// Set drill metadata before inserting items that use this padstack.
+    pub fn set_drill(&mut self, id: PadstackId, diameter: f64, hole_only: bool, estimated: bool) {
+        assert!(diameter.is_finite() && diameter >= 0.0);
+        let pad = &mut self.list[id.0 - 1];
+        pad.drill_diameter = Some(diameter);
+        pad.drill_estimated = estimated;
+        pad.hole_only = hole_only;
     }
 
     pub fn count(&self) -> usize {
