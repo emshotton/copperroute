@@ -62,3 +62,25 @@ four unconnected items. The native Rust result contains only the eight fixed
 USB-footprint findings, with no routing-induced DRC violations. The prior run
 had one KiCad hole-clearance error and three unconnected items; enforcing the
 minimum can leave more work for the router within the same five-pass budget.
+
+## Nano follow-up
+
+The same branch was checked with the Easyduino Nano, its project rules, all four
+signal copper layers, five passes, one worker, a 60-second deadline and no
+optimizer. The run completed all five passes before the deadline. Rust reported
+seven track-only incomplete connections and ten DRC findings: the same eight
+fixed USB pad/hole findings plus two trace-to-via clearances.
+
+KiCad on the exported board, after zone refill, reported no clearance or drill
+errors, six unconnected items, four dangling-via warnings, and three silkscreen
+warnings. All three silkscreen warnings also occur on the untouched upstream
+Nano, which has no unconnected items.
+
+The two additional Rust clearance findings expose a separate importer geometry
+issue, not addressed by this commit: `kicad::reader::via_shape` models round via
+copper as a square. DRC reports approximately 0.0491 mm for `/PC5` vs `/PC1` and
+`/PC3` vs `/PC4`; measuring the exported track segments against the actual round
+0.50 mm vias gives approximately 0.1527 mm and 0.1526 mm. Both exceed the project
+clearance of 0.128 mm, consistent with KiCad. A follow-up should preserve circular
+via copper geometry through import and DRC, with regression coverage for these
+diagonal gaps. No findings were suppressed to make these results look clean.
