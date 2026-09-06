@@ -7,7 +7,7 @@ use fr_dsn::format::json::to_gson_string_pretty;
 use fr_router::score::BoardStatistics;
 
 use crate::SERVER_VERSION;
-use crate::job::{RoutingJob, java_path};
+use crate::job::{RoutingJob, path_util};
 use crate::stats_json::GsonBoardStatistics;
 
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize)]
@@ -143,10 +143,10 @@ impl RoutingResultManifest {
         manifest.git_sha = Some(resolve_git_sha());
         let mut fixture = FixtureInfo::default();
         if let Some(path) = input_file_path {
-            let normalized = java_path::of_to_string(&path.to_string_lossy());
+            let normalized = path_util::of_to_string(&path.to_string_lossy());
             manifest.fixture = {
                 fixture.filename =
-                    Some(java_path::file_name_of_normalized(&normalized).unwrap_or_default());
+                    Some(path_util::file_name_of_normalized(&normalized).unwrap_or_default());
                 fixture.sha256 = sha256_hex(Path::new(&normalized));
                 Some(fixture)
             };
@@ -154,7 +154,7 @@ impl RoutingResultManifest {
             manifest.fixture = Some(fixture);
         }
         manifest.settings_snapshot = Some(job.router_settings.clone());
-        manifest.final_state = Some(job.state.java_name().to_string());
+        manifest.final_state = Some(job.state.name().to_string());
         manifest.exit_code = exit_code;
         manifest.output_written = output_written;
         manifest.resource_usage = Some(job.resource_usage);
@@ -187,8 +187,8 @@ impl RoutingResultManifest {
     }
 
     pub fn write(path: &Path, manifest: &RoutingResultManifest) -> std::io::Result<()> {
-        let normalized = java_path::of_to_string(&path.to_string_lossy());
-        if let Some(parent) = java_path::parent_of_normalized(&normalized) {
+        let normalized = path_util::of_to_string(&path.to_string_lossy());
+        if let Some(parent) = path_util::parent_of_normalized(&normalized) {
             std::fs::create_dir_all(&parent)?;
         }
         let json = to_gson_string_pretty(manifest)

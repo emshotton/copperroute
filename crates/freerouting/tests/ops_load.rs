@@ -60,7 +60,7 @@ fn a_session_file_is_not_a_board() {
 
 #[test]
 fn an_explicit_rules_file_reaches_the_settings_and_an_adjacent_one_only_when_asked() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("rules");
@@ -94,7 +94,7 @@ fn an_explicit_rules_file_reaches_the_settings_and_an_adjacent_one_only_when_ask
 
 #[test]
 fn set_outranks_the_flags_below_it_and_the_sparse_payload_outranks_the_rules_file() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("precedence");
@@ -130,7 +130,7 @@ fn set_outranks_the_flags_below_it_and_the_sparse_payload_outranks_the_rules_fil
 
 #[test]
 fn a_session_is_imported_and_a_project_sets_constraints() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dsn = parity::fixture("Issue593-BBD_Mars-64.dsn");

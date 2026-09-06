@@ -934,7 +934,7 @@ fn every_settings_field_is_in_the_schema_and_vice_versa() {
 }
 
 fn dsn(relative: &str) -> String {
-    parity::java_dir().join(relative).display().to_string()
+    parity::reference_dir().join(relative).display().to_string()
 }
 
 #[test]
@@ -998,7 +998,7 @@ fn the_four_tools_over_spawned_pipes() {
         eprintln!("SKIP: set FR_SLOW_PARITY=1 to run the MCP board lane");
         return;
     }
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let board = dsn("examples/tutorial_board/tutorial_board.dsn");
@@ -1113,7 +1113,7 @@ fn the_four_tools_over_spawned_pipes() {
 
 #[test]
 fn an_output_path_answers_a_path_and_no_body() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = std::env::temp_dir()
@@ -1147,7 +1147,7 @@ fn an_output_path_answers_a_path_and_no_body() {
 
 #[test]
 fn a_sparse_settings_payload_composes_at_priority_70() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let board = dsn("fixtures/Issue143-rpi_splitter.dsn");
@@ -1251,7 +1251,7 @@ fn a_non_finite_float_in_settings_is_refused() {
 
 #[test]
 fn cancelling_route_board_mid_run_returns_timed_out_false_and_a_partial_result() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut pipes = Pipes::start();

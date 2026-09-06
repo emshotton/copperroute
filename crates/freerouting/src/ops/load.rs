@@ -75,7 +75,7 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
         return Err(OpError::Input(format!(
             "'{}' is not a board: only Specctra DSN and KiCad board JSON are accepted, got {}",
             input.get_filename(),
-            input.format.java_name()
+            input.format.name()
         )));
     }
     let dsn_source = DsnFileSettings::new(input.get_data(), input.get_filename());

@@ -58,7 +58,7 @@ fn the_budget_is_the_default_with_the_settings_knob() {
 
 #[test]
 fn a_routed_board_answers_a_session_and_its_stats() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("session");
@@ -81,7 +81,7 @@ fn a_routed_board_answers_a_session_and_its_stats() {
 
 #[test]
 fn a_json_output_carries_the_routed_board() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let dir = scratch("json");
@@ -99,7 +99,7 @@ fn a_json_output_carries_the_routed_board() {
 
 #[test]
 fn a_zero_job_timeout_reports_timed_out() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let outcome = route(request(
@@ -117,7 +117,7 @@ fn a_zero_job_timeout_reports_timed_out() {
 
 #[test]
 fn a_bad_timeout_is_a_settings_error() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let error = match route(request(

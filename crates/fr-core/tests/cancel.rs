@@ -120,7 +120,7 @@ fn an_expired_deadline_reaches_the_router_stop() {
 
 #[test]
 fn an_observed_job_deadline_is_the_routing_stop_reason() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let result = route(&CancelToken::with_deadline(Deadline::in_seconds(-1)));
