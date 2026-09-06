@@ -84,14 +84,14 @@ fn calc_horizontal_first_to_door(
 
 fn door_corners(
     door_shape: &TileShape,
-    java_method: &str,
-    java_line: u32,
+    caller: &str,
+    source_line: u32,
 ) -> (FloatPoint, FloatPoint) {
     let door_line_segment = door_shape.diagonal_corner_segment().unwrap_or_else(|| {
         panic!(
-            "FoundConnectionLocator45Degree.{java_method}: diagonalCornerSegment is null for an \
+            "FoundConnectionLocator45Degree.{caller}: diagonalCornerSegment is null for an \
              empty door shape — Java throws a NullPointerException at \
-             FoundConnectionLocator45Degree.java:{java_line}"
+             FoundConnectionLocator45Degree:{source_line}"
         )
     });
     if door_line_segment.a.x < door_line_segment.b.x

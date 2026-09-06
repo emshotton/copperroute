@@ -8,7 +8,7 @@ use fr_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
 
 fn corpus() -> Vec<PathBuf> {
     let mut found = Vec::new();
-    collect(&parity::java_dir().join("fixtures"), &mut found);
+    collect(&parity::reference_dir().join("fixtures"), &mut found);
     found.sort();
     found
 }
@@ -46,7 +46,7 @@ fn read(bytes: &[u8], name: &str) -> Option<(Board, CoordinateTransform)> {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn every_fixture_reports_without_panicking_and_the_two_sources_add_up() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let files = corpus();

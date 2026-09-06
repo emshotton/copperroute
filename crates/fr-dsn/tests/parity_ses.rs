@@ -71,7 +71,7 @@ fn design_name(path: &Path) -> String {
 }
 
 fn write_ses(relative_fixture: &str, design: &str) -> String {
-    let fixture = parity::java_dir().join(relative_fixture);
+    let fixture = parity::reference_dir().join(relative_fixture);
     let (board, ct) = read_fixture(&fixture);
     let mut actual: Vec<u8> = Vec::new();
     ses_writer::write(&board, &ct, &mut actual, design).expect("write must succeed into a Vec");
@@ -79,7 +79,7 @@ fn write_ses(relative_fixture: &str, design: &str) -> String {
 }
 
 fn assert_ses_parity(stem: &str, relative_fixture: &str) {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let reference = parity::reference(stem, "unrouted.ses");
@@ -112,7 +112,7 @@ fn issue143_rpi_splitter_ses_matches_java() {
 
 #[test]
 fn every_reference_is_byte_for_byte_identical_to_java() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     for (stem, relative_fixture) in FIXTURES.iter().chain(RULING_G_FIXTURES.iter()).copied() {
@@ -166,7 +166,7 @@ fn no_reference_contains_a_wire() {
 
 #[test]
 fn valid_header() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let content = write_ses(
@@ -186,7 +186,7 @@ fn valid_header() {
 
 #[test]
 fn output_is_non_empty() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let content = write_ses("fixtures/Issue143-rpi_splitter.dsn", "test.dsn");
@@ -206,10 +206,10 @@ fn placement_rotation_formatting_matches_kicad_style() {
 
 #[test]
 fn issue742_placement_and_library_out_are_well_formed() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
-    let fixture = parity::java_dir().join("fixtures/Issue742-tastexx-pcb.dsn");
+    let fixture = parity::reference_dir().join("fixtures/Issue742-tastexx-pcb.dsn");
     if !fixture.exists() {
         eprintln!("SKIP: {} missing", fixture.display());
         return;
@@ -247,7 +247,7 @@ fn ruling_g_references_do_carry_wires() {
 
 #[test]
 fn every_fixture_is_balanced_with_unique_library_padstacks() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     for (stem, relative_fixture) in FIXTURES.iter().chain(RULING_G_FIXTURES.iter()).copied() {

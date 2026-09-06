@@ -382,7 +382,7 @@ fn string_array_leaf_drops_trailing_empties() {
 }
 
 #[test]
-fn serialized_alternate_and_java_names_all_resolve() {
+fn serialized_alternate_and_legacy_names_all_resolve() {
     let mut settings = RouterSettings::new();
 
     set_field_value(&mut settings, "trace_pull_tight_accuracy", "8").expect("serialized");
@@ -481,7 +481,7 @@ fn empty_path_segments_drop_trailing_empties() {
 }
 
 #[test]
-fn java_static_constants_are_not_settable_fields() {
+fn static_constants_are_not_settable_fields() {
     let mut settings = RouterSettings::new();
     assert!(matches!(
         set_field_value(&mut settings, "min_bend_cost", "1"),

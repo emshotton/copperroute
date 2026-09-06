@@ -337,15 +337,16 @@ fn an_autoroute_settings_scope_after_a_keepout_is_read() {
 
 #[test]
 fn the_corpus_sweep_counts_boards_whose_settings_were_read() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
-    let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(parity::java_dir().join("fixtures"))
-        .expect("the fixtures directory")
-        .flatten()
-        .map(|e| e.path())
-        .filter(|p| p.extension().is_some_and(|e| e == "dsn"))
-        .collect();
+    let mut files: Vec<std::path::PathBuf> =
+        std::fs::read_dir(parity::reference_dir().join("fixtures"))
+            .expect("the fixtures directory")
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|e| e == "dsn"))
+            .collect();
     files.push(parity::example("tutorial_board/tutorial_board.dsn"));
     files.sort();
     assert_eq!(files.len(), 106, "sweep-p3t15.sh's corpus");

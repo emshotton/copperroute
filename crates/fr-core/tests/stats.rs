@@ -369,7 +369,7 @@ fn the_committed_transcript_still_says_what_this_table_says() {
 
 #[test]
 fn the_port_reproduces_every_transcript_row() {
-    let have_java = parity::require_java_dir();
+    let have_java = parity::require_reference_dir();
     let mut mismatches = Vec::new();
     let mut skipped = 0usize;
     let mut checked = 0usize;
@@ -754,7 +754,7 @@ fn statistics_of(format: &str, source: &str) -> BoardStatistics {
         "synth:fanout-only" => fanout_only(),
         _ => {
             let data = bytes_of(source);
-            match FileFormat::from_java_name(format) {
+            match FileFormat::from_name(format) {
                 None => BoardStatistics::default(),
                 Some(format) => BoardStatistics::from_bytes(&data, format),
             }
@@ -772,7 +772,7 @@ fn bytes_of(source: &str) -> Vec<u8> {
             .collect();
     }
     let path = if let Some(relative) = source.strip_prefix("java:") {
-        parity::java_dir().join(relative)
+        parity::reference_dir().join(relative)
     } else if let Some(relative) = source.strip_prefix("ref:") {
         parity::workspace_root()
             .join("tests/reference")

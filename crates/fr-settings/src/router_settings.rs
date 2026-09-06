@@ -486,7 +486,7 @@ impl RouterSettings {
             .collect()
     }
 
-    pub fn java_clone(&self) -> Self {
+    pub fn duplicate(&self) -> Self {
         let mut result = Self::new();
         let layer_count = self.get_layer_count();
         if layer_count > 0 {
@@ -637,19 +637,19 @@ mod tests {
     }
 
     #[test]
-    fn java_clone_carries_the_applied_flag() {
+    fn duplicate_carries_the_applied_flag() {
         let mut settings = RouterSettings::new();
         settings.set_layer_count(2);
         settings.set_preferred_direction_trace_costs(0, 2.5);
         assert_eq!(
-            settings.java_clone().board_specific_trace_costs_applied,
+            settings.duplicate().board_specific_trace_costs_applied,
             Some(true)
         );
 
         let mut untouched = RouterSettings::new();
         untouched.set_layer_count(2);
         assert_eq!(
-            untouched.java_clone().board_specific_trace_costs_applied,
+            untouched.duplicate().board_specific_trace_costs_applied,
             Some(false)
         );
     }

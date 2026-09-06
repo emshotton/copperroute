@@ -19,7 +19,7 @@ fn the_default_router_budget_disables_the_opt_changed_area_clock() {
 #[test]
 fn the_other_three_budget_fields_still_carry_javas_literals() {
     let default = RouterBudget::default();
-    let java = RouterBudget::java_literals();
+    let java = RouterBudget::from_fixed_budget();
 
     assert_eq!(default.fanout_ms_per_pin, java.fanout_ms_per_pin);
     assert_eq!(
@@ -30,7 +30,7 @@ fn the_other_three_budget_fields_still_carry_javas_literals() {
 
     assert_eq!(
         java.opt_changed_area_ms, 1000,
-        "the Java fact survives the fix: java_literals() is still what the jar does, and it is \
+        "the Java fact survives the fix: from_fixed_budget() is still what the jar does, and it is \
          what `--router.opt_changed_area_ms=1000` reproduces"
     );
     assert_ne!(

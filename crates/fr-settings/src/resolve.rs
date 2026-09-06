@@ -52,7 +52,7 @@ fn resolve_headless_steps(
     let mut settings = defaults
         .get_settings()
         .expect("DefaultSettings always has settings")
-        .java_clone();
+        .duplicate();
 
     if let Some(json_file) = inputs.json_file {
         settings.apply_new_values_from(json_file);

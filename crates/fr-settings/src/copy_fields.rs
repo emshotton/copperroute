@@ -18,18 +18,18 @@ pub trait CopyFields {
     }
 }
 
-pub trait JavaEnum: Copy + Sized {
-    fn java_name(self) -> &'static str;
+pub trait NamedEnum: Copy + Sized {
+    fn name(self) -> &'static str;
 
-    fn from_java_name(name: &str) -> Option<Self>;
+    fn from_name(name: &str) -> Option<Self>;
 }
 
-impl JavaEnum for BoardUpdateStrategy {
-    fn java_name(self) -> &'static str {
-        BoardUpdateStrategy::java_name(self)
+impl NamedEnum for BoardUpdateStrategy {
+    fn name(self) -> &'static str {
+        BoardUpdateStrategy::name(self)
     }
 
-    fn from_java_name(name: &str) -> Option<Self> {
+    fn from_name(name: &str) -> Option<Self> {
         match name {
             "GREEDY" => Some(Self::Greedy),
             "GLOBAL_OPTIMAL" => Some(Self::GlobalOptimal),
@@ -39,12 +39,12 @@ impl JavaEnum for BoardUpdateStrategy {
     }
 }
 
-impl JavaEnum for ItemSelectionStrategy {
-    fn java_name(self) -> &'static str {
-        ItemSelectionStrategy::java_name(self)
+impl NamedEnum for ItemSelectionStrategy {
+    fn name(self) -> &'static str {
+        ItemSelectionStrategy::name(self)
     }
 
-    fn from_java_name(name: &str) -> Option<Self> {
+    fn from_name(name: &str) -> Option<Self> {
         match name {
             "SEQUENTIAL" => Some(Self::Sequential),
             "RANDOM" => Some(Self::Random),
@@ -70,7 +70,7 @@ pub fn scalar_copy<T: PartialEq + Clone>(
     report.fields_changed += 1;
 }
 
-pub fn enum_copy<T: JavaEnum>(
+pub fn enum_copy<T: NamedEnum>(
     path: &str,
     src: &Option<T>,
     dst: &mut Option<T>,
@@ -83,16 +83,16 @@ pub fn enum_copy<T: JavaEnum>(
     if mode == MergeMode::FillAbsent && dst.is_some() {
         return;
     }
-    enum_copy_by_name(path, value.java_name(), dst, report);
+    enum_copy_by_name(path, value.name(), dst, report);
 }
 
-pub fn enum_copy_by_name<T: JavaEnum>(
+pub fn enum_copy_by_name<T: NamedEnum>(
     path: &str,
     name: &str,
     dst: &mut Option<T>,
     report: &mut MergeReport,
 ) {
-    match T::from_java_name(name) {
+    match T::from_name(name) {
         Some(parsed) => {
             *dst = Some(parsed);
             report.fields_changed += 1;

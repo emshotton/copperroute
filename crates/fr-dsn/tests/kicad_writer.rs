@@ -311,9 +311,9 @@ fn emit_session(case: &SessionCase) -> Vec<String> {
         let head = format!(
             "[is] item {} {} nets=[{nets}] cl={} fixed={}",
             id.0,
-            java_class_name(item),
+            class_name(item),
             item.clearance_class(),
-            java_fixed_state(item.get_fixed_state())
+            fixed_state_name(item.get_fixed_state())
         );
         match item {
             Item::Trace(trace) => {
@@ -376,7 +376,7 @@ fn emit_session(case: &SessionCase) -> Vec<String> {
     rows
 }
 
-fn java_class_name(item: &Item) -> &'static str {
+fn class_name(item: &Item) -> &'static str {
     match item {
         Item::Trace(_) => "PolylineTrace",
         Item::Via(_) => "Via",
@@ -390,7 +390,7 @@ fn java_class_name(item: &Item) -> &'static str {
     }
 }
 
-fn java_fixed_state(state: fr_board::FixedState) -> &'static str {
+fn fixed_state_name(state: fr_board::FixedState) -> &'static str {
     match state {
         fr_board::FixedState::Unfixed => "NOT_FIXED",
         fr_board::FixedState::ShoveFixed => "SHOVE_FIXED",
@@ -610,7 +610,7 @@ fn an_absent_resolution_in_mm_means_ten_thousand() {
         ),
         (
             format!("{{\"unit\":\"UM\",\"resolution\":2.7,{trace}}}"),
-            2.0,
+            3.0,
             0,
         ),
     ] {

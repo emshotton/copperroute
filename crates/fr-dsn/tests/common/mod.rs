@@ -3,7 +3,7 @@
 use fr_board::{Board, Item};
 
 pub fn fixture(name: &str) -> String {
-    let path = parity::java_dir().join("fixtures").join(name);
+    let path = parity::reference_dir().join("fixtures").join(name);
     std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("fixture {name} ({}): {e}", path.display()))
 }

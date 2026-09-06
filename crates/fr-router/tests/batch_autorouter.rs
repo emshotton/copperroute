@@ -123,7 +123,7 @@ fn corners_of(board: &Board, id: ItemId) -> Vec<(i32, i32)> {
 }
 
 fn load_rpi() -> Board {
-    let path = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let path = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = "Issue143-rpi_splitter.dsn";
@@ -304,7 +304,7 @@ fn walk(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
 
 #[test]
 fn retain_autoroute_database_is_false_on_every_path() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (_board, engine, _ids, _, _) = route_prefix(1, 0.0);
@@ -399,7 +399,7 @@ fn remove_tails_strips_every_tail_and_clears_the_changed_area() {
 
 #[test]
 fn remove_tails_pulls_the_marked_area_tight() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_rpi();
@@ -727,7 +727,7 @@ const QUIRK_184_UNCLIPPED_STAIRCASE: &[(i32, i32)] = &[(-6000, -6000), (0, 0)];
 
 #[test]
 fn step_six_runs_only_on_routed() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_rpi();
@@ -776,7 +776,7 @@ fn step_six_runs_only_on_routed() {
 
 #[test]
 fn the_necked_retry_is_skipped_when_no_layer_is_wider_than_the_neck() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (no_neck, _, ids_no_neck, _, _) = route_prefix(2, 0.0);
@@ -794,7 +794,7 @@ fn the_necked_retry_is_skipped_when_no_layer_is_wider_than_the_neck() {
 
 #[test]
 fn the_necked_retry_fires_and_spends_item_ids() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (_, _, ids_no_neck, _, _) = route_prefix(2, 0.0);
@@ -813,7 +813,7 @@ fn the_necked_retry_fires_and_spends_item_ids() {
 
 #[test]
 fn the_necked_retry_gets_a_fresh_time_limit() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (_board, engine, ids, call_start, call_duration) = route_prefix(2, 100.0);
@@ -853,7 +853,7 @@ fn the_necked_retry_gets_a_fresh_time_limit() {
 
 #[test]
 fn step_eight_is_a_no_op_when_strict_drc_is_off() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let board = load_rpi();

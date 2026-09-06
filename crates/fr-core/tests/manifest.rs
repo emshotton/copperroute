@@ -164,7 +164,7 @@ fn unescape(text: &str) -> String {
 }
 
 fn fixtures() -> PathBuf {
-    parity::java_dir().join("fixtures")
+    parity::reference_dir().join("fixtures")
 }
 
 fn scratch() -> PathBuf {

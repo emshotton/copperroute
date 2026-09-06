@@ -106,7 +106,7 @@ fn bare_report(source: &str) -> KiCadDrcReport {
 
 #[test]
 fn head_flavor_key_order() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let date = date_of(&golden(DEV_BOARD));
@@ -140,7 +140,7 @@ fn head_flavor_key_order() {
 
 #[test]
 fn kicad_flavor_key_order() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let date = date_of(&golden(DEV_BOARD));
@@ -169,7 +169,7 @@ fn kicad_flavor_key_order() {
 
 #[test]
 fn flavors_differ_only_in_the_key_tables_eight_strings() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     const REWRITES: [(&str, &str); 7] = [
@@ -267,7 +267,7 @@ fn dates_are_iso_offset() {
         "{json}"
     );
 
-    if parity::require_java_dir() {
+    if parity::require_reference_dir() {
         let date = date_of(&golden(DEV_BOARD));
         assert_eq!(date.len(), SAMPLED.len(), "{date}");
         assert!(
@@ -279,7 +279,7 @@ fn dates_are_iso_offset() {
 
 #[test]
 fn report_to_json_is_generate_report_then_to_json() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let (mut board, transform) = fixture_board(DEV_BOARD);

@@ -338,7 +338,7 @@ fn a_tripped_stop_check_returns_mid_sweep_leaving_the_rest_untightened() {
 
 #[test]
 fn the_budget_trips_the_sweep() {
-    assert_eq!(RouterBudget::java_literals().opt_changed_area_ms, 1000);
+    assert_eq!(RouterBudget::from_fixed_budget().opt_changed_area_ms, 1000);
     assert_eq!(RouterBudget::default().opt_changed_area_ms, 0);
 
     let mut board = detour_board(200);

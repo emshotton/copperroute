@@ -542,7 +542,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
     }
 
     for net_name in referenced_nets.iteration_order() {
-        if java_nets_get(&board.rules.nets, Some(net_name), 1).is_none() {
+        if nets_get(&board.rules.nets, Some(net_name), 1).is_none() {
             let net = board
                 .rules
                 .nets
@@ -765,8 +765,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             .id;
 
         for (pad_index, pad) in pads.iter().enumerate() {
-            let net_number =
-                java_nets_get(&board.rules.nets, pad.netName.as_deref(), 1).unwrap_or(0);
+            let net_number = nets_get(&board.rules.nets, pad.netName.as_deref(), 1).unwrap_or(0);
             let net_numbers = if net_number > 0 {
                 vec![net_number]
             } else {
@@ -786,7 +785,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         return npe("java.util.List.iterator()", "boardJson.conductionAreas");
     };
     for zone in json_zones {
-        let net_number = java_nets_get(&board.rules.nets, zone.netName.as_deref(), 1).unwrap_or(0);
+        let net_number = nets_get(&board.rules.nets, zone.netName.as_deref(), 1).unwrap_or(0);
         let net_numbers = if net_number > 0 {
             vec![net_number]
         } else {
@@ -824,7 +823,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         return npe("java.util.List.iterator()", "boardJson.traces");
     };
     for trace in json_traces {
-        let net_number = java_nets_get(&board.rules.nets, trace.netName.as_deref(), 1).unwrap_or(0);
+        let net_number = nets_get(&board.rules.nets, trace.netName.as_deref(), 1).unwrap_or(0);
         let net_numbers = if net_number > 0 {
             vec![net_number]
         } else {
@@ -856,7 +855,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
         return npe("java.util.List.iterator()", "boardJson.vias");
     };
     for via in json_vias {
-        let net_number = java_nets_get(&board.rules.nets, via.netName.as_deref(), 1).unwrap_or(0);
+        let net_number = nets_get(&board.rules.nets, via.netName.as_deref(), 1).unwrap_or(0);
         let net_numbers = if net_number > 0 {
             vec![net_number]
         } else {
@@ -984,7 +983,7 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
         _ => Unit::Mm,
     };
 
-    let mut resolution = java_double_to_int(board_json.resolution.max(1.0));
+    let mut resolution = board_json.resolution.max(1.0).round() as i32;
     if board_json.resolution == 1.0 && user_unit == Unit::Mm {
         resolution = 10_000;
     }
@@ -994,8 +993,7 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
 
     if let Some(zones) = board_json.conductionAreas.as_ref() {
         for zone in zones {
-            let net_number =
-                java_nets_get(&board.rules.nets, zone.netName.as_deref(), 1).unwrap_or(0);
+            let net_number = nets_get(&board.rules.nets, zone.netName.as_deref(), 1).unwrap_or(0);
             let net_numbers = if net_number > 0 {
                 vec![net_number]
             } else {
@@ -1034,8 +1032,7 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
 
     if let Some(traces) = board_json.traces.as_ref() {
         for trace in traces {
-            let net_number =
-                java_nets_get(&board.rules.nets, trace.netName.as_deref(), 1).unwrap_or(0);
+            let net_number = nets_get(&board.rules.nets, trace.netName.as_deref(), 1).unwrap_or(0);
             let net_numbers = if net_number > 0 {
                 vec![net_number]
             } else {
@@ -1068,8 +1065,7 @@ pub fn import_session(json: &str, board: &mut Board) -> Result<(), DsnError> {
 
     if let Some(vias) = board_json.vias.as_ref() {
         for via in vias {
-            let net_number =
-                java_nets_get(&board.rules.nets, via.netName.as_deref(), 1).unwrap_or(0);
+            let net_number = nets_get(&board.rules.nets, via.netName.as_deref(), 1).unwrap_or(0);
             let net_numbers = if net_number > 0 {
                 vec![net_number]
             } else {
@@ -1147,11 +1143,6 @@ fn session_npe_field(field: &str, receiver: &str) -> DsnError {
     DsnError::KicadSession(format!(
         "java.lang.NullPointerException: Cannot read field \"{field}\" because \"{receiver}\" is null"
     ))
-}
-
-#[allow(clippy::cast_possible_truncation)]
-fn java_double_to_int(value: f64) -> i32 {
-    value as i32
 }
 
 fn find_kicad_default_net_class(net_classes: &[NetClassJson]) -> Option<&NetClassJson> {
@@ -1334,7 +1325,7 @@ fn are_package_pins_identical(pkg1: &Package, p2: &[PackagePin]) -> bool {
 
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
-struct JavaNpe {
+struct NullPointerSite {
     invoked: &'static str,
     receiver: &'static str,
 }
@@ -1393,7 +1384,7 @@ fn no_shape_on_any_layer(section: &str, object: &str, because: &str) -> BoardRea
     )
 }
 
-fn java_nets_get(nets: &Nets, name: Option<&str>, subnet_number: i32) -> Option<i32> {
+fn nets_get(nets: &Nets, name: Option<&str>, subnet_number: i32) -> Option<i32> {
     for current_net in nets.iter() {
         if name.is_some_and(|name| equals_ignore_case(&current_net.name, name))
             && current_net.subnet_number == subnet_number
@@ -1405,7 +1396,7 @@ fn java_nets_get(nets: &Nets, name: Option<&str>, subnet_number: i32) -> Option<
 }
 
 #[allow(dead_code)]
-fn java_drill_item_tile_shape_count(padstack: &Padstack) -> i32 {
+fn drill_layer_span(padstack: &Padstack) -> i32 {
     padstack.to_layer() - padstack.from_layer() + 1
 }
 

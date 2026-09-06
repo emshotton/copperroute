@@ -1202,21 +1202,21 @@ pub(crate) fn object_tree_shape(
     }
 }
 
-fn index_of(no: i32, what: &str, java_line: u32) -> usize {
+fn index_of(no: i32, what: &str, source_line: u32) -> usize {
     usize::try_from(no).unwrap_or_else(|_| {
         panic!(
-            "SortedRoomNeighbours.java:{java_line}: {what} is {no} — Java throws \
+            "SortedRoomNeighbours:{source_line}: {what} is {no} — Java throws \
              ArrayIndexOutOfBoundsException here (the -1 comes from :297-300 / :312-316, which \
              log it and use it anyway)"
         )
     })
 }
 
-fn border_line_of(shape: &TileShape, no: i32, what: &str, java_line: u32) -> Line {
-    let index = index_of(no, what, java_line);
+fn border_line_of(shape: &TileShape, no: i32, what: &str, source_line: u32) -> Line {
+    let index = index_of(no, what, source_line);
     shape.border_line(index).unwrap_or_else(|| {
         panic!(
-            "SortedRoomNeighbours.java:{java_line}: {what} is {no}, past the shape's \
+            "SortedRoomNeighbours:{source_line}: {what} is {no}, past the shape's \
              {} border lines — Java throws ArrayIndexOutOfBoundsException here",
             shape.border_line_count()
         )

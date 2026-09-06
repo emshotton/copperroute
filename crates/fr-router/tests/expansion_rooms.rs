@@ -48,31 +48,31 @@ fn room_ids_are_the_engine_counter_and_items_are_not() {
 #[test]
 fn the_java_obstacle_room_id_aliases_above_1023_shapes() {
     assert_eq!(
-        ObstacleExpansionRoom::java_id(ItemId(1), 1024),
-        ObstacleExpansionRoom::java_id(ItemId(1), 0),
+        ObstacleExpansionRoom::id(ItemId(1), 1024),
+        ObstacleExpansionRoom::id(ItemId(1), 0),
         "index 1024 sets exactly the bit item 1 already owns, so it aliases index 0"
     );
     assert_eq!(
-        ObstacleExpansionRoom::java_id(ItemId(1), 2048),
-        ObstacleExpansionRoom::java_id(ItemId(3), 0),
+        ObstacleExpansionRoom::id(ItemId(1), 2048),
+        ObstacleExpansionRoom::id(ItemId(3), 0),
         "index 2048 turns item 1 into item 3"
     );
     assert_ne!(
-        ObstacleExpansionRoom::java_id(ItemId(1), 1024),
-        ObstacleExpansionRoom::java_id(ItemId(2), 0)
+        ObstacleExpansionRoom::id(ItemId(1), 1024),
+        ObstacleExpansionRoom::id(ItemId(2), 0)
     );
-    assert_eq!(ObstacleExpansionRoom::java_id(ItemId(1), 1024), 1024);
-    assert_eq!(ObstacleExpansionRoom::java_id(ItemId(0), 1024), 1024);
-    assert_eq!(ObstacleExpansionRoom::java_id(ItemId(5), 1024), 5120);
+    assert_eq!(ObstacleExpansionRoom::id(ItemId(1), 1024), 1024);
+    assert_eq!(ObstacleExpansionRoom::id(ItemId(0), 1024), 1024);
+    assert_eq!(ObstacleExpansionRoom::id(ItemId(5), 1024), 5120);
     assert_eq!(
-        ObstacleExpansionRoom::java_id(ItemId(4), 1024),
-        ObstacleExpansionRoom::java_id(ItemId(5), 0),
+        ObstacleExpansionRoom::id(ItemId(4), 1024),
+        ObstacleExpansionRoom::id(ItemId(5), 0),
         "item 4's shape 1024 and item 5's shape 0 share id 5120"
     );
-    assert!(ObstacleExpansionRoom::java_id(ItemId(1 << 21), 0) < 0);
+    assert!(ObstacleExpansionRoom::id(ItemId(1 << 21), 0) < 0);
     assert_eq!(
-        ObstacleExpansionRoom::java_id(ItemId(1 << 22), 0),
-        ObstacleExpansionRoom::java_id(ItemId(0), 0),
+        ObstacleExpansionRoom::id(ItemId(1 << 22), 0),
+        ObstacleExpansionRoom::id(ItemId(0), 0),
         "id(item, index) == id(item + 2^22, index) for every item and index"
     );
 }
@@ -109,7 +109,7 @@ fn every_expandable_id_is_stable_and_injective() {
             .new_obstacle_room(&mut board, item, index, engine.tree);
         ids.push(engine.rooms.obstacle_room(room).unwrap().get_id());
     }
-    let java_ids: BTreeSet<i32> = [
+    let distinct_ids: BTreeSet<i32> = [
         (ItemId(1), 0usize),
         (ItemId(1), 1024),
         (ItemId(0), 1024),
@@ -119,9 +119,13 @@ fn every_expandable_id_is_stable_and_injective() {
         (ItemId(1 << 22), 0),
     ]
     .into_iter()
-    .map(|(item, index)| ObstacleExpansionRoom::java_id(item, index))
+    .map(|(item, index)| ObstacleExpansionRoom::id(item, index))
     .collect();
-    assert_eq!(java_ids.len(), 5, "Java gives these seven rooms five ids");
+    assert_eq!(
+        distinct_ids.len(),
+        5,
+        "Java gives these seven rooms five ids"
+    );
 
     let whole_plane = engine
         .rooms
@@ -162,7 +166,7 @@ fn every_expandable_id_is_stable_and_injective() {
     let page = pages[0];
     engine.init_connection(&mut board, 1, None);
     let before = engine.drill_pages().page(page).get_id();
-    let java_before = engine.drill_pages().page(page).java_id();
+    let id_before = engine.drill_pages().page(page).id();
     let never = || false;
     let _ = engine.drill_page_drills(&mut board, page, false, &never);
     assert_eq!(
@@ -171,8 +175,8 @@ fn every_expandable_id_is_stable_and_injective() {
         "recomputing a page must not change its identity"
     );
     assert_ne!(
-        engine.drill_pages().page(page).java_id(),
-        java_before,
+        engine.drill_pages().page(page).id(),
+        id_before,
         "Java's hash does move — this is the defect, kept pinned"
     );
 }
@@ -251,7 +255,7 @@ fn a_room_and_an_item_with_the_same_numeric_id_do_not_collide() {
 
 #[test]
 fn a_room_enters_the_boards_own_compensated_tree_before_its_items() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board(SPLITTER);
@@ -294,7 +298,7 @@ fn a_room_enters_the_boards_own_compensated_tree_before_its_items() {
 
 #[test]
 fn removing_a_room_twice_is_a_no_op_not_a_panic() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board(SPLITTER);
@@ -332,7 +336,7 @@ fn first_item_with_shapes(board: &mut Board) -> (ItemId, usize) {
 
 #[test]
 fn expansion_room_array_resizes_and_preserves() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board(SPLITTER);
@@ -407,7 +411,7 @@ fn expansion_room_array_resizes_and_preserves() {
 
 #[test]
 fn a_stale_index_drops_the_autoroute_info() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board(SPLITTER);
@@ -547,7 +551,7 @@ fn door_exists_and_remove_door_walk_the_rooms_door_list() {
 
 #[test]
 fn an_obstacle_room_reads_its_shape_once_and_its_layer_every_time() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board(SPLITTER);
@@ -574,7 +578,7 @@ fn an_obstacle_room_reads_its_shape_once_and_its_layer_every_time() {
     assert_eq!(store.room_id_no(RoomRef::Obstacle(id)), Some(1));
     assert_ne!(
         store.room_id_no(RoomRef::Obstacle(id)),
-        Some(ObstacleExpansionRoom::java_id(item, 0)),
+        Some(ObstacleExpansionRoom::id(item, 0)),
         "and it is no longer the hash — the hash is what aliased"
     );
     assert!(!store.obstacle_room(id).unwrap().all_doors_calculated());
@@ -587,7 +591,7 @@ fn an_obstacle_room_reads_its_shape_once_and_its_layer_every_time() {
 
 #[test]
 fn a_target_door_intersects_the_item_with_its_room_and_a_null_room_is_empty() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board(SPLITTER);
@@ -774,7 +778,7 @@ fn a_two_dimensional_door_between_two_free_space_rooms_uses_the_restraint_line()
 
 #[test]
 fn a_two_dimensional_door_touching_an_obstacle_room_falls_to_the_gravity_branch() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board(SPLITTER);
@@ -813,7 +817,7 @@ fn an_empty_door_shape_yields_no_sections_at_all() {
 
 #[test]
 fn clear_takes_the_rooms_out_of_the_boards_tree_before_draining_the_arenas() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board(SPLITTER);

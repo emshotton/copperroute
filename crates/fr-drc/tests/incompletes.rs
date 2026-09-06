@@ -36,7 +36,7 @@ fn counters(board: &mut Board) -> (i32, usize, usize, usize) {
 
 #[test]
 fn dev_board_counts() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
@@ -45,7 +45,7 @@ fn dev_board_counts() {
 
 #[test]
 fn bbd_mars_64_counts() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board =
@@ -55,7 +55,7 @@ fn bbd_mars_64_counts() {
 
 #[test]
 fn natural_tone_preamp_counts() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board("Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.dsn");
@@ -64,7 +64,7 @@ fn natural_tone_preamp_counts() {
 
 #[test]
 fn empty_board_has_no_incompletes() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board("empty_board.dsn");
@@ -139,7 +139,7 @@ fn transcript(board: &mut Board) -> String {
 
 #[test]
 fn the_four_fixtures_match_the_jvm() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     for stem in FIXTURES {
@@ -228,7 +228,7 @@ fn an_empty_net_contributes_nothing() {
 
 #[test]
 fn lazy_initialisation_matches_java() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
@@ -265,7 +265,7 @@ fn lazy_initialisation_matches_java() {
 
 #[test]
 fn out_of_range_net_numbers_answer_the_java_defaults() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
@@ -315,7 +315,7 @@ fn recalculate_net_incompletes_initialises_and_returns() {
 
 #[test]
 fn statistics_block() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board =
@@ -503,7 +503,7 @@ fn insert_conduction_area(board: &mut Board) {
 
 #[test]
 fn a_net_subset_count_matches_the_full_pass() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");

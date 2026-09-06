@@ -16,7 +16,7 @@ const EMPTY_BOARD: &str = "fixtures/empty_board.dsn";
 const SETONIX: &str = "fixtures/Issue159-setonix_2hp-pcb.dsn";
 
 fn load_board(rel_path: &str) -> Board {
-    let path = parity::java_dir().join(rel_path);
+    let path = parity::reference_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path
@@ -218,10 +218,10 @@ impl Transcript {
                 let mut line = format!(
                     "  item id={} type={} nets={} cl={} fixed={}",
                     item.id().0,
-                    java_type_name(item),
+                    type_name(item),
                     dump_nets(item.net_nos()),
                     item.clearance_class(),
-                    java_fixed_state(item.get_fixed_state()),
+                    fixed_state_name(item.get_fixed_state()),
                 );
                 match item {
                     Item::Trace(trace) => line.push_str(&format!(
@@ -247,7 +247,7 @@ impl Transcript {
     }
 }
 
-fn java_type_name(item: &Item) -> &'static str {
+fn type_name(item: &Item) -> &'static str {
     match item {
         Item::Trace(_) => "PolylineTrace",
         Item::Via(_) => "Via",
@@ -261,7 +261,7 @@ fn java_type_name(item: &Item) -> &'static str {
     }
 }
 
-fn java_fixed_state(state: FixedState) -> &'static str {
+fn fixed_state_name(state: FixedState) -> &'static str {
     match state {
         FixedState::Unfixed => "UNFIXED",
         FixedState::ShoveFixed => "SHOVE_FIXED",
@@ -459,7 +459,7 @@ fn the_history_transcript_matches_the_port_golden() {
             "compare bits({:08x},{:08x}) = {}",
             a.to_bits(),
             b.to_bits(),
-            match java_float_compare(a, b) {
+            match float_total_order(a, b) {
                 std::cmp::Ordering::Less => -1,
                 std::cmp::Ordering::Equal => 0,
                 std::cmp::Ordering::Greater => 1,
@@ -854,7 +854,7 @@ fn the_hash_ignores_a_failed_pass_that_java_can_still_tell_apart() {
     );
 }
 
-fn java_float_compare(f1: f32, f2: f32) -> std::cmp::Ordering {
+fn float_total_order(f1: f32, f2: f32) -> std::cmp::Ordering {
     use std::cmp::Ordering;
     if f1 < f2 {
         return Ordering::Less;

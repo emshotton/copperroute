@@ -74,7 +74,7 @@ fn read_reference(stem: &str) -> Vec<RouterConnectionDoc> {
 }
 
 fn load_board(rel_path: &str) -> Board {
-    let path = parity::java_dir().join(rel_path);
+    let path = parity::reference_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path
@@ -313,7 +313,7 @@ struct Ladder {
 }
 
 fn check(stem: &str) -> Option<Ladder> {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return None;
     }
     if !parity::require_reference(&reference_path(stem)) {
@@ -610,7 +610,8 @@ fn read_steps18_reference(stem: &str) -> Vec<RouterConnectionDoc> {
 }
 
 fn steps18_pair(stem: &str) -> Option<(Vec<RouterConnectionDoc>, Vec<RouterConnectionDoc>)> {
-    if !parity::require_java_dir() || !parity::require_reference(&steps18_reference_path(stem)) {
+    if !parity::require_reference_dir() || !parity::require_reference(&steps18_reference_path(stem))
+    {
         return None;
     }
     let expected = read_steps18_reference(stem);

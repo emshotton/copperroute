@@ -362,7 +362,7 @@ fn get_drills_binds_one_room_per_layer_and_hashes_its_location() {
         "probe: and different layer-1 rooms"
     );
 
-    assert_eq!(page.java_id(), -29_759_999);
+    assert_eq!(page.id(), -29_759_999);
     assert_eq!(page.get_dimension(), 2);
     assert_eq!(page.maze_search_element_count(), 2);
 }
@@ -405,7 +405,7 @@ fn get_drills_recomputes_when_the_net_changes_and_mutates_javas_id() {
     let mut page = component_page(&board);
 
     assert_eq!(page.shape.get_id(), -960_000);
-    let fresh_id = page.java_id();
+    let fresh_id = page.id();
     assert_eq!(fresh_id, -29_760_001);
     let stable_id = page.get_id();
 
@@ -415,7 +415,7 @@ fn get_drills_recomputes_when_the_net_changes_and_mutates_javas_id() {
         page.get_drills(&mut engine, &mut board, false, NEVER).len(),
         13
     );
-    let net1_id = page.java_id();
+    let net1_id = page.id();
     assert_eq!(net1_id, -29_759_999);
     assert_ne!(net1_id, fresh_id);
     assert_eq!(
@@ -429,7 +429,7 @@ fn get_drills_recomputes_when_the_net_changes_and_mutates_javas_id() {
         page.get_drills(&mut engine, &mut board, false, NEVER).len(),
         30
     );
-    let net2_id = page.java_id();
+    let net2_id = page.id();
     assert_eq!(net2_id, -29_759_998);
     assert_ne!(net2_id, net1_id);
     assert_eq!(
@@ -442,7 +442,7 @@ fn get_drills_recomputes_when_the_net_changes_and_mutates_javas_id() {
     assert_eq!(page.drills().map(<[_]>::len), Some(30));
     page.invalidate(&mut engine.rooms.drills);
     assert_eq!(page.drills(), None);
-    assert_eq!(page.java_id(), -29_759_998);
+    assert_eq!(page.id(), -29_759_998);
     assert_eq!(
         page.get_id(),
         stable_id,

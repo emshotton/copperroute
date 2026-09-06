@@ -1,7 +1,7 @@
 //! `EnvironmentVariablesSource` (`FREEROUTING__ROUTER__OPTIMIZER__MAX_THREADS=8`) and
 use crate::{
-    BoardUpdateStrategy, FanoutSettings, ItemSelectionStrategy, JavaEnum, LayerSettings,
-    MergeError, OptimizerSettings, RouterSettings, ScoringSettings,
+    BoardUpdateStrategy, FanoutSettings, ItemSelectionStrategy, LayerSettings, MergeError,
+    NamedEnum, OptimizerSettings, RouterSettings, ScoringSettings,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,7 +24,7 @@ pub enum FieldKind {
 pub struct FieldSpec {
     pub serialized: &'static str,
     pub alternates: &'static [&'static str],
-    pub java_name: &'static str,
+    pub legacy_name: &'static str,
     pub rust_name: &'static str,
     pub kind: FieldKind,
 }
@@ -34,14 +34,14 @@ const ITEM_SELECTION_STRATEGY_NAMES: &[&str] = &["SEQUENTIAL", "RANDOM", "PRIORI
 
 const fn spec(
     serialized: &'static str,
-    java_name: &'static str,
+    legacy_name: &'static str,
     rust_name: &'static str,
     kind: FieldKind,
 ) -> FieldSpec {
     FieldSpec {
         serialized,
         alternates: &[],
-        java_name,
+        legacy_name,
         rust_name,
         kind,
     }
@@ -50,14 +50,14 @@ const fn spec(
 const fn spec_alt(
     serialized: &'static str,
     alternates: &'static [&'static str],
-    java_name: &'static str,
+    legacy_name: &'static str,
     rust_name: &'static str,
     kind: FieldKind,
 ) -> FieldSpec {
     FieldSpec {
         serialized,
         alternates,
-        java_name,
+        legacy_name,
         rust_name,
         kind,
     }
@@ -440,9 +440,9 @@ fn resolve_field(fields: &'static [FieldSpec], name: &str) -> Option<&'static Fi
                 return Some(field);
             }
         }
-        if equals_ignore_case(field.java_name, name)
-            || equals_ignore_case(field.java_name, &camel_name)
-            || equals_ignore_case(&snake_to_lower_camel(field.java_name), &camel_name)
+        if equals_ignore_case(field.legacy_name, name)
+            || equals_ignore_case(field.legacy_name, &camel_name)
+            || equals_ignore_case(&snake_to_lower_camel(field.legacy_name), &camel_name)
         {
             return Some(field);
         }
@@ -512,12 +512,12 @@ pub fn enum_constant(constants: &[&'static str], value: &str) -> Option<&'static
         .find(|constant| equals_ignore_case(constant, trimmed))
 }
 
-fn convert_enum<T: JavaEnum>(kind: FieldKind, value: &str, path: &str) -> Result<T, MergeError> {
+fn convert_enum<T: NamedEnum>(kind: FieldKind, value: &str, path: &str) -> Result<T, MergeError> {
     let FieldKind::Enum(constants) = kind else {
         return Err(type_mismatch(path, value));
     };
     enum_constant(constants, value)
-        .and_then(T::from_java_name)
+        .and_then(T::from_name)
         .ok_or_else(|| MergeError::EnumName {
             path: path.to_string(),
             value: value.to_string(),

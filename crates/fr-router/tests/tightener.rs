@@ -401,7 +401,7 @@ fn table() -> Vec<Case> {
 /// `P6T15aProbe.fixedTable`, replayed against this port.
 fn fixed_table_rows(angle: AngleRestriction) -> Vec<String> {
     let mut board = probe_board(angle);
-    let mut out = vec![format!("regime={}", java_angle_name(angle))];
+    let mut out = vec![format!("regime={}", angle_name(angle))];
     for case in table() {
         let before = Polyline::from_points(&case.corners);
         let mut a = algo(&mut board, 500);
@@ -496,7 +496,7 @@ fn same_polyline(before: &Polyline, after: &Polyline) -> bool {
     before.lines() == after.lines()
 }
 
-fn java_angle_name(angle: AngleRestriction) -> &'static str {
+fn angle_name(angle: AngleRestriction) -> &'static str {
     match angle {
         AngleRestriction::NinetyDegree => "NINETY_DEGREE",
         AngleRestriction::FortyFiveDegree => "FORTYFIVE_DEGREE",
@@ -525,7 +525,7 @@ fn get_instance_dispatches_on_the_board_angle_restriction() {
             TraceTightener::FortyFive(_) => "TraceTightener45",
             TraceTightener::AnyAngle(_) => "TraceTightenerAnyAngle",
         };
-        assert_eq!(name, expected, "regime {}", java_angle_name(angle));
+        assert_eq!(name, expected, "regime {}", angle_name(angle));
     }
 }
 
@@ -564,7 +564,7 @@ fn split_traces_at_keep_point_splits_only_with_a_keep_point() {
                 .split_traces_at_keep_point(&mut board)
                 .expect("a never-tripping stop check"),
             "regime {}",
-            java_angle_name(angle)
+            angle_name(angle)
         );
         let mut with = TraceTightener::get_instance(
             &mut board,
@@ -580,7 +580,7 @@ fn split_traces_at_keep_point_splits_only_with_a_keep_point() {
             with.split_traces_at_keep_point(&mut board)
                 .expect("a never-tripping stop check"),
             "regime {}",
-            java_angle_name(angle)
+            angle_name(angle)
         );
     }
 }
@@ -605,7 +605,7 @@ fn inst_mode_matches_the_jvm() {
             };
             actual.push(format!(
                 "regime={} mtd={} class={} minTranslateDist={} onlyNetNoArrLen={} clip=null",
-                java_angle_name(angle),
+                angle_name(angle),
                 mtd,
                 class,
                 built.min_translate_dist(),
@@ -615,7 +615,7 @@ fn inst_mode_matches_the_jvm() {
         let mut no_keep = algo(&mut board, 500);
         actual.push(format!(
             "regime={} splitAtKeepPoint(null)={}",
-            java_angle_name(angle),
+            angle_name(angle),
             no_keep
                 .split_traces_at_keep_point(&mut board)
                 .expect("a never-tripping stop check")
@@ -632,7 +632,7 @@ fn inst_mode_matches_the_jvm() {
         );
         actual.push(format!(
             "regime={} splitAtKeepPoint(0,200)={}",
-            java_angle_name(angle),
+            angle_name(angle),
             keep.split_traces_at_keep_point(&mut board)
                 .expect("a never-tripping stop check")
         ));
@@ -779,19 +779,19 @@ fn lineeq_mode_matches_the_jvm() {
                     Err(_) => format!(
                         "repositionLine regime={} script={} no={} -> threw \
                          ArrayIndexOutOfBoundsException",
-                        java_angle_name(angle),
+                        angle_name(angle),
                         name,
                         no
                     ),
                     Ok(None) => format!(
                         "repositionLine regime={} script={} no={} -> null",
-                        java_angle_name(angle),
+                        angle_name(angle),
                         name,
                         no
                     ),
                     Ok(Some(line)) => format!(
                         "repositionLine regime={} script={} no={} -> {}",
-                        java_angle_name(angle),
+                        angle_name(angle),
                         name,
                         no,
                         dump_line(&line)
@@ -850,7 +850,7 @@ fn polyline_trace_pull_tight_matches_the_jvm() {
     ] {
         // (a) `pullTight(TraceTightener)` on the two traces the board already carries.
         let mut board = probe_board(angle);
-        actual.push(format!("regime={} overload=algo", java_angle_name(angle)));
+        actual.push(format!("regime={} overload=algo", angle_name(angle)));
         let mut a = algo(&mut board, 500);
         for id in trace_ids(&board) {
             actual.push(format!(
@@ -870,10 +870,7 @@ fn polyline_trace_pull_tight_matches_the_jvm() {
 
         // (b) a freshly inserted detour trace, which the tightener can actually shorten.
         let mut board = probe_board(angle);
-        actual.push(format!(
-            "regime={} overload=algo-detour",
-            java_angle_name(angle)
-        ));
+        actual.push(format!("regime={} overload=algo-detour", angle_name(angle)));
         board.insert_trace_without_cleaning(
             detour_polyline(),
             0,
@@ -897,7 +894,7 @@ fn polyline_trace_pull_tight_matches_the_jvm() {
             let mut board = probe_board(angle);
             actual.push(format!(
                 "regime={} overload=flags ownNetOnly={}",
-                java_angle_name(angle),
+                angle_name(angle),
                 own_net_only
             ));
             board.insert_trace_without_cleaning(
@@ -924,10 +921,7 @@ fn polyline_trace_pull_tight_matches_the_jvm() {
 
         // (d) the refusals of `:811-828`.
         let mut board = probe_board(angle);
-        actual.push(format!(
-            "regime={} overload=refusals",
-            java_angle_name(angle)
-        ));
+        actual.push(format!("regime={} overload=refusals", angle_name(angle)));
         let fixed_trace = board
             .insert_trace_without_cleaning(
                 detour_polyline(),
@@ -1057,7 +1051,7 @@ fn smoothen_end_corners_at_trace_matches_the_jvm() {
         AngleRestriction::None,
     ] {
         let mut board = probe_board(angle);
-        actual.push(format!("regime={}", java_angle_name(angle)));
+        actual.push(format!("regime={}", angle_name(angle)));
         insert_smoothen_fixture(&mut board);
         let mut a = algo(&mut board, 500);
         for id in trace_ids(&board) {
@@ -1221,7 +1215,7 @@ fn pin_edge_branch_matches_the_jvm() {
             board.rules.set_pin_edge_to_turn_dist(edge_to_turn_dist);
             actual.push(format!(
                 "regime={} pinEdgeToTurnDist={}",
-                java_angle_name(angle),
+                angle_name(angle),
                 format_double(edge_to_turn_dist)
             ));
             let mut a = algo(&mut board, 500);
@@ -1247,7 +1241,7 @@ fn random_rows(angle: AngleRestriction) -> Vec<String> {
     let mut board = probe_board(angle);
     let mut out = vec![format!(
         "regime={} n={} seed={}",
-        java_angle_name(angle),
+        angle_name(angle),
         RANDOM_COUNT,
         RANDOM_SEED
     )];

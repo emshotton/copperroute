@@ -253,7 +253,7 @@ fn emit(result: &BoardReadResult) -> Vec<String> {
             .map(|item_class| {
                 format!(
                     "{}={}",
-                    java_item_class_name(*item_class),
+                    item_class_name(*item_class),
                     net_class.default_item_clearance_classes.get(*item_class)
                 )
             })
@@ -340,7 +340,7 @@ fn emit(result: &BoardReadResult) -> Vec<String> {
         board.rules.get_hole_clearance(),
         board.rules.get_min_trace_half_width(),
         board.rules.get_max_trace_half_width(),
-        java_angle_restriction_name(board.rules.trace_angle_restriction),
+        angle_restriction_name(board.rules.trace_angle_restriction),
         board.rules.get_ignore_conduction()
     ));
 
@@ -354,7 +354,7 @@ fn emit(result: &BoardReadResult) -> Vec<String> {
         metadata.layer_count,
         metadata.unit,
         metadata.resolution,
-        java_angle_restriction_name(metadata.snap_angle)
+        angle_restriction_name(metadata.snap_angle)
     ));
     rows.push(format!("warnings count={}", warnings.len()));
     for (i, warning) in warnings.iter().enumerate() {
@@ -363,7 +363,7 @@ fn emit(result: &BoardReadResult) -> Vec<String> {
     rows
 }
 
-fn java_item_class_name(item_class: ItemClass) -> &'static str {
+fn item_class_name(item_class: ItemClass) -> &'static str {
     match item_class {
         ItemClass::None => "NONE",
         ItemClass::Trace => "TRACE",
@@ -374,7 +374,7 @@ fn java_item_class_name(item_class: ItemClass) -> &'static str {
     }
 }
 
-fn java_angle_restriction_name(angle: fr_board::AngleRestriction) -> &'static str {
+fn angle_restriction_name(angle: fr_board::AngleRestriction) -> &'static str {
     match angle {
         fr_board::AngleRestriction::None => "NONE",
         fr_board::AngleRestriction::FortyFiveDegree => "FORTYFIVE_DEGREE",
@@ -793,7 +793,7 @@ fn emit_corners(corners: &[fr_geometry::FloatPoint]) -> String {
     out
 }
 
-fn java_fixed_state_name(state: fr_board::FixedState) -> &'static str {
+fn fixed_state_name(state: fr_board::FixedState) -> &'static str {
     match state {
         fr_board::FixedState::Unfixed => "NOT_FIXED",
         fr_board::FixedState::ShoveFixed => "SHOVE_FIXED",
@@ -946,7 +946,7 @@ fn emit_b(result: &BoardReadResult) -> Vec<String> {
             nets.join(","),
             header.clearance_class(),
             header.get_component_id(),
-            java_fixed_state_name(header.get_fixed_state())
+            fixed_state_name(header.get_fixed_state())
         );
         rows.push(match item {
             Item::Pin(pin) => format!("{head} pinIndex={}", pin.get_pin_index()),

@@ -229,13 +229,13 @@ pub fn write_part_library_scope(p: &mut WriteScopeParameter<'_>) {
 }
 
 fn sorted_set_add(set: &mut Vec<String>, value: String) {
-    match set.binary_search_by(|probe| java_string_cmp(probe, &value)) {
+    match set.binary_search_by(|probe| utf16_cmp(probe, &value)) {
         Ok(_) => {}
         Err(index) => set.insert(index, value),
     }
 }
 
-pub(crate) fn java_string_cmp(a: &str, b: &str) -> Ordering {
+pub(crate) fn utf16_cmp(a: &str, b: &str) -> Ordering {
     a.encode_utf16().cmp(b.encode_utf16())
 }
 
@@ -253,8 +253,8 @@ mod tests {
     }
 
     #[test]
-    fn java_string_cmp_orders_by_utf16_code_units() {
-        assert_eq!(java_string_cmp("\u{10000}", "\u{FFFD}"), Ordering::Less);
+    fn utf16_cmp_orders_by_code_units() {
+        assert_eq!(utf16_cmp("\u{10000}", "\u{FFFD}"), Ordering::Less);
         assert!("\u{10000}" > "\u{FFFD}");
     }
 }

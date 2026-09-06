@@ -13,7 +13,7 @@ pub const EAGLE_SCRIPT_FILE_EXTENSION: &str = "scr";
 
 pub const FILE_SEPARATOR: char = '/';
 
-pub(crate) mod java_path {
+pub(crate) mod path_util {
     pub(crate) fn of_to_string(s: &str) -> String {
         let absolute = s.starts_with(super::FILE_SEPARATOR);
         let segments: Vec<&str> = s
@@ -117,7 +117,7 @@ pub enum FileFormat {
 const SHIFT_LOOP_BOUND: usize = 5;
 
 impl FileFormat {
-    pub fn java_name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             FileFormat::Unknown => "UNKNOWN",
             FileFormat::Dsn => "DSN",
@@ -131,7 +131,7 @@ impl FileFormat {
         }
     }
 
-    pub fn from_java_name(name: &str) -> Option<FileFormat> {
+    pub fn from_name(name: &str) -> Option<FileFormat> {
         Some(match name {
             "UNKNOWN" => FileFormat::Unknown,
             "DSN" => FileFormat::Dsn,
@@ -157,7 +157,7 @@ impl FileFormat {
         }
     }
 
-    pub fn java_shift_loop_hangs(content: &[u8]) -> bool {
+    pub fn shift_loop_would_hang(content: &[u8]) -> bool {
         FileFormat::sniff_bytes_inner(content).1
     }
 
@@ -218,8 +218,8 @@ impl FileFormat {
     }
 
     pub fn from_path(path: &Path) -> FileFormat {
-        let filename = java_path::of_to_string(&path.to_string_lossy()).to_lowercase();
-        let parts = java_path::split_on_dot(&filename);
+        let filename = path_util::of_to_string(&path.to_string_lossy()).to_lowercase();
+        let parts = path_util::split_on_dot(&filename);
         if parts.len() > 1 {
             let extension = parts[parts.len() - 1].to_lowercase();
             return match extension.as_str() {
@@ -263,7 +263,7 @@ pub enum RoutingJobState {
 }
 
 impl RoutingJobState {
-    pub fn java_name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             RoutingJobState::Invalid => "INVALID",
             RoutingJobState::Queued => "QUEUED",
@@ -299,7 +299,7 @@ pub enum RoutingStage {
 }
 
 impl RoutingStage {
-    pub fn java_name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             RoutingStage::Idle => "IDLE",
             RoutingStage::Routing => "ROUTING",
@@ -514,7 +514,7 @@ impl RoutingJob {
         let content = std::fs::read(input_file)?;
 
         self.set_input_bytes(Some(&content));
-        let absolute = java_path::to_absolute_path(&input_file.to_string_lossy());
+        let absolute = path_util::to_absolute_path(&input_file.to_string_lossy());
         {
             let input = self.input.as_mut().expect("set_input_bytes assigns it");
             input.set_filename(Some(&absolute));
@@ -634,16 +634,16 @@ impl RoutingJob {
     }
 
     pub fn change_file_extension(filename: &str, new_file_extension: &str) -> String {
-        let normalized = java_path::of_to_string(filename);
+        let normalized = path_util::of_to_string(filename);
 
-        let original_full_path_without_filename = match java_path::parent_of_normalized(&normalized)
+        let original_full_path_without_filename = match path_util::parent_of_normalized(&normalized)
         {
-            Some(parent) => java_path::to_absolute_path(&parent),
+            Some(parent) => path_util::to_absolute_path(&parent),
             None => String::new(),
         };
-        let original_filename = java_path::file_name_of_normalized(&normalized).unwrap_or_default();
+        let original_filename = path_util::file_name_of_normalized(&normalized).unwrap_or_default();
 
-        let name_parts = java_path::split_on_dot(&original_filename);
+        let name_parts = path_util::split_on_dot(&original_filename);
         if name_parts.len() > 1 {
             let extension = name_parts[name_parts.len() - 1].to_lowercase();
             if extension == new_file_extension {
@@ -651,10 +651,10 @@ impl RoutingJob {
             }
             let keep = original_filename.len() - extension.len() - 1;
             let new_filename = format!("{}.{new_file_extension}", &original_filename[..keep]);
-            return java_path::join2(&original_full_path_without_filename, &new_filename);
+            return path_util::join2(&original_full_path_without_filename, &new_filename);
         }
 
-        java_path::join2(
+        path_util::join2(
             &original_full_path_without_filename,
             &format!("{original_filename}.{new_file_extension}"),
         )

@@ -1634,10 +1634,8 @@ fn spring_over_obstacles_stops_at_the_recursion_limit() {
             result.as_ref().map_or(-1, |r| r.lines().len() as i64),
             result
                 .as_ref()
-                .map_or("null".to_string(), |r| java_round_half_up(
-                    r.length_approx()
-                )
-                .to_string()),
+                .map_or("null".to_string(), |r| round_half_up(r.length_approx())
+                    .to_string()),
             t15b_failing(&board),
         ));
     }
@@ -1679,7 +1677,7 @@ fn spring_over_obstacles_stops_at_the_recursion_limit() {
     );
 }
 
-fn java_round_half_up(value: f64) -> i64 {
+fn round_half_up(value: f64) -> i64 {
     (value + 0.5).floor() as i64
 }
 

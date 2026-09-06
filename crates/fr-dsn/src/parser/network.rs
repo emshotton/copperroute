@@ -18,7 +18,7 @@ use crate::parser::dsn_file::{
 };
 use crate::parser::geometry::DsnLayerStructure;
 use crate::parser::library::strip_dot_digits;
-use crate::parser::part_library::{DsnLogicalPart, DsnLogicalPartMapping, java_string_cmp};
+use crate::parser::part_library::{DsnLogicalPart, DsnLogicalPartMapping, utf16_cmp};
 use crate::parser::placement::ComponentLocation;
 use crate::parser::scope_parameter::{ReadScopeParameter, WriteScopeParameter, skip_scope};
 use crate::parser::structure::{contains_wire_clearance_pair, read_via_padstacks};
@@ -351,8 +351,8 @@ pub struct PinRef {
 
 impl Ord for PinRef {
     fn cmp(&self, other: &PinRef) -> std::cmp::Ordering {
-        java_string_cmp(&self.component_name, &other.component_name)
-            .then_with(|| java_string_cmp(&self.pin_name, &other.pin_name))
+        utf16_cmp(&self.component_name, &other.component_name)
+            .then_with(|| utf16_cmp(&self.pin_name, &other.pin_name))
     }
 }
 
@@ -386,7 +386,7 @@ pub struct NetId {
 
 impl Ord for NetId {
     fn cmp(&self, other: &NetId) -> std::cmp::Ordering {
-        java_string_cmp(&self.name, &other.name).then_with(|| self.subnet_no.cmp(&other.subnet_no))
+        utf16_cmp(&self.name, &other.name).then_with(|| self.subnet_no.cmp(&other.subnet_no))
     }
 }
 

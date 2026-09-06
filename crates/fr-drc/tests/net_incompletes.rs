@@ -73,7 +73,7 @@ fn transcript(board: &Board) -> String {
 
 #[test]
 fn the_three_fixtures_match_the_jvm() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     for stem in FIXTURES {
@@ -101,7 +101,7 @@ fn assert_transcripts_eq(actual: &str, expected: &str, stem: &str) {
 
 #[test]
 fn the_airline_endpoints_are_a_hash_dependent_choice() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     for stem in FIXTURES {
@@ -209,7 +209,7 @@ impl Line {
 
 #[test]
 fn every_port_airline_is_one_some_jvm_run_picks() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     for stem in FIXTURES {

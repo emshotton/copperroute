@@ -1,4 +1,4 @@
-use fr_settings::copy_fields::{CopyFields, JavaEnum, enum_copy_by_name};
+use fr_settings::copy_fields::{CopyFields, NamedEnum, enum_copy_by_name};
 use fr_settings::prelude::*;
 
 #[test]
@@ -252,13 +252,13 @@ fn enums_are_copied_by_name() {
         target.item_selection_strategy,
         Some(ItemSelectionStrategy::Prioritized)
     );
-    assert_eq!(BoardUpdateStrategy::Hybrid.java_name(), "HYBRID");
+    assert_eq!(BoardUpdateStrategy::Hybrid.name(), "HYBRID");
     assert_eq!(
-        BoardUpdateStrategy::from_java_name("HYBRID"),
+        BoardUpdateStrategy::from_name("HYBRID"),
         Some(BoardUpdateStrategy::Hybrid)
     );
 
-    assert_eq!(BoardUpdateStrategy::from_java_name("hybrid"), None);
+    assert_eq!(BoardUpdateStrategy::from_name("hybrid"), None);
     let mut dst: Option<BoardUpdateStrategy> = None;
     let mut report = MergeReport::default();
     enum_copy_by_name(

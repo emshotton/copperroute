@@ -10,7 +10,7 @@ use fr_settings::{HostEnvironment, RouterSettings, ScoringSettings, SettingsSour
 use std::collections::{BTreeMap, BTreeSet};
 
 fn load_board(rel_path: &str) -> Board {
-    let path = parity::java_dir().join(rel_path);
+    let path = parity::reference_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path

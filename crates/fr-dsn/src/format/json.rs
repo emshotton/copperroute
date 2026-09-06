@@ -9,11 +9,11 @@ use crate::format::double::{format_double, format_float};
 const NON_FINITE: &str = "not a valid double value as per JSON specification (Gson refuses it: GsonProvider never \
      calls serializeSpecialFloatingPointValues)";
 
-pub struct JavaNumberFormatter<'a> {
+pub struct NumberFormatter<'a> {
     inner: PrettyFormatter<'a>,
 }
 
-impl JavaNumberFormatter<'_> {
+impl NumberFormatter<'_> {
     pub fn new() -> Self {
         Self {
             inner: PrettyFormatter::new(),
@@ -21,13 +21,13 @@ impl JavaNumberFormatter<'_> {
     }
 }
 
-impl Default for JavaNumberFormatter<'_> {
+impl Default for NumberFormatter<'_> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Formatter for JavaNumberFormatter<'_> {
+impl Formatter for NumberFormatter<'_> {
     #[inline]
     fn write_null<W>(&mut self, _writer: &mut W) -> io::Result<()>
     where
@@ -147,7 +147,7 @@ impl Formatter for JavaNumberFormatter<'_> {
 pub fn to_gson_string_pretty<T: Serialize>(value: &T) -> Result<String, serde_json::Error> {
     let mut buffer = Vec::new();
     let mut serializer =
-        serde_json::Serializer::with_formatter(&mut buffer, JavaNumberFormatter::new());
+        serde_json::Serializer::with_formatter(&mut buffer, NumberFormatter::new());
     value.serialize(&mut serializer)?;
     Ok(String::from_utf8(buffer).expect("serde_json writes UTF-8"))
 }

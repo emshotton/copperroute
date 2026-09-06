@@ -884,19 +884,19 @@ fn remove_not_touching_border_lines(
     .normalize()
 }
 
-fn bounding_octagon_of(shape: &TileShape, java_line: u32) -> IntOctagon {
+fn bounding_octagon_of(shape: &TileShape, source_line: u32) -> IntOctagon {
     shape.bounding_octagon().unwrap_or_else(|| {
         panic!(
-            "Sorted45DegreeRoomNeighbours.java:{java_line}: boundingOctagon answered null for an \
+            "Sorted45DegreeRoomNeighbours:{source_line}: boundingOctagon answered null for an \
              unbounded shape — Java NPEs here too"
         )
     })
 }
 
-fn side_index(no: i32, java_line: u32) -> usize {
+fn side_index(no: i32, source_line: u32) -> usize {
     usize::try_from(no).unwrap_or_else(|_| {
         panic!(
-            "Sorted45DegreeRoomNeighbours.java:{java_line}: the touching side is {no} — Java \
+            "Sorted45DegreeRoomNeighbours:{source_line}: the touching side is {no} — Java \
              throws ArrayIndexOutOfBoundsException here"
         )
     })

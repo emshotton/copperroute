@@ -133,7 +133,7 @@ fn a_single_pass_limit_reports_one_pass() {
 }
 
 fn load_board(rel_path: &str) -> Board {
-    let path: PathBuf = parity::java_dir().join(rel_path);
+    let path: PathBuf = parity::reference_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path
@@ -212,7 +212,7 @@ impl Recorder {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn two_runs_of_the_same_board_are_identical() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
 
@@ -273,7 +273,7 @@ fn two_runs_of_the_same_board_are_identical() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_fanout_only_mode_sets_max_passes_to_zero_and_leaves_the_callers_settings_untouched() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_board(RPI);
@@ -308,7 +308,7 @@ fn the_fanout_only_mode_sets_max_passes_to_zero_and_leaves_the_callers_settings_
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn neither_routing_limit_skips_the_optimizer_stage() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
 
@@ -386,7 +386,7 @@ fn neither_routing_limit_skips_the_optimizer_stage() {
 
 #[test]
 fn an_empty_board_errors_with_no_routable_layer() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_board(EMPTY_BOARD);
@@ -446,7 +446,7 @@ fn a_job_deadline_during_fanout_returns_a_timed_out_board() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn a_recording_sink_sees_the_stage_events_in_javas_order() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_board(RPI);
@@ -506,7 +506,7 @@ fn a_recording_sink_sees_the_stage_events_in_javas_order() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_unrouted_report_lists_airlines_in_getallairlines_order() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let mut board = load_board(RPI);

@@ -36,14 +36,14 @@ fn read_fixture(path: &Path) -> (Board, CoordinateTransform) {
 use parity::dsn_design_name as design_name;
 
 fn assert_roundtrip_parity(stem: &str, relative_fixture: &str) {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     let reference = parity::reference(stem, "roundtrip.dsn");
     if !parity::require_reference(&reference) {
         return;
     }
-    let fixture = parity::java_dir().join(relative_fixture);
+    let fixture = parity::reference_dir().join(relative_fixture);
     let (board, coordinate_transform) = read_fixture(&fixture);
     let mut actual: Vec<u8> = Vec::new();
     dsn_writer::write(
@@ -107,7 +107,7 @@ fn issue753_cpu_85_r104_roundtrip_matches_java() {
 
 #[test]
 fn every_reference_is_byte_for_byte_identical_to_java() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
     for (stem, relative_fixture) in [
@@ -135,7 +135,7 @@ fn every_reference_is_byte_for_byte_identical_to_java() {
         if !parity::require_reference(&reference_path) {
             continue;
         }
-        let fixture = parity::java_dir().join(relative_fixture);
+        let fixture = parity::reference_dir().join(relative_fixture);
         let (board, coordinate_transform) = read_fixture(&fixture);
         let mut actual: Vec<u8> = Vec::new();
         dsn_writer::write(&board, &coordinate_transform, &mut actual, stem, false)
@@ -164,10 +164,10 @@ fn every_reference_is_byte_for_byte_identical_to_java() {
 
 #[test]
 fn valid_header() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
-    let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let fixture = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (board, ct) = read_fixture(&fixture);
     let mut out: Vec<u8> = Vec::new();
     dsn_writer::write(&board, &ct, &mut out, "test", false).expect("write");
@@ -184,10 +184,10 @@ fn valid_header() {
 
 #[test]
 fn roundtrip_preserves_layer_count() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
-    let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let fixture = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (original, ct) = read_fixture(&fixture);
     let original_layers = original.get_layer_count();
     let mut out: Vec<u8> = Vec::new();
@@ -208,10 +208,10 @@ fn roundtrip_preserves_layer_count() {
 
 #[test]
 fn compat_mode_produces_output() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
-    let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let fixture = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (board, ct) = read_fixture(&fixture);
     let mut out: Vec<u8> = Vec::new();
     dsn_writer::write(&board, &ct, &mut out, "compat-test", true).expect("write");
@@ -224,10 +224,10 @@ fn compat_mode_produces_output() {
 
 #[test]
 fn output_is_non_empty() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
-    let fixture = parity::java_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let fixture = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (board, ct) = read_fixture(&fixture);
     let mut out: Vec<u8> = Vec::new();
     dsn_writer::write(&board, &ct, &mut out, "flush-test", false).expect("write");
@@ -239,10 +239,10 @@ fn output_is_non_empty() {
 
 #[test]
 fn compat_mode_writes_paths_where_the_default_writes_polyline_paths() {
-    if !parity::require_java_dir() {
+    if !parity::require_reference_dir() {
         return;
     }
-    let fixture = parity::java_dir().join("fixtures/Issue413-test.dsn");
+    let fixture = parity::reference_dir().join("fixtures/Issue413-test.dsn");
     if !fixture.exists() {
         eprintln!("SKIP: {} missing", fixture.display());
         return;

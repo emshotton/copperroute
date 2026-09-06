@@ -109,7 +109,7 @@ pub fn file_payload_fields(details: &fr_core::BoardFileDetails) -> Value {
     json!({
         "size": details.size,
         "crc32": details.crc32,
-        "format": details.format.java_name(),
+        "format": details.format.name(),
         "filename": details.get_filename(),
         "path": details.get_directory_path(),
     })

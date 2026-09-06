@@ -413,18 +413,18 @@ fn rooms_with_target_items_iterates_descending() {
     let found = engine.rooms_with_target_items(&items);
     assert_eq!(found.len(), 2);
 
-    let java_order: Vec<i32> = found
+    let ids_descending: Vec<i32> = found
         .iter()
         .rev()
         .map(|r| engine.rooms.complete_room(*r).unwrap().get_id())
         .collect();
     assert_eq!(
-        java_order,
+        ids_descending,
         vec![14, 6],
         "descending by room id, as Java's TreeSet"
     );
     assert!(
-        java_order[0] > java_order[1],
+        ids_descending[0] > ids_descending[1],
         "the point of this assert is the DESCENDING order, not the ids"
     );
 
