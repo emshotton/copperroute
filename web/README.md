@@ -43,7 +43,7 @@ requirements. The current release WASM is approximately 2.4 MiB uncompressed.
 ## Scope and limits
 
 This proves browser routing, rather than complete native KiCad format support.
-The router currently imports KiCad **JSON**, so `kicad.js` translates a supported
+For KiCad boards, the browser bridge imports KiCad **JSON**, so `kicad.js` translates a supported
 subset of the native S-expression format into that existing representation.
 
 - Standard circular, rectangular, oval, and rounded rectangular pads; rotated
@@ -228,3 +228,19 @@ USB footprint approximation and one involving a routed track. KiCad still needs
 to validate the complete native geometry, particularly slots and rounded pads.
 Regression tests check the unmodified WASM result's via drills, so export-time
 repair cannot hide a loss of metadata inside Rust.
+
+## Specctra DSN import
+
+Drop a `.dsn` into the preview window or select it with **Choose a board**.
+The native Rust DSN importer supplies embedded net classes, widths, clearances,
+via definitions, planes, keepouts, and layer settings to the router. KiCad project
+and manual rule controls are disabled for DSN. The preview displays physical board
+geometry and updates at routing checkpoints. Loading its preview requires WASM.
+
+**Route board** removes existing traces and vias, including protected routing,
+before routing from scratch. Downloads include a routed DSN, an SES session for
+import into the original PCB editor, and an SVG. The DSN is reserialized by the
+native writer; it is not a byte-preserving copy of the source. Artwork and
+source-editor metadata are outside this interchange format. Run the source
+editor's DRC after importing the SES. Partially imported DSNs can be previewed
+but are rejected for routing.

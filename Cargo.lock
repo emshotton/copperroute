@@ -252,6 +252,7 @@ dependencies = [
  "copper-core",
  "copper-drc",
  "copper-dsn",
+ "copper-geometry",
  "copper-settings",
  "js-sys",
  "serde_json",

@@ -1,5 +1,6 @@
 //! In-memory browser entry point. Native filesystem and CLI code are not used.
 use wasm_bindgen::prelude::*;
+mod dsn;
 
 #[wasm_bindgen]
 pub fn route_board(

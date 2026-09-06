@@ -14,8 +14,20 @@ pub fn write<W: Write>(
     design_name: &str,
     compat_mode: bool,
 ) -> io::Result<()> {
+    write_with_settings(board, ct, out, design_name, compat_mode, None)
+}
+
+/// Serialize the board together with optional routing preferences such as layer activation.
+pub fn write_with_settings<W: Write>(
+    board: &Board,
+    ct: &CoordinateTransform,
+    out: &mut W,
+    design_name: &str,
+    compat_mode: bool,
+    settings: Option<&crate::parser::DsnRouterSettings>,
+) -> io::Result<()> {
     let output_file = IndentFileWriter::new(out as &mut dyn Write);
-    write_pcb_scope(board, ct, output_file, design_name, compat_mode)
+    write_pcb_scope(board, ct, output_file, design_name, compat_mode, settings)
 }
 
 fn write_pcb_scope<'a>(
@@ -24,6 +36,7 @@ fn write_pcb_scope<'a>(
     output_file: IndentFileWriter<&'a mut dyn Write>,
     design_name: &str,
     compat_mode: bool,
+    settings: Option<&crate::parser::DsnRouterSettings>,
 ) -> io::Result<()> {
     let string_quote = board.communication.string_quote.clone();
     let mut p = WriteScopeParameter::new(board, output_file, &string_quote, ct, compat_mode);
@@ -41,7 +54,7 @@ fn write_pcb_scope<'a>(
 
     header::write_resolution_scope(&mut p.file, &board.communication);
     header::write_unit_scope(&mut p.file, board.communication.unit);
-    structure::write_structure_scope(&mut p, None);
+    structure::write_structure_scope(&mut p, settings);
     placement::write_placement_scope(&mut p);
     library::write_library_scope(&mut p);
     part_library::write_part_library_scope(&mut p);

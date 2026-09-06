@@ -34,7 +34,7 @@ function showLayers(layers) {
 function clearDownloads() {
   urls.forEach(URL.revokeObjectURL);
   urls = [];
-  for (const id of ["pcb", "svg"]) {
+  for (const id of ["pcb", "ses", "svg"]) {
     $(id).hidden = true;
     $(id).removeAttribute("href");
   }
@@ -44,6 +44,15 @@ function finish() {
   worker = null;
   $("cancel").hidden = true;
   $("route").disabled = !selected;
+}
+function isDsn() { return /\.dsn$/i.test(selected?.name ?? ""); }
+function updateRuleControls() {
+  const embedded = isDsn();
+  for (const id of Object.keys(manualRules)) $(id).disabled = embedded || !!projectFile;
+  for (const id of ["project", "clear-project", "rebuild-zones"]) $(id).disabled = embedded;
+  $("project-name").textContent = embedded
+    ? "Using embedded DSN net classes, routing rules and layer settings."
+    : projectFile ? projectFile.name : "No project selected — using the manual rules below.";
 }
 function select(file) {
   selectionRevision++;
@@ -55,12 +64,13 @@ function select(file) {
   finish();
   clearDownloads();
   selected = null;
+  updateRuleControls();
   $("route").disabled = true;
   $("warnings").textContent = "";
   $("preview").replaceChildren();
   $("filename").textContent = "BOARD PREVIEW";
-  if (!file?.name.toLowerCase().endsWith(".kicad_pcb")) {
-    status("Choose a .kicad_pcb file.");
+  if (!/\.(kicad_pcb|dsn)$/i.test(file?.name ?? "")) {
+    status("Choose a .kicad_pcb or .dsn file.");
     return;
   }
   if (file.size > 20 * 1024 * 1024) {
@@ -68,6 +78,7 @@ function select(file) {
     return;
   }
   selected = file;
+  updateRuleControls();
   $("filename").textContent = file.name;
   $("badge").textContent = "Board selected";
   $("route").disabled = false;
@@ -79,6 +90,7 @@ function select(file) {
     if (data.type === "preview") {
       $("preview").innerHTML = data.svg;
       showLayers(data.layers);
+      $("warnings").textContent = data.warnings.join(" ");
     }
     if (data.type === "ready" || data.type === "error") {
       active.terminate();
@@ -102,7 +114,7 @@ function select(file) {
     .text()
     .then((text) => {
       if (previewWorker === active)
-        active.postMessage({ action: "preview", text });
+        active.postMessage({ action: "preview", text, name: file.name });
     })
     .catch((e) => {
       if (previewWorker === active) {
@@ -127,15 +139,11 @@ function selectProject(file) {
   if (!file)
     for (const [id, value] of Object.entries(manualRules)) $(id).value = value;
   projectFile = file;
-  $("project-name").textContent = file
-    ? file.name
-    : "No project selected — using the manual rules below.";
-  for (const id of ["traceWidth", "clearance", "viaDiameter", "viaDrill"])
-    $(id).disabled = !!file;
+  updateRuleControls();
 }
 function selectFiles(files) {
   const list = Array.from(files),
-    pcb = list.find((f) => f.name.toLowerCase().endsWith(".kicad_pcb")),
+    pcb = list.find((f) => /\.(kicad_pcb|dsn)$/i.test(f.name)),
     project = list.find((f) => f.name.toLowerCase().endsWith(".kicad_pro"));
   if (pcb) {
     selectProject(project);
@@ -213,7 +221,7 @@ $("settings").onsubmit = async (e) => {
       Number($(id).value),
     ]),
   );
-  if (rules.viaDrill >= rules.viaDiameter) {
+  if (!isDsn() && rules.viaDrill >= rules.viaDiameter) {
     status("Via drill must be smaller than the via diameter.");
     return;
   }
@@ -262,16 +270,19 @@ $("settings").onsubmit = async (e) => {
           ? "Routing complete"
           : "Partial route";
       status(
-        `${data.incomplete ?? "Unknown"} unrouted connections · ${data.violations} router DRC violations · ${data.passes} passes${data.timedOut ? " · Time limit reached" : ""}. Review in KiCad and run DRC.`,
+        `${data.incomplete ?? "Unknown"} unrouted connections · ${data.violations} router DRC violations · ${data.passes} passes${data.timedOut ? " · Time limit reached" : ""}. Review in ${data.dsn ? "the source PCB editor" : "KiCad"} and run DRC.`,
       );
       for (const [id, content, mime, ext] of [
-        ["pcb", data.pcb, "text/plain", ".kicad_pcb"],
+        ["pcb", data.dsn ?? data.pcb, "text/plain", data.dsn ? ".dsn" : ".kicad_pcb"],
+        ["ses", data.ses, "text/plain", ".ses"],
         ["svg", data.svg, "image/svg+xml", ".svg"],
       ]) {
+        if (content == null) continue;
+        if (id === "pcb") $(id).textContent = data.dsn ? "Download routed DSN ↓" : "Download routed PCB ↓";
         const url = URL.createObjectURL(new Blob([content], { type: mime }));
         urls.push(url);
         $(id).href = url;
-        $(id).download = file.name.replace(/\.kicad_pcb$/i, "-routed") + ext;
+        $(id).download = file.name.replace(/\.(kicad_pcb|dsn)$/i, "-routed") + ext;
         $(id).hidden = false;
       }
     }

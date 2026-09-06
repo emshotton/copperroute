@@ -8,6 +8,7 @@ license.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+copper-geometry = { path = "../copper-geometry" }
 copper-board = { path = "../copper-board" }
 js-sys = "0.3"
 copper-drc = { path = "../copper-drc" }

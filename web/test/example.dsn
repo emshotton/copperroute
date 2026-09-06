@@ -1,0 +1,24 @@
+(pcb example.dsn
+  (parser (string_quote ") (space_in_quoted_tokens on))
+  (resolution um 10)
+  (unit um)
+  (structure
+    (layer Top (type signal) (property (index 0)))
+    (layer Bottom (type signal) (property (index 1)))
+    (boundary (path pcb 0 0 0 40000 0 40000 25000 0 25000 0 0))
+    (autoroute_settings (layer_rule Top (active on)) (layer_rule Bottom (active off)))
+    (via VIA)
+    (rule (width 250) (clearance 200)))
+  (placement
+    (component smd
+      (place U1 10000 10000 front 0)
+      (place U2 30000 15000 front 0)))
+  (library
+    (image smd (side front) (pin SMD 1 0 0))
+    (padstack SMD (shape (rect Top -750 -750 750 750)) (attach off))
+    (padstack VIA (shape (circle Top 600)) (shape (circle Bottom 600)) (attach off)))
+  (network
+    (net SIGNAL (pins U1-1 U2-1))
+    (class wide SIGNAL (rule (width 450) (clearance 250))))
+  (wiring
+    (wire (path Top 800 10000 10000 30000 15000) (net SIGNAL) (type protect))))

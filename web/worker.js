@@ -4,6 +4,20 @@ import { previewBoard, previewLayers } from "./preview.js";
 import { applyProject } from "./project.js";
 self.onmessage = async ({ data }) => {
   try {
+    if (/\.dsn$/i.test(data.name ?? "")) {
+      const { default: init, preview_dsn, route_dsn } = await import("./pkg/fr_web.js");
+      await init();
+      self.postMessage({ type: "preview", ...JSON.parse(preview_dsn(data.text, data.name)) });
+      if (data.action === "preview") {
+        self.postMessage({ type: "ready" });
+        return;
+      }
+      self.postMessage({ type: "status", text: "Routing from scratch with embedded DSN rules…" });
+      const result = JSON.parse(route_dsn(data.text, data.name, data.passes, data.seconds,
+        (json) => self.postMessage(JSON.parse(json))));
+      self.postMessage({ type: "result", ...result });
+      return;
+    }
     self.postMessage({
       type: "preview",
       svg: previewBoard(data.text),

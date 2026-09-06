@@ -19,7 +19,7 @@
         <h1>Drop a board.<br />Find a route.</h1>
         <p class="lede">
           The Rust autorouter, running right in your browser.<br />Bring a KiCad
-          board. Take home the routed file.
+          board or Specctra DSN. Take home the routed file.
         </p>
       </section>
       <div class="workspace">
@@ -27,7 +27,7 @@
           <input
             id="file"
             type="file"
-            accept=".kicad_pcb,.kicad_pro"
+            accept=".kicad_pcb,.kicad_pro,.dsn"
             multiple
             hidden
           />
@@ -155,6 +155,7 @@
           </form>
           <details>
             <summary>Prototype support</summary>
+            <p>DSN uses the native Rust importer and embedded rules, net classes and layer settings. Download the SES session to import routing into the source PCB editor. DSN preview shows routing geometry; source-editor artwork is not included.</p>
             <p>
               Supports standard pads, straight tracks, through vias, and a
               single closed Edge.Cuts outline. Rounded rectangular pads use
@@ -177,7 +178,7 @@
           class="viewer"
           tabindex="0"
           role="button"
-          aria-label="Drop a KiCad board and optional project here, or click to choose files"
+          aria-label="Drop a DSN or KiCad board and optional project here, or click to choose files"
         >
           <div class="viewer-head">
             <span id="filename">BOARD PREVIEW</span
@@ -188,7 +189,7 @@
               <span class="board-icon">▦</span>
               <h2>Drop your board here.</h2>
               <p>
-                Drop a .kicad_pcb and optional .kicad_pro here, or click to
+                Drop a .dsn or .kicad_pcb and optional .kicad_pro here, or click to
                 choose files.
               </p>
             </div>
@@ -207,7 +208,7 @@
         </div>
         <div class="downloads">
           <a id="pcb" hidden>Download routed PCB ↓</a
-          ><a id="svg" hidden>Download SVG ↓</a>
+          ><a id="ses" hidden>Download SES session ↓</a><a id="svg" hidden>Download SVG ↓</a>
         </div>
       </section>
       <footer>
