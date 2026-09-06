@@ -4,8 +4,6 @@ use crate::cancel::Deadline;
 
 pub const MAX_TIMEOUT_SECONDS: i64 = 24 * 60 * 60;
 
-pub const GRACE_PERIOD_SECONDS: i64 = 30;
-
 pub fn convert_from_timespan_to_duration_format(timespan_string: &str) -> String {
     let mut parts: Vec<&str> = timespan_string.split(':').collect();
     if timespan_string.contains(':') {
@@ -75,9 +73,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_two_literals_are_the_files_own() {
+    fn the_timeout_cap_is_one_day() {
         assert_eq!(MAX_TIMEOUT_SECONDS, 86_400);
-        assert_eq!(GRACE_PERIOD_SECONDS, 30);
     }
 
     #[test]

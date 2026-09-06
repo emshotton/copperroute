@@ -14,7 +14,7 @@ pub mod stats_json;
 pub mod summary;
 pub mod timespan;
 
-pub use cancel::{CancelToken, Deadline};
+pub use cancel::{CancelToken, Deadline, JobStopReason};
 pub use ctx::{Ctx, RoutingResult};
 pub use file_details::BoardFileDetails;
 pub use job::{
@@ -40,9 +40,9 @@ pub use summary::{
     BoardSummary, ComponentSummary, LayerSummary, NetSummary, SummaryMetadata, summarise,
 };
 pub use timespan::{
-    GRACE_PERIOD_SECONDS, MAX_TIMEOUT_SECONDS, TimespanError,
-    convert_from_timespan_to_duration_format, job_timeout_deadline, job_timeout_deadline_from,
-    parse_timespan, parse_timespan_seconds, parse_timespan_seconds_java,
+    MAX_TIMEOUT_SECONDS, TimespanError, convert_from_timespan_to_duration_format,
+    job_timeout_deadline, job_timeout_deadline_from, parse_timespan, parse_timespan_seconds,
+    parse_timespan_seconds_java,
 };
 
 pub use fr_router::pipeline::{

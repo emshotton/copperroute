@@ -1,7 +1,9 @@
 use super::super::jsonrpc::RpcError;
 use super::super::server::{ProgressWriter, State};
 use crate::commands::route::{import_session_file, read_scheduler_rules, set_job_output};
-use fr_core::{CancelToken, Ctx, FileFormat, RoutingJobState, RoutingPipeline, SyncProgressSink};
+use fr_core::{
+    CancelToken, Ctx, FileFormat, JobStopReason, RoutingJobState, RoutingPipeline, SyncProgressSink,
+};
 use fr_settings::sources::{
     ApiSettings, DefaultSettings, DsnFileSettings, EnvironmentVariablesSource, JsonFileSettings,
     RulesFileSettings,
@@ -100,7 +102,6 @@ pub fn run(
         Ok(None) => cancel.clone(),
         Err(error) => return Err(RpcError::invalid_params(format!("job_timeout: {error}"))),
     };
-    let job_deadline = cancel.clone();
     let sink = progress_sink(progress);
     // The CLI's budget, arrived at by the CLI's own function, because this tool is the CLI's other
     // face: `p8t1`'s SES bytes are what the end-to-end conversation test compares against, and a
@@ -129,12 +130,10 @@ pub fn run(
     job.finished_at = Some(std::time::Instant::now());
     job.set_current_pass(result.pipeline.router_passes_completed);
     job.set_optimizer_pass(result.pipeline.optimizer_passes_completed);
-    // `TIMED_OUT` comes from the **job** deadline and from nothing else — a per-stage timeout
-    // leaves the job `COMPLETED`. `commands::route`'s step 12 carries the measurement.
-    job.state = if job_deadline.is_timed_out() {
-        RoutingJobState::TimedOut
-    } else {
-        RoutingJobState::Completed
+    job.state = match result.stop_reason {
+        Some(JobStopReason::Deadline) => RoutingJobState::TimedOut,
+        Some(JobStopReason::Cancelled) => RoutingJobState::Cancelled,
+        None => RoutingJobState::Completed,
     };
 
     let base = job.get_input().map_or_else(

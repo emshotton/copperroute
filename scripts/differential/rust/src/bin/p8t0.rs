@@ -17,7 +17,6 @@
 fn main() {
     // The two literals, which the Java half reads out of the jar by reflection.
     println!("MAX_TIMEOUT\t{}", fr_core::MAX_TIMEOUT_SECONDS);
-    println!("GRACE_PERIOD\t{}", fr_core::GRACE_PERIOD_SECONDS);
     println!("ROWS\t{}", INPUTS.len());
 
     for input in INPUTS {

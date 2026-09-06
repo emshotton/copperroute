@@ -1,4 +1,4 @@
-use crate::cancel::CancelToken;
+use crate::cancel::{CancelToken, JobStopReason};
 use crate::progress::SyncProgressSink;
 
 #[derive(Debug)]
@@ -39,6 +39,7 @@ pub struct RoutingResult {
     pub unrouted_report: String,
     pub drc_violations: Vec<fr_drc::DrcViolation>,
     pub timed_out: bool,
+    pub stop_reason: Option<JobStopReason>,
     pub pipeline: fr_router::pipeline::PipelineResult,
 }
 
