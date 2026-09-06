@@ -1,8 +1,10 @@
--de
+route
 <JAVA_DIR>/examples/tutorial_board/tutorial_board.dsn
--do
+-o
 <OUT>/route.ses
--mp
+--max-passes
 8
---router.fanout.enabled=true
---router.optimizer.enabled=true
+--set
+router.fanout.enabled=true
+--set
+router.optimizer.enabled=true

@@ -80,10 +80,12 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
     }
     let dsn_source = DsnFileSettings::new(input.get_data(), input.get_filename());
 
-    if let Some(rules) = request.rules.as_deref()
-        && let Err(error) = job.set_rules(rules)
-    {
-        tracing::warn!("Couldn't load rules file '{}': {error}", rules.display());
+    if let Some(rules) = request.rules.as_deref() {
+        if !rules.exists() {
+            tracing::warn!("Rules file {} not found", rules.display());
+        } else if let Err(error) = job.set_rules(rules) {
+            tracing::warn!("Couldn't load rules file '{}': {error}", rules.display());
+        }
     }
     let explicit_rules: Option<Vec<u8>> = job
         .rules
@@ -112,11 +114,17 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
     fr_core::apply_router_settings_for_loaded_board(&mut board, &mut settings);
     fr_core::apply_immediate_post_load_processing(&mut board);
 
-    if let Some(bytes) = scheduler_rules.as_deref()
-        && let Err(error) =
-            fr_dsn::rules_reader::read(bytes, &job.name, &mut board, &transform, None)
-    {
-        tracing::error!("Failed to apply rules from rules file: {error}");
+    if let Some(bytes) = scheduler_rules.as_deref() {
+        match fr_dsn::rules_reader::read(bytes, &job.name, &mut board, &transform, None) {
+            Ok(_) => tracing::info!(
+                "Rules loaded from {}",
+                request.rules.as_deref().map_or_else(
+                    || "the rules file beside the input".to_string(),
+                    |path| path.display().to_string()
+                )
+            ),
+            Err(error) => tracing::error!("Failed to apply rules from rules file: {error}"),
+        }
     }
     apply_kicad_project(request.kicad_project.as_deref(), &mut board, &transform);
     import_session(request.session.as_deref(), &mut board, &transform);

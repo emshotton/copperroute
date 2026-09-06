@@ -1,4 +1,4 @@
--de
+route
 <JAVA_DIR>/examples/tutorial_board/tutorial_board.dsn
--do
+-o
 <OUT>/route.ses
