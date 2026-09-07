@@ -3,23 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Freerouting · Browser autorouter</title>
+    <title>CopperRoute · PCB autorouter in your browser</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <header>
-      <a class="brand" href="./"
-        ><span class="mark">↗</span> freerouting
-        <span class="tag">BROWSER LAB</span></a
+      <a class="brand" href="./"><span class="mark">↗</span> copperroute</a
       ><span class="private">● Files stay on your device</span>
     </header>
     <main>
       <section class="intro">
-        <p class="eyebrow">FROM AIRWIRES TO COPPER</p>
-        <h1>Drop a board.<br />Find a route.</h1>
+        <h1>Route a PCB in your browser.</h1>
         <p class="lede">
-          The Rust autorouter, running right in your browser.<br />Bring a KiCad
-          board or Specctra DSN. Take home the routed file.
+          Drop a KiCad board or Specctra DSN. Take home the routed file.
         </p>
       </section>
       <div class="workspace">
@@ -56,15 +52,6 @@
           <button id="demo" class="text-button">Try a small example ↗</button>
           <form id="settings">
             <h2>Routing settings</h2>
-            <p class="hint">
-              Route board removes existing tracks and vias, then routes all
-              connections from scratch. The preview updates live as routing
-              progresses.
-            </p>
-            <p class="hint">
-              Drop a .kicad_pro alongside the PCB, or choose it below. Project
-              rules override the manual defaults.
-            </p>
             <label class="project-label"
               >KiCad project (optional)<input
                 id="project"
@@ -77,14 +64,6 @@
             <button id="clear-project" type="button" class="text-button">
               Use manual rules
             </button>
-            <label class="zone-option"
-              ><input id="rebuild-zones" type="checkbox" checked /> Refill
-              copper zones in KiCad after routing</label
-            >
-            <p class="hint">
-              Zone definitions are preserved; cached fills are removed. Refill
-              with B in KiCad, then run DRC.
-            </p>
             <div class="fields">
               <label
                 >Trace width <span>mm</span
@@ -150,31 +129,21 @@
                   required
               /></label>
             </div>
-            <label class="zone-option"><input id="allow-via-in-pad" type="checkbox" />
-              Allow vias in SMD pads</label>
-            <p class="hint">Off by default for KiCad boards. Enable only when your board fabrication process supports via-in-pad. DSN files use their embedded attachment rules.</p>
+            <label class="zone-option"
+              ><input id="rebuild-zones" type="checkbox" checked /> Refill copper
+              zones in KiCad after routing</label
+            >
+            <label class="zone-option"
+              ><input id="allow-via-in-pad" type="checkbox" /> Allow vias in SMD
+              pads</label
+            >
             <button id="route" class="primary" disabled>Route board ↗</button
             ><button id="cancel" type="button" hidden>Cancel routing</button>
+            <p class="warn">
+              Routing replaces every existing track and via, including locked
+              ones.
+            </p>
           </form>
-          <details>
-            <summary>Prototype support</summary>
-            <p>DSN uses the native Rust importer and embedded rules, net classes and layer settings. Download the SES session to import routing into the source PCB editor. DSN preview shows routing geometry; source-editor artwork is not included.</p>
-            <p>
-              Supports standard pads, straight tracks, through vias, and a
-              single closed Edge.Cuts outline. Rounded pads retain their corner radius for hole DRC; routing uses
-              enclosing rectangles. Keepouts that restrict tracks or vias,
-              cutouts, custom pads and offset holes are
-              rejected. Existing tracks (including arcs) and vias are removed,
-              even when locked.
-            </p>
-            <p>
-              Uses imported project net classes and supported DRC constraints
-              when a project is supplied; otherwise uses the rules above. Custom
-              .kicad_dru files are not supported. Inspect the result and run
-              KiCad DRC before manufacturing. Optimization is disabled for this
-              prototype.
-            </p>
-          </details>
         </aside>
         <section
           id="drop"
@@ -191,10 +160,7 @@
             <div class="empty">
               <span class="board-icon">▦</span>
               <h2>Drop your board here.</h2>
-              <p>
-                Drop a .dsn or .kicad_pcb and optional .kicad_pro here, or click to
-                choose files.
-              </p>
+              <p>.kicad_pcb or .dsn, with an optional .kicad_pro.</p>
             </div>
           </div>
           <div class="viewer-foot">
@@ -215,12 +181,39 @@
         </div>
         <div class="downloads">
           <a id="pcb" hidden>Download routed PCB ↓</a
-          ><a id="ses" hidden>Download SES session ↓</a><a id="svg" hidden>Download SVG ↓</a>
+          ><a id="ses" hidden>Download SES session ↓</a
+          ><a id="svg" hidden>Download SVG ↓</a>
         </div>
       </section>
       <footer>
-        Rust → WebAssembly → your browser
-        <span>Experimental · GPL-3.0-or-later</span>
+        <details>
+          <summary>What this handles</summary>
+          <p>
+            Standard pads, straight tracks, through vias and one closed
+            Edge.Cuts outline. Rounded pads keep their corner radius for hole
+            clearance, and routing uses the enclosing rectangle. Keepouts that
+            restrict tracks or vias, cutouts, custom pads and offset holes are
+            rejected.
+          </p>
+          <p>
+            Project net classes and supported DRC constraints apply when you
+            supply a .kicad_pro. Custom .kicad_dru files are not supported. DSN
+            files carry their own rules, net classes and layer settings, and
+            their preview shows routing geometry without source-editor artwork.
+            Download the SES session to bring routing back into the source
+            editor.
+          </p>
+          <p>
+            Zone definitions survive routing but cached fills do not. Press B in
+            KiCad to refill. Vias in SMD pads stay off unless you enable them
+            and your fabricator supports the process. Optimization is disabled.
+            Inspect the result and run KiCad DRC before manufacturing.
+          </p>
+        </details>
+        <span class="foot-links"
+          ><a href="https://github.com/emshotton/copperroute">GitHub</a> ·
+          GPL-3.0-only</span
+        >
       </footer>
     </main>
     <script type="module" src="app.js"></script>

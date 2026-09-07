@@ -33,15 +33,6 @@ header {
   border-radius: 9px;
   padding: 2px 10px;
 }
-.tag {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1.4px;
-  border: 1px solid #b8c8be;
-  border-radius: 4px;
-  padding: 5px;
-  margin-left: 8px;
-}
 .private {
   font-size: 12px;
   color: #3c6b53;
@@ -51,30 +42,24 @@ main {
   margin: auto;
   padding: 44px 5vw 24px;
 }
-.eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: #547565;
-}
 h1 {
-  font-size: clamp(38px, 4vw, 60px);
-  line-height: 1.06;
-  letter-spacing: -2.5px;
-  margin: 15px 0 20px;
+  font-size: clamp(26px, 2.6vw, 34px);
+  line-height: 1.1;
+  letter-spacing: -1.2px;
+  margin: 0;
   font-weight: 600;
 }
 .intro {
-  position: relative;
-  margin-bottom: 36px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-bottom: 26px;
 }
 .lede {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  line-height: 1.8;
+  margin: 0;
   color: #66756e;
-  font-size: 15px;
+  font-size: 14px;
 }
 .workspace {
   display: grid;
@@ -238,12 +223,6 @@ summary {
   border-radius: 50%;
   margin: 0 4px 0 12px;
 }
-.front {
-  background: #f26d78;
-}
-.back {
-  background: #68b8ff;
-}
 .pads {
   background: #edcf86;
 }
@@ -284,19 +263,37 @@ summary {
 footer {
   border-top: 1px solid #dce4df;
   padding-top: 22px;
-  font-size: 10px;
+  font-size: 11px;
   color: #78877d;
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+footer details {
+  margin: 0;
+  max-width: 760px;
+}
+footer p {
+  margin: 10px 0 0;
+}
+.foot-links {
+  flex-shrink: 0;
+}
+.foot-links a {
+  color: #386544;
+}
+.warn {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #8a6419;
 }
 :focus-visible {
   outline: 3px solid #84b66b;
   outline-offset: 3px;
 }
 @media (max-width: 900px) {
-  .lede {
-    position: static;
-  }
   .workspace {
     grid-template-columns: 1fr;
   }
@@ -313,8 +310,9 @@ footer {
   header {
     padding: 0 5vw;
   }
-  .tag {
-    font-size: 8px;
+  footer {
+    flex-direction: column;
+    gap: 12px;
   }
   #preview {
     min-height: 330px;
