@@ -508,3 +508,45 @@ def test_requested_performance_gate_fails_insufficient_samples_and_explains_help
     report = json.loads((tmp_path / "reports" / "gate.json").read_text())
     assert report["overall"]["change"]["performance_unmeasured"] == 1
     assert "also fails" in CliRunner().invoke(cli.main, ["compare", "--help"]).output
+
+
+def test_compare_writes_a_pasteable_pr_summary(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    _write_run(tmp_path / "results", "r", {"head": {"mini": [_cell()] * 3},
+                                           "change": {"mini": [_cell(score=950)] * 3}})
+    result = CliRunner().invoke(cli.main, ["compare", "--baseline", "head", "--against", "change",
+                                           "--runs", "r", "--out", "paste"])
+    assert result.exit_code == 0, result.output
+    summary = (tmp_path / "reports" / "paste.pr.md").read_text()
+    assert summary.startswith("## Benchmark: change vs head")
+    assert "regression gate passes" in summary
+    assert "pr-summary --compare paste" in result.output
+
+
+def test_pr_summary_prints_the_saved_comparison(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    _write_run(tmp_path / "results", "r", {"head": {"mini": [_cell()] * 3},
+                                           "change": {"mini": [_cell(score=950)] * 3}})
+    CliRunner().invoke(cli.main, ["compare", "--baseline", "head", "--against", "change",
+                                  "--runs", "r", "--out", "paste"])
+    result = CliRunner().invoke(cli.main, ["pr-summary", "--compare", "paste"])
+    assert result.exit_code == 0, result.output
+    assert result.output == (tmp_path / "reports" / "paste.pr.md").read_text()
+
+
+def test_pr_summary_rejects_an_unknown_comparison(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    result = CliRunner().invoke(cli.main, ["pr-summary", "--compare", "nope"])
+    assert result.exit_code != 0
+    assert "bench compare" in result.output
+
+
+def test_regression_gate_names_the_reason_it_failed(tmp_path, monkeypatch):
+    _env(tmp_path, monkeypatch)
+    _write_run(tmp_path / "results", "r", {"head": {"mini": [_cell()] * 3},
+                                           "change": {"mini": [_cell(score=800)] * 3}})
+    result = CliRunner().invoke(cli.main, ["compare", "--baseline", "head", "--against", "change",
+                                           "--runs", "r", "--out", "gate", "--fail-on-regression"])
+    assert result.exit_code != 0
+    assert "change: 1 routing-quality losses" in result.output
+    assert "the regression gate **fails**" in (tmp_path / "reports" / "gate.pr.md").read_text()

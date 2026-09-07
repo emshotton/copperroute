@@ -348,3 +348,32 @@ def compare(run_dirs: list[Path], baseline: str, against: list[str], boards: lis
             "baseline": baseline, "against": against, "candidates": info, "runs": [rd.name for rd in run_dirs],
             "config": config, "tier": tier, "boards": out_boards, "tiers": tiers, "overall": overall,
             "coverage": coverage, "disagreements": disagreements, "failures": failures, "warnings": warnings}
+
+
+def gate_failures(cmp: dict, require_complete: bool = False) -> list[str]:
+    """Why `--fail-on-regression` rejects this comparison; empty means it passes.
+
+    One reason per line, named rather than counted, so a report can state the outcome
+    without re-deriving it from the numbers.
+    """
+    reasons: list[str] = []
+    for name, overall in cmp.get("overall", {}).items():
+        if overall.get("verdict") == "inconclusive":
+            reasons.append(f"{name}: no comparable boards")
+        # `hard_losses` is the fallback for reports written before `quality_losses` existed:
+        # every hard level is a quality level, so it under-reports rather than inventing one.
+        quality = overall.get("quality_losses", overall.get("hard_losses", 0))
+        if quality:
+            reasons.append(f"{name}: {quality} routing-quality losses")
+        if overall.get("performance_losses"):
+            reasons.append(f"{name}: {overall['performance_losses']} performance losses")
+        if overall.get("performance_unmeasured"):
+            reasons.append(f"{name}: {overall['performance_unmeasured']} boards with too few "
+                           f"performance samples to judge")
+    if require_complete:
+        for name, coverage in (cmp.get("coverage") or {}).items():
+            incomplete, skipped = coverage["incomplete_boards"], coverage["skipped_boards"]
+            if incomplete or skipped:
+                reasons.append(f"{name}: {len(incomplete)} incomplete and {len(skipped)} "
+                               f"skipped boards")
+    return reasons

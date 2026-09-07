@@ -16,6 +16,7 @@ from bench.candidates import load_candidates, load_referee_java
 from bench.report import html as html_report
 from bench.report import markdown as md_report
 from bench.report import plots as plots_report
+from bench.report import pr as pr_report
 
 
 def _java_exec(candidates_file: Path | None = None) -> list[str]:
@@ -385,7 +386,7 @@ def _latest_run_for(name: str) -> Path:
                   "when every compared run used --jobs 1, else falls back to CPU time (wall time is "
                   "contended once cells run concurrently).")
 def compare_cmd(baseline, against, runs, tier, out_name, allow_mixed, fail_on_regression, require_complete, performance_regression_percent, time_metric):
-    """Compare candidates and write reports/<id>.{json,md,html}."""
+    """Compare candidates and write reports/<id>.{json,md,pr.md,html}."""
     names = against.split(",")
     if runs:
         ids = runs.split(",")
@@ -409,6 +410,7 @@ def compare_cmd(baseline, against, runs, tier, out_name, allow_mixed, fail_on_re
     paths.REPORTS.mkdir(exist_ok=True)
     (paths.REPORTS / f"{out_name}.json").write_text(json.dumps(cmp, indent=2) + "\n")
     (paths.REPORTS / f"{out_name}.md").write_text(md_report.render(cmp))
+    (paths.REPORTS / f"{out_name}.pr.md").write_text(pr_report.render(cmp, out_name))
     (paths.REPORTS / f"{out_name}.html").write_text(html_report.render(cmp, html_report.load_history(paths.REPORTS)))
     for n in names:
         click.echo(f"{n} vs {baseline}: {cmp['overall'][n]['verdict']} "
@@ -416,24 +418,36 @@ def compare_cmd(baseline, against, runs, tier, out_name, allow_mixed, fail_on_re
     for name, cov in cmp["coverage"].items():
         click.echo(f"{name}: compared {cov['compared_boards']}/{len(cov['shared_boards'])} shared boards; "
                    f"{len(cov['incomplete_boards'])} incomplete, {len(cov['skipped_boards'])} skipped")
-    click.echo(f"reports written to {paths.REPORTS / out_name}.{{json,md,html}}")
+    click.echo(f"reports written to {paths.REPORTS / out_name}.{{json,md,pr.md,html}}")
+    click.echo(f"paste into a pull request: uv run bench pr-summary --compare {out_name}")
     if fail_on_regression:
-        rejected = any(o["quality_losses"] or o["performance_losses"] or o["performance_unmeasured"]
-                       or o["verdict"] == "inconclusive" for o in cmp["overall"].values())
-        incomplete = any(c["incomplete_boards"] or c["skipped_boards"] for c in cmp["coverage"].values())
-        if rejected or (require_complete and incomplete):
-            raise click.ClickException("regression check failed; see the comparison report")
+        reasons = compare_mod.gate_failures(cmp, require_complete=require_complete)
+        if reasons:
+            raise click.ClickException("regression check failed; see the comparison report:\n"
+                                       + "\n".join(f"  {r}" for r in reasons))
 
 
 
 @main.command("report")
 @click.option("--compare", "compare_id", required=True)
 def report_cmd(compare_id: str) -> None:
-    """Regenerate Markdown and HTML from a compare JSON."""
+    """Regenerate the Markdown, pull-request and HTML reports from a compare JSON."""
     cmp = json.loads((paths.REPORTS / f"{compare_id}.json").read_text())
     (paths.REPORTS / f"{compare_id}.md").write_text(md_report.render(cmp))
+    (paths.REPORTS / f"{compare_id}.pr.md").write_text(pr_report.render(cmp, compare_id))
     (paths.REPORTS / f"{compare_id}.html").write_text(html_report.render(cmp, html_report.load_history(paths.REPORTS)))
-    click.echo(f"wrote {paths.REPORTS / compare_id}.{{md,html}}")
+    click.echo(f"wrote {paths.REPORTS / compare_id}.{{md,pr.md,html}}")
+
+
+@main.command("pr-summary")
+@click.option("--compare", "compare_id", required=True,
+              help="a compare id under reports/, without the extension")
+def pr_summary_cmd(compare_id: str) -> None:
+    """Print a short Markdown summary of a comparison, for pasting into a pull request."""
+    path = paths.REPORTS / f"{compare_id}.json"
+    if not path.exists():
+        raise click.ClickException(f"no comparison at {path}; run `bench compare` first")
+    click.echo(pr_report.render(json.loads(path.read_text()), compare_id), nl=False)
 
 
 @main.command("export")

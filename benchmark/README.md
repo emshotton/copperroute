@@ -119,7 +119,9 @@ uv run bench compare --baseline rs-head --against rs-change --runs head-vs-chang
 ```
 
 `--fail-on-regression` writes the reports first, then exits nonzero for routing-quality losses
-(clean-pass rate, unrouted connections, violations or score), or if no boards can be compared.
+(clean-pass rate, unrouted connections, violations or score), or if no boards can be compared,
+naming each reason it rejected. `uv run bench pr-summary --compare head-vs-change` prints the
+same outcome as a Markdown block to paste into the pull request.
 Timing and RSS verdicts remain advisory by default. To gate those too, add
 `--performance-regression-percent 10`: each side needs at least three measured repetitions,
 and insufficient measured time/RSS samples also fail the gate. A performance loss must
@@ -272,11 +274,20 @@ normal macOS GUI activation, including for referee and connection-count probes. 
 ## Reports, exports and history
 
 ```bash
+uv run bench pr-summary --compare head-vs-change
 uv run bench report --compare head-vs-change
 uv run bench export --run head-vs-change --candidate rs-head
 uv run bench export --run head-vs-change --candidate rs-change
 uv run bench plot --files exports/BASELINE.json,exports/CHANGE.json --out reports/change.html
 ```
+
+`compare` writes four files per comparison. `<name>.json` is the data, `<name>.md` the full
+per-board report, `<name>.html` the report with charts and history, and `<name>.pr.md` a short
+Markdown block for a pull request: the verdict, whether the regression gate passes, both
+candidates' commits and settings, and the boards whose verdict is not a tie, capped and folded
+into a `<details>` block. `pr-summary` prints that block to stdout so it can be piped to a
+clipboard; `report` regenerates all three rendered files from the JSON.
+[CONTRIBUTING.md](../CONTRIBUTING.md) describes the pull-request workflow that uses it.
 
 Use the filenames printed by `export` in the last command. Exports contain compact per-board
 measurements, candidate SHA, host and configuration; they are tracked and can be deliberately
