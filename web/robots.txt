@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /examples/
+Disallow: /pkg/
+
+Sitemap: https://copperroute.net/sitemap.xml

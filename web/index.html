@@ -4,6 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>CopperRoute · PCB autorouter in your browser</title>
+    <meta
+      name="description"
+      content="CopperRoute is a PCB autorouter that runs entirely in your browser. Load a KiCad board, route it, and download the result. Your files never leave your device."
+    />
+    <link rel="canonical" href="https://copperroute.net/" />
+    <meta property="og:title" content="CopperRoute · PCB autorouter in your browser" />
+    <meta
+      property="og:description"
+      content="Load a KiCad board, route it in your browser, and download the result. Your files never leave your device."
+    />
+    <meta property="og:url" content="https://copperroute.net/" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -41,8 +54,12 @@
               Choose a board…
             </button>
             <select id="examples" aria-label="Example board">
-              <option value="uno">Easyduino Uno</option>
-              <option value="nano">Easyduino Nano</option>
+              <option value="jacks">Hubble jacks (9 nets)</option>
+              <option value="vca">Slimline VCA (27 nets)</option>
+              <option value="uno">Easyduino Uno (55 nets)</option>
+              <option value="nano">Easyduino Nano (62 nets)</option>
+              <option value="feather-ice40">Feather ICE40 (80 nets)</option>
+              <option value="kfchess">Real-time chess (225 nets)</option>
             </select>
           </div>
           <p class="board-links">
@@ -169,15 +186,7 @@
             </p>
           </form>
           </aside>
-          <p id="example-credit" class="hint" hidden>
-            Arduino-compatible design by
-            <a href="https://github.com/Hanqaqa/Easyduino">Easyduino / Hanqaqa</a>
-            ·
-            <a href="./examples/easyduino/LICENSE.txt" download
-              >CERN-OHL-P-2.0 license</a
-            >
-            · <a href="./examples/easyduino/NOTICE.txt">Source &amp; notices</a>
-          </p>
+          <p id="example-credit" class="hint" hidden></p>
           <p id="example-routing" class="hint" hidden></p>
         </div>
         <section
