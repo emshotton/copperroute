@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use fr_board::items::Item;
 use fr_board::{Board, ItemId, StopConnectionOption};
-use fr_drc::DesignRulesChecker;
+use fr_drc::{DesignRulesChecker, PlaneConnectivity};
 use fr_geometry::FloatPoint;
 use fr_settings::RouterSettings;
 
@@ -175,6 +175,7 @@ pub struct BatchOptimizer<'a> {
     pub is_timed_out: bool,
     pub incomplete_nets: BTreeSet<i32>,
     carried_connections: Option<BoardStatisticsConnections>,
+    plane_connectivity: Option<PlaneConnectivity>,
 }
 
 impl<'a> BatchOptimizer<'a> {
@@ -203,6 +204,7 @@ impl<'a> BatchOptimizer<'a> {
             incomplete_nets: BTreeSet::new(),
             is_timed_out: false,
             carried_connections: None,
+            plane_connectivity: None,
         }
     }
 
@@ -281,6 +283,10 @@ impl<'a> BatchOptimizer<'a> {
                 },
             });
         }
+        let plane_connectivity_before = self
+            .plane_connectivity
+            .get_or_insert_with(|| PlaneConnectivity::of(board))
+            .clone();
 
         let mut ripped_items: BTreeSet<ItemId> = BTreeSet::new();
         ripped_items.insert(item);
@@ -420,6 +426,13 @@ impl<'a> BatchOptimizer<'a> {
         );
         let route_improved =
             !stop.is_stop_requested() && !self.search_work_budget_spent() && result.improved();
+        let plane_connectivity_after =
+            (route_improved && snapshot.is_some() && !plane_connectivity_before.is_empty())
+                .then(|| PlaneConnectivity::of(board));
+        let route_improved = route_improved
+            && plane_connectivity_after
+                .as_ref()
+                .is_none_or(|after| !after.splits_more_than(&plane_connectivity_before));
         result.update_improved(route_improved);
 
         if route_improved {
@@ -431,6 +444,11 @@ impl<'a> BatchOptimizer<'a> {
                     .unwrap_or(0.0),
             ));
             self.carried_connections = Some(board_statistics_after.connections.clone());
+            self.plane_connectivity = match plane_connectivity_after {
+                Some(after) => Some(after),
+                None if snapshot.is_none() => None,
+                None => Some(plane_connectivity_before),
+            };
             board.discard_undo_journal();
             drop(snapshot);
         } else if let Some(restored) = snapshot {
@@ -733,6 +751,7 @@ impl BatchOptimizer<'_> {
     pub fn begin_pass_bookkeeping(&mut self, board: &mut Board) -> BoardStatistics {
         let statistics = BoardStatistics::for_routing_decisions(board);
         self.carried_connections = Some(statistics.connections.clone());
+        self.plane_connectivity = None;
         statistics
     }
 
