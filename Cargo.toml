@@ -8,7 +8,7 @@ exclude = ["scripts/differential/rust"]
 [workspace.package]
 edition = "2024"
 version = "0.1.0"
-license = "GPL-3.0-or-later"
+license = "GPL-3.0-only"
 repository = "https://github.com/freerouting/freerouting"
 
 [workspace.dependencies]
