@@ -253,6 +253,17 @@ tests verify intermediate copper frames arrive before completion and dropping a
 replacement onto an existing SVG cancels the old worker. The preview also opens
 the file picker with click, Enter, or Space.
 
+## Bundled examples
+
+The picker offers six boards spanning 9 to 225 nets: Hubble jacks, CATs-Eurosynth
+Slimline VCA, Easyduino Uno and Nano, Adafruit Feather ICE40, and real-time
+chess. Each is fetched only when selected, so opening the page costs one board.
+Every board keeps its upstream `LICENSE.txt` and notice beside it, and the
+sidebar credit, the routed download's title block and the SVG description all
+name that board's own project, author, commit and licence. Boards other than
+the Easyduino pair ship without a KiCad project file, so the manual rules apply
+to them.
+
 ## Bundled Easyduino examples
 
 Uno and Nano are Arduino-compatible designs by Hanqaqa and contributors, from

@@ -763,3 +763,72 @@ test("the install terminal spans the same width as the panel and preview above i
   });
   expect(edges.terminal).toEqual(edges.workspace);
 });
+
+test("every example loads with its own attribution and reachable licence files", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  await expect(page.locator("#net-panel")).toBeVisible();
+
+  for (const [id, project, license] of [
+    ["jacks", "Hubble by wntrblm", "CERN-OHL-P-2.0"],
+    ["vca", "CATs-Eurosynth by mzuelch", "MIT"],
+    ["uno", "Easyduino by Hanqaqa", "CERN-OHL-P-2.0"],
+    ["feather-ice40", "Feather-ICE40-PCB by adafruit", "CC-BY-4.0"],
+    ["kfchess", "real-time-chess by misprit7", "MIT"],
+  ]) {
+    await page.locator("#examples").selectOption(id);
+    await expect(page.locator("#example-credit")).toContainText(project, {
+      timeout: 60000,
+    });
+    await expect(page.locator("#example-credit")).toContainText(
+      `${license} license`,
+    );
+    for (const href of await page
+      .locator("#example-credit a")
+      .evaluateAll((links) => links.map((a) => a.getAttribute("href"))))
+      if (href.startsWith("./")) {
+        const response = await page.request.get(href.replace("./", "/"));
+        expect(response.status(), href).toBe(200);
+      }
+  }
+  expect(errors).toEqual([]);
+});
+
+test("a routed example download carries that example's own licence notice", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator("#examples").selectOption("jacks");
+  await expect(page.locator("#example-credit")).toContainText("wntrblm", {
+    timeout: 60000,
+  });
+
+  await page.locator("#route").click();
+  await expect(page.locator("#pcb")).toBeVisible({ timeout: 80000 });
+  const download = page.waitForEvent("download");
+  await page.locator("#pcb").click();
+  const output = readFileSync(await (await download).path(), "utf8");
+
+  expect(output).toContain("wntrblm/Hubble");
+  expect(output).not.toContain("Easyduino");
+});
+
+test("switching to an example without a project drops the previous board's rules", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("#rules-summary")).toHaveText(
+    "Board rules — easyduino-uno.kicad_pro",
+  );
+
+  await page.locator("#examples").selectOption("jacks");
+  await expect(page.locator("#example-credit")).toContainText("wntrblm", {
+    timeout: 60000,
+  });
+
+  await expect(page.locator("#rules-summary")).not.toContainText("easyduino");
+  await expect(page.locator("#project-name")).not.toContainText("easyduino");
+});

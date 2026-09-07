@@ -71,6 +71,27 @@ function showNets(nets) {
   }
   updateNetSummary();
 }
+function showCredit(credit) {
+  const box = $("example-credit");
+  box.replaceChildren();
+  box.hidden = !credit;
+  if (!credit) return;
+  const link = (href, text, download) => {
+    const a = document.createElement("a");
+    a.href = href;
+    a.textContent = text;
+    if (download) a.download = "";
+    return a;
+  };
+  box.append(
+    document.createTextNode(`${credit.project} by ${credit.author} · `),
+    link(credit.source, "Source"),
+    document.createTextNode(" · "),
+    link(credit.licenseFile, `${credit.license} license`, true),
+    document.createTextNode(" · "),
+    link(credit.noticeFile, "Notices"),
+  );
+}
 function showLayers(layers) {
   if (!layers) return;
   const legend = $("layer-legend");
@@ -149,7 +170,7 @@ function updateRuleControls() {
 function select(file) {
   selectionRevision++;
   currentExample = null;
-  $("example-credit").hidden = true;
+  showCredit(null);
   $("example-routing").hidden = true;
   previewWorker?.terminate();
   previewWorker = null;
@@ -291,7 +312,7 @@ function beginExampleLoad() {
   clearDownloads();
   $("preview").replaceChildren();
   $("filename").textContent = "BOARD PREVIEW";
-  $("example-credit").hidden = true;
+  showCredit(null);
   $("example-routing").hidden = true;
   return revision;
 }
@@ -415,34 +436,40 @@ async function loadExample(id) {
   const revision = beginExampleLoad();
   status(`Loading ${example.name} and its project rules…`);
   try {
-    const [pcb, project] = await Promise.all(
-      [".kicad_pcb", ".kicad_pro"].map(async (ext) => {
-        const response = await fetch(example.base + ext);
-        if (!response.ok) throw Error(`Could not load ${example.name}.`);
-        return response.text();
-      }),
-    );
+    const pcbResponse = await fetch(example.base + ".kicad_pcb");
+    if (!pcbResponse.ok) throw Error(`Could not load ${example.name}.`);
+    const pcb = await pcbResponse.text();
+    let project = null;
+    if (example.projectName) {
+      const response = await fetch(example.base + ".kicad_pro");
+      if (!response.ok) throw Error(`Could not load ${example.name}.`);
+      project = await response.text();
+    }
     // User selections and newer example requests win over a slow default fetch.
     if (revision !== selectionRevision) return;
-    selectProject(new File([project], example.projectName));
+    selectProject(
+      project === null ? null : new File([project], example.projectName),
+    );
     select(new File([pcb], example.pcbName));
     currentExample = id;
     $("examples").value = id;
-    $("example-credit").hidden = false;
+    showCredit(example.credit);
     $("example-routing").hidden = !example.routingLayers;
     $("example-routing").textContent = example.routingLayers
       ? "Routes on front and back copper only (F.Cu / B.Cu). The four-layer board stack is preserved."
       : "";
-    const cls = JSON.parse(project).net_settings.classes.find(
-      (c) => c.name === "Default",
-    );
-    for (const [field, key] of [
-      ["traceWidth", "track_width"],
-      ["clearance", "clearance"],
-      ["viaDiameter", "via_diameter"],
-      ["viaDrill", "via_drill"],
-    ])
-      $(field).value = cls[key];
+    if (project !== null) {
+      const cls = JSON.parse(project).net_settings.classes.find(
+        (c) => c.name === "Default",
+      );
+      for (const [field, key] of [
+        ["traceWidth", "track_width"],
+        ["clearance", "clearance"],
+        ["viaDiameter", "via_diameter"],
+        ["viaDrill", "via_drill"],
+      ])
+        $(field).value = cls[key];
+    }
   } catch (error) {
     if (revision === selectionRevision) status(error.message);
   }
