@@ -6,6 +6,7 @@ pub mod checks;
 pub mod constraints;
 pub mod error;
 pub mod net_incompletes;
+pub mod plane_connectivity;
 pub mod report;
 pub mod statistics;
 pub mod unconnected;
@@ -16,6 +17,7 @@ pub use checker::DesignRulesChecker;
 pub use constraints::apply_kicad_project;
 pub use error::DrcError;
 pub use net_incompletes::NetIncompletes;
+pub use plane_connectivity::PlaneConnectivity;
 pub use report::{
     DrcCoordinates, DrcJsonFlavor, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport,
     KiCadDrcViolation, KiCadDrcViolationItem,
@@ -31,6 +33,7 @@ pub mod prelude {
     pub use crate::checker::DesignRulesChecker;
     pub use crate::error::DrcError;
     pub use crate::net_incompletes::NetIncompletes;
+    pub use crate::plane_connectivity::PlaneConnectivity;
     pub use crate::report::{
         DrcCoordinates, DrcJsonFlavor, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport,
         KiCadDrcViolation, KiCadDrcViolationItem,
