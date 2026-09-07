@@ -29,6 +29,22 @@ freerouting mcp
 Run `freerouting --help` or `freerouting <command> --help` for the full
 option list.
 
+### With a KiCad project
+
+The router does not read `.kicad_pcb` files directly. Export the board from
+KiCad with **File → Export → Specctra DSN**, then pass the project file so
+the run uses the project's design rules instead of the defaults baked into
+the DSN:
+
+```sh
+freerouting route board.dsn --kicad-project board.kicad_pro -o board.ses
+freerouting drc board.dsn --kicad-project board.kicad_pro --ses board.ses -o report.json
+```
+
+Import `board.ses` back into KiCad with **File → Import → Specctra
+Session**. The DRC report uses KiCad's own report schema, so it can be
+compared directly with the output of `kicad-cli pcb drc`.
+
 ## Layout
 
 The workspace is split into crates, each with its own README:
