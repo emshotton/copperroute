@@ -51,7 +51,7 @@ def test_argv_is_legacy_for_java_and_native_for_rust(toml_path):
     r = cands["rs-x"].argv(**common)
     assert r[1:] == ["route", "a.dsn", "-o", "a.ses", "--max-passes", "100",
                      "--timeout", "00:05:00", "--result-json", "r.json",
-                     "--set", "router.seed=2"]
+                     "--set", "router.max_threads=1", "--set", "router.seed=2"]
 
 
 def test_rust_extra_args_keep_the_dotted_spelling_in_the_table(toml_path):
@@ -108,3 +108,19 @@ def test_java_exe_prefers_env(monkeypatch):
 
     from bench.paths import java_exe
     assert java_exe() == "/custom/java"
+
+
+def test_selecting_rust_does_not_require_unselected_jars(toml_path):
+    (toml_path.parent / "fr.jar").unlink()
+    assert list(load_candidates(toml_path, ["rs-x"])) == ["rs-x"]
+    with pytest.raises(FileNotFoundError):
+        load_candidates(toml_path, ["java-x"])
+    with pytest.raises(KeyError, match="missing"):
+        load_candidates(toml_path, ["missing"])
+
+
+def test_rust_threads_reach_router_settings(toml_path):
+    args = load_candidates(toml_path, ["rs-x"])["rs-x"].argv(
+        in_dsn=Path("a.dsn"), out_ses=Path("a.ses"), result_json=Path("r.json"),
+        max_passes=10, timeout_s=120, threads=4, seed=1)
+    assert args[args.index("router.max_threads=4") - 1] == "--set"

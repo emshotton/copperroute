@@ -77,3 +77,20 @@ def test_render_escapes_untrusted_text():
     assert "<img src=x onerror=alert(1)>" not in page
     assert "<b>x</b>" not in page
     assert "&lt;img" in page
+
+
+def test_chart_omits_incomparable_score_instead_of_drawing_zero(monkeypatch):
+    cmp = _cmp()
+    candidate = cmp["against"][0]
+    row = cmp["boards"]["a"]["against"][candidate]
+    row["score_comparable"] = False
+    score = row["agg"]["score"]
+    calls = []
+    def capture(values):
+        calls.append(values)
+        return "<svg></svg>"
+    monkeypatch.setattr(html, "bar_svg", capture)
+    page = html.render(cmp, [])
+    assert all(bid != "a" for bid, _, _ in calls[0])
+    assert row["agg"]["score"] == score
+    assert "omitted scores are not zero" in page

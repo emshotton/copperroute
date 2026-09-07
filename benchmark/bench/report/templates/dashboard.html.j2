@@ -5,7 +5,7 @@ body{font-family:system-ui,sans-serif;margin:2rem;color:#222;background:#fff}
 h1,h2{margin-top:2rem} table{border-collapse:collapse;font-size:13px} td,th{border:1px solid #ddd;padding:4px 8px;text-align:right}
 th:first-child,td:first-child{text-align:left} .cards{display:flex;gap:1rem;flex-wrap:wrap}
 .card{border:1px solid #ddd;border-radius:6px;padding:1rem;min-width:180px} .win{background:#e6f4ea}.loss{background:#fbe9e7}.tie{background:#f3f3f3}
-.better{color:#1b7f3b}.worse{color:#b3261e}.same{color:#555} .legend span{display:inline-block;width:12px;height:8px;margin-right:4px}
+.better{color:#1b7f3b}.worse{color:#b3261e}.same{color:#555}.inconclusive{color:#986300} .legend span{display:inline-block;width:12px;height:8px;margin-right:4px}
 </style></head><body>
 <h1>{{ cmp.baseline }} vs {{ names|join(', ') }}</h1>
 <p>Created {{ cmp.created_at }} · runs {{ cmp.runs|join(', ') }} · threads={{ cmp.config.threads }} jobs={{ cmp.config.jobs or 1 }} max_passes={{ cmp.config.max_passes }} timeout={{ cmp.config.timeout_s }}s seeds={{ cmp.config.seeds }} · time metric = {{ cmp.config.time_metric or 'wall_s' }}</p>
@@ -15,6 +15,17 @@ th:first-child,td:first-child{text-align:left} .cards{display:flex;gap:1rem;flex
 <div class="cards">{% for n in names %}{% set o = cmp.overall[n] %}
 <div class="card"><b>{{ n }}</b><br><span class="{{ o.verdict }}">{{ o.verdict }}</span><br>{{ o.wins }}W / {{ o.losses }}L / {{ o.ties }}T<br>hard losses: {{ o.hard_losses }}</div>
 {% endfor %}</div>
+
+{% if cmp.coverage %}
+<h2>Coverage</h2>
+<p>Verdicts summarize comparable shared boards; exclusions are not ties.</p>
+<table><tr><th>candidate</th><th>shared</th><th>compared</th><th>incomplete</th><th>skipped</th><th>baseline only</th><th>candidate only</th></tr>
+{% for n, c in cmp.coverage.items() %}<tr><td>{{ n }}</td><td>{{ c.shared_boards|length }}</td><td>{{ c.compared_boards }}</td><td>{{ c.incomplete_boards|length }}</td><td>{{ c.skipped_boards|length }}</td><td>{{ c.baseline_only_boards|length }}</td><td>{{ c.candidate_only_boards|length }}</td></tr>{% endfor %}</table>
+<h2>Regression gate</h2>
+<p>Routing-quality losses fail the default gate. Time/RSS are advisory unless a tolerance is specified.</p>
+{% if cmp.config.performance_regression_percent is not none %}<p>Performance tolerance: {{ cmp.config.performance_regression_percent }}%, plus the noise allowance.</p>{% endif %}
+<ul>{% for n, o in cmp.overall.items() %}<li>{{ n }}: {{ o.quality_losses }} quality losses, {{ o.performance_losses }} performance losses, {{ o.performance_unmeasured }} boards with insufficient performance samples</li>{% endfor %}</ul>
+{% endif %}
 
 <h2>Per tier</h2>
 <table><tr><th>tier</th><th>candidate</th><th>wins</th><th>losses</th><th>ties</th><th>clean-pass rate</th><th>median Δscore</th><th>median time ratio</th></tr>
@@ -27,6 +38,7 @@ th:first-child,td:first-child{text-align:left} .cards{display:flex;gap:1rem;flex
 {% for b, e in cmp.boards.items() %}<tr><td>{{ b }}</td><td>{{ e.referee }}</td>
 {% for n in names %}{% set a = e.against.get(n) %}<td class="{{ a.verdict.result if a else 'tie' }}">{{ a.verdict.result ~ ' (' ~ a.verdict.level ~ ')' if a else 'missing' }}</td>{% endfor %}</tr>{% endfor %}</table>
 
+<p>Charts omit missing or incomparable pairs; omitted scores are not zero.</p>
 {% for n in names %}
 <h2>Score per board — {{ cmp.baseline }} (grey) vs {{ n }} (blue)</h2>{{ score_bars[n]|safe }}
 <h2>{{ time_heading }} — {{ cmp.baseline }} (grey) vs {{ n }} (blue)</h2>{{ time_bars[n]|safe }}

@@ -61,7 +61,7 @@ load_dotenv() {
 # (and unused) for `bench run`, which doesn't need a display.
 #
 # Deliberately nothing here about HOME/XDG_*/APPDATA: freerouting's persisted
-# freerouting.json settings-leak isolation (see README's "Settings isolation" note) is done
+# freerouting.json settings-leak isolation is done
 # per cell, in bench.runner.run_cell/bench.referee.java_drc -- each candidate/referee
 # invocation gets its own HOME under its own results/ cell dir -- not via a shared override
 # here. A single HOME exported for the whole remote job would defeat the point: every
@@ -93,54 +93,35 @@ nix shell $nix_packages --command xvfb-run -a bash -c '
 PREFIX
 }
 
-# remote_launch_detached HOST REMOTE_DIR JOB_NAME INNER_CMD
-#
-# Launches INNER_CMD (a complete, self-contained shell command string -- typically
-# `$(remote_env_prefix)` plus a caller's own exports/`uv run bench ...` line(s) and a
-# trailing closing `'`, exactly what scripts/remote-run.sh and scripts/remote-corpus.sh used
-# to hand straight to `ssh HOST "..."` before this) detached on HOST under $REMOTE_DIR, so a
-# dropped local process / ssh session can't take the remote job down with it, and echoes its
-# PID to stdout.
-#
-# Conventions (relative to $REMOTE_DIR), all under results/ so a fresh results/ dir is the
-# only thing that needs to exist -- callers create it via this function's own `mkdir -p`:
-#   results/$JOB_NAME.remote.log        -- combined stdout+stderr of INNER_CMD
-#   results/$JOB_NAME.remote.log.exit   -- INNER_CMD's exit code, written once it finishes
-#   results/$JOB_NAME.remote.pid        -- the detached process's PID (same as this function's stdout)
-#
-# How INNER_CMD reaches the remote host without a second round of quoting hell: this
-# function's own remote script (the `<<'LAUNCH' ... LAUNCH` heredoc below) is delivered over
-# ssh's stdin -- untouched by any local expansion, since the heredoc delimiter is quoted --
-# and JOB_NAME/INNER_CMD are passed to it as `bash -s --` *positional parameters*, each
-# `printf %q`-encoded locally so it survives the trip as a single opaque argument no matter
-# what quotes/newlines/`$`s it contains (INNER_CMD, built from `remote_env_prefix`, is
-# exactly this: multiple lines with embedded single quotes). On the remote side the launch
-# script never textually substitutes INNER_CMD into new source -- it hands it to a second
-# `bash -c '...' bash "$inner_cmd" "$exit_file"` as *that* script's own $1/$2 and `eval`s $1,
-# so INNER_CMD's `$(command -v java)`/`$PWD`/`$HOME` etc. expand exactly once, in the actual
-# execution environment, same as they did when this same text used to be spliced directly
-# into an `ssh HOST "..."` command line.
-#
-# `setsid nohup` (not just backgrounding with `&`) detaches the job from both the ssh
-# session's process group and SIGHUP, so it survives the ssh connection dropping. The exit
-# code is captured via `eval "$1"; ec=$?; echo "$ec" > "$2"` rather than relying on `$?`
-# after the fact from outside -- by the time a poller can look, the detached process is long
-# gone and there's nothing left to ask.
+_remote_job_exists() {
+  local job="$1" suffix
+  for suffix in "" .remote.log .remote.pid .remote.log.exit .remote.lock; do
+    [[ -e "results/$job$suffix" ]] && return 0
+  done
+  return 1
+}
+
 remote_launch_detached() {
   local host="$1" remote_dir="$2" job="$3" inner_cmd="$4"
-  local quoted_dir quoted_job quoted_inner
-  quoted_dir=$(printf '%q' "$remote_dir")
-  quoted_job=$(printf '%q' "$job")
-  quoted_inner=$(printf '%q' "$inner_cmd")
-  ssh "$host" "cd $quoted_dir 2>/dev/null; bash -s -- $quoted_job $quoted_inner" <<'LAUNCH'
+  {
+    printf 'remote_dir=%q\njob=%q\ninner_cmd=%q\n' "$remote_dir" "$job" "$inner_cmd"
+    declare -f _remote_job_exists
+    cat <<'LAUNCH'
 set -u
-job="$1"
-inner_cmd="$2"
+cd "$remote_dir" || exit 1
 mkdir -p results
 log="results/$job.remote.log"
 pid_file="results/$job.remote.pid"
 exit_file="$log.exit"
-rm -f "$exit_file"
+if _remote_job_exists "$job"; then
+  echo "error: job '$job' already exists; choose a new ID" >&2
+  exit 1
+fi
+# mkdir arbitrates between launches that both passed the existence check.
+if ! mkdir "results/$job.remote.lock" 2>/dev/null; then
+  echo "error: job '$job' already launched; choose a new ID" >&2
+  exit 1
+fi
 setsid nohup bash -c '
   eval "$1"
   ec=$?
@@ -151,50 +132,29 @@ disown "$pid" 2>/dev/null || true
 echo "$pid" > "$pid_file"
 echo "$pid"
 LAUNCH
+  } | ssh "$host" "bash -s"
 }
 
-# remote_poll HOST REMOTE_DIR JOB_NAME META_PATH
-#
-# One ssh round-trip that reports on a job launched by remote_launch_detached: whether its
-# PID (results/$JOB_NAME.remote.pid) is still alive, and -- if META_PATH is non-empty (only
-# scripts/remote-run.sh has one; scripts/remote-corpus.sh has no run-id/meta.json and passes
-# "") -- the run's meta.json `"status"` plus a `cells done/total` count, parsed with grep/sed
-# (no python dependency on the remote host). Prints one line:
-#   ALIVE=<0|1> STATUS=<meta status|none|unknown> DONE=<n> TOTAL=<n> EXITCODE=<code|none>
-# which callers `eval` directly (it's just space-separated `VAR=value` words) to populate
-# $ALIVE/$STATUS/$DONE/$TOTAL/$EXITCODE in their own shell.
-#
-# meta.json parsing notes (see bench/runner.py's `run()` for the schema this depends on):
-#   - `grep -m1 '"status"'` finds the run's *top-level* "status" field specifically, not one
-#     of the many per-cell "status" fields nested under "cells" -- meta.json's top-level keys
-#     (schema_version, run_id, ..., status, host, args, candidates, cells) are written in
-#     that fixed order, and "status" is the only occurrence of the string before "cells"
-#     starts, so the *first* match in the file is always the top-level one.
-#   - `done` cells = count of `"candidate":` -- that key only ever appears inside a cell
-#     entry (`{"candidate": ..., "board": ..., "seed": ..., "status": ...}`); the top-level
-#     "candidates" list uses "name" instead (see Candidate.to_json), so there's no collision.
-#   - `total` cells = (# of "name": keys, i.e. candidates) x (# of boards) x seeds, each
-#     parsed straight out of meta.json's `args` block; boards is a bare JSON array of
-#     strings (no "key": prefix), so its element count comes from an `awk` slice between the
-#     `"boards": [` line and its closing `]` rather than a key-count grep like the others.
-#   - EXITCODE reads results/$JOB_NAME.remote.log.exit, written by remote_launch_detached's
-#     wrapper once INNER_CMD exits -- note this happens *after* meta.json's status flips to
-#     "complete" (that happens inside the `uv run bench run` process itself, before it
-#     exits), so a poll can legitimately observe STATUS=complete with EXITCODE=none for a
-#     brief window; callers should re-poll a few times before giving up on the exit code.
+# The login shell only starts Bash; expansions and control flow travel on stdin.
 remote_poll() {
   local host="$1" remote_dir="$2" job="$3" meta_rel="$4"
-  local quoted_dir quoted_job quoted_meta
-  quoted_dir=$(printf '%q' "$remote_dir")
-  quoted_job=$(printf '%q' "$job")
-  quoted_meta=$(printf '%q' "$meta_rel")
-  ssh "$host" "cd $quoted_dir 2>/dev/null; bash -s -- $quoted_job $quoted_meta" <<'POLL'
+  {
+    printf 'remote_dir=%q\njob=%q\nmeta=%q\n' "$remote_dir" "$job" "$meta_rel"
+    declare -f _remote_job_exists
+    cat <<'POLL'
 set -u
-job="$1"
-meta="$2"
+if [ ! -d "$remote_dir" ]; then
+  echo 'EXISTS=0 ALIVE=0 STATUS=none DONE=0 TOTAL=0 EXITCODE=none'
+  exit 0
+fi
+cd "$remote_dir" || exit 1
 pid_file="results/$job.remote.pid"
 log="results/$job.remote.log"
 alive=0
+exists=0
+if _remote_job_exists "$job"; then
+  exists=1
+fi
 if [ -f "$pid_file" ]; then
   p=$(cat "$pid_file" 2>/dev/null)
   if [ -n "$p" ] && kill -0 "$p" 2>/dev/null; then alive=1; fi
@@ -213,6 +173,7 @@ else
 fi
 ec="none"
 if [ -f "$log.exit" ]; then ec=$(cat "$log.exit" 2>/dev/null); [ -n "$ec" ] || ec="none"; fi
-echo "ALIVE=$alive STATUS=$status DONE=$done TOTAL=$total EXITCODE=$ec"
+echo "EXISTS=$exists ALIVE=$alive STATUS=$status DONE=$done TOTAL=$total EXITCODE=$ec"
 POLL
+  } | ssh "$host" "bash -s"
 }

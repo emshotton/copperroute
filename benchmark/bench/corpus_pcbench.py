@@ -109,9 +109,7 @@ def reference_verdict(gt: dict) -> tuple[str, str]:
        deliberately unconditional: a board with zero vias/wirelength ("unrouted by nature", see
        below) can still trip a genuine routing-type DRC error unrelated to unconnected nets
        (e.g. a zone/footprint clearance issue that happens to fall under a routing DRC type),
-       and that must not be waved through just because the board has no tracks -- previously
-       it was, via a carve-out that (wrongly) covered this case too. See
-       ``tests/test_corpus_pcbench.py::test_reference_verdict_routing_error_excludes_even_when_unrouted``.
+       even when the board has no tracks.
     2. **Unconnected nets** (``unconnected``, the count of ``raw-drc.json``'s
        ``unconnected_items``) exclude the board *only* when it has some routing
        (``wirelength_mm > 0``). An unrouted reference (0 wirelength) has every one of its nets

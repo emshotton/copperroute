@@ -95,3 +95,17 @@ def test_tool_default_used_when_neither_real_env_nor_dotenv_set_it(tmp_path, mon
         assert found == fake_tool
     finally:
         monkeypatch.delenv("BENCH_TEST_TOOL_PATH", raising=False)
+
+
+def test_isolated_env_disables_java_gui_without_changing_parent_environment(tmp_path, monkeypatch):
+    monkeypatch.setenv("JAVA_TOOL_OPTIONS", "-Xmx2g")
+    env = paths.isolated_env(tmp_path)
+    assert env["JAVA_TOOL_OPTIONS"] == (
+        "-Xmx2g -Djava.awt.headless=true -Dapple.awt.UIElement=true")
+    assert os.environ["JAVA_TOOL_OPTIONS"] == "-Xmx2g"
+
+
+def test_isolated_env_disables_java_gui_without_existing_options(tmp_path, monkeypatch):
+    monkeypatch.delenv("JAVA_TOOL_OPTIONS", raising=False)
+    env = paths.isolated_env(tmp_path)
+    assert env["JAVA_TOOL_OPTIONS"] == "-Djava.awt.headless=true -Dapple.awt.UIElement=true"

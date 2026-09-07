@@ -1,4 +1,4 @@
-"""Normalised per-cell metrics. Verdict-relevant numbers come from the referee only.
+"""Normalised per-cell metrics using independently measured routing quality.
 
 `score` follows Java's own formula (see `score()` below), where N is the board's
 *connection* count (`board_statistics.connections.maximum_count` from a `result.json`,

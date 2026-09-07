@@ -83,7 +83,7 @@ in this repo); a HOST given on the command line always wins over it.
   --print-host           print the resolved HOST (from the argument or $BENCH_REMOTE_HOST) and exit 0
   -h, --help             print this message and exit 0
 
-See the "Running on a remote NixOS host" section of README.md for the full walkthrough.
+See the "Remote runs" section of README.md for the full walkthrough.
 USAGE
 }
 

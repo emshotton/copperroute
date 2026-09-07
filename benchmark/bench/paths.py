@@ -11,8 +11,6 @@ CORPUS = ROOT / "corpus"
 RESULTS = ROOT / "results"
 REPORTS = ROOT / "reports"
 VENDOR_KICAD = ROOT / "vendor" / "kicad"
-# benchmark/ lives INSIDE freerouting-rs: ROOT.parent is the rust repo itself,
-# and the Java clone is its sibling. (Adjusted at the v1.0.0 benchmark/ import.)
 JAVA_REPO = ROOT.parent.parent / "freerouting"
 RUST_REPO = ROOT.parent
 
@@ -130,4 +128,9 @@ def isolated_env(home: Path) -> dict[str, str]:
         "XDG_CACHE_HOME": str(home / ".cache"),
         "APPDATA": str(home / "AppData" / "Roaming"),
         "FREEROUTING_ISOLATED_HOME": "1",
+        # Java can initialize AWT on macOS even when freerouting disables its GUI.
+        "JAVA_TOOL_OPTIONS": " ".join(filter(None, [
+            os.environ.get("JAVA_TOOL_OPTIONS", ""),
+            "-Djava.awt.headless=true", "-Dapple.awt.UIElement=true",
+        ])),
     }

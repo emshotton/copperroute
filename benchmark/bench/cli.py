@@ -1,6 +1,7 @@
 """`bench` command-line entry point."""
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import subprocess
@@ -17,9 +18,43 @@ from bench.report import markdown as md_report
 from bench.report import plots as plots_report
 
 
-def _java_exec() -> list[str]:
-    custom = load_referee_java(paths.ROOT / "candidates.toml")
+def _java_exec(candidates_file: Path | None = None) -> list[str]:
+    file = candidates_file or paths.ROOT / "candidates.toml"
+    custom = load_referee_java(file) if file.exists() else None
     return custom or [paths.java_exe(), "-Xmx4g", "-jar", str(paths.java_jar())]
+
+
+def _java_identity(command: list[str]) -> dict:
+    identity = {"exec": command, "jar_sha256": None}
+    if "-jar" in command:
+        index = command.index("-jar") + 1
+        if index == len(command) or not command[index] or command[index].startswith("-"):
+            raise ValueError("-jar requires a following jar path")
+        jar = Path(command[index])
+        with jar.open("rb") as stream:
+            identity["jar_sha256"] = hashlib.file_digest(stream, "sha256").hexdigest()
+    return identity
+
+
+def _referee_config(boards: list[corpus.Board], candidates_file: Path | None = None,
+                    recorded: dict | None = None, verify_recorded: bool = True) -> dict | None:
+    if all(b.referee == "kicad" for b in boards):
+        return None
+    try:
+        config = _java_identity(recorded["exec"] if recorded else _java_exec(candidates_file))
+        if recorded and verify_recorded and referee.identity_key(config) != referee.identity_key(recorded):
+            raise click.ClickException("recorded referee jar has changed; rescore the full run without --only-missing")
+        return config
+    except (OSError, paths.ToolMissing, ValueError) as e:
+        raise click.ClickException(f"Java referee unavailable: {e}") from e
+
+
+def _score_cell(board: corpus.Board, cell: Path, java_config: dict | None):
+    result = referee.score_cell(board, cell, java_config["exec"] if java_config else [])
+    if result is not None and board.referee != "kicad":
+        result["referee_identity"] = java_config
+        (cell / "metrics.json").write_text(json.dumps(result, indent=2) + "\n")
+    return result
 
 
 @click.group()
@@ -189,13 +224,14 @@ def corpus_connections_cmd(tier: str | None, board_ids: str | None) -> None:
                   "point at candidates.remote.toml on hosts without the Java repo checkout.")
 @click.option("--tier", default=None)
 @click.option("--boards", "board_ids", default=None, help="comma-separated board ids")
-@click.option("--seeds", default=1, show_default=True)
+@click.option("--seeds", type=click.IntRange(min=1), default=1, show_default=True,
+              help="repetitions per board; {seed} in candidate extra_args receives the repetition index")
 @click.option("--max-passes", default=100, show_default=True)
 @click.option("--timeout", "timeout_s", default=300, show_default=True)
-@click.option("--threads", default=1, show_default=True)
+@click.option("--threads", type=click.IntRange(min=1), default=1, show_default=True)
 @click.option("--jobs", default=1, show_default=True,
              help="number of cells (candidate x board x seed) to run concurrently. "
-                  "Quality metrics are unaffected by parallelism; use --jobs 1 for official "
+                  "Use --jobs 1 for controlled quality and "
                   "wall-time numbers -- with --jobs > 1, `compare` falls back to CPU time "
                   "since wall time is contended. Rule of thumb (~1.5 GB RSS per Java cell): "
                   "4 on a 10-core/16 GB laptop, 8-12 on a 16-core/64 GB workstation.")
@@ -207,11 +243,12 @@ def run_cmd(cand_names, candidates_file, tier, board_ids, seeds, max_passes, tim
     if jobs < 1:
         raise click.ClickException("--jobs must be >= 1")
     candidates_file = Path(candidates_file) if candidates_file else paths.ROOT / "candidates.toml"
-    cands = load_candidates(candidates_file)
     try:
-        chosen = [cands[n] for n in cand_names.split(",")]
+        chosen = list(load_candidates(candidates_file, cand_names.split(",")).values())
     except KeyError as e:
         raise click.ClickException(f"unknown candidate: {e.args[0]}") from e
+    except (FileNotFoundError, paths.ToolMissing, ValueError) as e:
+        raise click.ClickException(str(e)) from e
     try:
         boards = corpus.select(corpus.load_manifest(), tier=tier,
                                ids=board_ids.split(",") if board_ids else None)
@@ -226,30 +263,34 @@ def run_cmd(cand_names, candidates_file, tier, board_ids, seeds, max_passes, tim
             + " -- run `bench corpus init` / `bench corpus kicad-fixtures` (or `bench corpus pcbench`)")
     run_id = run_id or datetime.now().strftime("%Y%m%d-%H%M%S")
     cfg = runner.RunConfig(run_id=run_id, candidates=chosen, boards=boards, seeds=seeds,
-                           max_passes=max_passes, timeout_s=timeout_s, threads=threads, jobs=jobs, tier=tier)
+                           max_passes=max_passes, timeout_s=timeout_s, threads=threads, jobs=jobs, tier=tier,
+                           candidates_file=str(candidates_file.resolve()))
     hook = None
     if not no_referee:
-        java_exec = _java_exec()
-        hook = lambda board, cell: referee.score_cell(board, cell, java_exec)
-    run_dir = runner.run(cfg, referee=hook, progress=click.echo)
+        cfg.referee_java = _referee_config(boards, candidates_file)
+        hook = lambda board, cell: _score_cell(board, cell, cfg.referee_java)
+    try:
+        run_dir = runner.run(cfg, referee=hook, progress=click.echo)
+    except FileExistsError as e:
+        raise click.ClickException(f"run already exists: {run_id}; choose a new --run-id") from e
     click.echo(f"run written to {run_dir}")
 
 
 @main.command("referee")
 @click.option("--run", "run_id", required=True)
 @click.option("--only-missing", is_flag=True, help="skip cells that already have metrics.json")
+@click.option("--candidates-file", type=click.Path(exists=True, path_type=Path), default=None,
+              help="referee configuration override; changing the referee requires rescoring the full run")
 @click.option("--jobs", default=1, show_default=True,
              help="number of cells to re-score concurrently. Needs only the run's manifest and "
                   "results -- no candidates.toml.")
-def referee_cmd(run_id: str, only_missing: bool, jobs: int) -> None:
+def referee_cmd(run_id: str, only_missing: bool, jobs: int, candidates_file: Path | None) -> None:
     """(Re)score every cell of a run."""
     if jobs < 1:
         raise click.ClickException("--jobs must be >= 1")
     run_dir = runner.RESULTS / run_id
     meta = runner.load_meta(run_dir)
     boards = {b.id: b for b in corpus.load_manifest()}
-    java_exec = _java_exec()
-
     todo = []
     for c in meta["cells"]:
         cell = runner.cell_dir(run_dir, c["candidate"], c["board"], c["seed"])
@@ -257,17 +298,36 @@ def referee_cmd(run_id: str, only_missing: bool, jobs: int) -> None:
             continue
         todo.append((c, cell))
 
+    if only_missing and meta.get("referee_rescore", {}).get("status") == "incomplete":
+        raise click.ClickException("full rescore is incomplete; rerun without --only-missing")
+    if not todo:
+        click.echo("scored 0 cells: nothing left to score")
+        return
+
+    selected_boards = [boards[c["board"]] for c, _ in todo]
+    recorded = meta.get("referee_java")
+    source = candidates_file or (Path(meta["candidates_file"]) if meta.get("candidates_file") else None)
+    java_config = _referee_config(selected_boards, source, recorded if not candidates_file else None,
+                                  verify_recorded=only_missing)
+    if java_config is not None and only_missing and recorded and (
+            referee.identity_key(java_config) != referee.identity_key(recorded)):
+        raise click.ClickException("cannot change the referee with --only-missing; rescore the full run")
+    if not only_missing:
+        meta["referee_rescore"] = {"status": "incomplete", "referee_java": java_config}
+        runner._save_meta(run_dir, meta)
+
     def _score(item: tuple[dict, Path]) -> tuple[dict, dict, str | None]:
         c, cell = item
         board = boards[c["board"]]
         try:
-            return c, referee.score_cell(board, cell, java_exec), None
+            return c, _score_cell(board, cell, java_config), None
         except Exception as e:
             # One bad cell must not abort the rest of the pass -- especially under jobs > 1,
             # where other cells may already be scoring concurrently in other worker threads.
             # Same fallback the runner uses for a referee hook that raises.
             reason = f"referee raised {type(e).__name__}: {e}"
-            r = {"status": "referee_failed", "referee": board.referee, "reason": reason}
+            r = {"status": "referee_failed", "referee": board.referee, "reason": reason,
+                 "candidate_output": (cell / "out.ses").exists()}
             (cell / "referee.json").write_text(json.dumps(r, indent=2) + "\n")
             return c, metrics.build(cell, board), reason
 
@@ -283,6 +343,12 @@ def referee_cmd(run_id: str, only_missing: bool, jobs: int) -> None:
     # Results are printed (via on_done) in submission order from the main thread, same
     # pattern as `run` uses for meta.json -- regardless of which worker finishes first.
     results = pool.run_cells(todo, _score, jobs, on_done=_print)
+
+    if java_config is not None:
+        meta["referee_java"] = java_config
+    if not only_missing:
+        meta["referee_rescore"]["status"] = "complete"
+    runner._save_meta(run_dir, meta)
 
     scored = len(results)
     clean = sum(1 for _, m, _ in results if m["clean_pass"])
@@ -306,12 +372,19 @@ def _latest_run_for(name: str) -> Path:
 @click.option("--tier", default=None)
 @click.option("--out", "out_name", default=None)
 @click.option("--allow-mixed", is_flag=True)
+@click.option("--fail-on-regression", is_flag=True,
+              help="exit nonzero for routing-quality losses or no comparable boards; timing/RSS are advisory by default")
+@click.option("--require-complete", is_flag=True,
+              help="with --fail-on-regression, also require every shared board and planned repetition")
+@click.option("--performance-regression-percent", type=click.FloatRange(min=0, min_open=True), default=None,
+              help="opt in to time/RSS gating above this percent and a noise allowance; "
+                   "with --fail-on-regression, fewer than 3 measured samples per side also fails the gate")
 @click.option("--time-metric", "time_metric", type=click.Choice(["auto", "wall", "cpu"]), default="auto",
              show_default=True,
              help="which time metric decides verdicts and median_time_ratio. 'auto' uses wall time "
                   "when every compared run used --jobs 1, else falls back to CPU time (wall time is "
                   "contended once cells run concurrently).")
-def compare_cmd(baseline, against, runs, tier, out_name, allow_mixed, time_metric):
+def compare_cmd(baseline, against, runs, tier, out_name, allow_mixed, fail_on_regression, require_complete, performance_regression_percent, time_metric):
     """Compare candidates and write reports/<id>.{json,md,html}."""
     names = against.split(",")
     if runs:
@@ -328,7 +401,8 @@ def compare_cmd(baseline, against, runs, tier, out_name, allow_mixed, time_metri
                 run_dirs.append(rd)
     try:
         cmp = compare_mod.compare(run_dirs, baseline, names, corpus.load_manifest(), tier=tier,
-                                  allow_mixed=allow_mixed, time_metric=time_metric)
+                                  allow_mixed=allow_mixed, time_metric=time_metric,
+                                  performance_regression_percent=performance_regression_percent)
     except compare_mod.IncompatibleRuns as e:
         raise click.ClickException(str(e)) from e
     out_name = out_name or f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{baseline}-vs-{'-'.join(names)}"
@@ -339,7 +413,17 @@ def compare_cmd(baseline, against, runs, tier, out_name, allow_mixed, time_metri
     for n in names:
         click.echo(f"{n} vs {baseline}: {cmp['overall'][n]['verdict']} "
                    f"({cmp['overall'][n]['wins']}W/{cmp['overall'][n]['losses']}L/{cmp['overall'][n]['ties']}T)")
+    for name, cov in cmp["coverage"].items():
+        click.echo(f"{name}: compared {cov['compared_boards']}/{len(cov['shared_boards'])} shared boards; "
+                   f"{len(cov['incomplete_boards'])} incomplete, {len(cov['skipped_boards'])} skipped")
     click.echo(f"reports written to {paths.REPORTS / out_name}.{{json,md,html}}")
+    if fail_on_regression:
+        rejected = any(o["quality_losses"] or o["performance_losses"] or o["performance_unmeasured"]
+                       or o["verdict"] == "inconclusive" for o in cmp["overall"].values())
+        incomplete = any(c["incomplete_boards"] or c["skipped_boards"] for c in cmp["coverage"].values())
+        if rejected or (require_complete and incomplete):
+            raise click.ClickException("regression check failed; see the comparison report")
+
 
 
 @main.command("report")

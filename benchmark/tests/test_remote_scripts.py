@@ -1,11 +1,4 @@
-"""Shell scripts aren't executed under pytest (they need a real remote NixOS host -- see the
-"Running on a remote NixOS host" section of README.md and the real-check notes in
-scripts/remote-run.sh/scripts/remote-corpus.sh's own history). This just keeps them from
-bit-rotting silently: `bash -n` catches syntax errors (unbalanced quotes/heredocs -- easy to
-introduce when hand-splicing shell fragments across an ssh boundary, see
-scripts/lib/remote-env.sh), and the `--help` checks catch a usage message regressing or a
-flag getting silently dropped.
-"""
+"""Remote script syntax, CLI behavior and local simulations of SSH launch guards."""
 import os
 import shutil
 import subprocess
@@ -165,3 +158,98 @@ def test_remote_run_print_host_real_env_beats_dotenv(tmp_path):
     result = _run(str(scripts / "remote-run.sh"), "--print-host", env=_clean_env())
     assert result.returncode == 0
     assert result.stdout.strip() == "envfilehost"
+
+
+def _local_remote(tmp_path):
+    scripts = _isolated_scripts(tmp_path)
+    remote = tmp_path / "remote"
+    remote.mkdir()
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for name, body in {
+        "ssh": 'shift\nexec bash -c "$*"\n',
+        "rsync": f'touch "{tmp_path / "synced"}"\n',
+        "sleep": 'exit 0\n',
+    }.items():
+        file = bin_dir / name
+        file.write_text('#!/usr/bin/env bash\n' + body)
+        file.chmod(0o755)
+    env = _clean_env()
+    env["PATH"] = str(bin_dir) + os.pathsep + env["PATH"]
+    return scripts, remote, env
+
+
+def test_remote_run_refuses_completed_and_interrupted_ids_before_sync(tmp_path):
+    import json
+    scripts, remote, env = _local_remote(tmp_path)
+    for name, state in (("completed", "complete"), ("interrupted", "incomplete")):
+        run = remote / "results" / name
+        run.mkdir(parents=True)
+        meta = json.dumps({"status": state, "args": {"seeds": 1}, "cells": []}, indent=2)
+        (run / "meta.json").write_text(meta)
+        (remote / "results" / f"{name}.remote.log.exit").write_text("0")
+        result = _run(str(scripts / "remote-run.sh"), "local", "--remote-dir", str(remote),
+                      "--", "--run-id", name, "--candidates", "rs-main", env=env)
+        assert result.returncode != 0
+        assert "already exists" in result.stderr
+        assert "--attach" in result.stderr
+        assert not (tmp_path / "synced").exists()
+        assert (run / "meta.json").read_text() == meta
+
+
+def test_remote_run_refuses_directory_without_meta(tmp_path):
+    scripts, remote, env = _local_remote(tmp_path)
+    (remote / "results" / "empty").mkdir(parents=True)
+    result = _run(str(scripts / "remote-run.sh"), "local", "--remote-dir", str(remote),
+                  "--", "--run-id", "empty", "--candidates", "rs-main", env=env)
+    assert result.returncode != 0 and "already exists" in result.stderr
+    assert not (tmp_path / "synced").exists()
+
+
+def test_remote_attach_requires_exit_status_and_can_retrieve_completed_run(tmp_path):
+    scripts, remote, env = _local_remote(tmp_path)
+    run = remote / "results" / "done"
+    run.mkdir(parents=True)
+    (run / "meta.json").write_text('{\n  "status": "complete"\n}\n')
+    args = [str(scripts / "remote-run.sh"), "local", "--remote-dir", str(remote), "--attach", "done"]
+    result = _run(*args, env=env)
+    assert result.returncode != 0
+    (remote / "results" / "done.remote.log.exit").write_text("0")
+    result = _run(*args, env=env)
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / "synced").exists()
+
+
+def test_detached_launch_reservation_cannot_be_reused(tmp_path):
+    import shlex
+    scripts, remote, env = _local_remote(tmp_path)
+    (remote / "results" / "reserved.remote.lock").mkdir(parents=True)
+    result = _run("bash", "-c",
+                  f'source {shlex.quote(str(scripts / "lib" / "remote-env.sh"))}\n'
+                  f'remote_launch_detached local {shlex.quote(str(remote))} reserved "exit 0"', env=env)
+    assert result.returncode != 0
+    assert "already exists" in result.stderr
+
+
+def test_poll_and_launch_share_existence_checks_and_only_start_bash(tmp_path):
+    scripts, remote, env = _local_remote(tmp_path)
+    ssh = tmp_path / "bin" / "ssh"
+    ssh.write_text('#!/usr/bin/env bash\nshift\n[[ "$*" == "bash -s" ]] || exit 97\nexec bash -s\n')
+    lib = str(scripts / "lib" / "remote-env.sh")
+    quoted_remote = remote / "board ' $literal `literal`"
+    (quoted_remote / "results").mkdir(parents=True)
+    for index, suffix in enumerate(("", ".remote.log", ".remote.pid", ".remote.log.exit", ".remote.lock")):
+        job = f"job{index}"
+        artifact = quoted_remote / "results" / (job + suffix)
+        artifact.write_text("0")
+        poll = _run("bash", "-c", 'source "$1"\nremote_poll local "$2" "$3" ""',
+                    "bash", lib, str(quoted_remote), job, env=env)
+        assert poll.returncode == 0, poll.stderr
+        assert "EXISTS=1" in poll.stdout
+        launch = _run("bash", "-c", 'source "$1"\nremote_launch_detached local "$2" "$3" "exit 0"',
+                      "bash", lib, str(quoted_remote), job, env=env)
+        assert launch.returncode != 0 and "already exists" in launch.stderr
+        assert artifact.read_text() == "0"
+    missing = _run("bash", "-c", 'source "$1"\nremote_poll local "$2" absent ""',
+                   "bash", lib, str(remote / "missing"), env=env)
+    assert missing.returncode == 0 and "EXISTS=0" in missing.stdout

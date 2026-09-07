@@ -225,3 +225,169 @@ def test_all_baseline_seeds_unjudged_skips_board(tmp_path):
     assert "a" not in cmp["boards"]
     failure_entries = [f for f in cmp["failures"] if f["candidate"] == "java"]
     assert len(failure_entries) == 3
+
+
+BOARD = Board(id="a", source="", origin="freerouting-fixtures", referee="java-drc",
+              tiers=["canary"], nets=5, layers=2)
+
+
+def test_compare_rejects_multiple_commits_under_one_name(tmp_path):
+    r1 = _write_run(tmp_path, "r1", {"rs": {"a": [cell()] * 3}})
+    r2 = _write_run(tmp_path, "r2", {"rs": {"a": [cell()] * 3}})
+    meta = runner.load_meta(r2)
+    meta["candidates"][0]["sha"] = "new-commit"
+    (r2 / "meta.json").write_text(json.dumps(meta))
+    with pytest.raises(compare.IncompatibleRuns, match="distinct candidate names"):
+        compare.compare([r1, r2], "rs", ["rs"], [BOARD], allow_mixed=True)
+
+
+@pytest.mark.parametrize("mode", ["missing-metrics", "unjudged", "unfinished", "no-boards"])
+def test_partial_measurements_remain_comparable_with_explicit_coverage(tmp_path, mode):
+    r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3},
+                                   "change": {"a": [cell(score=1000)] * 3}})
+    if mode == "missing-metrics":
+        (runner.cell_dir(r, "change", "a", 3) / "metrics.json").unlink()
+    elif mode == "unjudged":
+        p = runner.cell_dir(r, "change", "a", 3) / "metrics.json"
+        p.write_text(json.dumps(cell(failed=True, unjudged=True)))
+    elif mode == "unfinished":
+        meta = runner.load_meta(r)
+        meta["args"]["boards"] = ["a"]
+        meta["cells"] = [e for e in meta["cells"] if e["candidate"] == "head"]
+        meta["status"] = "incomplete"
+        (r / "meta.json").write_text(json.dumps(meta))
+    cmp = compare.compare([r], "head", ["change"], [] if mode == "no-boards" else [BOARD])
+    if mode in ("unfinished", "no-boards"):
+        assert cmp["overall"]["change"]["verdict"] == "inconclusive"
+    else:
+        assert cmp["overall"]["change"]["verdict"] == "better"
+        assert cmp["coverage"]["change"]["incomplete_boards"] == ["a"]
+
+
+def test_referee_mismatch_skips_only_affected_board(tmp_path):
+    changed = cell()
+    changed["referee"] = "java-drc(fallback)"
+    r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3, "b": [cell()] * 3},
+                                   "change": {"a": [changed] * 3, "b": [cell()] * 3}})
+    board_b = Board(id="b", source="", origin="pcbench", referee="kicad", tiers=[], nets=5, layers=2)
+    cmp = compare.compare([r], "head", ["change"], [BOARD, board_b])
+    assert cmp["coverage"]["change"]["compared_boards"] == 1
+    assert "referee" in cmp["coverage"]["change"]["skipped_boards"]["a"]
+    assert cmp["overall"]["change"]["verdict"] == "same"
+
+
+def test_different_denominators_are_normalized_even_for_candidate_failure(tmp_path):
+    base = dict(cell(), score_version=1, score_n=10)
+    other = dict(cell(score=999), score_version=1, score_n=20)
+    failure = dict(cell(clean=False, failed=True, unrouted=20), score_version=1, score_n=20)
+    r = _write_run(tmp_path, "r", {"head": {"a": [base] * 3}, "change": {"a": [other, other, failure]}})
+    cmp = compare.compare([r], "head", ["change"], [BOARD])
+    row = cmp["boards"]["a"]
+    assert row["baseline"]["score"] == row["against"]["change"]["agg"]["score"]
+    assert row["against"]["change"]["verdict"]["level"] == "clean_pass_rate"
+    assert cmp["coverage"]["change"]["compared_boards"] == 1
+    assert json.loads((runner.cell_dir(r, "change", "a", 1) / "metrics.json").read_text())["score_n"] == 20
+
+
+def test_score_version_mismatch_omits_score_without_discarding_quality(tmp_path):
+    r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3},
+                                   "change": {"a": [dict(cell(), score_version=2)] * 3}})
+    cmp = compare.compare([r], "head", ["change"], [BOARD])
+    assert cmp["coverage"]["change"]["compared_boards"] == 1
+    assert cmp["boards"]["a"]["against"]["change"]["delta"]["score"] is None
+    assert cmp["boards"]["a"]["against"]["change"]["agg"]["score"] == cell()["score"]
+
+
+def test_network_hostname_change_is_advisory(tmp_path):
+    runs = []
+    for name in ("head", "change"):
+        r = _write_run(tmp_path, name, {name: {"a": [cell()] * 3}})
+        meta = runner.load_meta(r)
+        meta["host"] = {"node": name, "machine": "arm64"}
+        (r / "meta.json").write_text(json.dumps(meta))
+        runs.append(r)
+    cmp = compare.compare(runs, "head", ["change"], [BOARD])
+    assert any("host metadata differs" in w for w in cmp["warnings"])
+
+
+def test_compare_unknown_candidate_is_not_a_tie(tmp_path):
+    r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3}})
+    with pytest.raises(compare.IncompatibleRuns, match="absent"):
+        compare.compare([r], "head", ["typo"], [BOARD])
+
+
+def test_replacement_run_finishes_interrupted_plan(tmp_path):
+    first = _write_run(tmp_path, "first", {"head": {"a": [cell()] * 3}, "change": {}})
+    meta = runner.load_meta(first)
+    meta["args"]["boards"] = ["a"]
+    meta["status"] = "incomplete"
+    (first / "meta.json").write_text(json.dumps(meta))
+    second = _write_run(tmp_path, "second", {"change": {"a": [cell()] * 3}})
+    cmp = compare.compare([first, second], "head", ["change"], [BOARD])
+    assert cmp["coverage"]["change"]["incomplete_boards"] == []
+    assert cmp["overall"]["change"]["verdict"] == "same"
+
+
+def test_shared_selection_does_not_require_candidate_only_board(tmp_path):
+    b = Board(id="b", source="", origin="pcbench", referee="kicad", tiers=[], nets=5, layers=2)
+    r = _write_run(tmp_path, "r", {"head": {"a": [cell()] * 3},
+                                   "change": {"a": [cell()] * 3, "b": [cell()] * 3}})
+    cmp = compare.compare([r], "head", ["change"], [BOARD, b])
+    assert cmp["coverage"]["change"]["shared_boards"] == ["a"]
+    assert cmp["coverage"]["change"]["candidate_only_boards"] == ["b"]
+    assert cmp["overall"]["change"]["verdict"] == "same"
+
+
+def test_repetition_reporting_uses_actual_baseline_and_is_run_order_independent(tmp_path, monkeypatch):
+    r1 = _write_run(tmp_path, "first", {"head": {"a": [cell()]}})
+    meta = runner.load_meta(r1)
+    meta["args"]["seeds"] = 1
+    (r1 / "meta.json").write_text(json.dumps(meta))
+    r2 = _write_run(tmp_path, "second", {"change": {"a": [cell()] * 3}})
+    real_load = runner.load_meta
+    calls = []
+    def load(path):
+        calls.append(path)
+        return real_load(path)
+    monkeypatch.setattr(runner, "load_meta", load)
+    one = compare.compare([r1, r2], "head", ["change"], [BOARD])
+    assert calls == [r1, r2]
+    two = compare.compare([r2, r1], "head", ["change"], [BOARD])
+    assert one["config"]["seeds"] is None
+    assert one["config"] == two["config"]
+    assert one["boards"] == two["boards"]
+    assert any("baseline has 1" in w for w in one["warnings"])
+
+
+def test_optional_performance_gate_requires_margin_and_repeated_evidence(tmp_path):
+    def run_case(name, times, percent):
+        r = _write_run(tmp_path, name, {"head": {"a": [cell(wall=10)] * 3},
+                                       "change": {"a": [cell(wall=t) for t in times]}})
+        return compare.compare([r], "head", ["change"], [BOARD],
+                               performance_regression_percent=percent)["overall"]["change"]
+    assert run_case("noise", [10.1, 10.2, 10.3], 10)["performance_losses"] == 0
+    assert run_case("slower", [15, 15, 15], 10)["performance_losses"] == 1
+    assert run_case("short", [15], 10)["performance_unmeasured"] == 1
+    assert run_case("advisory", [15], None)["quality_losses"] == 0
+
+
+def test_zero_net_manifest_uses_positive_shared_recorded_denominator(tmp_path):
+    board = Board(id="a", source="", origin="pcbench", referee="kicad", tiers=[], nets=0, layers=2)
+    base = dict(cell(), score_version=1, score_n=10)
+    other = dict(cell(), score_version=1, score_n=20, wirelength_mm=200.0)
+    r = _write_run(tmp_path, "r", {"head": {"a": [base] * 3}, "change": {"a": [other] * 3}})
+    cmp = compare.compare([r], "head", ["change"], [board])
+    row = cmp["boards"]["a"]
+    assert row["score_n"] == 20
+    assert row["baseline"]["score"] > row["against"]["change"]["agg"]["score"] > 0
+    assert row["against"]["change"]["verdict"]["level"] == "score"
+
+
+def test_unknown_denominator_preserves_score_and_omits_only_score_comparison(tmp_path):
+    board = Board(id="a", source="", origin="pcbench", referee="kicad", tiers=[], nets=0, layers=2)
+    r = _write_run(tmp_path, "r", {"head": {"a": [cell(score=900)] * 3}, "change": {"a": [cell(score=800)] * 3}})
+    cmp = compare.compare([r], "head", ["change"], [board])
+    row = cmp["boards"]["a"]["against"]["change"]
+    assert row["agg"]["score"] == 800
+    assert row["delta"]["score"] is None
+    assert row["score_comparable"] is False
