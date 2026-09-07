@@ -2,7 +2,7 @@
 
 An open source PCB autorouter. This started as a rust port of [freerouting](https://github.com/freerouting/freerouting) that got out of hand.
 
-[Demo]
+[Live Web Demo](https://copperroute.net)
 
 ## Build
 
