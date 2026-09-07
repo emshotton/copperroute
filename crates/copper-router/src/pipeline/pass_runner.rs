@@ -195,7 +195,7 @@ impl AutoroutePassRunner {
         }
 
         if ripped_item_count > 0 {
-            router.net_filter = None;
+            router.reset_net_filter_after_ripup();
         }
 
         let tail_stop = &|| stop.is_stopped_or_expired();

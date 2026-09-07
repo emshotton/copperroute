@@ -17,6 +17,60 @@ let selected,
 const status = (text) => {
   $("status").textContent = text;
 };
+function showMetrics(text) {
+  $("metrics").textContent = text ?? "";
+  $("metrics").hidden = !text;
+}
+const currentRules = () =>
+  Object.fromEntries(
+    ["traceWidth", "clearance", "viaDiameter", "viaDrill"].map((id) => [
+      id,
+      Number($(id).value),
+    ]),
+  );
+function netCheckboxes() {
+  return [...$("net-list").querySelectorAll("input")];
+}
+function netSelection() {
+  const boxes = netCheckboxes();
+  return boxes.length && boxes.some((box) => !box.checked)
+    ? boxes.filter((box) => box.checked).map((box) => box.value)
+    : null;
+}
+function updateNetSummary() {
+  const boxes = netCheckboxes(),
+    chosen = boxes.filter((box) => box.checked).length;
+  $("route").disabled = !selected || (!!boxes.length && chosen === 0);
+  if (!boxes.length) return;
+  $("net-summary").textContent =
+    chosen === boxes.length
+      ? `Nets to route — all ${boxes.length} selected`
+      : `Nets to route — ${chosen} of ${boxes.length} selected`;
+}
+function showNets(nets) {
+  const list = $("net-list");
+  list.replaceChildren();
+  $("net-filter").value = "";
+  $("net-panel").hidden = !nets?.length;
+  $("net-panel").open = false;
+  if (!nets?.length) return;
+  for (const net of nets) {
+    const item = document.createElement("li"),
+      label = document.createElement("label"),
+      box = document.createElement("input"),
+      name = document.createElement("span"),
+      className = document.createElement("em");
+    box.type = "checkbox";
+    box.checked = true;
+    box.value = net.name;
+    name.textContent = net.name;
+    className.textContent = net.className;
+    label.append(box, name, className);
+    item.append(label);
+    list.append(item);
+  }
+  updateNetSummary();
+}
 function showLayers(layers) {
   if (!layers) return;
   const legend = $("layer-legend");
@@ -67,7 +121,7 @@ function finish() {
   worker?.terminate();
   worker = null;
   $("cancel").hidden = true;
-  $("route").disabled = !selected;
+  updateNetSummary();
 }
 function isDsn() { return /\.dsn$/i.test(selected?.name ?? ""); }
 function updateRuleControls() {
@@ -79,6 +133,15 @@ function updateRuleControls() {
     : projectFile ? projectFile.name : embeddedRules
       ? "Using embedded KiCad net classes. Default class values are shown below."
       : "No project selected — using the manual rules below.";
+  $("rules-summary").textContent = `Board rules — ${
+    embedded
+      ? "embedded DSN"
+      : projectFile
+        ? projectFile.name
+        : embeddedRules
+          ? "embedded KiCad classes"
+          : "manual"
+  }`;
   if (!projectFile && !embedded && embeddedRules)
     for (const [id, value] of Object.entries(embeddedRules))
       if (id in manualRules) $(id).value = value;
@@ -98,9 +161,10 @@ function select(file) {
     for (const [id, value] of Object.entries(manualRules)) $(id).value = value;
   embeddedRules = null;
   selected = null;
+  showNets(null);
+  showMetrics(null);
   updateRuleControls();
   $("route").disabled = true;
-  $("warnings").textContent = "";
   $("preview").replaceChildren();
   $("filename").textContent = "BOARD PREVIEW";
   if (!/\.(kicad_pcb|dsn)$/i.test(file?.name ?? "")) {
@@ -125,21 +189,16 @@ function select(file) {
     if (data.type === "preview") {
       $("preview").innerHTML = data.svg;
       showLayers(data.layers);
-      $("warnings").textContent = data.warnings.join(" ");
     }
     if (data.type === "ready" && data.embeddedRules) {
       embeddedRules = data.embeddedRules;
       updateRuleControls();
     }
+    if (data.type === "ready") showNets(data.nets);
     if (data.type === "ready" || data.type === "error") {
       active.terminate();
       previewWorker = null;
-      if (!worker)
-        status(
-          data.type === "error"
-            ? data.text
-            : "Board selected. Check the routing settings, then route.",
-        );
+      if (!worker) status(data.type === "error" ? data.text : "");
     }
   };
   active.onerror = (e) => {
@@ -153,7 +212,12 @@ function select(file) {
     .text()
     .then((text) => {
       if (previewWorker === active)
-        active.postMessage({ action: "preview", text, name: file.name });
+        active.postMessage({
+          action: "preview",
+          text,
+          name: file.name,
+          rules: currentRules(),
+        });
     })
     .catch((e) => {
       if (previewWorker === active) {
@@ -229,7 +293,6 @@ function beginExampleLoad() {
   $("filename").textContent = "BOARD PREVIEW";
   $("example-credit").hidden = true;
   $("example-routing").hidden = true;
-  $("warnings").textContent = "";
   return revision;
 }
 $("demo").onclick = async () => {
@@ -254,12 +317,7 @@ $("cancel").onclick = () => {
 $("settings").onsubmit = async (e) => {
   e.preventDefault();
   if (!selected || worker) return;
-  const rules = Object.fromEntries(
-    ["traceWidth", "clearance", "viaDiameter", "viaDrill"].map((id) => [
-      id,
-      Number($(id).value),
-    ]),
-  );
+  const rules = currentRules();
   if (!isDsn() && rules.viaDrill >= rules.viaDiameter) {
     status("Via drill must be smaller than the via diameter.");
     return;
@@ -267,10 +325,10 @@ $("settings").onsubmit = async (e) => {
   previewWorker?.terminate();
   previewWorker = null;
   clearDownloads();
-  $("warnings").textContent = "";
   $("route").disabled = true;
   $("cancel").hidden = false;
   $("badge").textContent = "Working";
+  showMetrics(null);
   const file = selected,
     active = new Worker("./worker.js", { type: "module" });
   worker = active;
@@ -278,6 +336,7 @@ $("settings").onsubmit = async (e) => {
     if (worker !== active) return;
     finish();
     $("badge").textContent = "Could not route";
+    showMetrics(null);
     status(text);
   };
   active.onerror = (e) =>
@@ -289,7 +348,6 @@ $("settings").onsubmit = async (e) => {
       showLayers(data.layers);
       // Only SVG produced by our numeric renderer enters the DOM.
       $("preview").innerHTML = data.svg;
-      $("warnings").textContent = data.warnings.join(" ");
     }
     if (data.type === "progress") {
       $("preview").innerHTML = data.svg;
@@ -298,8 +356,6 @@ $("settings").onsubmit = async (e) => {
         `Pass ${data.pass ?? 1} · ${data.incomplete ?? "Unknown"} connections remaining · ${data.routed ?? 0} routed this pass`,
       );
     }
-    if (data.type === "warnings")
-      $("warnings").textContent = data.warnings.join(" ");
     if (data.type === "error") failed(data.text);
     if (data.type === "result") {
       finish();
@@ -309,8 +365,11 @@ $("settings").onsubmit = async (e) => {
           ? "Routing complete"
           : "Partial route";
       const drcSummary = showDrc(data);
+      showMetrics(
+        `${data.incomplete ?? "Unknown"} unrouted connections${data.incompleteOnUnselectedNets ? ` (${data.incompleteOnUnselectedNets} on nets you did not select)` : ""} · ${data.violations} router DRC violations${drcSummary}`,
+      );
       status(
-        `${data.incomplete ?? "Unknown"} unrouted connections · ${data.violations} router DRC violations${drcSummary} · ${data.passes} passes${data.timedOut ? " · Time limit reached" : ""}. Review in ${data.dsn ? "the source PCB editor" : "KiCad"} and run DRC.`,
+        `${data.passes} passes${data.timedOut ? " · Time limit reached" : ""}. Review in ${data.dsn ? "the source PCB editor" : "KiCad"} and run DRC.`,
       );
       for (const [id, content, mime, ext] of [
         ["pcb", data.dsn ?? data.pcb, "text/plain", data.dsn ? ".dsn" : ".kicad_pcb"],
@@ -341,6 +400,7 @@ $("settings").onsubmit = async (e) => {
         example: currentExample,
         rebuildZones: $("rebuild-zones").checked,
         allowViaInPad: $("allow-via-in-pad").checked,
+        nets: netSelection(),
         passes: Number($("passes").value),
         seconds: Number($("seconds").value),
       });
@@ -387,6 +447,30 @@ async function loadExample(id) {
     if (revision === selectionRevision) status(error.message);
   }
 }
+const setAllNets = (checked) => {
+  for (const box of netCheckboxes())
+    if (!box.closest("li").hidden) box.checked = checked;
+  updateNetSummary();
+};
+$("nets-all").onclick = () => setAllNets(true);
+$("nets-none").onclick = () => setAllNets(false);
+$("net-list").onchange = updateNetSummary;
+$("net-filter").oninput = () => {
+  const needle = $("net-filter").value.trim().toLowerCase();
+  for (const box of netCheckboxes())
+    box.closest("li").hidden = !box.value.toLowerCase().includes(needle);
+};
+function dismissDropHint() {
+  const hint = $("drop-hint");
+  if (!hint || hint.hidden) return;
+  hint.classList.add("leaving");
+  // transitionend never fires when the fade is skipped, so time it out too.
+  const hide = () => (hint.hidden = true);
+  hint.addEventListener("transitionend", hide, { once: true });
+  setTimeout(hide, 400);
+}
+for (const event of ["pointerdown", "keydown", "dragenter", "wheel"])
+  addEventListener(event, dismissDropHint, { once: true, passive: true });
 $("examples").onchange = () => loadExample($("examples").value);
 $("reload-example").onclick = () => loadExample($("examples").value);
 loadExample("uno");

@@ -964,6 +964,59 @@ fn a_net_filter_limits_the_work_list_to_its_nets() {
 }
 
 #[test]
+fn settings_seed_the_routers_net_filter() {
+    let mut board = empty_board(200, AngleRestriction::None);
+    add_net(&mut board, "N1", 0);
+    add_net(&mut board, "N2", 0);
+    fixed_trace(&mut board, &[p(-9000, -9000), p(-9000, -8000)], 1);
+    insert_trace(&mut board, &[p(-9000, -6000), p(-9000, -5000)], 0, 30, 1);
+    let c2 = fixed_trace(&mut board, &[p(0, -9000), p(0, -8000)], 2);
+    insert_trace(&mut board, &[p(0, -6000), p(0, -5000)], 0, 30, 2);
+
+    let mut settings = RouterSettings::new();
+    settings.set_net_filter(Some([2].into_iter().collect()));
+    let router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+
+    assert_eq!(
+        router.autoroute_items(&board),
+        vec![(c2, 2)],
+        "the router only offers the nets named in settings"
+    );
+}
+
+#[test]
+fn a_ripup_widens_the_net_filter_back_to_the_configured_nets() {
+    let board = empty_board(200, AngleRestriction::None);
+    let mut settings = RouterSettings::new();
+    settings.set_net_filter(Some([2].into_iter().collect()));
+    let mut router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+
+    router.net_filter = Some([2, 3].into_iter().collect());
+    router.reset_net_filter_after_ripup();
+
+    assert_eq!(
+        router.net_filter,
+        Some([2].into_iter().collect()),
+        "a rip-up may widen the filter mid-pass, but never past the configured nets"
+    );
+}
+
+#[test]
+fn a_ripup_clears_the_net_filter_when_no_nets_are_configured() {
+    let board = empty_board(200, AngleRestriction::None);
+    let settings = RouterSettings::new();
+    let mut router = BatchAutorouter::for_routing_job(&board, &settings, RouterBudget::disabled());
+
+    router.net_filter = Some([2].into_iter().collect());
+    router.reset_net_filter_after_ripup();
+
+    assert_eq!(
+        router.net_filter, None,
+        "without configured nets a rip-up reopens the whole board"
+    );
+}
+
+#[test]
 fn an_empty_pass_still_polls_the_job_deadline() {
     let mut board = empty_board(200, AngleRestriction::None);
     let settings = RouterSettings::new();

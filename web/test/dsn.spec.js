@@ -20,7 +20,7 @@ test("DSN drop previews, reroutes with embedded rules, and downloads DSN/SES/SVG
   await expect(page.locator("#project-name")).toContainText("embedded DSN");
   await page.locator("#route").click();
   await expect(page.locator("#pcb")).toBeVisible({ timeout: 30000 });
-  await expect(page.locator("#status")).toContainText("0 unrouted connections");
+  await expect(page.locator("#metrics")).toContainText("0 unrouted connections");
   const outputs = {};
   for (const [id, ext] of [["pcb", "dsn"], ["ses", "ses"], ["svg", "svg"]]) {
     const pending = page.waitForEvent("download");
@@ -39,7 +39,7 @@ test("DSN drop previews, reroutes with embedded rules, and downloads DSN/SES/SVG
   await expect(page.locator("#preview svg polyline")).not.toHaveCount(0);
   await page.locator("#route").click();
   await expect(page.locator("#pcb")).toBeVisible({ timeout: 30000 });
-  await expect(page.locator("#status")).toContainText("0 unrouted connections");
+  await expect(page.locator("#metrics")).toContainText("0 unrouted connections");
   await page.screenshot({ path: "/tmp/copperroute-dsn.png", fullPage: true });
   await page.locator("#demo").click();
   await expect(page.locator("#project")).toBeEnabled();

@@ -1,5 +1,7 @@
 //! - `max_items`, `save_intermediate_stages`, `ignore_net_classes` get `#[serde(skip)]` — full
 //! - `layers` gets `#[serde(skip_serializing)]` only — deserialisation stays enabled, matching
+use std::collections::BTreeSet;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{FanoutSettings, HostEnvironment, LayerSettings, OptimizerSettings, ScoringSettings};
@@ -72,6 +74,9 @@ pub struct RouterSettings {
 
     #[serde(skip)]
     pub ignore_net_classes: Option<Vec<String>>,
+
+    #[serde(skip)]
+    pub net_filter: Option<BTreeSet<i32>>,
 
     #[serde(
         rename = "trace_pull_tight_accuracy",
@@ -354,6 +359,10 @@ impl RouterSettings {
         self.enabled = value;
     }
 
+    pub fn set_net_filter(&mut self, nets: Option<BTreeSet<i32>>) {
+        self.net_filter = nets;
+    }
+
     pub fn set_layer_active(&mut self, layer: usize, value: bool) {
         let Some(entry) = self.layers.as_mut().and_then(|l| l.get_mut(layer)) else {
             return;
@@ -523,6 +532,7 @@ impl RouterSettings {
         result.neck_width_um = self.neck_width_um;
         result.strict_drc = self.strict_drc;
         result.ignore_net_classes = self.ignore_net_classes.clone();
+        result.net_filter = self.net_filter.clone();
         result.trace_pull_tight_accuracy = self.trace_pull_tight_accuracy;
         result.enabled = self.enabled;
         result.vias_allowed = self.vias_allowed;

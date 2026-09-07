@@ -92,12 +92,11 @@ export function importBoard(text, name, rules, options = {}) {
       throw Error("Via drill must be smaller than diameter.");
   }
   if (
-    (!options.rebuildZones &&
-      children(root, "zone").some((zone) => !child(zone, "keepout"))) ||
-    (!options.ripUpRouting && children(root, "arc").length)
+    !options.rebuildZones &&
+    children(root, "zone").some((zone) => !child(zone, "keepout"))
   )
     throw Error(
-      "Copper zones, keepouts and curved tracks are not supported yet.",
+      "Copper zones and keepouts are not supported yet.",
     );
   const layers = child(root, "layers")
     ?.values.filter((v) => v?.values && /\.Cu$/.test(v.values[1]))
@@ -133,6 +132,9 @@ export function importBoard(text, name, rules, options = {}) {
     if (!net) throw Error(`Unknown net ${id}`);
     return net.name;
   };
+  const rippedUp = (n) =>
+    !!options.ripUpRouting &&
+    (!options.ripUpNets || options.ripUpNets.has(netName(n)));
   const zones = children(root, "zone");
   let copperZones = 0,
     preservedKeepouts = 0;
@@ -196,7 +198,7 @@ export function importBoard(text, name, rules, options = {}) {
         "footprint",
         "module",
         "zone",
-        ...(options.ripUpRouting ? ["arc"] : []),
+        "arc",
       ].includes(n.values[0])
     )
       throw Error(`Unsupported copper object: ${n.values[0]}`);
@@ -389,7 +391,8 @@ export function importBoard(text, name, rules, options = {}) {
     }
   }
   if (!components.length) throw Error("No pads were found.");
-  const traces = (options.ripUpRouting ? [] : children(root, "segment")).map(
+  const keptSegments = children(root, "segment").filter((n) => !rippedUp(n));
+  const traces = keptSegments.map(
     (n, id) => {
       if (n.values.includes("locked") || child(n, "locked"))
         throw Error("Locked tracks are not supported yet.");
@@ -404,7 +407,8 @@ export function importBoard(text, name, rules, options = {}) {
       };
     },
   );
-  const vias = (options.ripUpRouting ? [] : children(root, "via")).map(
+  const keptVias = children(root, "via").filter((n) => !rippedUp(n));
+  const vias = keptVias.map(
     (n, id) => {
       if (
         n.values.includes("locked") ||
@@ -432,6 +436,8 @@ export function importBoard(text, name, rules, options = {}) {
       };
     },
   );
+  if (children(root, "arc").some((n) => !rippedUp(n)))
+    throw Error("Curved tracks are not supported yet.");
   const embedded = children(root, "net_class");
   const netClasses = embeddedNetClasses(root);
   const classNames = new Set();
@@ -581,4 +587,21 @@ export function renderSvg(input, routed = input.board) {
   for (const v of routed.vias)
     svg += `<circle cx="${v.position.x}" cy="${v.position.y}" r="${v.diameter / 2}" fill="#edcf86"/><circle cx="${v.position.x}" cy="${v.position.y}" r="${v.drill / 2}" fill="#101c25"/>`;
   return svg + "</svg>";
+}
+
+// Returns null when the board cannot be imported, so the preview can still
+// render a board the router would reject.
+export function netsForSelection(text, name, rules) {
+  try {
+    const { board } = importBoard(text, name, rules, {
+      ripUpRouting: true,
+      rebuildZones: true,
+    });
+    return board.nets.map((net) => ({
+      name: net.name,
+      className: net.className,
+    }));
+  } catch {
+    return null;
+  }
 }

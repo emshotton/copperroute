@@ -7,6 +7,12 @@ const rules = {
   viaDiameter: 0.6,
   viaDrill: 0.3,
 };
+// The board rules panel is collapsed on load, so its inputs need it opened.
+const openRules = async (page) => {
+  const panel = page.locator("#rules-panel");
+  if (!(await panel.evaluate((el) => el.open)))
+    await page.locator("#rules-panel > summary").click();
+};
 // Routing uses enclosing rectangles for rounded pads. Check the entire via
 // copper disk, including off-centre overlaps, against that routing envelope.
 function smdViaOverlaps(board) {
@@ -76,7 +82,7 @@ test("routes dropped PCB entirely in a worker and downloads a readable result", 
   }, source);
   await page.locator("#route").click();
   await expect(page.locator("#pcb")).toBeVisible({ timeout: 80000 });
-  await expect(page.locator("#status")).toContainText("0 unrouted connections");
+  await expect(page.locator("#metrics")).toContainText("0 unrouted connections");
   await expect(page.locator("#preview svg")).toBeVisible();
   expect(await page.locator("#preview svg polyline").count()).toBeGreaterThan(
     0,
@@ -251,7 +257,7 @@ test("Route board discards existing tracks, arcs and vias and routes fresh coppe
   await expect(page.locator("#preview svg path")).toHaveCount(0);
   release();
   await expect(page.locator("#pcb")).toBeVisible({ timeout: 80000 });
-  await expect(page.locator("#status")).toContainText("0 unrouted connections");
+  await expect(page.locator("#metrics")).toContainText("0 unrouted connections");
   const download = page.waitForEvent("download");
   await page.locator("#pcb").click();
   const text = readFileSync(await (await download).path(), "utf8"),
@@ -382,6 +388,7 @@ test("bundled Uno and Nano load rules and export attributed routing", async ({ p
     await expect(page.locator("#traceWidth")).toBeDisabled();
     await expect(page.locator("#traceWidth")).toHaveValue(width);
     await expect(page.locator("#example-credit")).toBeVisible();
+    await openRules(page);
     await page.locator("#passes").fill("1");
     await page.locator("#seconds").fill("10");
     await page.locator("#route").click();
@@ -484,7 +491,7 @@ test("Nano rounded pads retain real footprint violations and explain them in the
   await page.locator("#pcb").click();
   const output = readFileSync(await (await download).path(), "utf8");
   expect(smdViaOverlaps(importBoard(output, "nano", rules, {rebuildZones: true}).board)).toEqual([]);
-  await expect(page.locator("#status")).toContainText("4 router DRC violations");
+  await expect(page.locator("#metrics")).toContainText("4 router DRC violations");
   await expect(page.locator("#drc-summary")).toHaveText("DRC details: 4 existing before routing · 0 new");
   await page.locator("#drc-summary").click();
   await expect(page.locator("#drc-list li")).toHaveCount(4);
@@ -500,6 +507,7 @@ test("Nano rounded pads retain real footprint violations and explain them in the
 test("via-in-pad requires a browser opt-in and resets for the next board", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#filename")).toHaveText("easyduino-uno.kicad_pcb");
+  await openRules(page);
   await expect(page.locator("#allow-via-in-pad")).not.toBeChecked();
   await page.locator("#allow-via-in-pad").check();
   await page.locator("#passes").fill("1");
@@ -522,7 +530,7 @@ test("legacy KiCad rules are shown, used by WASM, and cleared with the board", a
   await expect(page.locator('#traceWidth')).toBeDisabled();
   await page.locator('#route').click();
   await expect(page.locator('#pcb')).toBeVisible({timeout: 80000});
-  await expect(page.locator('#status')).toContainText('0 unrouted connections');
+  await expect(page.locator('#metrics')).toContainText('0 unrouted connections');
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#pcb').click();
   const output = readFileSync(await (await downloadPromise).path(), 'utf8');
@@ -541,7 +549,7 @@ test("WASM routes around cutouts with a distinct edge clearance class", async ({
   await page.locator('#file').setInputFiles({name:'cutout.kicad_pcb',mimeType:'text/plain',buffer:Buffer.from(source)});
   await page.locator('#route').click();
   await expect(page.locator('#pcb')).toBeVisible({timeout:80000});
-  await expect(page.locator('#status')).toContainText('0 router DRC violations');
+  await expect(page.locator('#metrics')).toContainText('0 router DRC violations');
   const download=page.waitForEvent('download');
   await page.locator('#pcb').click();
   const board=importBoard(readFileSync(await (await download).path(),'utf8'),'cutout',rules).board;
@@ -554,4 +562,204 @@ test("WASM routes around cutouts with a distinct edge clearance class", async ({
       expect(x>113 && x<117 && y>104 && y<116).toBe(false);
     }
   }
+});
+
+test("routes only the nets left selected in the panel", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  const source = readFileSync("example.kicad_pcb", "utf8");
+  await page.evaluate((text) => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(
+      new File([text], "dropped.kicad_pcb", { type: "text/plain" }),
+    );
+    document
+      .querySelector("#drop")
+      .dispatchEvent(
+        new DragEvent("drop", { dataTransfer, bubbles: true, cancelable: true }),
+      );
+  }, source);
+  await expect(page.locator("#net-summary")).toHaveText(
+    "Nets to route — all 2 selected",
+  );
+  await page.locator("#net-panel > summary").click();
+  await page.locator('#net-list input[value="Return"]').uncheck();
+  await expect(page.locator("#net-summary")).toHaveText(
+    "Nets to route — 1 of 2 selected",
+  );
+
+  await page.locator("#route").click();
+  await expect(page.locator("#pcb")).toBeVisible({ timeout: 80000 });
+  const download = page.waitForEvent("download");
+  await page.locator("#pcb").click();
+  const output = readFileSync(await (await download).path(), "utf8");
+
+  const routedNets = new Set(
+    [...output.matchAll(/\(segment\b[^\n]*\(net (\d+)\)/g)].map((m) => m[1]),
+  );
+  expect(routedNets).toEqual(new Set(["1"]));
+  await expect(page.locator("#metrics")).toContainText(
+    "on nets you did not select",
+  );
+  expect(errors).toEqual([]);
+});
+
+test("board rules collapse into a panel naming the active rule source", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("#filename")).toHaveText("easyduino-uno.kicad_pcb");
+  await expect(page.locator("#rules-summary")).toHaveText(
+    "Board rules — easyduino-uno.kicad_pro",
+  );
+  await expect(page.locator("#passes")).toBeHidden();
+
+  await openRules(page);
+  await expect(page.locator("#passes")).toBeVisible();
+
+  await page.locator("#clear-project").click();
+  await expect(page.locator("#rules-summary")).toHaveText(
+    "Board rules — manual",
+  );
+});
+
+test("routing is blocked while no net is selected", async ({ page }) => {
+  await page.goto("/");
+  const source = readFileSync("example.kicad_pcb", "utf8");
+  await page.evaluate((text) => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(
+      new File([text], "dropped.kicad_pcb", { type: "text/plain" }),
+    );
+    document
+      .querySelector("#drop")
+      .dispatchEvent(
+        new DragEvent("drop", { dataTransfer, bubbles: true, cancelable: true }),
+      );
+  }, source);
+  await page.locator("#net-panel > summary").click();
+  await page.locator("#nets-none").click();
+  await expect(page.locator("#route")).toBeDisabled();
+  await page.locator("#nets-all").click();
+  await expect(page.locator("#route")).toBeEnabled();
+});
+
+test("keeps a deselected net's existing copper in the routed download", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  const source = readFileSync("example.kicad_pcb", "utf8").replace(
+    /\)\s*$/,
+    `  (segment (start 105 110) (end 125 120) (width 0.25) (layer "B.Cu") (net 2))
+)`,
+  );
+  await page.evaluate((text) => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(
+      new File([text], "prerouted.kicad_pcb", { type: "text/plain" }),
+    );
+    document
+      .querySelector("#drop")
+      .dispatchEvent(
+        new DragEvent("drop", { dataTransfer, bubbles: true, cancelable: true }),
+      );
+  }, source);
+  await page.locator("#net-panel > summary").click();
+  await page.locator('#net-list input[value="Return"]').uncheck();
+
+  await page.locator("#route").click();
+  await expect(page.locator("#pcb")).toBeVisible({ timeout: 80000 });
+  const download = page.waitForEvent("download");
+  await page.locator("#pcb").click();
+  const output = readFileSync(await (await download).path(), "utf8");
+
+  const board = importBoard(output, "result", rules).board;
+  const returnTraces = board.traces.filter((t) => t.netName === "Return");
+  expect(returnTraces).toHaveLength(1);
+  expect(returnTraces[0].layerIndex).toBe(
+    board.layers.findIndex((l) => l.name === "B.Cu"),
+  );
+  expect(board.traces.some((t) => t.netName === "Signal")).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test("the drop hint covers the loaded board until the first interaction", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("#drop-hint")).toContainText(
+    "Drag and drop a Specctra DSN or KiCad PCB here to route",
+  );
+  await expect(page.locator("#preview svg")).toBeVisible();
+
+  await page.locator("header").click();
+
+  await expect(page.locator("#drop-hint")).toBeHidden();
+  await expect(page.locator("#preview svg")).toBeVisible();
+});
+
+test("the logo uses the self-hosted Bakbak One face, with no third-party requests", async ({
+  page,
+}) => {
+  const hosts = new Set();
+  page.on("request", (r) => hosts.add(new URL(r.url()).hostname));
+  await page.goto("/");
+
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        await document.fonts.ready;
+        return document.fonts.check('16px "Bakbak One"');
+      }),
+    )
+    .toBe(true);
+  expect(
+    await page.evaluate(() =>
+      getComputedStyle(document.querySelector(".brand")).fontFamily,
+    ),
+  ).toContain("Bakbak One");
+  expect([...hosts]).toEqual(["127.0.0.1"]);
+});
+
+test("the install terminal shows the clone and build commands", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const terminal = page.locator(".terminal-body");
+  await expect(terminal).toContainText(
+    "git clone https://github.com/emshotton/copperroute.git",
+  );
+  await expect(terminal).toContainText("cargo build --release");
+  await expect(terminal).toContainText("copperroute route board.dsn");
+  await expect(terminal).toContainText("copperroute mcp");
+  await expect(terminal).toContainText("claude mcp add copperroute");
+});
+
+test("the header links out to the GitHub project", async ({ page }) => {
+  await page.goto("/");
+  const link = page.locator("header .repo-link");
+  await expect(link).toHaveAttribute(
+    "href",
+    "https://github.com/emshotton/copperroute",
+  );
+  await expect(link).toHaveAttribute("rel", /noopener/);
+  await expect(link).toBeVisible();
+});
+
+test("the install terminal spans the same width as the panel and preview above it", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const edges = await page.evaluate(() => {
+    const w = document.querySelector(".workspace").getBoundingClientRect();
+    const t = document.querySelector(".terminal").getBoundingClientRect();
+    return {
+      workspace: [Math.round(w.left), Math.round(w.right)],
+      terminal: [Math.round(t.left), Math.round(t.right)],
+    };
+  });
+  expect(edges.terminal).toEqual(edges.workspace);
 });

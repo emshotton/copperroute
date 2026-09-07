@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   importBoard,
   exportBoard,
+  netsForSelection,
   parse,
   renderSvg,
 } from "../kicad.js";
@@ -135,7 +136,7 @@ test("zone rebuild preserves zone definitions and removes only cached fill", () 
   assert.ok(output.includes("(polygon (pts (xy 101 101)"));
   assert.ok(!output.includes("filled_polygon"));
   assert.equal(input.board.conductionAreas.length, 0);
-  assert.throws(() => load(text), /Copper zones, keepouts and curved tracks/);
+  assert.throws(() => load(text), /Copper zones and keepouts/);
 });
 
 test("native preview escapes text and displays copper without a routing import", async () => {
@@ -295,4 +296,66 @@ test("a stroked convex custom pad includes its copper, while unsupported primiti
   assert.ok(Math.max(...polygon.map(p=>p.y))<=.905);
   assert.throws(()=>load(text.replace('(fill yes)','(fill no)')),/filled convex/);
   assert.throws(()=>load(text.replace('(anchor circle)','(anchor rect)')),/circular anchor/);
+});
+
+const routedSource = source.replace(
+  /\)\s*$/,
+  `  (segment (start 105 105) (end 125 115) (width 0.25) (layer "F.Cu") (net 1))
+  (segment (start 105 110) (end 125 120) (width 0.25) (layer "F.Cu") (net 2))
+)`,
+);
+
+test("rips up only the nets named in ripUpNets", () => {
+  const { board } = importBoard(routedSource, "example", rules, {
+    ripUpRouting: true,
+    ripUpNets: new Set(["Signal"]),
+  });
+  assert.deepEqual(
+    board.traces.map((t) => t.netName),
+    ["Return"],
+    "the deselected net keeps its copper as an obstacle",
+  );
+});
+
+test("rips up every net when ripUpNets is absent", () => {
+  const { board } = importBoard(routedSource, "example", rules, {
+    ripUpRouting: true,
+  });
+  assert.deepEqual(board.traces, []);
+});
+
+test("offers every board net with its class for selection", () => {
+  assert.deepEqual(netsForSelection(source, "example", rules), [
+    { name: "Signal", className: "Default" },
+    { name: "Return", className: "Default" },
+  ]);
+});
+
+test("offers no net selection for a board that cannot be imported", () => {
+  assert.equal(netsForSelection("(kicad_pcb)", "broken", rules), null);
+});
+
+const arcSource = source.replace(
+  /\)\s*$/,
+  `  (arc (start 105 105) (mid 112 108) (end 125 115) (width 0.25) (layer "F.Cu") (net 1))
+)`,
+);
+
+test("refuses a curved track that a deselected net would keep", () => {
+  assert.throws(
+    () =>
+      importBoard(arcSource, "example", rules, {
+        ripUpRouting: true,
+        ripUpNets: new Set(["Return"]),
+      }),
+    /Curved tracks are not supported/,
+  );
+});
+
+test("accepts a curved track on a net that is being ripped up", () => {
+  const { board } = importBoard(arcSource, "example", rules, {
+    ripUpRouting: true,
+    ripUpNets: new Set(["Signal"]),
+  });
+  assert.deepEqual(board.traces, []);
 });

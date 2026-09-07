@@ -39,6 +39,7 @@ pub struct BatchAutorouter<'a> {
     pub session_start_time: Option<Instant>,
     pub is_optimizer_autorouter: bool,
     pub net_filter: Option<BTreeSet<i32>>,
+    configured_net_filter: Option<BTreeSet<i32>>,
 
     board_update_gate: ProgressThrottler,
 
@@ -103,6 +104,7 @@ impl<'a> BatchAutorouter<'a> {
             session_start_time: None,
             is_optimizer_autorouter: false,
             net_filter: None,
+            configured_net_filter: None,
             board_update_gate: ProgressThrottler::board_update_gate(
                 budget.board_update_throttle_ms,
             ),
@@ -116,7 +118,7 @@ impl<'a> BatchAutorouter<'a> {
         settings: &'a RouterSettings,
         budget: RouterBudget,
     ) -> BatchAutorouter<'a> {
-        BatchAutorouter::new(
+        let mut router = BatchAutorouter::new(
             board,
             settings,
             !settings.is_fanout_enabled(),
@@ -124,7 +126,10 @@ impl<'a> BatchAutorouter<'a> {
             settings.get_start_ripup_costs(),
             settings.trace_pull_tight_accuracy.unwrap_or(500),
             budget,
-        )
+        );
+        router.net_filter = settings.net_filter.clone();
+        router.configured_net_filter = settings.net_filter.clone();
+        router
     }
 
     pub fn is_benchmark_profile_enabled() -> bool {
@@ -302,6 +307,10 @@ impl<'a> BatchAutorouter<'a> {
             stop,
             search_budget,
         )
+    }
+
+    pub fn reset_net_filter_after_ripup(&mut self) {
+        self.net_filter = self.configured_net_filter.clone();
     }
 
     pub fn autoroute_items(&self, board: &Board) -> Vec<(ItemId, i32)> {

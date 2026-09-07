@@ -343,12 +343,16 @@ impl<'a> BatchFanout<'a> {
             .unwrap_or("outer_first");
 
         let board_smd_pin_list = board.get_smd_pins();
+        let net_filter = settings.net_filter.as_ref();
         let board_smd_pin_list_with_nets: Vec<ItemId> = board_smd_pin_list
             .into_iter()
             .filter(|pin| {
-                board
-                    .get_item(*pin)
-                    .is_some_and(|item| item.net_count() > 0)
+                board.get_item(*pin).is_some_and(|item| {
+                    item.net_count() > 0
+                        && net_filter.is_none_or(|nets| {
+                            (0..item.net_count()).any(|i| nets.contains(&item.get_net_number(i)))
+                        })
+                })
             })
             .collect();
 

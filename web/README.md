@@ -4,8 +4,8 @@ A static webpage that accepts a `.kicad_pcb` by dropping it onto the routing
 preview window or using the file picker,
 runs the existing Rust autorouter in a WebAssembly module worker, displays an
 SVG copper preview, and downloads the routed PCB and SVG. No board data is
-uploaded. **Route board** removes all existing top-level segments, track arcs and
-vias from the routing input (including locked items) and routes from scratch.
+uploaded. **Route board** removes the existing top-level segments, track arcs and
+vias of the selected nets (including locked items) and routes those from scratch.
 The initial preview shows the original board; clicking Route shows the unrouted
 copy while WASM runs, then updates live with routed copper. The pass number,
 remaining connections, and routes completed in the pass update alongside it.
@@ -16,6 +16,25 @@ The preview appears immediately on file selection, independently of
 routing compatibility. Drop `.kicad_pcb` and `.kicad_pro` together to import project
 rules, or use the separate optional project picker. Includes a tiny example board
 and an immediate Cancel button.
+
+**Board rules** and **Nets to route** are collapsed panels sharing one style.
+Each summary names its current state — the project file, embedded classes or
+manual rules, and the number of selected nets — so both stay readable while
+closed. Board rules holds the zone refill and via-in-pad options.
+
+The example board loads and renders straight away, under a hint inviting a
+board to be dropped on the preview. The hint clears on the first click, key
+press, scroll or drag, leaving the board visible.
+
+A terminal-styled block below the results carries the commands for cloning and
+building the command-line router from GitHub, which the header also links to,
+and for serving the routing tools over MCP.
+Import notes are no longer surfaced; the status line keeps the pass count and
+the review reminder, and DRC findings stay in their own disclosure.
+
+The preview header carries the routing result — remaining connections and the
+router DRC count, split into violations that predate the route and new ones.
+The line below the preview keeps the pass count and the review reminder.
 
 ## Run
 
@@ -38,7 +57,30 @@ scripts/tests, and Python 3 serves the static files. The generated `pkg/` is
 ignored by Git. Serve the `web/` directory over HTTP(S), not `file://`.
 Any static host serving `.wasm` as `application/wasm` can host the page. There
 are no runtime CDN dependencies, backend services, or cross-origin isolation
-requirements. The current release WASM is approximately 2.9 MiB uncompressed.
+requirements; the logo face is the vendored
+`fonts/bakbak-one-latin.woff2` (9.5 KiB), served from the same origin under
+the SIL Open Font License in `fonts/OFL.txt`, so no request leaves the page. The current release WASM is
+approximately 2.9 MiB uncompressed.
+
+## Net selection
+
+**Nets to route** lists every net on the board with its net class. All nets
+start selected, so the default route is unchanged. Deselecting a net excludes
+it from routing and keeps its existing tracks and vias, which the router treats
+as fixed obstacles; only the selected nets are ripped up and routed from
+scratch. Unselected nets stay unrouted and are counted in the remaining
+connections. **Select all** and **Select none** apply to the nets currently
+matching the filter box. Routing is blocked while no net is selected.
+
+The list comes from the board itself, so it appears once the preview loads and
+resets with each new board. Selection is passed to the router by net name.
+A board the router cannot import still previews, without the net list, and DSN
+boards have no net list.
+
+Rerouting a subset of an already routed board is harder than routing the whole
+board: the copper of every unselected net is fixed, so the router must fit the
+selected nets around it. Expect more remaining connections than a full route of
+the same board.
 
 ## Via-in-pad rules
 

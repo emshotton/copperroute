@@ -704,3 +704,70 @@ fn one_pass_record_per_completed_pass_in_order() {
         last.incomplete_count as i32
     );
 }
+
+#[test]
+fn the_batch_loop_routes_only_the_configured_nets() {
+    let mut board = load_board(J2);
+    let mut settings = build_settings(&board, 2);
+    let target = 1;
+    settings.set_net_filter(Some([target].into_iter().collect()));
+
+    AutorouteBatchLoop::run(
+        &mut board,
+        &settings,
+        &RouterStop::new(),
+        RouterBudget::disabled(),
+        &mut NoopProgressSink,
+    )
+    .expect("the filtered board still routes");
+
+    let mut stray: Vec<i32> = board
+        .items
+        .values()
+        .filter(|item| matches!(item, Item::Trace(_)))
+        .filter(|item| item.get_fixed_state() == FixedState::Unfixed)
+        .flat_map(|item| (0..item.net_count()).map(|i| item.get_net_number(i)))
+        .filter(|net| *net != target)
+        .collect();
+    stray.sort_unstable();
+    stray.dedup();
+
+    assert!(
+        stray.is_empty(),
+        "the router laid copper on unselected nets {stray:?}"
+    );
+}
+
+#[test]
+fn fanout_respects_the_configured_nets() {
+    let mut board = load_board(J2);
+    let mut settings = build_settings(&board, 2);
+    settings.fanout.get_or_insert_with(Default::default).enabled = Some(true);
+    let target = 1;
+    settings.set_net_filter(Some([target].into_iter().collect()));
+
+    AutorouteBatchLoop::run(
+        &mut board,
+        &settings,
+        &RouterStop::new(),
+        RouterBudget::disabled(),
+        &mut NoopProgressSink,
+    )
+    .expect("the filtered board still routes");
+
+    let mut stray: Vec<i32> = board
+        .items
+        .values()
+        .filter(|item| matches!(item, Item::Trace(_)))
+        .filter(|item| item.get_fixed_state() == FixedState::Unfixed)
+        .flat_map(|item| (0..item.net_count()).map(|i| item.get_net_number(i)))
+        .filter(|net| *net != target)
+        .collect();
+    stray.sort_unstable();
+    stray.dedup();
+
+    assert!(
+        stray.is_empty(),
+        "fanout laid copper on unselected nets {stray:?}"
+    );
+}

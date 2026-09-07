@@ -8,18 +8,27 @@
   </head>
   <body>
     <header>
-      <a class="brand" href="./"><span class="mark">↗</span> copperroute</a
-      ><span class="private">● Files stay on your device</span>
+      <a class="brand" href="./"><span class="mark">↗</span> CopperRoute</a>
+      <div class="header-right">
+        <span class="private">● Files stay on your device</span
+        ><a
+          class="repo-link"
+          href="https://github.com/emshotton/copperroute"
+          target="_blank"
+          rel="noopener noreferrer"
+          ><svg viewBox="0 0 16 16" aria-hidden="true" width="16" height="16">
+            <path
+              fill="currentColor"
+              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+            /></svg
+          >GitHub</a
+        >
+      </div>
     </header>
     <main>
-      <section class="intro">
-        <h1>Route a PCB in your browser.</h1>
-        <p class="lede">
-          Drop a KiCad board or Specctra DSN. Take home the routed file.
-        </p>
-      </section>
       <div class="workspace">
-        <aside>
+        <div class="sidebar">
+          <aside>
           <input
             id="file"
             type="file"
@@ -27,21 +36,142 @@
             multiple
             hidden
           />
-          <button id="choose-board" class="text-button">Choose a board…</button>
-          <label class="project-label"
-            >Example board<select id="examples">
+          <div class="board-picker">
+            <button id="choose-board" class="text-button">
+              Choose a board…
+            </button>
+            <select id="examples" aria-label="Example board">
               <option value="uno">Easyduino Uno</option>
               <option value="nano">Easyduino Nano</option>
-            </select></label
-          >
-          <button id="reload-example" class="text-button">
-            Reload example ↗
-          </button>
+            </select>
+          </div>
+          <p class="board-links">
+            <button id="reload-example" type="button" class="link-button">
+              Reload example
+            </button>
+            <button id="demo" type="button" class="link-button">
+              Try a small example
+            </button>
+          </p>
+          <form id="settings">
+            <h2>Routing settings</h2>
+            <details id="rules-panel" class="panel">
+              <summary><span id="rules-summary">Board rules</span></summary>
+              <label class="project-label"
+                >KiCad project (optional)<input
+                  id="project"
+                  type="file"
+                  accept=".kicad_pro"
+              /></label>
+              <p id="project-name" class="hint">
+                No project selected — using the manual rules below.
+              </p>
+              <button id="clear-project" type="button" class="text-button">
+                Use manual rules
+              </button>
+              <div class="fields">
+                <label
+                  >Trace width <span>mm</span
+                  ><input
+                    id="traceWidth"
+                    type="number"
+                    min="0.1"
+                    max="5"
+                    step="0.05"
+                    value="0.25"
+                    required
+                /></label>
+                <label
+                  >Clearance <span>mm</span
+                  ><input
+                    id="clearance"
+                    type="number"
+                    min="0.1"
+                    max="5"
+                    step="0.05"
+                    value="0.2"
+                    required
+                /></label>
+                <label
+                  >Via diameter <span>mm</span
+                  ><input
+                    id="viaDiameter"
+                    type="number"
+                    min="0.2"
+                    max="5"
+                    step="0.05"
+                    value="0.6"
+                    required
+                /></label>
+                <label
+                  >Via drill <span>mm</span
+                  ><input
+                    id="viaDrill"
+                    type="number"
+                    min="0.1"
+                    max="4"
+                    step="0.05"
+                    value="0.3"
+                    required
+                /></label>
+                <label
+                  >Max passes<input
+                    id="passes"
+                    type="number"
+                    min="1"
+                    max="100"
+                    value="10"
+                    required
+                /></label>
+                <label
+                  >Time limit <span>seconds</span
+                  ><input
+                    id="seconds"
+                    type="number"
+                    min="1"
+                    max="600"
+                    value="300"
+                    required
+                /></label>
+              </div>
+              <label class="zone-option"
+                ><input id="rebuild-zones" type="checkbox" checked /> Refill copper
+                zones in KiCad after routing</label
+              >
+              <label class="zone-option"
+                ><input id="allow-via-in-pad" type="checkbox" /> Allow vias in SMD
+                pads</label
+              >
+            </details>
+            <details id="net-panel" class="panel" hidden>
+              <summary><span id="net-summary">Nets to route</span></summary>
+              <div class="net-controls">
+                <button id="nets-all" type="button" class="text-button">
+                  Select all
+                </button>
+                <button id="nets-none" type="button" class="text-button">
+                  Select none
+                </button>
+                <input
+                  id="net-filter"
+                  type="search"
+                  placeholder="Filter"
+                  aria-label="Filter nets"
+                />
+              </div>
+              <ul id="net-list"></ul>
+            </details>
+            <button id="route" class="primary" disabled>Route board ↗</button
+            ><button id="cancel" type="button" hidden>Cancel routing</button>
+            <p class="warn">
+              Routing replaces every existing track and via on the selected
+              nets, including locked ones.
+            </p>
+          </form>
+          </aside>
           <p id="example-credit" class="hint" hidden>
             Arduino-compatible design by
-            <a href="https://github.com/Hanqaqa/Easyduino"
-              >Easyduino / Hanqaqa</a
-            >
+            <a href="https://github.com/Hanqaqa/Easyduino">Easyduino / Hanqaqa</a>
             ·
             <a href="./examples/easyduino/LICENSE.txt" download
               >CERN-OHL-P-2.0 license</a
@@ -49,102 +179,7 @@
             · <a href="./examples/easyduino/NOTICE.txt">Source &amp; notices</a>
           </p>
           <p id="example-routing" class="hint" hidden></p>
-          <button id="demo" class="text-button">Try a small example ↗</button>
-          <form id="settings">
-            <h2>Routing settings</h2>
-            <label class="project-label"
-              >KiCad project (optional)<input
-                id="project"
-                type="file"
-                accept=".kicad_pro"
-            /></label>
-            <p id="project-name" class="hint">
-              No project selected — using the manual rules below.
-            </p>
-            <button id="clear-project" type="button" class="text-button">
-              Use manual rules
-            </button>
-            <div class="fields">
-              <label
-                >Trace width <span>mm</span
-                ><input
-                  id="traceWidth"
-                  type="number"
-                  min="0.1"
-                  max="5"
-                  step="0.05"
-                  value="0.25"
-                  required
-              /></label>
-              <label
-                >Clearance <span>mm</span
-                ><input
-                  id="clearance"
-                  type="number"
-                  min="0.1"
-                  max="5"
-                  step="0.05"
-                  value="0.2"
-                  required
-              /></label>
-              <label
-                >Via diameter <span>mm</span
-                ><input
-                  id="viaDiameter"
-                  type="number"
-                  min="0.2"
-                  max="5"
-                  step="0.05"
-                  value="0.6"
-                  required
-              /></label>
-              <label
-                >Via drill <span>mm</span
-                ><input
-                  id="viaDrill"
-                  type="number"
-                  min="0.1"
-                  max="4"
-                  step="0.05"
-                  value="0.3"
-                  required
-              /></label>
-              <label
-                >Max passes<input
-                  id="passes"
-                  type="number"
-                  min="1"
-                  max="100"
-                  value="10"
-                  required
-              /></label>
-              <label
-                >Time limit <span>seconds</span
-                ><input
-                  id="seconds"
-                  type="number"
-                  min="1"
-                  max="600"
-                  value="300"
-                  required
-              /></label>
-            </div>
-            <label class="zone-option"
-              ><input id="rebuild-zones" type="checkbox" checked /> Refill copper
-              zones in KiCad after routing</label
-            >
-            <label class="zone-option"
-              ><input id="allow-via-in-pad" type="checkbox" /> Allow vias in SMD
-              pads</label
-            >
-            <button id="route" class="primary" disabled>Route board ↗</button
-            ><button id="cancel" type="button" hidden>Cancel routing</button>
-            <p class="warn">
-              Routing replaces every existing track and via, including locked
-              ones.
-            </p>
-          </form>
-        </aside>
+        </div>
         <section
           id="drop"
           class="viewer"
@@ -154,7 +189,10 @@
         >
           <div class="viewer-head">
             <span id="filename">BOARD PREVIEW</span
-            ><span id="badge">Ready for a board</span>
+            ><span class="head-right"
+              ><span id="metrics" hidden></span
+              ><span id="badge">Ready for a board</span></span
+            >
           </div>
           <div id="preview">
             <div class="empty">
@@ -162,6 +200,33 @@
               <h2>Drop your board here.</h2>
               <p>.kicad_pcb or .dsn, with an optional .kicad_pro.</p>
             </div>
+          </div>
+          <div id="drop-hint" class="drop-hint">
+            <svg
+              class="drop-icon"
+              viewBox="0 0 48 48"
+              fill="none"
+              aria-hidden="true"
+            >
+              <rect
+                x="3"
+                y="9"
+                width="42"
+                height="30"
+                rx="4"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-dasharray="5 4"
+              />
+              <path
+                d="M24 17v12m0 0-5-5m5 5 5-5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <p>Drag and drop a Specctra DSN or KiCad PCB here to route</p>
           </div>
           <div class="viewer-foot">
             <span id="layer-legend"></span><span>SVG PREVIEW</span>
@@ -173,7 +238,6 @@
           <p id="status" role="status" aria-live="polite">
             Choose a board to get started.
           </p>
-          <p id="warnings"></p>
           <details id="drc-results" hidden>
             <summary id="drc-summary"></summary>
             <ul id="drc-list"></ul>
@@ -184,6 +248,30 @@
           ><a id="ses" hidden>Download SES session ↓</a
           ><a id="svg" hidden>Download SVG ↓</a>
         </div>
+      </section>
+      <section class="install">
+        <h2>Run it on your own machine</h2>
+        <div class="terminal">
+          <div class="terminal-bar">
+            <span class="dot"></span><span class="dot"></span
+            ><span class="dot"></span>
+          </div>
+          <pre class="terminal-body"><span class="prompt">$</span> git clone https://github.com/emshotton/copperroute.git
+<span class="prompt">$</span> cd copperroute
+<span class="prompt">$</span> cargo build --release
+<span class="comment"># route a board and write a session file</span>
+<span class="prompt">$</span> ./target/release/copperroute route board.dsn -o board.ses
+
+<span class="comment"># or serve the routing tools over MCP (JSON-RPC on stdin/stdout)</span>
+<span class="prompt">$</span> ./target/release/copperroute mcp
+<span class="comment"># register that server with Claude Code</span>
+<span class="prompt">$</span> claude mcp add copperroute -- ./target/release/copperroute mcp</pre>
+        </div>
+        <p class="hint">
+          Needs a Rust toolchain; the pinned version is in
+          <code>rust-toolchain.toml</code>. Run
+          <code>copperroute --help</code> for the full command list.
+        </p>
       </section>
       <footer>
         <details>
