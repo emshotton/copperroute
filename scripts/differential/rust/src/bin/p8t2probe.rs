@@ -9,9 +9,9 @@
 //! The driver is called `p8t2probe`, not `p8t2`: the plan reserves `p8t2` for Task 4's manifest
 //! driver, which is a different driver against the same jar.
 
-use fr_core::{BoardStatistics, BoardStatisticsExt, FileFormat, count_occurrences, to_gson_string};
-use fr_dsn::{format_double, format_float};
-use fr_router::score::{BoardStatisticsFanout, Rectangle2DFloat};
+use copper_core::{BoardStatistics, BoardStatisticsExt, FileFormat, count_occurrences, to_gson_string};
+use copper_dsn::{format_double, format_float};
+use copper_router::score::{BoardStatisticsFanout, Rectangle2DFloat};
 use std::path::{Path, PathBuf};
 
 /// The FLD column order: `BoardStatistics.java:37-79`, then each DTO's own declaration order.
@@ -197,9 +197,9 @@ fn main() {
             &format!("{stem}/batch.ses"),
             FileFormat::Ses,
             // The migrated, pre-lane-switch jar-written copies (ruling BT, Plan 9 Task 2); see
-            // `crates/fr-core/tests/data/p8t2-batch-ses/README.md` and the Java twin's note.
+            // `crates/copper-core/tests/data/p8t2-batch-ses/README.md` and the Java twin's note.
             &format!("data:p8t2-batch-ses/{stem}.ses"),
-            &repo_root.join(format!("crates/fr-core/tests/data/p8t2-batch-ses/{stem}.ses")),
+            &repo_root.join(format!("crates/copper-core/tests/data/p8t2-batch-ses/{stem}.ses")),
         ));
     }
     rows.push(file_row(
@@ -222,7 +222,7 @@ fn main() {
         "router-dac2020-bm01/batch.ses AS DSN",
         FileFormat::Dsn,
         "data:p8t2-batch-ses/router-dac2020-bm01.ses",
-        &repo_root.join("crates/fr-core/tests/data/p8t2-batch-ses/router-dac2020-bm01.ses"),
+        &repo_root.join("crates/copper-core/tests/data/p8t2-batch-ses/router-dac2020-bm01.ses"),
     ));
 
     // ---- the guards and the formats with no branch --------------------------------------------

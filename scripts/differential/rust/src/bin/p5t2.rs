@@ -9,12 +9,12 @@
 
 use std::io::{BufWriter, Write};
 
-use fr_board::board::Board;
-use fr_board::ids::ItemId;
-use fr_board::items::{Item, ItemKind};
-use fr_drc::unconnected::UnconnectedKind;
-use fr_drc::DesignRulesChecker;
-use fr_dsn::format::double::format_double;
+use copper_board::board::Board;
+use copper_board::ids::ItemId;
+use copper_board::items::{Item, ItemKind};
+use copper_drc::unconnected::UnconnectedKind;
+use copper_drc::DesignRulesChecker;
+use copper_dsn::format::double::format_double;
 
 #[path = "../drc_common.rs"]
 mod drc_common;

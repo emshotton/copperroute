@@ -320,7 +320,7 @@ board anyway** (rpi-splitter: 0 incompletes, 2 vias, against 5 incompletes with 
 composition test says so explicitly.
 
 **References.** Every routed reference moved: families B, C and R were re-cut from the port
-(`FR_REGOLDEN=<label>` on `batch_parity`, `reference_parity` and `cli_e2e` writes them; the metas
+(`COPPERROUTE_REGOLDEN=<label>` on `batch_parity`, `reference_parity` and `cli_e2e` writes them; the metas
 are re-stamped by hand), and four JVM transcripts whose routes were priced by radius became port
 goldens (`p10-autoroute-connection.txt`, `p10-opt-changed-area.txt`, `p10-board-history.txt`, and
 the `p9t16-via-optimizer.txt` sections). The maze unit transcripts keep Java's price by setting it
@@ -328,11 +328,11 @@ explicitly in their probe controls, because the mechanics they pin do not depend
 
 ### Reproduction
 
-Release binary from this worktree, `FR_ROUTER_BUDGET=disabled` (the quality lane, ruling AI), one
+Release binary from this worktree, `COPPERROUTE_ROUTER_BUDGET=disabled` (the quality lane, ruling AI), one
 cell per settings combination:
 
 ```sh
-freerouting route fixtures/Issue026-J2_reference.dsn -o out.ses --max-passes 99 \
+copperroute route fixtures/Issue026-J2_reference.dsn -o out.ses --max-passes 99 \
   --result-json out.json \
   --set router.fanout.enabled=true --set router.optimizer.enabled=true \
   --set router.optimizer.optimization_improvement_threshold=0 \

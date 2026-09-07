@@ -59,7 +59,7 @@ def _score_cell(board: corpus.Board, cell: Path, java_config: dict | None):
 
 @click.group()
 def main() -> None:
-    """Freerouting comparison suite."""
+    """Copperroute comparison suite."""
 
 
 @main.group("corpus")

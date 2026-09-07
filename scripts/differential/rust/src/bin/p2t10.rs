@@ -1,7 +1,7 @@
 //! Rust twin of `scripts/differential/java/P2T10.java` (Plan 2 Task 10).
 //!
 //! Builds the same two-layer board — two pins from one component, two traces, an empty board
-//! outline — through `fr-board`'s public API, then prints the same lines the Java driver prints:
+//! outline — through `copper-board`'s public API, then prints the same lines the Java driver prints:
 //! every item's identity, every tree's key/leaves/stored shapes, and the result of every query.
 //!
 //! Modes: `0` = 45-degree board, `1` = 90-degree, `2` = no angle restriction, `3` = the
@@ -9,9 +9,9 @@
 
 use std::collections::BTreeMap;
 
-use fr_board::prelude::*;
-use fr_board::LeafId;
-use fr_geometry::{
+use copper_board::prelude::*;
+use copper_board::LeafId;
+use copper_geometry::{
     Area, IntBox, IntOctagon, IntPoint, IntVector, Point, PolygonShape, Polyline, PolylineShapeRef,
     Shape, Simplex, TileShape, Vector,
 };

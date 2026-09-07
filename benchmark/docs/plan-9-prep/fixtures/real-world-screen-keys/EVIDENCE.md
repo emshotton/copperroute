@@ -1,7 +1,7 @@
 # Real-world case: screen-keys — the invisible top-edge corridor
 
 A 2-layer, 34-net keyboard/screen board (from the user's Room-Service-2026
-project; DSN exported via pcbnew after stripping routes). Both freerouting-rs
+project; DSN exported via pcbnew after stripping routes). Both copperroute-rs
 v1.0.0 AND the Java HEAD jar leave the same single connection open at -mp 40:
 
     5V: C1.1 @ (13.5, 8.0) -> J1.2/J1.4 @ (55.9-58.4, 12.7)

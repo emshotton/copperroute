@@ -37,7 +37,7 @@ pub fn example(name: &str) -> PathBuf {
 /// yields the empty string, which is Java's behaviour too and is why the `unwrap_or_default` is
 /// not a shortcut.
 ///
-/// **One copy, deliberately.** It lived twice — in `crates/fr-dsn/tests/parity_dsn.rs` and in
+/// **One copy, deliberately.** It lived twice — in `crates/copper-dsn/tests/parity_dsn.rs` and in
 /// `scripts/differential/rust/src/bin/refwriter.rs`, the binary that cuts the committed
 /// `roundtrip.dsn` / `unrouted.ses` from the port — and a drift between the two would have moved
 /// every family-G golden with nothing failing (Plan 9 Task 0 review, S5). Both now call this.
@@ -189,11 +189,11 @@ pub fn assert_text_parity(actual: &str, reference_path: &Path) {
 ///
 /// The document is re-emitted from [`DrcReportDoc`], whose fields are in Java's declaration order
 /// (`KiCadDrcReport.java:20-57`), so the key order of the input does not survive — which is why
-/// key order is pinned separately and byte-exactly by `crates/fr-drc/tests/report_json.rs`
+/// key order is pinned separately and byte-exactly by `crates/copper-drc/tests/report_json.rs`
 /// against Gson's own output. `#[serde(deny_unknown_fields)]` makes a key the port does not know
 /// about a loud parse failure rather than a silent drop.
 ///
-/// The input must be plan-5 ruling 2's `FreeroutingHead` flavor — the parity default and the
+/// The input must be plan-5 ruling 2's `Legacy` flavor — the parity default and the
 /// spelling the HEAD jar writes.
 ///
 /// # Errors
@@ -203,7 +203,7 @@ pub fn normalize_drc_json(s: &str) -> Result<String, serde_json::Error> {
     normalize_drc_doc(&mut parse_drc_json(s)?)
 }
 
-/// Parses a `FreeroutingHead`-flavor DRC report. Split out of [`normalize_drc_json`] so a caller
+/// Parses a `Legacy`-flavor DRC report. Split out of [`normalize_drc_json`] so a caller
 /// that has to *edit* the document before comparing — the Natural Tone Preamp fixture, where the
 /// port legitimately emits three `track_dangling` entries fewer than the JVM (quirk #146) — can do
 /// it on typed data and still compare the normalised bytes.
@@ -222,7 +222,7 @@ pub fn parse_drc_json(s: &str) -> Result<DrcReportDoc, serde_json::Error> {
 /// documents being byte-equal therefore says the two reports carry the same values in the same
 /// order — it says nothing about how either side spelled a `double` or ordered its keys. Those are
 /// pinned separately and byte-exactly against Gson's own output by
-/// `crates/fr-drc/tests/report_json.rs::head_flavor_is_the_jvms_gson_bytes`.
+/// `crates/copper-drc/tests/report_json.rs::head_flavor_is_the_jvms_gson_bytes`.
 ///
 /// # Errors
 ///
@@ -244,7 +244,7 @@ pub fn normalize_drc_doc(doc: &mut DrcReportDoc) -> Result<String, serde_json::E
 /// Port of `io.kicad.KiCadDrcReport` as a *parity projection*: the fields in Java's declaration
 /// order (`KiCadDrcReport.java:20-57`) under plan-5 ruling 1's HEAD key spellings.
 ///
-/// This is deliberately not `fr_drc::KiCadDrcReport`: `tests/parity` sits below every crate under
+/// This is deliberately not `copper_drc::KiCadDrcReport`: `tests/parity` sits below every crate under
 /// test and must be able to read a reference the port cannot yet produce.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -260,8 +260,13 @@ pub struct DrcReportDoc {
     pub date: Option<String>,
     #[serde(rename = "kicadVersion", alias = "kicad_version")]
     pub kicad_version: String,
-    #[serde(rename = "freeroutingVersion", alias = "freerouting_version")]
-    pub freerouting_version: String,
+    #[serde(
+        rename = "copperrouteVersion",
+        alias = "copperroute_version",
+        alias = "freeroutingVersion",
+        alias = "freerouting_version"
+    )]
+    pub router_version: String,
     pub source: String,
     #[serde(rename = "unconnectedItems", alias = "unconnected_items")]
     pub unconnected_items: Vec<DrcViolationDoc>,
@@ -318,7 +323,7 @@ pub struct DrcPositionDoc {
 // `tests/reference/<stem>/router.jsonl` is one JSON line per connection, written verbatim by
 // `scripts/differential/java/P6T1.java` through `scripts/gen-router-reference.sh`. The types below
 // are a *parity projection* of that line, in the driver's own field order, so that
-// `crates/fr-router/tests/reference_parity.rs` can read a reference and compare it rung by rung
+// `crates/copper-router/tests/reference_parity.rs` can read a reference and compare it rung by rung
 // against what the port produces — rather than diffing two strings and reporting "line 214
 // differs".
 //
@@ -526,10 +531,10 @@ pub fn parse_router_jsonl(s: &str) -> Result<Vec<RouterConnectionDoc>, String> {
 // `tests/reference/<stem>/batch.ses` is the HEAD jar's **verbatim** SES for a whole-board
 // `-de <dsn> -do <ses>` run, and `batch.passes.jsonl` its per-pass `PassRecord` tuples. Both are
 // written by `scripts/gen-batch-reference.sh`. The types and the one normaliser below are what
-// `crates/fr-router/tests/batch_parity.rs` reads them with.
+// `crates/copper-router/tests/batch_parity.rs` reads them with.
 
 /// One completed routing pass of a `batch.passes.jsonl` reference — the six fields of
-/// `fr_router::pipeline::PassRecord`, in `P7T9.passRecord`'s order.
+/// `copper_router::pipeline::PassRecord`, in `P7T9.passRecord`'s order.
 ///
 /// `score` is `f32` because both sides render it through Java's `Float.toString`; the reference
 /// carries the rendered decimal, and `serde_json` parses it back to the same `f32` bit pattern
@@ -632,26 +637,26 @@ pub fn normalize_ses_head_tokens(s: &str) -> String {
 // =================================================================================================
 //
 // `tests/reference/cli-<stem>/` holds one whole command line's answer — `argv.txt`, `route.ses`,
-// `route.exit`, `manifest.json`, `meta.txt` — cut from the binary itself under `FR_REGOLDEN`.
+// `route.exit`, `manifest.json`, `meta.txt` — cut from the binary itself under `COPPERROUTE_REGOLDEN`.
 // [`run_port`] starts the binary and [`normalize_manifest`] reduces the one non-deterministic
 // output to what a comparison can assert on. The runner normalises nothing.
 
-/// The binary: `$FREEROUTING_BIN`, else `target/release/freerouting`, else
-/// `target/debug/freerouting`.
+/// The binary: `$COPPERROUTE_BIN`, else `target/release/copperroute`, else
+/// `target/debug/copperroute`.
 ///
-/// A test inside `crates/freerouting` should pass `env!("CARGO_BIN_EXE_freerouting")` instead —
+/// A test inside `crates/copperroute` should pass `env!("CARGO_BIN_EXE_copperroute")` instead —
 /// Cargo builds and names the binary for it. This search exists for callers outside that package.
 #[must_use]
 pub fn port_binary() -> PathBuf {
-    if let Some(path) = std::env::var_os("FREEROUTING_BIN") {
+    if let Some(path) = std::env::var_os("COPPERROUTE_BIN") {
         return PathBuf::from(path);
     }
     let target = workspace_root().join("target");
-    let release = target.join("release").join("freerouting");
+    let release = target.join("release").join("copperroute");
     if release.is_file() {
         return release;
     }
-    target.join("debug").join("freerouting")
+    target.join("debug").join("copperroute")
 }
 
 ///
@@ -662,7 +667,7 @@ pub fn run_port(argv: &[&str]) -> (Vec<u8>, Vec<u8>, i32) {
 }
 
 /// [`run_port`] with the binary named explicitly, for a caller that has
-/// `env!("CARGO_BIN_EXE_freerouting")`.
+/// `env!("CARGO_BIN_EXE_copperroute")`.
 ///
 /// # Panics
 ///
@@ -769,7 +774,7 @@ pub fn cli_argv(stem: &str, out_dir: &Path) -> Vec<String> {
 /// [`normalize_manifest`]'s answer, and what `p8t2` compares field for field.
 ///
 /// The document is kept as a [`serde_json::Value`] rather than as a typed mirror of
-/// `fr_core::RoutingResultManifest`, deliberately: this crate sits below every crate under test
+/// `copper_core::RoutingResultManifest`, deliberately: this crate sits below every crate under test
 /// and must be able to read a jar-written manifest whose `settings_snapshot` carries fields the
 /// port has not modelled. A typed reader would turn "the jar grew a setting" into a parse failure
 /// instead of into a diff.
@@ -893,11 +898,11 @@ pub fn assert_port_lane_provenance(meta: &str, what: &str) {
     );
 }
 
-/// The label `FR_REGOLDEN` carries when a test run is asked to rewrite the port goldens it
+/// The label `COPPERROUTE_REGOLDEN` carries when a test run is asked to rewrite the port goldens it
 /// would otherwise compare against.
 #[must_use]
 pub fn regolden_label() -> Option<String> {
-    std::env::var("FR_REGOLDEN")
+    std::env::var("COPPERROUTE_REGOLDEN")
         .ok()
         .map(|label| label.trim().to_string())
         .filter(|label| !label.is_empty())

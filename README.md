@@ -1,4 +1,4 @@
-# freerouting-rs
+# copperroute
 
 An open source PCB autorouter. It started as a headless Rust fork of
 [freerouting](https://github.com/freerouting/freerouting) focused on KiCad
@@ -15,18 +15,18 @@ Requires a Rust toolchain (see `rust-toolchain.toml`).
 cargo build --release
 ```
 
-The binary is `target/release/freerouting`.
+The binary is `target/release/copperroute`.
 
 ## Usage
 
 ```sh
-freerouting route board.dsn -o board.ses
-freerouting drc board.dsn --ses board.ses -o report.json
-freerouting info board.dsn
-freerouting mcp
+copperroute route board.dsn -o board.ses
+copperroute drc board.dsn --ses board.ses -o report.json
+copperroute info board.dsn
+copperroute mcp
 ```
 
-Run `freerouting --help` or `freerouting <command> --help` for the full
+Run `copperroute --help` or `copperroute <command> --help` for the full
 option list.
 
 ### With a KiCad project
@@ -37,8 +37,8 @@ the run uses the project's design rules instead of the defaults baked into
 the DSN:
 
 ```sh
-freerouting route board.dsn --kicad-project board.kicad_pro -o board.ses
-freerouting drc board.dsn --kicad-project board.kicad_pro --ses board.ses -o report.json
+copperroute route board.dsn --kicad-project board.kicad_pro -o board.ses
+copperroute drc board.dsn --kicad-project board.kicad_pro --ses board.ses -o report.json
 ```
 
 Import `board.ses` back into KiCad with **File → Import → Specctra
@@ -49,14 +49,14 @@ compared directly with the output of `kicad-cli pcb drc`.
 
 The workspace is split into crates, each with its own README:
 
-- `fr-geometry` — exact-arithmetic planar geometry
-- `fr-board` — the board model, design rules and spatial indexes
-- `fr-dsn` — `.dsn`, `.ses`, `.rules` and KiCad board JSON readers and writers
-- `fr-settings` — router configuration from files, environment and CLI
-- `fr-router` — fanout, maze routing and the optimizer
-- `fr-drc` — the design-rule checker and KiCad DRC report writer
-- `fr-core` — loading, saving, the routing job and result manifest
-- `freerouting` — the command-line program
+- `copper-geometry` — exact-arithmetic planar geometry
+- `copper-board` — the board model, design rules and spatial indexes
+- `copper-dsn` — `.dsn`, `.ses`, `.rules` and KiCad board JSON readers and writers
+- `copper-settings` — router configuration from files, environment and CLI
+- `copper-router` — fanout, maze routing and the optimizer
+- `copper-drc` — the design-rule checker and KiCad DRC report writer
+- `copper-core` — loading, saving, the routing job and result manifest
+- `copperroute` — the command-line program
 
 ## License
 
@@ -65,7 +65,7 @@ GPL-3.0-only. See [LICENSE](LICENSE).
 This project is a derivative work of
 [freerouting](https://github.com/freerouting/freerouting), which is
 distributed under the GNU General Public License version 3. Parts of the
-design-rule checker in `fr-drc` are ported from
+design-rule checker in `copper-drc` are ported from
 [KiCad](https://gitlab.com/kicad/code/kicad), which is distributed under
 the GNU General Public License version 3 or later. Both are compatible with
 distributing the combined work under GPL version 3.

@@ -1,5 +1,5 @@
 [package]
-name = "fr-geometry-differential"
+name = "copper-geometry-differential"
 version = "0.1.0"
 # Kept at 2021, not the repo-wide 2024: edition 2024 reserves `gen` as a
 # keyword, and t14.rs/t15.rs both use `gen` as a function name (ported
@@ -16,20 +16,20 @@ publish = false
 [workspace]
 
 [dependencies]
-fr-geometry = { path = "../../../crates/fr-geometry" }
+copper-geometry = { path = "../../../crates/copper-geometry" }
 # Added for the Plan 2 Task 3 drivers (`p2t3`, `p2t3r`), which exercise
-# `fr-board`'s ShapeTree against Java's ShapeTree/MinAreaTree.
-fr-board = { path = "../../../crates/fr-board" }
+# `copper-board`'s ShapeTree against Java's ShapeTree/MinAreaTree.
+copper-board = { path = "../../../crates/copper-board" }
 # Added for the Plan 3 Task 2 driver (`p3t2`): Java number formatting.
-fr-dsn = { path = "../../../crates/fr-dsn" }
+copper-dsn = { path = "../../../crates/copper-dsn" }
 # Added for the Plan 4 Task 9 driver (`p4t1`): the settings merge under test.
-fr-settings = { path = "../../../crates/fr-settings" }
+copper-settings = { path = "../../../crates/copper-settings" }
 # Added for the Plan 5 Task 10 drivers (`p5t1`, `p5t2`): the design-rule checker under test.
-fr-drc = { path = "../../../crates/fr-drc" }
+copper-drc = { path = "../../../crates/copper-drc" }
 # Added for the Plan 6 Task 3 driver (`p6t2`): `AutorouteSearchTreeExt` under test.
-fr-router = { path = "../../../crates/fr-router" }
+copper-router = { path = "../../../crates/copper-router" }
 # Added for the Plan 8 Task 0 driver (`p8t0`): the timespan grammar and the timeout ladder.
-fr-core = { path = "../../../crates/fr-core" }
+copper-core = { path = "../../../crates/copper-core" }
 parity = { path = "../../../tests/parity" }
 serde_json = "1"
 

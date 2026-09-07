@@ -86,9 +86,9 @@ nix shell $nix_packages --command xvfb-run -a bash -c '
   set -euo pipefail
   export FREEROUTING_JAVA=\$(command -v java)
   export FREEROUTING_JAR=\$PWD/binaries/freerouting-current-executable.jar
-  export FREEROUTING_TIME=$remote_time
-  export FREEROUTING_KICAD_CLI=\$(command -v kicad-cli || true)
-  export FREEROUTING_KICAD_PYTHON=$remote_kicad_python
+  export COPPERROUTE_TIME=$remote_time
+  export COPPERROUTE_KICAD_CLI=\$(command -v kicad-cli || true)
+  export COPPERROUTE_KICAD_PYTHON=$remote_kicad_python
   export UV_PYTHON_DOWNLOADS=never
 PREFIX
 }

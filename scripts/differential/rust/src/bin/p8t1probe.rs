@@ -8,7 +8,7 @@
 //! The driver is called `p8t1probe`, not `p8t1`: the plan reserves `p8t1` for Task 6's end-to-end
 //! SES-byte gate.
 
-use fr_core::{BoardFileDetails, FileFormat, RoutingJob};
+use copper_core::{BoardFileDetails, FileFormat, RoutingJob};
 use std::path::{Path, PathBuf};
 
 /// Transcribed from the Java probe, whose watchdog measures it: what the port answers on the rows
@@ -290,7 +290,7 @@ fn java_change_file_extension_npes(filename: &str) -> bool {
     }
 }
 
-/// `Path.of(s).toString()` — the same normalisation `fr_core::job::java_path::of_to_string` does,
+/// `Path.of(s).toString()` — the same normalisation `copper_core::job::java_path::of_to_string` does,
 /// repeated here because that module is crate-private.
 fn normalize_java_path(s: &str) -> String {
     let absolute = s.starts_with('/');
@@ -452,9 +452,9 @@ fn sif_table(ctx: &Ctx) {
 
 /// The `getClass().getSimpleName()` Java would print for the same failure. `set_input`'s only
 /// error arm is the `new FileInputStream(inputFile)` at `RoutingJob.java:428`.
-fn java_exception_name(e: &fr_core::Error) -> &'static str {
+fn java_exception_name(e: &copper_core::Error) -> &'static str {
     match e {
-        fr_core::Error::Io(io) if io.kind() == std::io::ErrorKind::NotFound => {
+        copper_core::Error::Io(io) if io.kind() == std::io::ErrorKind::NotFound => {
             "FileNotFoundException"
         }
         _ => "IOException",

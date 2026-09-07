@@ -1,10 +1,10 @@
-use fr_geometry::int_box::IntBox;
-use fr_geometry::int_point::IntPoint;
-use fr_geometry::line::Line;
-use fr_geometry::line_segment::LineSegment;
-use fr_geometry::point::Point;
-use fr_geometry::simplex::Simplex;
-use fr_geometry::tile_shape::TileShape;
+use copper_geometry::int_box::IntBox;
+use copper_geometry::int_point::IntPoint;
+use copper_geometry::line::Line;
+use copper_geometry::line_segment::LineSegment;
+use copper_geometry::point::Point;
+use copper_geometry::simplex::Simplex;
+use copper_geometry::tile_shape::TileShape;
 
 fn ip_arr(a: &[IntPoint]) -> String {
     let mut b = format!("[{}:", a.len());

@@ -4,7 +4,7 @@
 
 **Goal:** One native command line, one settings story, and one `ops` implementation that the CLI subcommands and the MCP tools both call; the legacy argv form, the env-var settings sources and the parity-shaped exit codes, messages and version stamps are removed.
 
-**Architecture:** A new `crates/freerouting/src/ops/` module owns the request types (`LoadRequest`, `RouteRequest`, `DrcRequest`, `InfoRequest`) and the four operations. `commands/*` and `mcp/tools/*` become adapters: build a request, call the operation, render the outcome as exit code plus files or as a JSON result. `fr-settings` and `fr-router` are untouched except for one `pub` and one normaliser field in `tests/parity`.
+**Architecture:** A new `crates/copperroute/src/ops/` module owns the request types (`LoadRequest`, `RouteRequest`, `DrcRequest`, `InfoRequest`) and the four operations. `commands/*` and `mcp/tools/*` become adapters: build a request, call the operation, render the outcome as exit code plus files or as a JSON result. `copper-settings` and `copper-router` are untouched except for one `pub` and one normaliser field in `tests/parity`.
 
 **Tech Stack:** Rust 2024 workspace (`cargo`, `clap` derive, `serde_json`, `thiserror`, `tracing`), Python 3 with `uv` for `benchmark/`, bash for `scripts/`.
 
@@ -13,13 +13,13 @@
 ## Global Constraints
 
 - `#![forbid(unsafe_code)]` in every crate root; no new workspace dependencies.
-- Every committed golden under `tests/reference/` stays byte-identical. `FR_REGOLDEN` is **not** used in this change. If a golden moves, the task that moved it is wrong, not the golden.
+- Every committed golden under `tests/reference/` stays byte-identical. `COPPERROUTE_REGOLDEN` is **not** used in this change. If a golden moves, the task that moved it is wrong, not the golden.
 - Comments only for unexpected behaviour (repo `CLAUDE.md`): no comments that restate the code, describe past or future state, or cite plans or tickets.
 - Tests that read the fixture corpus call `parity::require_java_dir()` first and return when it is absent.
 - Commit after every task with the trailer the session prescribes:
   `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` and
   `Claude-Session: https://claude.ai/code/session_018geYSyakvFMTVKjJY2e2Kt`.
-- Run commands from the worktree root `/Users/em/Development/freerouting/freerouting-rs/.claude/worktrees/simplify-cli`.
+- Run commands from the worktree root `/Users/em/Development/freerouting/freerouting/.claude/worktrees/simplify-cli`.
 
 ---
 
@@ -27,33 +27,33 @@
 
 | Path | Responsibility |
 |---|---|
-| `crates/freerouting/src/ops/mod.rs` | re-exports; `OpError` |
-| `crates/freerouting/src/ops/settings.rs` | `SettingsOverrides`, `parse_set`, `resolve` (the settings ladder, one function) |
-| `crates/freerouting/src/ops/load.rs` | `BoardSource`, `LoadRequest`, `Loaded`, `load` (read, parse, settings, overrides, rules, project, session) |
-| `crates/freerouting/src/ops/route.rs` | `OutputTarget`, `OutputFormat`, `RouteRequest`, `RouteOutcome`, `route` |
-| `crates/freerouting/src/ops/drc.rs` | `DrcRequest`, `DrcOutcome`, `drc`, `report_date` |
-| `crates/freerouting/src/ops/info.rs` | `InfoRequest`, `info` |
-| `crates/freerouting/src/cli.rs` | the clap surface, native form only |
-| `crates/freerouting/src/lib.rs` | `run`, `ExitCode` |
-| `crates/freerouting/src/commands/{route,drc,info}.rs` | CLI adapters |
-| `crates/freerouting/src/mcp/tools/{route_board,check_drc,board_info}.rs` | MCP adapters |
-| `crates/freerouting/src/mcp/server.rs` | `State { overrides }` |
-| `crates/freerouting/src/logging.rs` | level parsing and init only |
-| `crates/freerouting/tests/cli_e2e.rs`, `tests/mcp_stdio.rs` | adapter tests |
+| `crates/copperroute/src/ops/mod.rs` | re-exports; `OpError` |
+| `crates/copperroute/src/ops/settings.rs` | `SettingsOverrides`, `parse_set`, `resolve` (the settings ladder, one function) |
+| `crates/copperroute/src/ops/load.rs` | `BoardSource`, `LoadRequest`, `Loaded`, `load` (read, parse, settings, overrides, rules, project, session) |
+| `crates/copperroute/src/ops/route.rs` | `OutputTarget`, `OutputFormat`, `RouteRequest`, `RouteOutcome`, `route` |
+| `crates/copperroute/src/ops/drc.rs` | `DrcRequest`, `DrcOutcome`, `drc`, `report_date` |
+| `crates/copperroute/src/ops/info.rs` | `InfoRequest`, `info` |
+| `crates/copperroute/src/cli.rs` | the clap surface, native form only |
+| `crates/copperroute/src/lib.rs` | `run`, `ExitCode` |
+| `crates/copperroute/src/commands/{route,drc,info}.rs` | CLI adapters |
+| `crates/copperroute/src/mcp/tools/{route_board,check_drc,board_info}.rs` | MCP adapters |
+| `crates/copperroute/src/mcp/server.rs` | `State { overrides }` |
+| `crates/copperroute/src/logging.rs` | level parsing and init only |
+| `crates/copperroute/tests/cli_e2e.rs`, `tests/mcp_stdio.rs` | adapter tests |
 | `tests/parity/src/lib.rs` | reference helpers, minus the jar runner and log projection |
 | `tests/reference/cli-*/argv.txt` | native argv per stem |
 | `benchmark/bench/candidates.py`, `benchmark/tests/test_candidates.py` | per-kind argv |
 | `scripts/quality-ab.sh`, `scripts/gen-drc-reference.sh`, `scripts/gen-batch-reference.sh` | native port invocations |
 
-Deleted: `crates/freerouting/src/legacy.rs`, `crates/freerouting/tests/legacy_cli.rs`, `docs/cli-legacy-flags.md`, `scripts/gen-cli-reference.sh`, `scripts/differential/rust/src/bin/{p8t1,p8t2,p8t3,p8t5,p8t7}.rs`, `scripts/differential/java/{P8T2,P8T3,P8T5}.java`, `tests/reference/cli-*/route.log`.
+Deleted: `crates/copperroute/src/legacy.rs`, `crates/copperroute/tests/legacy_cli.rs`, `docs/cli-legacy-flags.md`, `scripts/gen-cli-reference.sh`, `scripts/differential/rust/src/bin/{p8t1,p8t2,p8t3,p8t5,p8t7}.rs`, `scripts/differential/java/{P8T2,P8T3,P8T5}.java`, `tests/reference/cli-*/route.log`.
 
 ---
 
 ### Task 1: `ops::settings` — overrides and the one ladder
 
 **Files:**
-- Create: `crates/freerouting/src/ops/mod.rs`, `crates/freerouting/src/ops/settings.rs`
-- Modify: `crates/freerouting/src/lib.rs` (add `pub mod ops;`)
+- Create: `crates/copperroute/src/ops/mod.rs`, `crates/copperroute/src/ops/settings.rs`
+- Modify: `crates/copperroute/src/lib.rs` (add `pub mod ops;`)
 - Test: unit tests inside `ops/settings.rs`
 
 **Interfaces:**
@@ -61,13 +61,13 @@ Deleted: `crates/freerouting/src/legacy.rs`, `crates/freerouting/tests/legacy_cl
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `crates/freerouting/src/ops/settings.rs` with only the tests:
+Create `crates/copperroute/src/ops/settings.rs` with only the tests:
 
 ```rust
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fr_settings::HostEnvironment;
+    use copper_settings::HostEnvironment;
 
     #[test]
     fn parse_set_splits_at_the_first_equals_and_requires_the_router_prefix() {
@@ -106,8 +106,8 @@ mod tests {
     #[test]
     fn the_sparse_payload_outranks_set() {
         let host = HostEnvironment::with_processors(4);
-        let mut sparse = fr_settings::RouterSettings::new();
-        fr_settings::set_field_value(&mut sparse, "scoring.via_costs", "5").unwrap();
+        let mut sparse = copper_settings::RouterSettings::new();
+        copper_settings::set_field_value(&mut sparse, "scoring.via_costs", "5").unwrap();
         let overrides = SettingsOverrides {
             settings_file: None,
             set: vec!["router.scoring.via_costs=77".to_string()],
@@ -152,7 +152,7 @@ mod tests {
 }
 ```
 
-Create `crates/freerouting/src/ops/mod.rs`:
+Create `crates/copperroute/src/ops/mod.rs`:
 
 ```rust
 pub mod settings;
@@ -168,39 +168,39 @@ pub enum OpError {
     #[error("{0}")]
     Settings(String),
     #[error(transparent)]
-    Router(#[from] fr_router::RouterError),
+    Router(#[from] copper_router::RouterError),
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }
 
-impl From<fr_core::Error> for OpError {
-    fn from(error: fr_core::Error) -> Self {
+impl From<copper_core::Error> for OpError {
+    fn from(error: copper_core::Error) -> Self {
         match error {
-            fr_core::Error::Router(inner) => OpError::Router(inner),
-            fr_core::Error::Io(inner) => OpError::Io(inner),
+            copper_core::Error::Router(inner) => OpError::Router(inner),
+            copper_core::Error::Io(inner) => OpError::Io(inner),
             other => OpError::Load(other.to_string()),
         }
     }
 }
 ```
 
-Add `pub mod ops;` to `crates/freerouting/src/lib.rs` after `pub mod mcp;`.
+Add `pub mod ops;` to `crates/copperroute/src/lib.rs` after `pub mod mcp;`.
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cargo test -p freerouting --lib ops::settings`
+Run: `cargo test -p copperroute --lib ops::settings`
 Expected: compile error, `SettingsOverrides`, `parse_set`, `resolve` not found.
 
 - [ ] **Step 3: Implement**
 
-Prepend to `crates/freerouting/src/ops/settings.rs`:
+Prepend to `crates/copperroute/src/ops/settings.rs`:
 
 ```rust
 use std::path::PathBuf;
 
-use fr_board::Board;
-use fr_settings::sources::{CliSettings, JsonFileSettings};
-use fr_settings::{CopyFields, HostEnvironment, RouterSettings, SettingsInputs, SettingsSource};
+use copper_board::Board;
+use copper_settings::sources::{CliSettings, JsonFileSettings};
+use copper_settings::{CopyFields, HostEnvironment, RouterSettings, SettingsInputs, SettingsSource};
 
 use super::OpError;
 
@@ -219,7 +219,7 @@ pub fn parse_set(payload: &str) -> Result<(String, String), OpError> {
     };
     if !name.starts_with("router.") {
         return Err(OpError::Settings(format!(
-            "--set {payload}: the field must start with `router.` (call `freerouting mcp`'s \
+            "--set {payload}: the field must start with `router.` (call `copperroute mcp`'s \
              list_settings, or see `--help`, for the names)"
         )));
     }
@@ -267,7 +267,7 @@ pub fn resolve(
         env: None,
         cli: cli.get_settings(),
     };
-    let mut settings = fr_settings::resolve_headless(&inputs, board, host);
+    let mut settings = copper_settings::resolve_headless(&inputs, board, host);
     if let Some(sparse) = overrides.sparse.as_ref() {
         settings.apply_new_values_from(sparse);
         if let Some(board) = board {
@@ -278,17 +278,17 @@ pub fn resolve(
 }
 ```
 
-If `apply_new_values_from` is not reachable through `CopyFields`, open `crates/fr-settings/src/router_settings.rs`, find `fn apply_new_values_from`, and make it `pub fn`; then drop the `CopyFields` import. If `JsonFileSettings::errors()` is empty for a missing file, add a `std::fs::metadata(path)` check before constructing the source and return `OpError::Settings` when it fails.
+If `apply_new_values_from` is not reachable through `CopyFields`, open `crates/copper-settings/src/router_settings.rs`, find `fn apply_new_values_from`, and make it `pub fn`; then drop the `CopyFields` import. If `JsonFileSettings::errors()` is empty for a missing file, add a `std::fs::metadata(path)` check before constructing the source and return `OpError::Settings` when it fails.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cargo test -p freerouting --lib ops::settings`
+Run: `cargo test -p copperroute --lib ops::settings`
 Expected: 5 passed.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/freerouting/src/ops crates/freerouting/src/lib.rs
+git add crates/copperroute/src/ops crates/copperroute/src/lib.rs
 git commit -m "feat(cli): ops::settings — one settings ladder for the CLI and the MCP tools"
 ```
 
@@ -297,9 +297,9 @@ git commit -m "feat(cli): ops::settings — one settings ladder for the CLI and 
 ### Task 2: `ops::load` — the one load path
 
 **Files:**
-- Create: `crates/freerouting/src/ops/load.rs`
-- Modify: `crates/freerouting/src/ops/mod.rs`
-- Test: `crates/freerouting/tests/ops_load.rs`
+- Create: `crates/copperroute/src/ops/load.rs`
+- Modify: `crates/copperroute/src/ops/mod.rs`
+- Test: `crates/copperroute/tests/ops_load.rs`
 
 **Interfaces:**
 - Consumes: Task 1's `SettingsOverrides`, `resolve`, `OpError`.
@@ -307,15 +307,15 @@ git commit -m "feat(cli): ops::settings — one settings ladder for the CLI and 
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `crates/freerouting/tests/ops_load.rs`:
+Create `crates/copperroute/tests/ops_load.rs`:
 
 ```rust
 #![forbid(unsafe_code)]
 
 use std::path::{Path, PathBuf};
 
-use freerouting::ops::load::{BoardSource, LoadRequest, load};
-use freerouting::ops::{OpError, SettingsOverrides};
+use copperroute::ops::load::{BoardSource, LoadRequest, load};
+use copperroute::ops::{OpError, SettingsOverrides};
 
 fn scratch(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join("fr-ops-load").join(name);
@@ -427,8 +427,8 @@ fn set_outranks_the_rules_file_and_the_sparse_payload_outranks_set() {
         "the rules file is re-applied after the flags; that is the resolver's order and it stays"
     );
 
-    let mut sparse = fr_settings::RouterSettings::new();
-    fr_settings::set_field_value(&mut sparse, "scoring.via_costs", "5").unwrap();
+    let mut sparse = copper_settings::RouterSettings::new();
+    copper_settings::set_field_value(&mut sparse, "scoring.via_costs", "5").unwrap();
     request.settings.sparse = Some(sparse);
     let loaded = load(&request).unwrap();
     assert_eq!(loaded.settings.scoring.as_ref().unwrap().via_costs, Some(5));
@@ -471,21 +471,21 @@ If `Board::get_traces()` returns something other than an iterator, use `.len()` 
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cargo test -p freerouting --test ops_load`
-Expected: compile error, `freerouting::ops::load` not found.
+Run: `cargo test -p copperroute --test ops_load`
+Expected: compile error, `copperroute::ops::load` not found.
 
 - [ ] **Step 3: Implement**
 
-Create `crates/freerouting/src/ops/load.rs`:
+Create `crates/copperroute/src/ops/load.rs`:
 
 ```rust
 use std::path::{Path, PathBuf};
 
-use fr_board::Board;
-use fr_core::{FileFormat, RoutingJob, SessionId};
-use fr_dsn::{BoardMetadata, CoordinateTransform};
-use fr_settings::sources::DsnFileSettings;
-use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
+use copper_board::Board;
+use copper_core::{FileFormat, RoutingJob, SessionId};
+use copper_dsn::{BoardMetadata, CoordinateTransform};
+use copper_settings::sources::DsnFileSettings;
+use copper_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
 use super::settings::{self, SettingsOverrides};
 use super::OpError;
@@ -577,7 +577,7 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
         explicit_rules.clone()
     };
 
-    let parsed = fr_core::parse_board_if_needed(&job)?;
+    let parsed = copper_core::parse_board_if_needed(&job)?;
     let mut board = parsed.board;
     let transform = parsed.transform;
 
@@ -590,11 +590,11 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
         Some(&board),
         &host,
     )?;
-    fr_core::apply_router_settings_for_loaded_board(&mut board, &mut settings);
-    fr_core::apply_immediate_post_load_processing(&mut board);
+    copper_core::apply_router_settings_for_loaded_board(&mut board, &mut settings);
+    copper_core::apply_immediate_post_load_processing(&mut board);
 
     if let Some(bytes) = scheduler_rules.as_deref()
-        && let Err(error) = fr_dsn::rules_reader::read(bytes, &job.name, &mut board, &transform, None)
+        && let Err(error) = copper_dsn::rules_reader::read(bytes, &job.name, &mut board, &transform, None)
     {
         tracing::error!("Failed to apply rules from rules file: {error}");
     }
@@ -602,7 +602,7 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
     import_session(request.session.as_deref(), &mut board, &transform);
 
     job.router_settings = settings.clone();
-    job.drc_settings = fr_settings::DesignRulesCheckerSettings::default();
+    job.drc_settings = copper_settings::DesignRulesCheckerSettings::default();
     Ok(Loaded {
         job,
         board,
@@ -623,7 +623,7 @@ fn read_scheduler_rules(job: &RoutingJob, explicit: Option<&Path>) -> Option<Vec
     let dsn_path = job.get_input().and_then(|input| {
         (input.format == FileFormat::Dsn).then(|| PathBuf::from(input.get_absolute_path()))
     });
-    let path = fr_settings::resolve_scheduler_rules_path(None, explicit, dsn_path.as_deref())?;
+    let path = copper_settings::resolve_scheduler_rules_path(None, explicit, dsn_path.as_deref())?;
     match std::fs::read(&path) {
         Ok(bytes) => Some(bytes),
         Err(error) => {
@@ -644,7 +644,7 @@ fn apply_kicad_project(project: Option<&Path>, board: &mut Board, transform: &Co
             return;
         }
     };
-    match fr_drc::apply_kicad_project(&text, board, transform) {
+    match copper_drc::apply_kicad_project(&text, board, transform) {
         Ok(()) => tracing::info!("KiCad project design rules loaded from {}", project.display()),
         Err(error) => tracing::error!("Failed to apply KiCad project design rules: {error}"),
     }
@@ -662,13 +662,13 @@ fn import_session(session: Option<&Path>, board: &mut Board, transform: &Coordin
         }
     };
     if session.to_string_lossy().to_lowercase().ends_with(".json") {
-        match fr_dsn::kicad::import_session(&String::from_utf8_lossy(&bytes), board) {
+        match copper_dsn::kicad::import_session(&String::from_utf8_lossy(&bytes), board) {
             Ok(()) => tracing::info!("KiCad JSON session loaded from {}", session.display()),
             Err(error) => tracing::error!("Failed to load session file: {error}"),
         }
         return;
     }
-    match fr_dsn::ses_reader::read(&bytes[..], board, transform) {
+    match copper_dsn::ses_reader::read(&bytes[..], board, transform) {
         Ok(summary) => tracing::info!(
             "Session loaded from {}: {} wires, {} vias imported, {} errors",
             session.display(),
@@ -685,13 +685,13 @@ Add to `ops/mod.rs`: `pub mod load;` and `pub use load::{BoardSource, LoadReques
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cargo test -p freerouting --test ops_load`
+Run: `cargo test -p copperroute --test ops_load`
 Expected: 7 passed (or fewer plus skips when the corpus is absent).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/freerouting/src/ops crates/freerouting/tests/ops_load.rs
+git add crates/copperroute/src/ops crates/copperroute/tests/ops_load.rs
 git commit -m "feat(cli): ops::load — one load path for route, drc, info and the MCP tools"
 ```
 
@@ -700,9 +700,9 @@ git commit -m "feat(cli): ops::load — one load path for route, drc, info and t
 ### Task 3: `ops::route`
 
 **Files:**
-- Create: `crates/freerouting/src/ops/route.rs`
-- Modify: `crates/freerouting/src/ops/mod.rs`
-- Test: `crates/freerouting/tests/ops_route.rs`
+- Create: `crates/copperroute/src/ops/route.rs`
+- Modify: `crates/copperroute/src/ops/mod.rs`
+- Test: `crates/copperroute/tests/ops_route.rs`
 
 **Interfaces:**
 - Consumes: Task 2's `LoadRequest`, `load`, `Loaded`.
@@ -710,16 +710,16 @@ git commit -m "feat(cli): ops::load — one load path for route, drc, info and t
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `crates/freerouting/tests/ops_route.rs`:
+Create `crates/copperroute/tests/ops_route.rs`:
 
 ```rust
 #![forbid(unsafe_code)]
 
 use std::path::PathBuf;
 
-use freerouting::ops::load::{BoardSource, LoadRequest};
-use freerouting::ops::route::{OutputFormat, OutputTarget, RouteRequest, budget_for, route};
-use freerouting::ops::{OpError, SettingsOverrides};
+use copperroute::ops::load::{BoardSource, LoadRequest};
+use copperroute::ops::route::{OutputFormat, OutputTarget, RouteRequest, budget_for, route};
+use copperroute::ops::{OpError, SettingsOverrides};
 
 fn scratch(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join("fr-ops-route").join(name);
@@ -739,8 +739,8 @@ fn request(dsn: PathBuf, output: OutputTarget, set: Vec<String>) -> RouteRequest
     RouteRequest {
         load,
         output,
-        cancel: fr_core::CancelToken::new(),
-        progress: fr_core::SyncProgressSink::noop(),
+        cancel: copper_core::CancelToken::new(),
+        progress: copper_core::SyncProgressSink::noop(),
         visualize: None,
     }
 }
@@ -759,7 +759,7 @@ fn output_format_is_the_extension() {
 
 #[test]
 fn the_budget_is_the_default_with_the_settings_knob() {
-    let mut settings = fr_settings::RouterSettings::new();
+    let mut settings = copper_settings::RouterSettings::new();
     assert_eq!(budget_for(&settings).opt_changed_area_ms, 0);
     settings.opt_changed_area_ms = Some(250);
     assert_eq!(budget_for(&settings).opt_changed_area_ms, 250);
@@ -778,7 +778,7 @@ fn a_routed_board_answers_a_session_and_its_stats() {
     ))
     .unwrap();
     assert_eq!(outcome.format, OutputFormat::Ses);
-    assert_eq!(outcome.state, fr_core::RoutingJobState::Completed);
+    assert_eq!(outcome.state, copper_core::RoutingJobState::Completed);
     assert!(String::from_utf8_lossy(&outcome.session).starts_with("(session"));
     assert!(outcome.result.stats.connections.incomplete_count.is_some());
     assert_eq!(outcome.job.get_current_pass(), 1);
@@ -820,7 +820,7 @@ fn a_zero_job_timeout_reports_timed_out() {
         ],
     ))
     .unwrap();
-    assert_eq!(outcome.state, fr_core::RoutingJobState::TimedOut);
+    assert_eq!(outcome.state, copper_core::RoutingJobState::TimedOut);
     assert!(outcome.result.timed_out);
 }
 
@@ -841,23 +841,23 @@ fn a_bad_timeout_is_a_settings_error() {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cargo test -p freerouting --test ops_route`
-Expected: compile error, `freerouting::ops::route` not found.
+Run: `cargo test -p copperroute --test ops_route`
+Expected: compile error, `copperroute::ops::route` not found.
 
 - [ ] **Step 3: Implement**
 
-Create `crates/freerouting/src/ops/route.rs`:
+Create `crates/copperroute/src/ops/route.rs`:
 
 ```rust
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use fr_core::{
+use copper_core::{
     BoardFileDetails, CancelToken, Ctx, FileFormat, JobStopReason, RouterBudget, RoutingJob,
     RoutingJobState, RoutingPipeline, RoutingResult, SyncProgressSink,
 };
-use fr_router::{RoutingVisualizationOptions, RoutingVisualizationSummary};
-use fr_settings::RouterSettings;
+use copper_router::{RoutingVisualizationOptions, RoutingVisualizationSummary};
+use copper_settings::RouterSettings;
 
 use super::load::{LoadRequest, Loaded, load};
 use super::OpError;
@@ -949,7 +949,7 @@ pub fn route(request: RouteRequest) -> Result<RouteOutcome, OpError> {
         job.try_to_set_output_file(Some(path));
     }
 
-    let cancel = match fr_core::job_timeout_deadline(settings.job_timeout_string.as_deref()) {
+    let cancel = match copper_core::job_timeout_deadline(settings.job_timeout_string.as_deref()) {
         Ok(Some(deadline)) => request.cancel.with_deadline_from(deadline),
         Ok(None) => request.cancel.clone(),
         Err(error) => {
@@ -959,7 +959,7 @@ pub fn route(request: RouteRequest) -> Result<RouteOutcome, OpError> {
 
     let visualization = match request.visualize {
         Some(options) => Some(
-            fr_router::start_routing_visualization(options)
+            copper_router::start_routing_visualization(options)
                 .map_err(|error| OpError::Input(format!("--visualize: {error}")))?,
         ),
         None => None,
@@ -974,7 +974,7 @@ pub fn route(request: RouteRequest) -> Result<RouteOutcome, OpError> {
         budget: budget_for(&settings),
     };
     let result = RoutingPipeline::run(&mut board, &ctx)?;
-    let visualization = visualization.map(fr_router::RoutingVisualizationGuard::finish);
+    let visualization = visualization.map(copper_router::RoutingVisualizationGuard::finish);
 
     job.finished_at = Some(Instant::now());
     job.set_current_pass(result.pipeline.router_passes_completed);
@@ -989,10 +989,10 @@ pub fn route(request: RouteRequest) -> Result<RouteOutcome, OpError> {
     let session = match format {
         OutputFormat::Ses => {
             let mut buffer = Vec::new();
-            fr_core::save_as_specctra_session_ses(&board, &transform, &job.name, &mut buffer)?;
+            copper_core::save_as_specctra_session_ses(&board, &transform, &job.name, &mut buffer)?;
             buffer
         }
-        OutputFormat::KicadSessionJson => fr_dsn::kicad::write(&board, &job.name).into_bytes(),
+        OutputFormat::KicadSessionJson => copper_dsn::kicad::write(&board, &job.name).into_bytes(),
     };
     attach_output(&mut job, &session, format);
 
@@ -1023,19 +1023,19 @@ fn attach_output(job: &mut RoutingJob, session: &[u8], format: OutputFormat) {
 
 If `BoardFileDetails::filename` is not a public field, use `output.set_filename(Some(&format!("{base}.{}", format.extension())))` instead; for the `OutputTarget::Session` case the directory then comes from `set_filename`, which is what `route_board` answered before through `file_payload_fields`. Check the MCP conversation test in Task 6 still passes.
 
-If `fr_core::Error` from `save_as_specctra_session_ses` does not convert with `?`, wrap it: `.map_err(OpError::from)?`.
+If `copper_core::Error` from `save_as_specctra_session_ses` does not convert with `?`, wrap it: `.map_err(OpError::from)?`.
 
 Add to `ops/mod.rs`: `pub mod route;` and `pub use route::{OutputFormat, OutputTarget, RouteOutcome, RouteRequest, route};`.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cargo test -p freerouting --test ops_route`
+Run: `cargo test -p copperroute --test ops_route`
 Expected: all pass (corpus tests skip without the checkout).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/freerouting/src/ops crates/freerouting/tests/ops_route.rs
+git add crates/copperroute/src/ops crates/copperroute/tests/ops_route.rs
 git commit -m "feat(cli): ops::route — load, run the pipeline, serialise the session"
 ```
 
@@ -1044,9 +1044,9 @@ git commit -m "feat(cli): ops::route — load, run the pipeline, serialise the s
 ### Task 4: `ops::drc` and `ops::info`
 
 **Files:**
-- Create: `crates/freerouting/src/ops/drc.rs`, `crates/freerouting/src/ops/info.rs`
-- Modify: `crates/freerouting/src/ops/mod.rs`
-- Test: `crates/freerouting/tests/ops_drc_info.rs`
+- Create: `crates/copperroute/src/ops/drc.rs`, `crates/copperroute/src/ops/info.rs`
+- Modify: `crates/copperroute/src/ops/mod.rs`
+- Test: `crates/copperroute/tests/ops_drc_info.rs`
 
 **Interfaces:**
 - Consumes: Task 2's `load`, Task 1's `resolve`.
@@ -1054,17 +1054,17 @@ git commit -m "feat(cli): ops::route — load, run the pipeline, serialise the s
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `crates/freerouting/tests/ops_drc_info.rs`:
+Create `crates/copperroute/tests/ops_drc_info.rs`:
 
 ```rust
 #![forbid(unsafe_code)]
 
 use std::path::{Path, PathBuf};
 
-use fr_drc::report::DrcJsonFlavor;
-use freerouting::ops::drc::{DrcRequest, drc, report_date};
-use freerouting::ops::info::{InfoRequest, info};
-use freerouting::ops::load::{BoardSource, LoadRequest};
+use copper_drc::report::DrcJsonFlavor;
+use copperroute::ops::drc::{DrcRequest, drc, report_date};
+use copperroute::ops::info::{InfoRequest, info};
+use copperroute::ops::load::{BoardSource, LoadRequest};
 
 fn spike_dsn() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../benchmark/tests/data/spike/spike.dsn")
@@ -1111,7 +1111,7 @@ fn drc_counts_the_dev_boards_violations_in_both_flavors() {
     assert!(outcome.json.contains(env!("CARGO_PKG_VERSION")));
 
     let head = DrcRequest {
-        flavor: DrcJsonFlavor::FreeroutingHead,
+        flavor: DrcJsonFlavor::Legacy,
         ..request
     };
     let outcome = drc(&head).unwrap();
@@ -1152,20 +1152,20 @@ fn a_rules_file_does_not_move_the_quality_score() {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cargo test -p freerouting --test ops_drc_info`
+Run: `cargo test -p copperroute --test ops_drc_info`
 Expected: compile error.
 
 - [ ] **Step 3: Implement**
 
-Create `crates/freerouting/src/ops/drc.rs`:
+Create `crates/copperroute/src/ops/drc.rs`:
 
 ```rust
-use fr_board::Board;
-use fr_core::{BoardStatistics, RoutingJob};
-use fr_drc::DesignRulesChecker;
-use fr_drc::report::{DrcCoordinates, DrcJsonFlavor, DrcReportOptions, KiCadDrcReport};
-use fr_settings::sources::DsnFileSettings;
-use fr_settings::{HostEnvironment, SettingsSource};
+use copper_board::Board;
+use copper_core::{BoardStatistics, RoutingJob};
+use copper_drc::DesignRulesChecker;
+use copper_drc::report::{DrcCoordinates, DrcJsonFlavor, DrcReportOptions, KiCadDrcReport};
+use copper_settings::sources::DsnFileSettings;
+use copper_settings::{HostEnvironment, SettingsSource};
 
 use super::load::{LoadRequest, Loaded, load};
 use super::settings::{self, SettingsOverrides};
@@ -1237,7 +1237,7 @@ fn quality_score(board: &mut Board, job: &RoutingJob, overrides: &SettingsOverri
 }
 
 pub fn report_date(time: std::time::SystemTime) -> String {
-    let instant = fr_core::format_utc_iso8601(time);
+    let instant = copper_core::format_utc_iso8601(time);
     let body = instant.strip_suffix('Z').unwrap_or(&instant);
     let body = match body.split_once('.') {
         Some((head, fraction)) => {
@@ -1258,12 +1258,12 @@ pub fn report_date(time: std::time::SystemTime) -> String {
 }
 ```
 
-If the `quality_score` for the dev board does not print `906.2450561523438`, the resolver's settings differ from the merger-based one the old code used; compare `settings.scoring` between `fr_settings::resolve_headless` with `board: None` and a `SettingsMerger` built from `DefaultSettings` + `DsnFileSettings`, and use whichever reproduces the committed scores — the eight `tests/reference/drc-*/drc.json` values are the oracle, checked again in Task 5's `every_committed_reference_score_is_recomputed`.
+If the `quality_score` for the dev board does not print `906.2450561523438`, the resolver's settings differ from the merger-based one the old code used; compare `settings.scoring` between `copper_settings::resolve_headless` with `board: None` and a `SettingsMerger` built from `DefaultSettings` + `DsnFileSettings`, and use whichever reproduces the committed scores — the eight `tests/reference/drc-*/drc.json` values are the oracle, checked again in Task 5's `every_committed_reference_score_is_recomputed`.
 
-Create `crates/freerouting/src/ops/info.rs`:
+Create `crates/copperroute/src/ops/info.rs`:
 
 ```rust
-use fr_core::BoardSummary;
+use copper_core::BoardSummary;
 
 use super::load::{LoadRequest, load};
 use super::OpError;
@@ -1274,7 +1274,7 @@ pub struct InfoRequest {
 
 pub fn info(request: &InfoRequest) -> Result<BoardSummary, OpError> {
     let mut loaded = load(&request.load)?;
-    Ok(fr_core::summarise(&mut loaded.board, loaded.metadata.as_ref()))
+    Ok(copper_core::summarise(&mut loaded.board, loaded.metadata.as_ref()))
 }
 ```
 
@@ -1282,13 +1282,13 @@ Add to `ops/mod.rs`: `pub mod drc; pub mod info;` and `pub use drc::{DrcOutcome,
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cargo test -p freerouting --test ops_drc_info`
+Run: `cargo test -p copperroute --test ops_drc_info`
 Expected: pass.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/freerouting/src/ops crates/freerouting/tests/ops_drc_info.rs
+git add crates/copperroute/src/ops crates/copperroute/tests/ops_drc_info.rs
 git commit -m "feat(cli): ops::drc and ops::info on the shared loader"
 ```
 
@@ -1297,17 +1297,17 @@ git commit -m "feat(cli): ops::drc and ops::info on the shared loader"
 ### Task 5: The native command line and the CLI adapters
 
 **Files:**
-- Modify: `crates/freerouting/src/cli.rs`, `crates/freerouting/src/lib.rs`, `crates/freerouting/src/commands/mod.rs`, `crates/freerouting/src/commands/route.rs`, `crates/freerouting/src/commands/drc.rs`, `crates/freerouting/src/commands/info.rs`, `crates/freerouting/src/logging.rs`
-- Delete: `crates/freerouting/src/legacy.rs`, `crates/freerouting/tests/legacy_cli.rs`
-- Test: `crates/freerouting/tests/cli_e2e.rs` (rewritten in Task 7; this task only keeps the crate compiling and the unit tests green)
+- Modify: `crates/copperroute/src/cli.rs`, `crates/copperroute/src/lib.rs`, `crates/copperroute/src/commands/mod.rs`, `crates/copperroute/src/commands/route.rs`, `crates/copperroute/src/commands/drc.rs`, `crates/copperroute/src/commands/info.rs`, `crates/copperroute/src/logging.rs`
+- Delete: `crates/copperroute/src/legacy.rs`, `crates/copperroute/tests/legacy_cli.rs`
+- Test: `crates/copperroute/tests/cli_e2e.rs` (rewritten in Task 7; this task only keeps the crate compiling and the unit tests green)
 
 **Interfaces:**
 - Consumes: `ops::*` from Tasks 1–4.
-- Produces: `freerouting::ExitCode { Ok = 0, Failure = 1, UsageError = 2 }` with `code()`; `commands::overrides(&Cli, &[String]) -> SettingsOverrides`; `commands::route::run(&Cli, &RouteArgs) -> ExitCode`, `commands::drc::run(&Cli, &DrcArgs) -> ExitCode`, `commands::info::run(&Cli, &InfoArgs) -> ExitCode`; `mcp::stdio::run(SettingsOverrides) -> i32` (Task 6 changes its body; this task changes only the call).
+- Produces: `copperroute::ExitCode { Ok = 0, Failure = 1, UsageError = 2 }` with `code()`; `commands::overrides(&Cli, &[String]) -> SettingsOverrides`; `commands::route::run(&Cli, &RouteArgs) -> ExitCode`, `commands::drc::run(&Cli, &DrcArgs) -> ExitCode`, `commands::info::run(&Cli, &InfoArgs) -> ExitCode`; `mcp::stdio::run(SettingsOverrides) -> i32` (Task 6 changes its body; this task changes only the call).
 
 - [ ] **Step 1: Write the failing unit tests in `cli.rs`**
 
-Replace the `#[cfg(test)] mod tests` in `crates/freerouting/src/cli.rs` with:
+Replace the `#[cfg(test)] mod tests` in `crates/copperroute/src/cli.rs` with:
 
 ```rust
 #[cfg(test)]
@@ -1317,7 +1317,7 @@ mod tests {
     #[test]
     fn parses_route_with_max_passes_timeout_and_set() {
         let cli = Cli::try_parse_from([
-            "freerouting", "route", "a.dsn", "-o", "b.ses", "--max-passes", "3",
+            "copperroute", "route", "a.dsn", "-o", "b.ses", "--max-passes", "3",
             "--timeout", "0:05:00", "--set", "router.scoring.via_costs=1",
         ])
         .unwrap();
@@ -1331,12 +1331,12 @@ mod tests {
     #[test]
     fn the_output_must_be_a_session_extension() {
         for bad in ["b.dsn", "b.txt", "b"] {
-            let error = Cli::try_parse_from(["freerouting", "route", "a.dsn", "-o", bad])
+            let error = Cli::try_parse_from(["copperroute", "route", "a.dsn", "-o", bad])
                 .expect_err(bad);
             assert_eq!(error.kind(), clap::error::ErrorKind::ValueValidation, "{bad}");
         }
         for good in ["b.ses", "b.json", "B.SES"] {
-            Cli::try_parse_from(["freerouting", "route", "a.dsn", "-o", good]).expect(good);
+            Cli::try_parse_from(["copperroute", "route", "a.dsn", "-o", good]).expect(good);
         }
     }
 
@@ -1347,11 +1347,11 @@ mod tests {
             "--update-strategy", "--hybrid-ratio", "--item-selection", "--ignore-net-classes",
         ] {
             let error =
-                Cli::try_parse_from(["freerouting", "route", "a.dsn", "-o", "b.ses", flag, "1"])
+                Cli::try_parse_from(["copperroute", "route", "a.dsn", "-o", "b.ses", flag, "1"])
                     .expect_err(flag);
             assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument, "{flag}");
         }
-        let error = Cli::try_parse_from(["freerouting", "-de", "a.dsn", "-do", "b.ses"])
+        let error = Cli::try_parse_from(["copperroute", "-de", "a.dsn", "-do", "b.ses"])
             .expect_err("the legacy form");
         assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
     }
@@ -1359,7 +1359,7 @@ mod tests {
     #[test]
     fn parses_bounded_routing_visualization() {
         let cli = Cli::try_parse_from([
-            "freerouting", "route", "a.dsn", "-o", "b.ses", "--visualize", "frames",
+            "copperroute", "route", "a.dsn", "-o", "b.ses", "--visualize", "frames",
             "--visualize-every", "25", "--visualize-max-frames", "80",
         ])
         .unwrap();
@@ -1373,18 +1373,18 @@ mod tests {
     #[test]
     fn parses_drc_and_info_and_mcp() {
         let cli = Cli::try_parse_from([
-            "freerouting", "drc", "a.dsn", "--kicad-project", "p.kicad_pro", "--schema", "freerouting",
+            "copperroute", "drc", "a.dsn", "--kicad-project", "p.kicad_pro", "--schema", "copperroute",
         ])
         .unwrap();
         let Command::Drc(d) = cli.command else { panic!("expected drc") };
         assert_eq!(d.kicad_project, Some(PathBuf::from("p.kicad_pro")));
-        assert_eq!(d.schema, DrcSchema::Freerouting);
+        assert_eq!(d.schema, DrcSchema::Legacy);
         assert!(matches!(
-            Cli::try_parse_from(["freerouting", "info", "a.dsn"]).unwrap().command,
+            Cli::try_parse_from(["copperroute", "info", "a.dsn"]).unwrap().command,
             Command::Info(_)
         ));
         assert!(matches!(
-            Cli::try_parse_from(["freerouting", "mcp"]).unwrap().command,
+            Cli::try_parse_from(["copperroute", "mcp"]).unwrap().command,
             Command::Mcp
         ));
     }
@@ -1392,7 +1392,7 @@ mod tests {
     #[test]
     fn settings_is_global_and_names_a_json_file() {
         let cli = Cli::try_parse_from([
-            "freerouting", "--settings", "s.json", "info", "a.dsn",
+            "copperroute", "--settings", "s.json", "info", "a.dsn",
         ])
         .unwrap();
         assert_eq!(cli.settings, Some(PathBuf::from("s.json")));
@@ -1402,12 +1402,12 @@ mod tests {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `cargo test -p freerouting --lib cli::tests`
+Run: `cargo test -p copperroute --lib cli::tests`
 Expected: FAIL — `timeout` is a `u64`, `--kicad-json` still parses, `-o b.dsn` still parses.
 
 - [ ] **Step 3: Rewrite `cli.rs`**
 
-Replace everything above the tests in `crates/freerouting/src/cli.rs` with:
+Replace everything above the tests in `crates/copperroute/src/cli.rs` with:
 
 ```rust
 use clap::{Args, Parser, Subcommand};
@@ -1417,7 +1417,7 @@ use crate::ops::route::OutputFormat;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "freerouting",
+    name = "copperroute",
     version,
     propagate_version = true,
     about = "Headless PCB autorouter"
@@ -1518,7 +1518,7 @@ pub struct DrcArgs {
 pub enum DrcSchema {
     #[default]
     Kicad,
-    Freerouting,
+    Legacy,
 }
 
 #[derive(Args, Debug)]
@@ -1540,7 +1540,7 @@ fn parse_output_path(value: &str) -> Result<PathBuf, String> {
 
 - [ ] **Step 4: Rewrite `lib.rs`**
 
-Replace `crates/freerouting/src/lib.rs` with:
+Replace `crates/copperroute/src/lib.rs` with:
 
 ```rust
 #![forbid(unsafe_code)]
@@ -1571,7 +1571,7 @@ impl ExitCode {
 #[must_use]
 pub fn run(raw: &[String]) -> ExitCode {
     let cli = match cli::Cli::try_parse_from(
-        std::iter::once("freerouting".to_string()).chain(raw.iter().cloned()),
+        std::iter::once("copperroute".to_string()).chain(raw.iter().cloned()),
     ) {
         Ok(cli) => cli,
         Err(error) => {
@@ -1599,7 +1599,7 @@ pub fn run(raw: &[String]) -> ExitCode {
 
 - [ ] **Step 5: Trim `logging.rs`**
 
-Replace `console_level_string` and `level_from_argv` (and the module doc line above `use`) in `crates/freerouting/src/logging.rs` with:
+Replace `console_level_string` and `level_from_argv` (and the module doc line above `use`) in `crates/copperroute/src/logging.rs` with:
 
 ```rust
 #[must_use]
@@ -1655,7 +1655,7 @@ pub fn overrides(cli: &Cli, set: &[String]) -> SettingsOverrides {
 ```rust
 use std::path::Path;
 
-use fr_core::{RoutingJobState, RoutingResultManifest, SyncProgressSink};
+use copper_core::{RoutingJobState, RoutingResultManifest, SyncProgressSink};
 
 use crate::ExitCode;
 use crate::cli::{Cli, RouteArgs};
@@ -1679,7 +1679,7 @@ pub fn run(cli: &Cli, args: &RouteArgs) -> ExitCode {
     load.settings = super::overrides(cli, &set);
 
     let visualize = args.visualize.as_ref().map(|dir| {
-        let mut options = fr_router::RoutingVisualizationOptions::new(dir.clone());
+        let mut options = copper_router::RoutingVisualizationOptions::new(dir.clone());
         options.every = args.visualize_every;
         options.max_frames = args.visualize_max_frames;
         options.width = args.visualize_width;
@@ -1690,7 +1690,7 @@ pub fn run(cli: &Cli, args: &RouteArgs) -> ExitCode {
     let outcome = match route(RouteRequest {
         load,
         output: OutputTarget::File(args.output.clone()),
-        cancel: fr_core::CancelToken::new(),
+        cancel: copper_core::CancelToken::new(),
         progress: SyncProgressSink::noop(),
         visualize,
     }) {
@@ -1764,7 +1764,7 @@ fn write_manifest(
         Some(&args.input),
         written,
         exit_code.code(),
-        &fr_core::now_utc_iso8601,
+        &copper_core::now_utc_iso8601,
         Some(&outcome.result.stats),
     );
     if let Err(error) = RoutingResultManifest::write(Path::new(&path), &manifest) {
@@ -1780,7 +1780,7 @@ Drop the `let _ = cli;` line and the `cli` parameter of `write_manifest` if clip
 ```rust
 use std::path::Path;
 
-use fr_drc::report::DrcJsonFlavor;
+use copper_drc::report::DrcJsonFlavor;
 
 use crate::ExitCode;
 use crate::cli::{Cli, DrcArgs, DrcSchema};
@@ -1798,7 +1798,7 @@ pub fn run(cli: &Cli, args: &DrcArgs) -> ExitCode {
         load,
         flavor: match args.schema {
             DrcSchema::Kicad => DrcJsonFlavor::KiCad,
-            DrcSchema::Freerouting => DrcJsonFlavor::FreeroutingHead,
+            DrcSchema::Legacy => DrcJsonFlavor::Legacy,
         },
         date: report_date(std::time::SystemTime::now()),
     }) {
@@ -1859,10 +1859,10 @@ pub fn run(cli: &Cli, args: &InfoArgs) -> ExitCode {
 - [ ] **Step 10: Delete the legacy form and make the MCP call compile**
 
 ```bash
-git rm -q crates/freerouting/src/legacy.rs crates/freerouting/tests/legacy_cli.rs
+git rm -q crates/copperroute/src/legacy.rs crates/copperroute/tests/legacy_cli.rs
 ```
 
-In `crates/freerouting/src/mcp/stdio.rs` change `pub fn run(settings_argv: &[String]) -> i32` to `pub fn run(overrides: crate::ops::SettingsOverrides) -> i32` and its first line to `let mut state = State::with_overrides(overrides);`. In `crates/freerouting/src/mcp/server.rs` replace the `settings_argv: Vec<String>` field with `pub overrides: crate::ops::SettingsOverrides`, `settings_argv: Vec::new()` with `overrides: crate::ops::SettingsOverrides::default()`, and `with_settings_argv` with:
+In `crates/copperroute/src/mcp/stdio.rs` change `pub fn run(settings_argv: &[String]) -> i32` to `pub fn run(overrides: crate::ops::SettingsOverrides) -> i32` and its first line to `let mut state = State::with_overrides(overrides);`. In `crates/copperroute/src/mcp/server.rs` replace the `settings_argv: Vec<String>` field with `pub overrides: crate::ops::SettingsOverrides`, `settings_argv: Vec::new()` with `overrides: crate::ops::SettingsOverrides::default()`, and `with_settings_argv` with:
 
 ```rust
     pub fn with_overrides(overrides: crate::ops::SettingsOverrides) -> Self {
@@ -1877,13 +1877,13 @@ The three tool files still reference `state.settings_argv` and `crate::commands:
 
 - [ ] **Step 11: Build and run the unit tests**
 
-Run: `cargo build -p freerouting && cargo test -p freerouting --lib`
+Run: `cargo build -p copperroute && cargo test -p copperroute --lib`
 Expected: builds; `cli::tests` and `logging::tests` pass.
 
 - [ ] **Step 12: Commit**
 
 ```bash
-git add -A crates/freerouting/src crates/freerouting/tests/legacy_cli.rs
+git add -A crates/copperroute/src crates/copperroute/tests/legacy_cli.rs
 git commit -m "feat(cli): native command line only — the subcommands are adapters over ops"
 ```
 
@@ -1892,8 +1892,8 @@ git commit -m "feat(cli): native command line only — the subcommands are adapt
 ### Task 6: The MCP adapters
 
 **Files:**
-- Modify: `crates/freerouting/src/mcp/tools/route_board.rs`, `check_drc.rs`, `board_info.rs`, `mod.rs`, `crates/freerouting/src/mcp/server.rs`, `crates/freerouting/src/mcp/stdio.rs`
-- Test: `crates/freerouting/tests/mcp_stdio.rs`
+- Modify: `crates/copperroute/src/mcp/tools/route_board.rs`, `check_drc.rs`, `board_info.rs`, `mod.rs`, `crates/copperroute/src/mcp/server.rs`, `crates/copperroute/src/mcp/stdio.rs`
+- Test: `crates/copperroute/tests/mcp_stdio.rs`
 
 **Interfaces:**
 - Consumes: `ops::*`; `State::overrides`.
@@ -1901,7 +1901,7 @@ git commit -m "feat(cli): native command line only — the subcommands are adapt
 
 - [ ] **Step 1: Delete the env-var test**
 
-In `crates/freerouting/tests/mcp_stdio.rs` delete the whole `an_unreadable_router_budget_is_an_error_and_the_server_survives` test, and delete `Pipes::start_with_env` by folding its body into `Pipes::start()` (no `env` loop). Run: `cargo test -p freerouting --test mcp_stdio` — expected: compile failures in the tools until Step 2.
+In `crates/copperroute/tests/mcp_stdio.rs` delete the whole `an_unreadable_router_budget_is_an_error_and_the_server_survives` test, and delete `Pipes::start_with_env` by folding its body into `Pipes::start()` (no `env` loop). Run: `cargo test -p copperroute --test mcp_stdio` — expected: compile failures in the tools until Step 2.
 
 - [ ] **Step 2: Rewrite `mcp/tools/mod.rs`'s board input helper**
 
@@ -1996,7 +1996,7 @@ pub fn run(
             object.insert("data".into(), json!(super::base64_encode(&outcome.session)));
         }
     }
-    object.insert("stats".into(), fr_core::to_gson_json(&outcome.result.stats));
+    object.insert("stats".into(), copper_core::to_gson_json(&outcome.result.stats));
     object.insert("incompletes".into(), json!(outcome.result.incomplete_count()));
     object.insert("unrouted_report".into(), json!(outcome.result.unrouted_report));
     object.insert("drc_violation_count".into(), json!(outcome.result.violation_count()));
@@ -2005,7 +2005,7 @@ pub fn run(
 }
 ```
 
-Imports for the file: `use crate::ops::SettingsOverrides; use crate::ops::load::LoadRequest; use crate::ops::route::{OutputTarget, RouteRequest, route}; use fr_core::{CancelToken, RouterSettings? no — RouterSettings comes from fr_settings}` — keep `fr_settings::RouterSettings` for `settings_payload`, and drop the `fr_settings::sources::*`, `SettingsMerger`, `HostEnvironment`, `FileFormat`, `JobStopReason`, `RoutingJobState`, `RoutingPipeline`, `Ctx` imports. `RoutingJob.id` is a public field.
+Imports for the file: `use crate::ops::SettingsOverrides; use crate::ops::load::LoadRequest; use crate::ops::route::{OutputTarget, RouteRequest, route}; use copper_core::{CancelToken, RouterSettings? no — RouterSettings comes from copper_settings}` — keep `copper_settings::RouterSettings` for `settings_payload`, and drop the `copper_settings::sources::*`, `SettingsMerger`, `HostEnvironment`, `FileFormat`, `JobStopReason`, `RoutingJobState`, `RoutingPipeline`, `Ctx` imports. `RoutingJob.id` is a public field.
 
 - [ ] **Step 4: Rewrite `check_drc.rs`**
 
@@ -2014,8 +2014,8 @@ use super::super::jsonrpc::RpcError;
 use super::super::server::{ProgressWriter, State};
 use crate::ops::drc::{DrcRequest, drc, report_date};
 use crate::ops::load::LoadRequest;
-use fr_core::CancelToken;
-use fr_drc::report::DrcJsonFlavor;
+use copper_core::CancelToken;
+use copper_drc::report::DrcJsonFlavor;
 use serde_json::Value;
 use std::path::PathBuf;
 
@@ -2050,7 +2050,7 @@ use super::super::jsonrpc::RpcError;
 use super::super::server::{ProgressWriter, State};
 use crate::ops::info::{InfoRequest, info};
 use crate::ops::load::LoadRequest;
-use fr_core::CancelToken;
+use copper_core::CancelToken;
 use serde_json::Value;
 
 pub fn run(
@@ -2070,13 +2070,13 @@ pub fn run(
 
 - [ ] **Step 6: Build and run the MCP tests**
 
-Run: `cargo build -p freerouting && cargo test -p freerouting --test mcp_stdio`
+Run: `cargo build -p copperroute && cargo test -p copperroute --test mcp_stdio`
 Expected: all pass. If `the_four_tools_over_spawned_pipes` fails on `filename`/`path`, the `attach_output` branch in Task 3 needs `set_filename` (see the note there) so the input's directory is reported.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add crates/freerouting/src/mcp crates/freerouting/tests/mcp_stdio.rs
+git add crates/copperroute/src/mcp crates/copperroute/tests/mcp_stdio.rs
 git commit -m "feat(mcp): the tools are adapters over ops"
 ```
 
@@ -2085,7 +2085,7 @@ git commit -m "feat(mcp): the tools are adapters over ops"
 ### Task 7: `cli_e2e.rs` on the native form
 
 **Files:**
-- Modify: `crates/freerouting/tests/cli_e2e.rs`, `tests/parity/src/lib.rs`, `tests/reference/cli-*/argv.txt` (13 files), `tests/reference/cli-fixtures.txt`
+- Modify: `crates/copperroute/tests/cli_e2e.rs`, `tests/parity/src/lib.rs`, `tests/reference/cli-*/argv.txt` (13 files), `tests/reference/cli-fixtures.txt`
 - Delete: `tests/reference/cli-*/route.log` (13 files)
 
 **Interfaces:**
@@ -2137,10 +2137,10 @@ If `python3` is unavailable, make the same edit by hand in the 13 files.
 In `tests/reference/cli-fixtures.txt`, replace the header comment with the three lines below and rewrite the `extra_args` column of every row the same way (`-mp 8 --router.fanout.enabled=true …` becomes `--max-passes 8 --set router.fanout.enabled=true …`; `-` stays `-`):
 
 ```
-# CLI end-to-end reference stems for crates/freerouting/tests/cli_e2e.rs.
+# CLI end-to-end reference stems for crates/copperroute/tests/cli_e2e.rs.
 #   stem|dsn|extra_args|lane
 # dsn is relative to the fixture corpus; extra_args is what follows `route <dsn> -o <out>`, or `-`;
-# lane is ci or slow. Goldens are cut with FR_REGOLDEN=<label> cargo test -p freerouting --test cli_e2e.
+# lane is ci or slow. Goldens are cut with COPPERROUTE_REGOLDEN=<label> cargo test -p copperroute --test cli_e2e.
 ```
 
 Delete the log goldens: `git rm -q tests/reference/cli-*/route.log`.
@@ -2155,7 +2155,7 @@ Run: `cargo build -p parity` — expected: builds. Then `grep -rn 'normalize_log
 
 Keep the helpers (`scratch`, `stage_dsn`, `small_dsn`, `run`, `final_state`, `settings_snapshot`, `json_array_len`, `drc_dsn`, `report`, `autoroute_settings_rules`, `stable_manifest`, `climb`, `regolden_one`) and rewrite the tests as follows. Every legacy argv becomes the native one: `-de X -do Y` → `route X -o Y`; `-mp N` → `--max-passes N`; `--router.result_json=F` → `--result-json F`; `--router.a.b=c` → `--set router.a.b=c`; a session in the `-de` slot list → `--ses`.
 
-Tests to keep with translated argv and unchanged assertions: `a_failed_run_leaves_the_previous_result_on_disk`, `an_empty_output_directory_is_not_unlinked`, `do_out_json_writes_the_routed_board`, `a_non_ascii_session_file_is_read_as_utf8` (the session moves to `--ses`), `a_missing_dr_path_disables_rules_discovery` (`-dr` → `--rules`), `no_donation_banner_on_stdout`, `max_passes_zero_is_unlimited`, `the_rules_file_is_read_as_bytes_twice`, `the_via_net_number_fixture_routes_instead_of_hanging`, `the_session_is_imported_after_the_rules` (its `build` helper now uses `freerouting::ops::load` with `rules`/`session` set, and the two orderings are expressed as two `LoadRequest`s: one with both, one with only the session then a second `load` cannot reorder — so replace the `rules_first`/`session_first` comparison with a single assertion that the CLI's clearance count equals the count from a `LoadRequest` carrying both, and keep the log-order assertion on `Loading RULES`/`Session loaded`; use the new log wording from Task 2: `Session loaded from`), `the_quality_score_uses_a_dsn_only_merge`, `the_quality_score_is_an_f32_widened_to_f64`, `every_committed_reference_score_is_recomputed` (append `let _ = code;` and drop the `assert_eq!(code, 0)` — the dev board and others now exit 1 on violations; assert instead `code == 0 || code == 1`), `drc_with_no_output_prints_to_stdout` (the stderr assertion becomes `stderr.contains("violation")` since the dev board has violations and the report still goes to stdout; exit code is 1), `info_writes_the_board_summary_to_stdout`, `info_exits_1_on_an_unreadable_input_and_on_an_unloadable_board` (the message assertion becomes `stderr.contains("Couldn't load the input file")` for the first and `stderr.contains("not a board")` for the second), `the_cli_passes_kicad_flavor_explicitly` (exit codes become 1), `two_runs_of_every_ci_stem_are_byte_identical` (`--router.result_json=` → `--result-json`), `every_stem_has_a_reference_and_every_reference_has_a_stem` (drop `"route.log"` from the list), `the_cli_reference_agrees_with_the_batch_reference`.
+Tests to keep with translated argv and unchanged assertions: `a_failed_run_leaves_the_previous_result_on_disk`, `an_empty_output_directory_is_not_unlinked`, `do_out_json_writes_the_routed_board`, `a_non_ascii_session_file_is_read_as_utf8` (the session moves to `--ses`), `a_missing_dr_path_disables_rules_discovery` (`-dr` → `--rules`), `no_donation_banner_on_stdout`, `max_passes_zero_is_unlimited`, `the_rules_file_is_read_as_bytes_twice`, `the_via_net_number_fixture_routes_instead_of_hanging`, `the_session_is_imported_after_the_rules` (its `build` helper now uses `copperroute::ops::load` with `rules`/`session` set, and the two orderings are expressed as two `LoadRequest`s: one with both, one with only the session then a second `load` cannot reorder — so replace the `rules_first`/`session_first` comparison with a single assertion that the CLI's clearance count equals the count from a `LoadRequest` carrying both, and keep the log-order assertion on `Loading RULES`/`Session loaded`; use the new log wording from Task 2: `Session loaded from`), `the_quality_score_uses_a_dsn_only_merge`, `the_quality_score_is_an_f32_widened_to_f64`, `every_committed_reference_score_is_recomputed` (append `let _ = code;` and drop the `assert_eq!(code, 0)` — the dev board and others now exit 1 on violations; assert instead `code == 0 || code == 1`), `drc_with_no_output_prints_to_stdout` (the stderr assertion becomes `stderr.contains("violation")` since the dev board has violations and the report still goes to stdout; exit code is 1), `info_writes_the_board_summary_to_stdout`, `info_exits_1_on_an_unreadable_input_and_on_an_unloadable_board` (the message assertion becomes `stderr.contains("Couldn't load the input file")` for the first and `stderr.contains("not a board")` for the second), `the_cli_passes_kicad_flavor_explicitly` (exit codes become 1), `two_runs_of_every_ci_stem_are_byte_identical` (`--router.result_json=` → `--result-json`), `every_stem_has_a_reference_and_every_reference_has_a_stem` (drop `"route.log"` from the list), `the_cli_reference_agrees_with_the_batch_reference`.
 
 Tests to rewrite:
 
@@ -2394,24 +2394,24 @@ fn drc_exits_1_when_the_input_is_unreadable_or_not_a_board_or_unwritable() {
 
 Delete: `de_a_ses_exits_1_instead_of_hanging` (replaced by `a_session_under_a_dsn_name_exits_1`), `the_generic_override_is_set_on_native_and_dotted_on_legacy` (replaced), `a_settings_file_reaches_the_run` (replaced), `an_invalid_input_writes_no_manifest_because_java_never_reaches_the_writer` (replaced), `drc_exits_0_when_the_rules_file_is_missing`, `drc_exits_1_when_the_input_is_unreadable`, `drc_exits_1_when_the_board_will_not_load`, `drc_exits_1_when_the_report_cannot_be_written` (all three folded into the last test above), `the_cli_refuses_an_unreadable_router_budget_with_exit_2`.
 
-In `climb_one`: delete the `expected_log`/`actual_log` block, and change the manifest run to push `"--result-json".to_string()` and `manifest.display().to_string()` as two tokens instead of `--router.result_json=`. In `regolden_one`: delete the `route.log` write and make the same manifest-argv change. Rename `the_ci_stems_match_the_jars_reference` → `the_ci_stems_match_the_reference` and its slow sibling likewise, and the `SKIP` message to name `FR_REGOLDEN` instead of `gen-cli-reference.sh`.
+In `climb_one`: delete the `expected_log`/`actual_log` block, and change the manifest run to push `"--result-json".to_string()` and `manifest.display().to_string()` as two tokens instead of `--router.result_json=`. In `regolden_one`: delete the `route.log` write and make the same manifest-argv change. Rename `the_ci_stems_match_the_jars_reference` → `the_ci_stems_match_the_reference` and its slow sibling likewise, and the `SKIP` message to name `COPPERROUTE_REGOLDEN` instead of `gen-cli-reference.sh`.
 
 `parity::example` exists (`pub fn example(name: &str) -> PathBuf`); if its argument shape differs, use `parity::java_dir().join("examples/tutorial_board/tutorial_board.dsn")`.
 
 - [ ] **Step 4: Run the CLI end-to-end suite**
 
-Run: `cargo test -p freerouting --test cli_e2e`
+Run: `cargo test -p copperroute --test cli_e2e`
 Expected: all pass, `the_ci_stems_match_the_reference` included — the SES bytes and normalised manifests of the four CI stems are unchanged. If a stem's SES differs, stop: the loader changed routing input (rules discovery, DSN block, budget) and Task 2/3 must be corrected, never the golden.
 
 - [ ] **Step 5: Run the slow lane once**
 
-Run: `FR_SLOW_PARITY=1 cargo test -p freerouting --release --test cli_e2e the_slow_stems_match_the_reference`
+Run: `COPPERROUTE_SLOW_PARITY=1 cargo test -p copperroute --release --test cli_e2e the_slow_stems_match_the_reference`
 Expected: pass (a few minutes).
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add -A tests/reference tests/parity/src/lib.rs crates/freerouting/tests/cli_e2e.rs
+git add -A tests/reference tests/parity/src/lib.rs crates/copperroute/tests/cli_e2e.rs
 git commit -m "test(cli): the end-to-end suite and the committed argv on the native form"
 ```
 
@@ -2420,12 +2420,12 @@ git commit -m "test(cli): the end-to-end suite and the committed argv on the nat
 ### Task 8: Version stamps
 
 **Files:**
-- Modify: `crates/fr-core/src/lib.rs`, `crates/fr-core/src/manifest.rs`, `crates/fr-core/tests/manifest.rs`, `crates/fr-drc/tests/common/mod.rs`, `crates/fr-drc/tests/data/README.md`
-- Test: `crates/fr-core/tests/manifest.rs`
+- Modify: `crates/copper-core/src/lib.rs`, `crates/copper-core/src/manifest.rs`, `crates/copper-core/tests/manifest.rs`, `crates/copper-drc/tests/common/mod.rs`, `crates/copper-drc/tests/data/README.md`
+- Test: `crates/copper-core/tests/manifest.rs`
 
 - [ ] **Step 1: Write the failing test**
 
-In `crates/fr-core/tests/manifest.rs` replace `app_version_is_the_parity_version` with:
+In `crates/copper-core/tests/manifest.rs` replace `app_version_is_the_parity_version` with:
 
 ```rust
 #[test]
@@ -2433,19 +2433,19 @@ fn app_version_is_the_crate_version() {
     let manifest = from_job(&fresh_job(), None, false, 1, None);
     assert_eq!(
         manifest.app_version.as_deref(),
-        Some(fr_core::SERVER_VERSION)
+        Some(copper_core::SERVER_VERSION)
     );
-    assert_eq!(fr_core::SERVER_VERSION, env!("CARGO_PKG_VERSION"));
+    assert_eq!(copper_core::SERVER_VERSION, env!("CARGO_PKG_VERSION"));
 }
 ```
 
-and change the `"\"app_version\": \"2.3.1-SNAPSHOT\""` assertion a few lines above it to `text.contains(&format!("\"app_version\": \"{}\"", fr_core::SERVER_VERSION))`.
+and change the `"\"app_version\": \"2.3.1-SNAPSHOT\""` assertion a few lines above it to `text.contains(&format!("\"app_version\": \"{}\"", copper_core::SERVER_VERSION))`.
 
-Run: `cargo test -p fr-core --test manifest app_version` — expected: FAIL.
+Run: `cargo test -p copper-core --test manifest app_version` — expected: FAIL.
 
 - [ ] **Step 2: Implement**
 
-In `crates/fr-core/src/lib.rs` delete the three `PARITY_*` constants. In `crates/fr-core/src/manifest.rs` replace `use crate::PARITY_VERSION;` with `use crate::SERVER_VERSION;` and `PARITY_VERSION.to_string()` with `SERVER_VERSION.to_string()`. In `crates/fr-drc/tests/common/mod.rs` replace the constant with:
+In `crates/copper-core/src/lib.rs` delete the three `PARITY_*` constants. In `crates/copper-core/src/manifest.rs` replace `use crate::PARITY_VERSION;` with `use crate::SERVER_VERSION;` and `PARITY_VERSION.to_string()` with `SERVER_VERSION.to_string()`. In `crates/copper-drc/tests/common/mod.rs` replace the constant with:
 
 ```rust
 /// The version string every committed DRC transcript was written with.
@@ -2453,17 +2453,17 @@ In `crates/fr-core/src/lib.rs` delete the three `PARITY_*` constants. In `crates
 pub const JAR_VERSION: &str = "2.3.1-SNAPSHOT";
 ```
 
-and remove `fr-core` from `[dev-dependencies]` in `crates/fr-drc/Cargo.toml` if nothing else in `crates/fr-drc/tests` uses it (`grep -rn fr_core crates/fr-drc/tests`). In `crates/fr-drc/tests/data/README.md` delete the two sentences that say a rebuilt jar needs `JAR_VERSION` changed.
+and remove `copper-core` from `[dev-dependencies]` in `crates/copper-drc/Cargo.toml` if nothing else in `crates/copper-drc/tests` uses it (`grep -rn copper_core crates/copper-drc/tests`). In `crates/copper-drc/tests/data/README.md` delete the two sentences that say a rebuilt jar needs `JAR_VERSION` changed.
 
 - [ ] **Step 3: Run the tests**
 
-Run: `cargo test -p fr-core --test manifest && cargo test -p fr-drc && cargo test -p freerouting --test cli_e2e the_ci_stems_match_the_reference`
+Run: `cargo test -p copper-core --test manifest && cargo test -p copper-drc && cargo test -p copperroute --test cli_e2e the_ci_stems_match_the_reference`
 Expected: pass. The manifest goldens still compare equal because Task 7 removed `app_version` from `normalize_manifest`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add crates/fr-core crates/fr-drc
+git add crates/copper-core crates/copper-drc
 git commit -m "chore(core): stamp the crate version, not the parity version"
 ```
 
@@ -2485,7 +2485,7 @@ git rm -q scripts/differential/rust/src/bin/p8t1.rs scripts/differential/rust/sr
   scripts/gen-cli-reference.sh docs/cli-legacy-flags.md
 ```
 
-In `scripts/differential/rust/Cargo.toml` delete the five `[[bin]]` blocks named `p8t2`, `p8t5`, `p8t1`, `p8t3`, `p8t7` (each with its comment), and delete the `freerouting = { path = … }` dependency and its comment if no remaining bin imports `freerouting::` (`grep -ln 'freerouting::' scripts/differential/rust/src/bin/*.rs`). Keep the `parity` dependency (`refwriter` and others may use it; check with `grep -ln 'parity::' scripts/differential/rust/src/bin/*.rs` and drop it only if nothing matches).
+In `scripts/differential/rust/Cargo.toml` delete the five `[[bin]]` blocks named `p8t2`, `p8t5`, `p8t1`, `p8t3`, `p8t7` (each with its comment), and delete the `copperroute = { path = … }` dependency and its comment if no remaining bin imports `copperroute::` (`grep -ln 'copperroute::' scripts/differential/rust/src/bin/*.rs`). Keep the `parity` dependency (`refwriter` and others may use it; check with `grep -ln 'parity::' scripts/differential/rust/src/bin/*.rs` and drop it only if nothing matches).
 
 Run: `(cd scripts/differential/rust && cargo check --bins)` — expected: builds. Also delete any `p8t1`/`p8t2`/`p8t3`/`p8t5`/`p8t7`/`P8T2`/`P8T3`/`P8T5` rows from `scripts/differential/matrix/` and from the differential README if one exists (`ls scripts/differential`).
 
@@ -2533,7 +2533,7 @@ Four edits:
      REFEREE_ARGV+=(--ses "$SCRATCH/$family-$stem.ses")
    fi
    ```
-3. The quality lane (line ~747): `local -a route_argv=(route "$JAVA_DIR/$board" -o "$ses" "${QUALITY_LANE_ARGS[@]}" ${extra+"${extra[@]}"} --result-json "$manifest")`, and replace `FR_ROUTER_BUDGET="$QUALITY_LANE_BUDGET" "${TIMEOUT[@]}" "$PORT_BIN"` with `"${TIMEOUT[@]}" "$PORT_BIN"`. Define, where `QUALITY_LANE_BUDGET` is defined, `QUALITY_LANE_ARGS=(--set router.opt_changed_area_ms=0 --set router.fanout.max_milliseconds_per_pin=2147483647)` and delete `QUALITY_LANE_BUDGET`. Rewrite the header comment paragraphs that describe `FR_ROUTER_BUDGET` (lines ~49, ~230, ~480) to say the lane passes those two `--set` overrides.
+3. The quality lane (line ~747): `local -a route_argv=(route "$JAVA_DIR/$board" -o "$ses" "${QUALITY_LANE_ARGS[@]}" ${extra+"${extra[@]}"} --result-json "$manifest")`, and replace `COPPERROUTE_ROUTER_BUDGET="$QUALITY_LANE_BUDGET" "${TIMEOUT[@]}" "$PORT_BIN"` with `"${TIMEOUT[@]}" "$PORT_BIN"`. Define, where `QUALITY_LANE_BUDGET` is defined, `QUALITY_LANE_ARGS=(--set router.opt_changed_area_ms=0 --set router.fanout.max_milliseconds_per_pin=2147483647)` and delete `QUALITY_LANE_BUDGET`. Rewrite the header comment paragraphs that describe `COPPERROUTE_ROUTER_BUDGET` (lines ~49, ~230, ~480) to say the lane passes those two `--set` overrides.
 4. The time lane (line ~822–829): the DRC branch passes `"${REFEREE_ARGV[@]}" -o "$SCRATCH/…json"`; the route branch becomes `route "$JAVA_DIR/$board" -o "$SCRATCH/$family-$stem.t$i.ses" ${time_extra+"${time_extra[@]}"}`.
 
 The fixture `extra_args` columns the script reads come from `tests/reference/cli-fixtures.txt`, rewritten in Task 7 to the native spelling, so `${extra[@]}` already carries `--max-passes … --set …`. The DRC lane's `-drc` in the referee row-parser comment (line ~1191) becomes `drc <board> --ses <ses> -o <report>`.
@@ -2648,25 +2648,25 @@ git commit -m "feat(benchmark): per-kind argv — the Rust candidate uses the na
 ### Task 11: READMEs
 
 **Files:**
-- Modify: `crates/freerouting/README.md`, `crates/fr-core/README.md`
+- Modify: `crates/copperroute/README.md`, `crates/copper-core/README.md`
 
-- [ ] **Step 1: `crates/freerouting/README.md`**
+- [ ] **Step 1: `crates/copperroute/README.md`**
 
-Rewrite the file to describe only the native form. Sections: the four subcommands and their flags (copy the table from the spec's "The command line" section); the exit ladder (0 / 1 / 2, `drc` exits 1 on violations); settings precedence (defaults, `--settings`, the design's block, the rules file, `--max-passes`/`--timeout`/`--set`, the MCP payload); the MCP server and its four tools (keep the existing "The MCP server" and "The four tools" sections, minus the comparison rows against another program and minus the `route -de board.json` aside); logging (stderr, no timestamps, `-v`/`--log-level`); tests (`cli_e2e.rs`, `mcp_stdio.rs`, `ops_*.rs`, the `ci`/`slow` lanes, `FR_REGOLDEN=<label> cargo test -p freerouting --test cli_e2e` to re-cut goldens); the remaining generators (`gen-drc-reference.sh`, `gen-batch-reference.sh`, `gen-router-reference.sh`, `gen-reference.sh`). Delete every mention of the legacy form, `--kicad-json`, `FR_ROUTER_BUDGET`, `MESSAGE_MAP`, `gen-cli-reference.sh`, `docs/cli-legacy-flags.md` and the `p8t*` drivers.
+Rewrite the file to describe only the native form. Sections: the four subcommands and their flags (copy the table from the spec's "The command line" section); the exit ladder (0 / 1 / 2, `drc` exits 1 on violations); settings precedence (defaults, `--settings`, the design's block, the rules file, `--max-passes`/`--timeout`/`--set`, the MCP payload); the MCP server and its four tools (keep the existing "The MCP server" and "The four tools" sections, minus the comparison rows against another program and minus the `route -de board.json` aside); logging (stderr, no timestamps, `-v`/`--log-level`); tests (`cli_e2e.rs`, `mcp_stdio.rs`, `ops_*.rs`, the `ci`/`slow` lanes, `COPPERROUTE_REGOLDEN=<label> cargo test -p copperroute --test cli_e2e` to re-cut goldens); the remaining generators (`gen-drc-reference.sh`, `gen-batch-reference.sh`, `gen-router-reference.sh`, `gen-reference.sh`). Delete every mention of the legacy form, `--kicad-json`, `COPPERROUTE_ROUTER_BUDGET`, `MESSAGE_MAP`, `gen-cli-reference.sh`, `docs/cli-legacy-flags.md` and the `p8t*` drivers.
 
-- [ ] **Step 2: `crates/fr-core/README.md`**
+- [ ] **Step 2: `crates/copper-core/README.md`**
 
 In the "Versions" section replace the four-line block with `SERVER_VERSION = env!("CARGO_PKG_VERSION")` and the paragraph with: the version written into DRC reports and manifests and the MCP `serverInfo` is the crate's own. In "The job model" delete the sentence about `--max-items`'s help text if it references the legacy spelling; in "`CancelToken` and `RouterStop`" change `--set router.max_items=N` prose to say the flag lives on `route`.
 
 - [ ] **Step 3: Check for leftovers**
 
-Run: `grep -rn -- '-de \|--kicad-json\|FR_ROUTER_BUDGET\|MESSAGE_MAP\|gen-cli-reference\|cli-legacy-flags\|legacy' crates/*/README.md crates/freerouting/src docs/routing-visualizer.md`
+Run: `grep -rn -- '-de \|--kicad-json\|COPPERROUTE_ROUTER_BUDGET\|MESSAGE_MAP\|gen-cli-reference\|cli-legacy-flags\|legacy' crates/*/README.md crates/copperroute/src docs/routing-visualizer.md`
 Expected: nothing.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add crates/freerouting/README.md crates/fr-core/README.md
+git add crates/copperroute/README.md crates/copper-core/README.md
 git commit -m "docs(cli): READMEs for the native command line"
 ```
 
@@ -2691,10 +2691,10 @@ Expected: every command exits 0. Fix any clippy finding in the files this plan t
 - [ ] **Step 2: Grep for the removed surface**
 
 ```bash
-grep -rn 'legacy::\|settings_argv\|EnvironmentVariablesSource\|FR_ROUTER_BUDGET\|PARITY_VERSION\|normalize_log\|run_jar' crates tests/parity/src scripts/*.sh benchmark/bench
+grep -rn 'legacy::\|settings_argv\|EnvironmentVariablesSource\|COPPERROUTE_ROUTER_BUDGET\|PARITY_VERSION\|normalize_log\|run_jar' crates tests/parity/src scripts/*.sh benchmark/bench
 ```
 
-Expected: nothing except `EnvironmentVariablesSource` inside `crates/fr-settings` (the source type stays in that crate; only the CLI stopped feeding it).
+Expected: nothing except `EnvironmentVariablesSource` inside `crates/copper-settings` (the source type stays in that crate; only the CLI stopped feeding it).
 
 - [ ] **Step 3: Confirm the goldens did not move**
 
@@ -2714,8 +2714,8 @@ git add -A && git commit -m "chore(cli): clippy and fmt after the CLI simplifica
 
 ## Self-review
 
-**Spec coverage.** Legacy form dropped: Task 5. Settings sources: Task 1 (env removed, file + set + sparse), `FR_ROUTER_BUDGET`: Tasks 5, 7, 9. Dead flags and `--kicad-json`: Task 5. Exit codes and `drc` violations: Tasks 5, 7. Plain logs, `MESSAGE_MAP`: Tasks 5, 7. Version stamps: Task 8. One loader and request types for CLI and MCP: Tasks 1–6. Argv files, parity helper, `cli_e2e`: Task 7. Differential drivers, generator scripts, `quality-ab.sh`, `docs/cli-legacy-flags.md`: Task 9. Benchmark runner: Task 10. READMEs: Task 11. Goldens unchanged: Tasks 7 and 12.
+**Spec coverage.** Legacy form dropped: Task 5. Settings sources: Task 1 (env removed, file + set + sparse), `COPPERROUTE_ROUTER_BUDGET`: Tasks 5, 7, 9. Dead flags and `--kicad-json`: Task 5. Exit codes and `drc` violations: Tasks 5, 7. Plain logs, `MESSAGE_MAP`: Tasks 5, 7. Version stamps: Task 8. One loader and request types for CLI and MCP: Tasks 1–6. Argv files, parity helper, `cli_e2e`: Task 7. Differential drivers, generator scripts, `quality-ab.sh`, `docs/cli-legacy-flags.md`: Task 9. Benchmark runner: Task 10. READMEs: Task 11. Goldens unchanged: Tasks 7 and 12.
 
-**Type consistency.** `SettingsOverrides { settings_file, set, sparse }` is used identically in Tasks 1, 2, 5, 6. `LoadRequest::for_board` plus field assignment is the construction pattern everywhere. `OutputTarget::{File, Session}` and `OutputFormat::from_path` in Tasks 3, 5. `route(RouteRequest)` by value, `drc(&DrcRequest)` and `info(&InfoRequest)` by reference, in Tasks 3–6. `ExitCode` lives in `freerouting::ExitCode` from Task 5 on. `State::with_overrides` and `State.overrides` in Tasks 5 and 6. `mcp::stdio::run(SettingsOverrides)` in Tasks 5 and 6.
+**Type consistency.** `SettingsOverrides { settings_file, set, sparse }` is used identically in Tasks 1, 2, 5, 6. `LoadRequest::for_board` plus field assignment is the construction pattern everywhere. `OutputTarget::{File, Session}` and `OutputFormat::from_path` in Tasks 3, 5. `route(RouteRequest)` by value, `drc(&DrcRequest)` and `info(&InfoRequest)` by reference, in Tasks 3–6. `ExitCode` lives in `copperroute::ExitCode` from Task 5 on. `State::with_overrides` and `State.overrides` in Tasks 5 and 6. `mcp::stdio::run(SettingsOverrides)` in Tasks 5 and 6.
 
 **Known judgement calls the executor may hit.** `apply_new_values_from` visibility (Task 1 says what to do). `BoardFileDetails::filename` visibility (Task 3 says what to do). The DRC quality score's settings source (Task 4 names the oracle). `parity::example`'s signature (Task 7 gives the fallback).

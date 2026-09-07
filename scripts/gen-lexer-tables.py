@@ -5,13 +5,13 @@ One-shot, committed, re-runnable generator (Plan 3 ruling 3): the Specctra lexer
 ported by transcribing JFlex's packed tables mechanically, never by hand-writing a recognizer.
 It reads the Java scanner source, extracts the five `ZZ_*_PACKED*` string literals, runs
 JFlex 1.4.1's four unpack algorithms verbatim (the Java bodies live at
-SpecctraDsnStreamReader.java:616-722) and writes `crates/fr-dsn/src/lexer/tables.rs`.
+SpecctraDsnStreamReader.java:616-722) and writes `crates/copper-dsn/src/lexer/tables.rs`.
 
 Usage (from the repository root):
 
     python3 scripts/gen-lexer-tables.py \
         [--java ../freerouting/src/main/java/app/freerouting/io/specctra/parser/SpecctraDsnStreamReader.java] \
-        [--out crates/fr-dsn/src/lexer/tables.rs]
+        [--out crates/copper-dsn/src/lexer/tables.rs]
 
 The generated file is committed too: a build script would need the sibling `../freerouting`
 checkout at build time, which CI cannot assume.
@@ -30,7 +30,7 @@ DEFAULT_JAVA = (
     ROOT.parent
     / "freerouting/src/main/java/app/freerouting/io/specctra/parser/SpecctraDsnStreamReader.java"
 )
-DEFAULT_OUT = ROOT / "crates/fr-dsn/src/lexer/tables.rs"
+DEFAULT_OUT = ROOT / "crates/copper-dsn/src/lexer/tables.rs"
 
 
 def java_string_literal(text: str) -> list[int]:

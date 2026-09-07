@@ -125,7 +125,7 @@ mechanically, take B.
 | **T9 close** (`#227` — the optimizer stage starts doing work) | plan § "Task 9"; survey §4.2; multithreading-survey §3.2 | Turns the optimizer from free into the hottest loop in the program; supplies the acceptance rate the speculative-eval design depends on | **W3** (sizes it, or kills it) |
 | **M2** (end of T16) | plan § "Task 16"; ledger `progress.md:92` | The `#296` via column; `#231`'s stem-A/B follow-up | **W6**, **W13** |
 | **T17 report** | plan § "Task 17"; deliverable `docs/plan-9-prep/stale-index-report.md` | `#193`'s three-option recommendation. The row's status **stays `pinned`** by design | **W8** (its whole shape) |
-| **T18 — five verdicts** | plan § "Task 18", "The abandonment rule" | `#172`, `#235`, `#104`, `#210` and the `#44+#63+#74` ordering flip: each confirmed or **measured and declined** | **W9**; also decides whether `fr_geometry::Line`'s identity counter survives |
+| **T18 — five verdicts** | plan § "Task 18", "The abandonment rule" | `#172`, `#235`, `#104`, `#210` and the `#44+#63+#74` ordering flip: each confirmed or **measured and declined** | **W9**; also decides whether `copper_geometry::Line`'s identity counter survives |
 | **T18 — the `#296` work** | ruling BV (`progress.md:84`); register row `#296` | How much of the +3.80 % corpus via inflation T18 explains | **W6** (Plan 10 inherits the residue, re-scoped per §1.3) |
 | **T18 — the large-board sort policy row** | ruling BV: *"the large-tier R1 attribution question FILED TO TASK 18 as a policy row (net-count-gated sort …, A/B'd at M3)"* | Whether the airline-first sort should be gated by net count | **W7** |
 | **M3** (end of T18) | plan § "Task 18" MILESTONE block | `overall.verdict`, hard losses, D3-small vs M1, the M2→M3 cpu ratio | **The baseline every Plan 10 A/B is taken against** — replaces the jar view |
@@ -174,13 +174,13 @@ wall-clock. Everything else supports, enables or tidies.
 `isolated_copper`, `connection_width`, `drill_out_of_range`, `microvia_drill_out_of_range`,
 `zones_intersect`, `zone_has_empty_net`, `starved_thermal`, `npth_copper_clearance`, `padstack`,
 `unconnected_items`). The port's own DRC emits **two** violation types plus unconnected items —
-`clearance` and `hole_clearance` (`crates/fr-drc/src/report/mod.rs:119`,
-`crates/fr-drc/src/report/json.rs:93-124`; the crate's whole check surface is `checker.rs` +
+`clearance` and `hole_clearance` (`crates/copper-drc/src/report/mod.rs:119`,
+`crates/copper-drc/src/report/json.rs:93-124`; the crate's whole check surface is `checker.rs` +
 `unconnected.rs`). **The router therefore optimises against a two-rule world and is graded against a
 twenty-three-rule one.**
 
 **The proven example.** R2 (`#294`) stopped the micro-neckdown fallback emitting sub-minimum traces.
-Its entire benefit is a `track_width` improvement — a rule `fr-drc` **cannot express**. Ruling BU(a)
+Its entire benefit is a `track_width` improvement — a rule `copper-drc` **cannot express**. Ruling BU(a)
 (`progress.md:72`) had to send the adjudication to the corpus for exactly this reason: *"ADJUDICATION
 = M1 (the KiCad referee counts `track_width`, so R2's benefit is visible there)"*, and BU(c) filed
 the gap as an owed register row. M1 then measured the shape of the trade: large-tier DRC-clean
@@ -200,11 +200,11 @@ enforces (`_ZEROED_RULE_KEYS`: `min_clearance`, `min_connection`, `min_copper_ed
 
 **Three layers, and they should be three phases.**
 
-1. **Represent** the rules — extend `fr_board::BoardRules` (and the DSN/KiCad readers that fill it)
+1. **Represent** the rules — extend `copper_board::BoardRules` (and the DSN/KiCad readers that fill it)
    with the floors it does not carry. *Note the tension:* `BoardRules::get_min_trace_half_width()`
-   exists (`crates/fr-board/src/rules/board_rules.rs:148`) and R2 already consumes it, so the
+   exists (`crates/copper-board/src/rules/board_rules.rs:148`) and R2 already consumes it, so the
    minimum-width floor is **half-present**; most of the other fourteen are absent entirely.
-2. **Check** them — `fr-drc` grows a check per rule, each with its own violation type, so the port's
+2. **Check** them — `copper-drc` grows a check per rule, each with its own violation type, so the port's
    DRC report and the referee can be reconciled row for row. **Acceptance for this phase is
    agreement with `kicad-cli`, per board, per type**, on the corpus — a genuinely independent oracle,
    and the first one this project has had that it did not write itself.
@@ -213,7 +213,7 @@ enforces (`_ZEROED_RULE_KEYS`: `min_clearance`, `min_connection`, `min_copper_ed
    or the feasibility test, not a post-hoc report.
 
 **Dependencies and cautions.**
-* **PENDING T19** for phases 1–2's starting point: T19 rewrites `fr-drc`'s report surface, deletes
+* **PENDING T19** for phases 1–2's starting point: T19 rewrites `copper-drc`'s report surface, deletes
   `smallest_clearance`, and lands `--fail-on-violations` and `--unit`. Building on it before it lands
   is rework.
 * Phase 3 moves every routed golden and is a milestone-sized change; it wants its own M-bench.
@@ -235,8 +235,8 @@ than only the DSN's rules. Whether zone-related types (`zones_intersect`, `starv
 **Benefit: QUALITY (headline) · Size: L · PENDING-on: W2, a ruling-AM narrowing, T18**
 
 **Evidence.** `docs/plan-9-prep/multithreading-survey.md` §3.1 and shortlist row 1 (§7). Site:
-`crates/fr-router/src/pipeline/pass_runner.rs:151` (`run_single_thread`), driven from
-`crates/fr-router/src/pipeline/batch_loop.rs:174`.
+`crates/copper-router/src/pipeline/pass_runner.rs:151` (`run_single_thread`), driven from
+`crates/copper-router/src/pipeline/batch_loop.rs:174`.
 
 **The design, stated as ours** (its lineage is a historical note in the survey, not an input): run N
 complete autoroute passes on independent `Board` clones, each with a work-list permutation that is a
@@ -256,7 +256,7 @@ check at N=8 over the 29 stems).
 
 **Dependencies / preconditions.**
 1. **W2 is not optional.** `RouterBudget::default().fanout_ms_per_pin` is still `10_000`
-   (`crates/fr-router/src/pipeline/stop.rs:529-534`, read at draft time). Variants contending on one
+   (`crates/copper-router/src/pipeline/stop.rs:529-534`, read at draft time). Variants contending on one
    machine lengthen a pin's fanout, and a per-pin wall clock turns that into different bytes.
 2. **A controller decision on ruling AM.** The ruling's stated reason ("a threaded maze would be
    non-deterministic") does not reach a portfolio of N whole, unmodified, sequential mazes — but
@@ -277,7 +277,7 @@ DAC2020 → ~8 variants ≈ 400 MB — re-measure after `#227` makes the optimiz
 **Benefit: ROBUSTNESS (determinism) · Size: S–M · PENDING-on: nothing**
 
 **Evidence.** `docs/plan-9-prep/multithreading-survey.md` §7 ("Cross-cutting precondition for 1, 3
-and 5"), §3.1, §4.2. Site: `crates/fr-router/src/pipeline/stop.rs:529-534`.
+and 5"), §3.1, §4.2. Site: `crates/copper-router/src/pipeline/stop.rs:529-534`.
 
 **Ownership finding.** `#234` (Plan 9 Task 1) removed **one** of the two live wall clocks in the
 default CLI budget and left this one standing — confirmed at ruling BR(b) (`progress.md:56`: *"seam
@@ -305,7 +305,7 @@ first in Plan 9.
 **Benefit: SPEED (quality-neutral by construction) · Size: L · PENDING-on: T9 / `#227`**
 
 **Evidence.** `docs/plan-9-prep/multithreading-survey.md` §3.2, shortlist row 4. Site:
-`crates/fr-router/src/pipeline/optimizer.rs:437` (the item loop) and `~:560-660` (`opt_route_item`).
+`crates/copper-router/src/pipeline/optimizer.rs:437` (the item loop) and `~:560-660` (`opt_route_item`).
 
 **Why it is PENDING.** `#227` records that the optimizer today "runs, visits every item, and changes
 nothing" (survey §4.2). Group 9's fix makes it real — *"the single largest quality change in the
@@ -330,15 +330,15 @@ under `benchmark/baselines/ab/`.
 **Evidence.** `docs/plan-9-prep/multithreading-survey.md` §1. Two halves that must be separated:
 
 * **The counter half is free.** `entry_counter`
-  (`crates/fr-board/src/searchtree/shape_search_tree.rs:1100-1146`) is drawn only inside one call,
+  (`crates/copper-board/src/searchtree/shape_search_tree.rs:1100-1146`) is drawn only inside one call,
   consumed only as the second key of a call-local `BTreeSet`, and **never escapes** — `result` pushes
   `sorted.entry`, not `sorted.entry_id`. **A per-thread counter starting at any value yields
   byte-identical query results.** This myth-busts a long-standing precondition: the counter was never
   a parallelism blocker (survey §1, and §6's `#30, #61` row).
 * **The real blocker:** the board's *read* paths take `&mut Board`, and one of them writes.
-  `Board::clearance_violations` is `&mut self` (`crates/fr-board/src/board/clearance.rs:37`);
+  `Board::clearance_violations` is `&mut self` (`crates/copper-board/src/board/clearance.rs:37`);
   `overlapping_items_with_clearance` is `&mut self` only to carry the counter
-  (`crates/fr-board/src/board/query.rs:382-395`); and `ForcedPadRouter::check_forced_pad` genuinely
+  (`crates/copper-board/src/board/query.rs:382-395`); and `ForcedPadRouter::check_forced_pad` genuinely
   mutates — `board.set_shove_failing_obstacle(outline)`, a **last-writer-wins diagnostic field**
   (`board_ext/forced_pad_router.rs:61,76-79`).
 
@@ -357,7 +357,7 @@ on `structural_hash` equality and the two-run identity check.
 **Benefit: SPEED (8–10 % wall) · Size: L · PENDING-on: W4, W2 — and on W1's outcome**
 
 **Evidence.** `docs/plan-9-prep/multithreading-survey.md` §4.3, shortlist row 5. Sites:
-`crates/fr-router/src/autoroute/maze/expansion_engine.rs:379` and `:680`;
+`crates/copper-router/src/autoroute/maze/expansion_engine.rs:379` and `:680`;
 `board_ext/forced_via_inserter.rs:41`. 14.1 % of the profiled run is here.
 
 **The survey's verdict, carried forward:** *"an L-sized refactor of the code with the least slack in
@@ -452,7 +452,7 @@ defensible first answer, not a final one — and post-fork none of the three has
 current default beyond that measurement. Plan 10 re-measures them against the post-Plan-9 baseline,
 with the rest of the catalogue underneath them, which is the same argument that put Task 18 last.
 
-**Coupled decision.** If `#74` is abandoned, `fr_geometry::Line`'s identity counter survives as the
+**Coupled decision.** If `#74` is abandoned, `copper_geometry::Line`'s identity counter survives as the
 port's **only** static-mutable-state exception. Post-fork the counter has no parity justification at
 all, so deleting it becomes a straightforward W19 item — it just needs a value comparison that
 performs acceptably.
@@ -465,7 +465,7 @@ performs acceptably.
 
 **Evidence.** Register row `#295` (`docs/java-quirks.md:341`); plan § "Task 8" answers it and closes
 the row. The remains in our tree are three reader-less lines
-(`crates/fr-board/src/rules/board_rules.rs:61, :514, :519`).
+(`crates/copper-board/src/rules/board_rules.rs:61, :514, :519`).
 
 **Post-fork wording.** Not "should we restore what they deleted" — **"does periodically running the
 exhaustive tree instead of the 45-degree one improve our routes enough to pay for a 4× cost on every
@@ -527,7 +527,7 @@ Two "one release" promises made inside Plan 9, both falling due after it:
    legacy flag form one release of 'matched by prefix, warned as deprecated' before it becomes
    exact"*. Task 25 part 3.7 writes *"exact flag matching with the legacy ramp and **its expiry
    date**"* into the divergence table. Plan 10 executes the expiry.
-2. **The `FreeroutingHead` DRC reader.** Survey §11 question 6: keep the reader one release, make
+2. **The `Legacy` DRC reader.** Survey §11 question 6: keep the reader one release, make
    `KiCad` the only spelling written. Task 19 makes `KiCad` the only **writer**; the reader's deletion
    is the second half. **Post-fork this is trivially decided**: a reader whose only purpose is to
    parse a format the forked-from program emitted has no constituency here.
@@ -587,7 +587,7 @@ these migrate into the successor tracker; the register itself closes.**
 **Evidence.** `docs/plan-9-prep/multithreading-survey.md` §4.1, §4.2. Item 2: fan out
 `scripts/quality-ab.sh:511-560`'s quality + referee lanes — **~1.25×**, ceiling structural because the
 timing lane must stay sequential (3 × 111 s irreducible); zero determinism risk *conditionally*,
-because that lane already sets `FR_ROUTER_BUDGET=disabled` (`:539`) — **encode that as an assertion,
+because that lane already sets `COPPERROUTE_ROUTER_BUDGET=disabled` (`:539`) — **encode that as an assertion,
 not a comment**. Item 3: fan out `gen-cli-reference.sh:541` / `gen-batch-reference.sh:511` —
 near-linear, but **safe only once W2 lands**, or with a per-core cap and a serial `--verify-two-runs`
 as the acceptance step.
@@ -623,7 +623,7 @@ port's provenance system lives in **non-doc comments**, and a gate counts them:
 * `// Java bug:` — **≥ 165 sites** across 8 crates; Task 25's check is `grep -rn '// Java bug:' crates`
   ≥ 165 (amendment A11: 153 code + 12 prose).
 * `// fixed: T<n> (#id)` — one per site per fixed register row, checked **per row and per site** by
-  `crates/fr-core/tests/register.rs` (amendment A17; the per-site version was proved fail-before /
+  `crates/copper-core/tests/register.rs` (amendment A17; the per-site version was proved fail-before /
   pass-after at Task 0's fix round, `progress.md:40`).
 * `// not ported:`, `// totalized:`, `// renamed:`, `// obligation:` — the roster markers the
   `audit-port.sh` map machinery reads.
@@ -715,7 +715,7 @@ different workstream.
 * **Register rows #42 and #49 — the accessor bounds checks** (`Packages::get`, `LogicalParts::get`,
   `Components::get`/`get_mut`). Plan 9 Task 6 investigated them and left them `pinned` under
   **ruling BX(a)**: the fix is `Padstacks::get`'s bounds check, which in Rust means returning
-  `Option` across ~30 call sites in `fr-board`, `fr-dsn` and `fr-router` — a signature change T6's
+  `Option` across ~30 call sites in `copper-board`, `copper-dsn` and `copper-router` — a signature change T6's
   brief forbade, for a crash that is unreachable today (`Components` is append-only, and every
   argument is a live 1-based id, a `1..=count()` loop index or already range-checked; the one
   caller with no check of its own is `RoutingBoardExt`'s `fanout_start_pin_name`, whose safety
@@ -725,11 +725,11 @@ different workstream.
 * **W9**'s `Line` identity-counter deletion, if T18 leaves it standing.
 
 **Sequencing and shape.**
-* **Crate by crate, in dependency order**, landing one at a time: `fr-geometry` → `fr-board` →
-  `fr-dsn` / `fr-drc` → `fr-router` → `fr-core` / `freerouting`. The leaf crates are the cheapest
+* **Crate by crate, in dependency order**, landing one at a time: `copper-geometry` → `copper-board` →
+  `copper-dsn` / `copper-drc` → `copper-router` → `copper-core` / `copperroute`. The leaf crates are the cheapest
   rehearsal and the router is the one with the least slack (survey §4.3), so it goes last.
 * **After** the quality workstreams that change routing behaviour (**W11** phase 3, **W1**), not
-  before — a rewrite racing a behaviour change makes both unreviewable. The exception is `fr-geometry`,
+  before — a rewrite racing a behaviour change makes both unreviewable. The exception is `copper-geometry`,
   which nothing else in the roadmap touches and which can start immediately.
 * Each crate's landing wants its own review pass; this is not a task, it is a programme.
 
@@ -807,7 +807,7 @@ hand.**
 
 9. For each of `#172`, `#235`, `#104`, `#210`, `#44+#63+#74`: confirmed or **measured and
    declined**, with its number. → **W9**; `#172`'s outcome also feeds **W6**.
-10. Did the ordering flip survive? If not, `fr_geometry::Line`'s identity counter survives → a **W19**
+10. Did the ordering flip survive? If not, `copper_geometry::Line`'s identity counter survives → a **W19**
     deletion row.
 11. Did T18 take the `pass_variants` setting + seeded-PRNG plumbing? → **W1**'s size.
 12. The large-board sort policy row's A/B at M3. → **W7**.
@@ -821,7 +821,7 @@ hand.**
     open, read T9's and T10's escalation results too.
 15. Task 9's `#227` A/B: the optimizer's measured **acceptance rate** and its cpu cost. → **W3**.
 16. Task 19's outcome and the id of the `track_width`-gap row filed under ruling BU(c) — plus which
-    of the referee's 23 routing types `fr-drc` can express after T19. → **W11**'s size and phase 1
+    of the referee's 23 routing types `copper-drc` can express after T19. → **W11**'s size and phase 1
     scope.
 
 **E. The parked / unowned list**
@@ -849,7 +849,7 @@ hand.**
     code, doc comments and identifiers included. This is the number W18's inverted gate drives to
     zero.
 23. T23/T24's outcome: which shims survive as contracts (the KEEP ~700) and therefore need **renaming
-    plus a contract-stated doc comment** under W19, and whether `fr_geometry::Line`'s counter was
+    plus a contract-stated doc comment** under W19, and whether `copper_geometry::Line`'s counter was
     deleted.
 24. Confirm the ordering: **W18's gate inversion cannot land until T25 has merged**, because Task
     25's report depends on the marker census being intact.

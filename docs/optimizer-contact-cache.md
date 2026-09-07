@@ -21,8 +21,8 @@ items while retaining snapshots of removed items for the existing fallback.
 Given an input DSN and a compatible routed session:
 
 ```sh
-FR_BENCH_SEARCH_STEPS=1000000 FR_BENCH_OUTPUT=/tmp/optimized.ses \
-  cargo run --release -p freerouting --example optimizer_bench -- \
+COPPERROUTE_BENCH_SEARCH_STEPS=1000000 COPPERROUTE_BENCH_OUTPUT=/tmp/optimized.ses \
+  cargo run --release -p copperroute --example optimizer_bench -- \
   INPUT.dsn INPUT.ses 20 120000
 ```
 
@@ -31,8 +31,8 @@ and an optional repeat window in milliseconds for sampling short workloads.
 The example runs one optimizer pass on one thread. It uses the shared board
 result parser (including partial-load warnings) and immediate post-load
 processing before session import. Only imported traces/vias are unlocked;
-original fixed items stay fixed. `FR_BENCH_SEARCH_STEPS` sets an optional fixed
-work allowance; `FR_BENCH_OUTPUT` optionally writes a session for comparison.
+original fixed items stay fixed. `COPPERROUTE_BENCH_SEARCH_STEPS` sets an optional fixed
+work allowance; `COPPERROUTE_BENCH_OUTPUT` optionally writes a session for comparison.
 
 JSON output reports optimizer time, work counts, outcomes, and before/after
 quality. Timing excludes loading, external statistics, and session writing.

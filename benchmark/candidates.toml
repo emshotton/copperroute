@@ -11,7 +11,7 @@ version = "2.3.0"
 
 [candidates.rs-main]
 kind = "rust"
-exec = ["../target/release/freerouting"]
+exec = ["../target/release/copperroute"]
 sha_from = ".."
 
 [candidates."java-2.1.0"]

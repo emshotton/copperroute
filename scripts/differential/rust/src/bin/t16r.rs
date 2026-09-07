@@ -1,18 +1,18 @@
 use std::panic::{self, AssertUnwindSafe};
 
-use fr_geometry::float_point::FloatPoint;
-use fr_geometry::int_box::IntBox;
-use fr_geometry::int_octagon::IntOctagon;
-use fr_geometry::int_point::IntPoint;
-use fr_geometry::int_vector::IntVector;
-use fr_geometry::line::Line;
-use fr_geometry::line_segment::LineSegment;
-use fr_geometry::point::Point;
-use fr_geometry::polygon::Polygon;
-use fr_geometry::polyline::{Polyline, PolylineError};
-use fr_geometry::simplex::Simplex;
-use fr_geometry::tile_shape::TileShape;
-use fr_geometry::vector::Vector;
+use copper_geometry::float_point::FloatPoint;
+use copper_geometry::int_box::IntBox;
+use copper_geometry::int_octagon::IntOctagon;
+use copper_geometry::int_point::IntPoint;
+use copper_geometry::int_vector::IntVector;
+use copper_geometry::line::Line;
+use copper_geometry::line_segment::LineSegment;
+use copper_geometry::point::Point;
+use copper_geometry::polygon::Polygon;
+use copper_geometry::polyline::{Polyline, PolylineError};
+use copper_geometry::simplex::Simplex;
+use copper_geometry::tile_shape::TileShape;
+use copper_geometry::vector::Vector;
 
 struct Rng(u64);
 impl Rng {

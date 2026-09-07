@@ -56,9 +56,9 @@
 # per class) so the map cannot silently rot as new classes come into scope.
 #
 # Self-test (both invocation forms; not executed by this script):
-#   3-arg, unchanged:  ./scripts/audit-port.sh datastructures crates/fr-board/src
-#   4-arg, per-class:  ./scripts/audit-port.sh datastructures crates/fr-dsn/src \
-#                         'IdentifierType.java IndentFileWriter.java' scripts/audit-map/fr-dsn.map
+#   3-arg, unchanged:  ./scripts/audit-port.sh datastructures crates/copper-board/src
+#   4-arg, per-class:  ./scripts/audit-port.sh datastructures crates/copper-dsn/src \
+#                         'IdentifierType.java IndentFileWriter.java' scripts/audit-map/copper-dsn.map
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FREEROUTING_JAVA_DIR="${FREEROUTING_JAVA_DIR:-$ROOT/../freerouting}"

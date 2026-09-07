@@ -92,7 +92,7 @@ def java_exe() -> str:
 
 def kicad_cli() -> Path:
     return _tool(
-        "FREEROUTING_KICAD_CLI",
+        "COPPERROUTE_KICAD_CLI",
         "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli",
         "kicad-cli",
     )
@@ -100,14 +100,14 @@ def kicad_cli() -> Path:
 
 def kicad_python() -> Path:
     return _tool(
-        "FREEROUTING_KICAD_PYTHON",
+        "COPPERROUTE_KICAD_PYTHON",
         "/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3",
         "KiCad bundled python3",
     )
 
 
 def time_exe() -> Path:
-    return _tool("FREEROUTING_TIME", "/usr/bin/time", "GNU/BSD time")
+    return _tool("COPPERROUTE_TIME", "/usr/bin/time", "GNU/BSD time")
 
 
 def isolated_env(home: Path) -> dict[str, str]:

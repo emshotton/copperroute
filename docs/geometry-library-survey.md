@@ -1,8 +1,8 @@
-# Crate survey for `fr-geometry` — what could be off-the-shelf, and what it would cost
+# Crate survey for `copper-geometry` — what could be off-the-shelf, and what it would cost
 
 **Date:** 2026-08-27 · **Status:** exploration, not a recommendation to rewrite
-**Scope:** `crates/fr-geometry` (18.9k LOC, 32 modules) against the parity contract in
-`docs/superpowers/specs/2026-08-27-freerouting-rust-port-design.md` §3/§5/§6 and the 25 pinned
+**Scope:** `crates/copper-geometry` (18.9k LOC, 32 modules) against the parity contract in
+`docs/superpowers/specs/2026-08-27-copperroute-rust-port-design.md` §3/§5/§6 and the 25 pinned
 quirks in `docs/java-quirks.md`.
 
 ## 0. The constraints that decide almost every answer
@@ -115,7 +115,7 @@ the one place §6 sanctions a crate for polygon booleans. Plan 2 Task 7 read the
 concern does not apply: `getDetailedFillArea` has no caller outside the paint path, and nothing that
 computation produces ever reaches the search tree, `split_to_convex`, or any routing query. It is
 **not ported** (`docs/java-quirks.md` quirk #59); `ConductionArea::warm_detailed_fill_cache` in
-`crates/fr-board/src/items/area.rs` is kept as an empty public method (the group's only entry point
+`crates/copper-board/src/items/area.rs` is kept as an empty public method (the group's only entry point
 reachable from outside the class), and `i_overlay` is **not** a Plan 2 dependency. `i_overlay`
 remains the standout candidate — **native `i32`/`i64` integer API** (so results come back as exact
 `IntPoint` corners with no rounding step), union/intersection/difference/xor, holes,

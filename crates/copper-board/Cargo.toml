@@ -1,0 +1,10 @@
+[package]
+name = "copper-board"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+copper-geometry = { path = "../copper-geometry" }
+num-bigint.workspace = true
+thiserror.workspace = true

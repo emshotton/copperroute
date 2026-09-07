@@ -501,7 +501,7 @@ def revalidate(origin: str, progress: Progress | None = None, regenerate_project
     additionally regenerates each project-generated board's ``.kicad_pro`` from its pristine
     ``raw.orig.kicad_pcb`` backup (see `_regenerate_project`); ``rerun_drc`` additionally
     re-runs ``kicad-cli pcb drc`` against the (possibly just-regenerated) project before
-    recomputing -- both need KiCad's ``kicad-cli`` on ``$PATH`` (or ``$FREEROUTING_KICAD_CLI``).
+    recomputing -- both need KiCad's ``kicad-cli`` on ``$PATH`` (or ``$COPPERROUTE_KICAD_CLI``).
     ``jobs`` parallelises per-board work the same way `import_boards` does; it only matters
     when ``rerun_drc`` is set, since the plain recompute is pure local file I/O.
 

@@ -7,7 +7,7 @@ enabled, the normal route output and algorithm are unchanged.
 ## Capture a route
 
 ```bash
-cargo run --release -p freerouting -- route board.dsn -o routed.ses \
+cargo run --release -p copperroute -- route board.dsn -o routed.ses \
   --visualize /tmp/board-frames \
   --visualize-every 10 \
   --visualize-max-frames 500

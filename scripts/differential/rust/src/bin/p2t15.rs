@@ -1,6 +1,6 @@
 //! Rust twin of `scripts/differential/java/P2T15.java` (Plan 2 Task 15).
 //!
-//! Builds the same randomised two-layer board through `fr_board::Board`, drives the same shared
+//! Builds the same randomised two-layer board through `copper_board::Board`, drives the same shared
 //! xorshift stream through the same insertion mix, and prints the same lines the Java driver
 //! prints. Every random draw below is mirrored draw-for-draw by the Java side; the two programs
 //! must produce byte-identical stdout (see `scripts/differential/README.md` for the recorded
@@ -11,8 +11,8 @@
 
 use std::collections::BTreeSet;
 
-use fr_board::prelude::*;
-use fr_geometry::{Area, IntBox, IntVector, Point, PolygonShape, Polyline, PolylineShapeRef, Shape, TileShape};
+use copper_board::prelude::*;
+use copper_geometry::{Area, IntBox, IntVector, Point, PolygonShape, Polyline, PolylineShapeRef, Shape, TileShape};
 
 const RANGE: i32 = 12_000;
 const QUERY_RANGE: i32 = 15_000;

@@ -34,9 +34,9 @@ i=1; args=("$@")
 while [[ $i -le ${#args[@]} ]]; do
   g="${args[$((i-1))]}"
   case "$g" in
-    slow-lane) run_gate "bash -c 'set -o pipefail; FR_SLOW_PARITY=1 cargo nextest run --workspace --release --run-ignored all 2>&1 | tail -3'";;
+    slow-lane) run_gate "bash -c 'set -o pipefail; COPPERROUTE_SLOW_PARITY=1 cargo nextest run --workspace --release --run-ignored all 2>&1 | tail -3'";;
     nextest)   run_gate "bash -c 'set -o pipefail; cargo nextest run --workspace 2>&1 | tail -3'";;
-    identity)  run_gate "bash -c 'set -o pipefail; cargo nextest run -p freerouting -E \"test(two_runs_of_every_ci_stem_are_byte_identical)\" 2>&1 | tail -3'";;
+    identity)  run_gate "bash -c 'set -o pipefail; cargo nextest run -p copperroute -E \"test(two_runs_of_every_ci_stem_are_byte_identical)\" 2>&1 | tail -3'";;
     quality-ab) tid="${args[$i]}"; i=$((i+1));
        # forward everything after the task id as extra args (e.g. --update-baseline);
        # consume the rest of argv — quality-ab is therefore always the LAST gate named.

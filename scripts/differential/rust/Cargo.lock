@@ -9,54 +9,54 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
-name = "fr-board"
+name = "copper-board"
 version = "0.1.0"
 dependencies = [
- "fr-geometry",
+ "copper-geometry",
  "num-bigint",
  "thiserror",
 ]
 
 [[package]]
-name = "fr-core"
+name = "copper-core"
 version = "0.1.0"
 dependencies = [
- "fr-board",
- "fr-drc",
- "fr-dsn",
- "fr-geometry",
- "fr-router",
- "fr-settings",
+ "copper-board",
+ "copper-drc",
+ "copper-dsn",
+ "copper-geometry",
+ "copper-router",
+ "copper-settings",
  "serde",
  "serde_json",
  "thiserror",
 ]
 
 [[package]]
-name = "fr-drc"
+name = "copper-drc"
 version = "0.1.0"
 dependencies = [
- "fr-board",
- "fr-dsn",
- "fr-geometry",
+ "copper-board",
+ "copper-dsn",
+ "copper-geometry",
  "serde",
  "serde_json",
  "thiserror",
 ]
 
 [[package]]
-name = "fr-dsn"
+name = "copper-dsn"
 version = "0.1.0"
 dependencies = [
- "fr-board",
- "fr-geometry",
+ "copper-board",
+ "copper-geometry",
  "serde",
  "serde_json",
  "thiserror",
 ]
 
 [[package]]
-name = "fr-geometry"
+name = "copper-geometry"
 version = "0.1.0"
 dependencies = [
  "num-bigint",
@@ -65,38 +65,38 @@ dependencies = [
 ]
 
 [[package]]
-name = "fr-geometry-differential"
+name = "copper-geometry-differential"
 version = "0.1.0"
 dependencies = [
- "fr-board",
- "fr-core",
- "fr-drc",
- "fr-dsn",
- "fr-geometry",
- "fr-router",
- "fr-settings",
+ "copper-board",
+ "copper-core",
+ "copper-drc",
+ "copper-dsn",
+ "copper-geometry",
+ "copper-router",
+ "copper-settings",
  "parity",
  "serde_json",
 ]
 
 [[package]]
-name = "fr-router"
+name = "copper-router"
 version = "0.1.0"
 dependencies = [
- "fr-board",
- "fr-drc",
- "fr-geometry",
- "fr-settings",
+ "copper-board",
+ "copper-drc",
+ "copper-geometry",
+ "copper-settings",
  "thiserror",
 ]
 
 [[package]]
-name = "fr-settings"
+name = "copper-settings"
 version = "0.1.0"
 dependencies = [
- "fr-board",
- "fr-dsn",
- "fr-geometry",
+ "copper-board",
+ "copper-dsn",
+ "copper-geometry",
  "serde",
  "serde_json",
  "thiserror",

@@ -22,7 +22,7 @@ extra_args = ["--router.seed={seed}"]
 def toml_path(tmp_path: Path) -> Path:
     jar = tmp_path / "fr.jar"
     jar.write_text("")
-    rs = tmp_path / "freerouting"
+    rs = tmp_path / "copperroute"
     rs.write_text("")
     p = tmp_path / "candidates.toml"
     # Use replace instead of format to avoid conflict with {seed} placeholder

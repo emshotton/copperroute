@@ -1,8 +1,8 @@
-//! Rust twin of `scripts/differential/java/P7T7.java` (Plan 7 Task 1): `fr_router::score` —
+//! Rust twin of `scripts/differential/java/P7T7.java` (Plan 7 Task 1): `copper_router::score` —
 //! `BoardStatistics`' computing constructor, `is_pin_escaped` and the three score methods.
 //!
 //! Usage: `p7t7 <dsn> [routeK] [ripupPassNo]`. With `routeK > 0` the first `routeK` connections
-//! are routed through `fr_router::route_connection` first — the same four choices `p6t1` makes —
+//! are routed through `copper_router::route_connection` first — the same four choices `p6t1` makes —
 //! so the trace / via / bend / weighted-length blocks are exercised on a board that is actually
 //! routed rather than on one the DSN reader just built.
 //!
@@ -27,14 +27,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::{BufWriter, Write};
 use std::time::UNIX_EPOCH;
 
-use fr_board::prelude::*;
-use fr_board::structure::Unit;
-use fr_dsn::parser::scope_parameter::DsnReadOptions;
-use fr_dsn::{format_double, format_float, BoardReadResult};
-use fr_router::route_connection;
-use fr_router::score::BoardStatistics;
-use fr_settings::sources::DefaultSettings;
-use fr_settings::{HostEnvironment, RouterSettings, ScoringSettings, SettingsSource};
+use copper_board::prelude::*;
+use copper_board::structure::Unit;
+use copper_dsn::parser::scope_parameter::DsnReadOptions;
+use copper_dsn::{format_double, format_float, BoardReadResult};
+use copper_router::route_connection;
+use copper_router::score::BoardStatistics;
+use copper_settings::sources::DefaultSettings;
+use copper_settings::{HostEnvironment, RouterSettings, ScoringSettings, SettingsSource};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -138,7 +138,7 @@ fn load_board(dsn: &std::path::Path) -> Board {
         .expect("a file name")
         .to_string_lossy()
         .into_owned();
-    let result = fr_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
+    let result = copper_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
     match result {
         BoardReadResult::Success { board, .. } | BoardReadResult::OutlineMissing { board, .. } => {
             *board.unwrap_or_else(|| panic!("{design_name} produced no board"))

@@ -2,19 +2,19 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the Java-derived clearance checker inside `fr-drc` with a native port of KiCad's routing-type DRC checks, fed by the DSN plus an optional `.kicad_pro` project, validated against `kicad-cli pcb drc`.
+**Goal:** Replace the Java-derived clearance checker inside `copper-drc` with a native port of KiCad's routing-type DRC checks, fed by the DSN plus an optional `.kicad_pro` project, validated against `kicad-cli pcb drc`.
 
-**Architecture:** A plain `DrcConstraints` data type lives in `fr-board` so it can hang off `BoardRules`; `fr-drc` owns the builders that fill it from the DSN and from a KiCad project, a resolver that answers per-pair and per-item minimums with KiCad's netclass-max rule, and one module per check family. `DesignRulesChecker` keeps its façade; `get_all_clearance_violations` becomes `get_all_violations` returning `DrcViolation`s with KiCad kinds. Consumers in fr-router, fr-core, the CLI, and the MCP tool change only where they read the list; the router's own `Board::clearance_violations` is untouched.
+**Architecture:** A plain `DrcConstraints` data type lives in `copper-board` so it can hang off `BoardRules`; `copper-drc` owns the builders that fill it from the DSN and from a KiCad project, a resolver that answers per-pair and per-item minimums with KiCad's netclass-max rule, and one module per check family. `DesignRulesChecker` keeps its façade; `get_all_clearance_violations` becomes `get_all_violations` returning `DrcViolation`s with KiCad kinds. Consumers in copper-router, copper-core, the CLI, and the MCP tool change only where they read the list; the router's own `Board::clearance_violations` is untouched.
 
-**Tech Stack:** Rust 2024 workspace, `serde_json` for the project file, existing `fr-geometry` tile shapes, `kicad-cli` 10.x plus the benchmark's vendored KiCad Python scripts for the oracle.
+**Tech Stack:** Rust 2024 workspace, `serde_json` for the project file, existing `copper-geometry` tile shapes, `kicad-cli` 10.x plus the benchmark's vendored KiCad Python scripts for the oracle.
 
 **Spec:** `docs/superpowers/specs/2026-09-04-kicad-drc-port-design.md`
 
 ## Global Constraints
 
-- `#![forbid(unsafe_code)]` stays on `fr-drc`.
+- `#![forbid(unsafe_code)]` stays on `copper-drc`.
 - Comments only for unexpected behaviour (CLAUDE.md). No comments that restate code, describe old or future state, or cite plans or tickets. This applies to every code block below: copy the code, not any explanatory prose around it.
-- `fr-board` must not depend on `fr-drc`. The data type crosses the boundary downward, the builders stay in `fr-drc`.
+- `copper-board` must not depend on `copper-drc`. The data type crosses the boundary downward, the builders stay in `copper-drc`.
 - Violation kinds serialise to KiCad's exact type strings: `clearance`, `shorting_items`, `tracks_crossing`, `hole_clearance`, `hole_to_hole`, `copper_edge_clearance`, `track_width`, `via_diameter`, `annular_width`, `drill_out_of_range`, `microvia_drill_out_of_range`, `unconnected_items`, `track_dangling`, `via_dangling`.
 - Project millimetres convert to board units as `java_round(transform.dsn_to_board(Unit::scale(mm, Unit::Mm, board.communication.unit)))`.
 - Every test that reads the Java checkout calls `parity::require_java_dir()` first and returns early when it is absent.
@@ -29,7 +29,7 @@
 
 Two details discovered while planning differ from the spec and are adopted here:
 
-1. `DrcConstraints` and `DrcSeverity` are defined in `fr-board` (`rules/drc_constraints.rs`), not `fr-drc`, because `BoardRules` stores the value and `fr-board` cannot import `fr-drc`. The builders `from_dsn`, `from_kicad_project`, `merge` semantics, and the resolver are in `fr-drc` as the spec says.
+1. `DrcConstraints` and `DrcSeverity` are defined in `copper-board` (`rules/drc_constraints.rs`), not `copper-drc`, because `BoardRules` stores the value and `copper-board` cannot import `copper-drc`. The builders `from_dsn`, `from_kicad_project`, `merge` semantics, and the resolver are in `copper-drc` as the spec says.
 2. `tests/reference/drc-fixtures.txt` and the `tests/reference/drc-*` directories are **kept**: `scripts/quality-ab.sh` reads that list to define the 29-stem quality gate and refuses to run if the count changes. Only the parity *tests* are retired. Task 15 updates the spec.
 3. The project file is loaded by the CLI and MCP layers through a helper next to `load_session_file`, mirroring how sessions and rules already reach the board. `RoutingJob` is not changed.
 
@@ -37,43 +37,43 @@ Two details discovered while planning differ from the spec and are adopted here:
 
 | File | Responsibility |
 |---|---|
-| `crates/fr-board/src/rules/drc_constraints.rs` (new) | `DrcConstraints`, `DrcSeverity`, `merge` |
-| `crates/fr-board/src/rules/board_rules.rs` | `drc_constraints: Option<DrcConstraints>` field |
-| `crates/fr-board/src/rules/mod.rs`, `crates/fr-board/src/lib.rs` | exports |
-| `crates/fr-drc/src/violation.rs` (new) | `DrcViolationKind`, `DrcViolation` |
-| `crates/fr-drc/src/constraints.rs` (new) | `from_dsn`, `from_kicad_project`, `apply_kicad_project`, `resolve`, pair and item resolution |
-| `crates/fr-drc/src/checks/mod.rs` (new) | `run_all`, ordering, dedupe, severity filter |
-| `crates/fr-drc/src/checks/geometry.rs` (new) | gap test, hole shapes, through-hole and microvia predicates, candidate query |
-| `crates/fr-drc/src/checks/copper.rs` (new) | `clearance`, `shorting_items`, `tracks_crossing`, `hole_clearance` |
-| `crates/fr-drc/src/checks/holes.rs` (new) | `hole_to_hole` |
-| `crates/fr-drc/src/checks/single.rs` (new) | `track_width`, `via_diameter`, `annular_width`, drill kinds |
-| `crates/fr-drc/src/checks/edge.rs` (new) | `copper_edge_clearance` |
-| `crates/fr-drc/src/checker.rs` | `get_all_violations` |
-| `crates/fr-drc/src/report/build.rs`, `report/json.rs` | KiCad kinds and severities in the report |
-| `crates/fr-drc/src/statistics.rs` | `from_violations(&[DrcViolation])` |
-| `crates/fr-drc/src/error.rs`, `lib.rs` | `DrcError::Project`, exports |
-| `crates/fr-drc/tests/common/synthetic.rs` (new) | programmatic test boards |
-| `crates/fr-drc/tests/constraints.rs`, `checks.rs`, `kicad_oracle.rs` (new) | tests |
-| `crates/fr-router/src/score/statistics.rs` | routing-involved filter |
-| `crates/fr-core/src/ctx.rs`, `pipeline.rs`, `tests/pipeline.rs` | new violation type |
-| `crates/freerouting/src/cli.rs`, `commands/drc.rs`, `commands/route.rs`, `mcp/tools/check_drc.rs`, `mcp/tools/schema.rs` | `--kicad-project` |
+| `crates/copper-board/src/rules/drc_constraints.rs` (new) | `DrcConstraints`, `DrcSeverity`, `merge` |
+| `crates/copper-board/src/rules/board_rules.rs` | `drc_constraints: Option<DrcConstraints>` field |
+| `crates/copper-board/src/rules/mod.rs`, `crates/copper-board/src/lib.rs` | exports |
+| `crates/copper-drc/src/violation.rs` (new) | `DrcViolationKind`, `DrcViolation` |
+| `crates/copper-drc/src/constraints.rs` (new) | `from_dsn`, `from_kicad_project`, `apply_kicad_project`, `resolve`, pair and item resolution |
+| `crates/copper-drc/src/checks/mod.rs` (new) | `run_all`, ordering, dedupe, severity filter |
+| `crates/copper-drc/src/checks/geometry.rs` (new) | gap test, hole shapes, through-hole and microvia predicates, candidate query |
+| `crates/copper-drc/src/checks/copper.rs` (new) | `clearance`, `shorting_items`, `tracks_crossing`, `hole_clearance` |
+| `crates/copper-drc/src/checks/holes.rs` (new) | `hole_to_hole` |
+| `crates/copper-drc/src/checks/single.rs` (new) | `track_width`, `via_diameter`, `annular_width`, drill kinds |
+| `crates/copper-drc/src/checks/edge.rs` (new) | `copper_edge_clearance` |
+| `crates/copper-drc/src/checker.rs` | `get_all_violations` |
+| `crates/copper-drc/src/report/build.rs`, `report/json.rs` | KiCad kinds and severities in the report |
+| `crates/copper-drc/src/statistics.rs` | `from_violations(&[DrcViolation])` |
+| `crates/copper-drc/src/error.rs`, `lib.rs` | `DrcError::Project`, exports |
+| `crates/copper-drc/tests/common/synthetic.rs` (new) | programmatic test boards |
+| `crates/copper-drc/tests/constraints.rs`, `checks.rs`, `kicad_oracle.rs` (new) | tests |
+| `crates/copper-router/src/score/statistics.rs` | routing-involved filter |
+| `crates/copper-core/src/ctx.rs`, `pipeline.rs`, `tests/pipeline.rs` | new violation type |
+| `crates/copperroute/src/cli.rs`, `commands/drc.rs`, `commands/route.rs`, `mcp/tools/check_drc.rs`, `mcp/tools/schema.rs` | `--kicad-project` |
 | `scripts/gen-kicad-drc-reference.sh`, `tests/reference/kicad-drc-fixtures.txt` (new) | oracle |
 
 ---
 
-### Task 1: `DrcConstraints` data type in fr-board
+### Task 1: `DrcConstraints` data type in copper-board
 
 **Files:**
-- Create: `crates/fr-board/src/rules/drc_constraints.rs`
-- Modify: `crates/fr-board/src/rules/mod.rs`, `crates/fr-board/src/rules/board_rules.rs:10-45`, `crates/fr-board/src/lib.rs:37`
-- Test: `crates/fr-board/src/rules/drc_constraints.rs` (unit tests in-file)
+- Create: `crates/copper-board/src/rules/drc_constraints.rs`
+- Modify: `crates/copper-board/src/rules/mod.rs`, `crates/copper-board/src/rules/board_rules.rs:10-45`, `crates/copper-board/src/lib.rs:37`
+- Test: `crates/copper-board/src/rules/drc_constraints.rs` (unit tests in-file)
 
 **Interfaces:**
-- Produces: `fr_board::DrcConstraints`, `fr_board::DrcSeverity`, `DrcConstraints::merge(dsn, project) -> DrcConstraints`, `BoardRules::drc_constraints: Option<DrcConstraints>`.
+- Produces: `copper_board::DrcConstraints`, `copper_board::DrcSeverity`, `DrcConstraints::merge(dsn, project) -> DrcConstraints`, `BoardRules::drc_constraints: Option<DrcConstraints>`.
 
 - [ ] **Step 1: Write the failing test**
 
-Create `crates/fr-board/src/rules/drc_constraints.rs` with only the test module first:
+Create `crates/copper-board/src/rules/drc_constraints.rs` with only the test module first:
 
 ```rust
 #[cfg(test)]
@@ -116,7 +116,7 @@ mod tests {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cargo test -p fr-board drc_constraints`
+Run: `cargo test -p copper-board drc_constraints`
 Expected: compile error, `DrcConstraints` not found.
 
 - [ ] **Step 3: Write the type**
@@ -180,9 +180,9 @@ impl DrcConstraints {
 }
 ```
 
-In `crates/fr-board/src/rules/mod.rs` add `pub mod drc_constraints;` and `pub use drc_constraints::{DrcConstraints, DrcSeverity};` next to the other rule exports.
+In `crates/copper-board/src/rules/mod.rs` add `pub mod drc_constraints;` and `pub use drc_constraints::{DrcConstraints, DrcSeverity};` next to the other rule exports.
 
-In `crates/fr-board/src/rules/board_rules.rs` add to the struct, after `pub net_classes: NetClasses,`:
+In `crates/copper-board/src/rules/board_rules.rs` add to the struct, after `pub net_classes: NetClasses,`:
 
 ```rust
     pub drc_constraints: Option<DrcConstraints>,
@@ -190,17 +190,17 @@ In `crates/fr-board/src/rules/board_rules.rs` add to the struct, after `pub net_
 
 and in `BoardRules::new` add `drc_constraints: None,` after `net_classes: NetClasses::new(),`. Add `DrcConstraints` to the `use super::{...}` list.
 
-In `crates/fr-board/src/lib.rs`, extend the `pub use rules::{...}` list at line 37 with `DrcConstraints, DrcSeverity`, and add the same two names to the `pub use crate::{...}` list inside `pub mod prelude` a few lines below, keeping both lists alphabetical.
+In `crates/copper-board/src/lib.rs`, extend the `pub use rules::{...}` list at line 37 with `DrcConstraints, DrcSeverity`, and add the same two names to the `pub use crate::{...}` list inside `pub mod prelude` a few lines below, keeping both lists alphabetical.
 
 - [ ] **Step 4: Run tests**
 
-Run: `cargo test -p fr-board`
-Expected: PASS, including the two new tests. If any `BoardRules { .. }` struct literal elsewhere in fr-board fails to compile, add `drc_constraints: None` to it.
+Run: `cargo test -p copper-board`
+Expected: PASS, including the two new tests. If any `BoardRules { .. }` struct literal elsewhere in copper-board fails to compile, add `drc_constraints: None` to it.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/fr-board
+git add crates/copper-board
 git commit -m "feat(board): add DrcConstraints storage on BoardRules"
 ```
 
@@ -209,15 +209,15 @@ git commit -m "feat(board): add DrcConstraints storage on BoardRules"
 ### Task 2: `DrcViolation` and `DrcViolationKind`
 
 **Files:**
-- Create: `crates/fr-drc/src/violation.rs`
-- Modify: `crates/fr-drc/src/lib.rs`
+- Create: `crates/copper-drc/src/violation.rs`
+- Modify: `crates/copper-drc/src/lib.rs`
 
 **Interfaces:**
-- Produces: `fr_drc::{DrcViolation, DrcViolationKind}`; `DrcViolationKind::kicad_type(self) -> &'static str`; `DrcViolationKind::from_kicad_type(&str) -> Option<Self>`; `DrcViolationKind::ALL`; `DrcViolation::shortfall(&self) -> f64`; `DrcViolation::involves_routing(&self, &Board) -> bool`.
+- Produces: `copper_drc::{DrcViolation, DrcViolationKind}`; `DrcViolationKind::kicad_type(self) -> &'static str`; `DrcViolationKind::from_kicad_type(&str) -> Option<Self>`; `DrcViolationKind::ALL`; `DrcViolation::shortfall(&self) -> f64`; `DrcViolation::involves_routing(&self, &Board) -> bool`.
 
 - [ ] **Step 1: Write the failing test**
 
-Create `crates/fr-drc/src/violation.rs` with the test module:
+Create `crates/copper-drc/src/violation.rs` with the test module:
 
 ```rust
 #[cfg(test)]
@@ -258,7 +258,7 @@ mod tests {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cargo test -p fr-drc --lib violation`
+Run: `cargo test -p copper-drc --lib violation`
 Expected: compile error, module not found.
 
 - [ ] **Step 3: Write the types**
@@ -266,8 +266,8 @@ Expected: compile error, module not found.
 Above the tests in `violation.rs`:
 
 ```rust
-use fr_board::{Board, DrcSeverity, Item, ItemId, ItemKind};
-use fr_geometry::FloatPoint;
+use copper_board::{Board, DrcSeverity, Item, ItemId, ItemKind};
+use copper_geometry::FloatPoint;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DrcViolationKind {
@@ -369,17 +369,17 @@ impl DrcViolation {
 }
 ```
 
-In `crates/fr-drc/src/lib.rs` add `pub mod violation;` and `pub use violation::{DrcViolation, DrcViolationKind};` (also inside `prelude`). Add `pub use fr_board::DrcSeverity;` next to the existing `pub use fr_board::ClearanceViolation;`.
+In `crates/copper-drc/src/lib.rs` add `pub mod violation;` and `pub use violation::{DrcViolation, DrcViolationKind};` (also inside `prelude`). Add `pub use copper_board::DrcSeverity;` next to the existing `pub use copper_board::ClearanceViolation;`.
 
 - [ ] **Step 4: Run tests**
 
-Run: `cargo test -p fr-drc --lib violation`
+Run: `cargo test -p copper-drc --lib violation`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/fr-drc/src/violation.rs crates/fr-drc/src/lib.rs
+git add crates/copper-drc/src/violation.rs crates/copper-drc/src/lib.rs
 git commit -m "feat(drc): add DrcViolation with KiCad violation kinds"
 ```
 
@@ -388,11 +388,11 @@ git commit -m "feat(drc): add DrcViolation with KiCad violation kinds"
 ### Task 3: Constraints from the DSN and the pair resolver
 
 **Files:**
-- Create: `crates/fr-drc/src/constraints.rs`, `crates/fr-drc/tests/constraints.rs`
-- Modify: `crates/fr-drc/src/lib.rs`
+- Create: `crates/copper-drc/src/constraints.rs`, `crates/copper-drc/tests/constraints.rs`
+- Modify: `crates/copper-drc/src/lib.rs`
 
 **Interfaces:**
-- Produces: `fr_drc::constraints::{from_dsn, resolve, canonical_class_name, netclass_name, pair_clearance, track_width_min, severity, search_radius}` with signatures:
+- Produces: `copper_drc::constraints::{from_dsn, resolve, canonical_class_name, netclass_name, pair_clearance, track_width_min, severity, search_radius}` with signatures:
   - `pub fn from_dsn(board: &Board) -> DrcConstraints`
   - `pub fn resolve(board: &Board) -> DrcConstraints`
   - `pub fn canonical_class_name(name: &str) -> &str`
@@ -404,19 +404,19 @@ git commit -m "feat(drc): add DrcViolation with KiCad violation kinds"
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `crates/fr-drc/tests/constraints.rs`:
+Create `crates/copper-drc/tests/constraints.rs`:
 
 ```rust
-use fr_board::prelude::*;
-use fr_drc::constraints::{canonical_class_name, from_dsn, pair_clearance, search_radius, severity, track_width_min};
-use fr_drc::DrcViolationKind;
-use fr_dsn::{BoardReadResult, DsnReadOptions};
+use copper_board::prelude::*;
+use copper_drc::constraints::{canonical_class_name, from_dsn, pair_clearance, search_radius, severity, track_width_min};
+use copper_drc::DrcViolationKind;
+use copper_dsn::{BoardReadResult, DsnReadOptions};
 
 fn spike_board() -> Board {
     let path = parity::workspace_root().join("benchmark/tests/data/spike/spike.dsn");
     let bytes = std::fs::read(&path)
         .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
-    match fr_dsn::read_board(&bytes[..], None, Some("spike"), &DsnReadOptions::default()) {
+    match copper_dsn::read_board(&bytes[..], None, Some("spike"), &DsnReadOptions::default()) {
         BoardReadResult::Success { board, .. } | BoardReadResult::OutlineMissing { board, .. } => {
             *board.expect("the spike DSN produces a board")
         }
@@ -481,15 +481,15 @@ fn track_width_minimum_and_severity_default() {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cargo test -p fr-drc --test constraints`
-Expected: compile error, `fr_drc::constraints` not found.
+Run: `cargo test -p copper-drc --test constraints`
+Expected: compile error, `copper_drc::constraints` not found.
 
 - [ ] **Step 3: Write the module**
 
-Create `crates/fr-drc/src/constraints.rs`:
+Create `crates/copper-drc/src/constraints.rs`:
 
 ```rust
-use fr_board::{Board, DrcConstraints, DrcSeverity, Item};
+use copper_board::{Board, DrcConstraints, DrcSeverity, Item};
 
 use crate::DrcViolationKind;
 
@@ -596,13 +596,13 @@ In `lib.rs` add `pub mod constraints;`.
 
 - [ ] **Step 4: Run tests**
 
-Run: `cargo test -p fr-drc --test constraints`
+Run: `cargo test -p copper-drc --test constraints`
 Expected: PASS. If `from_dsn_reads_the_kicad_default_class_clearance_and_width` reports a different number than 2000, print `board.communication.resolution` and the matrix diagonal; the spike DSN has `(resolution um 10)` and `(clearance 200)`, so 200 um at scale 10 is 2000 board units. Fix the test only if the DSN reader's scale differs from that.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/fr-drc/src/constraints.rs crates/fr-drc/src/lib.rs crates/fr-drc/tests/constraints.rs
+git add crates/copper-drc/src/constraints.rs crates/copper-drc/src/lib.rs crates/copper-drc/tests/constraints.rs
 git commit -m "feat(drc): derive KiCad constraints from the DSN and resolve pair clearances"
 ```
 
@@ -611,24 +611,24 @@ git commit -m "feat(drc): derive KiCad constraints from the DSN and resolve pair
 ### Task 4: Constraints from a `.kicad_pro` project
 
 **Files:**
-- Modify: `crates/fr-drc/src/constraints.rs`, `crates/fr-drc/src/error.rs`, `crates/fr-drc/src/lib.rs`
-- Test: `crates/fr-drc/tests/constraints.rs`
+- Modify: `crates/copper-drc/src/constraints.rs`, `crates/copper-drc/src/error.rs`, `crates/copper-drc/src/lib.rs`
+- Test: `crates/copper-drc/tests/constraints.rs`
 
 **Interfaces:**
 - Produces: `pub fn from_kicad_project(json: &str, board: &Board, transform: &CoordinateTransform) -> Result<DrcConstraints, DrcError>`; `pub fn apply_kicad_project(json: &str, board: &mut Board, transform: &CoordinateTransform) -> Result<(), DrcError>`; `DrcError::Project(String)`.
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `crates/fr-drc/tests/constraints.rs`:
+Append to `crates/copper-drc/tests/constraints.rs`:
 
 ```rust
-use fr_drc::constraints::{apply_kicad_project, from_kicad_project};
-use fr_drc::DrcError;
+use copper_drc::constraints::{apply_kicad_project, from_kicad_project};
+use copper_drc::DrcError;
 
-fn spike_board_with_transform() -> (Board, fr_dsn::CoordinateTransform) {
+fn spike_board_with_transform() -> (Board, copper_dsn::CoordinateTransform) {
     let path = parity::workspace_root().join("benchmark/tests/data/spike/spike.dsn");
     let bytes = std::fs::read(&path).expect("the spike DSN is in the repo");
-    match fr_dsn::read_board(&bytes[..], None, Some("spike"), &DsnReadOptions::default()) {
+    match copper_dsn::read_board(&bytes[..], None, Some("spike"), &DsnReadOptions::default()) {
         BoardReadResult::Success {
             board,
             coordinate_transform,
@@ -705,24 +705,24 @@ fn apply_stores_the_merged_constraints_on_the_board() {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cargo test -p fr-drc --test constraints`
+Run: `cargo test -p copper-drc --test constraints`
 Expected: compile error, `from_kicad_project` not found.
 
 - [ ] **Step 3: Write the parser**
 
-Add to `crates/fr-drc/src/error.rs`:
+Add to `crates/copper-drc/src/error.rs`:
 
 ```rust
     #[error("KiCad project: {0}")]
     Project(String),
 ```
 
-Append to `crates/fr-drc/src/constraints.rs`:
+Append to `crates/copper-drc/src/constraints.rs`:
 
 ```rust
-use fr_board::Unit;
-use fr_dsn::CoordinateTransform;
-use fr_geometry::java_round;
+use copper_board::Unit;
+use copper_dsn::CoordinateTransform;
+use copper_geometry::java_round;
 use serde_json::Value;
 
 use crate::DrcError;
@@ -812,17 +812,17 @@ pub fn apply_kicad_project(
 }
 ```
 
-Move the `use` lines to the top of the file with the others. `fr_board::Unit` is re-exported from `fr_board::structure`; if the path fails, use `fr_board::structure::Unit`. In `lib.rs` add `pub use constraints::apply_kicad_project;`.
+Move the `use` lines to the top of the file with the others. `copper_board::Unit` is re-exported from `copper_board::structure`; if the path fails, use `copper_board::structure::Unit`. In `lib.rs` add `pub use constraints::apply_kicad_project;`.
 
 - [ ] **Step 4: Run tests**
 
-Run: `cargo test -p fr-drc --test constraints`
+Run: `cargo test -p copper-drc --test constraints`
 Expected: PASS. The spike project has `min_hole_clearance: 0.25` mm; at 0.1 um board units that is 2500.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/fr-drc/src/constraints.rs crates/fr-drc/src/error.rs crates/fr-drc/src/lib.rs crates/fr-drc/tests/constraints.rs
+git add crates/copper-drc/src/constraints.rs crates/copper-drc/src/error.rs crates/copper-drc/src/lib.rs crates/copper-drc/tests/constraints.rs
 git commit -m "feat(drc): read KiCad project design rules into DrcConstraints"
 ```
 
@@ -831,11 +831,11 @@ git commit -m "feat(drc): read KiCad project design rules into DrcConstraints"
 ### Task 5: Geometry helpers and the synthetic test board
 
 **Files:**
-- Create: `crates/fr-drc/src/checks/mod.rs`, `crates/fr-drc/src/checks/geometry.rs`, `crates/fr-drc/tests/common/synthetic.rs`, `crates/fr-drc/tests/checks.rs`
-- Modify: `crates/fr-drc/src/lib.rs`, `crates/fr-drc/tests/common/mod.rs`
+- Create: `crates/copper-drc/src/checks/mod.rs`, `crates/copper-drc/src/checks/geometry.rs`, `crates/copper-drc/tests/common/synthetic.rs`, `crates/copper-drc/tests/checks.rs`
+- Modify: `crates/copper-drc/src/lib.rs`, `crates/copper-drc/tests/common/mod.rs`
 
 **Interfaces:**
-- Produces in `fr_drc::checks::geometry`:
+- Produces in `copper_drc::checks::geometry`:
   - `pub struct Hole { pub shape: TileShape, pub radius: f64, pub estimated: bool, pub center: FloatPoint }`
   - `pub fn gap_below(a: &TileShape, b: &TileShape, clearance: i32) -> Option<(f64, FloatPoint)>`
   - `pub fn hole_of(board: &Board, id: ItemId) -> Option<Hole>`
@@ -849,13 +849,13 @@ git commit -m "feat(drc): read KiCad project design rules into DrcConstraints"
 
 - [ ] **Step 1: Write the synthetic board helper**
 
-Create `crates/fr-drc/tests/common/synthetic.rs`:
+Create `crates/copper-drc/tests/common/synthetic.rs`:
 
 ```rust
 #![allow(dead_code)]
 
-use fr_board::prelude::*;
-use fr_geometry::{Circle, IntBox, IntPoint, IntVector, Point, Polyline, PolylineShapeRef, Shape, TileShape};
+use copper_board::prelude::*;
+use copper_geometry::{Circle, IntBox, IntPoint, IntVector, Point, Polyline, PolylineShapeRef, Shape, TileShape};
 
 pub const BOUNDING_BOX: IntBox = IntBox {
     ll: IntPoint {
@@ -990,19 +990,19 @@ impl SyntheticBoard {
 
 The synthetic board uses 0.1 um units like a KiCad export, so a 3000 radius via is 0.6 mm wide with a 0.3 mm drill encoded in its name, and the default clearance passed to `new` is in the same units.
 
-In `crates/fr-drc/tests/common/mod.rs` add `pub mod synthetic;`.
+In `crates/copper-drc/tests/common/mod.rs` add `pub mod synthetic;`.
 
 - [ ] **Step 2: Write the failing geometry tests**
 
-Create `crates/fr-drc/tests/checks.rs`:
+Create `crates/copper-drc/tests/checks.rs`:
 
 ```rust
 mod common;
 
 use common::synthetic::{PadSpec, SyntheticBoard};
-use fr_board::prelude::*;
-use fr_drc::checks::geometry::{gap_below, hole_of, is_microvia, is_through_hole_pin, item_shapes};
-use fr_geometry::{IntBox, IntVector, TileShape};
+use copper_board::prelude::*;
+use copper_drc::checks::geometry::{gap_below, hole_of, is_microvia, is_through_hole_pin, item_shapes};
+use copper_geometry::{IntBox, IntVector, TileShape};
 
 fn boxes(gap: i32) -> (TileShape, TileShape) {
     (
@@ -1068,22 +1068,22 @@ fn item_shapes_lists_one_shape_per_layer_for_a_via_and_one_for_a_trace() {
 
 - [ ] **Step 3: Run tests to verify they fail**
 
-Run: `cargo test -p fr-drc --test checks`
-Expected: compile error, `fr_drc::checks` not found.
+Run: `cargo test -p copper-drc --test checks`
+Expected: compile error, `copper_drc::checks` not found.
 
 - [ ] **Step 4: Write the geometry module**
 
-Create `crates/fr-drc/src/checks/mod.rs`:
+Create `crates/copper-drc/src/checks/mod.rs`:
 
 ```rust
 pub mod geometry;
 ```
 
-Create `crates/fr-drc/src/checks/geometry.rs`:
+Create `crates/copper-drc/src/checks/geometry.rs`:
 
 ```rust
-use fr_board::{Board, Item, ItemId, ItemKind, TreeObject};
-use fr_geometry::{Circle, FloatPoint, TileShape, java_round};
+use copper_board::{Board, Item, ItemId, ItemKind, TreeObject};
+use copper_geometry::{Circle, FloatPoint, TileShape, java_round};
 
 pub struct Hole {
     pub shape: TileShape,
@@ -1215,17 +1215,17 @@ pub fn item_position(board: &Board, id: ItemId) -> FloatPoint {
 }
 ```
 
-In `lib.rs` add `pub mod checks;`. If `TreeObject` is not exported at the crate root of fr-board, import it from `fr_board::prelude::TreeObject` or `fr_board::ids::TreeObject`; check `crates/fr-board/src/lib.rs:23`.
+In `lib.rs` add `pub mod checks;`. If `TreeObject` is not exported at the crate root of copper-board, import it from `copper_board::prelude::TreeObject` or `copper_board::ids::TreeObject`; check `crates/copper-board/src/lib.rs:23`.
 
 - [ ] **Step 5: Run tests**
 
-Run: `cargo test -p fr-drc --test checks`
+Run: `cargo test -p copper-drc --test checks`
 Expected: PASS. If `is_microvia` fails for the synthetic microvia, note that both synthetic padstacks span layers 0 and 1 of a two-layer board, so `last > 1` is false and neither is a microvia on two layers; change the synthetic board to use `is_microvia` only in a four-layer variant, or relax the test to `assert!(!is_microvia(board, micro))` on two layers and add a four-layer case in Task 8. Do not change the predicate: a via spanning both outer layers of a two-layer board is a through via in KiCad too.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add crates/fr-drc/src/checks crates/fr-drc/src/lib.rs crates/fr-drc/tests
+git add crates/copper-drc/src/checks crates/copper-drc/src/lib.rs crates/copper-drc/tests
 git commit -m "feat(drc): geometry helpers for the KiCad checks and a synthetic test board"
 ```
 
@@ -1234,22 +1234,22 @@ git commit -m "feat(drc): geometry helpers for the KiCad checks and a synthetic 
 ### Task 6: Copper pair checks
 
 **Files:**
-- Create: `crates/fr-drc/src/checks/copper.rs`
-- Modify: `crates/fr-drc/src/checks/mod.rs`
-- Test: `crates/fr-drc/tests/checks.rs`
+- Create: `crates/copper-drc/src/checks/copper.rs`
+- Modify: `crates/copper-drc/src/checks/mod.rs`
+- Test: `crates/copper-drc/tests/checks.rs`
 
 **Interfaces:**
-- Produces: `pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcViolation>)` in `fr_drc::checks::copper`.
+- Produces: `pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcViolation>)` in `copper_drc::checks::copper`.
 - Consumes: Task 3 resolver functions, Task 5 geometry.
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `crates/fr-drc/tests/checks.rs`:
+Append to `crates/copper-drc/tests/checks.rs`:
 
 ```rust
-use fr_board::DrcConstraints;
-use fr_drc::checks::copper;
-use fr_drc::{DrcViolation, DrcViolationKind};
+use copper_board::DrcConstraints;
+use copper_drc::checks::copper;
+use copper_drc::{DrcViolation, DrcViolationKind};
 
 fn kinds(violations: &[DrcViolation]) -> Vec<DrcViolationKind> {
     let mut kinds: Vec<DrcViolationKind> = violations.iter().map(|v| v.kind).collect();
@@ -1315,7 +1315,7 @@ fn crossing_traces_are_tracks_crossing_and_nothing_else() {
     let mut out = Vec::new();
     copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
     assert_eq!(kinds(&out), vec![DrcViolationKind::TracksCrossing]);
-    assert!(out[0].position.distance(&fr_geometry::FloatPoint::new(0.0, 0.0)) < 1.0);
+    assert!(out[0].position.distance(&copper_geometry::FloatPoint::new(0.0, 0.0)) < 1.0);
 }
 
 #[test]
@@ -1373,18 +1373,18 @@ The synthetic board's only net class is named `default`, so `constraints_with` k
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cargo test -p fr-drc --test checks`
+Run: `cargo test -p copper-drc --test checks`
 Expected: compile error, `checks::copper` not found.
 
 - [ ] **Step 3: Write the copper module**
 
-Create `crates/fr-drc/src/checks/copper.rs`:
+Create `crates/copper-drc/src/checks/copper.rs`:
 
 ```rust
 use std::collections::BTreeSet;
 
-use fr_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
-use fr_geometry::{FloatLine, FloatPoint, TileShape};
+use copper_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
+use copper_geometry::{FloatLine, FloatPoint, TileShape};
 
 use crate::checks::geometry::{candidates, gap_below, hole_of, is_copper, item_shapes};
 use crate::constraints::{pair_clearance, search_radius, severity};
@@ -1594,13 +1594,13 @@ Add `pub mod copper;` to `checks/mod.rs`.
 
 - [ ] **Step 4: Run tests**
 
-Run: `cargo test -p fr-drc --test checks`
+Run: `cargo test -p copper-drc --test checks`
 Expected: PASS. Two likely failure causes and their fixes: if `crossing_traces_are_tracks_crossing_and_nothing_else` also reports a `Clearance`, the early `return` after the crossing push is missing; if `same_net_items_are_never_clearance_violations` fails, `same_defined_net` must use `shares_net`, not `nets_equal`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/fr-drc/src/checks crates/fr-drc/tests/checks.rs
+git add crates/copper-drc/src/checks crates/copper-drc/tests/checks.rs
 git commit -m "feat(drc): KiCad copper clearance, shorting, crossing and hole clearance checks"
 ```
 
@@ -1609,19 +1609,19 @@ git commit -m "feat(drc): KiCad copper clearance, shorting, crossing and hole cl
 ### Task 7: Hole-to-hole check
 
 **Files:**
-- Create: `crates/fr-drc/src/checks/holes.rs`
-- Modify: `crates/fr-drc/src/checks/mod.rs`
-- Test: `crates/fr-drc/tests/checks.rs`
+- Create: `crates/copper-drc/src/checks/holes.rs`
+- Modify: `crates/copper-drc/src/checks/mod.rs`
+- Test: `crates/copper-drc/tests/checks.rs`
 
 **Interfaces:**
-- Produces: `pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcViolation>)` in `fr_drc::checks::holes`.
+- Produces: `pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcViolation>)` in `copper_drc::checks::holes`.
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `crates/fr-drc/tests/checks.rs`:
+Append to `crates/copper-drc/tests/checks.rs`:
 
 ```rust
-use fr_drc::checks::holes;
+use copper_drc::checks::holes;
 
 #[test]
 fn two_via_holes_closer_than_the_minimum_are_hole_to_hole_regardless_of_net() {
@@ -1656,17 +1656,17 @@ The octagonal hole approximation widens each 1500 radius hole by a few percent, 
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cargo test -p fr-drc --test checks holes`
+Run: `cargo test -p copper-drc --test checks holes`
 Expected: compile error, `checks::holes` not found.
 
 - [ ] **Step 3: Write the module**
 
-Create `crates/fr-drc/src/checks/holes.rs`:
+Create `crates/copper-drc/src/checks/holes.rs`:
 
 ```rust
 use std::collections::BTreeSet;
 
-use fr_board::{Board, DrcConstraints, DrcSeverity, ItemId};
+use copper_board::{Board, DrcConstraints, DrcSeverity, ItemId};
 
 use crate::checks::geometry::{candidates, gap_below, hole_of};
 use crate::constraints::severity;
@@ -1722,13 +1722,13 @@ Remove the trailing `ordered` helper if clippy flags it as dead; it is not neede
 
 - [ ] **Step 4: Run tests**
 
-Run: `cargo test -p fr-drc --test checks`
+Run: `cargo test -p copper-drc --test checks`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/fr-drc/src/checks crates/fr-drc/tests/checks.rs
+git add crates/copper-drc/src/checks crates/copper-drc/tests/checks.rs
 git commit -m "feat(drc): KiCad hole-to-hole check"
 ```
 
@@ -1737,19 +1737,19 @@ git commit -m "feat(drc): KiCad hole-to-hole check"
 ### Task 8: Single-item checks
 
 **Files:**
-- Create: `crates/fr-drc/src/checks/single.rs`
-- Modify: `crates/fr-drc/src/checks/mod.rs`
-- Test: `crates/fr-drc/tests/checks.rs`
+- Create: `crates/copper-drc/src/checks/single.rs`
+- Modify: `crates/copper-drc/src/checks/mod.rs`
+- Test: `crates/copper-drc/tests/checks.rs`
 
 **Interfaces:**
-- Produces: `pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcViolation>)` in `fr_drc::checks::single`.
+- Produces: `pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcViolation>)` in `copper_drc::checks::single`.
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `crates/fr-drc/tests/checks.rs`:
+Append to `crates/copper-drc/tests/checks.rs`:
 
 ```rust
-use fr_drc::checks::single;
+use copper_drc::checks::single;
 
 #[test]
 fn a_thin_trace_is_a_track_width_violation() {
@@ -1839,15 +1839,15 @@ The synthetic via is a 3000 radius circle named with a 600:300 um ratio, so its 
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cargo test -p fr-drc --test checks single`
+Run: `cargo test -p copper-drc --test checks single`
 Expected: compile error, `checks::single` not found.
 
 - [ ] **Step 3: Write the module**
 
-Create `crates/fr-drc/src/checks/single.rs`:
+Create `crates/copper-drc/src/checks/single.rs`:
 
 ```rust
-use fr_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
+use copper_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
 
 use crate::checks::geometry::{hole_of, is_microvia, item_position};
 use crate::constraints::{severity, track_width_min};
@@ -1946,13 +1946,13 @@ If `trace.hdr` is not public, use `item.net_count()` and `item.get_net_number(0)
 
 - [ ] **Step 4: Run tests**
 
-Run: `cargo test -p fr-drc --test checks`
+Run: `cargo test -p copper-drc --test checks`
 Expected: PASS. If the annular test for the pad fails because `smallest_radius` on a `Pin` needs the tile shape cached, replace `pin.smallest_radius(&ctx)` with half the smaller side of `item.bounding_box(&ctx)`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/fr-drc/src/checks crates/fr-drc/tests/checks.rs
+git add crates/copper-drc/src/checks crates/copper-drc/tests/checks.rs
 git commit -m "feat(drc): KiCad track width, via diameter, annular width and drill checks"
 ```
 
@@ -1961,19 +1961,19 @@ git commit -m "feat(drc): KiCad track width, via diameter, annular width and dri
 ### Task 9: Copper-to-edge clearance
 
 **Files:**
-- Create: `crates/fr-drc/src/checks/edge.rs`
-- Modify: `crates/fr-drc/src/checks/mod.rs`
-- Test: `crates/fr-drc/tests/checks.rs`
+- Create: `crates/copper-drc/src/checks/edge.rs`
+- Modify: `crates/copper-drc/src/checks/mod.rs`
+- Test: `crates/copper-drc/tests/checks.rs`
 
 **Interfaces:**
-- Produces: `pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcViolation>)` in `fr_drc::checks::edge`.
+- Produces: `pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcViolation>)` in `copper_drc::checks::edge`.
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `crates/fr-drc/tests/checks.rs`:
+Append to `crates/copper-drc/tests/checks.rs`:
 
 ```rust
-use fr_drc::checks::edge;
+use copper_drc::checks::edge;
 
 #[test]
 fn a_trace_near_the_board_edge_is_a_copper_edge_clearance_violation() {
@@ -2007,16 +2007,16 @@ The synthetic outline is the box from -50000 to 50000, so a trace centred at y =
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cargo test -p fr-drc --test checks edge`
+Run: `cargo test -p copper-drc --test checks edge`
 Expected: compile error, `checks::edge` not found.
 
 - [ ] **Step 3: Write the module**
 
-Create `crates/fr-drc/src/checks/edge.rs`:
+Create `crates/copper-drc/src/checks/edge.rs`:
 
 ```rust
-use fr_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
-use fr_geometry::TileShape;
+use copper_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
+use copper_geometry::TileShape;
 
 use crate::checks::geometry::{gap_below, is_copper, item_shapes};
 use crate::constraints::severity;
@@ -2057,7 +2057,7 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
         .collect();
     for id in ids {
         for (layer, shape) in item_shapes(board, id) {
-            let mut worst: Option<(f64, fr_geometry::FloatPoint)> = None;
+            let mut worst: Option<(f64, copper_geometry::FloatPoint)> = None;
             for piece in &pieces {
                 if let Some((actual, position)) = gap_below(&shape, piece, minimum)
                     && worst.is_none_or(|(best, _)| actual < best)
@@ -2087,13 +2087,13 @@ Add `pub mod edge;` to `checks/mod.rs`.
 
 - [ ] **Step 4: Run tests**
 
-Run: `cargo test -p fr-drc --test checks`
-Expected: PASS. If `keepout_convex_pieces` returns `None` even after `get_keepout_area`, read `crates/fr-board/src/structure/board_outline.rs:274-300` and call whichever accessor fills the pieces; the outline's keepout is the area outside the outline curves clipped to the board bounding box, and it is exactly what the copper must stay `minimum` away from.
+Run: `cargo test -p copper-drc --test checks`
+Expected: PASS. If `keepout_convex_pieces` returns `None` even after `get_keepout_area`, read `crates/copper-board/src/structure/board_outline.rs:274-300` and call whichever accessor fills the pieces; the outline's keepout is the area outside the outline curves clipped to the board bounding box, and it is exactly what the copper must stay `minimum` away from.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/fr-drc/src/checks crates/fr-drc/tests/checks.rs
+git add crates/copper-drc/src/checks crates/copper-drc/tests/checks.rs
 git commit -m "feat(drc): KiCad copper-to-edge clearance check"
 ```
 
@@ -2102,21 +2102,21 @@ git commit -m "feat(drc): KiCad copper-to-edge clearance check"
 ### Task 10: The checker façade and retiring the Java-semantics tests
 
 **Files:**
-- Modify: `crates/fr-drc/src/checks/mod.rs`, `crates/fr-drc/src/checker.rs:25-45`, `crates/fr-drc/src/lib.rs`
-- Delete: `crates/fr-drc/tests/reference_parity.rs`, `crates/fr-drc/tests/java_ports.rs`, `crates/fr-drc/tests/clearance_list.rs`
-- Modify: `crates/fr-drc/tests/incompletes.rs:69`, `crates/fr-drc/tests/corpus.rs:87`, `crates/fr-drc/tests/report.rs`, `crates/fr-drc/tests/report_json.rs`
-- Test: `crates/fr-drc/tests/checks.rs`
+- Modify: `crates/copper-drc/src/checks/mod.rs`, `crates/copper-drc/src/checker.rs:25-45`, `crates/copper-drc/src/lib.rs`
+- Delete: `crates/copper-drc/tests/reference_parity.rs`, `crates/copper-drc/tests/java_ports.rs`, `crates/copper-drc/tests/clearance_list.rs`
+- Modify: `crates/copper-drc/tests/incompletes.rs:69`, `crates/copper-drc/tests/corpus.rs:87`, `crates/copper-drc/tests/report.rs`, `crates/copper-drc/tests/report_json.rs`
+- Test: `crates/copper-drc/tests/checks.rs`
 
 **Interfaces:**
-- Produces: `DesignRulesChecker::get_all_violations(&mut self) -> Vec<DrcViolation>`; `fr_drc::checks::run_all(board: &mut Board, constraints: &DrcConstraints) -> Vec<DrcViolation>`.
-- Removes: `DesignRulesChecker::get_all_clearance_violations`, `pub use fr_board::ClearanceViolation` from `fr_drc`.
+- Produces: `DesignRulesChecker::get_all_violations(&mut self) -> Vec<DrcViolation>`; `copper_drc::checks::run_all(board: &mut Board, constraints: &DrcConstraints) -> Vec<DrcViolation>`.
+- Removes: `DesignRulesChecker::get_all_clearance_violations`, `pub use copper_board::ClearanceViolation` from `copper_drc`.
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `crates/fr-drc/tests/checks.rs`:
+Append to `crates/copper-drc/tests/checks.rs`:
 
 ```rust
-use fr_drc::DesignRulesChecker;
+use copper_drc::DesignRulesChecker;
 
 #[test]
 fn get_all_violations_runs_every_family_in_a_deterministic_order() {
@@ -2163,12 +2163,12 @@ fn an_ignored_severity_drops_the_kind() {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cargo test -p fr-drc --test checks get_all_violations`
+Run: `cargo test -p copper-drc --test checks get_all_violations`
 Expected: compile error, no method `get_all_violations`.
 
 - [ ] **Step 3: Write `run_all` and the façade**
 
-Replace `crates/fr-drc/src/checks/mod.rs` with:
+Replace `crates/copper-drc/src/checks/mod.rs` with:
 
 ```rust
 pub mod copper;
@@ -2177,7 +2177,7 @@ pub mod geometry;
 pub mod holes;
 pub mod single;
 
-use fr_board::{Board, DrcConstraints};
+use copper_board::{Board, DrcConstraints};
 
 use crate::DrcViolation;
 
@@ -2196,7 +2196,7 @@ pub fn run_all(board: &mut Board, constraints: &DrcConstraints) -> Vec<DrcViolat
 }
 ```
 
-In `crates/fr-drc/src/checker.rs` replace `get_all_clearance_violations` (lines 25-45) with:
+In `crates/copper-drc/src/checker.rs` replace `get_all_clearance_violations` (lines 25-45) with:
 
 ```rust
     pub fn get_all_violations(&mut self) -> Vec<DrcViolation> {
@@ -2205,33 +2205,33 @@ In `crates/fr-drc/src/checker.rs` replace `get_all_clearance_violations` (lines 
     }
 ```
 
-Update the imports at the top of `checker.rs`: remove `ClearanceViolation` from the `fr_board` import and add `use crate::DrcViolation;`. Remove the now-unused `BTreeSet` import only if nothing else in the file uses it (`get_all_unconnected_items` does, so keep it).
+Update the imports at the top of `checker.rs`: remove `ClearanceViolation` from the `copper_board` import and add `use crate::DrcViolation;`. Remove the now-unused `BTreeSet` import only if nothing else in the file uses it (`get_all_unconnected_items` does, so keep it).
 
-In `lib.rs` remove `pub use fr_board::ClearanceViolation;` from both the root and the prelude.
+In `lib.rs` remove `pub use copper_board::ClearanceViolation;` from both the root and the prelude.
 
 - [ ] **Step 4: Retire the Java-semantics tests**
 
 ```bash
-git rm crates/fr-drc/tests/reference_parity.rs crates/fr-drc/tests/java_ports.rs crates/fr-drc/tests/clearance_list.rs
+git rm crates/copper-drc/tests/reference_parity.rs crates/copper-drc/tests/java_ports.rs crates/copper-drc/tests/clearance_list.rs
 ```
 
-In `crates/fr-drc/tests/incompletes.rs:69` replace `assert!(drc.get_all_clearance_violations().is_empty());` with `assert!(drc.get_all_violations().is_empty());`.
+In `crates/copper-drc/tests/incompletes.rs:69` replace `assert!(drc.get_all_clearance_violations().is_empty());` with `assert!(drc.get_all_violations().is_empty());`.
 
-In `crates/fr-drc/tests/corpus.rs:87` replace `.get_all_clearance_violations()` with `.get_all_violations()`.
+In `crates/copper-drc/tests/corpus.rs:87` replace `.get_all_clearance_violations()` with `.get_all_violations()`.
 
-In `crates/fr-drc/tests/report.rs` delete these test functions and any helper only they use (`golden`, `render`, `render_entry`): `dev_board_report_shape`, `first_violation_is_verbatim`, `three_fixtures_match_the_jvm_byte_for_byte`, `natural_tone_preamp_is_the_jvms_maximal_run_minus_three_dangling_tracks`, `smd_pins_are_classified_as_holes`. Keep the coordinate, unit, formatting, unconnected-entry, and `item_description_maps_every_item_variant` tests.
+In `crates/copper-drc/tests/report.rs` delete these test functions and any helper only they use (`golden`, `render`, `render_entry`): `dev_board_report_shape`, `first_violation_is_verbatim`, `three_fixtures_match_the_jvm_byte_for_byte`, `natural_tone_preamp_is_the_jvms_maximal_run_minus_three_dangling_tracks`, `smd_pins_are_classified_as_holes`. Keep the coordinate, unit, formatting, unconnected-entry, and `item_description_maps_every_item_variant` tests.
 
-In `crates/fr-drc/tests/report_json.rs` delete `head_flavor_is_the_jvms_gson_bytes` and `kicad_flavor_matches_the_real_kicad_schema` and the `golden`/`data_dir` helpers if nothing else uses them. Keep the key-order, schema-string, date, and quality-score tests.
+In `crates/copper-drc/tests/report_json.rs` delete `head_flavor_is_the_jvms_gson_bytes` and `kicad_flavor_matches_the_real_kicad_schema` and the `golden`/`data_dir` helpers if nothing else uses them. Keep the key-order, schema-string, date, and quality-score tests.
 
 - [ ] **Step 5: Run the crate's tests**
 
-Run: `cargo test -p fr-drc`
+Run: `cargo test -p copper-drc`
 Expected: everything compiles; `checks`, `constraints`, `incompletes`, `unconnected`, `net_incompletes`, `corpus` pass. `report.rs` and `report_json.rs` will fail to compile until Task 11 changes the report builder; that is expected, and Task 11 finishes them. If they compile now and fail on assertions about `"holeClearance"`, leave them for Task 11.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add -A crates/fr-drc
+git add -A crates/copper-drc
 git commit -m "feat(drc): get_all_violations façade; retire the Java clearance parity tests"
 ```
 
@@ -2240,19 +2240,19 @@ git commit -m "feat(drc): get_all_violations façade; retire the Java clearance 
 ### Task 11: Report builder, JSON flavour, and statistics on the new type
 
 **Files:**
-- Modify: `crates/fr-drc/src/report/build.rs:44-92,90-140,196-214`, `crates/fr-drc/src/report/json.rs:60-72`, `crates/fr-drc/src/statistics.rs`
-- Test: `crates/fr-drc/tests/report.rs`, `crates/fr-drc/tests/report_json.rs`, `crates/fr-drc/tests/checks.rs`
+- Modify: `crates/copper-drc/src/report/build.rs:44-92,90-140,196-214`, `crates/copper-drc/src/report/json.rs:60-72`, `crates/copper-drc/src/statistics.rs`
+- Test: `crates/copper-drc/tests/report.rs`, `crates/copper-drc/tests/report_json.rs`, `crates/copper-drc/tests/checks.rs`
 
 **Interfaces:**
 - Produces: `BoardStatisticsClearanceViolations::from_violations(violations: &[DrcViolation], board_unit_to_um_factor: f64)`; report `type` strings are KiCad's for every entry, mapped to camelCase only in the Freerouting-head flavour.
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `crates/fr-drc/tests/checks.rs`:
+Append to `crates/copper-drc/tests/checks.rs`:
 
 ```rust
-use fr_drc::report::{DrcCoordinates, DrcJsonFlavor, DrcReportOptions};
-use fr_drc::BoardStatisticsClearanceViolations;
+use copper_drc::report::{DrcCoordinates, DrcJsonFlavor, DrcReportOptions};
+use copper_drc::BoardStatisticsClearanceViolations;
 
 fn report_options() -> DrcReportOptions {
     DrcReportOptions {
@@ -2274,9 +2274,9 @@ fn the_report_carries_kicad_types_and_severities() {
     constraints.netclass_track_width.insert("default".to_string(), 1000);
     constraints.severities.insert("track_width".to_string(), DrcSeverity::Warning);
     synthetic.board.rules.drc_constraints = Some(constraints);
-    let transform = fr_dsn::CoordinateTransform::new(10.0, 0.0, 0.0).expect("a scale");
+    let transform = copper_dsn::CoordinateTransform::new(10.0, 0.0, 0.0).expect("a scale");
     let coords = DrcCoordinates {
-        board_unit: fr_board::Unit::Um,
+        board_unit: copper_board::Unit::Um,
         transform,
     };
     let mut checker = DesignRulesChecker::new(&mut synthetic.board);
@@ -2306,8 +2306,8 @@ fn hole_clearance_keeps_its_camel_case_name_in_the_head_flavour_only() {
     constraints.netclass_clearance.insert("default".to_string(), 100);
     constraints.hole_clearance = Some(2500);
     synthetic.board.rules.drc_constraints = Some(constraints);
-    let transform = fr_dsn::CoordinateTransform::new(10.0, 0.0, 0.0).expect("a scale");
-    let coords = DrcCoordinates { board_unit: fr_board::Unit::Um, transform };
+    let transform = copper_dsn::CoordinateTransform::new(10.0, 0.0, 0.0).expect("a scale");
+    let coords = DrcCoordinates { board_unit: copper_board::Unit::Um, transform };
     let report = DesignRulesChecker::new(&mut synthetic.board).generate_report(&coords, &report_options());
     assert_eq!(report.violations[0].kind, "hole_clearance");
     let head = report.to_json(DrcJsonFlavor::FreeroutingHead).expect("serialises");
@@ -2325,7 +2325,7 @@ fn statistics_sum_the_shortfall_in_micrometres() {
             first_item: ItemId(1),
             second_item: Some(ItemId(2)),
             layer: Some(0),
-            position: fr_geometry::FloatPoint::new(0.0, 0.0),
+            position: copper_geometry::FloatPoint::new(0.0, 0.0),
             expected: 2000.0,
             actual: 500.0,
             estimated: false,
@@ -2336,7 +2336,7 @@ fn statistics_sum_the_shortfall_in_micrometres() {
             first_item: ItemId(3),
             second_item: None,
             layer: Some(0),
-            position: fr_geometry::FloatPoint::new(0.0, 0.0),
+            position: copper_geometry::FloatPoint::new(0.0, 0.0),
             expected: 1000.0,
             actual: 600.0,
             estimated: false,
@@ -2352,14 +2352,14 @@ fn statistics_sum_the_shortfall_in_micrometres() {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cargo test -p fr-drc --test checks report`
+Run: `cargo test -p copper-drc --test checks report`
 Expected: compile error, `generate_report` still calls `get_all_clearance_violations` / `from_violations` takes `ClearanceViolation`.
 
 - [ ] **Step 3: Rewrite the report conversion**
 
-In `crates/fr-drc/src/report/build.rs`:
+In `crates/copper-drc/src/report/build.rs`:
 
-Replace the imports `use fr_board::{Board, ClearanceViolation, Item, ItemId, ItemKind};` with `use fr_board::{Board, DrcSeverity, ItemId, ItemKind};` and add `use crate::{DrcViolation, DrcViolationKind};`.
+Replace the imports `use copper_board::{Board, ClearanceViolation, Item, ItemId, ItemKind};` with `use copper_board::{Board, DrcSeverity, ItemId, ItemKind};` and add `use crate::{DrcViolation, DrcViolationKind};`.
 
 In `generate_report`, replace the block from `let violations = self.get_all_clearance_violations();` through its `for` loop with:
 
@@ -2460,7 +2460,7 @@ fn head_kind_string(kind: UnconnectedKind) -> &'static str {
 
 Rename it to `kicad_kind_string` at its definition and both call sites. Delete `is_hole` and the `Item` import if now unused.
 
-In `crates/fr-drc/src/report/json.rs` replace `violation_type` with:
+In `crates/copper-drc/src/report/json.rs` replace `violation_type` with:
 
 ```rust
     fn violation_type<'a>(&'static self, stored: &'a str) -> &'a str {
@@ -2474,7 +2474,7 @@ In `crates/fr-drc/src/report/json.rs` replace `violation_type` with:
     }
 ```
 
-In `crates/fr-drc/src/statistics.rs` replace `use fr_board::ClearanceViolation;` with `use crate::DrcViolation;`, change the parameter to `violations: &[DrcViolation]`, and replace the shortfall computation with:
+In `crates/copper-drc/src/statistics.rs` replace `use copper_board::ClearanceViolation;` with `use crate::DrcViolation;`, change the parameter to `violations: &[DrcViolation]`, and replace the shortfall computation with:
 
 ```rust
             for violation in violations {
@@ -2487,16 +2487,16 @@ In `crates/fr-drc/src/statistics.rs` replace `use fr_board::ClearanceViolation;`
 
 - [ ] **Step 4: Fix the surviving report tests**
 
-Run: `cargo test -p fr-drc`
+Run: `cargo test -p copper-drc`
 
 `report.rs` and `report_json.rs` may still reference `"unconnectedItems"` as the stored kind for unconnected entries; change those expectations to `"unconnected_items"` where they inspect `report.unconnected_items[..].kind`, and leave JSON-text assertions on the head flavour alone (the flavour mapping still emits `unconnectedItems` there). Every remaining failure in these two files must be either a stored-kind rename or a removed Java golden; anything else is a bug in Task 11's code, not the test.
 
-Expected: `cargo test -p fr-drc` PASS.
+Expected: `cargo test -p copper-drc` PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/fr-drc
+git add crates/copper-drc
 git commit -m "feat(drc): report and statistics on DrcViolation with KiCad type strings"
 ```
 
@@ -2505,15 +2505,15 @@ git commit -m "feat(drc): report and statistics on DrcViolation with KiCad type 
 ### Task 12: Router scoring and core consumers
 
 **Files:**
-- Modify: `crates/fr-router/src/score/statistics.rs:291-300`, `crates/fr-router/src/score/mod.rs:14`, `crates/fr-core/src/ctx.rs:40`, `crates/fr-core/src/pipeline.rs:19`, `crates/fr-core/tests/pipeline.rs:96-112`
+- Modify: `crates/copper-router/src/score/statistics.rs:291-300`, `crates/copper-router/src/score/mod.rs:14`, `crates/copper-core/src/ctx.rs:40`, `crates/copper-core/src/pipeline.rs:19`, `crates/copper-core/tests/pipeline.rs:96-112`
 
 **Interfaces:**
 - Consumes: `DesignRulesChecker::get_all_violations`, `DrcViolation::involves_routing`.
-- Produces: `RoutingResult.drc_violations: Vec<fr_drc::DrcViolation>`; `BoardStatistics.clearance_violations` counts routing-involved violations only.
+- Produces: `RoutingResult.drc_violations: Vec<copper_drc::DrcViolation>`; `BoardStatistics.clearance_violations` counts routing-involved violations only.
 
-- [ ] **Step 1: Update the fr-core pipeline test first**
+- [ ] **Step 1: Update the copper-core pipeline test first**
 
-In `crates/fr-core/tests/pipeline.rs`, replace the `assert_eq!(result.stats.clearance_violations.total_count, Some(result.violation_count() as i32), ...)` assertion (lines 109-113) with:
+In `crates/copper-core/tests/pipeline.rs`, replace the `assert_eq!(result.stats.clearance_violations.total_count, Some(result.violation_count() as i32), ...)` assertion (lines 109-113) with:
 
 ```rust
     let routing_involved = result
@@ -2528,16 +2528,16 @@ In `crates/fr-core/tests/pipeline.rs`, replace the `assert_eq!(result.stats.clea
     );
 ```
 
-Read the test's `route` helper to find the name under which the routed `Board` is returned (it is next to `result` in the same struct); if the board is not returned, add it to the helper's return struct. Add `use fr_drc::DrcViolation;` only if the compiler asks for it.
+Read the test's `route` helper to find the name under which the routed `Board` is returned (it is next to `result` in the same struct); if the board is not returned, add it to the helper's return struct. Add `use copper_drc::DrcViolation;` only if the compiler asks for it.
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cargo test -p fr-core --test pipeline`
+Run: `cargo test -p copper-core --test pipeline`
 Expected: compile error, `involves_routing` not found on `ClearanceViolation`.
 
 - [ ] **Step 3: Switch the consumers**
 
-`crates/fr-router/src/score/statistics.rs:291-300`:
+`crates/copper-router/src/score/statistics.rs:291-300`:
 
 ```rust
         stats.clearance_violations = if include_clearance_violations {
@@ -2556,23 +2556,23 @@ Expected: compile error, `involves_routing` not found on `ClearanceViolation`.
         } else {
 ```
 
-Add `DrcViolation` to the `use fr_drc::{...}` line at the top of that file.
+Add `DrcViolation` to the `use copper_drc::{...}` line at the top of that file.
 
-`crates/fr-router/src/score/mod.rs:14`: `pub use fr_drc::{BoardStatisticsClearanceViolations, DrcViolation};`
+`crates/copper-router/src/score/mod.rs:14`: `pub use copper_drc::{BoardStatisticsClearanceViolations, DrcViolation};`
 
-`crates/fr-core/src/ctx.rs:40`: `pub drc_violations: Vec<fr_drc::DrcViolation>,`
+`crates/copper-core/src/ctx.rs:40`: `pub drc_violations: Vec<copper_drc::DrcViolation>,`
 
-`crates/fr-core/src/pipeline.rs:19`: `let drc_violations = fr_drc::DesignRulesChecker::new(board).get_all_violations();`
+`crates/copper-core/src/pipeline.rs:19`: `let drc_violations = copper_drc::DesignRulesChecker::new(board).get_all_violations();`
 
 - [ ] **Step 4: Build and test the workspace**
 
-Run: `cargo build --workspace && cargo test -p fr-router -p fr-core`
-Expected: compiles. Any fr-router or fr-core test that asserts a specific clearance-violation count against a Java fixture now reflects KiCad semantics; for each such failure, read the test, confirm the new count is explained by a rule in the spec's Checks table (for example, stacked same-net pads no longer count), and update the expected number in that test with the reason in the commit message. Do not bulk-replace numbers.
+Run: `cargo build --workspace && cargo test -p copper-router -p copper-core`
+Expected: compiles. Any copper-router or copper-core test that asserts a specific clearance-violation count against a Java fixture now reflects KiCad semantics; for each such failure, read the test, confirm the new count is explained by a rule in the spec's Checks table (for example, stacked same-net pads no longer count), and update the expected number in that test with the reason in the commit message. Do not bulk-replace numbers.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/fr-router crates/fr-core
+git add crates/copper-router crates/copper-core
 git commit -m "feat(router,core): score the routing-involved subset of KiCad DRC violations"
 ```
 
@@ -2581,28 +2581,28 @@ git commit -m "feat(router,core): score the routing-involved subset of KiCad DRC
 ### Task 13: `--kicad-project` on the CLI and the MCP tool
 
 **Files:**
-- Modify: `crates/freerouting/src/cli.rs:30-76`, `crates/freerouting/src/commands/drc.rs:41-45,100-110`, `crates/freerouting/src/commands/route.rs:381`, `crates/freerouting/src/mcp/tools/check_drc.rs:16-27`, `crates/freerouting/src/mcp/tools/schema.rs:53-70`
+- Modify: `crates/copperroute/src/cli.rs:30-76`, `crates/copperroute/src/commands/drc.rs:41-45,100-110`, `crates/copperroute/src/commands/route.rs:381`, `crates/copperroute/src/mcp/tools/check_drc.rs:16-27`, `crates/copperroute/src/mcp/tools/schema.rs:53-70`
 
 **Interfaces:**
 - Produces: `commands::drc::load_kicad_project_file(project: Option<&Path>, board: &mut Board, transform: &CoordinateTransform)`; CLI flag `--kicad-project <PATH>` on `route` and `drc`; MCP argument `kicad_project_path`.
 
 - [ ] **Step 1: Write the failing test**
 
-Append to the `tests` module at the bottom of `crates/freerouting/src/commands/drc.rs`:
+Append to the `tests` module at the bottom of `crates/copperroute/src/commands/drc.rs`:
 
 ```rust
     #[test]
     fn a_missing_project_file_leaves_the_board_without_constraints() {
         let path = parity_free_spike_dsn();
         let bytes = std::fs::read(&path).expect("the spike DSN is in the repo");
-        let (mut board, transform) = match fr_dsn::read_board(
+        let (mut board, transform) = match copper_dsn::read_board(
             &bytes[..],
             None,
             Some("spike"),
-            &fr_dsn::DsnReadOptions::default(),
+            &copper_dsn::DsnReadOptions::default(),
         ) {
-            fr_dsn::BoardReadResult::Success { board, coordinate_transform, .. }
-            | fr_dsn::BoardReadResult::OutlineMissing { board, coordinate_transform, .. } => {
+            copper_dsn::BoardReadResult::Success { board, coordinate_transform, .. }
+            | copper_dsn::BoardReadResult::OutlineMissing { board, coordinate_transform, .. } => {
                 (*board.expect("a board"), coordinate_transform.expect("a transform"))
             }
             other => panic!("{other:?}"),
@@ -2625,18 +2625,18 @@ Append to the `tests` module at the bottom of `crates/freerouting/src/commands/d
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cargo test -p freerouting load_kicad_project`
+Run: `cargo test -p copperroute load_kicad_project`
 Expected: compile error, `load_kicad_project_file` not found.
 
 - [ ] **Step 3: Add the helper and the flag**
 
-In `crates/freerouting/src/commands/drc.rs`, after `load_session_file`, add:
+In `crates/copperroute/src/commands/drc.rs`, after `load_session_file`, add:
 
 ```rust
 pub fn load_kicad_project_file(
     project: Option<&Path>,
-    board: &mut fr_board::Board,
-    transform: &fr_dsn::CoordinateTransform,
+    board: &mut copper_board::Board,
+    transform: &copper_dsn::CoordinateTransform,
 ) {
     let Some(project) = project else {
         return;
@@ -2653,7 +2653,7 @@ pub fn load_kicad_project_file(
             return;
         }
     };
-    match fr_drc::apply_kicad_project(&text, board, transform) {
+    match copper_drc::apply_kicad_project(&text, board, transform) {
         Ok(()) => tracing::info!("KiCad project design rules loaded"),
         Err(error) => tracing::error!("Failed to apply KiCad project design rules: {error}"),
     }
@@ -2666,20 +2666,20 @@ In `run` (same file), after `load_session_file(args.ses.as_deref(), &mut board, 
     load_kicad_project_file(args.kicad_project.as_deref(), &mut board, &transform);
 ```
 
-In `crates/freerouting/src/cli.rs` add to both `RouteArgs` and `DrcArgs`, after the `kicad_json` field:
+In `crates/copperroute/src/cli.rs` add to both `RouteArgs` and `DrcArgs`, after the `kicad_json` field:
 
 ```rust
     #[arg(long)]
     pub kicad_project: Option<PathBuf>,
 ```
 
-In `crates/freerouting/src/commands/route.rs`, directly after the line `job.router_settings = settings.clone();` (line 381), add:
+In `crates/copperroute/src/commands/route.rs`, directly after the line `job.router_settings = settings.clone();` (line 381), add:
 
 ```rust
     super::drc::load_kicad_project_file(args.kicad_project.as_deref(), &mut board, &transform);
 ```
 
-In `crates/freerouting/src/mcp/tools/check_drc.rs` add after the `rules` line:
+In `crates/copperroute/src/mcp/tools/check_drc.rs` add after the `rules` line:
 
 ```rust
     let project = super::optional_string(&args, "kicad_project_path")?.map(PathBuf::from);
@@ -2693,7 +2693,7 @@ and after `load_session_file(...)`:
 
 extending the `use crate::commands::drc::{...}` import with `load_kicad_project_file`.
 
-In `crates/freerouting/src/mcp/tools/schema.rs::check_drc_schema`, after the `rules_path` insert:
+In `crates/copperroute/src/mcp/tools/schema.rs::check_drc_schema`, after the `rules_path` insert:
 
 ```rust
     object.insert("kicad_project_path".into(), json!({
@@ -2704,13 +2704,13 @@ In `crates/freerouting/src/mcp/tools/schema.rs::check_drc_schema`, after the `ru
 
 - [ ] **Step 4: Test and smoke-run**
 
-Run: `cargo test -p freerouting && cargo run -q -p freerouting -- drc benchmark/tests/data/spike/spike.dsn --ses benchmark/tests/data/spike/routed.ses --kicad-project benchmark/tests/data/spike/stripped.kicad_pro | python3 -c "import json,sys,collections; d=json.load(sys.stdin); print(collections.Counter(v['type'] for v in d['violations']), len(d['unconnected_items']))"`
+Run: `cargo test -p copperroute && cargo run -q -p copperroute -- drc benchmark/tests/data/spike/spike.dsn --ses benchmark/tests/data/spike/routed.ses --kicad-project benchmark/tests/data/spike/stripped.kicad_pro | python3 -c "import json,sys,collections; d=json.load(sys.stdin); print(collections.Counter(v['type'] for v in d['violations']), len(d['unconnected_items']))"`
 Expected: tests PASS; the command prints a counter of KiCad type strings and `1` unconnected item. The two former `hole_clearance` false positives on the stacked ESP32 pads must be gone.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add crates/freerouting
+git add crates/copperroute
 git commit -m "feat(cli): --kicad-project supplies KiCad design rules to route and drc"
 ```
 
@@ -2719,7 +2719,7 @@ git commit -m "feat(cli): --kicad-project supplies KiCad design rules to route a
 ### Task 14: The `kicad-cli` oracle
 
 **Files:**
-- Create: `tests/reference/kicad-drc-fixtures.txt`, `scripts/gen-kicad-drc-reference.sh`, `crates/fr-drc/tests/kicad_oracle.rs`
+- Create: `tests/reference/kicad-drc-fixtures.txt`, `scripts/gen-kicad-drc-reference.sh`, `crates/copper-drc/tests/kicad_oracle.rs`
 - Generated: `tests/reference/kicad-*/kicad-drc.json`, `tests/reference/kicad-*/kicad-drc.meta.txt`
 
 **Interfaces:**
@@ -2731,7 +2731,7 @@ Create `tests/reference/kicad-drc-fixtures.txt`:
 
 ```
 # kicad-cli DRC oracle fixtures for scripts/gen-kicad-drc-reference.sh and
-# crates/fr-drc/tests/kicad_oracle.rs.
+# crates/copper-drc/tests/kicad_oracle.rs.
 #
 #   stem|dsn|ses|kicad_pcb|kicad_pro|ignore_types
 #
@@ -2751,7 +2751,7 @@ Create `scripts/gen-kicad-drc-reference.sh` and `chmod +x` it:
 
 ```bash
 #!/usr/bin/env bash
-# Generate kicad-cli DRC references for crates/fr-drc/tests/kicad_oracle.rs.
+# Generate kicad-cli DRC references for crates/copper-drc/tests/kicad_oracle.rs.
 #
 # Per stem in tests/reference/kicad-drc-fixtures.txt: strip the routing from the KiCad board,
 # import the session with the benchmark's vendored importer, refill zones, copy the project next
@@ -2762,14 +2762,14 @@ Create `scripts/gen-kicad-drc-reference.sh` and `chmod +x` it:
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 JAVA_DIR="${FREEROUTING_JAVA_DIR:-$ROOT/../freerouting}"
-KICAD_CLI="${FREEROUTING_KICAD_CLI:-/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli}"
-KICAD_PY="${FREEROUTING_KICAD_PYTHON:-/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3}"
+KICAD_CLI="${COPPERROUTE_KICAD_CLI:-/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli}"
+KICAD_PY="${COPPERROUTE_KICAD_PYTHON:-/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3}"
 VENDOR="$ROOT/benchmark/vendor/kicad"
 FIXTURES="$ROOT/tests/reference/kicad-drc-fixtures.txt"
 WANTED=("$@")
 
 for tool in "$KICAD_CLI" "$KICAD_PY"; do
-  [[ -x "$tool" ]] || { echo "error: $tool is not executable; set FREEROUTING_KICAD_CLI / FREEROUTING_KICAD_PYTHON" >&2; exit 1; }
+  [[ -x "$tool" ]] || { echo "error: $tool is not executable; set COPPERROUTE_KICAD_CLI / COPPERROUTE_KICAD_PYTHON" >&2; exit 1; }
 done
 
 resolve() {
@@ -2822,15 +2822,15 @@ Expected: six `tests/reference/kicad-*/kicad-drc.json` files. If a Java fixture'
 
 - [ ] **Step 4: Write the oracle test**
 
-Create `crates/fr-drc/tests/kicad_oracle.rs`:
+Create `crates/copper-drc/tests/kicad_oracle.rs`:
 
 ```rust
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use fr_board::prelude::*;
-use fr_drc::{DesignRulesChecker, DrcViolationKind, UnconnectedKind};
-use fr_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
+use copper_board::prelude::*;
+use copper_drc::{DesignRulesChecker, DrcViolationKind, UnconnectedKind};
+use copper_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
 
 struct Row {
     stem: String,
@@ -2878,7 +2878,7 @@ fn rows() -> Vec<Row> {
 fn load(row: &Row) -> (Board, CoordinateTransform) {
     let bytes = std::fs::read(&row.dsn)
         .unwrap_or_else(|e| panic!("cannot read {}: {e}", row.dsn.display()));
-    let (mut board, transform) = match fr_dsn::read_board(&bytes[..], None, None, &DsnReadOptions::default()) {
+    let (mut board, transform) = match copper_dsn::read_board(&bytes[..], None, None, &DsnReadOptions::default()) {
         BoardReadResult::Success { board, coordinate_transform, .. }
         | BoardReadResult::OutlineMissing { board, coordinate_transform, .. } => {
             (*board.expect("a board"), coordinate_transform.expect("a transform"))
@@ -2887,9 +2887,9 @@ fn load(row: &Row) -> (Board, CoordinateTransform) {
     };
     let ses = std::fs::File::open(&row.ses)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", row.ses.display()));
-    fr_dsn::ses_reader::read(ses, &mut board, &transform).expect("the session imports");
+    copper_dsn::ses_reader::read(ses, &mut board, &transform).expect("the session imports");
     let project = std::fs::read_to_string(&row.pro).expect("the project reads");
-    fr_drc::apply_kicad_project(&project, &mut board, &transform).expect("the project applies");
+    copper_drc::apply_kicad_project(&project, &mut board, &transform).expect("the project applies");
     (board, transform)
 }
 
@@ -2964,24 +2964,24 @@ fn the_port_matches_kicad_cli_per_violation_type() {
 }
 ```
 
-Add `serde_json.workspace = true` to `[dev-dependencies]` in `crates/fr-drc/Cargo.toml` if it is not already reachable there.
+Add `serde_json.workspace = true` to `[dev-dependencies]` in `crates/copper-drc/Cargo.toml` if it is not already reachable there.
 
 - [ ] **Step 5: Run the oracle and converge**
 
-Run: `cargo test -p fr-drc --test kicad_oracle -- --nocapture`
+Run: `cargo test -p copper-drc --test kicad_oracle -- --nocapture`
 
 Expected on the first run: a list of per-stem, per-type count differences. Work through them in this order, committing after each fix:
 
 1. A type the port reports and KiCad does not, on a pair the spec says KiCad waives, is a port bug. Fix the check.
 2. A type KiCad reports and the port does not, where the items involved have estimated pad drills or a net-tie footprint, is a known divergence. Add the type to that stem's `ignore_types` column with a one-line reason in the fixture file's comment block.
-3. Anything else: inspect the specific violation in `kicad-drc.json` (positions are in mm) against the port's report for the same board via `cargo run -p freerouting -- drc <dsn> --ses <ses> --kicad-project <pro>`, and fix the check.
+3. Anything else: inspect the specific violation in `kicad-drc.json` (positions are in mm) against the port's report for the same board via `cargo run -p copperroute -- drc <dsn> --ses <ses> --kicad-project <pro>`, and fix the check.
 
 The task is done when the test passes with every remaining `ignore_types` entry justified in the fixture file.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add tests/reference/kicad-drc-fixtures.txt tests/reference/kicad-* scripts/gen-kicad-drc-reference.sh crates/fr-drc/tests/kicad_oracle.rs crates/fr-drc/Cargo.toml
+git add tests/reference/kicad-drc-fixtures.txt tests/reference/kicad-* scripts/gen-kicad-drc-reference.sh crates/copper-drc/tests/kicad_oracle.rs crates/copper-drc/Cargo.toml
 git commit -m "test(drc): kicad-cli oracle fixtures and per-type agreement test"
 ```
 
@@ -2994,9 +2994,9 @@ git commit -m "test(drc): kicad-cli oracle fixtures and per-type agreement test"
 
 - [ ] **Step 1: Amend the spec**
 
-In the spec's Components list, change item 1 to say `DrcConstraints` and `DrcSeverity` are defined in `fr-board` with the builders in `fr-drc`, and item 4 to say the project file is loaded by the CLI and MCP layers through `load_kicad_project_file`, with `RoutingJob` unchanged. In Testing item 4, replace the sentence about removing `tests/reference/drc-fixtures.txt` and the `drc-*` directories with: "The fixture list and its `drc-*` reference directories stay because `scripts/quality-ab.sh` defines the 29-stem quality gate over them; only the parity tests are removed."
+In the spec's Components list, change item 1 to say `DrcConstraints` and `DrcSeverity` are defined in `copper-board` with the builders in `copper-drc`, and item 4 to say the project file is loaded by the CLI and MCP layers through `load_kicad_project_file`, with `RoutingJob` unchanged. In Testing item 4, replace the sentence about removing `tests/reference/drc-fixtures.txt` and the `drc-*` directories with: "The fixture list and its `drc-*` reference directories stay because `scripts/quality-ab.sh` defines the 29-stem quality gate over them; only the parity tests are removed."
 
-Add a sentence to the header comment of `scripts/gen-drc-reference.sh` stating that `crates/fr-drc/tests/reference_parity.rs` no longer exists and the script now serves `scripts/quality-ab.sh` alone.
+Add a sentence to the header comment of `scripts/gen-drc-reference.sh` stating that `crates/copper-drc/tests/reference_parity.rs` no longer exists and the script now serves `scripts/quality-ab.sh` alone.
 
 - [ ] **Step 2: Full verification**
 
@@ -3013,8 +3013,8 @@ Expected: zero failures, clippy clean. Any remaining failure is investigated ind
 - [ ] **Step 3: Smoke the CLI on the spike both ways**
 
 ```bash
-cargo run -q -p freerouting -- drc benchmark/tests/data/spike/spike.dsn --ses benchmark/tests/data/spike/routed.ses -o /tmp/spike-dsn-only.json
-cargo run -q -p freerouting -- drc benchmark/tests/data/spike/spike.dsn --ses benchmark/tests/data/spike/routed.ses --kicad-project benchmark/tests/data/spike/stripped.kicad_pro -o /tmp/spike-project.json
+cargo run -q -p copperroute -- drc benchmark/tests/data/spike/spike.dsn --ses benchmark/tests/data/spike/routed.ses -o /tmp/spike-dsn-only.json
+cargo run -q -p copperroute -- drc benchmark/tests/data/spike/spike.dsn --ses benchmark/tests/data/spike/routed.ses --kicad-project benchmark/tests/data/spike/stripped.kicad_pro -o /tmp/spike-project.json
 python3 -c "import json,collections; [print(f, collections.Counter(v['type'] for v in json.load(open(f))['violations'])) for f in ('/tmp/spike-dsn-only.json','/tmp/spike-project.json')]"
 ```
 

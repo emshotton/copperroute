@@ -120,24 +120,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
-name = "fr-board"
+name = "copper-board"
 version = "0.1.0"
 dependencies = [
- "fr-geometry",
+ "copper-geometry",
  "num-bigint",
  "thiserror",
 ]
 
 [[package]]
-name = "fr-core"
+name = "copper-core"
 version = "0.1.0"
 dependencies = [
- "fr-board",
- "fr-drc",
- "fr-dsn",
- "fr-geometry",
- "fr-router",
- "fr-settings",
+ "copper-board",
+ "copper-drc",
+ "copper-dsn",
+ "copper-geometry",
+ "copper-router",
+ "copper-settings",
  "parity",
  "serde",
  "serde_json",
@@ -145,12 +145,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "fr-drc"
+name = "copper-drc"
 version = "0.1.0"
 dependencies = [
- "fr-board",
- "fr-dsn",
- "fr-geometry",
+ "copper-board",
+ "copper-dsn",
+ "copper-geometry",
  "parity",
  "serde",
  "serde_json",
@@ -158,11 +158,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "fr-dsn"
+name = "copper-dsn"
 version = "0.1.0"
 dependencies = [
- "fr-board",
- "fr-geometry",
+ "copper-board",
+ "copper-geometry",
  "parity",
  "serde",
  "serde_json",
@@ -170,7 +170,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fr-geometry"
+name = "copper-geometry"
 version = "0.1.0"
 dependencies = [
  "num-bigint",
@@ -179,25 +179,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "fr-router"
+name = "copper-router"
 version = "0.1.0"
 dependencies = [
- "fr-board",
- "fr-drc",
- "fr-dsn",
- "fr-geometry",
- "fr-settings",
+ "copper-board",
+ "copper-drc",
+ "copper-dsn",
+ "copper-geometry",
+ "copper-settings",
  "parity",
  "thiserror",
 ]
 
 [[package]]
-name = "fr-settings"
+name = "copper-settings"
 version = "0.1.0"
 dependencies = [
- "fr-board",
- "fr-dsn",
- "fr-geometry",
+ "copper-board",
+ "copper-dsn",
+ "copper-geometry",
  "parity",
  "serde",
  "serde_json",
@@ -205,17 +205,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "freerouting"
+name = "copperroute"
 version = "0.1.0"
 dependencies = [
  "clap",
- "fr-board",
- "fr-core",
- "fr-drc",
- "fr-dsn",
- "fr-geometry",
- "fr-router",
- "fr-settings",
+ "copper-board",
+ "copper-core",
+ "copper-drc",
+ "copper-dsn",
+ "copper-geometry",
+ "copper-router",
+ "copper-settings",
  "parity",
  "serde",
  "serde_json",

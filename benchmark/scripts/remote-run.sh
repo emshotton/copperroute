@@ -150,7 +150,7 @@ else
   # $BENCH_REMOTE_JAVA_REPO is this suite's local ../freerouting checkout (default), used only
   # to find the locally-built jar and the commit it came from -- not to be confused with
   # anything on HOST, which has no Java repo checkout of its own (see the header comment).
-  : "${BENCH_REMOTE_JAVA_REPO:=../../freerouting}"  # benchmark/ nests inside freerouting-rs
+  : "${BENCH_REMOTE_JAVA_REPO:=../../freerouting}"  # benchmark/ nests inside copperroute
   case "$BENCH_REMOTE_JAVA_REPO" in
     /*) JAVA_REPO="$BENCH_REMOTE_JAVA_REPO" ;;
     *) JAVA_REPO="$HERE/$BENCH_REMOTE_JAVA_REPO" ;;

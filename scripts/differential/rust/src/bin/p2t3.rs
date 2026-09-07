@@ -1,15 +1,15 @@
 //! Rust twin of `../../java/P2T3.java`: the fixed 8-box `ShapeTree`/`MinAreaTree` script whose
-//! output `crates/fr-board/tests/min_area_tree.rs` was written from.
+//! output `crates/copper-board/tests/min_area_tree.rs` was written from.
 //!
 //! No arguments. The two programs must print byte-identical stdout.
 
-use fr_board::datastructures::{LeafId, Node, NodeId, ShapeTree};
-use fr_board::ids::{ItemId, TreeObject};
-use fr_geometry::bounding_directions::ShapeBoundingDirections;
-use fr_geometry::int_box::IntBox;
-use fr_geometry::int_point::IntPoint;
-use fr_geometry::regular_tile_shape::RegularTileShape;
-use fr_geometry::tile_shape::TileShape;
+use copper_board::datastructures::{LeafId, Node, NodeId, ShapeTree};
+use copper_board::ids::{ItemId, TreeObject};
+use copper_geometry::bounding_directions::ShapeBoundingDirections;
+use copper_geometry::int_box::IntBox;
+use copper_geometry::int_point::IntPoint;
+use copper_geometry::regular_tile_shape::RegularTileShape;
+use copper_geometry::tile_shape::TileShape;
 
 fn obj(n: u32) -> TreeObject {
     TreeObject::Item(ItemId(n))
@@ -211,7 +211,7 @@ fn edge_cases() {
     // Not in the Java driver (it has no way to express it): `insert_tiles` on a shape with no
     // bound leaves a hole exactly where Java's `leafArr` keeps a null (ShapeTree.java:51-55).
     let mut t4 = ShapeTree::new(ShapeBoundingDirections::FortyfiveDegree);
-    let unbounded = TileShape::Simplex(fr_geometry::simplex::Simplex::from_points(&[
+    let unbounded = TileShape::Simplex(copper_geometry::simplex::Simplex::from_points(&[
         IntPoint::new(0, 0),
         IntPoint::new(10, 0),
     ]));

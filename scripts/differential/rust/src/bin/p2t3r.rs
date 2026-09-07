@@ -1,17 +1,17 @@
 //! Rust twin of `../../java/P2T3R.java`: randomised differential driver for
-//! `fr_board::datastructures::ShapeTree` against Java's `ShapeTree`/`MinAreaTree`.
+//! `copper_board::datastructures::ShapeTree` against Java's `ShapeTree`/`MinAreaTree`.
 //!
 //! args: ops seed mode(0=orthogonal,1=45-degree) dumpEvery insertPct
 //!
 //! Every random draw is mirrored draw-for-draw by the Java side; the two programs must print
 //! byte-identical stdout.
 
-use fr_board::datastructures::{LeafId, Node, NodeId, ShapeTree};
-use fr_board::ids::{ItemId, TreeObject};
-use fr_geometry::bounding_directions::ShapeBoundingDirections;
-use fr_geometry::int_box::IntBox;
-use fr_geometry::regular_tile_shape::RegularTileShape;
-use fr_geometry::tile_shape::TileShape;
+use copper_board::datastructures::{LeafId, Node, NodeId, ShapeTree};
+use copper_board::ids::{ItemId, TreeObject};
+use copper_geometry::bounding_directions::ShapeBoundingDirections;
+use copper_geometry::int_box::IntBox;
+use copper_geometry::regular_tile_shape::RegularTileShape;
+use copper_geometry::tile_shape::TileShape;
 
 struct Rng(u64);
 

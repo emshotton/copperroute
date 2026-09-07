@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate the Java **whole-board** router references for `crates/fr-router/tests/batch_parity.rs`
+# Generate the Java **whole-board** router references for `crates/copper-router/tests/batch_parity.rs`
 # (Plan 7 Task 16, ruling AM as amended by scan ruling 13).
 #
 # Sibling of `scripts/gen-router-reference.sh`, sharing its `portable()`, its preflight, its
@@ -158,7 +158,7 @@ JAVAC_BIN="${JAVAC:-/opt/homebrew/opt/openjdk@25/bin/javac}"
 REF="$ROOT/tests/reference"
 # Outputs may be redirected to a scratch tree; inputs never are.
 OUT_ROOT="${REFERENCE_OUT_ROOT:-$REF}"
-PORT_BIN="$ROOT/target/release/freerouting"
+PORT_BIN="$ROOT/target/release/copperroute"
 PORT_DRIVER_SRC="$ROOT/scripts/differential/rust/src/bin/p7t9.rs"
 PORT_DRIVER="$ROOT/scripts/differential/rust/target/release/p7t9"
 FIXTURES="$REF/router-fixtures.txt"
@@ -470,7 +470,7 @@ write_meta() {
 }
 
 # `JsonFileSettings` is priority 10 of the merge. Plan 8 Task 5 ported it (scan ruling R7) and
-# Task 6 threaded it into `fr_settings::resolve_headless` as `SettingsInputs::json_file`, so the
+# Task 6 threaded it into `copper_settings::resolve_headless` as `SettingsInputs::json_file`, so the
 # port now has the tier. ~~"the one source the port has no counterpart for (spec §2 puts
 # `freerouting.json` out of scope)"~~ and ~~"`resolve_headless` does not take it yet"~~ are both
 # retired. The note stays because the tier is still **machine state on the Java side**: the jar
@@ -501,7 +501,7 @@ compile_driver() {
   if [[ "$LANE" == port ]]; then
     echo "== building $(portable "$PORT_DRIVER_SRC") and the port's binary (release)"
     (cd "$ROOT/scripts/differential/rust" && cargo build --release --bin p7t9 --quiet)
-    (cd "$ROOT" && cargo build --release --bin freerouting --quiet)
+    (cd "$ROOT" && cargo build --release --bin copperroute --quiet)
     return 0
   fi
   echo "== compiling $(portable "$DRIVER") against $(portable "$JAR")"

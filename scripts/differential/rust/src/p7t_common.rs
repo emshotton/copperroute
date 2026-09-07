@@ -14,19 +14,19 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::time::UNIX_EPOCH;
 
-use fr_board::prelude::*;
-use fr_board::StopConnectionOption;
-use fr_drc::DesignRulesChecker;
-use fr_dsn::format_double;
-use fr_dsn::parser::scope_parameter::DsnReadOptions;
-use fr_dsn::BoardReadResult;
-use fr_geometry::{Point, Polyline};
-use fr_router::pipeline::{
+use copper_board::prelude::*;
+use copper_board::StopConnectionOption;
+use copper_drc::DesignRulesChecker;
+use copper_dsn::format_double;
+use copper_dsn::parser::scope_parameter::DsnReadOptions;
+use copper_dsn::BoardReadResult;
+use copper_geometry::{Point, Polyline};
+use copper_router::pipeline::{
     BatchAutorouter, NoopProgressSink, RouterBudget, RouterStop, RoutingFailureLog,
 };
-use fr_router::AutorouteAttemptState;
-use fr_settings::sources::DefaultSettings;
-use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
+use copper_router::AutorouteAttemptState;
+use copper_settings::sources::DefaultSettings;
+use copper_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
 // ------------------------------------------------------------------------------------------------
 // Header
@@ -60,7 +60,7 @@ pub fn load_board(dsn: &std::path::Path) -> Board {
         .expect("a file name")
         .to_string_lossy()
         .into_owned();
-    let result = fr_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
+    let result = copper_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
     match result {
         BoardReadResult::Success { board, .. } | BoardReadResult::OutlineMissing { board, .. } => {
             *board.unwrap_or_else(|| panic!("{design_name} produced no board"))
@@ -69,18 +69,18 @@ pub fn load_board(dsn: &std::path::Path) -> Board {
     }
 }
 
-/// [`load_board`] plus the DSN coordinate transform, which `fr_dsn::ses_writer::write` needs and
+/// [`load_board`] plus the DSN coordinate transform, which `copper_dsn::ses_writer::write` needs and
 /// Java reads off `board.communication.coordinateTransform` (Plan 3 ruling A keeps it in
-/// `fr-dsn`, so the port hands it back on the read result instead). Plan 7 Task 16's `p7t9
+/// `copper-dsn`, so the port hands it back on the read result instead). Plan 7 Task 16's `p7t9
 /// batch`.
-pub fn load_board_with_transform(dsn: &std::path::Path) -> (Board, fr_dsn::CoordinateTransform) {
+pub fn load_board_with_transform(dsn: &std::path::Path) -> (Board, copper_dsn::CoordinateTransform) {
     let file = std::fs::File::open(dsn).unwrap_or_else(|e| panic!("cannot open {dsn:?}: {e}"));
     let design_name = dsn
         .file_name()
         .expect("a file name")
         .to_string_lossy()
         .into_owned();
-    let result = fr_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
+    let result = copper_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
     match result {
         BoardReadResult::Success {
             board,
@@ -652,15 +652,15 @@ pub fn dump_board<W: Write>(out: &mut W, board: &Board) {
 }
 
 /// `P6T15aProbe.ln`.
-pub fn ln(l: &fr_geometry::Line) -> String {
+pub fn ln(l: &copper_geometry::Line) -> String {
     format!("({},{})->({},{})", l.a.x, l.a.y, l.b.x, l.b.y)
 }
 
 /// `P6T15aProbe.pt` — one corner of a polyline. Named apart from [`pt`], which is `P6T1`'s
 /// point renderer and takes a `Point`.
-pub fn poly_corner(p: &fr_geometry::Polyline, no: usize) -> String {
+pub fn poly_corner(p: &copper_geometry::Polyline, no: usize) -> String {
     match p.corner(no) {
-        Some(fr_geometry::Point::Int(ip)) => format!("({},{})", ip.x, ip.y),
+        Some(copper_geometry::Point::Int(ip)) => format!("({},{})", ip.x, ip.y),
         _ => {
             let f = p.corner_approx(no).expect("a corner of a valid polyline");
             format!(
@@ -673,7 +673,7 @@ pub fn poly_corner(p: &fr_geometry::Polyline, no: usize) -> String {
 }
 
 /// `P6T15aProbe.poly` — the line array and the corners.
-pub fn poly(p: &fr_geometry::Polyline) -> String {
+pub fn poly(p: &copper_geometry::Polyline) -> String {
     let lines: Vec<String> = p.lines().iter().map(ln).collect();
     let corners: Vec<String> = (0..p.corner_count()).map(|i| poly_corner(p, i)).collect();
     format!(
@@ -685,7 +685,7 @@ pub fn poly(p: &fr_geometry::Polyline) -> String {
 }
 
 /// `P6T15aProbe.pointOf` — `p.toFloat().round().toFloat()`, then an `(int)` truncation.
-pub fn point_of(p: &fr_geometry::Point) -> String {
+pub fn point_of(p: &copper_geometry::Point) -> String {
     let f = p.to_float().round().to_float();
     format!("({},{})", f.x as i64, f.y as i64)
 }

@@ -53,10 +53,10 @@ Reconstructed from our own tree, not from a paper:
 
 * The per-connection ripup cost is
   `ripup_cost = ctrl.ripup_costs × cost_factor ÷ detour × fanout_via_cost_factor`, clamped to
-  `[1, i32::MAX/100]` (`crates/fr-router/src/autoroute/maze/ripup_resolver.rs:263-290`).
+  `[1, i32::MAX/100]` (`crates/copper-router/src/autoroute/maze/ripup_resolver.rs:263-290`).
 * `ctrl.ripup_costs` is set **once per connection** as
   `autoroute_control.ripup_costs = start_ripup_costs * ripup_pass_no`
-  (`crates/fr-router/src/autoroute/maze/engine.rs:1900`) — a **linear, uniform** escalation over the
+  (`crates/copper-router/src/autoroute/maze/engine.rs:1900`) — a **linear, uniform** escalation over the
   batch pass number, identical for every item on the board.
 * The only per-item modulation is `cost_factor` (the obstacle's half-width, or a via's contact
   geometry) and `detour` (the obstacle *connection*'s current detour ratio,
@@ -165,7 +165,7 @@ attribution.
 |---|---|---|
 | 3-D grid graph on **tracks**, preferred routing direction per layer | Gridless rooms/doors, any-angle capable, no track abstraction | **No** — the grid is load-bearing for both cost types |
 | Object cost = pessimistic spacing shadow on grid **edges** | We have no edges to decorate; clearance is exact and shape-based | **No** — and we do not need it, our clearance model is already exact |
-| Marker cost = penalty near a **DRC marker from a real checker**, with in-worker history | Our router sees **two** rule types (`fr-drc` emits `clearance` + `hole_clearance`; roadmap **W11**) and never re-checks mid-route | **The mechanism does — and it is W11's missing consumer** |
+| Marker cost = penalty near a **DRC marker from a real checker**, with in-worker history | Our router sees **two** rule types (`copper-drc` emits `clearance` + `hole_clearance`; roadmap **W11**) and never re-checks mid-route | **The mechanism does — and it is W11's missing consumer** |
 | 7×7 GCell clip decomposition, shifted alternately | We have no spatial decomposition of any kind; every pass is whole-board | **Yes, and this is the transferable structure** |
 | Pin-access reservation for unrouted nets | Our fanout stage exists but nothing reserves escape room for later nets | **Yes, cleanly** |
 | C++, threaded workers | `#![forbid(unsafe_code)]`, ruling AM, byte-identical output | Workers are **sequential-safe**: clips are disjoint by construction, so a deterministic serial sweep in a fixed clip order is byte-identical regardless |
@@ -205,7 +205,7 @@ what makes them safe here. Open implementations of Anya and of the funnel algori
 variously licensed; **we would implement from the published construction, not copy.**
 
 **Why this is the closest architectural match in the entire survey.** *Our rooms are regions. Our
-doors are portals.* `crates/fr-router/src/autoroute/maze/` is a portal graph search that has never
+doors are portals.* `crates/copper-router/src/autoroute/maze/` is a portal graph search that has never
 been treated as one.
 
 **Impedance mismatch — and it is real.**
@@ -285,7 +285,7 @@ legally clean with notices preserved.
 |---|---|---|
 | **Interactive**: one line at a time, a human supplying intent, latency budget in milliseconds | Batch, whole-board, unattended | Structure does not transfer; **policies do** |
 | `NODE` copy-on-write speculative branches | We `deep_copy` whole boards in the optimiser (`pipeline/optimizer.rs`, W3) | An idea worth noting; a rewrite-sized change |
-| C++, `boost`, KiCad's `SHAPE_*` geometry | `fr-geometry`, `#![forbid(unsafe_code)]`, no new deps | A line-by-line port is not on |
+| C++, `boost`, KiCad's `SHAPE_*` geometry | `copper-geometry`, `#![forbid(unsafe_code)]`, no new deps | A line-by-line port is not on |
 | Walkaround's CW/CCW/shortest triple | Our maze picks one path and commits | **Yes — and this is a deterministic multi-policy lever** |
 | Shove ↔ walk fallback per obstacle | Our shover has its own recursion depths (`max_shove_trace_recursion_depth`, `maze/control.rs:141`) but no "give up and go around instead" alternative arm | **Yes** |
 
@@ -694,7 +694,7 @@ off, and take M3 as the baseline (roadmap §4 item 4).
   subtract it for a specific fixed violation**, and stop the window the instant it is clean. Then
   shift the partition by half a window and sweep again — the alternate-offset trick that repairs
   window boundaries.
-* **PENDING on W11 phase 2.** A violation-driven repair needs violations. Today `fr-drc` emits
+* **PENDING on W11 phase 2.** A violation-driven repair needs violations. Today `copper-drc` emits
   **two** types against the referee's **23** (roadmap W11). E2 can start on `clearance` +
   `hole_clearance` + unconnected endpoints, but its ceiling is W11's coverage, and this dependency
   must be stated in the row rather than discovered halfway.
@@ -739,7 +739,7 @@ off, and take M3 as the baseline (roadmap §4 item 4).
 (Goldenberg, Felner, Sturtevant & Schaeffer, SoCS), differential/abstraction-based true-distance
 heuristics, Anya (Harabor & Grastien, ICAPS'13) and the funnel/string-pulling algorithm — **all
 implemented from published constructions; no code is copied from any implementation.** Sites:
-`crates/fr-router/src/autoroute/maze/destination_distance.rs` (the heuristic being replaced),
+`crates/copper-router/src/autoroute/maze/destination_distance.rs` (the heuristic being replaced),
 `maze/expand.rs:802-817` (the hook), `maze/search.rs:531-568` (E1's counter).
 
 **The design, stated as ours.** Build, once per pass, a coarse per-layer occupancy abstraction whose
@@ -773,9 +773,9 @@ beat `pull-tight` on length, on via count, or on neither?
 (Kahng, Wang & Xu, TCAD 2020), **BSD-3-Clause — readable, portable and translatable with
 attribution**; the clip decomposition, the marker-cost-with-history, the order-by-distance-to-marker
 rule and the pin-access reservation are theirs and are cited as such. Sites:
-`crates/fr-router/src/pipeline/batch_loop.rs:174` (where the sweep is appended),
-`crates/fr-router/src/autoroute/maze/ripup_resolver.rs:263` (the cost hook),
-`crates/fr-drc/` (the violations that drive it).
+`crates/copper-router/src/pipeline/batch_loop.rs:174` (where the sweep is appended),
+`crates/copper-router/src/autoroute/maze/ripup_resolver.rs:263` (the cost hook),
+`crates/copper-drc/` (the violations that drive it).
 
 **The design, stated as ours.** A post-batch sweep of fixed-size, fixed-order windows; per window a
 local rip-and-reroute of the connections touching a violation, ordered by distance to the nearest
@@ -786,7 +786,7 @@ half-window offset.
 **Why it is the natural consumer of W11.** W11 phase 3 asks the router to *see* the rules it is judged
 on. W23 is the mechanism that *acts* on what it sees. Sequenced together, W11 phase 3 first, they are
 the strongest quality pairing this survey found. **W23 is worth less than its size suggests until
-`fr-drc` emits more than two violation types**, and that dependency is the row's main risk.
+`copper-drc` emits more than two violation types**, and that dependency is the row's main risk.
 
 **Determinism.** Windows are disjoint and swept in a fixed order; a sequential sweep is byte-identical
 with no threading argument required. Setting, default off, own goldens.

@@ -8,7 +8,7 @@
 //! this binary to exist, in the same way the family-R lane switch needs `p6t1`.
 //!
 //! It is a **twin, not a re-implementation**: the two steps below are `RefWriter.main`'s two
-//! steps, and `crates/fr-dsn/tests/parity_dsn.rs` already asserts that this exact pair of calls
+//! steps, and `crates/copper-dsn/tests/parity_dsn.rs` already asserts that this exact pair of calls
 //! reproduces the jar's bytes on all seven stems. Keeping the driver here rather than in a crate
 //! keeps it out of the shipped surface — it is harness code, and `scripts/differential/rust` is
 //! where the port's harness code lives.
@@ -23,9 +23,9 @@
 use std::io::Write;
 use std::path::Path;
 
-use fr_board::Board;
-use fr_dsn::parser::scope_parameter::DsnReadOptions;
-use fr_dsn::{dsn_writer, ses_writer, BoardReadResult, CoordinateTransform};
+use copper_board::Board;
+use copper_dsn::parser::scope_parameter::DsnReadOptions;
+use copper_dsn::{dsn_writer, ses_writer, BoardReadResult, CoordinateTransform};
 
 /// `RefWriter.main`'s read half: `DsnReader.readBoard(in, null, null, designName)`, and the
 /// `switch` over its four results. `OutlineMissing` yields its board exactly as the Java arm
@@ -33,7 +33,7 @@ use fr_dsn::{dsn_writer, ses_writer, BoardReadResult, CoordinateTransform};
 fn read_board(path: &Path) -> Result<(Board, CoordinateTransform), String> {
     let file = std::fs::File::open(path).map_err(|e| format!("io error: {e}"))?;
     let stem = parity::dsn_design_name(path);
-    match fr_dsn::read_board(file, None, Some(&stem), &DsnReadOptions::default()) {
+    match copper_dsn::read_board(file, None, Some(&stem), &DsnReadOptions::default()) {
         BoardReadResult::Success {
             board,
             coordinate_transform,

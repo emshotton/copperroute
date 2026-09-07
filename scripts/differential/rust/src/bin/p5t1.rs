@@ -14,7 +14,7 @@
 //! group's order, but the entry's `items` is `connectedSets.get(0)` followed by
 //! `connectedSets.get(1)` (`DesignRulesChecker.java:143-146`), so the port emits two ascending
 //! runs concatenated, not one ascending list. Sorting is exactly what
-//! [`parity::normalize_drc_json`] does to both sides in `crates/fr-drc/tests/reference_parity.rs`,
+//! [`parity::normalize_drc_json`] does to both sides in `crates/copper-drc/tests/reference_parity.rs`,
 //! and this driver is the same comparison one layer lower. The fifth rule is "touch nothing else"
 //! — in particular `violations` is left alone on both sides, array *and* per-entry `items`.
 //!
@@ -26,8 +26,8 @@
 
 use std::io::{BufWriter, Write};
 
-use fr_drc::report::{DrcCoordinates, DrcJsonFlavor, DrcReportOptions};
-use fr_drc::DesignRulesChecker;
+use copper_drc::report::{DrcCoordinates, DrcJsonFlavor, DrcReportOptions};
+use copper_drc::DesignRulesChecker;
 
 #[path = "../drc_common.rs"]
 mod drc_common;
@@ -65,7 +65,7 @@ fn main() {
         // `Freerouting.java:335-336` hard-codes the unit (quirk #151).
         coordinate_unit: "mm".to_string(),
         date: FIXED_DATE.to_string(),
-        freerouting_version: FIXED_VERSION.to_string(),
+        router_version: FIXED_VERSION.to_string(),
         quality_score: Some(FIXED_QUALITY_SCORE),
     };
     let coords = DrcCoordinates {
@@ -84,7 +84,7 @@ fn main() {
         });
     }
     let json = report
-        .to_json(DrcJsonFlavor::FreeroutingHead)
+        .to_json(DrcJsonFlavor::Legacy)
         .expect("the report serialises");
     writeln!(out, "{json}").expect("write");
 }

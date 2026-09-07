@@ -6,5 +6,5 @@ version = "current"
 
 [candidates.rs-main]
 kind = "rust"
-exec = ["../target/release/freerouting"]
+exec = ["../target/release/copperroute"]
 sha_from = ".."

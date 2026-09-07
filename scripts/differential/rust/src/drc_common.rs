@@ -11,9 +11,9 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-use fr_board::board::Board;
-use fr_dsn::parser::scope_parameter::DsnReadOptions;
-use fr_dsn::{BoardReadResult, CoordinateTransform};
+use copper_board::board::Board;
+use copper_dsn::parser::scope_parameter::DsnReadOptions;
+use copper_dsn::{BoardReadResult, CoordinateTransform};
 
 /// The three files a driver run is about, resolved and canonicalised.
 pub struct Inputs {
@@ -77,7 +77,7 @@ pub fn print_header<W: Write>(out: &mut W, inputs: &Inputs, tail: &str) {
 
 /// The board `Freerouting.initializeDrc` hands to `DesignRulesChecker`: the DSN, then the `.rules`
 /// file (`Freerouting.java:277-292`), then the session file (`:297-329`) — the same three calls in
-/// the same order as `P5T1.loadBoard` and as `crates/fr-drc/tests/reference_parity.rs`. The rules
+/// the same order as `P5T1.loadBoard` and as `crates/copper-drc/tests/reference_parity.rs`. The rules
 /// come first because they can change the clearances the session's wires are then checked against.
 pub fn load_board(inputs: &Inputs) -> (Board, CoordinateTransform) {
     let dsn = &inputs.dsn;
@@ -85,7 +85,7 @@ pub fn load_board(inputs: &Inputs) -> (Board, CoordinateTransform) {
     // The design name is a log-message hint only (`DsnReader.java:56-57`); both sides pass the
     // input file's base name.
     let design_name = base_name(dsn);
-    let result = fr_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
+    let result = copper_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
     let (board, transform) = match result {
         BoardReadResult::Success {
             board,
@@ -109,7 +109,7 @@ pub fn load_board(inputs: &Inputs) -> (Board, CoordinateTransform) {
             std::fs::File::open(rules).unwrap_or_else(|e| panic!("cannot open {rules:?}: {e}"));
         // `designName` is `drcJob.name` (`Freerouting.java:283`), which `RoutingJob.setInput`
         // fills from `input.getFilenameWithoutExtension()` (`RoutingJob.java:457`) — the base name
-        // **without** `.dsn`, which is what `crates/fr-drc/tests/reference_parity.rs` passes too.
+        // **without** `.dsn`, which is what `crates/copper-drc/tests/reference_parity.rs` passes too.
         // The port ignores the parameter; Java compares it against the `(rules PCB <name>` header
         // and takes the mismatch branch (`RulesReader.java:100-110`) when they differ, so the two
         // sides must agree on it for the log to be the reference run's.
@@ -119,13 +119,13 @@ pub fn load_board(inputs: &Inputs) -> (Board, CoordinateTransform) {
         // the DRC path can pass `None`.
         let rules_design_name = design_name.strip_suffix(".dsn").unwrap_or(&design_name);
         let read =
-            fr_dsn::rules_reader::read(file, rules_design_name, &mut board, &transform, None)
+            copper_dsn::rules_reader::read(file, rules_design_name, &mut board, &transform, None)
                 .unwrap_or_else(|e| panic!("{rules:?} did not read: {e:?}"));
         assert!(read, "{rules:?} was rejected by the rules reader");
     }
     if let Some(ses) = &inputs.ses {
         let file = std::fs::File::open(ses).unwrap_or_else(|e| panic!("cannot open {ses:?}: {e}"));
-        let summary = fr_dsn::ses_reader::read(file, &mut board, &transform)
+        let summary = copper_dsn::ses_reader::read(file, &mut board, &transform)
             .unwrap_or_else(|e| panic!("{ses:?} did not read: {e:?}"));
         assert_eq!(
             summary.errors_encountered, 0,

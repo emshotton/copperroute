@@ -1,0 +1,2261 @@
+mod board_builder;
+
+use std::collections::BTreeSet;
+
+use board_builder::{cycle_order_board, descending, fanout_order_board, nums, p2t11_board};
+use copper_board::prelude::*;
+use copper_geometry::{
+    Area, IntBox, IntOctagon, IntVector, Point, Polyline, PolylineShapeRef, Shape, TileShape,
+    Vector,
+};
+
+fn probe() -> TileShape {
+    TileShape::Box(IntBox::from_coords(-100, -100, 100, 100))
+}
+
+// ---------------------------------------------------------------------------------------------
+// Construction and the insert protocol
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn the_constructor_inserts_the_board_outline_as_item_one() {
+    let board = p2t11_board();
+    assert_eq!(board.get_outline(), Some(ItemId(1)));
+    let outline = board.get_item(ItemId(1)).expect("the outline");
+    assert!(matches!(outline, Item::BoardOutline(_)));
+    assert!(outline.net_nos().is_empty());
+    assert_eq!(outline.clearance_class(), 1);
+    assert_eq!(outline.component_id(), 0);
+    assert_eq!(outline.get_fixed_state(), FixedState::SystemFixed);
+    assert!(outline.is_on_the_board());
+}
+
+#[test]
+fn setting_flip_style_clears_the_item_caches() {
+    let mut board = p2t11_board();
+    let tree_id = board.trees.get_default_tree().id();
+    let item_id = board
+        .get_items()
+        .find(|item| matches!(item, Item::Trace(_)))
+        .expect("the fixture has a trace")
+        .id();
+    board
+        .get_item_mut(item_id)
+        .expect("the trace still exists")
+        .set_precalculated_tree_shapes(tree_id, vec![Some(TileShape::Box(IntBox::EMPTY))]);
+
+    board.set_flip_style_rotate_first(true);
+
+    assert_eq!(
+        board
+            .get_item(item_id)
+            .expect("the trace still exists")
+            .tree_shape_count(tree_id),
+        0
+    );
+}
+
+#[test]
+fn every_insert_bumps_the_revision_once() {
+    let board = p2t11_board();
+    assert_eq!(board.revision(), 8);
+    assert_eq!(board.items.len(), 8);
+}
+
+#[test]
+fn the_ids_the_typed_inserters_hand_out_match_the_jvm() {
+    let board = p2t11_board();
+    let ctx = board.ctx();
+    let describe = |id: u32| {
+        let item = board.get_item(ItemId(id)).expect("an item");
+        (
+            item.net_nos().to_vec(),
+            item.clearance_class(),
+            item.first_layer(&ctx),
+            item.last_layer(&ctx),
+            item.tile_shape_count(&ctx),
+            item.bounding_box(&ctx),
+        )
+    };
+    assert_eq!(
+        describe(2),
+        (
+            vec![1],
+            1,
+            0,
+            0,
+            1,
+            IntBox::from_coords(-1050, -50, -950, 50)
+        )
+    );
+    assert_eq!(
+        describe(3),
+        (
+            vec![1],
+            1,
+            0,
+            1,
+            2,
+            IntBox::from_coords(930, 930, 1070, 1070)
+        )
+    );
+    assert_eq!(
+        describe(4),
+        (vec![1], 1, 0, 0, 1, IntBox::from_coords(-1030, -30, 30, 30))
+    );
+    assert_eq!(
+        describe(5),
+        (
+            vec![1],
+            1,
+            1,
+            1,
+            2,
+            IntBox::from_coords(-30, -30, 1030, 1030)
+        )
+    );
+    assert_eq!(
+        describe(6),
+        (vec![1], 1, 0, 1, 2, IntBox::from_coords(-70, -70, 70, 70))
+    );
+    assert_eq!(
+        describe(7),
+        (
+            vec![],
+            1,
+            0,
+            0,
+            1,
+            IntBox::from_coords(2000, 2000, 3000, 3000)
+        )
+    );
+    assert_eq!(
+        describe(8),
+        (
+            vec![2],
+            1,
+            0,
+            0,
+            1,
+            IntBox::from_coords(-3000, -3000, -2000, -2000)
+        )
+    );
+    // The outline: `lineCount() * layerCount` = 4 * 2.
+    assert_eq!(describe(1).4, 8);
+}
+
+#[test]
+fn the_item_list_iterates_in_descending_id_like_java() {
+    let board = p2t11_board();
+    assert_eq!(
+        board.get_items().map(Item::id).collect::<Vec<_>>(),
+        (1..=8).rev().map(ItemId).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        nums(board.items_in_board_order()),
+        vec![8, 7, 6, 5, 4, 3, 2, 1]
+    );
+}
+
+#[test]
+fn the_typed_query_sets_come_back_in_java_order() {
+    let board = p2t11_board();
+    assert_eq!(nums(board.get_pins()), vec![3, 2]);
+    assert_eq!(nums(board.get_smd_pins()), vec![2]);
+    assert_eq!(nums(board.get_vias()), vec![6]);
+    assert_eq!(nums(board.get_traces()), vec![5, 4]);
+    assert_eq!(nums(board.get_conduction_areas()), vec![8]);
+    assert_eq!(nums(board.get_connectable_items(1)), vec![6, 5, 4, 3, 2]);
+    assert_eq!(board.connectable_item_count(1), 5);
+    assert_eq!(nums(board.get_connectable_items(2)), vec![8]);
+    assert_eq!(nums(board.get_component_items(1)), vec![3, 2]);
+    assert_eq!(nums(board.get_component_pins(1)), vec![3, 2]);
+    assert_eq!(board.get_pin(1, 0), Some(ItemId(2)));
+    assert_eq!(board.get_pin(1, 1), Some(ItemId(3)));
+    assert_eq!(board.get_pin(1, 7), None);
+}
+
+#[test]
+fn an_empty_trace_sum_is_positive_zero_like_javas_accumulator() {
+    let board = p2t11_board();
+    let empty_net = board.rules.nets.max_net_number() + 1;
+    assert!(
+        board.get_connectable_items(empty_net).is_empty(),
+        "the fixture needs a net with no items at all"
+    );
+    let sum = board.net_trace_length(empty_net);
+    assert_eq!(sum, 0.0);
+    assert!(
+        !sum.is_sign_negative(),
+        "Net.java:131 starts at +0.0; Rust's `Sum for f64` starts at -0.0"
+    );
+
+    let empty = Board::new(
+        Vec::new(),
+        0,
+        IntBox::from_coords(-10, -10, 10, 10),
+        BoardRules::new(
+            LayerStructure::new(vec![Layer::new("front", true)]),
+            ClearanceMatrix::get_default_instance(
+                &LayerStructure::new(vec![Layer::new("front", true)]),
+                200,
+            ),
+        ),
+        BoardLibrary::new(
+            Padstacks::new(LayerStructure::new(vec![Layer::new("front", true)])),
+            Packages::new(),
+        ),
+        Components::new(),
+        Communication::default(),
+    );
+    let sum = empty.cumulative_trace_length();
+    assert_eq!(sum, 0.0);
+    assert!(
+        !sum.is_sign_negative(),
+        "BoardItemRepository.java:125 starts at +0.0"
+    );
+}
+
+#[test]
+fn the_scalar_queries_match_the_jvm() {
+    let board = p2t11_board();
+    assert_eq!(board.get_layer_count(), 2);
+    assert_eq!(board.get_min_trace_half_width(), 30);
+    assert_eq!(board.get_max_trace_half_width(), 1000);
+    assert_eq!(
+        board.get_bounding_box(),
+        IntBox::from_coords(-10_000, -10_000, 10_000, 10_000)
+    );
+    assert!((board.cumulative_trace_length() - 3000.0).abs() < 1e-9);
+    assert_eq!(board.get_non_45_degree_trace_count(), 0);
+    assert_eq!(board.clearance_value(1, 1, 0), 216);
+    assert_eq!(board.clearance_value(2, 1, 0), 616);
+    assert_eq!(board.clearance_value(2, 2, 1), 816);
+    assert!(board.contains(&Point::new(0, 0)));
+    assert!(!board.contains(&Point::new(99999, 0)));
+    assert_eq!(board.item_component_name(ItemId(2)), Some("Component#1"));
+    assert_eq!(board.item_component_name(ItemId(4)), None);
+    assert_eq!(board.all_net_names(ItemId(4)), "Net #1 (N1)");
+    assert_eq!(board.all_net_names(ItemId(7)), "no nets");
+    assert_eq!(
+        board.get_bounding_box_of_items([ItemId(4), ItemId(5)]),
+        IntBox::from_coords(-1030, -30, 1030, 1030)
+    );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Insert/remove keeps the search trees in step
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn insert_and_remove_keep_the_default_tree_in_sync() {
+    let mut board = p2t11_board();
+    let objects = |board: &Board, layer: Option<usize>| {
+        board
+            .overlapping_objects(&probe(), layer)
+            .into_iter()
+            .map(|o| match o {
+                TreeObject::Item(id) => id.0,
+                TreeObject::Room(_) => unreachable!(),
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(objects(&board, Some(0)), vec![6, 4]);
+    assert_eq!(objects(&board, Some(1)), vec![6, 5]);
+    assert_eq!(objects(&board, None), vec![6, 5, 4]);
+
+    assert!(board.remove_item(ItemId(6)));
+    assert_eq!(board.get_item(ItemId(6)), None);
+    assert_eq!(objects(&board, Some(0)), vec![4]);
+    assert_eq!(objects(&board, Some(1)), vec![5]);
+    assert_eq!(
+        nums(board.items_in_board_order()),
+        vec![8, 7, 5, 4, 3, 2, 1]
+    );
+    assert_eq!(board.revision(), 9);
+}
+
+#[test]
+fn remove_refuses_a_system_fixed_item() {
+    let mut board = p2t11_board();
+    let outline = board.get_outline().expect("an outline");
+    assert!(
+        board
+            .get_item(outline)
+            .expect("an outline")
+            .is_deletion_forbidden(&board.rules)
+    );
+    assert!(!board.remove_item(outline));
+    assert_eq!(board.revision(), 8);
+    assert_eq!(board.get_outline(), Some(outline));
+    // Its tree entries survive too.
+    assert!(
+        board
+            .get_item(outline)
+            .expect("an outline")
+            .is_on_the_board()
+    );
+}
+
+#[test]
+fn remove_items_reports_whether_everything_went() {
+    let mut board = p2t11_board();
+    board.remove_item(ItemId(6));
+    assert!(board.remove_items([ItemId(4), ItemId(7)]));
+    assert_eq!(nums(board.items_in_board_order()), vec![8, 5, 3, 2, 1]);
+    assert_eq!(board.revision(), 11);
+
+    // A user-fixed item makes the whole call report false without stopping the rest.
+    let mut board = p2t11_board();
+    board
+        .get_item_mut(ItemId(7))
+        .expect("the area")
+        .set_fixed_state(FixedState::UserFixed);
+    assert!(!board.remove_items([ItemId(4), ItemId(7)]));
+    assert_eq!(board.get_item(ItemId(4)), None);
+    assert!(board.get_item(ItemId(7)).is_some());
+}
+
+#[test]
+fn increment_revision_is_the_only_way_to_bump_it_by_hand() {
+    let mut board = p2t11_board();
+    let before = board.revision();
+    board.increment_revision();
+    assert_eq!(board.revision(), before + 1);
+}
+
+#[test]
+fn insert_clamps_an_out_of_range_clearance_class_to_zero() {
+    let mut board = p2t11_board();
+    let id = board.insert_obstacle(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            4000, 4000, 4100, 4100,
+        )))),
+        0,
+        99,
+        FixedState::Unfixed,
+    );
+    assert_eq!(board.get_item(id).expect("the area").clearance_class(), 0);
+}
+
+#[test]
+fn insert_trace_without_cleaning_refuses_a_degenerate_or_closed_trace() {
+    let mut board = p2t11_board();
+    let before = board.revision();
+    assert_eq!(
+        board.insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(4000, 4000)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        ),
+        None
+    );
+    assert_eq!(
+        board.insert_trace_without_cleaning(
+            Polyline::from_points(&[
+                Point::new(4000, 4000),
+                Point::new(4500, 4000),
+                Point::new(4500, 4500),
+                Point::new(4000, 4000),
+            ]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        ),
+        None
+    );
+    assert_eq!(board.revision(), before);
+    assert!(
+        board
+            .insert_trace_without_cleaning(
+                Polyline::from_points(&[
+                    Point::new(4000, 4000),
+                    Point::new(4500, 4000),
+                    Point::new(4500, 4500),
+                    Point::new(4000, 4000),
+                ]),
+                0,
+                30,
+                vec![1],
+                1,
+                FixedState::UserFixed,
+            )
+            .is_some()
+    );
+}
+
+// ---------------------------------------------------------------------------------------------
+// The search queries
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn the_clearance_queries_match_the_jvm() {
+    let mut board = p2t11_board();
+    assert_eq!(
+        nums(board.overlapping_items_with_clearance(&probe(), Some(0), &[], 1)),
+        vec![6, 4]
+    );
+    // Every item at the probe is on net 1, so ignoring net 1 empties the result.
+    assert!(
+        board
+            .overlapping_items_with_clearance(&probe(), Some(0), &[1], 1)
+            .is_empty()
+    );
+    let area = Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+        -1100, -100, 100, 100,
+    ))));
+    assert_eq!(
+        descending(board.overlapping_items(&area, Some(0))),
+        vec![6, 4, 2]
+    );
+    assert_eq!(
+        descending(board.pick_items(&Point::new(0, 0), Some(0))),
+        vec![6, 4]
+    );
+}
+
+#[test]
+fn check_trace_segment_is_free_where_nothing_is_and_blocked_where_something_is() {
+    let mut board = p2t11_board();
+    let seg = |board: &mut Board,
+               from: (i32, i32),
+               to: (i32, i32),
+               nets: &[i32],
+               cl: usize,
+               only_not_shovable: bool| {
+        board.check_trace_segment(
+            &Point::new(from.0, from.1),
+            &Point::new(to.0, to.1),
+            0,
+            nets,
+            30,
+            cl,
+            only_not_shovable,
+        )
+    };
+    assert_eq!(
+        seg(&mut board, (-4000, 4000), (-3000, 4000), &[1], 1, false),
+        f64::from(i32::MAX)
+    );
+    // Straight into the obstacle area at (2000, 2000)..(3000, 3000).
+    assert_eq!(
+        seg(&mut board, (1500, 2500), (2500, 2500), &[1], 1, false),
+        253.0
+    );
+    // The trace and the pin at the far end are on net 1, so they are not obstacles to net 1 …
+    assert_eq!(
+        seg(&mut board, (-2000, 0), (-500, 0), &[1], 1, false),
+        f64::from(i32::MAX)
+    );
+    // … but they are to net 9.
+    assert_eq!(
+        seg(&mut board, (-2000, 0), (-500, 0), &[9], 1, false),
+        703.0
+    );
+    assert_eq!(seg(&mut board, (0, 0), (0, 0), &[1], 1, false), 0.0);
+    assert_eq!(seg(&mut board, (-2000, 0), (-500, 0), &[9], 1, true), 703.0);
+    // The wider clearance class shortens nothing extra here — the obstacle area is class 1, and
+    // `clearanceValue(1, 2, 0)` is what the walk uses.
+    assert_eq!(
+        seg(&mut board, (1500, 2500), (2500, 2500), &[1], 2, false),
+        253.0
+    );
+}
+
+#[test]
+fn the_check_queries_match_the_jvm() {
+    let mut board = p2t11_board();
+    let area = |x1, y1, x2, y2| {
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            x1, y1, x2, y2,
+        ))))
+    };
+    assert!(board.check_shape(&area(-4500, 4000, -4000, 4500), Some(0), &[1], 1));
+    assert!(!board.check_shape(&area(2200, 2200, 2400, 2400), Some(0), &[1], 1));
+    assert!(!board.check_shape(&area(-20000, 0, -19000, 100), Some(0), &[1], 1));
+
+    let tile = |x1, y1, x2, y2| TileShape::Box(IntBox::from_coords(x1, y1, x2, y2));
+    assert!(board.check_trace_shape(&tile(-4500, 4000, -4000, 4500), 0, &[1], 1, None));
+    assert!(!board.check_trace_shape(&tile(2200, 2200, 2400, 2400), 0, &[1], 1, None));
+    let contact_pins = BTreeSet::from([ItemId(2)]);
+    assert!(board.check_trace_shape(&tile(-1050, -50, -950, 50), 0, &[1], 1, Some(&contact_pins)));
+    assert!(!board.check_trace_shape(
+        &tile(-1050, -50, -950, 50),
+        0,
+        &[1],
+        1,
+        Some(&BTreeSet::new())
+    ));
+
+    assert!(board.check_polyline_trace(
+        &Polyline::from_points(&[Point::new(-4000, 4000), Point::new(-3000, 4000)]),
+        0,
+        30,
+        &[1],
+        1
+    ));
+    assert!(!board.check_polyline_trace(
+        &Polyline::from_points(&[Point::new(1500, 2500), Point::new(2500, 2500)]),
+        0,
+        30,
+        &[1],
+        1
+    ));
+
+    let by = Vector::from(IntVector::new(10, 10));
+    assert!(board.check_move_item(ItemId(7), &by, &mut None));
+    assert!(!board.check_move_item(ItemId(4), &by, &mut None));
+    assert!(board.check_change_net(ItemId(7), 3));
+    assert!(!board.check_change_net(ItemId(4), 3));
+
+    assert_eq!(
+        board.pick_nearest_routing_item(&Point::new(0, 0), Some(0), None),
+        Some(ItemId(6))
+    );
+    assert_eq!(
+        board.pick_nearest_routing_item(&Point::new(-1000, 0), Some(0), None),
+        Some(ItemId(2))
+    );
+    assert_eq!(
+        board.pick_nearest_routing_item(&Point::new(4000, 4000), Some(0), None),
+        None
+    );
+    // Every trace end has a contact, so there is no tail anywhere.
+    assert_eq!(
+        board.get_trace_tail(&Point::new(1000, 1000), Some(1), &[1]),
+        None
+    );
+    assert_eq!(board.get_trace_tail(&Point::new(0, 0), Some(0), &[1]), None);
+    assert!(!board.contains_trace_tails([ItemId(4), ItemId(5)], &[]));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Connectivity
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn normal_contacts_walk_the_pin_trace_via_trace_pin_chain() {
+    let board = p2t11_board();
+    assert_eq!(descending(board.normal_contacts(ItemId(2))), vec![4]);
+    assert_eq!(descending(board.normal_contacts(ItemId(4))), vec![6, 2]);
+    assert_eq!(descending(board.normal_contacts(ItemId(6))), vec![5, 4]);
+    assert_eq!(descending(board.normal_contacts(ItemId(5))), vec![6, 3]);
+    assert_eq!(descending(board.normal_contacts(ItemId(3))), vec![5]);
+    // The obstacle area, the conduction area and the outline have none.
+    for id in [1u32, 7, 8] {
+        assert!(board.normal_contacts(ItemId(id)).is_empty());
+    }
+}
+
+#[test]
+fn all_contacts_and_is_connected_agree_with_the_jvm() {
+    let board = p2t11_board();
+    for id in [2u32, 3, 4, 5, 6] {
+        assert_eq!(
+            descending(board.all_contacts(ItemId(id))),
+            descending(board.normal_contacts(ItemId(id))),
+            "item {id}"
+        );
+        assert!(board.is_connected(ItemId(id)), "item {id}");
+    }
+    for id in [1u32, 7, 8] {
+        assert!(!board.is_connected(ItemId(id)), "item {id}");
+    }
+}
+
+#[test]
+fn all_contacts_on_layer_splits_the_via_by_layer() {
+    let board = p2t11_board();
+    assert_eq!(
+        descending(board.all_contacts_on_layer(ItemId(6), 0)),
+        vec![4]
+    );
+    assert_eq!(
+        descending(board.all_contacts_on_layer(ItemId(6), 1)),
+        vec![5]
+    );
+    assert_eq!(
+        descending(board.all_contacts_on_layer(ItemId(4), 0)),
+        vec![6, 2]
+    );
+    assert!(board.all_contacts_on_layer(ItemId(4), 1).is_empty());
+    assert_eq!(
+        descending(board.all_contacts_on_layer(ItemId(5), 1)),
+        vec![6, 3]
+    );
+    assert!(board.all_contacts_on_layer(ItemId(5), 0).is_empty());
+    assert!(board.is_connected_on_layer(ItemId(3), 1));
+    assert!(!board.is_connected_on_layer(ItemId(3), 0));
+}
+
+#[test]
+fn connected_set_crosses_layers_through_the_via() {
+    let board = p2t11_board();
+    assert_eq!(
+        descending(board.connected_set(ItemId(2), 1, false)),
+        vec![6, 5, 4, 3, 2]
+    );
+    assert_eq!(
+        descending(board.connected_set(ItemId(3), 1, false)),
+        vec![6, 5, 4, 3, 2]
+    );
+    assert_eq!(
+        descending(board.connected_set(ItemId(2), -1, false)),
+        vec![6, 5, 4, 3, 2]
+    );
+    assert!(board.connected_set(ItemId(2), 2, false).is_empty());
+    assert_eq!(
+        descending(board.connected_set(ItemId(8), 2, false)),
+        vec![8]
+    );
+    // No conduction area is in the chain, so `stopAtPlane` changes nothing here.
+    assert_eq!(
+        descending(board.connected_set(ItemId(2), 1, true)),
+        vec![6, 5, 4, 3, 2]
+    );
+}
+
+#[test]
+fn unconnected_set_is_empty_when_the_net_is_fully_connected() {
+    let board = p2t11_board();
+    assert!(board.unconnected_set(ItemId(2), 1).is_empty());
+    assert!(board.unconnected_set(ItemId(8), 2).is_empty());
+    assert!(board.unconnected_set(ItemId(2), 0).is_empty());
+
+    // Add a second, unconnected pad on net 1 and it shows up.
+    let mut board = p2t11_board();
+    let stray = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-4000, -4000), Point::new(-3500, -4000)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("a straight two-corner trace");
+    assert_eq!(
+        descending(board.unconnected_set(ItemId(2), 1)),
+        vec![stray.0]
+    );
+}
+
+#[test]
+fn connection_items_stop_at_the_terminal_pins_and_at_a_via_when_asked() {
+    let board = p2t11_board();
+    assert_eq!(
+        descending(board.connection_items(ItemId(4), StopConnectionOption::None)),
+        vec![6, 5, 4]
+    );
+    assert_eq!(
+        descending(board.connection_items(ItemId(5), StopConnectionOption::None)),
+        vec![6, 5, 4]
+    );
+    assert_eq!(
+        descending(board.connection_items(ItemId(4), StopConnectionOption::Via)),
+        vec![4]
+    );
+    assert_eq!(
+        descending(board.connection_items(ItemId(4), StopConnectionOption::FanoutVia)),
+        vec![6, 5, 4]
+    );
+}
+
+#[test]
+fn normal_contact_point_answers_the_shared_corner_and_null_otherwise() {
+    let board = p2t11_board();
+    let p = |a: u32, b: u32| board.normal_contact_point(ItemId(a), ItemId(b));
+    assert_eq!(p(2, 4), Some(Point::new(-1000, 0)));
+    assert_eq!(p(4, 2), Some(Point::new(-1000, 0)));
+    assert_eq!(p(4, 6), Some(Point::new(0, 0)));
+    assert_eq!(p(6, 4), Some(Point::new(0, 0)));
+    assert_eq!(p(5, 6), Some(Point::new(0, 0)));
+    assert_eq!(p(6, 5), Some(Point::new(0, 0)));
+    assert_eq!(p(2, 2), Some(Point::new(-1000, 0)));
+    assert_eq!(p(6, 6), Some(Point::new(0, 0)));
+    assert_eq!(p(4, 4), None);
+    // No shared layer, or no shared corner.
+    assert_eq!(p(2, 5), None);
+    assert_eq!(p(4, 5), None);
+    assert_eq!(p(6, 2), None);
+}
+
+#[test]
+fn first_common_layer_is_none_where_java_returns_minus_one() {
+    let board = p2t11_board();
+    let common = |a: u32, b: u32| {
+        let ctx = board.ctx();
+        let (a, b) = (
+            board.get_item(ItemId(a)).expect("a"),
+            board.get_item(ItemId(b)).expect("b"),
+        );
+        (a.first_common_layer(b, &ctx), a.last_common_layer(b, &ctx))
+    };
+    assert_eq!(common(2, 4), (Some(0), Some(0)));
+    assert_eq!(common(5, 6), (Some(1), Some(1)));
+    assert_eq!(common(6, 6), (Some(0), Some(1)));
+    assert_eq!(common(2, 5), (None, None));
+    assert_eq!(board.first_common_layer(ItemId(4), ItemId(6)), Some(0));
+    assert_eq!(board.first_common_layer(ItemId(2), ItemId(5)), None);
+}
+
+#[test]
+fn ratsnest_corners_are_the_uncontacted_ends_only() {
+    let board = p2t11_board();
+    assert!(board.ratsnest_corners(ItemId(4)).is_empty());
+    assert!(board.ratsnest_corners(ItemId(5)).is_empty());
+    assert_eq!(
+        board.ratsnest_corners(ItemId(2)),
+        vec![Point::new(-1000, 0)]
+    );
+    assert_eq!(
+        board.ratsnest_corners(ItemId(3)),
+        vec![Point::new(1000, 1000)]
+    );
+    assert_eq!(board.ratsnest_corners(ItemId(6)), vec![Point::new(0, 0)]);
+    assert_eq!(
+        board.ratsnest_corners(ItemId(8)),
+        vec![
+            Point::new(-3000, -3000),
+            Point::new(-2000, -3000),
+            Point::new(-2000, -2000),
+            Point::new(-3000, -2000),
+        ]
+    );
+    // The obstacle area and the outline are not connectable, so the base body answers nothing.
+    assert!(board.ratsnest_corners(ItemId(7)).is_empty());
+    assert!(board.ratsnest_corners(ItemId(1)).is_empty());
+}
+
+#[test]
+fn tails_overlaps_and_cycles_are_all_absent_on_a_well_formed_chain() {
+    let board = p2t11_board();
+    for id in 1u32..=8 {
+        assert!(!board.is_tail(ItemId(id)), "item {id}");
+        assert!(!board.is_overlap(ItemId(id)), "item {id}");
+    }
+    assert!(!board.is_trace_cycle(ItemId(4)));
+    assert_eq!(descending(board.trace_start_contacts(ItemId(4))), vec![2]);
+    assert_eq!(descending(board.trace_end_contacts(ItemId(4))), vec![6]);
+    assert_eq!(descending(board.trace_start_contacts(ItemId(5))), vec![6]);
+    assert_eq!(descending(board.trace_end_contacts(ItemId(5))), vec![3]);
+}
+
+#[test]
+fn is_cycle_recu_walks_a_vias_contacts_in_descending_id_order() {
+    let board = cycle_order_board();
+    assert_eq!(descending(board.normal_contacts(ItemId(2))), vec![6, 5, 4]);
+
+    let mut visited = BTreeSet::from([ItemId(2)]);
+    assert!(board.is_cycle_recu(ItemId(2), &mut visited, ItemId(4), ItemId(4), false));
+    assert_eq!(
+        descending(visited),
+        vec![6, 3, 2],
+        "the descending walk finds the cycle through trace 6 without visiting the stub 5"
+    );
+
+    assert!(board.is_trace_cycle(ItemId(4)));
+    assert_eq!(descending(board.trace_start_contacts(ItemId(4))), vec![2]);
+    assert_eq!(descending(board.trace_end_contacts(ItemId(4))), vec![3]);
+    // The stub is the only tail; nothing overlaps.
+    assert!(board.is_tail(ItemId(5)));
+    assert!(!board.is_overlap(ItemId(4)));
+}
+
+#[test]
+fn connection_items_walks_the_contacts_of_a_fork_in_descending_id_order() {
+    let board = fanout_order_board();
+    assert_eq!(descending(board.normal_contacts(ItemId(2))), vec![8, 7]);
+    assert_eq!(descending(board.normal_contacts(ItemId(3))), vec![7, 6, 5]);
+    assert!(board.is_fanout_via(ItemId(3), None));
+    assert!(!board.is_fanout_via(ItemId(3), Some(&BTreeSet::from([ItemId(5)]))));
+
+    // Descending: branch 8 runs first (8, 4, then 5, where the walk forks because via 3 and
+    // trace 6 are both new contacts at (0,0)), so when branch 7 reaches via 3 the evidence
+    // trace 5 is already in `result` and the walk passes *through* the via and adds it.
+    assert_eq!(
+        descending(board.connection_items(ItemId(2), StopConnectionOption::FanoutVia)),
+        vec![8, 7, 5, 4, 3, 2],
+        "walking 7 before 8 would stop at via 3 and drop it from the result"
+    );
+    // The other two stop options never read `result`, so they are order-insensitive: `Via`
+    // stops at via 3 unconditionally, `None` walks through it either way.
+    assert_eq!(
+        descending(board.connection_items(ItemId(2), StopConnectionOption::Via)),
+        vec![8, 7, 5, 4, 2]
+    );
+    assert_eq!(
+        descending(board.connection_items(ItemId(2), StopConnectionOption::None)),
+        vec![8, 7, 5, 4, 3, 2]
+    );
+}
+
+#[test]
+fn a_cyclic_contact_graph_terminates_with_a_visited_set() {
+    let mut board = p2t11_board();
+    let ring = |board: &mut Board, a: (i32, i32), b: (i32, i32)| {
+        board
+            .insert_trace_without_cleaning(
+                Polyline::from_points(&[Point::new(a.0, a.1), Point::new(b.0, b.1)]),
+                0,
+                30,
+                vec![2],
+                1,
+                FixedState::Unfixed,
+            )
+            .expect("insertTraceWithoutCleaning")
+    };
+    let t9 = ring(&mut board, (2000, 2000), (4000, 2000));
+    let t10 = ring(&mut board, (4000, 2000), (4000, 4000));
+    let t11 = ring(&mut board, (4000, 4000), (2000, 4000));
+    let t12 = ring(&mut board, (2000, 4000), (2000, 2000));
+    assert_eq!(nums([t9, t10, t11, t12]), vec![9, 10, 11, 12]);
+
+    // No fork anywhere: each trace meets exactly one other at each of its two ends.
+    for id in [t9, t10, t11, t12] {
+        assert_eq!(
+            descending(board.normal_contacts(id)).len(),
+            2,
+            "item {id:?} must have exactly two contacts, or the ring has a fork"
+        );
+    }
+
+    for id in [t9, t10, t11, t12] {
+        for option in [
+            StopConnectionOption::None,
+            StopConnectionOption::Via,
+            StopConnectionOption::FanoutVia,
+        ] {
+            assert_eq!(
+                descending(board.connection_items(id, option)),
+                vec![12, 11, 10, 9],
+                "connection_items({id:?}, {option:?}) must answer the whole ring and return"
+            );
+        }
+    }
+
+    let steps = std::cell::Cell::new(0u64);
+    let stop = || {
+        steps.set(steps.get() + 1);
+        steps.get() > 1_000
+    };
+    assert_eq!(
+        board
+            .connection_items_checked(t9, StopConnectionOption::None, &stop)
+            .map(descending),
+        Ok(vec![12, 11, 10, 9])
+    );
+    assert_eq!(
+        steps.get(),
+        13,
+        "the fixed walk costs 13 steps; the unfixed one costs every budget it is given"
+    );
+}
+
+#[test]
+fn a_trace_with_a_free_end_is_a_tail() {
+    let mut board = p2t11_board();
+    let stray = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-1000, 0), Point::new(-1000, 500)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("a straight two-corner trace");
+    assert!(board.is_tail(stray));
+    assert_eq!(descending(board.trace_start_contacts(stray)), vec![4, 2]);
+    assert!(board.trace_end_contacts(stray).is_empty());
+    assert_eq!(board.ratsnest_corners(stray), vec![Point::new(-1000, 500)]);
+}
+
+#[test]
+fn the_via_is_a_fanout_via_because_a_short_trace_reaches_an_smd_pin() {
+    let board = p2t11_board();
+    assert!(board.is_fanout_via(ItemId(6), None));
+    let ignore = BTreeSet::from([ItemId(4)]);
+    assert!(!board.is_fanout_via(ItemId(6), Some(&ignore)));
+}
+
+#[test]
+fn get_connected_sets_partitions_the_net() {
+    let board = p2t11_board();
+    let sets: Vec<Vec<u32>> = board
+        .get_connected_sets(1)
+        .into_iter()
+        .map(descending)
+        .collect();
+    assert_eq!(sets, vec![vec![6, 5, 4, 3, 2]]);
+    assert!(board.get_connected_sets(0).is_empty());
+
+    // A second, disconnected piece of net 1 becomes a second set, seeded by the highest id
+    // remaining — so it comes first.
+    let mut board = p2t11_board();
+    let stray = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-4000, -4000), Point::new(-3500, -4000)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("a straight two-corner trace");
+    let sets: Vec<Vec<u32>> = board
+        .get_connected_sets(1)
+        .into_iter()
+        .map(descending)
+        .collect();
+    assert_eq!(sets, vec![vec![stray.0], vec![6, 5, 4, 3, 2]]);
+}
+
+#[test]
+fn touching_pins_at_end_corners_finds_the_pad_under_the_trace_end() {
+    let mut board = p2t11_board();
+    assert_eq!(
+        descending(board.touching_pins_at_end_corners(ItemId(4))),
+        vec![2]
+    );
+    // The trace on layer 1 ends on the through pin.
+    assert_eq!(
+        descending(board.touching_pins_at_end_corners(ItemId(5))),
+        vec![3]
+    );
+}
+
+#[test]
+fn validate_accepts_a_well_formed_board() {
+    let mut board = p2t11_board();
+    for id in 1u32..=8 {
+        assert!(board.validate_item(ItemId(id)), "item {id}");
+    }
+}
+
+#[test]
+fn swappable_pins_is_empty_without_a_logical_part() {
+    let board = p2t11_board();
+    assert!(board.swappable_pins(ItemId(2)).is_empty());
+    // A non-pin answers nothing at all.
+    assert!(board.swappable_pins(ItemId(4)).is_empty());
+}
+
+// ---------------------------------------------------------------------------------------------
+// The changed area and the board-level bookkeeping
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn the_changed_area_accumulates_points_and_shapes_per_layer() {
+    let mut board = p2t11_board();
+    assert!(board.changed_area.is_none());
+    board.start_marking_changed_area();
+    let area = board.changed_area.as_ref().expect("marked");
+    assert_eq!(area.get_area(0), IntOctagon::EMPTY);
+    assert_eq!(area.get_area(1), IntOctagon::EMPTY);
+
+    board.join_changed_area(&Point::new(100, 100).to_float(), 0);
+    assert_eq!(
+        board.changed_area.as_ref().expect("marked").get_area(0),
+        IntOctagon::new(100, 100, 100, 100, 0, 0, 200, 200)
+    );
+    let ctx = board.ctx();
+    let shape = board
+        .get_item(ItemId(7))
+        .expect("the obstacle area")
+        .get_tile_shape(board.default_tree_id(), 0, &ctx)
+        .expect("its only tile shape");
+    board.mark_changed_area(&shape, 0);
+    assert_eq!(
+        board.changed_area.as_ref().expect("marked").get_area(0),
+        IntOctagon::new(100, 100, 3000, 3000, -1000, 1000, 200, 6000)
+    );
+    assert_eq!(
+        board
+            .changed_area
+            .as_ref()
+            .expect("marked")
+            .surrounding_box(),
+        IntBox::from_coords(100, 100, 3000, 3000)
+    );
+    // Layer 1 was never touched.
+    assert_eq!(
+        board.changed_area.as_ref().expect("marked").get_area(1),
+        IntOctagon::EMPTY
+    );
+
+    board.changed_area.as_mut().expect("marked").set_empty(0);
+    assert_eq!(
+        board.changed_area.as_ref().expect("marked").get_area(0),
+        IntOctagon::EMPTY
+    );
+
+    board.mark_all_changed_area();
+    for layer in 0..2 {
+        assert_eq!(
+            board.changed_area.as_ref().expect("marked").get_area(layer),
+            IntOctagon::new(-10000, -10000, 10000, 10000, -20000, 20000, -20000, 20000)
+        );
+    }
+    assert_eq!(
+        board
+            .changed_area
+            .as_ref()
+            .expect("marked")
+            .surrounding_box(),
+        IntBox::from_coords(-10_000, -10_000, 10_000, 10_000)
+    );
+}
+
+#[test]
+fn start_marking_changed_area_is_idempotent() {
+    let mut board = p2t11_board();
+    board.start_marking_changed_area();
+    board.join_changed_area(&Point::new(100, 100).to_float(), 0);
+    board.start_marking_changed_area();
+    assert_eq!(
+        board.changed_area.as_ref().expect("marked").get_area(0),
+        IntOctagon::new(100, 100, 100, 100, 0, 0, 200, 200)
+    );
+    // `set_changed_area_layer_count` does reset it.
+    board.set_changed_area_layer_count(2);
+    assert_eq!(
+        board.changed_area.as_ref().expect("marked").get_area(0),
+        IntOctagon::EMPTY
+    );
+}
+
+#[test]
+fn remove_items_marking_changed_area_marks_what_it_removed() {
+    let mut board = p2t11_board();
+    let (all_removed, changed_nets) = board.remove_items_marking_changed_area([ItemId(7)]);
+    assert!(all_removed);
+    assert!(changed_nets.is_empty());
+    assert_eq!(board.get_item(ItemId(7)), None);
+    assert_eq!(
+        board.changed_area.as_ref().expect("marked").get_area(0),
+        IntOctagon::new(2000, 2000, 3000, 3000, -1000, 1000, 4000, 6000)
+    );
+
+    // A user-fixed item is refused and not marked (:95-96).
+    let mut board = p2t11_board();
+    board
+        .get_item_mut(ItemId(4))
+        .expect("a trace")
+        .set_fixed_state(FixedState::UserFixed);
+    let (all_removed, changed_nets) =
+        board.remove_items_marking_changed_area([ItemId(4), ItemId(5)]);
+    assert!(!all_removed);
+    assert_eq!(changed_nets, BTreeSet::from([1]));
+    assert!(board.get_item(ItemId(4)).is_some());
+    assert_eq!(board.get_item(ItemId(5)), None);
+}
+
+#[test]
+fn change_conduction_is_obstacle_applies_what_it_is_asked() {
+    let mut board = p2t11_board();
+    assert!(board.rules.get_ignore_conduction());
+    assert!(is_obstacle(&board, 8));
+
+    board.change_conduction_is_obstacle(false);
+    assert!(board.rules.get_ignore_conduction());
+    assert!(!is_obstacle(&board, 8));
+    board.change_conduction_is_obstacle(false);
+    assert!(board.rules.get_ignore_conduction());
+    assert!(!is_obstacle(&board, 8));
+
+    // And back: `true` into every signal-layer conduction area, and `ignoreConduction = !true`.
+    board.change_conduction_is_obstacle(true);
+    assert!(!board.rules.get_ignore_conduction());
+    assert!(is_obstacle(&board, 8));
+    board.change_conduction_is_obstacle(true);
+    assert!(!board.rules.get_ignore_conduction());
+    assert!(is_obstacle(&board, 8));
+}
+
+#[test]
+fn unfill_conduction_areas_clears_both_flags_and_reinserts() {
+    let mut board = p2t11_board();
+    board.change_conduction_is_obstacle(true);
+    board.unfill_conduction_areas();
+    assert!(board.rules.get_ignore_conduction());
+    assert!(!is_obstacle(&board, 8));
+    assert!(!is_filled(&board, 8));
+    // Every item is still on the board and still indexed.
+    assert_eq!(board.items.len(), 8);
+    assert_eq!(
+        descending(board.pick_items(&Point::new(0, 0), Some(0))),
+        vec![6, 4]
+    );
+}
+
+#[test]
+fn remove_trace_tails_finds_nothing_on_a_fully_contacted_net() {
+    let mut board = p2t11_board();
+    assert!(
+        !board
+            .remove_trace_tails(1, StopConnectionOption::None)
+            .expect("no normalisation failure")
+    );
+    assert_eq!(
+        nums(board.items_in_board_order()),
+        vec![8, 7, 6, 5, 4, 3, 2, 1]
+    );
+}
+
+#[test]
+fn move_item_by_moves_the_item_and_its_tree_entries() {
+    let mut board = p2t11_board();
+    board
+        .move_item_by(ItemId(7), &Vector::from(IntVector::new(10, 20)))
+        .expect("an area translates without a polyline error");
+    let ctx = board.ctx();
+    assert_eq!(
+        board
+            .get_item(ItemId(7))
+            .expect("the area")
+            .bounding_box(&ctx),
+        IntBox::from_coords(2010, 2020, 3010, 3020)
+    );
+    assert_eq!(
+        descending(board.pick_items(&Point::new(2500, 2500), Some(0))),
+        vec![7]
+    );
+    // Nothing was created or destroyed.
+    assert_eq!(
+        nums(board.items_in_board_order()),
+        vec![8, 7, 6, 5, 4, 3, 2, 1]
+    );
+}
+
+#[test]
+fn a_query_after_change_clearance_class_index_recomputes_the_cold_shape_cache() {
+    let mut board = p2t11_board();
+    assert!(!board.trees.is_clearance_compensation_used());
+    assert!(board.change_clearance_class_index(ItemId(4), 0));
+    let probe = TileShape::Box(IntBox::from_coords(-600, -100, -400, 100));
+    let found: Vec<u32> = board
+        .overlapping_objects(&probe, Some(0))
+        .into_iter()
+        .map(|o| match o {
+            TreeObject::Item(id) => id.0,
+            TreeObject::Room(_) => unreachable!(),
+        })
+        .collect();
+    assert_eq!(found, vec![4]);
+    assert_eq!(
+        nums(board.overlapping_items_with_clearance(&probe, Some(0), &[], 1)),
+        vec![4]
+    );
+    // The tree itself still reads the shape, through `ShapeSearchTree::get_tree_shape`.
+    let tree = board.trees.get_default_tree();
+    let item = board.get_item(ItemId(4)).expect("the trace");
+    assert!(tree.get_tree_shape(item, 0, &board.ctx()).is_some());
+    // ... and so do the `&self` board wrappers the connectivity family uses.
+    assert!(board.item_tile_shape_ref(ItemId(4), 0).is_some());
+    assert_eq!(descending(board.all_contacts(ItemId(4))), vec![6, 2]);
+    assert!(board.item_tile_shape_ref(ItemId(4), 9).is_none());
+}
+
+#[test]
+fn check_polyline_trace_consumes_an_item_id_like_javas_temporary_trace() {
+    let mut board = p2t11_board();
+    assert_eq!(board.communication.id_gen.max_generated_id(), ItemId(8));
+    let free = Polyline::from_points(&[Point::new(-4000, 4000), Point::new(-3000, 4000)]);
+    assert!(board.check_polyline_trace(&free, 0, 30, &[1], 1));
+    assert_eq!(board.communication.id_gen.max_generated_id(), ItemId(9));
+    // Two more checks, two more ids — the count does not depend on the answer.
+    let blocked = Polyline::from_points(&[Point::new(1500, 2500), Point::new(2500, 2500)]);
+    assert!(!board.check_polyline_trace(&blocked, 0, 30, &[1], 1));
+    assert_eq!(board.communication.id_gen.max_generated_id(), ItemId(10));
+    let inserted = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-4000, 3000), Point::new(-3000, 3000)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("a straight two-corner trace");
+    assert_eq!(inserted, ItemId(11));
+}
+
+#[test]
+fn connection_items_walks_its_start_contacts_in_descending_id() {
+    let board = p2t11_board();
+    let contacts = board.normal_contacts(ItemId(4));
+    assert_eq!(descending(contacts.clone()), vec![6, 2]);
+    assert_eq!(
+        descending(board.connection_items(ItemId(4), StopConnectionOption::None)),
+        vec![6, 5, 4]
+    );
+    assert_eq!(
+        descending(board.connection_items(ItemId(4), StopConnectionOption::FanoutVia)),
+        vec![6, 5, 4]
+    );
+}
+
+#[test]
+fn change_clearance_class_index_writes_the_class_and_keeps_validate_happy() {
+    let mut board = p2t11_board();
+    assert!(board.change_clearance_class_index(ItemId(4), 2));
+    assert_eq!(
+        board
+            .get_item(ItemId(4))
+            .expect("a trace")
+            .clearance_class(),
+        2
+    );
+    assert!(board.validate_item(ItemId(4)));
+    assert!(!board.change_clearance_class_index(ItemId(99), 2));
+}
+
+#[test]
+fn make_conductive_replaces_the_area_with_a_conduction_area_on_the_net() {
+    let mut board = p2t11_board();
+    let new_id = board
+        .make_conductive(ItemId(7), 3)
+        .expect("an obstacle area");
+    assert_eq!(new_id, ItemId(9));
+    let new_item = board.get_item(new_id).expect("the conduction area");
+    assert_eq!(new_item.net_nos(), &[3]);
+    assert!(is_obstacle(&board, 9));
+    assert_eq!(board.get_item(ItemId(7)), None);
+    assert_eq!(
+        nums(board.items_in_board_order()),
+        vec![9, 8, 6, 5, 4, 3, 2, 1]
+    );
+    assert_eq!(board.make_conductive(ItemId(4), 3), None);
+}
+
+#[test]
+fn generate_keepout_outside_swaps_the_outlines_tree_shapes() {
+    let mut board = p2t11_board();
+    let outline = board.get_outline().expect("an outline");
+    let tree = board.default_tree_id();
+    let before: Vec<TileShape> = (0..board.item_tree_shape_count(outline, tree))
+        .filter_map(|i| board.item_tree_shape(outline, tree, i))
+        .collect();
+    assert_eq!(before.len(), 8);
+
+    assert!(board.generate_keepout_outside(outline, true));
+    assert!(match board.get_item(outline).expect("an outline") {
+        Item::BoardOutline(o) => o.keepout_outside_outline_generated(),
+        _ => unreachable!(),
+    });
+    let after: Vec<TileShape> = (0..board.item_tree_shape_count(outline, tree))
+        .filter_map(|i| board.item_tree_shape(outline, tree, i))
+        .collect();
+    assert_eq!(after.len(), 8);
+    assert_ne!(before, after);
+
+    assert!(!board.generate_keepout_outside(outline, true));
+}
+
+#[test]
+fn the_net_queries_walk_the_item_list() {
+    let board = p2t11_board();
+    // Terminal items are the connectable ones that are *not* routable: the two pins.
+    assert_eq!(nums(board.net_terminal_items(1)), vec![3, 2]);
+    assert_eq!(nums(board.net_pins(1)), vec![3, 2]);
+    assert_eq!(nums(board.net_items(1)), vec![6, 5, 4, 3, 2]);
+    assert!((board.net_trace_length(1) - 3000.0).abs() < 1e-9);
+    assert_eq!(board.net_via_count(1), 1);
+    assert_eq!(nums(board.net_items(2)), vec![8]);
+    assert_eq!(board.net_via_count(2), 0);
+}
+
+#[test]
+fn a_host_cad_communication_lowers_the_obstacle_area_section_width() {
+    let mut board = board_builder::p2t11_host_cad_board();
+    assert!(board.communication.host_cad_exists());
+    assert!((board.communication.get_resolution(Unit::Mil) - 10.0).abs() < 1e-9);
+    assert!(!board.communication.host_is_old_kicad());
+    assert!(!board.communication.host_cad_is_eagle());
+    let tree = board.default_tree_id();
+    assert_eq!(board.item_tree_shape_count(ItemId(9), tree), 4);
+    let boxes: Vec<IntBox> = (0..4)
+        .map(|i| {
+            board
+                .item_tree_shape(ItemId(9), tree, i)
+                .expect("a tree shape")
+                .bounding_box()
+        })
+        .collect();
+    assert_eq!(
+        boxes,
+        vec![
+            IntBox::from_coords(-9000, -9000, -4500, -8000),
+            IntBox::from_coords(-4500, -9000, 0, -8000),
+            IntBox::from_coords(0, -9000, 4500, -8000),
+            IntBox::from_coords(4500, -9000, 9000, -8000),
+        ]
+    );
+}
+
+#[test]
+fn a_host_cad_at_a_coarse_resolution_keeps_the_fifty_thousand_default() {
+    let mut board = board_builder::p2t11_host_cad_board();
+    // Rebuild with resolution 1000: `500 * 1000 = 500000 > 50000`.
+    let coarse = Board::new(
+        Vec::new(),
+        1,
+        IntBox::from_coords(-10_000, -10_000, 10_000, 10_000),
+        board.rules.clone(),
+        board.library.clone(),
+        board.components.clone(),
+        Communication::new(
+            Unit::Mil,
+            1000,
+            ItemIdGenerator::new(),
+            Some("KiCad".to_string()),
+            Some("7.0".to_string()),
+        ),
+    );
+    let mut coarse = coarse;
+    let wide = coarse.insert_obstacle(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -9000, -9000, 9000, -8000,
+        )))),
+        0,
+        1,
+        FixedState::Unfixed,
+    );
+    let tree = coarse.default_tree_id();
+    assert_eq!(coarse.item_tree_shape_count(wide, tree), 1);
+    // The fine-resolution board splits the same area four ways.
+    let fine_tree = board.default_tree_id();
+    assert_eq!(board.item_tree_shape_count(ItemId(9), fine_tree), 4);
+}
+
+#[test]
+fn set_clearance_compensation_used_rebuilds_the_board_tree() {
+    let mut board = board_builder::p2t11_host_cad_board();
+    assert!(
+        !board
+            .trees
+            .get_default_tree()
+            .is_clearance_compensation_used()
+    );
+    board.set_clearance_compensation_used(true);
+    assert!(
+        board
+            .trees
+            .get_default_tree()
+            .is_clearance_compensation_used()
+    );
+    assert_eq!(
+        board.trees.get_default_tree().get_key(),
+        "ShapeSearchTree_FortyfiveDegree_cc1"
+    );
+    let compensation =
+        board
+            .trees
+            .get_default_tree()
+            .clearance_compensation_value(1, 0, &board.rules);
+    assert_eq!(compensation, 100);
+    // Trace 4 is half width 30, so its one shape is now 130 wide on each side.
+    let tree = board.default_tree_id();
+    assert_eq!(board.item_tree_shape_count(ItemId(4), tree), 1);
+    assert_eq!(
+        board
+            .item_tree_shape(ItemId(4), tree, 0)
+            .expect("a tree shape")
+            .bounding_box(),
+        IntBox::from_coords(-1130, -130, 130, 130)
+    );
+}
+
+#[test]
+fn check_polyline_trace_uses_the_compensated_tree_shapes() {
+    let mut board = board_builder::p2t11_host_cad_board();
+    board.set_clearance_compensation_used(true);
+    let near_area = Polyline::from_points(&[Point::new(-4000, -7800), Point::new(-3000, -7800)]);
+    assert!(!board.check_polyline_trace(&near_area, 0, 30, &[1], 1));
+    // Well away from everything it is still free.
+    assert!(board.check_polyline_trace(
+        &Polyline::from_points(&[Point::new(-4000, 4000), Point::new(-3000, 4000)]),
+        0,
+        30,
+        &[1],
+        1
+    ));
+    assert_eq!(
+        board.check_trace_segment(
+            &Point::new(1500, 2500),
+            &Point::new(2500, 2500),
+            0,
+            &[1],
+            30,
+            1,
+            false
+        ),
+        269.0
+    );
+}
+
+#[test]
+fn shape_entry_side_finds_the_border_a_polyline_enters_through() {
+    let board = board_builder::shove_board();
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    let polyline = match board.get_item(ItemId(3)).expect("the crossing trace") {
+        Item::Trace(t) => t.polyline().clone(),
+        other => panic!("not a trace: {other}"),
+    };
+    // It enters through side 0, the bottom edge, at (0, -500).
+    let from_polyline = ShapeEntrySide::from_polyline(&polyline, 1, &shape);
+    assert_eq!(from_polyline.no, 0);
+    assert_eq!(
+        from_polyline.border_intersection,
+        Some(copper_geometry::FloatPoint::new(0.0, -500.0))
+    );
+    let from_point = ShapeEntrySide::from_point(&Point::new(-2000, 0), &shape);
+    assert_eq!(from_point.no, 3);
+    assert_eq!(
+        from_point.border_intersection,
+        Some(copper_geometry::FloatPoint::new(-500.0, 0.0))
+    );
+    let segment = copper_geometry::LineSegment::from_polyline(&polyline, 1).expect("a segment");
+    for to_the_left in [true, false] {
+        let side = ShapeEntrySide::from_line_segment(&segment, &shape, to_the_left);
+        assert_eq!(side.no, 2);
+        assert_eq!(
+            side.border_intersection,
+            Some(copper_geometry::FloatPoint::new(0.0, 500.0))
+        );
+    }
+    assert_eq!(ShapeEntrySide::NOT_CALCULATED.no, -1);
+    assert_eq!(ShapeEntrySide::NOT_CALCULATED.border_intersection, None);
+}
+
+#[test]
+fn shape_and_entry_side_takes_the_bounding_box_in_orthogonal_mode() {
+    let board = board_builder::shove_board();
+    let sae = |orthogonal, in_shove_check| {
+        ShapeAndEntrySide::new(&board, ItemId(3), 0, orthogonal, in_shove_check)
+            .expect("the crossing trace has a tree shape at index 0")
+    };
+    for in_shove_check in [false, true] {
+        let s = sae(false, in_shove_check);
+        assert!(matches!(s.shape, TileShape::Simplex(_)));
+        assert_eq!(
+            s.shape.bounding_box(),
+            IntBox::from_coords(-30, -3000, 30, 3000)
+        );
+        let side = s.from_side.expect("the fallback always produces one");
+        assert_eq!(side.no, 0);
+        assert_eq!(
+            side.border_intersection,
+            Some(copper_geometry::FloatPoint::new(
+                f64::from(i32::MAX),
+                f64::from(i32::MAX)
+            ))
+        );
+    }
+    let s = sae(true, false);
+    assert!(matches!(s.shape, TileShape::Box(_)));
+    assert_eq!(
+        s.shape.bounding_box(),
+        IntBox::from_coords(-30, -3030, 30, 3030)
+    );
+    let side = s.from_side.expect("the fallback ran");
+    assert_eq!(side.no, 0);
+    assert_eq!(
+        side.border_intersection,
+        Some(copper_geometry::FloatPoint::new(0.0, -3030.0))
+    );
+    assert_eq!(sae(true, true).from_side, None);
+}
+
+#[test]
+fn store_items_sorts_the_crossing_traces_and_builds_a_substitute_piece() {
+    let mut board = board_builder::shove_board();
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    let overlaps = board.overlapping_items_with_clearance(&shape, Some(0), &[1], 1);
+    assert_eq!(nums(overlaps.clone()), vec![4, 3]);
+
+    let mut entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
+    assert!(entries.store_items(&board, &overlaps, false, false));
+    assert_eq!(entries.stack_depth(), 1);
+    assert_eq!(entries.substitute_trace_count(), 1);
+    assert!(!entries.trace_tails_in_shape());
+    assert_eq!(entries.get_found_obstacle(), Some(ItemId(3)));
+    assert!(entries.shove_via_list.is_empty());
+
+    let piece = entries
+        .next_substitute_trace_piece(&mut board)
+        .expect("one piece");
+    assert_eq!(piece.hdr.net_nos, vec![2]);
+    assert_eq!(piece.get_half_width(), 30);
+    let corners: Vec<copper_geometry::FloatPoint> = (0..piece.corner_count())
+        .map(|i| piece.polyline().corner_approx(i).expect("a corner"))
+        .collect();
+    assert_eq!(
+        corners,
+        vec![
+            copper_geometry::FloatPoint::new(0.0, -747.0),
+            copper_geometry::FloatPoint::new(747.0, -747.0),
+            copper_geometry::FloatPoint::new(747.0, 747.0),
+            copper_geometry::FloatPoint::new(-747.0, 747.0),
+            copper_geometry::FloatPoint::new(-747.0, 200.0),
+        ]
+    );
+    assert!(entries.next_substitute_trace_piece(&mut board).is_none());
+    assert_eq!(entries.substitute_trace_count(), 0);
+}
+
+#[test]
+fn cutout_trace_replaces_the_trace_with_the_two_pieces_outside_the_shape() {
+    let mut board = board_builder::shove_board();
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    ShapeTraceEntries::cutout_trace(&mut board, ItemId(3), &shape, 1);
+    assert_eq!(nums(board.items_in_board_order()), vec![6, 5, 4, 2, 1]);
+    let corners = |id: u32| match board.get_item(ItemId(id)).expect("a trace") {
+        Item::Trace(t) => (t.first_corner(), t.last_corner()),
+        other => panic!("not a trace: {other}"),
+    };
+    assert_eq!(
+        corners(5),
+        (Some(Point::new(0, -3000)), Some(Point::new(0, -747)))
+    );
+    assert_eq!(
+        corners(6),
+        (Some(Point::new(0, 747)), Some(Point::new(0, 3000)))
+    );
+    for id in [5u32, 6] {
+        assert!(
+            board
+                .get_item(ItemId(id))
+                .expect("a piece")
+                .is_on_the_board()
+        );
+    }
+    // The two pieces are indexed: a probe on either one finds it.
+    assert_eq!(
+        descending(board.pick_items(&Point::new(0, 2000), Some(0))),
+        vec![6]
+    );
+}
+
+#[test]
+fn cutout_traces_skips_the_own_net_and_cuts_the_rest_in_board_order() {
+    let mut board = board_builder::shove_board();
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    let entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
+    let all = board.items_in_board_order();
+    entries.cutout_traces(&mut board, &all);
+    assert_eq!(nums(board.items_in_board_order()), vec![8, 7, 6, 5, 2, 1]);
+    let corners = |id: u32| match board.get_item(ItemId(id)).expect("a trace") {
+        Item::Trace(t) => (t.first_corner(), t.last_corner()),
+        other => panic!("not a trace: {other}"),
+    };
+    // 5 and 6 came from trace 4 (the horizontal foreign-net trace at y = 200).
+    assert_eq!(
+        corners(5),
+        (Some(Point::new(-3000, 200)), Some(Point::new(-747, 200)))
+    );
+    assert_eq!(
+        corners(6),
+        (Some(Point::new(747, 200)), Some(Point::new(3000, 200)))
+    );
+    // 7 and 8 came from trace 3 (the vertical one).
+    assert_eq!(
+        corners(7),
+        (Some(Point::new(0, -3000)), Some(Point::new(0, -747)))
+    );
+    assert_eq!(
+        corners(8),
+        (Some(Point::new(0, 747)), Some(Point::new(0, 3000)))
+    );
+    // The own-net trace is untouched.
+    assert_eq!(
+        corners(2),
+        (Some(Point::new(-3000, 0)), Some(Point::new(3000, 0)))
+    );
+}
+
+#[test]
+fn a_trace_reachable_from_itself_by_two_paths_is_a_cycle() {
+    let (board, _) = board_builder::cycle_board();
+    assert_eq!(
+        nums(board.items_in_board_order()),
+        vec![7, 6, 5, 4, 3, 2, 1]
+    );
+    for (id, start, end) in [(4u32, vec![5, 2], vec![5, 3]), (5, vec![4, 2], vec![4, 3])] {
+        assert_eq!(descending(board.trace_start_contacts(ItemId(id))), start);
+        assert_eq!(descending(board.trace_end_contacts(ItemId(id))), end);
+        assert!(board.is_overlap(ItemId(id)), "trace {id}");
+        assert!(board.is_trace_cycle(ItemId(id)), "trace {id}");
+        assert!(!board.is_tail(ItemId(id)), "trace {id}");
+    }
+    // The trace inside the conduction area contacts it at both ends.
+    assert_eq!(descending(board.trace_start_contacts(ItemId(7))), vec![6]);
+    assert_eq!(descending(board.trace_end_contacts(ItemId(7))), vec![6]);
+    assert!(board.is_overlap(ItemId(7)));
+    assert!(board.is_trace_cycle(ItemId(7)));
+    assert_eq!(
+        descending(board.connection_items(ItemId(4), StopConnectionOption::None)),
+        vec![4]
+    );
+}
+
+#[test]
+fn remove_if_cycle_removes_the_connection_of_a_cycling_trace() {
+    let (mut board, _) = board_builder::cycle_board();
+    assert!(board.remove_if_cycle(ItemId(4)));
+    assert_eq!(nums(board.items_in_board_order()), vec![7, 6, 5, 3, 2, 1]);
+    let mut board = p2t11_board();
+    assert!(!board.remove_if_cycle(ItemId(4)));
+    assert!(board.get_item(ItemId(4)).is_some());
+}
+
+#[test]
+fn reduce_nets_of_route_items_reduces_but_always_reports_false() {
+    let (mut board, _) = board_builder::cycle_board();
+    board
+        .get_item_mut(ItemId(4))
+        .expect("a trace")
+        .header_mut()
+        .net_nos = vec![1, 2];
+    assert!(!board.reduce_nets_of_route_items());
+    assert_eq!(
+        board.get_item(ItemId(4)).expect("a trace").net_nos(),
+        &[1],
+        "net 2 was reduced away even though the return value says otherwise"
+    );
+}
+
+#[test]
+fn one_visit_reduces_only_the_visited_net() {
+    let (mut board, _) = board_builder::cycle_board();
+    board
+        .get_item_mut(ItemId(4))
+        .expect("a trace")
+        .header_mut()
+        .net_nos = vec![1, 2];
+    board
+        .get_item_mut(ItemId(5))
+        .expect("a trace")
+        .header_mut()
+        .net_nos = vec![2];
+
+    assert!(
+        !board.reduce_nets_of_route_items(),
+        "quirk #66: always false"
+    );
+    assert_eq!(
+        board.get_item(ItemId(4)).expect("a trace").net_nos(),
+        &[2],
+        "one visit removes one net, and `:1296` then refuses to visit the item again — a route \
+         item can no longer be driven to zero nets"
+    );
+    // The contact that made net 1 droppable is itself untouched: it has one net, so `:1296`
+    // skips it.
+    assert_eq!(board.get_item(ItemId(5)).expect("a trace").net_nos(), &[2]);
+}
+
+#[test]
+fn delete_all_tracks_and_vias_leaves_only_the_areas_and_the_outline() {
+    let (mut board, _) = board_builder::cycle_board();
+    board.delete_all_tracks_and_vias();
+    assert_eq!(nums(board.items_in_board_order()), vec![6, 1]);
+    // Nothing is left indexed where the direct trace ran.
+    assert!(board.pick_items(&Point::new(1000, 0), Some(0)).is_empty());
+}
+
+#[test]
+fn the_remaining_typed_inserters_match_the_jvm() {
+    let (mut board, thru_pad) = board_builder::cycle_board();
+    let escape = board
+        .insert_escape_via(
+            thru_pad,
+            Point::new(-2000, 0),
+            vec![1],
+            1,
+            FixedState::Unfixed,
+            0,
+        )
+        .expect("no normalisation failure");
+    assert_eq!(escape, ItemId(8));
+    match board.get_item(escape).expect("the escape via") {
+        Item::Via(via) => {
+            assert!(via.is_escape_via);
+            assert_eq!(via.escape_via_smd_layer, 0);
+            assert!(via.attach_allowed);
+        }
+        other => panic!("not a via: {other}"),
+    }
+
+    let via_obstacle = board.insert_via_obstacle(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -4000, 0, -3000, 1000,
+        )))),
+        0,
+        1,
+        FixedState::Unfixed,
+    );
+    assert!(matches!(
+        board.get_item(via_obstacle),
+        Some(Item::ViaObstacleArea(_))
+    ));
+
+    for (component_id, is_front) in [(1i32, true), (2, false)] {
+        let keepout = board.insert_component_obstacle_of_component(
+            Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                -6000,
+                1200 * component_id,
+                -5000,
+                1200 * component_id + 1000,
+            )))),
+            0,
+            Vector::from(IntVector::new(0, 0)),
+            0.0,
+            false,
+            1,
+            component_id,
+            Some(format!("ko{component_id}")),
+            FixedState::Unfixed,
+        );
+        assert!(matches!(
+            board.get_item(keepout),
+            Some(Item::ComponentObstacleArea(_))
+        ));
+        assert_eq!(board.component_obstacle_area_is_front(keepout), is_front);
+        assert_eq!(
+            board.item_component_name(keepout),
+            Some(format!("Component#{component_id}").as_str())
+        );
+        assert!(
+            board
+                .get_item(keepout)
+                .expect("the keepout")
+                .net_nos()
+                .is_empty()
+        );
+    }
+
+    // The component overload of `insertObstacle` applies the translation.
+    let of_component = board.insert_obstacle_of_component(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -8000, 0, -7000, 1000,
+        )))),
+        0,
+        Vector::from(IntVector::new(10, 20)),
+        0.0,
+        false,
+        1,
+        0,
+        Some("keepout".to_string()),
+        FixedState::Unfixed,
+    );
+    let ctx = board.ctx();
+    assert_eq!(
+        board
+            .get_item(of_component)
+            .expect("the area")
+            .bounding_box(&ctx),
+        IntBox::from_coords(-7990, 20, -6990, 1020)
+    );
+
+    let outline = board
+        .insert_component_outline(
+            Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+                -9000, 3000, -8000, 4000,
+            )))),
+            true,
+            Vector::from(IntVector::new(0, 0)),
+            0.0,
+            0,
+            true,
+            false,
+            true,
+            FixedState::Unfixed,
+        )
+        .expect("a bounded area");
+    let ctx = board.ctx();
+    assert_eq!(
+        board
+            .get_item(outline)
+            .expect("the outline")
+            .tile_shape_count(&ctx),
+        0
+    );
+    assert_eq!(
+        nums(board.items_in_board_order()),
+        vec![13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+    );
+    assert_eq!(board.revision(), 13);
+}
+
+#[test]
+fn component_obstacle_area_is_front_answers_true_for_an_item_of_no_component() {
+    let (mut board, _) = board_builder::cycle_board();
+    let keepout = board.insert_component_obstacle(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -6000, 0, -5000, 1000,
+        )))),
+        0,
+        1,
+        FixedState::Unfixed,
+    );
+    assert_eq!(
+        board.get_item(keepout).expect("the keepout").component_id(),
+        0
+    );
+    assert!(board.component_obstacle_area_is_front(keepout));
+}
+
+#[test]
+fn the_trace_geometry_adapter_wrappers_keep_the_tree_in_step() {
+    let mut board = p2t11_board();
+    assert!(board.trace_has_default_entries(ItemId(4), ItemId(5)));
+    assert!(!board.trace_has_default_entries(ItemId(4), ItemId(99)));
+
+    let moved = Polyline::from_points(&[Point::new(-1000, 3000), Point::new(0, 3000)]);
+    assert!(board.replace_trace_geometry(ItemId(4), moved));
+    let ctx = board.ctx();
+    assert_eq!(
+        board
+            .get_item(ItemId(4))
+            .expect("a trace")
+            .bounding_box(&ctx),
+        IntBox::from_coords(-1030, 2970, 30, 3030)
+    );
+    // The old location no longer answers, the new one does.
+    assert!(!descending(board.pick_items(&Point::new(-500, 0), Some(0))).contains(&4));
+    assert!(descending(board.pick_items(&Point::new(-500, 3000), Some(0))).contains(&4));
+    assert!(!board.replace_trace_geometry(ItemId(7), Polyline::from_points(&[])));
+
+    let mut board = p2t11_board();
+    let new_polyline = Polyline::from_points(&[
+        Point::new(0, 0),
+        Point::new(1000, 0),
+        Point::new(1000, 500),
+        Point::new(1000, 1000),
+    ]);
+    assert!(board.change_trace_entries(ItemId(5), &new_polyline, 1, 1));
+    assert!(!board.change_trace_entries(ItemId(7), &new_polyline, 1, 1));
+
+    // The two merge wrappers refuse anything that is not a pair of distinct traces.
+    let mut board = p2t11_board();
+    let joined = Polyline::from_points(&[Point::new(-1000, 0), Point::new(0, 0)]);
+    assert!(!board.merge_trace_entries_in_front(ItemId(4), ItemId(4), &joined, 1, 1));
+    assert!(!board.merge_trace_entries_at_end(ItemId(4), ItemId(7), &joined, 1, 1));
+}
+
+#[test]
+fn item_queries_remain_stable() {
+    let mut board = characterization_board();
+    let trace = insert_characterization_trace(&mut board, 10, 100, 200);
+    assert!(board.get_outline().is_some());
+    assert!(board.get_item(trace).is_some());
+    assert!(board.get_items().any(|item| item.id() == trace));
+    assert_eq!(board.get_traces().len(), 1);
+
+    let restored = board.deep_copy();
+    assert_eq!(board.structural_hash(), restored.structural_hash());
+    assert_eq!(board.get_traces().len(), restored.get_traces().len());
+}
+
+#[test]
+fn changed_area_lifecycle_matches_the_characterization_test() {
+    let mut board = characterization_board();
+    assert!(board.changed_area.is_none());
+    board.start_marking_changed_area();
+    assert!(board.changed_area.is_some());
+    board.join_changed_area(&Point::new(100, 100).to_float(), 0);
+    board.mark_all_changed_area();
+    assert_eq!(
+        board
+            .changed_area
+            .as_ref()
+            .expect("marked")
+            .surrounding_box(),
+        IntBox::from_coords(0, 0, 1000, 1000)
+    );
+}
+
+/// `BoardServiceCharacterizationTest.createBoard` (:94-112).
+fn characterization_board() -> Board {
+    let layers = LayerStructure::new(vec![Layer::new("Top", true)]);
+    let clearance_matrix = ClearanceMatrix::get_default_instance(&layers, 10);
+    let mut rules = BoardRules::new(layers.clone(), clearance_matrix);
+    rules.create_default_net_class();
+    let outline = vec![PolylineShapeRef::Tile(TileShape::Box(IntBox::from_coords(
+        0, 0, 1000, 1000,
+    )))];
+    Board::new(
+        outline,
+        0,
+        IntBox::from_coords(0, 0, 1000, 1000),
+        rules,
+        BoardLibrary::new(Padstacks::new(layers), Packages::new()),
+        Components::new(),
+        Communication::default(),
+    )
+}
+
+/// `BoardServiceCharacterizationTest.insertTrace` (:84-92).
+fn insert_characterization_trace(board: &mut Board, net_number: i32, x1: i32, x2: i32) -> ItemId {
+    board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(x1, 100), Point::new(x2, 100)]),
+            0,
+            10,
+            vec![net_number],
+            0,
+            FixedState::Unfixed,
+        )
+        .expect("a straight two-corner trace")
+}
+
+#[test]
+fn a_same_net_via_is_not_an_obstacle_for_an_smd_pin() {
+    let board = p2t11_board();
+    let ctx = board.ctx();
+    let pin = board.get_item(ItemId(2)).expect("the SMD pin");
+    let via = board.get_item(ItemId(6)).expect("the via");
+    assert!(pin.shares_net(via));
+    assert!(!pin.is_obstacle(via, &ctx));
+    let through_pin = board.get_item(ItemId(3)).expect("the through pin");
+    assert!(through_pin.is_obstacle(via, &ctx));
+}
+
+#[test]
+fn has_ignored_nets_reads_the_net_class_flag() {
+    let mut board = p2t11_board();
+    let layers = board.rules.layer_structure().clone();
+    let ignored = board.rules.net_classes.append("ignored", &layers, false);
+    board
+        .rules
+        .net_classes
+        .get_mut(ignored)
+        .is_ignored_by_autorouter = true;
+    assert!(!board.has_ignored_nets(ItemId(4)));
+    let net_1 = board.rules.nets.get_mut(1).expect("net 1");
+    net_1.set_class(ignored);
+    assert!(board.has_ignored_nets(ItemId(4)));
+    // An item on no net has nothing to ignore.
+    assert!(!board.has_ignored_nets(ItemId(7)));
+}
+
+#[test]
+#[should_panic(expected = "NullPointerException")]
+fn has_ignored_nets_panics_on_a_net_the_net_list_does_not_know() {
+    let mut board = p2t11_board();
+    board
+        .get_item_mut(ItemId(4))
+        .expect("a trace")
+        .header_mut()
+        .net_nos = vec![99];
+    board.has_ignored_nets(ItemId(4));
+}
+
+#[test]
+fn all_nets_skips_a_net_the_net_list_does_not_know() {
+    let mut board = p2t11_board();
+    board
+        .get_item_mut(ItemId(4))
+        .expect("a trace")
+        .header_mut()
+        .net_nos = vec![1, 99];
+    assert_eq!(board.all_nets(ItemId(4)), vec![1]);
+    assert_eq!(board.all_net_names(ItemId(4)), "Net #1 (N1)");
+}
+
+#[test]
+fn get_trace_tail_finds_an_uncontacted_end_of_exactly_these_nets() {
+    let mut board = p2t11_board();
+    let stray = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-1000, 0), Point::new(-1000, 900)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("a straight two-corner trace");
+    assert_eq!(
+        board.get_trace_tail(&Point::new(-1000, 900), Some(0), &[1]),
+        Some(stray)
+    );
+    assert_eq!(
+        board.get_trace_tail(&Point::new(-1000, 900), Some(0), &[2]),
+        None
+    );
+    // The contacted end is not a tail end.
+    assert_eq!(
+        board.get_trace_tail(&Point::new(-1000, 0), Some(0), &[1]),
+        None
+    );
+    assert!(board.contains_trace_tails([stray], &[]));
+    assert!(!board.contains_trace_tails([stray], &[1]));
+}
+
+#[test]
+fn remove_trace_tails_removes_a_stub() {
+    let mut board = p2t11_board();
+    let stray = board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[Point::new(-1000, 0), Point::new(-1000, 900)]),
+            0,
+            30,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .expect("a straight two-corner trace");
+    assert!(board.is_tail(stray));
+    assert!(
+        board
+            .remove_trace_tails(1, StopConnectionOption::None)
+            .expect("no normalisation failure")
+    );
+    assert_eq!(board.get_item(stray), None);
+    // Everything else survives: the chain has no other stub.
+    assert_eq!(
+        nums(board.items_in_board_order()),
+        vec![8, 7, 6, 5, 4, 3, 2, 1]
+    );
+}
+
+#[test]
+fn check_move_item_consults_the_ignore_set() {
+    let mut board = p2t11_board();
+    let mut ignore = Some(BTreeSet::new());
+    assert!(board.check_move_item(
+        ItemId(7),
+        &Vector::from(IntVector::new(10, 10)),
+        &mut ignore
+    ));
+    assert!(ignore.expect("the set").contains(&ItemId(7)));
+}
+
+#[test]
+fn item_tree_shape_answers_none_past_the_end_after_one_retry() {
+    let mut board = p2t11_board();
+    let tree = board.default_tree_id();
+    assert_eq!(board.item_tree_shape_count(ItemId(4), tree), 1);
+    assert!(board.item_tree_shape(ItemId(4), tree, 0).is_some());
+    assert!(board.item_tree_shape(ItemId(4), tree, 1).is_none());
+    // The retry left the cache intact.
+    assert_eq!(board.item_tree_shape_count(ItemId(4), tree), 1);
+    assert!(board.item_tree_shape(ItemId(99), tree, 0).is_none());
+}
+
+#[test]
+fn the_shove_failure_fields_round_trip() {
+    let mut board = p2t11_board();
+    assert_eq!(board.get_shove_failing_obstacle(), None);
+    assert_eq!(board.get_shove_failing_layer(), -1);
+    board.set_shove_failing_obstacle(Some(ItemId(7)));
+    board.set_shove_failing_layer(1);
+    assert_eq!(board.get_shove_failing_obstacle(), Some(ItemId(7)));
+    assert_eq!(board.get_shove_failing_layer(), 1);
+    board.clear_shove_failing_obstacle();
+    assert_eq!(board.get_shove_failing_obstacle(), None);
+    assert_eq!(board.get_shove_failing_layer(), -1);
+}
+
+#[test]
+fn clear_all_item_temporary_autoroute_data_drops_every_scratch_record() {
+    let mut board = p2t11_board();
+    for id in board.items_in_board_order() {
+        board
+            .get_item_mut(id)
+            .expect("an item")
+            .get_autoroute_info();
+    }
+    assert!(
+        board
+            .get_item(ItemId(4))
+            .expect("a trace")
+            .get_autoroute_info_pur()
+            .is_some()
+    );
+    board.clear_all_item_temporary_autoroute_data();
+    for id in board.items_in_board_order() {
+        assert!(
+            board
+                .get_item(id)
+                .expect("an item")
+                .get_autoroute_info_pur()
+                .is_none(),
+            "item {id}"
+        );
+    }
+}
+
+#[test]
+fn store_items_refuses_a_shove_fixed_obstacle_of_a_foreign_net() {
+    let mut board = board_builder::shove_board();
+    board
+        .get_item_mut(ItemId(3))
+        .expect("the crossing trace")
+        .set_fixed_state(FixedState::ShoveFixed);
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    let overlaps = board.overlapping_items_with_clearance(&shape, Some(0), &[1], 1);
+    let mut entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
+    assert!(!entries.store_items(&board, &overlaps, false, false));
+    assert_eq!(entries.get_found_obstacle(), Some(ItemId(3)));
+}
+
+#[test]
+fn store_items_refuses_a_non_shovable_item_of_a_foreign_net() {
+    let mut board = board_builder::shove_board();
+    let area = board.insert_obstacle(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -400, -400, 400, 400,
+        )))),
+        0,
+        1,
+        FixedState::Unfixed,
+    );
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    let overlaps = board.overlapping_items_with_clearance(&shape, Some(0), &[1], 1);
+    assert!(overlaps.contains(&area));
+    let mut entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
+    assert!(!entries.store_items(&board, &overlaps, false, false));
+    assert_eq!(entries.get_found_obstacle(), Some(area));
+}
+
+#[test]
+fn a_via_keepout_is_skipped_by_store_items_outside_a_pad_check() {
+    let mut board = board_builder::shove_board();
+    let via_keepout = board.insert_via_obstacle(
+        Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
+            -400, -400, 400, 400,
+        )))),
+        0,
+        1,
+        FixedState::Unfixed,
+    );
+    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+    let overlaps = board.overlapping_items_with_clearance(&shape, Some(0), &[1], 1);
+    assert!(overlaps.contains(&via_keepout));
+    // Not a pad check: the via keepout is skipped and the traces still sort.
+    let mut entries = ShapeTraceEntries::new(shape.clone(), 0, vec![1], 1, None);
+    assert!(entries.store_items(&board, &overlaps, false, false));
+    // A pad check: the same via keepout now falls through to the `else` and blocks.
+    let mut entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
+    assert!(!entries.store_items(&board, &overlaps, true, false));
+    assert_eq!(entries.get_found_obstacle(), Some(via_keepout));
+}
+
+#[test]
+fn a_changed_area_knows_how_many_layers_it_was_made_for() {
+    let area = ChangedArea::new(4);
+    assert_eq!(area.layer_count(), 4);
+}
+
+#[test]
+fn host_is_old_kicad_is_guarded_on_a_version_that_overflows_an_int() {
+    let of = |version: &str| {
+        Communication {
+            host_cad: Some("kicad".to_string()),
+            host_version: Some(version.to_string()),
+            ..Communication::default()
+        }
+        .host_is_old_kicad()
+    };
+
+    // The row that used to throw. Eleven digits overflow an `int` but not an `i64`, so the widened
+    // parse answers truthfully: 99 999 999 999 is not <= 5.
+    assert!(!of("99999999999"));
+    // Past `i64` too, where the parse genuinely fails — "catch and answer false". An overflowing
+    // version number is emphatically not an old KiCad.
+    assert!(!of("999999999999999999999999999999"));
+    assert!(of("5.1.9"));
+    assert!(of("0"));
+    assert!(!of("6.0.0"));
+    assert!(!of("unknown"));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Structural
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn board_is_send_and_sync_and_clones_independently() {
+    fn assert_send_sync<T: Send + Sync + Clone>() {}
+    assert_send_sync::<Board>();
+
+    let board = p2t11_board();
+    let mut copy = board.clone();
+    assert_eq!(copy, board);
+    copy.remove_item(ItemId(7));
+    assert_ne!(copy, board);
+    assert!(board.get_item(ItemId(7)).is_some());
+    // The clone's tree is its own: the original still finds the area, the copy does not.
+    let ctx = board.ctx();
+    let shape = board
+        .get_item(ItemId(7))
+        .expect("the area")
+        .get_tile_shape(board.default_tree_id(), 0, &ctx)
+        .expect("its only tile shape");
+    assert!(!board.overlapping_objects(&shape, Some(0)).is_empty());
+    assert!(copy.overlapping_objects(&shape, Some(0)).is_empty());
+}
+
+// ---------------------------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------------------------
+
+fn is_obstacle(board: &Board, id: u32) -> bool {
+    match board.get_item(ItemId(id)).expect("a conduction area") {
+        Item::ConductionArea(area) => area.get_is_obstacle(),
+        other => panic!("item {id} is not a conduction area: {other}"),
+    }
+}
+
+fn is_filled(board: &Board, id: u32) -> bool {
+    match board.get_item(ItemId(id)).expect("a conduction area") {
+        Item::ConductionArea(area) => area.get_is_filled(),
+        other => panic!("item {id} is not a conduction area: {other}"),
+    }
+}
+
+#[test]
+fn the_fanout_via_break_changes_the_connection_set() {
+    let board = p2t11_board();
+
+    // The precondition, restated here so this test fails for a readable reason if the fixture
+    // ever stops carrying a fanout via.
+    assert!(
+        board.is_fanout_via(ItemId(6), None),
+        "the fixture's via 6 must be a fanout via for the arm to have anything to do"
+    );
+
+    // Walking from trace 5: `None` crosses via 6 and reaches trace 4 beyond it; `FanoutVia`
+    // stops at the via and never adds it, so the set is trace 5 alone.
+    assert_eq!(
+        descending(board.connection_items(ItemId(5), StopConnectionOption::None)),
+        vec![6, 5, 4]
+    );
+    assert_eq!(
+        descending(board.connection_items(ItemId(5), StopConnectionOption::FanoutVia)),
+        vec![5],
+        "Item.java:735's isFanoutVia break must cut the walk at via 6"
+    );
+
+    // And the difference is not an artefact of one start item.
+    let disagreeing = board
+        .items
+        .keys()
+        .filter(|id| {
+            board.connection_items(**id, StopConnectionOption::None)
+                != board.connection_items(**id, StopConnectionOption::FanoutVia)
+        })
+        .count();
+    assert!(
+        disagreeing >= 1,
+        "plan-6 §10.3: at least one item must make the two options disagree"
+    );
+}

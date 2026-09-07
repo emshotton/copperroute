@@ -11,7 +11,7 @@
 #     incremental = false   # sccache refuses incremental; the pair travels together
 #
 # WARNING, measured 2026-09-02: an A/B of two *different* sources through the sccache
-# wrapper once produced a byte-identical `target/release/freerouting`. Before trusting any
+# wrapper once produced a byte-identical `target/release/copperroute`. Before trusting any
 # release-binary A/B, check the two hashes differ; run mutation checks through `cargo test`,
 # not a binary. Full rule and the reproduction in `scripts/differential/README.md`,
 # "A/B-ing release binaries under sccache".

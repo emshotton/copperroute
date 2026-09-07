@@ -121,7 +121,7 @@ evidence at all**.
 
 | their world | our world | survives translation? |
 |---|---|---|
-| Cells on an 8×-downsampled `int` bitmap; 8-connected + via moves (`multilayer_astar.py:135-184`) | **Gridless** best-first expansion over **rooms and doors** with shove and ripup (`crates/fr-router/src/autoroute/maze/expand.rs`, `search.rs`) | **No.** Their state space *is* a raster. Ours has no cells to score |
+| Cells on an 8×-downsampled `int` bitmap; 8-connected + via moves (`multilayer_astar.py:135-184`) | **Gridless** best-first expansion over **rooms and doors** with shove and ripup (`crates/copper-router/src/autoroute/maze/expand.rs`, `search.rs`) | **No.** Their state space *is* a raster. Ours has no cells to score |
 | One global `clearance` + `line_width`, L∞ square-window `.any()` (`multilayer_astar.py:122-133`) | Real clearance matrix, per-net-class rules, padstacks, keepouts, and the KiCad referee on top (roadmap §1.2 item 3, **W11**) | **No** |
 | Overlaps allowed with a +5000 penalty; no ripup; DRC field hardcoded `-1` | Clean-pass rate under `kicad-cli pcb drc` is the headline quality metric | **No** — their acceptance bar is one we would score as failure |
 | Net = one two-pin pair (`base_solver.py:907`) | Multi-pin nets, ratsnest, fanout, ordering, ripup passes, optimizer | **No** |
@@ -151,7 +151,7 @@ segment, congestion from the current ratsnest, or a coarse per-layer occupancy g
 pass — and add it as a term at the one hook site that already exists:
 
 ```
-crates/fr-router/src/autoroute/maze/expand.rs:802-817
+crates/copper-router/src/autoroute/maze/expand.rs:802-817
     let expansion_value = from_element.expansion_value + add_costs + bend_cost_penalty + weighted_distance(...);
     let sorting_value  = expansion_value + destination_distance.calculate_from_point(...);   // <- the hook
 ```
@@ -273,7 +273,7 @@ On a `256×256` grid that is self-evidently true. **On a room-and-door graph it 
 our expansion units are rooms, not cells, and there may be nothing left to prune. **Nobody has
 measured this, and every option in §3 is worthless if the headroom is small.** So measure it first.
 
-* **What:** add a counter to the maze search (`crates/fr-router/src/autoroute/maze/search.rs`, beside the
+* **What:** add a counter to the maze search (`crates/copper-router/src/autoroute/maze/search.rs`, beside the
   existing tracing at `:531-568`) recording, per connection: elements **popped**, elements **pushed**, and
   the length of the **final backtracked path**. Define **corridor waste** = `popped / path_length`. Run it
   over a corpus slice (the `regression` + `dac2020` tiers, then a ~200-board sample), grouped by board
@@ -306,7 +306,7 @@ measured this, and every option in §3 is worthless if the headroom is small.** 
 
 **Evidence.** `docs/plan-10-prep/unet-astar-assessment.md` (this file). External lineage: *Unet-Astar*,
 IEEE Access 2023 — **idea only; the repository carries no license and nothing may be copied from it**
-(§4). Sites: `crates/fr-router/src/autoroute/maze/expand.rs:802-817` (the cost hook),
+(§4). Sites: `crates/copper-router/src/autoroute/maze/expand.rs:802-817` (the cost hook),
 `maze/search.rs:531-568` (E1's counter), `maze/queue.rs:136-137` and
 `maze/list_element.rs:78-101` (the ordering that would change).
 

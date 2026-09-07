@@ -1,7 +1,7 @@
 //! Rust twin of `scripts/differential/java/P2T11.java` (Plan 2 Task 11).
 //!
 //! Builds the same two-layer board — a real outline, a two-pin component, two traces, a via, an
-//! obstacle area and a conduction area — through `fr-board`'s `Board`, then prints the same lines
+//! obstacle area and a conduction area — through `copper-board`'s `Board`, then prints the same lines
 //! the Java driver prints.
 //!
 //! Modes: `0` insert/remove + the item-list and search queries, `1` connectivity, `2` the check
@@ -13,12 +13,12 @@
 
 use std::collections::BTreeSet;
 
-use fr_board::prelude::*;
-use fr_geometry::{
+use copper_board::prelude::*;
+use copper_geometry::{
     Area, IntBox, IntVector, Line, Point, PolygonShape, Polyline, PolylineShapeRef, Shape,
     TileShape, Vector,
 };
-use fr_board::ItemIdGenerator;
+use copper_board::ItemIdGenerator;
 
 fn main() {
     let mode: u32 = std::env::args()
@@ -782,7 +782,7 @@ fn dump_shape_trace_entries() {
         from_point.no,
         fp(from_point.border_intersection.as_ref())
     );
-    let seg = fr_geometry::LineSegment::from_polyline(&crossing_polyline, 1).expect("a segment");
+    let seg = copper_geometry::LineSegment::from_polyline(&crossing_polyline, 1).expect("a segment");
     for (label, to_the_left) in [("left", true), ("right", false)] {
         let side = ShapeEntrySide::from_line_segment(&seg, &shape, to_the_left);
         println!(
@@ -876,7 +876,7 @@ fn dump_shape_trace_entries() {
 
 /// A board with a genuine cycle (two traces between the same pair of vias) and a trace whose two
 /// ends both land inside one conduction area.
-fn build_cycle_board() -> (Board, fr_board::PadstackId) {
+fn build_cycle_board() -> (Board, copper_board::PadstackId) {
     let ls = layers();
     let cm = ClearanceMatrix::get_default_instance(&ls, 200);
     let mut rules = BoardRules::new(layers(), cm);
@@ -1176,7 +1176,7 @@ fn shape_class(shape: &TileShape) -> &'static str {
     }
 }
 
-fn fp(p: Option<&fr_geometry::FloatPoint>) -> String {
+fn fp(p: Option<&copper_geometry::FloatPoint>) -> String {
     match p {
         None => "null".to_string(),
         Some(p) => format!("({:.4},{:.4})", p.x, p.y),
@@ -2414,7 +2414,7 @@ fn tree_array(board: &Board) -> String {
     format!("[{}]", entries.join(" "))
 }
 
-fn oct(o: &fr_geometry::IntOctagon) -> String {
+fn oct(o: &copper_geometry::IntOctagon) -> String {
     format!(
         "Oct[{},{},{},{},{},{},{},{}]",
         o.left_x,

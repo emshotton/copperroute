@@ -1,0 +1,2514 @@
+{
+  "$schema": "https://schemas.kicad.org/drc.v1.json",
+  "coordinateUnits": "mm",
+  "date": "2026-08-29T05:12:02.789672-07:00",
+  "kicadVersion": "N/A",
+  "copperrouteVersion": "Freerouting 2.3.1-SNAPSHOT",
+  "source": "Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn",
+  "unconnectedItems": [
+    {
+      "description": "Unconnected items: Pin [/~{SPI_CE}] and Pin [/~{SPI_CE}] (13 total items in net)",
+      "items": [
+        {
+          "description": "Pin [/~{SPI_CE}]",
+          "pos": {
+            "x": 96.505,
+            "y": -59.69
+          },
+          "uuid": "13"
+        },
+        {
+          "description": "Pin [/~{SPI_CE}]",
+          "pos": {
+            "x": 66.055,
+            "y": -59.69
+          },
+          "uuid": "87"
+        },
+        {
+          "description": "Pin [/~{SPI_CE}]",
+          "pos": {
+            "x": 79.49,
+            "y": -72.93
+          },
+          "uuid": "792"
+        },
+        {
+          "description": "Pin [/~{SPI_CE}]",
+          "pos": {
+            "x": 76.95,
+            "y": -141.51
+          },
+          "uuid": "858"
+        },
+        {
+          "description": "Trace [/~{SPI_CE}]",
+          "pos": {
+            "x": 88.65310000000001,
+            "y": -60.102650000000004
+          },
+          "uuid": "962"
+        },
+        {
+          "description": "Trace [/~{SPI_CE}]",
+          "pos": {
+            "x": 87.8977,
+            "y": -100.04265
+          },
+          "uuid": "963"
+        },
+        {
+          "description": "Trace [/~{SPI_CE}]",
+          "pos": {
+            "x": 67.00515,
+            "y": -59.69
+          },
+          "uuid": "964"
+        },
+        {
+          "description": "Trace [/~{SPI_CE}]",
+          "pos": {
+            "x": 74.37825,
+            "y": -60.102650000000004
+          },
+          "uuid": "965"
+        },
+        {
+          "description": "Trace [/~{SPI_CE}]",
+          "pos": {
+            "x": 76.95,
+            "y": -140.6745
+          },
+          "uuid": "966"
+        },
+        {
+          "description": "Trace [/~{SPI_CE}]",
+          "pos": {
+            "x": 80.6604,
+            "y": -70.5175
+          },
+          "uuid": "967"
+        },
+        {
+          "description": "Via [/~{SPI_CE}]",
+          "pos": {
+            "x": 80.8012,
+            "y": -60.246300000000005
+          },
+          "uuid": "1192"
+        },
+        {
+          "description": "Via [/~{SPI_CE}]",
+          "pos": {
+            "x": 76.95,
+            "y": -139.839
+          },
+          "uuid": "1193"
+        },
+        {
+          "description": "Via [/~{SPI_CE}]",
+          "pos": {
+            "x": 81.8308,
+            "y": -68.105
+          },
+          "uuid": "1194"
+        }
+      ],
+      "severity": "warning",
+      "type": "unconnectedItems"
+    },
+    {
+      "description": "Unconnected items: Pin [GND] and Pin [GND] (29 total items in net)",
+      "items": [
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 91.455,
+            "y": -49.53
+          },
+          "uuid": "4"
+        },
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 96.505,
+            "y": -49.53
+          },
+          "uuid": "5"
+        },
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 71.105,
+            "y": -49.53
+          },
+          "uuid": "78"
+        },
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 66.055,
+            "y": -49.53
+          },
+          "uuid": "79"
+        },
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 62.2,
+            "y": -73.66
+          },
+          "uuid": "766"
+        },
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 76.49,
+            "y": -72.93
+          },
+          "uuid": "798"
+        },
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 73.95,
+            "y": -141.51
+          },
+          "uuid": "864"
+        },
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 60.31,
+            "y": -134.62
+          },
+          "uuid": "909"
+        },
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 63.2825,
+            "y": -64.77
+          },
+          "uuid": "922"
+        },
+        {
+          "description": "Pin [GND]",
+          "pos": {
+            "x": 59.4725,
+            "y": -139.7
+          },
+          "uuid": "934"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 74.93695,
+            "y": -57.2111
+          },
+          "uuid": "986"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 76.5212,
+            "y": -69.52539999999999
+          },
+          "uuid": "987"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 81.67575,
+            "y": -49.113550000000004
+          },
+          "uuid": "988"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 73.40105,
+            "y": -49.113550000000004
+          },
+          "uuid": "989"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 73.7968,
+            "y": -48.49925
+          },
+          "uuid": "990"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 90.50485,
+            "y": -49.53
+          },
+          "uuid": "991"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 72.05515,
+            "y": -49.53
+          },
+          "uuid": "992"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 68.97575,
+            "y": -47.847300000000004
+          },
+          "uuid": "993"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 63.69045,
+            "y": -57.15
+          },
+          "uuid": "994"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 62.74125,
+            "y": -69.215
+          },
+          "uuid": "995"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 65.10485,
+            "y": -49.53
+          },
+          "uuid": "996"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 58.96185,
+            "y": -104.14
+          },
+          "uuid": "997"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 60.31,
+            "y": -136.5565
+          },
+          "uuid": "998"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 61.787349999999996,
+            "y": -73.66
+          },
+          "uuid": "999"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 66.71125,
+            "y": -140.489
+          },
+          "uuid": "1000"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 73.95,
+            "y": -141.9975
+          },
+          "uuid": "1001"
+        },
+        {
+          "description": "Trace [GND]",
+          "pos": {
+            "x": 93.98,
+            "y": -49.53
+          },
+          "uuid": "1002"
+        },
+        {
+          "description": "Via [GND]",
+          "pos": {
+            "x": 73.7968,
+            "y": -48.3014
+          },
+          "uuid": "1200"
+        },
+        {
+          "description": "Via [GND]",
+          "pos": {
+            "x": 76.0771,
+            "y": -66.1208
+          },
+          "uuid": "1201"
+        }
+      ],
+      "severity": "warning",
+      "type": "unconnectedItems"
+    },
+    {
+      "description": "Unconnected items: Pin [/DA] and Pin [/DA] (12 total items in net)",
+      "items": [
+        {
+          "description": "Pin [/DA]",
+          "pos": {
+            "x": 91.455,
+            "y": -54.61
+          },
+          "uuid": "8"
+        },
+        {
+          "description": "Pin [/DA]",
+          "pos": {
+            "x": 93.98,
+            "y": -76.2
+          },
+          "uuid": "726"
+        },
+        {
+          "description": "Pin [/DA]",
+          "pos": {
+            "x": 78.99,
+            "y": -64.23
+          },
+          "uuid": "818"
+        },
+        {
+          "description": "Trace [/DA]",
+          "pos": {
+            "x": 90.50485,
+            "y": -54.61
+          },
+          "uuid": "1030"
+        },
+        {
+          "description": "Trace [/DA]",
+          "pos": {
+            "x": 90.18164999999999,
+            "y": -70.5688
+          },
+          "uuid": "1031"
+        },
+        {
+          "description": "Trace [/DA]",
+          "pos": {
+            "x": 84.98219999999999,
+            "y": -60.7109
+          },
+          "uuid": "1032"
+        },
+        {
+          "description": "Trace [/DA]",
+          "pos": {
+            "x": 88.84575,
+            "y": -55.2677
+          },
+          "uuid": "1033"
+        },
+        {
+          "description": "Trace [/DA]",
+          "pos": {
+            "x": 80.4088,
+            "y": -64.86319999999999
+          },
+          "uuid": "1034"
+        },
+        {
+          "description": "Trace [/DA]",
+          "pos": {
+            "x": 93.10325,
+            "y": -75.92060000000001
+          },
+          "uuid": "1035"
+        },
+        {
+          "description": "Via [/DA]",
+          "pos": {
+            "x": 88.13680000000001,
+            "y": -55.9254
+          },
+          "uuid": "1205"
+        },
+        {
+          "description": "Via [/DA]",
+          "pos": {
+            "x": 81.8276,
+            "y": -65.49640000000001
+          },
+          "uuid": "1206"
+        },
+        {
+          "description": "Via [/DA]",
+          "pos": {
+            "x": 92.2265,
+            "y": -75.6412
+          },
+          "uuid": "1207"
+        }
+      ],
+      "severity": "warning",
+      "type": "unconnectedItems"
+    }
+  ],
+  "violations": [
+    {
+      "description": "Clearance violation between Trace [Net-(J101-Pad2)] and ObstacleArea (expected: 0.2000 mm, actual: 0.0683 mm)",
+      "items": [
+        {
+          "description": "Trace [Net-(J101-Pad2)]",
+          "pos": {
+            "x": 96.78165,
+            "y": -106.68
+          },
+          "uuid": "1174"
+        },
+        {
+          "description": "ObstacleArea",
+          "pos": {
+            "x": 97.79,
+            "y": -127.0
+          },
+          "uuid": "951"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Trace [Net-(TP222-Pad1)] and Trace [Net-(TP221-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)",
+      "items": [
+        {
+          "description": "Trace [Net-(TP222-Pad1)]",
+          "pos": {
+            "x": 73.0689,
+            "y": -125.855
+          },
+          "uuid": "1151"
+        },
+        {
+          "description": "Trace [Net-(TP221-Pad1)]",
+          "pos": {
+            "x": 70.30375,
+            "y": -126.105
+          },
+          "uuid": "1150"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Trace [Net-(TP221-Pad1)] and Trace [Net-(TP220-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)",
+      "items": [
+        {
+          "description": "Trace [Net-(TP221-Pad1)]",
+          "pos": {
+            "x": 70.30375,
+            "y": -126.105
+          },
+          "uuid": "1150"
+        },
+        {
+          "description": "Trace [Net-(TP220-Pad1)]",
+          "pos": {
+            "x": 67.5386,
+            "y": -126.355
+          },
+          "uuid": "1148"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Trace [Net-(TP220-Pad1)] and Trace [Net-(TP219-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)",
+      "items": [
+        {
+          "description": "Trace [Net-(TP220-Pad1)]",
+          "pos": {
+            "x": 67.5386,
+            "y": -126.355
+          },
+          "uuid": "1148"
+        },
+        {
+          "description": "Trace [Net-(TP219-Pad1)]",
+          "pos": {
+            "x": 64.77345,
+            "y": -126.605
+          },
+          "uuid": "1146"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Trace [Net-(TP219-Pad1)] and Trace [Net-(TP218-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)",
+      "items": [
+        {
+          "description": "Trace [Net-(TP219-Pad1)]",
+          "pos": {
+            "x": 64.77345,
+            "y": -126.605
+          },
+          "uuid": "1146"
+        },
+        {
+          "description": "Trace [Net-(TP218-Pad1)]",
+          "pos": {
+            "x": 64.9133,
+            "y": -126.855
+          },
+          "uuid": "1145"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Trace [Net-(TP218-Pad1)] and Trace [Net-(TP217-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)",
+      "items": [
+        {
+          "description": "Trace [Net-(TP218-Pad1)]",
+          "pos": {
+            "x": 64.9133,
+            "y": -126.855
+          },
+          "uuid": "1145"
+        },
+        {
+          "description": "Trace [Net-(TP217-Pad1)]",
+          "pos": {
+            "x": 64.2005,
+            "y": -127.105
+          },
+          "uuid": "1143"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Trace [Net-(TP217-Pad1)] and ObstacleArea (expected: 0.2000 mm, actual: 0.0759 mm)",
+      "items": [
+        {
+          "description": "Trace [Net-(TP217-Pad1)]",
+          "pos": {
+            "x": 64.2005,
+            "y": -127.105
+          },
+          "uuid": "1143"
+        },
+        {
+          "description": "ObstacleArea",
+          "pos": {
+            "x": 59.69,
+            "y": -127.0
+          },
+          "uuid": "959"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Trace [Net-(TP214-Pad1)] and Trace [Net-(TP213-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)",
+      "items": [
+        {
+          "description": "Trace [Net-(TP214-Pad1)]",
+          "pos": {
+            "x": 85.55185,
+            "y": -120.1605
+          },
+          "uuid": "1138"
+        },
+        {
+          "description": "Trace [Net-(TP213-Pad1)]",
+          "pos": {
+            "x": 86.02705,
+            "y": -119.935
+          },
+          "uuid": "1136"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Trace [Net-(TP207-Pad1)] and Trace [Net-(TP206-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)",
+      "items": [
+        {
+          "description": "Trace [Net-(TP207-Pad1)]",
+          "pos": {
+            "x": 89.36845,
+            "y": -120.1615
+          },
+          "uuid": "1123"
+        },
+        {
+          "description": "Trace [Net-(TP206-Pad1)]",
+          "pos": {
+            "x": 90.0917,
+            "y": -120.186
+          },
+          "uuid": "1121"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Trace [Net-(TP129-Pad1)] and Trace [Net-(TP128-Pad1)] (expected: 0.2000 mm, actual: 0.1999 mm)",
+      "items": [
+        {
+          "description": "Trace [Net-(TP129-Pad1)]",
+          "pos": {
+            "x": 70.7555,
+            "y": -82.478
+          },
+          "uuid": "1099"
+        },
+        {
+          "description": "Trace [Net-(TP128-Pad1)]",
+          "pos": {
+            "x": 69.14760000000001,
+            "y": -83.052
+          },
+          "uuid": "1097"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Trace [/VCC3V3] and Trace [/SPI_CLK] (expected: 0.2000 mm, actual: 0.1998 mm)",
+      "items": [
+        {
+          "description": "Trace [/VCC3V3]",
+          "pos": {
+            "x": 89.9535,
+            "y": -95.96275
+          },
+          "uuid": "1003"
+        },
+        {
+          "description": "Trace [/SPI_CLK]",
+          "pos": {
+            "x": 87.80555,
+            "y": -96.555
+          },
+          "uuid": "978"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Clearance violation between Trace [/~{SPI_CE}] and ObstacleArea (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Trace [/~{SPI_CE}]",
+          "pos": {
+            "x": 87.8977,
+            "y": -100.04265
+          },
+          "uuid": "963"
+        },
+        {
+          "description": "ObstacleArea",
+          "pos": {
+            "x": 97.79,
+            "y": -127.0
+          },
+          "uuid": "950"
+        }
+      ],
+      "severity": "error",
+      "type": "clearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP232-Pad1)] and Via [Net-(TP232-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP232-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -119.38
+          },
+          "uuid": "717"
+        },
+        {
+          "description": "Via [Net-(TP232-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -119.38
+          },
+          "uuid": "1289"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP231-Pad1)] and Via [Net-(TP231-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP231-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -119.38
+          },
+          "uuid": "708"
+        },
+        {
+          "description": "Via [Net-(TP231-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -119.38
+          },
+          "uuid": "1287"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP229-Pad1)] and Via [Net-(TP229-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP229-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -119.38
+          },
+          "uuid": "699"
+        },
+        {
+          "description": "Via [Net-(TP229-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -119.38
+          },
+          "uuid": "1284"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP227-Pad1)] and Via [Net-(TP227-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP227-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -119.38
+          },
+          "uuid": "690"
+        },
+        {
+          "description": "Via [Net-(TP227-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -119.38
+          },
+          "uuid": "1282"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP225-Pad1)] and Via [Net-(TP225-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP225-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -119.38
+          },
+          "uuid": "681"
+        },
+        {
+          "description": "Via [Net-(TP225-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -119.38
+          },
+          "uuid": "1280"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP223-Pad1)] and Via [Net-(TP223-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP223-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -114.3
+          },
+          "uuid": "672"
+        },
+        {
+          "description": "Via [Net-(TP223-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -114.3
+          },
+          "uuid": "1278"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP221-Pad1)] and Via [Net-(TP221-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP221-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -114.3
+          },
+          "uuid": "663"
+        },
+        {
+          "description": "Via [Net-(TP221-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -114.3
+          },
+          "uuid": "1276"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP219-Pad1)] and Via [Net-(TP219-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP219-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -114.3
+          },
+          "uuid": "654"
+        },
+        {
+          "description": "Via [Net-(TP219-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -114.3
+          },
+          "uuid": "1274"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP217-Pad1)] and Via [Net-(TP217-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP217-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -114.3
+          },
+          "uuid": "645"
+        },
+        {
+          "description": "Via [Net-(TP217-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -114.3
+          },
+          "uuid": "1272"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP214-Pad1)] and Via [Net-(TP214-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP214-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -109.22
+          },
+          "uuid": "636"
+        },
+        {
+          "description": "Via [Net-(TP214-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -109.22
+          },
+          "uuid": "1269"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP212-Pad1)] and Via [Net-(TP212-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP212-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -109.22
+          },
+          "uuid": "627"
+        },
+        {
+          "description": "Via [Net-(TP212-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -109.22
+          },
+          "uuid": "1267"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP210-Pad1)] and Via [Net-(TP210-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP210-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -109.22
+          },
+          "uuid": "618"
+        },
+        {
+          "description": "Via [Net-(TP210-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -109.22
+          },
+          "uuid": "1264"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP208-Pad1)] and Via [Net-(TP208-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP208-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -104.14
+          },
+          "uuid": "609"
+        },
+        {
+          "description": "Via [Net-(TP208-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -104.14
+          },
+          "uuid": "1260"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP207-Pad1)] and Via [Net-(TP207-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP207-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -104.14
+          },
+          "uuid": "600"
+        },
+        {
+          "description": "Via [Net-(TP207-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -104.14
+          },
+          "uuid": "1259"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP206-Pad1)] and Via [Net-(TP206-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP206-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -104.14
+          },
+          "uuid": "591"
+        },
+        {
+          "description": "Via [Net-(TP206-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -104.14
+          },
+          "uuid": "1258"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP204-Pad1)] and Via [Net-(TP204-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP204-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -104.14
+          },
+          "uuid": "582"
+        },
+        {
+          "description": "Via [Net-(TP204-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -104.14
+          },
+          "uuid": "1255"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP202-Pad1)] and Via [Net-(TP202-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP202-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -104.14
+          },
+          "uuid": "573"
+        },
+        {
+          "description": "Via [Net-(TP202-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -104.14
+          },
+          "uuid": "1252"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP132-Pad1)] and Via [Net-(TP132-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP132-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -99.06
+          },
+          "uuid": "564"
+        },
+        {
+          "description": "Via [Net-(TP132-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -99.06
+          },
+          "uuid": "1249"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP130-Pad1)] and Via [Net-(TP130-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP130-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -99.06
+          },
+          "uuid": "555"
+        },
+        {
+          "description": "Via [Net-(TP130-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -99.06
+          },
+          "uuid": "1247"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP128-Pad1)] and Via [Net-(TP128-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP128-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -99.06
+          },
+          "uuid": "546"
+        },
+        {
+          "description": "Via [Net-(TP128-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -99.06
+          },
+          "uuid": "1245"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP126-Pad1)] and Via [Net-(TP126-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP126-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -99.06
+          },
+          "uuid": "537"
+        },
+        {
+          "description": "Via [Net-(TP126-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -99.06
+          },
+          "uuid": "1243"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP124-Pad1)] and Via [Net-(TP124-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP124-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -93.98
+          },
+          "uuid": "528"
+        },
+        {
+          "description": "Via [Net-(TP124-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -93.98
+          },
+          "uuid": "1240"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP122-Pad1)] and Via [Net-(TP122-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP122-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -93.98
+          },
+          "uuid": "519"
+        },
+        {
+          "description": "Via [Net-(TP122-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -93.98
+          },
+          "uuid": "1238"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP120-Pad1)] and Via [Net-(TP120-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP120-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -93.98
+          },
+          "uuid": "510"
+        },
+        {
+          "description": "Via [Net-(TP120-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -93.98
+          },
+          "uuid": "1236"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP118-Pad1)] and Via [Net-(TP118-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP118-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -93.98
+          },
+          "uuid": "501"
+        },
+        {
+          "description": "Via [Net-(TP118-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -93.98
+          },
+          "uuid": "1234"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP116-Pad1)] and Via [Net-(TP116-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP116-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -88.9
+          },
+          "uuid": "492"
+        },
+        {
+          "description": "Via [Net-(TP116-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -88.9
+          },
+          "uuid": "1231"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP115-Pad1)] and Via [Net-(TP115-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP115-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -88.9
+          },
+          "uuid": "483"
+        },
+        {
+          "description": "Via [Net-(TP115-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -88.9
+          },
+          "uuid": "1230"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP114-Pad1)] and Via [Net-(TP114-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP114-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -88.9
+          },
+          "uuid": "474"
+        },
+        {
+          "description": "Via [Net-(TP114-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -88.9
+          },
+          "uuid": "1229"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP112-Pad1)] and Via [Net-(TP112-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP112-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -88.9
+          },
+          "uuid": "465"
+        },
+        {
+          "description": "Via [Net-(TP112-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -88.9
+          },
+          "uuid": "1227"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP110-Pad1)] and Via [Net-(TP110-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP110-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -88.9
+          },
+          "uuid": "456"
+        },
+        {
+          "description": "Via [Net-(TP110-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -88.9
+          },
+          "uuid": "1224"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP108-Pad1)] and Via [Net-(TP108-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP108-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -83.82
+          },
+          "uuid": "447"
+        },
+        {
+          "description": "Via [Net-(TP108-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -83.82
+          },
+          "uuid": "1222"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP104-Pad1)] and Via [Net-(TP104-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP104-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -83.82
+          },
+          "uuid": "438"
+        },
+        {
+          "description": "Via [Net-(TP104-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -83.82
+          },
+          "uuid": "1216"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP102-Pad1)] and Via [Net-(TP102-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP102-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -83.82
+          },
+          "uuid": "429"
+        },
+        {
+          "description": "Via [Net-(TP102-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -83.82
+          },
+          "uuid": "1213"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP230-Pad1)] and Via [Net-(TP230-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP230-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -119.38
+          },
+          "uuid": "420"
+        },
+        {
+          "description": "Via [Net-(TP230-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -119.38
+          },
+          "uuid": "1285"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP228-Pad1)] and Via [Net-(TP228-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP228-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -119.38
+          },
+          "uuid": "411"
+        },
+        {
+          "description": "Via [Net-(TP228-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -119.38
+          },
+          "uuid": "1283"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP226-Pad1)] and Via [Net-(TP226-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP226-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -119.38
+          },
+          "uuid": "402"
+        },
+        {
+          "description": "Via [Net-(TP226-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -119.38
+          },
+          "uuid": "1281"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP224-Pad1)] and Via [Net-(TP224-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP224-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -114.3
+          },
+          "uuid": "393"
+        },
+        {
+          "description": "Via [Net-(TP224-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -114.3
+          },
+          "uuid": "1279"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP222-Pad1)] and Via [Net-(TP222-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP222-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -114.3
+          },
+          "uuid": "384"
+        },
+        {
+          "description": "Via [Net-(TP222-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -114.3
+          },
+          "uuid": "1277"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP220-Pad1)] and Via [Net-(TP220-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP220-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -114.3
+          },
+          "uuid": "375"
+        },
+        {
+          "description": "Via [Net-(TP220-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -114.3
+          },
+          "uuid": "1275"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP218-Pad1)] and Via [Net-(TP218-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP218-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -114.3
+          },
+          "uuid": "366"
+        },
+        {
+          "description": "Via [Net-(TP218-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -114.3
+          },
+          "uuid": "1273"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP216-Pad1)] and Via [Net-(TP216-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP216-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -109.22
+          },
+          "uuid": "357"
+        },
+        {
+          "description": "Via [Net-(TP216-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -109.22
+          },
+          "uuid": "1271"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP215-Pad1)] and Via [Net-(TP215-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP215-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -109.22
+          },
+          "uuid": "348"
+        },
+        {
+          "description": "Via [Net-(TP215-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -109.22
+          },
+          "uuid": "1270"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP213-Pad1)] and Via [Net-(TP213-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP213-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -109.22
+          },
+          "uuid": "339"
+        },
+        {
+          "description": "Via [Net-(TP213-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -109.22
+          },
+          "uuid": "1268"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP211-Pad1)] and Via [Net-(TP211-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP211-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -109.22
+          },
+          "uuid": "330"
+        },
+        {
+          "description": "Via [Net-(TP211-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -109.22
+          },
+          "uuid": "1266"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP209-Pad1)] and Via [Net-(TP209-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP209-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -109.22
+          },
+          "uuid": "321"
+        },
+        {
+          "description": "Via [Net-(TP209-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -109.22
+          },
+          "uuid": "1262"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP205-Pad1)] and Via [Net-(TP205-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP205-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -104.14
+          },
+          "uuid": "312"
+        },
+        {
+          "description": "Via [Net-(TP205-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -104.14
+          },
+          "uuid": "1257"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP203-Pad1)] and Via [Net-(TP203-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP203-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -104.14
+          },
+          "uuid": "303"
+        },
+        {
+          "description": "Via [Net-(TP203-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -104.14
+          },
+          "uuid": "1253"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP201-Pad1)] and Via [Net-(TP201-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP201-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -104.14
+          },
+          "uuid": "294"
+        },
+        {
+          "description": "Via [Net-(TP201-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -104.14
+          },
+          "uuid": "1250"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP131-Pad1)] and Via [Net-(TP131-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP131-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -99.06
+          },
+          "uuid": "285"
+        },
+        {
+          "description": "Via [Net-(TP131-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -99.06
+          },
+          "uuid": "1248"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP129-Pad1)] and Via [Net-(TP129-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP129-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -99.06
+          },
+          "uuid": "276"
+        },
+        {
+          "description": "Via [Net-(TP129-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -99.06
+          },
+          "uuid": "1246"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP127-Pad1)] and Via [Net-(TP127-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP127-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -99.06
+          },
+          "uuid": "267"
+        },
+        {
+          "description": "Via [Net-(TP127-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -99.06
+          },
+          "uuid": "1244"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP125-Pad1)] and Via [Net-(TP125-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP125-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -99.06
+          },
+          "uuid": "258"
+        },
+        {
+          "description": "Via [Net-(TP125-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -99.06
+          },
+          "uuid": "1242"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP123-Pad1)] and Via [Net-(TP123-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP123-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -93.98
+          },
+          "uuid": "249"
+        },
+        {
+          "description": "Via [Net-(TP123-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -93.98
+          },
+          "uuid": "1239"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP121-Pad1)] and Via [Net-(TP121-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP121-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -93.98
+          },
+          "uuid": "240"
+        },
+        {
+          "description": "Via [Net-(TP121-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -93.98
+          },
+          "uuid": "1237"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP119-Pad1)] and Via [Net-(TP119-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP119-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -93.98
+          },
+          "uuid": "231"
+        },
+        {
+          "description": "Via [Net-(TP119-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -93.98
+          },
+          "uuid": "1235"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP117-Pad1)] and Via [Net-(TP117-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP117-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -93.98
+          },
+          "uuid": "222"
+        },
+        {
+          "description": "Via [Net-(TP117-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -93.98
+          },
+          "uuid": "1233"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP113-Pad1)] and Via [Net-(TP113-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP113-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -88.9
+          },
+          "uuid": "213"
+        },
+        {
+          "description": "Via [Net-(TP113-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -88.9
+          },
+          "uuid": "1228"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP111-Pad1)] and Via [Net-(TP111-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP111-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -88.9
+          },
+          "uuid": "204"
+        },
+        {
+          "description": "Via [Net-(TP111-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -88.9
+          },
+          "uuid": "1226"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP109-Pad1)] and Via [Net-(TP109-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP109-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -88.9
+          },
+          "uuid": "195"
+        },
+        {
+          "description": "Via [Net-(TP109-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -88.9
+          },
+          "uuid": "1223"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP107-Pad1)] and Via [Net-(TP107-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP107-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -83.82
+          },
+          "uuid": "186"
+        },
+        {
+          "description": "Via [Net-(TP107-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -83.82
+          },
+          "uuid": "1220"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP106-Pad1)] and Via [Net-(TP106-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP106-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -83.82
+          },
+          "uuid": "177"
+        },
+        {
+          "description": "Via [Net-(TP106-Pad1)]",
+          "pos": {
+            "x": 86.36,
+            "y": -83.82
+          },
+          "uuid": "1218"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP105-Pad1)] and Via [Net-(TP105-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP105-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -83.82
+          },
+          "uuid": "168"
+        },
+        {
+          "description": "Via [Net-(TP105-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -83.82
+          },
+          "uuid": "1217"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP103-Pad1)] and Via [Net-(TP103-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP103-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -83.82
+          },
+          "uuid": "159"
+        },
+        {
+          "description": "Via [Net-(TP103-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -83.82
+          },
+          "uuid": "1215"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Hole clearance violation between Pin [Net-(TP101-Pad1)] and Via [Net-(TP101-Pad1)] (expected: 0.2000 mm, actual: 0.0000 mm)",
+      "items": [
+        {
+          "description": "Pin [Net-(TP101-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -83.82
+          },
+          "uuid": "150"
+        },
+        {
+          "description": "Via [Net-(TP101-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -83.82
+          },
+          "uuid": "1211"
+        }
+      ],
+      "severity": "error",
+      "type": "holeClearance"
+    },
+    {
+      "description": "Track has unconnected end",
+      "items": [
+        {
+          "description": "Track [/DA] on F.Cu, length 11.8388 mm",
+          "pos": {
+            "x": 90.18164999999999,
+            "y": -70.5688
+          },
+          "uuid": "1031"
+        }
+      ],
+      "severity": "warning",
+      "type": "track_dangling"
+    },
+    {
+      "description": "Track has unconnected end",
+      "items": [
+        {
+          "description": "Track [GND] on B.Cu, length 3.8730 mm",
+          "pos": {
+            "x": 60.31,
+            "y": -136.5565
+          },
+          "uuid": "998"
+        }
+      ],
+      "severity": "warning",
+      "type": "track_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP232-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -119.38
+          },
+          "uuid": "1289"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP231-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -119.38
+          },
+          "uuid": "1287"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP211-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -109.22
+          },
+          "uuid": "1266"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP210-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -109.22
+          },
+          "uuid": "1264"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP209-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -109.22
+          },
+          "uuid": "1262"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP205-Pad1)]",
+          "pos": {
+            "x": 81.28,
+            "y": -104.14
+          },
+          "uuid": "1257"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP204-Pad1)]",
+          "pos": {
+            "x": 76.2,
+            "y": -104.14
+          },
+          "uuid": "1255"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP202-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -104.14
+          },
+          "uuid": "1252"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP125-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -99.06
+          },
+          "uuid": "1242"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP117-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -93.98
+          },
+          "uuid": "1233"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP111-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -88.9
+          },
+          "uuid": "1226"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP108-Pad1)]",
+          "pos": {
+            "x": 96.52,
+            "y": -83.82
+          },
+          "uuid": "1222"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP107-Pad1)]",
+          "pos": {
+            "x": 91.44,
+            "y": -83.82
+          },
+          "uuid": "1220"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP103-Pad1)]",
+          "pos": {
+            "x": 71.12,
+            "y": -83.82
+          },
+          "uuid": "1215"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP102-Pad1)]",
+          "pos": {
+            "x": 66.04,
+            "y": -83.82
+          },
+          "uuid": "1213"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [Net-(TP101-Pad1)]",
+          "pos": {
+            "x": 60.96,
+            "y": -83.82
+          },
+          "uuid": "1211"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [/AGND]",
+          "pos": {
+            "x": 57.785,
+            "y": -80.645
+          },
+          "uuid": "1204"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    },
+    {
+      "description": "Via is not connected or connected on only one layer",
+      "items": [
+        {
+          "description": "Via [/~{SPI_CE}]",
+          "pos": {
+            "x": 81.8308,
+            "y": -68.105
+          },
+          "uuid": "1194"
+        }
+      ],
+      "severity": "warning",
+      "type": "via_dangling"
+    }
+  ],
+  "schematicParity": []
+}

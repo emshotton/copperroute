@@ -21,17 +21,17 @@
 
 use std::io::{BufWriter, Write};
 
-use fr_board::items::Item;
-use fr_board::prelude::*;
-use fr_dsn::format_double;
-use fr_router::board_ext::RoutingBoardExt;
-use fr_router::pipeline::{
+use copper_board::items::Item;
+use copper_board::prelude::*;
+use copper_dsn::format_double;
+use copper_router::board_ext::RoutingBoardExt;
+use copper_router::pipeline::{
     fanout_pin_can_use_vias, fanout_ripup_costs, BatchFanout, EscapeStatistics, FanoutLoopState,
     FanoutStop, NoopProgressSink, RouterBudget, RouterStop,
 };
-use fr_router::score::BoardStatistics;
-use fr_router::AutorouteAttemptState;
-use fr_settings::RouterSettings;
+use copper_router::score::BoardStatistics;
+use copper_router::AutorouteAttemptState;
+use copper_settings::RouterSettings;
 
 #[path = "../p7t_common.rs"]
 mod p7t_common;
@@ -234,7 +234,7 @@ fn dump_fanout_run<W: Write>(
     // half, where Java's is a `javac`-inlined local it cannot reach.
     let time_limit = TimeLimit::new(i32::MAX);
     let budget = RouterBudget::disabled();
-    let mut engine: Option<fr_router::AutorouteEngine> = None;
+    let mut engine: Option<copper_router::AutorouteEngine> = None;
 
     let mut index = 0_i32;
     for (component_name, pins) in &order {
@@ -260,7 +260,7 @@ fn dump_fanout_run<W: Write>(
                     .net_classes
                     .get(net_class)
                     .get_via_rule()
-                    .map_or(0, fr_board::ViaRule::via_count);
+                    .map_or(0, copper_board::ViaRule::via_count);
                 let has_board_vias =
                     !board.rules.via_rules.is_empty() && board.rules.via_rules[0].via_count() > 0;
                 let fallback_allowed = fallback == Some(true) && has_board_vias;

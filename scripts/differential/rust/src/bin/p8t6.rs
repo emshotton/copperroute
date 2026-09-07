@@ -3,7 +3,7 @@
 //! The jar has an MCP server and so does the port, and controller ruling AO replaced the jar's
 //! arrangement (a stdio pump POSTing each line to a Jetty server in the same JVM) with a native
 //! in-process one. The two are therefore **not** expected to agree — but *where* they disagree is
-//! a contract, written down as the table in `crates/freerouting/README.md`, and this driver is
+//! a contract, written down as the table in `crates/copperroute/README.md`, and this driver is
 //! what turns that table into an assertion.
 //!
 //! ```text
@@ -250,7 +250,7 @@ fn jar_command(scratch: &std::path::Path, auth_off: bool) -> Command {
 }
 
 fn port_command() -> Command {
-    let binary = env_path("FREEROUTING_BIN", "target/release/freerouting");
+    let binary = env_path("COPPERROUTE_BIN", "target/release/copperroute");
     let mut command = Command::new(binary);
     command.arg("mcp");
     command
@@ -486,7 +486,7 @@ fn observe(
 /// The jar's default is the launch line *without* the two `authentication.enabled=false` flags
 /// (job 3's run B): `ApiAuthenticationSettings.isEnabled` is `true` (`:11`) and the stdio bridge
 /// never supplies an `Authorization` header, so the envelope comes back `401`. The port's default
-/// is `freerouting mcp`, because it has no authentication flag to leave at anything.
+/// is `copperroute mcp`, because it has no authentication flag to leave at anything.
 ///
 /// **Both sides are observations**, which is what lets row 7 fail as `GONE`. A hard-coded
 /// `"no authentication"` on the port's side — which is what this driver shipped with at `add3a79`
@@ -739,7 +739,7 @@ fn main() {
     if failed > 0 {
         eprintln!(
             "p8t6: {failed} row(s) failed. GONE = a recorded delta the two programs now agree on \
-             (the table in crates/freerouting/README.md is stale). NEW = a difference the table \
+             (the table in crates/copperroute/README.md is stale). NEW = a difference the table \
              does not record (add a row, with a Java file:line, or fix the port)."
         );
         std::process::exit(1);

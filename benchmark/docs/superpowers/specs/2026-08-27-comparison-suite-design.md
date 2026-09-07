@@ -1,8 +1,8 @@
-# Freerouting Comparison Suite — Design Spec
+# Copperroute Comparison Suite — Design Spec
 
 **Date:** 2026-08-27
 **Status:** Approved for planning
-**Location:** `freerouting-bench/` (sibling of `freerouting/` (Java) and `freerouting-rs/` (Rust fork))
+**Location:** `freerouting-bench/` (sibling of `freerouting/` (Java) and `copperroute/` (Rust fork))
 
 ## 1. Goal
 
@@ -22,8 +22,8 @@ repository, so it survives internal churn in both.
 
 ## 2. Non-goals
 
-- Bit-parity testing between Java and Rust — that is `freerouting-rs/tests/parity`.
-- Autopilot / auto-commit loops — that is `freerouting/scripts/autopilot`.
+- Bit-parity testing between Java and Rust — that is `copperroute/tests/parity`.
+- Autopilot / auto-commit loops — that is `copperroute/scripts/autopilot`.
 - Reproducing PCBWorld's RL/LLM agents. Only its board splits and Clean Pass
   metric are adopted so numbers are comparable with the paper (arXiv 2607.05915).
 - GUI. Multi-threaded router measurement is opt-in and reported separately.
@@ -62,12 +62,12 @@ sha_from = "../freerouting"          # git rev-parse HEAD in that dir
 
 [candidates.rs-main]
 kind = "rust"
-exec = ["../freerouting-rs/target/release/freerouting"]
-sha_from = "../freerouting-rs"
+exec = ["../copperroute/target/release/copperroute"]
+sha_from = "../copperroute"
 
 [candidates.rs-negotiated]
 kind = "rust"
-exec = ["/path/to/another/build/freerouting"]
+exec = ["/path/to/another/build/copperroute"]
 sha = "abc1234"                      # explicit when the binary is not a live checkout
 extra_args = ["--router.algorithm=negotiated"]
 ```
@@ -98,13 +98,13 @@ freerouting-bench/
       markdown.py
       html.py               # single-file dashboard (inline CSS/JS, no CDN)
       templates/dashboard.html.j2
-  vendor/kicad/             # copied from freerouting/scripts/pcbench (KiCad-python scripts)
+  vendor/kicad/             # copied from copperroute/scripts/pcbench (KiCad-python scripts)
     strip_kicad_routing.py
     export_specctra_dsn.py
     import_specctra_ses.py
   corpus/
     manifest.json           # list of boards (see §5); committed
-    dsn/                    # copies of freerouting/fixtures/*.dsn (gitignored; `corpus init` recreates)
+    dsn/                    # copies of copperroute/fixtures/*.dsn (gitignored; `corpus init` recreates)
     pcbench/<board>/        # raw.kicad_pcb, stripped.kicad_pcb, unrouted.dsn, ground_truth.json (gitignored)
   results/<run-id>/         # gitignored
     meta.json               # run args, candidates with resolved sha/version, start/end, status
@@ -217,9 +217,9 @@ verdicts with a visible warning.
 ### 7.2 `kicad` (PCBench boards)
 
 1. `vendor/kicad/import_specctra_ses.py stripped.kicad_pcb out.ses routed.kicad_pcb`
-   using KiCad's bundled Python (`/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3`, overridable via `FREEROUTING_KICAD_PYTHON`).
+   using KiCad's bundled Python (`/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3`, overridable via `COPPERROUTE_KICAD_PYTHON`).
 2. `kicad-cli pcb drc --format json --all-track-errors --units mm -o drc.json routed.kicad_pcb`
-   (`kicad-cli` from `/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli`, overridable via `FREEROUTING_KICAD_CLI`).
+   (`kicad-cli` from `/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli`, overridable via `COPPERROUTE_KICAD_CLI`).
 3. Read violations (by type), unconnected items, and compute via count and
    wirelength from `routed.kicad_pcb` via `pcbnew`.
 

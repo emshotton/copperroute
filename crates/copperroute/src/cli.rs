@@ -1,0 +1,258 @@
+use clap::{Args, Parser, Subcommand};
+use std::path::PathBuf;
+
+use crate::ops::route::OutputFormat;
+
+#[derive(Parser, Debug)]
+#[command(
+    name = "copperroute",
+    version,
+    propagate_version = true,
+    about = "Headless PCB autorouter"
+)]
+pub struct Cli {
+    /// Raise the log level: -v for debug, -vv for trace.
+    #[arg(short, long, action = clap::ArgAction::Count, global = true)]
+    pub verbose: u8,
+    /// Set the log level outright: off, error, warn, info, debug, trace.
+    #[arg(long, global = true)]
+    pub log_level: Option<String>,
+    /// A settings JSON, applied below the design's own settings and below --set.
+    #[arg(long, global = true, value_name = "FILE")]
+    pub settings: Option<PathBuf>,
+    #[command(subcommand)]
+    pub command: Command,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Command {
+    /// Route a board and write the session.
+    Route(RouteArgs),
+    /// Check a board against its design rules and write the KiCad DRC report.
+    Drc(DrcArgs),
+    /// Print the board summary as JSON.
+    Info(InfoArgs),
+    /// Serve the routing tools over JSON-RPC on stdin/stdout.
+    Mcp,
+}
+
+#[derive(Args, Debug)]
+pub struct RouteArgs {
+    /// A Specctra DSN or a KiCad board JSON.
+    pub input: PathBuf,
+    /// Where to write the session: a .ses (Specctra) or a .json (KiCad session).
+    #[arg(short, long, value_parser = parse_output_path)]
+    pub output: PathBuf,
+    /// A Specctra .rules file. Without it, a .rules beside the input is used when present.
+    #[arg(long)]
+    pub rules: Option<PathBuf>,
+    /// A session to import before routing, so the run continues from it.
+    #[arg(long)]
+    pub ses: Option<PathBuf>,
+    /// A KiCad .kicad_pro whose design rules are applied before routing.
+    #[arg(long)]
+    pub kicad_project: Option<PathBuf>,
+    /// How many routing passes to run; 0 means unlimited.
+    #[arg(long)]
+    pub max_passes: Option<u32>,
+    /// Wall-clock budget for the whole job, as hh:mm:ss or seconds.
+    #[arg(long)]
+    pub timeout: Option<String>,
+    /// Write the result manifest here.
+    #[arg(long)]
+    pub result_json: Option<PathBuf>,
+    /// Override one setting: --set router.<section>.<field>=<value>. Repeatable.
+    /// router.max_items=N stops the optimizer as well as the router; --max-passes stops
+    /// only the router.
+    #[arg(long = "set", value_name = "FIELD=VALUE")]
+    pub set: Vec<String>,
+    /// Write SVG frames showing maze rooms over the routed PCB.
+    #[arg(long, value_name = "DIR")]
+    pub visualize: Option<PathBuf>,
+    /// Capture one visualization frame for every N maze steps; route commits are always kept.
+    #[arg(long, default_value_t = 1, requires = "visualize")]
+    pub visualize_every: u64,
+    /// Stop writing visualization frames after this many images; routing continues.
+    #[arg(long, default_value_t = 1_000, requires = "visualize")]
+    pub visualize_max_frames: u64,
+    #[arg(long, default_value_t = 1280, requires = "visualize")]
+    pub visualize_width: u32,
+    #[arg(long, default_value_t = 720, requires = "visualize")]
+    pub visualize_height: u32,
+}
+
+#[derive(Args, Debug)]
+pub struct DrcArgs {
+    /// A Specctra DSN or a KiCad board JSON.
+    pub input: PathBuf,
+    /// A session to apply before checking, so the report describes the routed board.
+    #[arg(long)]
+    pub ses: Option<PathBuf>,
+    /// A Specctra .rules file to apply before checking.
+    #[arg(long)]
+    pub rules: Option<PathBuf>,
+    /// A KiCad .kicad_pro whose design rules are applied before checking.
+    #[arg(long)]
+    pub kicad_project: Option<PathBuf>,
+    /// Where to write the report; stdout when omitted.
+    #[arg(short, long)]
+    pub output: Option<PathBuf>,
+    /// Which spelling of the KiCad DRC schema to write.
+    #[arg(long, value_enum, default_value_t = DrcSchema::Kicad)]
+    pub schema: DrcSchema,
+}
+
+#[derive(clap::ValueEnum, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DrcSchema {
+    #[default]
+    Kicad,
+    Legacy,
+}
+
+#[derive(Args, Debug)]
+pub struct InfoArgs {
+    /// A Specctra DSN or a KiCad board JSON.
+    pub input: PathBuf,
+}
+
+fn parse_output_path(value: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(value);
+    match OutputFormat::from_path(&path) {
+        Some(_) => Ok(path),
+        None => Err(format!(
+            "'{value}' must end in .ses (a Specctra session) or .json (a KiCad session)"
+        )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_route_with_max_passes_timeout_and_set() {
+        let cli = Cli::try_parse_from([
+            "copperroute",
+            "route",
+            "a.dsn",
+            "-o",
+            "b.ses",
+            "--max-passes",
+            "3",
+            "--timeout",
+            "0:05:00",
+            "--set",
+            "router.scoring.via_costs=1",
+        ])
+        .unwrap();
+        let Command::Route(r) = cli.command else {
+            panic!("expected route")
+        };
+        assert_eq!(r.input, PathBuf::from("a.dsn"));
+        assert_eq!(r.max_passes, Some(3));
+        assert_eq!(r.timeout.as_deref(), Some("0:05:00"));
+        assert_eq!(r.set, vec!["router.scoring.via_costs=1".to_string()]);
+    }
+
+    #[test]
+    fn the_output_must_be_a_session_extension() {
+        for bad in ["b.dsn", "b.txt", "b"] {
+            let error =
+                Cli::try_parse_from(["copperroute", "route", "a.dsn", "-o", bad]).expect_err(bad);
+            assert_eq!(
+                error.kind(),
+                clap::error::ErrorKind::ValueValidation,
+                "{bad}"
+            );
+        }
+        for good in ["b.ses", "b.json", "B.SES"] {
+            Cli::try_parse_from(["copperroute", "route", "a.dsn", "-o", good]).expect(good);
+        }
+    }
+
+    #[test]
+    fn the_dead_flags_are_gone() {
+        for flag in [
+            "--threads",
+            "--kicad-json",
+            "--optimizer-improvement-threshold",
+            "--update-strategy",
+            "--hybrid-ratio",
+            "--item-selection",
+            "--ignore-net-classes",
+        ] {
+            let error =
+                Cli::try_parse_from(["copperroute", "route", "a.dsn", "-o", "b.ses", flag, "1"])
+                    .expect_err(flag);
+            assert_eq!(
+                error.kind(),
+                clap::error::ErrorKind::UnknownArgument,
+                "{flag}"
+            );
+        }
+        let error = Cli::try_parse_from(["copperroute", "-de", "a.dsn", "-do", "b.ses"])
+            .expect_err("the legacy form");
+        assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
+    }
+
+    #[test]
+    fn parses_bounded_routing_visualization() {
+        let cli = Cli::try_parse_from([
+            "copperroute",
+            "route",
+            "a.dsn",
+            "-o",
+            "b.ses",
+            "--visualize",
+            "frames",
+            "--visualize-every",
+            "25",
+            "--visualize-max-frames",
+            "80",
+        ])
+        .unwrap();
+        let Command::Route(route) = cli.command else {
+            panic!("expected route")
+        };
+        assert_eq!(route.visualize, Some(PathBuf::from("frames")));
+        assert_eq!(route.visualize_every, 25);
+        assert_eq!(route.visualize_max_frames, 80);
+        assert_eq!((route.visualize_width, route.visualize_height), (1280, 720));
+    }
+
+    #[test]
+    fn parses_drc_and_info_and_mcp() {
+        let cli = Cli::try_parse_from([
+            "copperroute",
+            "drc",
+            "a.dsn",
+            "--kicad-project",
+            "p.kicad_pro",
+            "--schema",
+            "legacy",
+        ])
+        .unwrap();
+        let Command::Drc(d) = cli.command else {
+            panic!("expected drc")
+        };
+        assert_eq!(d.kicad_project, Some(PathBuf::from("p.kicad_pro")));
+        assert_eq!(d.schema, DrcSchema::Legacy);
+        assert!(matches!(
+            Cli::try_parse_from(["copperroute", "info", "a.dsn"])
+                .unwrap()
+                .command,
+            Command::Info(_)
+        ));
+        assert!(matches!(
+            Cli::try_parse_from(["copperroute", "mcp"]).unwrap().command,
+            Command::Mcp
+        ));
+    }
+
+    #[test]
+    fn settings_is_global_and_names_a_json_file() {
+        let cli =
+            Cli::try_parse_from(["copperroute", "--settings", "s.json", "info", "a.dsn"]).unwrap();
+        assert_eq!(cli.settings, Some(PathBuf::from("s.json")));
+    }
+}

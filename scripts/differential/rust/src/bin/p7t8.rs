@@ -37,16 +37,16 @@
 use std::collections::BTreeSet;
 use std::io::{BufWriter, Write};
 
-use fr_board::prelude::*;
-use fr_board::StopConnectionOption;
-use fr_dsn::{format_double, format_float};
-use fr_geometry::FloatPoint;
-use fr_router::pipeline::{
+use copper_board::prelude::*;
+use copper_board::StopConnectionOption;
+use copper_dsn::{format_double, format_float};
+use copper_geometry::FloatPoint;
+use copper_router::pipeline::{
     AutorouteBatchLoop, BatchOptimizer, NoopProgressSink, ReadSortedRouteItems, RouterBudget,
     RouterStop,
 };
-use fr_router::score::BoardStatistics;
-use fr_settings::RouterSettings;
+use copper_router::score::BoardStatistics;
+use copper_settings::RouterSettings;
 
 #[path = "../p7t_common.rs"]
 mod p7t_common;

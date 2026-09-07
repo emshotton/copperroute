@@ -1,0 +1,16 @@
+[package]
+name = "copper-router"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+copper-board = { path = "../copper-board" }
+copper-drc = { path = "../copper-drc" }
+copper-geometry = { path = "../copper-geometry" }
+copper-settings = { path = "../copper-settings" }
+thiserror.workspace = true
+
+[dev-dependencies]
+copper-dsn = { path = "../copper-dsn" }
+parity = { path = "../../tests/parity" }

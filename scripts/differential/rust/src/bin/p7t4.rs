@@ -26,15 +26,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::{BufWriter, Write};
 use std::time::UNIX_EPOCH;
 
-use fr_board::items::Item;
-use fr_board::prelude::*;
-use fr_dsn::parser::scope_parameter::DsnReadOptions;
-use fr_dsn::{format_double, BoardReadResult};
-use fr_geometry::{IntPoint, Line, Point, Polyline};
-use fr_router::board_ext::ViaOptimizer;
-use fr_router::route_connection;
-use fr_settings::sources::DefaultSettings;
-use fr_settings::{ExpansionCostFactor, HostEnvironment, RouterSettings, SettingsSource};
+use copper_board::items::Item;
+use copper_board::prelude::*;
+use copper_dsn::parser::scope_parameter::DsnReadOptions;
+use copper_dsn::{format_double, BoardReadResult};
+use copper_geometry::{IntPoint, Line, Point, Polyline};
+use copper_router::board_ext::ViaOptimizer;
+use copper_router::route_connection;
+use copper_settings::sources::DefaultSettings;
+use copper_settings::{ExpansionCostFactor, HostEnvironment, RouterSettings, SettingsSource};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -303,7 +303,7 @@ fn trace_contacts(board: &Board, via: ItemId) -> Vec<ItemId> {
         .filter(|id| {
             board
                 .get_item(*id)
-                .is_some_and(fr_board::items::Item::is_trace)
+                .is_some_and(copper_board::items::Item::is_trace)
         })
         .collect()
 }
@@ -611,7 +611,7 @@ fn load_board(dsn: &std::path::Path) -> Board {
         .expect("a file name")
         .to_string_lossy()
         .into_owned();
-    let result = fr_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
+    let result = copper_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
     match result {
         BoardReadResult::Success { board, .. } | BoardReadResult::OutlineMissing { board, .. } => {
             *board.unwrap_or_else(|| panic!("{design_name} produced no board"))

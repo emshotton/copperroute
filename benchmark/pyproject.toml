@@ -1,7 +1,7 @@
 [project]
-name = "freerouting-bench"
+name = "copperroute-bench"
 version = "0.1.0"
-description = "Comparison suite for freerouting (Java) and freerouting-rs"
+description = "Comparison suite for copperroute and Java freerouting"
 requires-python = ">=3.11"
 dependencies = ["click>=8.1", "jinja2>=3.1"]
 

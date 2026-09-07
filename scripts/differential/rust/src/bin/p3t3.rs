@@ -1,6 +1,6 @@
 //! Rust twin of `scripts/differential/java/P3T3.java` (Plan 3 Task 3).
 //!
-//! Dumps the token stream `fr_dsn::lexer::DsnScanner` produces for a file, in exactly the format
+//! Dumps the token stream `copper_dsn::lexer::DsnScanner` produces for a file, in exactly the format
 //! the Java driver dumps the one `SpecctraDsnStreamReader` produces. See
 //! `scripts/differential/README.md`.
 //!

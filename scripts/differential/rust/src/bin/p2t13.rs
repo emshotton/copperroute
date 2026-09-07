@@ -1,13 +1,13 @@
 //! Rust twin of `scripts/differential/java/P2T13.java` (Plan 2 Task 13).
 //!
-//! Feeds identical point sets to `fr_board::datastructures::delaunay::PlanarDelaunayTriangulation`
+//! Feeds identical point sets to `copper_board::datastructures::delaunay::PlanarDelaunayTriangulation`
 //! and prints `getEdgeLines()` in iteration order, plus the shuffle permutation and `validate()`.
 //! See `scripts/differential/README.md`.
 
-use fr_board::datastructures::delaunay::{DelaunayCorner, PlanarDelaunayTriangulation};
-use fr_board::ids::ItemId;
-use fr_geometry::int_point::IntPoint;
-use fr_geometry::point::Point;
+use copper_board::datastructures::delaunay::{DelaunayCorner, PlanarDelaunayTriangulation};
+use copper_board::ids::ItemId;
+use copper_geometry::int_point::IntPoint;
+use copper_geometry::point::Point;
 
 static mut STATE: u64 = 0;
 
@@ -42,7 +42,7 @@ fn obj_id(object: Option<ItemId>) -> String {
     }
 }
 
-/// `java.util.Random` + `Collections.shuffle`, duplicated here (the ones inside `fr-board` are
+/// `java.util.Random` + `Collections.shuffle`, duplicated here (the ones inside `copper-board` are
 /// private) so the driver can print the permutation the same way the Java driver does.
 struct JavaRandom {
     seed: i64,

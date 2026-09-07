@@ -1,18 +1,18 @@
-use fr_geometry::direction::Direction;
-use fr_geometry::float_point::FloatPoint;
-use fr_geometry::int_box::IntBox;
-use fr_geometry::int_direction::IntDirection;
-use fr_geometry::int_octagon::IntOctagon;
-use fr_geometry::int_point::IntPoint;
-use fr_geometry::int_vector::IntVector;
-use fr_geometry::line::Line;
-use fr_geometry::point::Point;
-use fr_geometry::regular_tile_shape::RegularTileShape;
-use fr_geometry::side::Side;
-use fr_geometry::simplex::Simplex;
-use fr_geometry::tile_shape::TileShape;
-use fr_geometry::vector::Vector;
-use fr_geometry::bounding_directions::{FortyfiveDegreeDirection, ShapeBoundingDirections};
+use copper_geometry::direction::Direction;
+use copper_geometry::float_point::FloatPoint;
+use copper_geometry::int_box::IntBox;
+use copper_geometry::int_direction::IntDirection;
+use copper_geometry::int_octagon::IntOctagon;
+use copper_geometry::int_point::IntPoint;
+use copper_geometry::int_vector::IntVector;
+use copper_geometry::line::Line;
+use copper_geometry::point::Point;
+use copper_geometry::regular_tile_shape::RegularTileShape;
+use copper_geometry::side::Side;
+use copper_geometry::simplex::Simplex;
+use copper_geometry::tile_shape::TileShape;
+use copper_geometry::vector::Vector;
+use copper_geometry::bounding_directions::{FortyfiveDegreeDirection, ShapeBoundingDirections};
 
 struct Rng(u64);
 impl Rng {

@@ -11,7 +11,7 @@
 //! # The board comparison
 //!
 //! Java compares its two boards with `BasicBoard.getHash()`, an MD5 over `serialize(true)`; this
-//! side compares with [`fr_board::Board::structural_hash`], a `u64` over a Rust-native input. The
+//! side compares with [`copper_board::Board::structural_hash`], a `u64` over a Rust-native input. The
 //! two are **not** comparable by value and neither is printed — what crosses the diff is the
 //! **decision** `equalsTranscript=<bool>`, which is controller ruling AH's rule and what Task 3
 //! audited the port's hash against.

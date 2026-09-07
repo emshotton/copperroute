@@ -23,7 +23,7 @@ export. These are extensions to the Rust JSON bridge; KiCad exporters may omit
 them. They are not imported from a .kicad_pro project.
 
 CLI users can edit the JSON before running
-`freerouting route board.json -o routed.json`. MCP users can route the same
+`copperroute route board.json -o routed.json`. MCP users can route the same
 edited JSON through `route_board`. There is no separate CLI permission flag.
 The browser integration supplies the top-level value from its checkbox.
 

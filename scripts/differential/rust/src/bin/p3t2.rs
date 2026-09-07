@@ -1,17 +1,17 @@
 //! Rust twin of `scripts/differential/java/P3T2.java` (Plan 3 Task 2).
 //!
-//! Walks the same seeded pseudo-random doubles through `fr_dsn::format::double`'s
+//! Walks the same seeded pseudo-random doubles through `copper_dsn::format::double`'s
 //! `format_double` / `format_float` / `format_placement_rotation` that the Java
 //! driver walks through `Double.toString` / `Float.toString` /
 //! `SesWriter.formatPlacementRotation`. See `scripts/differential/README.md`.
 
 use std::io::{BufWriter, Write};
 
-use fr_dsn::format::double::{
+use copper_dsn::format::double::{
     format_placement_rotation, format_double, format_float,
 };
 
-/// `java.util.Random`, duplicated here (the copies inside `fr-geometry`/`fr-board` are private)
+/// `java.util.Random`, duplicated here (the copies inside `copper-geometry`/`copper-board` are private)
 /// exactly as `p2t13.rs` duplicates it.
 struct JavaRandom {
     seed: i64,

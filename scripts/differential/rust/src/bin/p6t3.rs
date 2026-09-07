@@ -12,24 +12,24 @@
 //!
 //! args: `mode seed n rooms`.
 
-use fr_board::ids::TreeObject;
-use fr_board::prelude::*;
-use fr_dsn::format::format_double;
-use fr_geometry::{
+use copper_board::ids::TreeObject;
+use copper_board::prelude::*;
+use copper_dsn::format::format_double;
+use copper_geometry::{
     Area, IntBox, IntOctagon, IntPoint, IntVector, Point, Polyline, PolylineShapeRef, Shape,
     TileShape,
 };
-use fr_router::IncompleteRoomId;
-use fr_router::autoroute::expansion::sorted_neighbours::{
+use copper_router::IncompleteRoomId;
+use copper_router::autoroute::expansion::sorted_neighbours::{
     SortedRoomNeighbour, SortedRoomNeighbours,
 };
-use fr_router::autoroute::expansion::sorted_neighbours_45::Sorted45DegreeRoomNeighbours;
-use fr_router::autoroute::expansion::sorted_neighbours_orthogonal::SortedOrthogonalRoomNeighbours;
-use fr_router::autoroute::expansion::{
+use copper_router::autoroute::expansion::sorted_neighbours_45::Sorted45DegreeRoomNeighbours;
+use copper_router::autoroute::expansion::sorted_neighbours_orthogonal::SortedOrthogonalRoomNeighbours;
+use copper_router::autoroute::expansion::{
     ExpansionRoomStore, IncompleteFreeSpaceExpansionRoom, RoomRef,
 };
-use fr_router::autoroute::item_info;
-use fr_router::autoroute::tree_ext::AutorouteSearchTreeExt;
+use copper_router::autoroute::item_info;
+use copper_router::autoroute::tree_ext::AutorouteSearchTreeExt;
 
 const RANGE: i32 = 9000;
 const BOUNDING_BOX: IntBox = IntBox {

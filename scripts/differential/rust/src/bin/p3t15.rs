@@ -1,6 +1,6 @@
 //! Rust twin of `scripts/differential/java/P3T15.java` (Plan 3 Task 15).
 //!
-//! Reads one Specctra DSN through `fr-dsn` and dumps either the board it built (mode 0) or one
+//! Reads one Specctra DSN through `copper-dsn` and dumps either the board it built (mode 0) or one
 //! of the three writers' output verbatim (modes 1-3); mode 4 is the `p3t3` token stream, so a
 //! single driver can sweep the corpus. See `scripts/differential/README.md`.
 //!
@@ -10,10 +10,10 @@
 
 use std::io::{BufWriter, Write};
 
-use fr_board::board::Board;
-use fr_board::items::Item;
-use fr_dsn::parser::scope_parameter::DsnReadOptions;
-use fr_dsn::BoardReadResult;
+use copper_board::board::Board;
+use copper_board::items::Item;
+use copper_dsn::parser::scope_parameter::DsnReadOptions;
+use copper_dsn::BoardReadResult;
 
 #[path = "../token_dump.rs"]
 mod token_dump;
@@ -47,7 +47,7 @@ fn main() {
 
     let file = std::fs::File::open(&path).unwrap_or_else(|e| panic!("cannot open {path}: {e}"));
     let options = DsnReadOptions::default();
-    let result = fr_dsn::read_board(file, None, Some(&design_name), &options);
+    let result = copper_dsn::read_board(file, None, Some(&design_name), &options);
 
     let (board, ct, warnings) = match result {
         BoardReadResult::Success {
@@ -92,9 +92,9 @@ fn main() {
 
     match mode {
         0 => dump_items(&mut out, &board, &warnings),
-        1 => fr_dsn::dsn_writer::write(&board, &ct, &mut out, &design_name, false).expect("write"),
-        2 => fr_dsn::ses_writer::write(&board, &ct, &mut out, &design_name).expect("write"),
-        3 => fr_dsn::rules_writer::write(&board, &ct, None, &mut out, &design_name).expect("write"),
+        1 => copper_dsn::dsn_writer::write(&board, &ct, &mut out, &design_name, false).expect("write"),
+        2 => copper_dsn::ses_writer::write(&board, &ct, &mut out, &design_name).expect("write"),
+        3 => copper_dsn::rules_writer::write(&board, &ct, None, &mut out, &design_name).expect("write"),
         _ => {
             eprintln!("unknown mode: {mode}");
             std::process::exit(2);
@@ -156,7 +156,7 @@ fn describe(item: &Item, board: &Board) -> String {
 
 /// `FixedState.name()` — the Java enum constant's spelling.
 fn fixed_state_name(item: &Item) -> &'static str {
-    use fr_board::structure::layer::FixedState;
+    use copper_board::structure::layer::FixedState;
     match item.get_fixed_state() {
         FixedState::Unfixed => "UNFIXED",
         FixedState::ShoveFixed => "SHOVE_FIXED",

@@ -1,0 +1,31 @@
+[package]
+name = "copperroute"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "copperroute"
+path = "src/lib.rs"
+
+[[bin]]
+name = "copperroute"
+path = "src/main.rs"
+
+[dependencies]
+copper-geometry = { path = "../copper-geometry" }
+copper-settings = { path = "../copper-settings" }
+copper-core = { path = "../copper-core" }
+copper-dsn = { path = "../copper-dsn" }
+copper-board = { path = "../copper-board" }
+copper-drc = { path = "../copper-drc" }
+copper-router = { path = "../copper-router" }
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+parity = { path = "../../tests/parity" }

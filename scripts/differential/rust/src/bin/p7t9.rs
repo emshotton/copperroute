@@ -12,7 +12,7 @@
 //! # The board comparison
 //!
 //! Java compares its two boards with `BasicBoard.getHash()`, an MD5 over `serialize(true)`; this
-//! side compares with [`fr_board::Board::structural_hash`], a `u64` over a Rust-native input. The
+//! side compares with [`copper_board::Board::structural_hash`], a `u64` over a Rust-native input. The
 //! two are **not** comparable by value and neither is printed — what crosses the diff is the
 //! **decision** `equalsTranscript=<bool>`, which is controller ruling AH's rule and what Task 3
 //! audited the port's hash against.
@@ -27,16 +27,16 @@
 
 use std::io::{BufWriter, Write};
 
-use fr_board::prelude::*;
-use fr_dsn::{format_double, format_float};
-use fr_router::pipeline::{
+use copper_board::prelude::*;
+use copper_dsn::{format_double, format_float};
+use copper_router::pipeline::{
     optimizer_route_improved, prepare_board, run_pipeline, AutorouteBatchLoop, BatchLoopResult,
     BatchOptimizer, ItemRouteResult, NamedAlgorithmType, NoopProgressSink, PipelineResult,
     ProgressSink, ReadSortedRouteItems, RouterBudget, RouterStop, RoutingEvent, TaskState,
 };
-use fr_router::score::BoardStatistics;
-use fr_settings::sources::{CliSettings, DsnFileSettings, EnvironmentVariablesSource};
-use fr_settings::{
+use copper_router::score::BoardStatistics;
+use copper_settings::sources::{CliSettings, DsnFileSettings, EnvironmentVariablesSource};
+use copper_settings::{
     resolve_headless, HostEnvironment, RouterSettings, SettingsInputs, SettingsSource,
 };
 
@@ -205,7 +205,7 @@ fn main() {
     // `RoutingBoard.finishAutoroute()` — see the module doc. There is nothing to call on this
     // side: plan-6 ruling 3 keeps the autoroute engine out of `Board` entirely, so the port has no
     // field for `finishAutoroute` to null out and `Board`'s own hook is an empty private stub
-    // (`crates/fr-board/src/board/snapshot.rs`). The constant `false` is the port's answer, and a
+    // (`crates/copper-board/src/board/snapshot.rs`). The constant `false` is the port's answer, and a
     // Java-side `true` would be a real finding about the seam Task 15 builds on.
     let _ = real_hash;
     writeln!(out, "FINISH-AUTOROUTE moved=false").expect("write");
@@ -398,7 +398,7 @@ fn batch_argv(
 /// `P7T9.runBatchMode` — modes `batch` and `batch-router`, i.e. the whole-board run **as the CLI
 /// runs it** (controller ruling AW).
 ///
-/// Every other mode of this driver loads with `fr_dsn::read_board` and builds its settings from
+/// Every other mode of this driver loads with `copper_dsn::read_board` and builds its settings from
 /// `DefaultSettings` alone, matching `P7T2.loadBoard`/`buildSettings`. The jar's real
 /// `-de x.dsn -do x.ses` flow does neither: it loads through `HeadlessBoardManager
 /// .loadFromSpecctraDsn`, whose `applyRouterSettingsForLoadedBoard` (`:739-748`) **mutates the
@@ -420,7 +420,7 @@ fn batch_argv(
 /// # The two modes
 ///
 /// * `batch` runs the real [`run_pipeline`] and, with `--ses`, writes the result through
-///   [`fr_dsn::ses_writer::write`] using the design name Java's `job.name` carries — the file
+///   [`copper_dsn::ses_writer::write`] using the design name Java's `job.name` carries — the file
 ///   name without its extension. That is `tests/reference/<stem>/batch.ses`.
 /// * `batch-router` runs the routing stage transcribed, on the same board and settings with the
 ///   optimizer off, so each completed pass prints its `PassRecord` tuple; `--passes` writes those
@@ -611,11 +611,11 @@ fn write_passes(path: &std::path::Path, transcript: &[u8]) {
     std::fs::write(path, rendered).expect("write the passes file");
 }
 
-/// `P7T9.writeSes` — `SesWriter.write(board, out, job.name)`, this side's `fr_dsn::ses_writer`.
+/// `P7T9.writeSes` — `SesWriter.write(board, out, job.name)`, this side's `copper_dsn::ses_writer`.
 fn write_ses(
     path: &std::path::Path,
     board: &Board,
-    transform: &fr_dsn::CoordinateTransform,
+    transform: &copper_dsn::CoordinateTransform,
     design_name: &str,
 ) {
     if let Some(parent) = path.parent() {
@@ -624,7 +624,7 @@ fn write_ses(
     let mut sink = std::io::BufWriter::new(
         std::fs::File::create(path).unwrap_or_else(|e| panic!("cannot create {path:?}: {e}")),
     );
-    fr_dsn::ses_writer::write(board, transform, &mut sink, design_name).expect("write the SES");
+    copper_dsn::ses_writer::write(board, transform, &mut sink, design_name).expect("write the SES");
     sink.flush().expect("flush the SES");
 }
 
@@ -658,7 +658,7 @@ fn limit_name(limit: Option<i32>) -> String {
 /// `AutorouteBatchLoop.java:118-123` still ranks by this exact f32 formula — the `f32::NEG_INFINITY`
 /// seed and bare `>` comparison of quirk #197 — so it lives here now, over the still-public
 /// `BoardHistoryEntry::score`.
-fn board_history_max_score(bh: &fr_router::pipeline::BoardHistory) -> f32 {
+fn board_history_max_score(bh: &copper_router::pipeline::BoardHistory) -> f32 {
     let mut max_score = f32::NEG_INFINITY;
     for entry in bh.entries() {
         if entry.score > max_score {
@@ -669,14 +669,14 @@ fn board_history_max_score(bh: &fr_router::pipeline::BoardHistory) -> f32 {
 }
 
 fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSettings) -> bool {
-    use fr_board::StopConnectionOption;
-    use fr_router::pipeline::batch_loop::{
+    use copper_board::StopConnectionOption;
+    use copper_router::pipeline::batch_loop::{
         BOARD_RANK_LIMIT, FANOUT_RECOVERY_STAGNATION_PASSES, MAXIMUM_TRIES_ON_THE_SAME_BOARD,
         STAGNATION_PASS_LIMIT, STAGNATION_SCORE_THRESHOLD, STOP_AT_PASS_MINIMUM,
         STOP_AT_PASS_MODULO,
     };
-    use fr_router::pipeline::{BatchAutorouter, BatchFanout, BoardHistory, RoutingFailureLog};
-    use fr_router::score::BoardStatistics;
+    use copper_router::pipeline::{BatchAutorouter, BatchFanout, BoardHistory, RoutingFailureLog};
+    use copper_router::score::BoardStatistics;
 
     let stop = RouterStop::new();
     let mut sink = NoopProgressSink;
@@ -734,7 +734,7 @@ fn transcribe_run<W: Write>(out: &mut W, board: &mut Board, settings: &RouterSet
             fanout_summary.is_timed_out,
             final_escape.total_smd_pins,
             final_escape.escaped_count,
-            fr_dsn::format_double(final_escape.escaped_percentage),
+            copper_dsn::format_double(final_escape.escaped_percentage),
             router.fanout_timed_out,
             p7t_common::board_shape(board),
         )

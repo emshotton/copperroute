@@ -30,7 +30,7 @@
 # can mistake one for a gate input.
 #
 # The remaining quality columns are board statistics and are read from the manifest, because that
-# is where they live and nothing disputes them: `normalized_score` (`fr_router::score::
+# is where they live and nothing disputes them: `normalized_score` (`copper_router::score::
 # normalized_score`, an `f32` throughout and deliberately so — survey §9.1),
 # `traces.total_length_mm`, `vias.total_count` split through-hole/blind/buried, and
 # `bends.total_count`.
@@ -257,7 +257,7 @@ BASELINES="$ROOT/benchmark/baselines"
 AB_DIR="$BASELINES/ab"
 STEM_TIMES="$BASELINES/stem-times.tsv"
 JAR_TSV="$BASELINES/quality-baseline-java-head.tsv"
-PORT_BIN="$ROOT/target/release/freerouting"
+PORT_BIN="$ROOT/target/release/copperroute"
 OUT_DIR="$ROOT/scripts/differential/out"
 
 # The gate version this build of the script emits and is willing to compare against. Task 13
@@ -472,7 +472,7 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
 fi
 
 echo "== building the port's binary (release)"
-(cd "$ROOT" && cargo build --release --bin freerouting --quiet)
+(cd "$ROOT" && cargo build --release --bin copperroute --quiet)
 # The sha, and whether the binary that produced these numbers is actually *at* it. The five
 # generators compute the same pair, and for the same reason: `port-sha` is the one provenance line
 # the measurement spine has, and a bare HEAD sha on a dirty tree names a commit that does not

@@ -1,4 +1,4 @@
-# Freerouting Comparison Suite Implementation Plan
+# Copperroute Comparison Suite Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Python `>=3.11`; only `click` and `jinja2` as runtime deps (tomllib is stdlib in 3.11).
-- Routers are black boxes: never import from `../freerouting` or `../freerouting-rs`.
+- Routers are black boxes: never import from `../freerouting` or `../copperroute`.
 - Candidate invocation is identical for every `kind` (spec §3).
 - Default `--threads 1`; verdicts use referee numbers only (spec §7.3, §9).
 - Score formula constants copied verbatim from Java: `unrouted_penalty=5_000_000`, `violation_penalty=1_000_000`, `bend_penalty=10`, `via_cost=50`, `trace_cost_per_mm=1.0` (spec §8).
@@ -64,7 +64,7 @@ All commands below run from `freerouting-bench/` unless stated otherwise. `uv ru
 [project]
 name = "freerouting-bench"
 version = "0.1.0"
-description = "Comparison suite for freerouting (Java) and freerouting-rs"
+description = "Comparison suite for freerouting (Java) and copperroute"
 requires-python = ">=3.11"
 dependencies = ["click>=8.1", "jinja2>=3.1"]
 
@@ -104,7 +104,7 @@ RESULTS = ROOT / "results"
 REPORTS = ROOT / "reports"
 VENDOR_KICAD = ROOT / "vendor" / "kicad"
 JAVA_REPO = ROOT.parent / "freerouting"
-RUST_REPO = ROOT.parent / "freerouting-rs"
+RUST_REPO = ROOT.parent / "copperroute"
 
 
 class ToolMissing(RuntimeError):
@@ -132,7 +132,7 @@ def java_exe() -> str:
 
 def kicad_cli() -> Path:
     return _tool(
-        "FREEROUTING_KICAD_CLI",
+        "COPPERROUTE_KICAD_CLI",
         "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli",
         "kicad-cli",
     )
@@ -140,14 +140,14 @@ def kicad_cli() -> Path:
 
 def kicad_python() -> Path:
     return _tool(
-        "FREEROUTING_KICAD_PYTHON",
+        "COPPERROUTE_KICAD_PYTHON",
         "/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3",
         "KiCad bundled python3",
     )
 
 
 def time_exe() -> Path:
-    return _tool("FREEROUTING_TIME", "/usr/bin/time", "GNU/BSD time")
+    return _tool("COPPERROUTE_TIME", "/usr/bin/time", "GNU/BSD time")
 ```
 
 - [ ] **Step 3: Write the failing candidates test**
@@ -179,7 +179,7 @@ extra_args = ["--router.seed={seed}"]
 def toml_path(tmp_path: Path) -> Path:
     jar = tmp_path / "fr.jar"
     jar.write_text("")
-    rs = tmp_path / "freerouting"
+    rs = tmp_path / "copperroute"
     rs.write_text("")
     p = tmp_path / "candidates.toml"
     p.write_text(TOML.format(jar=jar, rs=rs))
@@ -334,8 +334,8 @@ sha_from = "../freerouting"
 
 [candidates.rs-main]
 kind = "rust"
-exec = ["../freerouting-rs/target/release/freerouting"]
-sha_from = "../freerouting-rs"
+exec = ["../copperroute/target/release/copperroute"]
+sha_from = "../copperroute"
 ```
 
 `bench/cli.py`:
@@ -349,7 +349,7 @@ import click
 
 @click.group()
 def main() -> None:
-    """Freerouting comparison suite."""
+    """Copperroute comparison suite."""
 
 
 if __name__ == "__main__":
@@ -607,7 +607,7 @@ from bench import corpus, paths
 
 @click.group()
 def main() -> None:
-    """Freerouting comparison suite."""
+    """Copperroute comparison suite."""
 
 
 @main.group("corpus")

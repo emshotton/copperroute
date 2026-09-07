@@ -81,7 +81,7 @@ def test_load_dotenv_is_a_no_op_when_the_file_is_missing(tmp_path, monkeypatch):
 
 
 def test_tool_default_used_when_neither_real_env_nor_dotenv_set_it(tmp_path, monkeypatch):
-    """End-to-end: with no FREEROUTING_TIME anywhere, _tool falls back to its hardcoded
+    """End-to-end: with no COPPERROUTE_TIME anywhere, _tool falls back to its hardcoded
     default, and a .env value (dotenv-beats-default) is picked up by _tool the same way a
     real env value would be (since _load_dotenv just populates os.environ)."""
     monkeypatch.delenv("BENCH_TEST_TOOL_PATH", raising=False)

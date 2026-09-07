@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate the DSN/SES round-trip references (family G) for the `fr-dsn` parity tests.
+# Generate the DSN/SES round-trip references (family G) for the `copper-dsn` parity tests.
 #
 # ## Two lanes (Plan 9 Task 0)
 #

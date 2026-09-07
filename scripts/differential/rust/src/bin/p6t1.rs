@@ -3,7 +3,7 @@
 //! Reads one DSN, picks the first `maxItems` connections by the deterministic rule `P6T1.java`'s
 //! class comment states — `getItems()` order (descending item id, quirk #63) × the item's own net
 //! index order, keeping the pairs with a non-empty unconnected set, computed once before any
-//! routing — and routes each of them through [`fr_router::route_connection`], i.e. steps 1-5 of
+//! routing — and routes each of them through [`copper_router::route_connection`], i.e. steps 1-5 of
 //! `AutorouteConnectionRouter.route` (plan-6 ruling 2's seam). One JSON line per connection,
 //! byte-identical to the Java driver's.
 //!
@@ -28,14 +28,14 @@
 //! Usage: `p6t1 <dsn> [maxItems] [ripupPassNo] [rules|-] [1-5|1-8] [neckWidthUm]`. The fourth
 //! slot exists for plan-6 ruling 9 (the via-info / via-rule re-pointing register row): the
 //! deciding comparison is Java-with-rules against the port-with-rules on
-//! `Issue593-BBD_Mars-64.dsn` plus `crates/fr-router/tests/data/ruling-h-redeclare.rules` — see
+//! `Issue593-BBD_Mars-64.dsn` plus `crates/copper-router/tests/data/ruling-h-redeclare.rules` — see
 //! `P6T1.java`'s class comment and Plan 6 Task 8's report §4.
 //!
 //! # `steps` — Plan 7 Task 8
 //!
-//! `1-5` is Plan 6's slice, [`fr_router::route_connection`], and is what
+//! `1-5` is Plan 6's slice, [`copper_router::route_connection`], and is what
 //! `tests/reference/<stem>/router.jsonl` was generated with; that path and its output are
-//! untouched. `1-8` calls [`fr_router::route_connection_full`], i.e.
+//! untouched. `1-8` calls [`copper_router::route_connection_full`], i.e.
 //! `AutorouteConnectionRouter.route` in full — step 6's `optChangedArea` on `ROUTED`, step 7's
 //! necked retry and step 8's strict-DRC rollback. `neckWidthUm` seeds `settings.neckWidthUm`,
 //! which `DefaultSettings.java:109` leaves at `0.0` and `route:125` gates the whole necked retry
@@ -61,17 +61,17 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::{BufWriter, Write};
 use std::time::UNIX_EPOCH;
 
-use fr_board::prelude::*;
-use fr_drc::DesignRulesChecker;
-use fr_dsn::format_double;
-use fr_dsn::parser::scope_parameter::DsnReadOptions;
-use fr_dsn::BoardReadResult;
-use fr_geometry::Point;
-use fr_router::autoroute::maze::ViaPricing;
-use fr_router::pipeline::RouterBudget;
-use fr_router::{route_connection, route_connection_full};
-use fr_settings::sources::DefaultSettings;
-use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
+use copper_board::prelude::*;
+use copper_drc::DesignRulesChecker;
+use copper_dsn::format_double;
+use copper_dsn::parser::scope_parameter::DsnReadOptions;
+use copper_dsn::BoardReadResult;
+use copper_geometry::Point;
+use copper_router::autoroute::maze::ViaPricing;
+use copper_router::pipeline::RouterBudget;
+use copper_router::{route_connection, route_connection_full};
+use copper_settings::sources::DefaultSettings;
+use copper_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -125,7 +125,7 @@ fn main() {
     // encode; `run.sh p6t1 fixtures/Issue026-J2_reference.dsn 45` under the variable is the
     // whole-board evidence that the port's `board_edge` class routes the same as the jar's.
     if std::env::var_os("P7T15B_PREPARE").is_some() {
-        let changed = fr_router::pipeline::prepare_board(&mut board, &settings);
+        let changed = copper_router::pipeline::prepare_board(&mut board, &settings);
         eprintln!("p7t15b-prepare changed={changed}");
     }
 
@@ -203,7 +203,7 @@ fn load_board(dsn: &std::path::Path, rules: Option<&std::path::Path>) -> Board {
         .expect("a file name")
         .to_string_lossy()
         .into_owned();
-    let result = fr_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
+    let result = copper_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
     let (mut board, transform) = match result {
         BoardReadResult::Success {
             board,
@@ -229,7 +229,7 @@ fn load_board(dsn: &std::path::Path, rules: Option<&std::path::Path>) -> Board {
         // board.
         let rules_design_name = design_name.strip_suffix(".dsn").unwrap_or(&design_name);
         let read =
-            fr_dsn::rules_reader::read(file, rules_design_name, &mut board, &transform, None)
+            copper_dsn::rules_reader::read(file, rules_design_name, &mut board, &transform, None)
                 .unwrap_or_else(|e| panic!("{rules:?} did not read: {e:?}"));
         assert!(read, "{rules:?} was rejected by the rules reader");
     }
@@ -303,8 +303,8 @@ fn route_one(
     steps: &str,
 ) -> String {
     // Plan 7 Task 8b: the per-connection separator for the level-7 bisect ledgers, the twin of
-    // `P6T1.routeOne`'s. The ledgers themselves (`CHG` in `fr_board`'s `change_trace`, `OCA*` in
-    // `fr_router`'s `opt_changed_area`) print to **stderr** without saying which connection they
+    // `P6T1.routeOne`'s. The ledgers themselves (`CHG` in `copper_board`'s `change_trace`, `OCA*` in
+    // `copper_router`'s `opt_changed_area`) print to **stderr** without saying which connection they
     // belong to; this line is what splits the stream. Gated on the same two variables, so a run
     // without them writes nothing.
     if std::env::var_os("P7T8B_CHANGE").is_some() || std::env::var_os("P7T8B_OCA").is_some() {
@@ -577,7 +577,7 @@ fn pt(p: &Point) -> String {
 }
 
 /// `P6T1.corners`.
-fn corners(p: &fr_geometry::Polyline) -> String {
+fn corners(p: &copper_geometry::Polyline) -> String {
     let mut sb = String::from("[");
     for i in 0..p.corner_count() {
         if i > 0 {

@@ -90,5 +90,5 @@ version = "2.3.1-ablation-noneck-sort"
 
 [candidates.rs-main]
 kind = "rust"
-exec = ["../target/release/freerouting"]
+exec = ["../target/release/copperroute"]
 sha_from = ".."

@@ -1,4 +1,4 @@
-//! Plan 8 Task 0's Rust half: `fr_core::timespan` against
+//! Plan 8 Task 0's Rust half: `copper_core::timespan` against
 //! `app.freerouting.util.P8T0Probe`'s reading of the HEAD jar.
 //!
 //! Prints exactly the lines `P8T0Probe.main` prints, so `scripts/differential/run.sh p8t0`
@@ -9,27 +9,27 @@
 //!
 //! The `CAPPED` and `OFFSET` columns are the Java side's
 //! `RoutingJobSchedulerActionThread.java:45-51` arithmetic with `startedAt` pinned to
-//! `Instant.EPOCH`. `fr_core::job_timeout_deadline_from` performs that on a
+//! `Instant.EPOCH`. `copper_core::job_timeout_deadline_from` performs that on a
 //! [`std::time::Instant`], which has no epoch to print, so this driver reproduces the same two
 //! lines of arithmetic on the `i64` directly — the seam being
-//! `fr_core::MAX_TIMEOUT_SECONDS`, which is the constant under test.
+//! `copper_core::MAX_TIMEOUT_SECONDS`, which is the constant under test.
 
 fn main() {
     // The two literals, which the Java half reads out of the jar by reflection.
-    println!("MAX_TIMEOUT\t{}", fr_core::MAX_TIMEOUT_SECONDS);
+    println!("MAX_TIMEOUT\t{}", copper_core::MAX_TIMEOUT_SECONDS);
     println!("ROWS\t{}", INPUTS.len());
 
     for input in INPUTS {
-        let conv = fr_core::convert_from_timespan_to_duration_format(input);
-        let value = fr_core::parse_timespan_seconds_java(input);
+        let conv = copper_core::convert_from_timespan_to_duration_format(input);
+        let value = copper_core::parse_timespan_seconds_java(input);
         let parsed = value.map_or_else(|| "null".to_string(), |v| v.to_string());
 
         // RoutingJobSchedulerActionThread.java:45-51.
         let (capped, offset) = match value {
             None => ("null".to_string(), "null".to_string()),
             Some(mut timeout) => {
-                if timeout > fr_core::MAX_TIMEOUT_SECONDS {
-                    timeout = fr_core::MAX_TIMEOUT_SECONDS;
+                if timeout > copper_core::MAX_TIMEOUT_SECONDS {
+                    timeout = copper_core::MAX_TIMEOUT_SECONDS;
                 }
                 // `Instant.EPOCH.plusSeconds(t).getEpochSecond()` is `t`, and Java's overflow arm
                 // needs |t| near `Long.MAX_VALUE`, which the field parse rejects first.

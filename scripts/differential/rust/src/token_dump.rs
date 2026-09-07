@@ -6,9 +6,9 @@
 
 use std::io::Write;
 
-use fr_dsn::format::double::format_double;
-use fr_dsn::keyword::Keyword;
-use fr_dsn::lexer::{DsnScanner, Token};
+use copper_dsn::format::double::format_double;
+use copper_dsn::keyword::Keyword;
+use copper_dsn::lexer::{DsnScanner, Token};
 
 /// Writes the whole token stream of `path` to `out`, in `P3T3.java`'s format.
 pub fn dump(out: &mut impl Write, path: &str) {

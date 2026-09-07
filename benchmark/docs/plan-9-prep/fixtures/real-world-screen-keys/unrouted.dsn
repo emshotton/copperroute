@@ -1,4 +1,4 @@
-(pcb "/private/tmp/claude-501/-Users-em-Development-freerouting/78beff9e-8700-478c-a43a-c03db0a4acbb/scratchpad/screen-keys/unrouted.dsn"
+(pcb "/private/tmp/claude-501/-Users-em-Development-copperroute/78beff9e-8700-478c-a43a-c03db0a4acbb/scratchpad/screen-keys/unrouted.dsn"
   (parser
     (string_quote ")
     (space_in_quoted_tokens on)

@@ -18,7 +18,7 @@
 //! non-`transient` *by-product* fields into a canonical state before each hash — filling
 //! `DrillItem`'s four lazy caches and resetting `Item.smallestClearance`, quirk #200 — or leaves
 //! them as they fall. This port has no such instability to reproduce (ruling AH's answer, argued
-//! in `crates/fr-board/src/board/snapshot.rs`'s audit table), so **both modes take exactly the
+//! in `crates/copper-board/src/board/snapshot.rs`'s audit table), so **both modes take exactly the
 //! same path here** and differ only in the header line. A `raw` diff is therefore a measurement
 //! of quirk #200's exposure in the jar; a `warm` diff is a port bug.
 //!
@@ -31,14 +31,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::{BufWriter, Write};
 use std::time::UNIX_EPOCH;
 
-use fr_board::prelude::*;
-use fr_dsn::parser::scope_parameter::DsnReadOptions;
-use fr_dsn::BoardReadResult;
-use fr_geometry::{Area, IntBox, IntVector, Point, Polyline, Shape, TileShape, Vector};
-use fr_router::pipeline::BoardHistory;
-use fr_router::route_connection;
-use fr_settings::sources::DefaultSettings;
-use fr_settings::{HostEnvironment, RouterSettings, SettingsSource};
+use copper_board::prelude::*;
+use copper_dsn::parser::scope_parameter::DsnReadOptions;
+use copper_dsn::BoardReadResult;
+use copper_geometry::{Area, IntBox, IntVector, Point, Polyline, Shape, TileShape, Vector};
+use copper_router::pipeline::BoardHistory;
+use copper_router::route_connection;
+use copper_settings::sources::DefaultSettings;
+use copper_settings::{HostEnvironment, RouterSettings, SettingsSource};
 
 /// `P7T10.HISTORY_CAP`.
 const HISTORY_CAP: usize = 5;
@@ -143,7 +143,7 @@ fn main() {
     // `DrillItem`'s four lazy caches and it *resets* `Item.smallestClearance`, an accumulator that
     // never resets by itself and is the load-bearing half (the method is named for the pair; see
     // `P7T10.java`). Neither has anything to do here: the port's hash reads none of those fields
-    // (the audit table's skipped rows in `crates/fr-board/src/board/snapshot.rs`), so there is no
+    // (the audit table's skipped rows in `crates/copper-board/src/board/snapshot.rs`), so there is no
     // by-product to canonicalise.
 
     let stem = dsn
@@ -236,7 +236,7 @@ fn load_board(dsn: &std::path::Path) -> Board {
         .expect("a file name")
         .to_string_lossy()
         .into_owned();
-    let result = fr_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
+    let result = copper_dsn::read_board(file, None, Some(&design_name), &DsnReadOptions::default());
     match result {
         BoardReadResult::Success { board, .. } | BoardReadResult::OutlineMissing { board, .. } => {
             *board.unwrap_or_else(|| panic!("{design_name} produced no board"))

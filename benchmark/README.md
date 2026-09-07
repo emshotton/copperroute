@@ -2,7 +2,7 @@
 
 This suite answers two questions:
 
-1. How does freerouting-rs compare with the original Java freerouting router?
+1. How does copperroute compare with the original Java freerouting router?
 2. Does a proposed change improve routing relative to a pinned HEAD of this repository,
    without regressions on individual boards?
 
@@ -47,7 +47,7 @@ Historical jars are optional: only candidates named by `--candidates` are loaded
 ## Compare Rust with Java freerouting
 
 The default [candidates.toml](candidates.toml) provides `java-current` from the sibling Java
-checkout and `rs-main` from this checkout's `target/release/freerouting`. `rs-main` is a label:
+checkout and `rs-main` from this checkout's `target/release/copperroute`. `rs-main` is a label:
 it runs the binary you built, not an automatic checkout of `main`.
 
 ```bash
@@ -97,12 +97,12 @@ Create `candidates.local.toml` in `benchmark/`:
 ```toml
 [candidates.rs-head]
 kind = "rust"
-exec = ["../../benchmark-head/target/release/freerouting"]
+exec = ["../../benchmark-head/target/release/copperroute"]
 sha_from = "../../benchmark-head"
 
 [candidates.rs-change]
 kind = "rust"
-exec = ["../target/release/freerouting"]
+exec = ["../target/release/copperroute"]
 sha_from = ".."
 ```
 
@@ -298,7 +298,7 @@ suite and Java jar, launches a detached job, and pulls results back.
 
 ```bash
 scripts/remote-setup.sh "$BENCH_REMOTE_HOST"
-scripts/remote-run.sh "$BENCH_REMOTE_HOST" --remote-dir freerouting-rs/benchmark --jobs 1 -- \
+scripts/remote-run.sh "$BENCH_REMOTE_HOST" --remote-dir copperroute/benchmark --jobs 1 -- \
   --candidates java-current,rs-main --seeds 3 --threads 1 --tier canary \
   --max-passes 100 --timeout 120 --run-id remote-java-vs-rust
 ```

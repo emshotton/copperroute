@@ -9,11 +9,11 @@
 //! The board builder is transcribed rather than shared: the Java twin is self-contained too, so
 //! any drift between the two fixtures shows up as a diff rather than as a silently-agreeing pair.
 
-use fr_board::items::Item;
-use fr_board::prelude::*;
-use fr_dsn::format_double;
-use fr_geometry::{IntBox, IntPoint, IntVector, Line, Point, Polyline, Shape, TileShape};
-use fr_router::board_ext::{PolylineTraceExt, TraceTightener};
+use copper_board::items::Item;
+use copper_board::prelude::*;
+use copper_dsn::format_double;
+use copper_geometry::{IntBox, IntPoint, IntVector, Line, Point, Polyline, Shape, TileShape};
+use copper_router::board_ext::{PolylineTraceExt, TraceTightener};
 use std::io::{BufWriter, Write};
 
 const BOUNDING_BOX: IntBox = IntBox {

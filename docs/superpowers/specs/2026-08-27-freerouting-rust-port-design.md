@@ -8,10 +8,10 @@
 A behavioral port of the freerouting PCB autorouter (Java, v2.3.x) to Rust, with
 **no GUI**. Two surfaces only:
 
-1. A headless CLI (`freerouting route|drc|info`, plus a legacy `-de/-do` shim).
-2. A native stdio MCP server (`freerouting mcp`).
+1. A headless CLI (`copperroute route|drc|info`, plus a legacy `-de/-do` shim).
+2. A native stdio MCP server (`copperroute mcp`).
 
-Primary use case: the KiCad workflow — KiCad exports Specctra DSN, freerouting
+Primary use case: the KiCad workflow — KiCad exports Specctra DSN, copperroute
 routes it, KiCad imports the resulting SES.
 
 Reference implementation: the Java clone at `../freerouting` (sibling folder).
@@ -53,32 +53,32 @@ regression tests define acceptance.
 ## 4. Workspace layout
 
 ```
-freerouting-rs/
+copperroute/
   Cargo.toml                 # workspace, edition 2024
   crates/
-    fr-geometry/             # planar geometry, exact-arithmetic fallback
-    fr-board/                # items, layers, components, rules, search tree, board facade
-    fr-dsn/                  # DSN lexer/parser/writer, .rules reader, SES reader/writer, CoordinateTransform
-    fr-drc/                  # DesignRulesChecker, ClearanceViolation, NetIncompletes, KiCad JSON report
-    fr-router/               # maze engine, expansion rooms, drill pages, batch fanout/autoroute/optimizer, tighteners, shover, via optimizer
-    fr-settings/             # RouterSettings (Option<T> fields), layered merge, env/CLI/DSN/SES/rules sources
-    fr-core/                 # RoutingPipeline, CancelToken, ProgressSink, RoutingResult, BoardStatistics, result manifest
-    freerouting/             # binary: clap CLI + legacy shim + stdio MCP
+    copper-geometry/             # planar geometry, exact-arithmetic fallback
+    copper-board/                # items, layers, components, rules, search tree, board facade
+    copper-dsn/                  # DSN lexer/parser/writer, .rules reader, SES reader/writer, CoordinateTransform
+    copper-drc/                  # DesignRulesChecker, ClearanceViolation, NetIncompletes, KiCad JSON report
+    copper-router/               # maze engine, expansion rooms, drill pages, batch fanout/autoroute/optimizer, tighteners, shover, via optimizer
+    copper-settings/             # RouterSettings (Option<T> fields), layered merge, env/CLI/DSN/SES/rules sources
+    copper-core/                 # RoutingPipeline, CancelToken, ProgressSink, RoutingResult, BoardStatistics, result manifest
+    copperroute/             # binary: clap CLI + legacy shim + stdio MCP
   tests/
     parity/                  # harness code
     reference/               # Java-generated reference outputs + metrics.json
   scripts/gen-reference.sh   # regenerates tests/reference from ../freerouting jar
 ```
 
-Dependency direction (strict): `freerouting → fr-core → fr-router → fr-drc →
-fr-board → fr-geometry`; `fr-dsn` and `fr-settings` depend only on `fr-board`
-and `fr-geometry`.
+Dependency direction (strict): `copperroute → copper-core → copper-router → copper-drc →
+copper-board → copper-geometry`; `copper-dsn` and `copper-settings` depend only on `copper-board`
+and `copper-geometry`.
 
 External crates: `clap`, `serde`, `serde_json`, `schemars`, `num-bigint`,
 `num-rational`, a polygon-boolean crate (`i_overlay` or `geo`), `rayon`,
 `rand` (seeded `StdRng`), `slotmap`, `thiserror`, `tracing`.
 
-## 5. Geometry (`fr-geometry`)
+## 5. Geometry (`copper-geometry`)
 
 Faithful port of `geometry/planar`:
 `IntPoint`, `IntVector`, `IntDirection`, `Line`, `LineSegment`, `Polyline`,
@@ -91,7 +91,7 @@ Faithful port of `geometry/planar`:
 - **No `f64` in intersection/containment paths.** `FloatPoint` only where
   Java uses it (heuristic distances, angle checks).
 
-## 6. Board model (`fr-board`)
+## 6. Board model (`copper-board`)
 
 - `Board` owns `items: SlotMap<ItemId, Item>`. All cross-references are
   `ItemId`; no back-pointers.
@@ -114,7 +114,7 @@ Faithful port of `geometry/planar`:
 - `PolylineTrace::normalize` ports the documented depth limit and the
   `combine_at_end` invariants from AGENTS.md §Trace Normalisation.
 
-## 7. I/O (`fr-dsn`)
+## 7. I/O (`copper-dsn`)
 
 - Hand-written lexer ported from `SpecctraDsnStreamReader`; parser ported
   from `io/specctra/parser/*` (`Structure`, `Network`, `Wiring`, `Library`,
@@ -124,14 +124,14 @@ Faithful port of `geometry/planar`:
 - Output formatting matches Java byte-for-byte (same number formatting,
   ordering, indentation) — this is what bit-parity tests check.
 
-## 8. DRC (`fr-drc`)
+## 8. DRC (`copper-drc`)
 
 Port of `DesignRulesChecker` (`get_all_clearance_violations` is the source of
 truth, not statistics counters), `ClearanceViolation`, `NetIncompletes`,
 `UnconnectedItems`, `AirLine`. Report serialised in the KiCad DRC JSON schema
 exactly as Java's `-drc` mode emits.
 
-## 9. Router (`fr-router`)
+## 9. Router (`copper-router`)
 
 Faithful ports of:
 - Maze: `AutorouteEngine`, `MazeSearchEngine`, `MazeExpansionEngine`,
@@ -152,7 +152,7 @@ Faithful ports of:
 Public entry points: `batch_fanout`, `batch_autoroute`, `batch_optimize`, each
 `(&mut Board, &Ctx) -> PassStats`.
 
-## 10. Core (`fr-core`)
+## 10. Core (`copper-core`)
 
 - `RoutingPipeline::run(board, settings, cancel, progress) -> RoutingResult`
   mirroring `RoutingPipeline.createForHeadless`.
@@ -165,35 +165,35 @@ Public entry points: `batch_fanout`, `batch_autoroute`, `batch_optimize`, each
 - Result manifest JSON compatible with Java's `RoutingResultManifest`.
 - Threads: `max_threads` (`-mt`); `0` or `1` = single-threaded, deterministic.
 
-## 11. Settings (`fr-settings`)
+## 11. Settings (`copper-settings`)
 
 - `RouterSettings` struct with every field `Option<T>`, derived `Serialize`,
   `Deserialize`, `JsonSchema`, with doc comments as descriptions.
 - Merge order (later wins, only `Some` values override):
   defaults → DSN `(autoroute_settings)` → SES → `.rules` → env
-  (`FREEROUTING__SECTION__FIELD`, lists comma-separated) → CLI.
+  (`COPPERROUTE__SECTION__FIELD`, lists comma-separated) → CLI.
 - No persistent config file.
 
-## 12. CLI (`freerouting` binary)
+## 12. CLI (`copperroute` binary)
 
 ```
-freerouting route <in.dsn> -o <out.ses> [--rules f] [--ses prev.ses]
+copperroute route <in.dsn> -o <out.ses> [--rules f] [--ses prev.ses]
                   [--max-passes N] [--timeout S] [--threads N]
                   [--result-json f] [--set section.field=value]...
-freerouting drc   <in.dsn> [--ses f] [--rules f] [-o report.json]
-freerouting info  <in.dsn>
-freerouting mcp
+copperroute drc   <in.dsn> [--ses f] [--rules f] [-o report.json]
+copperroute info  <in.dsn>
+copperroute mcp
 ```
 
 - Legacy shim: if argv contains `-de`, `-do`, `-drc`, or other Java short flags
   (`-mp`, `-oit`, `-mt`, `-us`, `-hr`, `-is`, `-inc`, `-dr`, `-di`, `-l`,
   `--section.field=value`), argv is rewritten to the subcommand form before
-  clap parses. `freerouting -de in.dsn -do out.ses -mp 100` works unchanged.
+  clap parses. `copperroute -de in.dsn -do out.ses -mp 100` works unchanged.
 - Exit codes as Java: 0 iff COMPLETED or TIMED_OUT and output written; 1 else.
 - Logging to stderr via `tracing`; `-v` / `--log-level`.
 - `drc` and `info` write JSON to stdout when no `-o`.
 
-## 13. MCP (`freerouting mcp`)
+## 13. MCP (`copperroute mcp`)
 
 - Native stdio JSON-RPC 2.0, newline-delimited. Stdout reserved for protocol;
   all logs to stderr.
@@ -231,12 +231,12 @@ Bottom-up, each layer parity-tested before the next, with the harness and
 CLI/MCP skeleton stood up first:
 
 1. Workspace, CLI/MCP skeleton, parity harness + `gen-reference.sh`.
-2. `fr-geometry`.
-3. `fr-board` (items, rules, search tree).
-4. `fr-dsn` (parser, writers) → DSN round-trip + unrouted SES parity.
-5. `fr-settings`.
-6. `fr-drc` → DRC parity.
-7. `fr-router` maze + expansion + path (first routed boards).
-8. `fr-router` batch loop, fanout, optimizer, tighteners → metric parity.
-9. `fr-core` pipeline, cancellation, progress, manifest.
+2. `copper-geometry`.
+3. `copper-board` (items, rules, search tree).
+4. `copper-dsn` (parser, writers) → DSN round-trip + unrouted SES parity.
+5. `copper-settings`.
+6. `copper-drc` → DRC parity.
+7. `copper-router` maze + expansion + path (first routed boards).
+8. `copper-router` batch loop, fanout, optimizer, tighteners → metric parity.
+9. `copper-core` pipeline, cancellation, progress, manifest.
 10. CLI complete (incl. shim), MCP complete, e2e tests.

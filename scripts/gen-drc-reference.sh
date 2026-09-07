@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Generate the Java DRC references for `crates/fr-drc/tests/reference_parity.rs` (Plan 5 Task 9).
+# Generate the Java DRC references for `crates/copper-drc/tests/reference_parity.rs` (Plan 5 Task 9).
 #
-# `crates/fr-drc/tests/reference_parity.rs` no longer exists: the DRC checker it compared against
+# `crates/copper-drc/tests/reference_parity.rs` no longer exists: the DRC checker it compared against
 # the jar was replaced by a native port of KiCad's own routing-type checks, so there is no more
 # Java DRC behavior to hold in parity. This script now serves `scripts/quality-ab.sh`, which reads
 # `tests/reference/drc-fixtures.txt` for its DRC stems, and the `--from-port` lane's port-cut DRC
@@ -40,7 +40,7 @@
 #                 and still the **default**, so every invocation that predates Plan 9 means what
 #                 it meant before. It cut the frozen baseline (`tests/reference-frozen/`, Task 1)
 #                 and it is the triage lane for a port-cut golden nobody can explain.
-#   --from-port   `target/release/freerouting` with **the same argv**. `-drc` is the one mode
+#   --from-port   `target/release/copperroute` with **the same argv**. `-drc` is the one mode
 #                 where the two programs take literally the same command line, so this lane is a
 #                 one-word substitution and nothing else about the run changes.
 #
@@ -80,7 +80,7 @@ REF="$ROOT/tests/reference"
 FIXTURES="$REF/drc-fixtures.txt"
 # Outputs may be redirected to a scratch tree; inputs never are.
 OUT_ROOT="${REFERENCE_OUT_ROOT:-$REF}"
-PORT_BIN="$ROOT/target/release/freerouting"
+PORT_BIN="$ROOT/target/release/copperroute"
 
 # `-XX:hashCode=2` is the constant-hash mode: the only `Object.hashCode` source in the JVM that
 # reproduces run to run *and* is not derived from an object address. Modes 0 and 5 are PRNG-
@@ -133,7 +133,7 @@ else
   # The port's own binary, in release: a debug DRC over a wide board is minutes rather than
   # seconds, and every consumer of these references runs the release build.
   echo "== building the port's binary (release)"
-  (cd "$ROOT" && cargo build --release --bin freerouting --quiet)
+  (cd "$ROOT" && cargo build --release --bin copperroute --quiet)
   PORT_SHA="$(cd "$ROOT" && git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
   PORT_DIRTY=""
   if ! (cd "$ROOT" && git diff --quiet HEAD -- crates 2>/dev/null); then
@@ -220,8 +220,8 @@ write_meta() {
   {
     if [[ "$LANE" == port ]]; then
       port_meta_lines
-      echo "version      $(grep -o 'Freerouting [0-9][^"]*' "$out/drc.json" | head -1)"
-      printf 'command      target/release/freerouting'
+      echo "version      $(grep -o 'Copperroute [0-9][^"]*' "$out/drc.json" | head -1)"
+      printf 'command      target/release/copperroute'
     else
       echo "jar          $(portable "$JAR")"
       echo "jar size     $(wc -c < "$JAR" | tr -d ' ') bytes"

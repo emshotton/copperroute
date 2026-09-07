@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate kicad-cli DRC references for crates/fr-drc/tests/kicad_oracle.rs.
+# Generate kicad-cli DRC references for crates/copper-drc/tests/kicad_oracle.rs.
 #
 # Per stem in tests/reference/kicad-drc-fixtures.txt: strip the routing from the KiCad board,
 # import the session with the benchmark's vendored importer, refill zones, copy the project next
@@ -10,14 +10,14 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 JAVA_DIR="${FREEROUTING_JAVA_DIR:-$ROOT/../freerouting}"
-KICAD_CLI="${FREEROUTING_KICAD_CLI:-/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli}"
-KICAD_PY="${FREEROUTING_KICAD_PYTHON:-/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3}"
+KICAD_CLI="${COPPERROUTE_KICAD_CLI:-/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli}"
+KICAD_PY="${COPPERROUTE_KICAD_PYTHON:-/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3}"
 VENDOR="$ROOT/benchmark/vendor/kicad"
 FIXTURES="$ROOT/tests/reference/kicad-drc-fixtures.txt"
 WANTED=("$@")
 
 for tool in "$KICAD_CLI" "$KICAD_PY"; do
-  [[ -x "$tool" ]] || { echo "error: $tool is not executable; set FREEROUTING_KICAD_CLI / FREEROUTING_KICAD_PYTHON" >&2; exit 1; }
+  [[ -x "$tool" ]] || { echo "error: $tool is not executable; set COPPERROUTE_KICAD_CLI / COPPERROUTE_KICAD_PYTHON" >&2; exit 1; }
 done
 
 resolve() {

@@ -1,6 +1,6 @@
 //! Rust twin of `scripts/differential/java/P4T1.java` (Plan 4 Task 9).
 //!
-//! Runs `fr_settings::resolve_headless` — plan ruling 1's single linear pass — over the same
+//! Runs `copper_settings::resolve_headless` — plan ruling 1's single linear pass — over the same
 //! case table the Java driver walks through the *real* two-merge composition
 //! (`Freerouting.java:125-146` + `HeadlessBoardManager.java:739-748` +
 //! `RoutingJobScheduler.java:103-186`), and prints the resulting `RouterSettings` in the same
@@ -30,7 +30,7 @@
 //!
 //! They disagree whenever the file names fewer layers than the board has: a two-`layer_rule` file
 //! on a four-layer board puts `B.Cu` at index 3 in the second parse and at index 1 in the first.
-//! `fr_settings::SettingsInputs` therefore takes the file's **bytes** and performs both parses
+//! `copper_settings::SettingsInputs` therefore takes the file's **bytes** and performs both parses
 //! itself (Task 8 fix round 2, controller ruling N; quirk #142), so this driver hands them over
 //! unparsed. Before that, it fed one board-structured parse and 13 of these 84 rows disagreed
 //! with the JVM.
@@ -43,12 +43,12 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-use fr_board::prelude::*;
-use fr_dsn::format::double::{format_double, format_float};
-use fr_dsn::parser::scope_parameter::DsnReadOptions;
-use fr_dsn::BoardReadResult;
-use fr_geometry::{IntBox, PolylineShapeRef, TileShape};
-use fr_settings::prelude::*;
+use copper_board::prelude::*;
+use copper_dsn::format::double::{format_double, format_float};
+use copper_dsn::parser::scope_parameter::DsnReadOptions;
+use copper_dsn::BoardReadResult;
+use copper_geometry::{IntBox, PolylineShapeRef, TileShape};
+use copper_settings::prelude::*;
 
 const BOARD_WIDTH: i32 = 2_000_000;
 const BOARD_HEIGHT: i32 = 1_000_000;
@@ -89,7 +89,7 @@ fn read_cases(path: &Path) -> Vec<Case> {
         .collect()
 }
 
-/// `D:<name>` is `crates/fr-settings/tests/data`; `F:<name>` (and a bare name) is the corpus.
+/// `D:<name>` is `crates/copper-settings/tests/data`; `F:<name>` (and a bare name) is the corpus.
 fn resolve(spec: &str, fixtures: &Path, data: &Path) -> PathBuf {
     if let Some(rest) = spec.strip_prefix("D:") {
         data.join(rest)
@@ -269,7 +269,7 @@ fn build_board(case: &Case, dsn_bytes: Option<&[u8]>) -> Board {
             .unwrap_or(&file_name)
             .to_string();
         let options = DsnReadOptions::default();
-        let result = fr_dsn::read_board(bytes, None, Some(&design_name), &options);
+        let result = copper_dsn::read_board(bytes, None, Some(&design_name), &options);
         let board = match result {
             BoardReadResult::Success { board, .. }
             | BoardReadResult::OutlineMissing { board, .. } => board,

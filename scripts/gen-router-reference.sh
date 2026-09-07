@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate the Java per-connection router references for `crates/fr-router/tests/reference_parity.rs`
+# Generate the Java per-connection router references for `crates/copper-router/tests/reference_parity.rs`
 # (Plan 6 Task 17, ruling 11).
 #
 # Sibling of `scripts/gen-drc-reference.sh`, and pinned to the same jar it is: the clone's **HEAD**
@@ -239,7 +239,7 @@ wanted() {
 # Machine-independent rendering of a path, `gen-drc-reference.sh`'s `portable`.
 #
 # `$ROOT` first, deliberately: in the default layout the Java clone is `…/freerouting` and this
-# workspace is its sibling `…/freerouting-rs`, so `$JAVA_DIR` is a *prefix* of `$ROOT` and
+# workspace is its sibling `…/copperroute`, so `$JAVA_DIR` is a *prefix* of `$ROOT` and
 # substituting it first would render `<workspace>/scripts/…` as `<FREEROUTING_JAVA_DIR>-rs/scripts/…`.
 portable() {
   local p="$1"
