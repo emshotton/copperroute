@@ -108,7 +108,7 @@ function select(file) {
     return;
   }
   if (file.size > 20 * 1024 * 1024) {
-    status("This prototype accepts files up to 20 MB.");
+    status("Files are limited to 20 MB.");
     return;
   }
   selected = file;

@@ -103,7 +103,7 @@ test("routes dropped PCB entirely in a worker and downloads a readable result", 
   ).toBe(true);
   await page.setViewportSize({ width: 1440, height: 1100 });
   await page.screenshot({
-    path: "/tmp/freerouting-browser.png",
+    path: "/tmp/copperroute-browser.png",
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });

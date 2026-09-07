@@ -97,7 +97,7 @@ export function importBoard(text, name, rules, options = {}) {
     (!options.ripUpRouting && children(root, "arc").length)
   )
     throw Error(
-      "This prototype does not yet support copper zones, keepouts, or curved tracks.",
+      "Copper zones, keepouts and curved tracks are not supported yet.",
     );
   const layers = child(root, "layers")
     ?.values.filter((v) => v?.values && /\.Cu$/.test(v.values[1]))

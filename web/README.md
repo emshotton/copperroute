@@ -1,4 +1,4 @@
-# Browser autorouter prototype
+# CopperRoute homepage
 
 A static webpage that accepts a `.kicad_pcb` by dropping it onto the routing
 preview window or using the file picker,
@@ -38,7 +38,7 @@ scripts/tests, and Python 3 serves the static files. The generated `pkg/` is
 ignored by Git. Serve the `web/` directory over HTTP(S), not `file://`.
 Any static host serving `.wasm` as `application/wasm` can host the page. There
 are no runtime CDN dependencies, backend services, or cross-origin isolation
-requirements. The current release WASM is approximately 2.4 MiB uncompressed.
+requirements. The current release WASM is approximately 2.9 MiB uncompressed.
 
 ## Via-in-pad rules
 

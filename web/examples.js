@@ -22,7 +22,7 @@ export function modificationNotice(
   if (!EXAMPLES[example]) return pcb;
   const root = parse(pcb),
     block = root.values.find((n) => n?.values?.[0] === "title_block");
-  const note = `Easyduino by Hanqaqa and contributors; CERN-OHL-P-2.0. Source: https://github.com/Hanqaqa/Easyduino at 53b14b66d64f25c55f88971c1c1b51656126bd30. Modified ${date} by freerouting browser demo: tracks and vias replaced; zone fill caches cleared. Refill zones and run KiCad DRC. License: https://github.com/Hanqaqa/Easyduino/blob/53b14b66d64f25c55f88971c1c1b51656126bd30/License.txt`;
+  const note = `Easyduino by Hanqaqa and contributors; CERN-OHL-P-2.0. Source: https://github.com/Hanqaqa/Easyduino at 53b14b66d64f25c55f88971c1c1b51656126bd30. Modified ${date} by CopperRoute: tracks and vias replaced; zone fill caches cleared. Refill zones and run KiCad DRC. License: https://github.com/Hanqaqa/Easyduino/blob/53b14b66d64f25c55f88971c1c1b51656126bd30/License.txt`;
   const comments =
     block?.values.filter((n) => n?.values?.[0] === "comment") ?? [];
   const slot = Array.from({ length: 9 }, (_, i) => 9 - i).find(
@@ -57,6 +57,6 @@ export function svgNotice(
   if (!EXAMPLES[example]) return svg;
   return svg.replace(
     ">",
-    `><desc>Easyduino by Hanqaqa and contributors. CERN-OHL-P-2.0. Modified ${date}: routed and rendered by freerouting browser demo. Source: https://github.com/Hanqaqa/Easyduino ; license: https://github.com/Hanqaqa/Easyduino/blob/53b14b66d64f25c55f88971c1c1b51656126bd30/License.txt</desc>`,
+    `><desc>Easyduino by Hanqaqa and contributors. CERN-OHL-P-2.0. Modified ${date}: routed and rendered by CopperRoute. Source: https://github.com/Hanqaqa/Easyduino ; license: https://github.com/Hanqaqa/Easyduino/blob/53b14b66d64f25c55f88971c1c1b51656126bd30/License.txt</desc>`,
   );
 }

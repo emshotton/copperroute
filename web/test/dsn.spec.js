@@ -40,7 +40,7 @@ test("DSN drop previews, reroutes with embedded rules, and downloads DSN/SES/SVG
   await page.locator("#route").click();
   await expect(page.locator("#pcb")).toBeVisible({ timeout: 30000 });
   await expect(page.locator("#status")).toContainText("0 unrouted connections");
-  await page.screenshot({ path: "/tmp/freerouting-dsn.png", fullPage: true });
+  await page.screenshot({ path: "/tmp/copperroute-dsn.png", fullPage: true });
   await page.locator("#demo").click();
   await expect(page.locator("#project")).toBeEnabled();
   await expect(page.locator("#traceWidth")).toBeEnabled();

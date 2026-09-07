@@ -135,7 +135,7 @@ test("zone rebuild preserves zone definitions and removes only cached fill", () 
   assert.ok(output.includes("(polygon (pts (xy 101 101)"));
   assert.ok(!output.includes("filled_polygon"));
   assert.equal(input.board.conductionAreas.length, 0);
-  assert.throws(() => load(text), /does not yet support/);
+  assert.throws(() => load(text), /Copper zones, keepouts and curved tracks/);
 });
 
 test("native preview escapes text and displays copper without a routing import", async () => {
