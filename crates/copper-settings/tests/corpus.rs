@@ -6,7 +6,7 @@ use copper_settings::prelude::*;
 fn corpus(extension: &str) -> Vec<PathBuf> {
     let mut found = Vec::new();
     collect(
-        &parity::reference_dir().join("fixtures"),
+        &testkit::corpus_dir().join("fixtures"),
         extension,
         &mut found,
     );
@@ -30,9 +30,6 @@ fn collect(dir: &Path, extension: &str, out: &mut Vec<PathBuf>) {
 
 #[test]
 fn dsn_file_settings_reads_every_fixture_without_panicking() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let files = corpus("dsn");
     assert!(
         files.len() >= 105,
@@ -101,9 +98,6 @@ fn dsn_file_settings_reads_every_fixture_without_panicking() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn rules_file_settings_reads_every_fixture_without_panicking() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let files = corpus("rules");
     assert!(
         files.len() >= 7,

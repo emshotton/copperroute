@@ -1,5 +1,6 @@
-//! regardless — Gson writes `Class.getDeclaredFields()` order — so a `#[derive(Serialize)]` with
-//! `#[serde(rename)]` cannot express it. The `Serialize` impls below walk the four DTOs in
+//! The DRC report as KiCad's `drc.v1.json` document, keys in the order `kicad-cli pcb drc`
+//! writes them.
+
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Serialize, Serializer};
 
@@ -10,73 +11,9 @@ use crate::error::DrcError;
 use crate::report::build::{DrcCoordinates, DrcReportOptions};
 use crate::report::{KiCadDrcPosition, KiCadDrcReport, KiCadDrcViolation, KiCadDrcViolationItem};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum DrcJsonFlavor {
-    #[default]
-    Legacy,
-    KiCad,
-}
-
-struct FlavorKeys {
-    coordinate_units: &'static str,
-    kicad_version: &'static str,
-    router_version: &'static str,
-    unconnected_items: &'static str,
-    schematic_parity: &'static str,
-    quality_score: &'static str,
-    hole_clearance_type: &'static str,
-    unconnected_items_type: &'static str,
-}
-
-const HEAD: &FlavorKeys = &FlavorKeys {
-    coordinate_units: "coordinateUnits",
-    kicad_version: "kicadVersion",
-    router_version: "copperrouteVersion",
-    unconnected_items: "unconnectedItems",
-    schematic_parity: "schematicParity",
-    quality_score: "qualityScore",
-    hole_clearance_type: "holeClearance",
-    unconnected_items_type: "unconnectedItems",
-};
-
-const KICAD: &FlavorKeys = &FlavorKeys {
-    coordinate_units: "coordinate_units",
-    kicad_version: "kicad_version",
-    router_version: "copperroute_version",
-    unconnected_items: "unconnected_items",
-    schematic_parity: "schematic_parity",
-    quality_score: "quality_score",
-    hole_clearance_type: "hole_clearance",
-    unconnected_items_type: "unconnected_items",
-};
-
-impl DrcJsonFlavor {
-    fn keys(self) -> &'static FlavorKeys {
-        match self {
-            DrcJsonFlavor::Legacy => HEAD,
-            DrcJsonFlavor::KiCad => KICAD,
-        }
-    }
-}
-
-impl FlavorKeys {
-    fn violation_type<'a>(&'static self, stored: &'a str) -> &'a str {
-        if stored == KICAD.hole_clearance_type {
-            self.hole_clearance_type
-        } else if stored == KICAD.unconnected_items_type {
-            self.unconnected_items_type
-        } else {
-            stored
-        }
-    }
-}
-
 impl KiCadDrcReport {
-    pub fn to_json(&self, flavor: DrcJsonFlavor) -> Result<String, DrcError> {
-        Ok(to_gson_string_pretty(&ReportSer {
-            report: self,
-            keys: flavor.keys(),
-        })?)
+    pub fn to_json(&self) -> Result<String, DrcError> {
+        Ok(to_gson_string_pretty(&ReportSer(self))?)
     }
 }
 
@@ -85,80 +22,58 @@ impl DesignRulesChecker<'_> {
         &mut self,
         coords: &DrcCoordinates,
         options: &DrcReportOptions,
-        flavor: DrcJsonFlavor,
     ) -> Result<String, DrcError> {
-        self.generate_report(coords, options).to_json(flavor)
+        self.generate_report(coords, options).to_json()
     }
 }
 
-struct ReportSer<'a> {
-    report: &'a KiCadDrcReport,
-    keys: &'static FlavorKeys,
-}
+struct ReportSer<'a>(&'a KiCadDrcReport);
 
 impl Serialize for ReportSer<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let report = self.report;
+        let report = self.0;
         let mut map = serializer.serialize_map(None)?;
         map.serialize_entry("$schema", report.json_schema)?;
-        map.serialize_entry(self.keys.coordinate_units, &report.coordinate_units)?;
+        map.serialize_entry("coordinate_units", &report.coordinate_units)?;
         map.serialize_entry("date", &report.date)?;
-        map.serialize_entry(self.keys.kicad_version, report.kicad_version)?;
-        map.serialize_entry(self.keys.router_version, &report.router_version)?;
+        map.serialize_entry("kicad_version", report.kicad_version)?;
+        map.serialize_entry("copperroute_version", &report.router_version)?;
         map.serialize_entry("source", &report.source)?;
         map.serialize_entry(
-            self.keys.unconnected_items,
-            &ViolationsSer {
-                violations: &report.unconnected_items,
-                keys: self.keys,
-            },
+            "unconnected_items",
+            &ViolationsSer(&report.unconnected_items),
         )?;
-        map.serialize_entry(
-            "violations",
-            &ViolationsSer {
-                violations: &report.violations,
-                keys: self.keys,
-            },
-        )?;
-        map.serialize_entry(self.keys.schematic_parity, &report.schematic_parity)?;
+        map.serialize_entry("violations", &ViolationsSer(&report.violations))?;
+        map.serialize_entry("schematic_parity", &report.schematic_parity)?;
         if let Some(score) = report.quality_score {
-            map.serialize_entry(self.keys.quality_score, &score)?;
+            map.serialize_entry("quality_score", &score)?;
         }
         map.end()
     }
 }
 
-struct ViolationsSer<'a> {
-    violations: &'a [KiCadDrcViolation],
-    keys: &'static FlavorKeys,
-}
+struct ViolationsSer<'a>(&'a [KiCadDrcViolation]);
 
 impl Serialize for ViolationsSer<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut seq = serializer.serialize_seq(Some(self.violations.len()))?;
-        for violation in self.violations {
-            seq.serialize_element(&ViolationSer {
-                violation,
-                keys: self.keys,
-            })?;
+        let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
+        for violation in self.0 {
+            seq.serialize_element(&ViolationSer(violation))?;
         }
         seq.end()
     }
 }
 
-struct ViolationSer<'a> {
-    violation: &'a KiCadDrcViolation,
-    keys: &'static FlavorKeys,
-}
+struct ViolationSer<'a>(&'a KiCadDrcViolation);
 
 impl Serialize for ViolationSer<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let violation = self.violation;
+        let violation = self.0;
         let mut map = serializer.serialize_map(None)?;
         map.serialize_entry("description", &violation.description)?;
         map.serialize_entry("items", &ItemsSer(&violation.items))?;
         map.serialize_entry("severity", violation.severity)?;
-        map.serialize_entry("type", self.keys.violation_type(&violation.kind))?;
+        map.serialize_entry("type", &violation.kind)?;
         map.end()
     }
 }

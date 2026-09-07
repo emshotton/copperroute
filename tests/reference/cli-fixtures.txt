@@ -1,7 +1,7 @@
 # CLI end-to-end reference stems for crates/freerouting/tests/cli_e2e.rs.
 #   stem|dsn|extra_args|lane
-# dsn is relative to the fixture corpus; extra_args is what follows `route <dsn> -o <out>`, or `-`;
-# lane is ci or slow. Goldens are cut with FR_REGOLDEN=<label> cargo test -p freerouting --test cli_e2e.
+# dsn is relative to tests/corpus; extra_args is what follows `route <dsn> -o <out>`, or `-`;
+# lane is ci or slow. Goldens are cut with COPPERROUTE_REGOLDEN=<label> cargo test -p copperroute --test cli_e2e.
 router-rpi-splitter|fixtures/Issue143-rpi_splitter.dsn|--max-passes 8 --set router.fanout.enabled=true --set router.optimizer.enabled=true|ci
 router-j2-reference|fixtures/Issue026-J2_reference.dsn|--max-passes 99 --set router.fanout.enabled=true --set router.optimizer.enabled=true|ci
 router-ecc83-input|fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn|--max-passes 8 --set router.fanout.enabled=true --set router.optimizer.enabled=true|ci

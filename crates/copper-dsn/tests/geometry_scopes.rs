@@ -402,7 +402,6 @@ fn write_parser_scope_uses_the_2_3_0_snake_case_literals() {
          \n  (host_version \"8.0.1\")\
          \n  (constant a b )\
          \n  (write_resolution m 10)\
-         \n  (generated_by_copperroute)\
          \n)"
     );
 }
@@ -434,7 +433,6 @@ fn read_parser_scope_reads_the_quote_char_host_and_router_marker() {
     let write_resolution = p.write_resolution.as_ref().expect("a write resolution");
     assert_eq!(write_resolution.char_name, "mil");
     assert_eq!(write_resolution.positive_int, 10);
-    assert!(p.dsn_file_generated_by_host);
 }
 
 #[test]

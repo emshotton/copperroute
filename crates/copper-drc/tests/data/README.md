@@ -1,16 +1,17 @@
-# `copper-drc` JVM probes and transcripts (Plan 5)
+# `copper-drc` test data
 
-JUnit-free Java drivers whose output is the source of the expected values in this crate's tests.
-They are committed so the numbers can be re-checked against a rebuilt jar.
+Expected-value transcripts for this crate's integration suites, one family per suffix:
 
-| Driver | What it probes | Needs the jar |
+| suffix | read by | rows |
 |---|---|---|
-| `DrcListProbe.java` | `DesignRulesChecker.getAllClearanceViolations()` (DesignRulesChecker.java:52-81) — the **deduplicated** list, in walk order, one line per violation with every field. The complement of Task 2's `crates/copper-board/tests/data/DrcProbe.java`, which dumps the *per item* lists before deduplication. Doubles are printed with `Double.toString`, so the port compares exact bits through `copper_dsn::format::double::format_double`. | yes |
-| `UnconnectedProbe.java` | `DesignRulesChecker.getAllUnconnectedItems()` (DesignRulesChecker.java:91-178) — the **hash-independent projection** of the list (see below). Writes the transcript to the file named by its second argument, not to stdout, because `FRLogger` prints a warning line to stdout on one of the fixtures. | yes |
-| `NetIncompletesProbe.java` | `drc.NetIncompletes`, per net number, through `DesignRulesChecker.getNetIncompletes` (DesignRulesChecker.java:800-815), which lazily runs `calculateAllIncompletes`. Writes **two** files: `<stem>.netincompletes.txt`, the hash-independent projection (`count`, `getConnectedGroupCount`, `getLengthViolation`, `getMarkerRadius` per net, plus the two totals), and `<stem>.airlines.txt`, the endpoint list, which is hash-**dependent** and is committed for one run as documentation only (plan-5 ruling 4). | yes |
-| `IncompletesProbe.java` | `DesignRulesChecker.calculateAllIncompletes` (DesignRulesChecker.java:542-623) and the eight accessors that hang off it: `maxConnections`, `getIncompleteCount()`, `getAllAirlines().length`, `getLengthViolationCount()`, `recalculateLengthViolations()` and the per-net `getIncompleteCount(int)`/`getLengthViolation(int)` — plus `BoardStatistics`' clearance block (`BoardStatistics.java:200-202`, `:338-367`) computed from `getAllClearanceViolations()` the way that block does, because `BoardStatistics` itself is Plan 8's (plan-5 ruling 5). Writes `<stem>.incompletes.txt`. All of it is hash-independent, unlike `NetIncompletesProbe`'s second output. | yes |
-| `ReportProbe.java` | `DesignRulesChecker.generateReport` (DesignRulesChecker.java:210-290) and the four `io/kicad/KiCadDrc*.java` DTOs it fills, as **normalised text** rather than as Gson JSON — Task 7 ports the DTOs and the builder, not the serialiser (that is Task 8's, with plan-5 ruling 2's two key flavors). Writes `<stem>.report.txt`. | yes |
-| `JsonProbe.java` | `DesignRulesChecker.generateReportJson` (DesignRulesChecker.java:817-820), i.e. `GsonProvider.GSON.toJson(report)` — the **bytes Gson writes** for the same report, which is Task 8's parity target. Writes `<stem>.head.json`. Its `--escapes` mode writes `gson-escapes.txt`, the four one-line facts about `GsonProvider.GSON` no fixture exercises. | yes |
+| `.list.txt` | `checks.rs` | the deduplicated clearance-violation list in walk order, every field |
+| `.unconnected.txt` | `unconnected.rs` | the unconnected-items list, projected to what is order-independent |
+| `.netincompletes.txt`, `.airlines.txt`, `.airlines-union.txt` | `net_incompletes.rs` | per-net incompletes and the airline endpoints |
+| `.incompletes.txt` | `incompletes.rs` | the incompletes counters and the clearance block of the board statistics |
+| `.report.txt` | `report.rs` | the report as normalised text |
+
+Doubles are printed the way `copper_dsn::format::double::format_double` prints them, so every
+comparison is exact.
 
 | Transcript | Fixture | Rows |
 |---|---|---|

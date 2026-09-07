@@ -140,7 +140,7 @@ pub fn cases() -> Vec<Case> {
 }
 
 pub fn data_path(name: &str) -> PathBuf {
-    parity::workspace_root()
+    testkit::workspace_root()
         .join("crates")
         .join("copper-settings")
         .join("tests")
@@ -155,7 +155,7 @@ pub fn dsn_source(case: &DsnCase) -> Option<DsnFileSettings> {
             .iter()
             .map(|dsn| {
                 let name = dsn.fixture?;
-                let bytes = std::fs::read(parity::fixture(name))
+                let bytes = std::fs::read(testkit::fixture(name))
                     .unwrap_or_else(|e| panic!("cannot read fixture {name}: {e}"));
                 Some(DsnFileSettings::new(&bytes[..], name))
             })

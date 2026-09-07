@@ -57,7 +57,7 @@ fn the_resolved_defaults_carry_the_cap() {
 }
 
 fn load_rpi() -> Board {
-    let path = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let path = testkit::corpus_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let bytes = std::fs::read(&path).expect("the rpi fixture is in the corpus");
     match copper_dsn::read_board(
         &bytes[..],
@@ -105,9 +105,6 @@ fn routed_in_one_pass(settings: &RouterSettings) -> i32 {
 #[test]
 #[cfg_attr(debug_assertions, ignore = "routes rpi_splitter; run with --release")]
 fn a_tiny_step_cap_fails_connections_without_stopping_the_pass() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let board = load_rpi();
     let mut generous = rpi_settings(&board);
     generous.connection_search_steps = Some(50_000_000);
@@ -129,9 +126,6 @@ fn a_tiny_step_cap_fails_connections_without_stopping_the_pass() {
 #[test]
 #[cfg_attr(debug_assertions, ignore = "routes rpi_splitter; run with --release")]
 fn the_search_budget_is_polled_by_the_search_and_not_by_the_cleanup() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load_rpi();
     let settings = rpi_settings(&board);
     let trace_costs = settings.get_trace_costs();

@@ -1,17 +1,7 @@
 /target
-/tools/*.jar
 /tests/reference/_scratch/
 /.superpowers/
-/scripts/differential/rust/target/
-/scripts/differential/build/
-/scripts/gen-reference/build/
-/scripts/differential/out/
 __pycache__/
 
-# `scripts/gen-batch-reference.sh` writes every output to a `.tmp` sibling and moves it into place
-# only when the run succeeded, so a failed or timed-out regeneration cannot clobber the committed,
-# machine-normalised reference. It deliberately leaves the failing run's log behind for the reader
-# — its message names the path — and that leftover must not look like an untracked reference.
-/tests/reference/**/*.tmp
 *.DS_Store
 /.claude

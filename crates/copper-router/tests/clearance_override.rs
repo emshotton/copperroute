@@ -92,7 +92,7 @@ fn default_settings() -> RouterSettings {
 }
 
 fn load_board(dsn_rel: &str) -> Board {
-    let path = parity::reference_dir().join(dsn_rel);
+    let path = testkit::corpus_dir().join(dsn_rel);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path
@@ -329,19 +329,16 @@ fn replay(stems: &[&str]) {
 
 #[test]
 fn p7t15b_transcript_matches_on_the_ci_stems() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     replay(CI_STEMS);
 }
 
 #[test]
 #[cfg_attr(
     debug_assertions,
-    ignore = "slow in debug; run with COPPERROUTE_SLOW_PARITY=1 --release"
+    ignore = "slow in debug; run with COPPERROUTE_SLOW=1 --release"
 )]
 fn p7t15b_transcript_matches_on_the_whole_corpus() {
-    if !parity::require_reference_dir() || std::env::var_os("COPPERROUTE_SLOW_PARITY").is_none() {
+    if std::env::var_os("COPPERROUTE_SLOW").is_none() {
         return;
     }
     let stems: Vec<String> = parse_transcript().into_iter().map(|b| b.stem).collect();
@@ -371,9 +368,6 @@ fn the_default_settings_ladder_fills_both_override_knobs() {
 
 #[test]
 fn prepare_board_skips_a_none_setting_and_orders_copper_before_hole() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let pristine = load_board("fixtures/Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
 
     let mut none_at_all = pristine.clone();

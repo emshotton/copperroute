@@ -537,9 +537,6 @@ fn json_file_source(name: &str, body: &str) -> JsonFileSettings {
 
 #[test]
 fn a_json_file_tier_beats_the_defaults_and_loses_to_the_dsn() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let host = HostEnvironment::with_processors(4);
     let dsn_case = &matrix::DSN_CASES[2];
     assert_eq!(dsn_case.id, "dsn2-autoroute");

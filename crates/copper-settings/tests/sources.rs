@@ -365,10 +365,7 @@ fn rules_file_settings_priority_is_40() {
 
 #[test]
 fn rules_file_settings_parses_processor_z80_rules() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let path = parity::fixture("Issue191-processor.Z80/processor.rules");
+    let path = testkit::fixture("Issue191-processor.Z80/processor.rules");
     let bytes = std::fs::read(&path).expect("golden fixture");
     let source = RulesFileSettings::new(&bytes[..], "processor.rules");
     assert_eq!(source.get_source_name(), "RULES file: processor.rules");
@@ -419,10 +416,7 @@ fn rules_file_settings_parses_processor_z80_rules() {
 
 #[test]
 fn rules_file_settings_parses_hw48na_rules() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let source = RulesFileSettings::from_path(&parity::fixture("Issue029-hw48na_valid.rules"));
+    let source = RulesFileSettings::from_path(&testkit::fixture("Issue029-hw48na_valid.rules"));
     assert_eq!(
         source.get_source_name(),
         "RULES file: Issue029-hw48na_valid.rules"
@@ -452,16 +446,13 @@ fn rules_file_settings_parses_hw48na_rules() {
 
 #[test]
 fn dsn_file_settings_seeds_the_layer_count() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     for (name, layer_count) in [
         ("Issue413-test.dsn", 2),
         ("Issue066-Project_GP8B.dsn", 4),
         ("Issue026-J2_reference.dsn", 2),
         ("Issue143-rpi_splitter.dsn", 2),
     ] {
-        let bytes = std::fs::read(parity::fixture(name)).expect("fixture");
+        let bytes = std::fs::read(testkit::fixture(name)).expect("fixture");
         let source = DsnFileSettings::new(&bytes[..], name);
         assert_eq!(source.get_priority(), 20);
         assert_eq!(source.get_source_name(), format!("DSN file: {name}"));
@@ -498,11 +489,8 @@ fn dsn_file_settings_seeds_the_layer_count() {
 
 #[test]
 fn dsn_source_seeds_the_arrays_that_block_later_sources() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let host = host();
-    let bytes = std::fs::read(parity::fixture("Issue066-Project_GP8B.dsn")).expect("fixture");
+    let bytes = std::fs::read(testkit::fixture("Issue066-Project_GP8B.dsn")).expect("fixture");
     let merged = SettingsMerger::new(vec![
         boxed(DefaultSettings::new(&host)),
         boxed(DsnFileSettings::new(
@@ -579,10 +567,7 @@ fn an_unnamed_rules_field_does_not_overwrite_a_lower_priority_source() {
     assert_eq!(merged.get_layer_count(), 2);
     assert!(!merged.are_board_specific_trace_costs_applied());
 
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let full = std::fs::read(parity::fixture("Issue029-hw48na_valid.rules")).expect("golden");
+    let full = std::fs::read(testkit::fixture("Issue029-hw48na_valid.rules")).expect("golden");
     let full = RulesFileSettings::new(&full[..], "Issue029-hw48na_valid.rules");
     let full = full.get_settings().expect("never null");
     assert_eq!(
@@ -615,10 +600,7 @@ fn is_fanout_enabled_defaults_to_false_when_absent() {
 
 #[test]
 fn dsn_router_settings_converts_into_router_settings() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let bytes = std::fs::read(parity::fixture("Issue191-processor.Z80/processor.rules"))
+    let bytes = std::fs::read(testkit::fixture("Issue191-processor.Z80/processor.rules"))
         .expect("golden fixture");
     let dsn = copper_dsn::rules_reader::read_router_settings(&bytes[..])
         .expect("scanner error")
@@ -653,14 +635,11 @@ fn dsn_router_settings_converts_into_router_settings() {
 
 #[test]
 fn dsn_router_settings_round_trips_through_router_settings() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     for name in [
         "Issue191-processor.Z80/processor.rules",
         "Issue029-hw48na_valid.rules",
     ] {
-        let bytes = std::fs::read(parity::fixture(name)).expect("golden fixture");
+        let bytes = std::fs::read(testkit::fixture(name)).expect("golden fixture");
         let before = copper_dsn::rules_reader::read_router_settings(&bytes[..])
             .expect("scanner error")
             .expect("has an (autoroute_settings) scope");

@@ -26,18 +26,9 @@ struct ManifestRow {
 struct Transcript {
     manifests: BTreeMap<String, ManifestRow>,
     durations: Vec<(u64, u64, String)>,
-    git_shas: Vec<GitShaRow>,
     sha256s: BTreeMap<String, String>,
     writes: BTreeMap<String, String>,
     norm: Vec<String>,
-}
-
-struct GitShaRow {
-    label: String,
-    env: Option<String>,
-    prop: Option<String>,
-    legacy_prop: Option<String>,
-    answer: String,
 }
 
 /// The version string the transcript was cut with; the manifest now stamps the crate's own.
@@ -57,7 +48,6 @@ fn transcript() -> Transcript {
 
     let mut manifests: BTreeMap<String, ManifestRow> = BTreeMap::new();
     let mut durations = Vec::new();
-    let mut git_shas = Vec::new();
     let mut sha256s = BTreeMap::new();
     let mut writes = BTreeMap::new();
     let mut norm = Vec::new();
@@ -88,20 +78,6 @@ fn transcript() -> Transcript {
                 finish.parse().expect("a finish"),
                 value.to_string(),
             ));
-        } else if let Some(rest) = line.strip_prefix("GITSHA ") {
-            let (label, rest) = rest.split_once(' ').expect("a label");
-            if rest.starts_with("XDIFF") {
-                continue;
-            }
-            let (sources, answer) = rest.split_once(" out=").expect("an answer");
-            let sources = sources.strip_prefix("in=").expect("the input column");
-            git_shas.push(GitShaRow {
-                label: label.to_string(),
-                env: source_value(sources, "env:FREEROUTING_GIT_SHA"),
-                prop: source_value(sources, "prop:freerouting.git.sha"),
-                legacy_prop: source_value(sources, "prop:FREEROUTING_GIT_SHA"),
-                answer: unescape(answer),
-            });
         } else if let Some(rest) = line.strip_prefix("SHA256 ") {
             let (label, value) = rest.split_once(' ').expect("a value");
             sha256s.insert(label.to_string(), value.to_string());
@@ -127,22 +103,10 @@ fn transcript() -> Transcript {
     Transcript {
         manifests,
         durations,
-        git_shas,
         sha256s,
         writes,
         norm,
     }
-}
-
-fn source_value(sources: &str, key: &str) -> Option<String> {
-    for part in sources.split('|') {
-        if let Some(rest) = part.strip_prefix(key)
-            && let Some(value) = rest.strip_prefix("=\"").and_then(|v| v.strip_suffix('"'))
-        {
-            return Some(unescape(value));
-        }
-    }
-    None
 }
 
 fn unescape(text: &str) -> String {
@@ -164,7 +128,7 @@ fn unescape(text: &str) -> String {
 }
 
 fn fixtures() -> PathBuf {
-    parity::reference_dir().join("fixtures")
+    testkit::corpus_dir().join("fixtures")
 }
 
 fn scratch() -> PathBuf {
@@ -657,40 +621,29 @@ fn an_unreadable_input_omits_the_sha256_key() {
     assert!(json_of(&none).contains("\"fixture\": {},"));
 }
 
-/// `#![forbid(unsafe_code)]`, so each row spawns **this test binary** in the child mode below —
+fn git_sha_with(value: Option<&str>) -> String {
+    let scratch = scratch();
+    let out = scratch.join("gitsha.txt");
+    let _ = std::fs::remove_file(&out);
+    let mut command = Command::new(std::env::current_exe().expect("this test binary"));
+    command.args(["--exact", "resolve_git_sha_child"]);
+    command.stdout(std::process::Stdio::null());
+    command.stderr(std::process::Stdio::null());
+    command.env("COPPERROUTE_GITSHA_OUT", &out);
+    command.env_remove("COPPERROUTE_GIT_SHA");
+    if let Some(value) = value {
+        command.env("COPPERROUTE_GIT_SHA", value);
+    }
+    assert!(command.status().expect("the child runs").success());
+    std::fs::read_to_string(&out).expect("the child wrote its answer")
+}
+
 #[test]
 fn resolve_git_sha_reads_the_env_var_then_unknown() {
-    let scratch = scratch();
-    let rows = transcript().git_shas;
-    assert!(rows.len() >= 18, "the transcript carries the whole ladder");
-    for row in rows {
-        let out = scratch.join(format!("gitsha-{}.txt", row.label));
-        let _ = std::fs::remove_file(&out);
-        let mut command = Command::new(std::env::current_exe().expect("this test binary"));
-        command.args(["--exact", "resolve_git_sha_child"]);
-        command.stdout(std::process::Stdio::null());
-        command.stderr(std::process::Stdio::null());
-        command.env("COPPERROUTE_GITSHA_OUT", &out);
-        let env_is_set = row
-            .env
-            .iter()
-            .chain(row.legacy_prop.iter())
-            .any(|value| !value.trim().is_empty());
-        if row.prop.is_some() && !env_is_set {
-            continue;
-        }
-        command.env_remove("COPPERROUTE_GIT_SHA");
-        if let Some(value) = &row.env {
-            command.env("COPPERROUTE_GIT_SHA", value);
-        }
-        if let Some(value) = &row.legacy_prop {
-            command.env("COPPERROUTE_GIT_SHA", value);
-        }
-        let status = command.status().expect("the child runs");
-        assert!(status.success(), "GITSHA {} child failed", row.label);
-        let answer = std::fs::read_to_string(&out).expect("the child wrote its answer");
-        assert_eq!(answer, row.answer, "GITSHA {}", row.label);
-    }
+    assert_eq!(git_sha_with(Some("cafebabe")), "cafebabe");
+    assert_eq!(git_sha_with(Some("  cafebabe \n")), "cafebabe");
+    assert_eq!(git_sha_with(Some("   ")), "unknown");
+    assert_eq!(git_sha_with(None), "unknown");
 }
 
 #[test]

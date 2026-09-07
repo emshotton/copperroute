@@ -276,25 +276,19 @@ are worth knowing:
   the per-pass `PassRecord`s and the final session bytes against
   `batch.passes.jsonl` and `batch.ses`. Four stems run in CI; the slow
   ones are `#[cfg_attr(debug_assertions, ignore)]` and run under
-  `COPPERROUTE_SLOW_PARITY=1 cargo test --release`. `fixtures.rs` is the routing
+  `COPPERROUTE_SLOW=1 cargo test --release`. `fixtures.rs` is the routing
   smoke test over the same boards; `strict_drc.rs` pins that the strict-DRC
   rollback adds no violation to a board that starts with some.
   `fanout_tie_break.rs` routes a hand-written four-pad board whose fanout
   has an exact distance tie and pins the outcome, because no corpus board
   contains such a tie.
 
-The reference lanes need the fixture corpus in a sibling `../freerouting`
-checkout (`FREEROUTING_JAVA_DIR` overrides the location) and skip with a
-printed message without it. Every reproducibility test passes
-`RouterBudget::disabled()`.
+The reference lanes read their boards from `tests/corpus`. Every
+reproducibility test passes `RouterBudget::disabled()`.
 
 ```sh
 cargo test -p copper-router                                   # the CI lane
-COPPERROUTE_SLOW_PARITY=1 cargo test -p copper-router --release        # plus the slow stems
-scripts/gen-batch-reference.sh                            # regenerate tests/reference/<stem>/batch.*
-scripts/gen-router-reference.sh                           # regenerate tests/reference/<stem>/router.*
+COPPERROUTE_SLOW=1 cargo test -p copper-router --release        # plus the slow stems
+COPPERROUTE_REGOLDEN=<label> cargo test -p copper-router --test batch_parity      # re-cut batch.*
+COPPERROUTE_REGOLDEN=<label> cargo test -p copper-router --test reference_parity  # re-cut router.*
 ```
-
-Both generators write a `meta.txt` per stem recording how the reference was
-cut; `tests/reference/README.md` explains the lanes and when a family is
-re-cut.

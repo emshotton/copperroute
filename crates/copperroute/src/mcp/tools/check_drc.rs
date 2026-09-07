@@ -3,7 +3,6 @@ use super::super::server::{ProgressWriter, State};
 use crate::ops::drc::{DrcRequest, drc, report_date};
 use crate::ops::load::LoadRequest;
 use copper_core::CancelToken;
-use copper_drc::report::DrcJsonFlavor;
 use serde_json::Value;
 use std::path::PathBuf;
 
@@ -21,7 +20,6 @@ pub fn run(
 
     let outcome = drc(&DrcRequest {
         load,
-        flavor: DrcJsonFlavor::KiCad,
         date: report_date(std::time::SystemTime::now()),
     })
     .map_err(super::rpc_error)?;

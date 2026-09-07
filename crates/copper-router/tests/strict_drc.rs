@@ -16,7 +16,7 @@ use copper_settings::{HostEnvironment, SettingsSource};
 const FIXTURE: &str = "fixtures/Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn";
 
 fn load_board() -> Board {
-    let path = parity::reference_dir().join(FIXTURE);
+    let path = testkit::corpus_dir().join(FIXTURE);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     match copper_dsn::read_board(file, None, None, &DsnReadOptions::default()) {
@@ -47,9 +47,6 @@ fn violating_net(board: &mut Board) -> i32 {
 
 #[test]
 fn rips_new_items_when_they_carry_violations() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load_board();
     let net_number = violating_net(&mut board);
     if net_number <= 0 {
@@ -84,9 +81,6 @@ fn rips_new_items_when_they_carry_violations() {
 
 #[test]
 fn keeps_connections_whose_new_items_are_clean() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load_board();
     let net_number = violating_net(&mut board);
     if net_number <= 0 {
@@ -109,9 +103,6 @@ fn keeps_connections_whose_new_items_are_clean() {
 
 #[test]
 fn a_rejected_connection_restores_the_pre_route_board_exactly() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load_board();
     unfix_all_wiring(&mut board);
 

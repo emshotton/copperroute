@@ -1,4 +1,4 @@
 route
-<JAVA_DIR>/fixtures/Issue026-J2_reference.dsn
+<CORPUS>/fixtures/Issue026-J2_reference.dsn
 -o
 <OUT>/route.ses

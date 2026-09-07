@@ -1,5 +1,5 @@
 route
-<JAVA_DIR>/fixtures/Issue508-DAC2020_bm01.dsn
+<CORPUS>/fixtures/Issue508-DAC2020_bm01.dsn
 -o
 <OUT>/route.ses
 --max-passes

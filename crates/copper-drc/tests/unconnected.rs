@@ -4,7 +4,7 @@ use copper_dsn::{BoardReadResult, DsnReadOptions};
 use copper_geometry::{IntBox, IntPoint, IntVector, Point, Polyline, Shape, TileShape};
 
 fn fixture_board(name: &str) -> Board {
-    let path = parity::fixture(name);
+    let path = testkit::fixture(name);
     let bytes = std::fs::read(&path)
         .unwrap_or_else(|e| panic!("cannot read fixture {}: {e}", path.display()));
     match copper_dsn::read_board(&bytes[..], None, Some(name), &DsnReadOptions::default()) {
@@ -36,36 +36,24 @@ fn fixture_entries(fixture: &str) -> (Board, Vec<UnconnectedItems>) {
 
 #[test]
 fn dev_board_phase_counts() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let (_, entries) = fixture_entries(DEV_BOARD);
     assert_eq!(phase_counts(&entries), (4, 8, 0));
 }
 
 #[test]
 fn bbd_mars_64_phase_counts() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let (_, entries) = fixture_entries(BBD_MARS_64);
     assert_eq!(phase_counts(&entries), (3, 2, 18));
 }
 
 #[test]
 fn natural_tone_preamp_phase_counts() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let (_, entries) = fixture_entries(NATURAL_TONE_PREAMP);
     assert_eq!(phase_counts(&entries), (44, 108, 4));
 }
 
 #[test]
 fn natural_tone_preamp_matches_the_java_test_lower_bounds() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let (_, entries) = fixture_entries(NATURAL_TONE_PREAMP);
     let (unconnected, track_dangling, via_dangling) = phase_counts(&entries);
 
@@ -78,9 +66,6 @@ fn natural_tone_preamp_matches_the_java_test_lower_bounds() {
 
 #[test]
 fn spot_checked_dangling_track_ids() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let (board, entries) = fixture_entries(NATURAL_TONE_PREAMP);
     let dangling: Vec<ItemId> = entries
         .iter()
@@ -103,9 +88,6 @@ fn spot_checked_dangling_track_ids() {
 
 #[test]
 fn the_three_fixtures_match_the_jvm() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     for fixture in [DEV_BOARD, BBD_MARS_64, NATURAL_TONE_PREAMP] {
         let golden = std::fs::read_to_string(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -186,9 +168,6 @@ fn render(board: &Board, entries: &[UnconnectedItems]) -> String {
 
 #[test]
 fn entries_are_ordered_by_ascending_net_number() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let (board, entries) = fixture_entries(DEV_BOARD);
     let nets: Vec<i32> = entries
         .iter()
@@ -258,9 +237,6 @@ fn a_first_item_trace_is_the_one_case_the_dedup_catches() {
 
 #[test]
 fn the_via_phase_has_no_dedup_at_all() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let (board, entries) = fixture_entries(BBD_MARS_64);
     let vias: Vec<ItemId> = entries
         .iter()
@@ -310,9 +286,6 @@ fn every_dangling_trace_precedes_every_dangling_via() {
         ],
     );
 
-    if !parity::require_reference_dir() {
-        return;
-    }
     let (_, entries) = fixture_entries(BBD_MARS_64);
     let index_of = |kind| {
         let idx: Vec<usize> = entries
@@ -345,9 +318,6 @@ fn a_net_with_one_item_is_never_unconnected() {
 
 #[test]
 fn empty_board_has_nothing_unconnected() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let (_, entries) = fixture_entries("empty_board.dsn");
     assert_eq!(phase_counts(&entries), (0, 0, 0));
 }

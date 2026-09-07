@@ -19,12 +19,8 @@ fn read_pcb<T>(text: &str, f: impl FnOnce(bool, &mut ReadScopeParameter<'_>) -> 
 }
 
 fn fixture(name: &str) -> String {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../freerouting/fixtures/"
-    );
-    std::fs::read_to_string(format!("{path}{name}"))
-        .unwrap_or_else(|e| panic!("fixture {name}: {e}"))
+    let path = testkit::fixture(name);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("fixture {}: {e}", path.display()))
 }
 
 #[test]
@@ -337,17 +333,14 @@ fn an_autoroute_settings_scope_after_a_keepout_is_read() {
 
 #[test]
 fn the_corpus_sweep_counts_boards_whose_settings_were_read() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut files: Vec<std::path::PathBuf> =
-        std::fs::read_dir(parity::reference_dir().join("fixtures"))
+        std::fs::read_dir(testkit::corpus_dir().join("fixtures"))
             .expect("the fixtures directory")
             .flatten()
             .map(|e| e.path())
             .filter(|p| p.extension().is_some_and(|e| e == "dsn"))
             .collect();
-    files.push(parity::example("tutorial_board/tutorial_board.dsn"));
+    files.push(testkit::example("tutorial_board/tutorial_board.dsn"));
     files.sort();
     assert_eq!(files.len(), 106, "sweep-p3t15.sh's corpus");
 

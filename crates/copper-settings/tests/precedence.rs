@@ -100,9 +100,6 @@ fn linear_form(
 
 #[test]
 fn the_two_forms_agree_over_the_whole_matrix() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let host = host();
     let cases = matrix::cases();
     assert_eq!(cases.len(), 64, "the matrix is the full cross product");
@@ -117,9 +114,6 @@ fn the_two_forms_agree_over_the_whole_matrix() {
 
 #[test]
 fn the_merge_alone_agrees_without_a_board() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let host = host();
     for case in &matrix::cases() {
         if SPLIT_RULES_RACE.contains(&case.id.as_str()) {
@@ -140,9 +134,6 @@ const SPLIT_RULES_RACE: [&str; 4] = [
 
 #[test]
 fn a_split_rules_pair_restarts_the_cost_array_race() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let host = host();
     let case = matrix::cases()
         .into_iter()
@@ -169,9 +160,6 @@ fn a_split_rules_pair_restarts_the_cost_array_race() {
 
 #[test]
 fn ses_tier_is_a_no_op() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let host = host();
     for case in &matrix::cases() {
         let board = matrix::board(case.dsn);
@@ -237,9 +225,6 @@ fn rules_outrank_env_and_cli_for_autoroute_fields() {
 
 #[test]
 fn rules_per_layer_trace_costs_are_discarded_in_the_headless_path() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let host = host();
     let case = matrix::Case {
         id: "q9".to_string(),
@@ -258,9 +243,6 @@ fn rules_per_layer_trace_costs_are_discarded_in_the_headless_path() {
 
 #[test]
 fn dsn_layer_seeding_blocks_every_later_cost_array() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let host = host();
     let case = matrix::Case {
         id: "q18".to_string(),

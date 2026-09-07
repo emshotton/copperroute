@@ -532,7 +532,7 @@ impl DsnScanner {
                     return Ok(Some(Token::Kw(Keyword::LogicalPartMapping)));
                 }
                 118 => {
-                    return Ok(Some(Token::Kw(Keyword::GeneratedByRouter)));
+                    return Ok(Some(Token::Str(self.yytext())));
                 }
                 119 => {
                     return Ok(Some(Token::Kw(Keyword::PreferredDirectionTraceCosts)));

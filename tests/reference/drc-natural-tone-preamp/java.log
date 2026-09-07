@@ -1,7 +1,0 @@
-2026-08-29 05:28:22.452 INFO   Freerouting v2.3.1-SNAPSHOT (build-date: 2026-08-27)
-2026-08-29 05:28:22.490 WARN   Couldn't get screen resolution. If you are running in a headless environment, disable the GUI by setting gui.enabled to false.
-2026-08-29 05:28:23.535 INFO   Loading DSN file for DRC: /Users/em/Development/freerouting/freerouting-rs/../freerouting/fixtures/Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.dsn
-2026-08-29 05:28:23.544 INFO   [08697B\D620D1] Loading board file 'Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.dsn'...
-2026-08-29 05:28:23.701 INFO   New version available: v2.3.0
-2026-08-29 05:28:23.774 WARN   DSN file 'Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.dsn' was loaded with 152 warning(s).
-2026-08-29 05:28:24.039 INFO   DRC report written to: /Users/em/Development/freerouting/freerouting-rs/tests/reference/drc-natural-tone-preamp/drc.json

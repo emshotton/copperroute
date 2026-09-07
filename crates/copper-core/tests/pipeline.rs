@@ -11,10 +11,6 @@ const STEM: &str = "router-rpi-splitter";
 
 #[test]
 fn a_recording_sink_changes_no_board_byte() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-
     let quiet = route(&SyncProgressSink::noop());
 
     let events: Arc<Mutex<Vec<RoutingEvent>>> = Arc::new(Mutex::new(Vec::new()));
@@ -55,16 +51,11 @@ fn a_recording_sink_changes_no_board_byte() {
 
 #[test]
 fn the_wrapper_is_transparent_to_the_ses_bytes() {
-    if !parity::require_reference_dir() {
+    let reference_path = testkit::reference(STEM, "batch.ses");
+    if !testkit::require_reference(&reference_path) {
         return;
     }
-    let reference_path = parity::reference(STEM, "batch.ses");
-    if !parity::require_reference(&reference_path) {
-        return;
-    }
-    let expected = parity::normalize_ses_head_tokens(
-        &std::fs::read_to_string(&reference_path).expect("the SES reference is readable"),
-    );
+    let expected = std::fs::read_to_string(&reference_path).expect("the SES reference is readable");
 
     let run = route(&SyncProgressSink::noop());
 
@@ -94,9 +85,6 @@ fn the_wrapper_is_transparent_to_the_ses_bytes() {
 
 #[test]
 fn routing_result_carries_the_drc_violations_and_the_incompletes() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let run = route(&SyncProgressSink::noop());
     let result = &run.result;
 
@@ -140,7 +128,7 @@ struct Run {
 }
 
 fn route(sink: &SyncProgressSink) -> Run {
-    let dsn = parity::reference_dir().join(DSN);
+    let dsn = testkit::corpus_dir().join(DSN);
     let bytes =
         std::fs::read(&dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
     let file_name = dsn

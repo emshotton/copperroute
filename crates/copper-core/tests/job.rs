@@ -931,7 +931,7 @@ impl Ctx {
                 let data = if f[2] == "bytes" {
                     decode(CRC_LITERAL_SPECS[idx])
                 } else {
-                    std::fs::read(parity::fixture(f[3])).unwrap()
+                    std::fs::read(testkit::fixture(f[3])).unwrap()
                 };
                 Some(format!(
                     "CRC\t{}\t{}\t{}\tlen={}\t{}",

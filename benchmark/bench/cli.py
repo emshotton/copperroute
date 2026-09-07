@@ -69,9 +69,9 @@ def corpus_cmd() -> None:
 
 @corpus_cmd.command("init")
 @click.option("--fixtures", type=click.Path(exists=True, path_type=Path),
-              default=paths.JAVA_REPO / "fixtures", show_default=True)
+              default=paths.TEST_CORPUS, show_default=True)
 def corpus_init(fixtures: Path) -> None:
-    """Import the Java repo's DSN fixtures."""
+    """Import the DSN fixtures of the test corpus."""
     boards = corpus.init_from_fixtures(fixtures)
     click.echo(f"imported {len(boards)} boards into {corpus.CORPUS / 'dsn'}")
 

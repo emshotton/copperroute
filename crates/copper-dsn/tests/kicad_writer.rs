@@ -5,11 +5,8 @@ use copper_dsn::kicad::{DEFAULT_DESIGN_NAME, import_session, read_board, write};
 const TRANSCRIPT: &str = include_str!("data/p8t10-kicad-writer.txt");
 
 fn fixture(relative: &str) -> String {
-    let root = std::env::var("FREEROUTING_JAVA_DIR").unwrap_or_else(|_| {
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../../../freerouting").to_string()
-    });
-    std::fs::read_to_string(format!("{root}/{relative}"))
-        .unwrap_or_else(|e| panic!("fixture {relative}: {e}"))
+    let path = testkit::corpus_dir().join(relative);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("fixture {}: {e}", path.display()))
 }
 
 fn unescape(text: &str) -> String {

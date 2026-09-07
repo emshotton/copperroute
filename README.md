@@ -1,11 +1,8 @@
-# copperroute
+# CoppeRoute
 
-An open source PCB autorouter. It started as a headless Rust fork of
-[freerouting](https://github.com/freerouting/freerouting) focused on KiCad
-interoperability: it reads the Specctra `.dsn` files KiCad exports, writes
-the `.ses` sessions KiCad imports, and produces DRC reports in KiCad's
-format. There is no GUI; everything runs from the command line or over
-JSON-RPC.
+An open source PCB autorouter. This started as a rust port of[freerouting](https://github.com/freerouting/freerouting) that got out of hand.
+
+[Demo]
 
 ## Build
 

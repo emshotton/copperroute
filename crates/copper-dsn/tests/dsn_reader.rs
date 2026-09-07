@@ -172,27 +172,6 @@ fn read_board_loads_issue034_with_multiple_boundary_paths() {
     assert_matches_golden(board, warnings, "Issue034-Green14SegLED-items.txt");
 }
 
-#[test]
-fn read_board_f60_keyboard() {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../freerouting/scripts/benchmark/fixtures/PCBench/f.60_keyboard/unrouted.dsn"
-    );
-    let Ok(text) = std::fs::read_to_string(path) else {
-        return;
-    };
-    let result = read_board(
-        text.as_bytes(),
-        None,
-        Some("unrouted.dsn"),
-        &DsnReadOptions::default(),
-    );
-    assert!(
-        matches!(result, BoardReadResult::Success { .. }),
-        "f.60_keyboard DSN must parse successfully, got {result:?}"
-    );
-}
-
 /// (:16-28). In Rust the exhaustiveness is a compile-time property of `match` on a non-`#[non_exhaustive]`
 #[test]
 fn the_five_variant_match_is_exhaustive() {
@@ -516,7 +495,7 @@ fn a_missing_via_padstack_fails_the_read_and_loses_its_warning() {
 }
 
 fn corpus_dir() -> std::path::PathBuf {
-    parity::reference_dir().join("fixtures")
+    testkit::corpus_dir().join("fixtures")
 }
 
 const NAMED_CORPUS_FIXTURES: [&str; 5] = [
@@ -590,9 +569,6 @@ fn the_corpus_golden_parses_and_the_named_fixtures_read_to_its_variant() {
         );
     }
 
-    if !parity::require_reference_dir() {
-        return;
-    }
     let options = DsnReadOptions::default();
     for required in NAMED_CORPUS_FIXTURES {
         let expected = &golden
@@ -621,11 +597,8 @@ fn the_corpus_golden_parses_and_the_named_fixtures_read_to_its_variant() {
     ignore = "~90 s in debug; run with --release or --ignored"
 )]
 fn every_fixture_in_the_corpus_matches_javas_result_and_warnings() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut paths: Vec<std::path::PathBuf> = std::fs::read_dir(corpus_dir())
-        .expect("fixture directory (existence already checked by require_reference_dir)")
+        .expect("the corpus directory")
         .filter_map(Result::ok)
         .map(|e| e.path())
         .filter(|p| p.extension().is_some_and(|e| e == "dsn"))

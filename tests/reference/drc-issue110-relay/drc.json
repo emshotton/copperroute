@@ -1,9 +1,9 @@
 {
   "$schema": "https://schemas.kicad.org/drc.v1.json",
   "coordinate_units": "mm",
-  "date": "2026-09-05T04:36:17.133046Z",
+  "date": "2026-09-07T05:07:15.978379Z",
   "kicad_version": "N/A",
-  "freerouting_version": "Freerouting 2.3.1-SNAPSHOT",
+  "copperroute_version": "Copperroute 0.1.0",
   "source": "Issue110-RelayModule.dsn",
   "unconnected_items": [
     {
@@ -104,7 +104,7 @@
         {
           "description": "Pin [/Система питания/Питание_12В]",
           "pos": {
-            "x": 164.0,
+            "x": 164,
             "y": -182.0524
           },
           "uuid": "671"
@@ -273,7 +273,7 @@
         {
           "description": "Pin [Net-(R2-Pad2)]",
           "pos": {
-            "x": 158.0,
+            "x": 158,
             "y": -218.635
           },
           "uuid": "383"
@@ -549,7 +549,7 @@
         {
           "description": "Pin [/USART_TX]",
           "pos": {
-            "x": 182.0,
+            "x": 182,
             "y": -208.17
           },
           "uuid": "131"
@@ -588,7 +588,7 @@
           "description": "Pin [Net-(FU1-Pad1)]",
           "pos": {
             "x": 136.5,
-            "y": -216.0
+            "y": -216
           },
           "uuid": "28"
         },
@@ -610,7 +610,7 @@
         {
           "description": "Pin [Net-(K1-Pad2)]",
           "pos": {
-            "x": 102.0,
+            "x": 102,
             "y": -205.48
           },
           "uuid": "94"
@@ -618,8 +618,8 @@
         {
           "description": "Pin [Net-(K1-Pad2)]",
           "pos": {
-            "x": 122.0,
-            "y": -222.0
+            "x": 122,
+            "y": -222
           },
           "uuid": "27"
         }
@@ -634,7 +634,7 @@
           "description": "Pin [Net-(FU2-Pad1)]",
           "pos": {
             "x": 136.5,
-            "y": -198.0
+            "y": -198
           },
           "uuid": "39"
         },
@@ -679,7 +679,7 @@
         {
           "description": "Pin [Net-(K2-Pad2)]",
           "pos": {
-            "x": 102.0,
+            "x": 102,
             "y": -193.23
           },
           "uuid": "563"
@@ -687,8 +687,8 @@
         {
           "description": "Pin [Net-(K2-Pad2)]",
           "pos": {
-            "x": 122.0,
-            "y": -204.0
+            "x": 122,
+            "y": -204
           },
           "uuid": "38"
         }
@@ -733,7 +733,7 @@
         {
           "description": "Pin [Net-(Q2-Pad2)]",
           "pos": {
-            "x": 149.0,
+            "x": 149,
             "y": -195.64
           },
           "uuid": "370"
@@ -794,7 +794,7 @@
         {
           "description": "Pin [Net-(FU1-Pad2)]",
           "pos": {
-            "x": 102.0,
+            "x": 102,
             "y": -210.56
           },
           "uuid": "95"
@@ -817,7 +817,7 @@
         {
           "description": "Pin [Net-(FU2-Pad2)]",
           "pos": {
-            "x": 102.0,
+            "x": 102,
             "y": -198.31
           },
           "uuid": "564"
@@ -918,7 +918,7 @@
           "description": "Pin [Net-(R1-Pad1)]",
           "pos": {
             "x": 162.5,
-            "y": -189.0
+            "y": -189
           },
           "uuid": "178"
         }
@@ -940,7 +940,7 @@
         {
           "description": "Pin [Net-(VD4-Pad2)]",
           "pos": {
-            "x": 168.0,
+            "x": 168,
             "y": -189.81
           },
           "uuid": "106"
@@ -2364,5 +2364,5 @@
     }
   ],
   "schematic_parity": [],
-  "quality_score": 0.0
+  "quality_score": 0
 }

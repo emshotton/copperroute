@@ -1,7 +1,5 @@
 mod common;
 
-use std::path::Path;
-
 use copper_board::{Board, PadstackId, ViaInfo, ViaInfoId, ViaRule};
 use copper_dsn::parser::DsnRouterSettings;
 use copper_dsn::parser::scope_parameter::DsnReadOptions;
@@ -37,11 +35,7 @@ fn load_board(name: &str) -> (Board, CoordinateTransform) {
 }
 
 fn fixture_bytes(name: &str) -> Vec<u8> {
-    let path = Path::new(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../freerouting/fixtures/"
-    ))
-    .join(name);
+    let path = testkit::fixture(name);
     std::fs::read(&path).unwrap_or_else(|e| panic!("cannot read fixture {}: {e}", path.display()))
 }
 

@@ -64,10 +64,6 @@ fn an_uncancelled_token_is_a_no_op() {
 
 #[test]
 fn a_cancel_from_a_second_thread_stops_a_run() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-
     let uncancelled = route(&CancelToken::new());
     assert!(
         uncancelled.passes_run > 0,
@@ -120,9 +116,6 @@ fn an_expired_deadline_reaches_the_router_stop() {
 
 #[test]
 fn an_observed_job_deadline_is_the_routing_stop_reason() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let result = route(&CancelToken::with_deadline(Deadline::in_seconds(-1)));
     assert_eq!(result.stop_reason, Some(JobStopReason::Deadline));
     assert!(result.timed_out);
@@ -130,9 +123,6 @@ fn an_observed_job_deadline_is_the_routing_stop_reason() {
 
 #[test]
 fn a_sync_sink_sees_the_runs_events() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let seen = Arc::new(AtomicUsize::new(0));
     let counter = Arc::clone(&seen);
     let sink = SyncProgressSink::new(move |_| {
@@ -157,7 +147,7 @@ fn route(token: &CancelToken) -> Run {
 }
 
 fn route_with(token: &CancelToken, sink: &SyncProgressSink) -> Run {
-    let dsn = parity::reference_dir().join(DSN);
+    let dsn = testkit::corpus_dir().join(DSN);
     let bytes =
         std::fs::read(&dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
     let file_name = dsn

@@ -60,12 +60,9 @@ fn a_session_file_is_not_a_board() {
 
 #[test]
 fn an_explicit_rules_file_reaches_the_settings_and_an_adjacent_one_only_when_asked() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let dir = scratch("rules");
     let dsn = dir.join("board.dsn");
-    std::fs::copy(parity::fixture("Issue143-rpi_splitter.dsn"), &dsn).unwrap();
+    std::fs::copy(testkit::fixture("Issue143-rpi_splitter.dsn"), &dsn).unwrap();
     std::fs::write(
         dir.join("board.rules"),
         b"(rules PCB board\n  (autoroute_settings\n    (via_costs 99)\n  )\n)\n",
@@ -94,12 +91,9 @@ fn an_explicit_rules_file_reaches_the_settings_and_an_adjacent_one_only_when_ask
 
 #[test]
 fn set_outranks_the_flags_below_it_and_the_sparse_payload_outranks_the_rules_file() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let dir = scratch("precedence");
     let dsn = dir.join("board.dsn");
-    std::fs::copy(parity::fixture("Issue143-rpi_splitter.dsn"), &dsn).unwrap();
+    std::fs::copy(testkit::fixture("Issue143-rpi_splitter.dsn"), &dsn).unwrap();
     let rules = dir.join("r.rules");
     std::fs::write(
         &rules,
@@ -130,11 +124,8 @@ fn set_outranks_the_flags_below_it_and_the_sparse_payload_outranks_the_rules_fil
 
 #[test]
 fn a_session_is_imported_and_a_project_sets_constraints() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let dsn = parity::fixture("Issue593-BBD_Mars-64.dsn");
-    let ses = parity::fixture("Issue593-BBD_Mars-64.ses");
+    let dsn = testkit::fixture("Issue593-BBD_Mars-64.dsn");
+    let ses = testkit::fixture("Issue593-BBD_Mars-64.ses");
 
     let bare = load(&LoadRequest::for_board(BoardSource::Path(dsn.clone()))).unwrap();
     let mut request = LoadRequest::for_board(BoardSource::Path(dsn));

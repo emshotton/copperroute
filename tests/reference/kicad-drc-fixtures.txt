@@ -1,9 +1,9 @@
 # kicad-cli DRC oracle fixtures for scripts/gen-kicad-drc-reference.sh and
-# crates/fr-drc/tests/kicad_oracle.rs.
+# crates/copper-drc/tests/kicad_oracle.rs. A `corpus:` prefix is relative to tests/corpus,
+# anything else to the repository root.
 #
 #   stem|dsn|ses|kicad_pcb|kicad_pro|ignore_types
 #
-# Paths are relative to the workspace root, or to $FREEROUTING_JAVA_DIR when prefixed `java:`.
 # ignore_types lists KiCad violation types whose counts are not compared for that stem.
 #
 # kicad-issue191-z80:
@@ -21,8 +21,8 @@
 #   after: traces routed under pads without actually joining them) split into far more than two
 #   islands each, so the two engines' counts diverge structurally, not from a checker bug.
 kicad-spike|benchmark/tests/data/spike/spike.dsn|benchmark/tests/data/spike/routed.ses|benchmark/tests/data/spike/stripped.kicad_pcb|benchmark/tests/data/spike/stripped.kicad_pro|
-kicad-issue191-z80|java:fixtures/Issue191-processor.Z80/processor.Z80.dsn|java:fixtures/Issue191-processor.Z80/processor.ses|java:fixtures/Issue191-processor.Z80/processor.Z80.kicad_pcb|java:fixtures/Issue191-processor.Z80/processor.Z80.kicad_pro|hole_clearance,drill_out_of_range,unconnected_items
-kicad-issue269-power-planes|java:fixtures/Issue269-NoViasOnPowerPlanes/Issue269-NoViasOnPowerPlanes.dsn|java:fixtures/Issue269-NoViasOnPowerPlanes/Issue269-NoViasOnPowerPlanes.ses|java:fixtures/Issue269-NoViasOnPowerPlanes/Issue269-NoViasOnPowerPlanes.kicad_pcb|java:fixtures/Issue269-NoViasOnPowerPlanes/Issue269-NoViasOnPowerPlanes.kicad_pro|
-kicad-issue283-preamp|java:fixtures/Issue283-UnconnectedTracesUnderPads/Natural_Tone_Preamp.dsn|java:fixtures/Issue283-UnconnectedTracesUnderPads/Natural_Tone_Preamp.ses|java:fixtures/Issue283-UnconnectedTracesUnderPads/Natural_Tone_Preamp.kicad_pcb|java:fixtures/Issue283-UnconnectedTracesUnderPads/Natural_Tone_Preamp.kicad_pro|unconnected_items
-kicad-issue368-corney|java:fixtures/Issue368-CorneyIslandWireless/corney_island_wireless.dsn|java:fixtures/Issue368-CorneyIslandWireless/corney_island_wireless (no-GUI).ses|java:fixtures/Issue368-CorneyIslandWireless/corney_island_wireless.kicad_pcb|java:fixtures/Issue368-CorneyIslandWireless/corney_island_wireless.kicad_pro|
-kicad-issue742-tastexx|java:fixtures/Issue742-tastexx-pcb/tastexx-pcb.dsn|java:fixtures/Issue742-tastexx-pcb/tastexx-pcb.ses|java:fixtures/Issue742-tastexx-pcb/tastexx-pcb.kicad_pcb|java:fixtures/Issue742-tastexx-pcb/tastexx-pcb.kicad_pro|
+kicad-issue191-z80|corpus:fixtures/Issue191-processor.Z80/processor.Z80.dsn|corpus:fixtures/Issue191-processor.Z80/processor.ses|corpus:fixtures/Issue191-processor.Z80/processor.Z80.kicad_pcb|corpus:fixtures/Issue191-processor.Z80/processor.Z80.kicad_pro|hole_clearance,drill_out_of_range,unconnected_items
+kicad-issue269-power-planes|corpus:fixtures/Issue269-NoViasOnPowerPlanes/Issue269-NoViasOnPowerPlanes.dsn|corpus:fixtures/Issue269-NoViasOnPowerPlanes/Issue269-NoViasOnPowerPlanes.ses|corpus:fixtures/Issue269-NoViasOnPowerPlanes/Issue269-NoViasOnPowerPlanes.kicad_pcb|corpus:fixtures/Issue269-NoViasOnPowerPlanes/Issue269-NoViasOnPowerPlanes.kicad_pro|
+kicad-issue283-preamp|corpus:fixtures/Issue283-UnconnectedTracesUnderPads/Natural_Tone_Preamp.dsn|corpus:fixtures/Issue283-UnconnectedTracesUnderPads/Natural_Tone_Preamp.ses|corpus:fixtures/Issue283-UnconnectedTracesUnderPads/Natural_Tone_Preamp.kicad_pcb|corpus:fixtures/Issue283-UnconnectedTracesUnderPads/Natural_Tone_Preamp.kicad_pro|unconnected_items
+kicad-issue368-corney|corpus:fixtures/Issue368-CorneyIslandWireless/corney_island_wireless.dsn|corpus:fixtures/Issue368-CorneyIslandWireless/corney_island_wireless (no-GUI).ses|corpus:fixtures/Issue368-CorneyIslandWireless/corney_island_wireless.kicad_pcb|corpus:fixtures/Issue368-CorneyIslandWireless/corney_island_wireless.kicad_pro|
+kicad-issue742-tastexx|corpus:fixtures/Issue742-tastexx-pcb/tastexx-pcb.dsn|corpus:fixtures/Issue742-tastexx-pcb/tastexx-pcb.ses|corpus:fixtures/Issue742-tastexx-pcb/tastexx-pcb.kicad_pcb|corpus:fixtures/Issue742-tastexx-pcb/tastexx-pcb.kicad_pro|

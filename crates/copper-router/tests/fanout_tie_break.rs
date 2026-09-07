@@ -9,7 +9,7 @@ const STEM: &str = "p8-fanout-tie";
 
 #[test]
 fn the_fanout_tie_break_matches_the_jar() {
-    let root = parity::workspace_root();
+    let root = testkit::workspace_root();
     let dsn = root.join(format!("crates/copper-router/tests/data/{STEM}.dsn"));
     let transcript = root.join(format!("crates/copper-router/tests/data/{STEM}-jar.txt"));
 

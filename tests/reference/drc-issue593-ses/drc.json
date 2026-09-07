@@ -1,9 +1,9 @@
 {
   "$schema": "https://schemas.kicad.org/drc.v1.json",
   "coordinate_units": "mm",
-  "date": "2026-09-05T04:36:16.607695Z",
+  "date": "2026-09-07T05:07:15.829562Z",
   "kicad_version": "N/A",
-  "freerouting_version": "Freerouting 2.3.1-SNAPSHOT",
+  "copperroute_version": "Copperroute 0.1.0",
   "source": "Issue593-BBD_Mars-64.dsn",
   "unconnected_items": [
     {
@@ -1641,7 +1641,7 @@
           "description": "Trace [Net-(J101-Pad2)]",
           "pos": {
             "x": 90.8275,
-            "y": -79.0
+            "y": -79
           },
           "uuid": "1206"
         },
@@ -1649,7 +1649,7 @@
           "description": "Trace [Net-(J101-Pad2)]",
           "pos": {
             "x": 92.76835000000001,
-            "y": -79.0
+            "y": -79
           },
           "uuid": "1207"
         }

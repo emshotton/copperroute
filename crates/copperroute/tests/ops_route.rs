@@ -58,12 +58,9 @@ fn the_budget_is_the_default_with_the_settings_knob() {
 
 #[test]
 fn a_routed_board_answers_a_session_and_its_stats() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let dir = scratch("session");
     let outcome = route(request(
-        parity::fixture("Issue143-rpi_splitter.dsn"),
+        testkit::fixture("Issue143-rpi_splitter.dsn"),
         OutputTarget::File(dir.join("out.ses")),
         vec!["router.max_passes=1".to_string()],
     ))
@@ -81,12 +78,9 @@ fn a_routed_board_answers_a_session_and_its_stats() {
 
 #[test]
 fn a_json_output_carries_the_routed_board() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let dir = scratch("json");
     let outcome = route(request(
-        parity::fixture("Issue143-rpi_splitter.dsn"),
+        testkit::fixture("Issue143-rpi_splitter.dsn"),
         OutputTarget::File(dir.join("out.json")),
         vec!["router.max_passes=1".to_string()],
     ))
@@ -99,11 +93,8 @@ fn a_json_output_carries_the_routed_board() {
 
 #[test]
 fn a_zero_job_timeout_reports_timed_out() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let outcome = route(request(
-        parity::fixture("Issue143-rpi_splitter.dsn"),
+        testkit::fixture("Issue143-rpi_splitter.dsn"),
         OutputTarget::Session,
         vec![
             "router.max_passes=1".to_string(),
@@ -117,11 +108,8 @@ fn a_zero_job_timeout_reports_timed_out() {
 
 #[test]
 fn a_bad_timeout_is_a_settings_error() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let error = match route(request(
-        parity::fixture("Issue143-rpi_splitter.dsn"),
+        testkit::fixture("Issue143-rpi_splitter.dsn"),
         OutputTarget::Session,
         vec!["router.job_timeout=banana".to_string()],
     )) {

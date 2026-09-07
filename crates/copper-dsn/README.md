@@ -117,13 +117,9 @@ sibling checks that the golden still parses and still names every fixture.
 
 ### What needs the fixture corpus
 
-`tests/reference/` travels with this repository; the boards those outputs
-were generated from live in a sibling `../freerouting` checkout
-(`FREEROUTING_JAVA_DIR` overrides the location). `parity_dsn`, `parity_ses`
-and the two corpus tests skip with a printed message when it is absent; the
-other fixture-reading suites read through `tests/common/mod.rs`'s `fixture()`
-and panic on a missing file rather than skipping. Everything that reads only
-`tests/data/` or `tests/reference/` needs no checkout at all.
+The boards live in `tests/corpus` and the expected outputs in
+`tests/reference/`; both travel with the repository. `parity_ses` re-cuts its
+references under `COPPERROUTE_REGOLDEN=<label>`.
 
 ## Conventions this crate shares with the workspace
 

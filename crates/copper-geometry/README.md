@@ -88,5 +88,5 @@ needs anything outside the repository.
 
 **`#![forbid(unsafe_code)]`** sits in the crate root, as it does in every
 workspace crate — `copper-geometry`, `copper-board`, `copper-dsn`, `copper-settings`,
-`copper-drc`, `copper-router`, `copper-core`, `tests/parity` and the `copperroute`
+`copper-drc`, `copper-router`, `copper-core`, `tests/testkit` and the `copperroute`
 binary's `main.rs`.

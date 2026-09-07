@@ -658,7 +658,7 @@ fn dump_point(point: &Point) -> String {
 }
 
 fn routed(design_name: &str) -> Board {
-    let path = parity::fixture(design_name);
+    let path = testkit::fixture(design_name);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let mut board =

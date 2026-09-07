@@ -22,7 +22,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 0 1212850.0 -1365250.0
 [s8] corner 0 1 1733550.0 -901700.0
 [s8] corner 0 2 1212850.0 -901700.0
-[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10000.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -78,7 +78,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 0 1212850.0 -1365250.0
 [s8] corner 0 1 1733550.0 -901700.0
 [s8] corner 0 2 1212850.0 -901700.0
-[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10000.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -141,7 +141,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 1 1885950.0 -1318260.0
 [s8] corner 0 2 1885950.0 -518160.0
 [s8] corner 0 3 879000.0 -518000.0
-[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10000.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=2
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -260,7 +260,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 4 793750.0 -342900.0
 [s8] corner 0 5 793750.0 -1333500.0
 [s8] corner 0 6 908050.0 -1333500.0
-[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10000.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=2
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -496,7 +496,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 1 2074000.0 -1026250.0
 [s8] corner 0 2 2074000.0 -723000.0
 [s8] corner 0 3 1900000.0 -723000.0
-[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10000.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -546,7 +546,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 1 51000.0 -50000.0
 [s8] corner 0 2 51000.0 51000.0
 [s8] corner 0 3 -50000.0 51000.0
-[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10000.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -594,7 +594,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 1 1885950.0 -1318260.0
 [s8] corner 0 2 1885950.0 -518160.0
 [s8] corner 0 3 879000.0 -518000.0
-[s8] comm unit=um resolution=10 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=um resolution=10 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=2
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[2000,2000] activeLayers=[false,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -690,7 +690,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 1 51000.0 -50000.0
 [s8] corner 0 2 51000.0 51000.0
 [s8] corner 0 3 -50000.0 51000.0
-[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10000.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -752,7 +752,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 1 100.0 -80.0
 [s8] corner 0 2 100.0 0.0
 [s8] corner 0 3 0.0 0.0
-[s8] comm unit=mil resolution=1 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mil resolution=1 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=1.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=2
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[8,8,8] activeLayers=[true,false,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -798,7 +798,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 0 50000.0 -40000.0
 [s8] corner 0 1 50000.0 0.0
 [s8] corner 0 2 0.0 0.0
-[s8] comm unit=um resolution=10 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=um resolution=10 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1250,1250] activeLayers=[false,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -838,7 +838,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 1 100000.0 -100000.0
 [s8] corner 0 2 100000.0 0.0
 [s8] corner 0 3 0.0 0.0
-[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10000.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -876,7 +876,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 0 100000.0 -100000.0
 [s8] corner 0 1 100000.0 0.0
 [s8] corner 0 2 0.0 0.0
-[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10000.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -915,7 +915,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 1 20.0 -20.0
 [s8] corner 0 2 20.0 0.0
 [s8] corner 0 3 0.0 0.0
-[s8] comm unit=mm resolution=2 stringQuote=" hostCad=KiCad hostVersion=9.9 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=2 stringQuote=" hostCad=KiCad hostVersion=9.9 constants=<null> writeResolution=null
 [s8] transform scale=2.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -954,7 +954,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 1 10.0 -10.0
 [s8] corner 0 2 10.0 0.0
 [s8] corner 0 3 0.0 0.0
-[s8] comm unit=mm resolution=1 stringQuote=" hostCad=Altium hostVersion=v24 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=1 stringQuote=" hostCad=Altium hostVersion=v24 constants=<null> writeResolution=null
 [s8] transform scale=1.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -993,7 +993,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 1 80000.0 -90000.0
 [s8] corner 0 2 80000.0 10000.0
 [s8] corner 0 3 -20000.0 10000.0
-[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10000.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -1036,7 +1036,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 2 100000.0 0.0
 [s8] corner 0 3 50000.0 30000.0
 [s8] corner 0 4 0.0 0.0
-[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10000.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -1074,7 +1074,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 0 11.0 -20.0
 [s8] corner 0 1 11.0 0.0
 [s8] corner 0 2 1.0 0.0
-[s8] comm unit=mil resolution=1 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mil resolution=1 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=1.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -1119,7 +1119,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 1 100000.0 -100000.0
 [s8] corner 0 2 100000.0 0.0
 [s8] corner 0 3 0.0 0.0
-[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10000.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=3
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]
@@ -1167,7 +1167,7 @@ HEADER jar=freerouting-current-executable.jar size=63288652 javaDir=freerouting
 [s8] corner 0 1 400000.0 -300000.0
 [s8] corner 0 2 400000.0 0.0
 [s8] corner 0 3 0.0 0.0
-[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null dsnGeneratedByHost=false
+[s8] comm unit=mm resolution=10000 stringQuote=" hostCad=KiCad hostVersion=v10.0 constants=<null> writeResolution=null
 [s8] transform scale=10000.0 baseX=0.0 baseY=0.0
 [s8] netclasses count=1
 [s8] netclass 0 name=default traceClearanceClass=1 halfWidths=[1500,1500] activeLayers=[true,true] viaRule=default shoveFixed=false pullTight=true ignoreCyclesWithAreas=false minTraceLength=0.0 maxTraceLength=0.0 dicc=[NONE=0,TRACE=1,VIA=1,PIN=1,SMD=1,AREA=1]

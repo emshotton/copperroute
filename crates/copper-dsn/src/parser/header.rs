@@ -102,10 +102,6 @@ pub fn write_parser_scope<W: Write>(
         file.write(&write_resolution.positive_int.to_string());
         file.write(")");
     }
-    if !reduced {
-        file.new_line();
-        file.write("(generated_by_copperroute)");
-    }
     file.end_scope();
 }
 
@@ -141,10 +137,6 @@ pub fn read_parser_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnErro
                 }
                 Token::Kw(Keyword::WriteResolution) => {
                     p.write_resolution = read_write_solution(p)?;
-                }
-                Token::Kw(Keyword::GeneratedByRouter) => {
-                    p.dsn_file_generated_by_host = false;
-                    let _ = skip_scope(&mut p.scanner)?;
                 }
                 _ => {
                     let _ = skip_scope(&mut p.scanner)?;

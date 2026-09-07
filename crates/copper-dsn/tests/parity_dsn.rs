@@ -33,14 +33,11 @@ fn read_fixture(path: &Path) -> (Board, CoordinateTransform) {
     }
 }
 
-use parity::dsn_design_name as design_name;
+use testkit::dsn_design_name as design_name;
 
 #[test]
 fn valid_header() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let fixture = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let fixture = testkit::corpus_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (board, ct) = read_fixture(&fixture);
     let mut out: Vec<u8> = Vec::new();
     dsn_writer::write(&board, &ct, &mut out, "test", false).expect("write");
@@ -57,10 +54,7 @@ fn valid_header() {
 
 #[test]
 fn roundtrip_preserves_layer_count() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let fixture = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let fixture = testkit::corpus_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (original, ct) = read_fixture(&fixture);
     let original_layers = original.get_layer_count();
     let mut out: Vec<u8> = Vec::new();
@@ -81,10 +75,7 @@ fn roundtrip_preserves_layer_count() {
 
 #[test]
 fn compat_mode_produces_output() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let fixture = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let fixture = testkit::corpus_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (board, ct) = read_fixture(&fixture);
     let mut out: Vec<u8> = Vec::new();
     dsn_writer::write(&board, &ct, &mut out, "compat-test", true).expect("write");
@@ -97,10 +88,7 @@ fn compat_mode_produces_output() {
 
 #[test]
 fn output_is_non_empty() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let fixture = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+    let fixture = testkit::corpus_dir().join("fixtures/Issue143-rpi_splitter.dsn");
     let (board, ct) = read_fixture(&fixture);
     let mut out: Vec<u8> = Vec::new();
     dsn_writer::write(&board, &ct, &mut out, "flush-test", false).expect("write");
@@ -112,10 +100,7 @@ fn output_is_non_empty() {
 
 #[test]
 fn compat_mode_writes_paths_where_the_default_writes_polyline_paths() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let fixture = parity::reference_dir().join("fixtures/Issue413-test.dsn");
+    let fixture = testkit::corpus_dir().join("fixtures/Issue413-test.dsn");
     if !fixture.exists() {
         eprintln!("SKIP: {} missing", fixture.display());
         return;

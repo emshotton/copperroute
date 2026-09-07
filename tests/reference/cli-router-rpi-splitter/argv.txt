@@ -1,5 +1,5 @@
 route
-<JAVA_DIR>/fixtures/Issue143-rpi_splitter.dsn
+<CORPUS>/fixtures/Issue143-rpi_splitter.dsn
 -o
 <OUT>/route.ses
 --max-passes

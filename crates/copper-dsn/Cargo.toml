@@ -12,4 +12,4 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-parity = { path = "../../tests/parity" }
+testkit = { path = "../../tests/testkit" }

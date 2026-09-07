@@ -23,7 +23,7 @@ fn read_pcb<T>(text: &str, f: impl FnOnce(bool, &mut ReadScopeParameter<'_>) -> 
 }
 
 fn fixture(name: &str) -> String {
-    let path = parity::fixture(name);
+    let path = testkit::fixture(name);
     std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("fixture {}: {e}", path.display()))
 }
 

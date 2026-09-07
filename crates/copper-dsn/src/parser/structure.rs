@@ -1066,7 +1066,6 @@ fn create_board(
         string_quote: p.string_quote.clone(),
         constants: p.constants.clone(),
         write_resolution: p.write_resolution.clone(),
-        dsn_file_generated_by_host: p.dsn_file_generated_by_host,
         ..Communication::new(
             p.unit,
             p.resolution,

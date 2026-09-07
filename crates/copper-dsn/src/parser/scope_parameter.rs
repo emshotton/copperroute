@@ -49,7 +49,6 @@ pub struct ReadScopeParameter<'a> {
     pub string_quote: String,
     pub host_cad: Option<String>,
     pub host_version: Option<String>,
-    pub dsn_file_generated_by_host: bool,
     pub write_resolution: Option<copper_board::WriteResolution>,
     pub via_at_smd_allowed: bool,
     pub board_outline_ok: bool,
@@ -81,7 +80,6 @@ impl<'a> ReadScopeParameter<'a> {
             string_quote: "\"".to_string(),
             host_cad: None,
             host_version: None,
-            dsn_file_generated_by_host: true,
             write_resolution: None,
             via_at_smd_allowed: false,
             board_outline_ok: true,
@@ -218,7 +216,6 @@ mod tests {
         assert_eq!(p.snap_angle, AngleRestriction::FortyFiveDegree);
         assert_eq!(p.string_quote, "\"");
         assert!(p.board_outline_ok);
-        assert!(p.dsn_file_generated_by_host);
         assert_eq!(p.unit, Unit::Mil);
         assert!(p.board.is_none());
         assert!(p.netlist.is_empty());

@@ -8,7 +8,7 @@ use copper_drc::checks::geometry::{
     gap_below, hole_of, is_microvia, is_through_hole_pin, item_shapes,
 };
 use copper_drc::checks::{copper, holes, single};
-use copper_drc::report::{DrcCoordinates, DrcJsonFlavor, DrcReportOptions};
+use copper_drc::report::{DrcCoordinates, DrcReportOptions};
 use copper_drc::{
     BoardStatisticsClearanceViolations, DesignRulesChecker, DrcSeverity, DrcViolation,
     DrcViolationKind,
@@ -533,10 +533,8 @@ fn the_report_carries_kicad_types_and_severities() {
     assert_eq!(report.violations[0].items.len(), 2);
     assert_eq!(report.violations[1].items.len(), 1);
 
-    let kicad = report.to_json(DrcJsonFlavor::KiCad).expect("serialises");
-    assert!(kicad.contains("\"type\": \"track_width\""));
-    let head = report.to_json(DrcJsonFlavor::Legacy).expect("serialises");
-    assert!(head.contains("\"type\": \"track_width\""));
+    let json = report.to_json().expect("serialises");
+    assert!(json.contains("\"type\": \"track_width\""));
 }
 
 #[test]
@@ -558,10 +556,8 @@ fn hole_clearance_keeps_its_camel_case_name_in_the_head_flavour_only() {
     let report =
         DesignRulesChecker::new(&mut synthetic.board).generate_report(&coords, &report_options());
     assert_eq!(report.violations[0].kind, "hole_clearance");
-    let head = report.to_json(DrcJsonFlavor::Legacy).expect("serialises");
-    assert!(head.contains("\"type\": \"holeClearance\""));
-    let kicad = report.to_json(DrcJsonFlavor::KiCad).expect("serialises");
-    assert!(kicad.contains("\"type\": \"hole_clearance\""));
+    let json = report.to_json().expect("serialises");
+    assert!(json.contains("\"type\": \"hole_clearance\""));
 }
 
 #[test]

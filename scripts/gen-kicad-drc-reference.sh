@@ -9,7 +9,7 @@
 # Usage: scripts/gen-kicad-drc-reference.sh [stem ...]
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-JAVA_DIR="${FREEROUTING_JAVA_DIR:-$ROOT/../freerouting}"
+CORPUS_DIR="$ROOT/tests/corpus"
 KICAD_CLI="${COPPERROUTE_KICAD_CLI:-/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli}"
 KICAD_PY="${COPPERROUTE_KICAD_PYTHON:-/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3}"
 VENDOR="$ROOT/benchmark/vendor/kicad"
@@ -22,7 +22,7 @@ done
 
 resolve() {
   local p="$1"
-  if [[ "$p" == java:* ]]; then printf '%s/%s' "$JAVA_DIR" "${p#java:}"; else printf '%s/%s' "$ROOT" "$p"; fi
+  if [[ "$p" == corpus:* ]]; then printf '%s/%s' "$CORPUS_DIR" "${p#corpus:}"; else printf '%s/%s' "$ROOT" "$p"; fi
 }
 
 wanted() {

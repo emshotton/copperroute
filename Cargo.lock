@@ -138,9 +138,9 @@ dependencies = [
  "copper-geometry",
  "copper-router",
  "copper-settings",
- "parity",
  "serde",
  "serde_json",
+ "testkit",
  "thiserror",
 ]
 
@@ -151,9 +151,9 @@ dependencies = [
  "copper-board",
  "copper-dsn",
  "copper-geometry",
- "parity",
  "serde",
  "serde_json",
+ "testkit",
  "thiserror",
 ]
 
@@ -163,9 +163,9 @@ version = "0.1.0"
 dependencies = [
  "copper-board",
  "copper-geometry",
- "parity",
  "serde",
  "serde_json",
+ "testkit",
  "thiserror",
 ]
 
@@ -187,7 +187,7 @@ dependencies = [
  "copper-dsn",
  "copper-geometry",
  "copper-settings",
- "parity",
+ "testkit",
  "thiserror",
 ]
 
@@ -198,9 +198,9 @@ dependencies = [
  "copper-board",
  "copper-dsn",
  "copper-geometry",
- "parity",
  "serde",
  "serde_json",
+ "testkit",
  "thiserror",
 ]
 
@@ -216,9 +216,9 @@ dependencies = [
  "copper-geometry",
  "copper-router",
  "copper-settings",
- "parity",
  "serde",
  "serde_json",
+ "testkit",
  "thiserror",
  "tracing",
  "tracing-subscriber",
@@ -317,15 +317,6 @@ name = "once_cell_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
-
-[[package]]
-name = "parity"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "similar",
-]
 
 [[package]]
 name = "pin-project-lite"
@@ -458,6 +449,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "testkit"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "similar",
 ]
 
 [[package]]

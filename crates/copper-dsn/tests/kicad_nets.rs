@@ -3,11 +3,8 @@ use copper_dsn::error::BoardReadResult;
 use copper_dsn::kicad::read_board;
 
 fn fixture(relative: &str) -> String {
-    let root = std::env::var("FREEROUTING_JAVA_DIR").unwrap_or_else(|_| {
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../../../freerouting").to_string()
-    });
-    std::fs::read_to_string(format!("{root}/{relative}"))
-        .unwrap_or_else(|e| panic!("fixture {relative}: {e}"))
+    let path = testkit::corpus_dir().join(relative);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("fixture {}: {e}", path.display()))
 }
 
 fn read(json: &str) -> Board {

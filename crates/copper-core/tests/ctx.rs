@@ -53,7 +53,6 @@ fn a_plain_context_carries_the_fixed_budget() {
     assert_ne!(
         disabled.budget,
         RouterBudget::default(),
-        "`disabled` is not merely `default` — `fanout_ms_per_pin` still separates them, which is \
-         why scripts/quality-ab.sh's quality lane also pins router.fanout.max_milliseconds_per_pin"
+        "`disabled` is not merely `default`: `fanout_ms_per_pin` still separates them"
     );
 }

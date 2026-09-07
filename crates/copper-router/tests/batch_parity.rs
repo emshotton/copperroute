@@ -1,5 +1,5 @@
 //! Splitting [`climb_all`] into eight `#[test]`s is mechanical if per-stem reporting is later
-//! four `#[cfg_attr(debug_assertions, ignore)]` + `COPPERROUTE_SLOW_PARITY=1`
+//! four `#[cfg_attr(debug_assertions, ignore)]` + `COPPERROUTE_SLOW=1`
 use std::collections::BTreeSet;
 
 use copper_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
@@ -8,7 +8,7 @@ use copper_router::pipeline::{
 };
 use copper_settings::sources::{CliSettings, DsnFileSettings, EnvironmentVariablesSource};
 use copper_settings::{HostEnvironment, SettingsInputs, SettingsSource, resolve_headless};
-use parity::BatchPassDoc;
+use testkit::BatchPassDoc;
 
 struct Stem {
     name: &'static str,
@@ -93,7 +93,7 @@ struct BatchRun {
 }
 
 fn route_stem(stem: &Stem) -> BatchRun {
-    let dsn = parity::reference_dir().join(stem.dsn);
+    let dsn = testkit::corpus_dir().join(stem.dsn);
     let bytes =
         std::fs::read(&dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
     let file_name = dsn
@@ -241,8 +241,7 @@ fn count_wire_scopes(ses: &str) -> usize {
         .count()
 }
 
-fn rung_c_ses_bytes(stem: &Stem, run: &BatchRun, reference_ses: &str) {
-    let expected = parity::normalize_ses_head_tokens(reference_ses);
+fn rung_c_ses_bytes(stem: &Stem, run: &BatchRun, expected: &str) {
     if run.ses == expected {
         return;
     }
@@ -269,12 +268,12 @@ fn rung_c_ses_bytes(stem: &Stem, run: &BatchRun, reference_ses: &str) {
 }
 
 fn read_reference(stem: &Stem) -> Option<(Vec<BatchPassDoc>, String)> {
-    let ses_path = parity::reference(stem.name, "batch.ses");
-    let passes_path = parity::reference(stem.name, "batch.passes.jsonl");
-    if !parity::require_reference(&ses_path) || !parity::require_reference(&passes_path) {
+    let ses_path = testkit::reference(stem.name, "batch.ses");
+    let passes_path = testkit::reference(stem.name, "batch.passes.jsonl");
+    if !testkit::require_reference(&ses_path) || !testkit::require_reference(&passes_path) {
         return None;
     }
-    let passes = parity::parse_batch_passes(
+    let passes = testkit::parse_batch_passes(
         &std::fs::read_to_string(&passes_path).expect("the passes reference is readable"),
     )
     .expect("the passes reference parses");
@@ -287,11 +286,11 @@ fn climb(stem: &Stem) {
         return;
     };
     let run = route_stem(stem);
-    if parity::regolden_label().is_some() {
-        std::fs::write(parity::reference(stem.name, "batch.ses"), &run.ses)
+    if testkit::regolden_label().is_some() {
+        std::fs::write(testkit::reference(stem.name, "batch.ses"), &run.ses)
             .expect("the batch.ses reference is writable");
-        parity::write_batch_passes(
-            &parity::reference(stem.name, "batch.passes.jsonl"),
+        testkit::write_batch_passes(
+            &testkit::reference(stem.name, "batch.passes.jsonl"),
             &run.passes,
         );
         return;
@@ -302,9 +301,6 @@ fn climb(stem: &Stem) {
 }
 
 fn climb_all(ci_only: bool) {
-    if !parity::require_reference_dir() {
-        return;
-    }
     for stem in STEMS.iter().filter(|s| !ci_only || s.ci) {
         climb(stem);
     }
@@ -313,84 +309,19 @@ fn climb_all(ci_only: bool) {
 #[test]
 #[cfg_attr(
     debug_assertions,
-    ignore = "slow in debug; run with COPPERROUTE_SLOW_PARITY=1 --release"
+    ignore = "slow in debug; run with COPPERROUTE_SLOW=1 --release"
 )]
 fn the_slow_stems_climb_the_whole_ladder() {
-    if std::env::var_os("COPPERROUTE_SLOW_PARITY").is_none() {
+    if std::env::var_os("COPPERROUTE_SLOW").is_none() {
         return;
     }
     climb_all(false);
 }
 
 #[test]
-fn references_are_from_the_head_jar() {
-    let mut revisions = BTreeSet::new();
-    for stem in STEMS {
-        let meta_path = parity::reference(stem.name, "batch.meta.txt");
-        if !parity::require_reference(&meta_path) {
-            continue;
-        }
-        let meta = std::fs::read_to_string(&meta_path).expect("batch.meta.txt is readable");
-        if parity::declared_lane(&meta).starts_with("port") {
-            parity::assert_port_lane_provenance(&meta, stem.name);
-            continue;
-        }
-        assert!(
-            meta.contains("freerouting-current-executable.jar"),
-            "{}: batch.meta.txt does not name the HEAD jar",
-            stem.name
-        );
-        let revision = meta
-            .lines()
-            .find_map(|line| line.strip_prefix("jar revision "))
-            .map(str::trim)
-            .unwrap_or_else(|| panic!("{}: batch.meta.txt has no `jar revision`", stem.name));
-        assert_eq!(
-            revision.len(),
-            40,
-            "{}: `jar revision` is not a 40-character git revision: {revision}",
-            stem.name
-        );
-        revisions.insert(revision.to_string());
-    }
-    assert!(
-        revisions.len() <= 1,
-        "the eight references come from {} different jar builds: {revisions:?}",
-        revisions.len()
-    );
-}
-
-#[test]
-fn the_driver_matches_the_bare_jar() {
-    for stem in STEMS {
-        let meta_path = parity::reference(stem.name, "batch.meta.txt");
-        if !parity::require_reference(&meta_path) {
-            continue;
-        }
-        let meta = std::fs::read_to_string(&meta_path).expect("batch.meta.txt is readable");
-        let verdict = meta
-            .lines()
-            .find_map(|line| line.strip_prefix("bare-jar "))
-            .map(str::trim)
-            .unwrap_or_else(|| {
-                panic!(
-                    "{}: batch.meta.txt records no --verify-driver verdict; run \
-                     scripts/gen-batch-reference.sh --verify-driver {}",
-                    stem.name, stem.name
-                )
-            });
-        assert!(
-            verdict.starts_with("identical"),
-            "{}: --verify-driver verdict is `{verdict}`, not `identical`",
-            stem.name
-        );
-    }
-}
-
-#[test]
 fn the_stem_table_matches_the_fixture_file() {
     let fixtures = std::fs::read_to_string(
-        parity::workspace_root()
+        testkit::workspace_root()
             .join("tests")
             .join("reference")
             .join("router-fixtures.txt"),
@@ -431,15 +362,4 @@ fn the_stem_table_matches_the_fixture_file() {
             stem.name
         );
     }
-}
-
-#[test]
-fn the_ses_normaliser_touches_only_the_parser_keywords() {
-    let input = "(session \"x\"\n  (parser\n    (hostCad CadSoft)\n    \
-                 (hostVersion \"a (hostCad b) c\")\n  )\n  (wire (path F.Cu 100 1 2 3 4))\n)\n";
-    let expected = "(session \"x\"\n  (parser\n    (host_cad CadSoft)\n    \
-                    (host_version \"a (hostCad b) c\")\n  )\n  \
-                    (wire (path F.Cu 100 1 2 3 4))\n)\n";
-    assert_eq!(parity::normalize_ses_head_tokens(input), expected);
-    assert_eq!(parity::normalize_ses_head_tokens(expected), expected);
 }

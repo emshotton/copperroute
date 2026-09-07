@@ -9,11 +9,8 @@ use copper_geometry::PolylineShapeRef;
 const TRANSCRIPT: &str = include_str!("data/p8t8-kicad-read-a.txt");
 
 fn fixture(relative: &str) -> String {
-    let root = std::env::var("FREEROUTING_JAVA_DIR").unwrap_or_else(|_| {
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../../../freerouting").to_string()
-    });
-    std::fs::read_to_string(format!("{root}/{relative}"))
-        .unwrap_or_else(|e| panic!("fixture {relative}: {e}"))
+    let path = testkit::corpus_dir().join(relative);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("fixture {}: {e}", path.display()))
 }
 
 fn unescape(text: &str) -> String {
@@ -221,13 +218,12 @@ fn emit(result: &BoardReadResult) -> Vec<String> {
     );
     rows.push(format!(
         "comm unit={} resolution={} stringQuote={} hostCad={} hostVersion={} constants=<null> \
-         writeResolution=null dsnGeneratedByHost={}",
+         writeResolution=null",
         comm.unit,
         comm.resolution,
         escape(Some(&comm.string_quote)),
         escape(comm.host_cad.as_deref()),
         escape(comm.host_version.as_deref()),
-        comm.dsn_file_generated_by_host
     ));
     rows.push(format!(
         "transform scale={} baseX={} baseY={}",

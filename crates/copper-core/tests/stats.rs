@@ -73,7 +73,7 @@ const TRANSCRIPT: &[&str] = &[
     "COUNT\t9\t(wire(wire(wire\t(wire\t3",
     "COUNT\t10\t(component\t(componentx\t0",
     "COUNT\t11\té(net\t(net\t1",
-    "BS\t0\ttutorial_board/source.dsn\tDSN\tjava:examples/tutorial_board/tutorial_board.dsn",
+    "BS\t0\ttutorial_board/source.dsn\tDSN\tcorpus:examples/tutorial_board/tutorial_board.dsn",
     "FLD\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t439\t1\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t1\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t0\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 2\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 0\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 439,\\n    \"class_count\": 1\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 1\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t1\ttutorial_board/roundtrip.dsn\tDSN\tref:tutorial_board/roundtrip.dsn",
@@ -82,7 +82,7 @@ const TRANSCRIPT: &[&str] = &[
     "BS\t2\ttutorial_board/unrouted.ses\tSES\tref:tutorial_board/unrouted.ses",
     "FLD\t2\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t1\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t2\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 0\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 1\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t3\tIssue026-J2_reference/source.dsn\tDSN\tjava:fixtures/Issue026-J2_reference.dsn",
+    "BS\t3\tIssue026-J2_reference/source.dsn\tDSN\tcorpus:fixtures/Issue026-J2_reference.dsn",
     "FLD\t3\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t25\t1\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t1\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t3\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 2\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 2\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 25,\\n    \"class_count\": 1\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 1\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t4\tIssue026-J2_reference/roundtrip.dsn\tDSN\tref:Issue026-J2_reference/roundtrip.dsn",
@@ -91,7 +91,7 @@ const TRANSCRIPT: &[&str] = &[
     "BS\t5\tIssue026-J2_reference/unrouted.ses\tSES\tref:Issue026-J2_reference/unrouted.ses",
     "FLD\t5\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t1\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t5\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 2\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 1\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t6\tIssue103-Board-Unrouted/source.dsn\tDSN\tjava:fixtures/Issue103-Board-Unrouted.dsn",
+    "BS\t6\tIssue103-Board-Unrouted/source.dsn\tDSN\tcorpus:fixtures/Issue103-Board-Unrouted.dsn",
     "FLD\t6\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t5\t<null>\t283\t1\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t1\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t6\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 2\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 5\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 283,\\n    \"class_count\": 1\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 1\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t7\tIssue103-Board-Unrouted/roundtrip.dsn\tDSN\tref:Issue103-Board-Unrouted/roundtrip.dsn",
@@ -100,7 +100,7 @@ const TRANSCRIPT: &[&str] = &[
     "BS\t8\tIssue103-Board-Unrouted/unrouted.ses\tSES\tref:Issue103-Board-Unrouted/unrouted.ses",
     "FLD\t8\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t5\t<null>\t1\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t8\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 5\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 1\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t9\tIssue143-rpi_splitter/source.dsn\tDSN\tjava:fixtures/Issue143-rpi_splitter.dsn",
+    "BS\t9\tIssue143-rpi_splitter/source.dsn\tDSN\tcorpus:fixtures/Issue143-rpi_splitter.dsn",
     "FLD\t9\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t3\t<null>\t6\t0\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t3\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t9\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 2\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 3\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 6,\\n    \"class_count\": 0\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 3\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t10\tIssue143-rpi_splitter/roundtrip.dsn\tDSN\tref:Issue143-rpi_splitter/roundtrip.dsn",
@@ -109,7 +109,7 @@ const TRANSCRIPT: &[&str] = &[
     "BS\t11\tIssue143-rpi_splitter/unrouted.ses\tSES\tref:Issue143-rpi_splitter/unrouted.ses",
     "FLD\t11\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t1\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t11\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 2\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 1\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t12\tIssue413-test/source.dsn\tDSN\tjava:fixtures/Issue413-test.dsn",
+    "BS\t12\tIssue413-test/source.dsn\tDSN\tcorpus:fixtures/Issue413-test.dsn",
     "FLD\t12\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t1\t<null>\t21\t2\t<null>\t<null>\t11\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t12\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t12\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 2\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 1\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 21,\\n    \"class_count\": 2\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 11\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 12\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t13\tIssue413-test/roundtrip.dsn\tDSN\tref:Issue413-test/roundtrip.dsn",
@@ -118,7 +118,7 @@ const TRANSCRIPT: &[&str] = &[
     "BS\t14\tIssue413-test/unrouted.ses\tSES\tref:Issue413-test/unrouted.ses",
     "FLD\t14\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t1\t<null>\t5\t<null>\t<null>\t<null>\t11\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t4\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t14\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 2\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 1\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 5\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 11\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 4\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t15\tIssue110-RelayModule/source.dsn\tDSN\tjava:fixtures/Issue110-RelayModule.dsn",
+    "BS\t15\tIssue110-RelayModule/source.dsn\tDSN\tcorpus:fixtures/Issue110-RelayModule.dsn",
     "FLD\t15\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t2\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t33\t<null>\t87\t2\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t23\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t15\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 2\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 33\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 87,\\n    \"class_count\": 2\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 23\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t16\tIssue110-RelayModule/roundtrip.dsn\tDSN\tref:Issue110-RelayModule/roundtrip.dsn",
@@ -127,7 +127,7 @@ const TRANSCRIPT: &[&str] = &[
     "BS\t17\tIssue110-RelayModule/unrouted.ses\tSES\tref:Issue110-RelayModule/unrouted.ses",
     "FLD\t17\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t19\t<null>\t17\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t22\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t17\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 19\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 17\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 22\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t18\tIssue753-CPU-85_r104/source.dsn\tDSN\tjava:fixtures/Issue753-CPU-85_r104.dsn",
+    "BS\t18\tIssue753-CPU-85_r104/source.dsn\tDSN\tcorpus:fixtures/Issue753-CPU-85_r104.dsn",
     "FLD\t18\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t4\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t31\t<null>\t293\t1\t<null>\t<null>\t65\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t20\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t18\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 4\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 31\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 293,\\n    \"class_count\": 1\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 65\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 20\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t19\tIssue753-CPU-85_r104/roundtrip.dsn\tDSN\tref:Issue753-CPU-85_r104/roundtrip.dsn",
@@ -160,7 +160,7 @@ const TRANSCRIPT: &[&str] = &[
     "BS\t28\trouter-empty-board/batch.ses\tSES\tdata:p8t2-batch-ses/router-empty-board.ses",
     "FLD\t28\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t1\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t28\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 0\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 0\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 1\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 0\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
-    "BS\t29\tIssue143-rpi_splitter/source.dsn AS SES\tSES\tjava:fixtures/Issue143-rpi_splitter.dsn",
+    "BS\t29\tIssue143-rpi_splitter/source.dsn AS SES\tSES\tcorpus:fixtures/Issue143-rpi_splitter.dsn",
     "FLD\t29\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t1\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t3\t<null>\t6\t<null>\t<null>\t<null>\t0\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t3\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t<null>\t0\t0\t0",
     "JSON\t29\t{\\n  \"board\": {},\\n  \"layers\": {\\n    \"total_count\": 1\\n  },\\n  \"items\": {},\\n  \"components\": {\\n    \"total_count\": 3\\n  },\\n  \"pads\": {},\\n  \"nets\": {\\n    \"total_count\": 6\\n  },\\n  \"connections\": {},\\n  \"traces\": {\\n    \"total_count\": 0\\n  },\\n  \"bends\": {},\\n  \"vias\": {\\n    \"total_count\": 3\\n  },\\n  \"clearance_violations\": {},\\n  \"fanout\": {\\n    \"total_smd_pins\": 0,\\n    \"pins_to_escape\": 0,\\n    \"escaped_count\": 0\\n  }\\n}",
     "BS\t30\tIssue143-rpi_splitter/unrouted.ses AS DSN\tDSN\tref:Issue143-rpi_splitter/unrouted.ses",
@@ -369,9 +369,7 @@ fn the_committed_transcript_still_says_what_this_table_says() {
 
 #[test]
 fn the_port_reproduces_every_transcript_row() {
-    let have_java = parity::require_reference_dir();
     let mut mismatches = Vec::new();
-    let mut skipped = 0usize;
     let mut checked = 0usize;
 
     let mut current: Option<(usize, BoardStatistics)> = None;
@@ -382,7 +380,7 @@ fn the_port_reproduces_every_transcript_row() {
             checked += 1;
             if expected != actual {
                 mismatches.push(format!(
-                    "line {}\n  java: {expected}\n  rust: {actual}",
+                    "line {}\n  corpus: {expected}\n  rust: {actual}",
                     line_number + 1
                 ));
             }
@@ -406,11 +404,6 @@ fn the_port_reproduces_every_transcript_row() {
             "BS" => {
                 let index: usize = columns[1].parse().expect("a row index");
                 let source = columns[4];
-                if source.starts_with("java:") && !have_java {
-                    skipped += 1;
-                    current = None;
-                    continue;
-                }
                 current = Some((index, statistics_of(columns[3], source)));
             }
             "FLD" => {
@@ -468,16 +461,10 @@ fn the_port_reproduces_every_transcript_row() {
     let bs_rows = TRANSCRIPT.iter().filter(|l| l.starts_with("BS\t")).count();
     assert_eq!(
         checked,
-        TRANSCRIPT.len() - bs_rows - 2 * skipped,
-        "{checked} rows rebuilt out of {} lines, {bs_rows} of them `BS` headers and {skipped} rows skipped",
+        TRANSCRIPT.len() - bs_rows,
+        "{checked} rows rebuilt out of {} lines, {bs_rows} of them `BS` headers",
         TRANSCRIPT.len()
     );
-    if have_java {
-        assert_eq!(
-            skipped, 0,
-            "no row should be skipped with the clone present"
-        );
-    }
 }
 
 #[test]
@@ -500,7 +487,7 @@ fn the_dsn_host_scrape_finds_nothing_on_a_real_dsn() {
         "Issue110-RelayModule",
         "Issue753-CPU-85_r104",
     ] {
-        let path = parity::reference(stem, "roundtrip.dsn");
+        let path = testkit::reference(stem, "roundtrip.dsn");
         let data = std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
         let stats = BoardStatistics::from_bytes(&data, FileFormat::Dsn);
         assert_eq!(stats.host, "", "{stem}");
@@ -510,7 +497,7 @@ fn the_dsn_host_scrape_finds_nothing_on_a_real_dsn() {
     let stats = BoardStatistics::from_bytes(camel, FileFormat::Dsn);
     assert_eq!(stats.host, "KiCad\" (hostVersion \"8.0,8.0");
 
-    let path = parity::workspace_root()
+    let path = testkit::workspace_root()
         .join("crates/copper-core/tests/data/p8t2-batch-ses/router-dac2020-bm01.ses");
     let data = std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let stats = BoardStatistics::from_bytes(&data, FileFormat::Dsn);
@@ -771,14 +758,14 @@ fn bytes_of(source: &str) -> Vec<u8> {
             .map(|i| u8::from_str_radix(&hex[2 * i..2 * i + 2], 16).expect("two hex digits"))
             .collect();
     }
-    let path = if let Some(relative) = source.strip_prefix("java:") {
-        parity::reference_dir().join(relative)
+    let path = if let Some(relative) = source.strip_prefix("corpus:") {
+        testkit::corpus_dir().join(relative)
     } else if let Some(relative) = source.strip_prefix("ref:") {
-        parity::workspace_root()
+        testkit::workspace_root()
             .join("tests/reference")
             .join(relative)
     } else if let Some(relative) = source.strip_prefix("data:") {
-        parity::workspace_root()
+        testkit::workspace_root()
             .join("crates/copper-core/tests/data")
             .join(relative)
     } else {

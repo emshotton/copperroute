@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 
 fn workspace_root() -> PathBuf {
-    parity::workspace_root()
+    testkit::workspace_root()
 }
 
 /// Literal needles checked against every comment line (`//`, `///`, `//!`) in `crates/*/src`.
