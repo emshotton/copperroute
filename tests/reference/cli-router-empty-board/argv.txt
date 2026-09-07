@@ -1,5 +1,5 @@
 route
-<JAVA_DIR>/fixtures/empty_board.dsn
+<CORPUS>/fixtures/empty_board.dsn
 -o
 <OUT>/route.ses
 --max-passes

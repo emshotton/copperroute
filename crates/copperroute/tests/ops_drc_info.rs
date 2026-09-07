@@ -2,7 +2,6 @@
 
 use std::path::{Path, PathBuf};
 
-use copper_drc::report::DrcJsonFlavor;
 use copperroute::ops::drc::{DrcRequest, drc, report_date};
 use copperroute::ops::info::{InfoRequest, info};
 use copperroute::ops::load::{BoardSource, LoadRequest};
@@ -41,14 +40,10 @@ fn info_summarises_the_spike_board() {
 }
 
 #[test]
-fn drc_counts_the_dev_boards_violations_in_both_flavors() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let dsn = parity::fixture("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
+fn drc_counts_the_dev_boards_violations() {
+    let dsn = testkit::fixture("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
     let request = DrcRequest {
         load: LoadRequest::for_board(BoardSource::Path(dsn.clone())),
-        flavor: DrcJsonFlavor::KiCad,
         date: "2025-09-02T08:00Z".to_string(),
     };
     let outcome = drc(&request).unwrap();
@@ -66,20 +61,10 @@ fn drc_counts_the_dev_boards_violations_in_both_flavors() {
             .contains("\"copperroute_version\": \"Copperroute ")
     );
     assert!(outcome.json.contains(env!("CARGO_PKG_VERSION")));
-
-    let head = DrcRequest {
-        flavor: DrcJsonFlavor::Legacy,
-        ..request
-    };
-    let outcome = drc(&head).unwrap();
-    assert!(outcome.json.contains("\"qualityScore\""));
 }
 
 #[test]
 fn a_rules_file_does_not_move_the_quality_score() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let dir = std::env::temp_dir().join("fr-ops-drc");
     std::fs::create_dir_all(&dir).unwrap();
     let rules = dir.join("scoring.rules");
@@ -88,10 +73,9 @@ fn a_rules_file_does_not_move_the_quality_score() {
         b"(rules PCB scoring\n  (autoroute_settings\n    (via_costs 999)\n  )\n)\n",
     )
     .unwrap();
-    let dsn = parity::fixture("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
+    let dsn = testkit::fixture("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
     let plain = drc(&DrcRequest {
         load: LoadRequest::for_board(BoardSource::Path(dsn.clone())),
-        flavor: DrcJsonFlavor::KiCad,
         date: "d".to_string(),
     })
     .unwrap();
@@ -99,7 +83,6 @@ fn a_rules_file_does_not_move_the_quality_score() {
     load.rules = Some(rules);
     let with_rules = drc(&DrcRequest {
         load,
-        flavor: DrcJsonFlavor::KiCad,
         date: "d".to_string(),
     })
     .unwrap();

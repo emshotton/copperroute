@@ -13,4 +13,4 @@ thiserror.workspace = true
 
 [dev-dependencies]
 copper-dsn = { path = "../copper-dsn" }
-parity = { path = "../../tests/parity" }
+testkit = { path = "../../tests/testkit" }

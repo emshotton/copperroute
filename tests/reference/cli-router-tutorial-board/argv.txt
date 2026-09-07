@@ -1,5 +1,5 @@
 route
-<JAVA_DIR>/examples/tutorial_board/tutorial_board.dsn
+<CORPUS>/examples/tutorial_board/tutorial_board.dsn
 -o
 <OUT>/route.ses
 --max-passes

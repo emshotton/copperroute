@@ -1,7 +1,0 @@
-lane         port
-port sha     0f30c92a85aa
-plan 9 task  KICAD-DRC-T13b
-budget       n/a — the -drc path checks a board and never enters the router, so no
-             RouterBudget is constructed on this path.
-version      Freerouting 2.3.1-SNAPSHOT
-command      target/release/freerouting -de <FREEROUTING_JAVA_DIR>/fixtures/Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn -drc <FREEROUTING_JAVA_DIR>-rs/.claude/worktrees/kicad-drc-exploration/tests/reference/drc-bbd-mars-64/drc.json

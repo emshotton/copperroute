@@ -97,16 +97,6 @@ pub struct DrcArgs {
     /// Where to write the report; stdout when omitted.
     #[arg(short, long)]
     pub output: Option<PathBuf>,
-    /// Which spelling of the KiCad DRC schema to write.
-    #[arg(long, value_enum, default_value_t = DrcSchema::Kicad)]
-    pub schema: DrcSchema,
-}
-
-#[derive(clap::ValueEnum, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum DrcSchema {
-    #[default]
-    Kicad,
-    Legacy,
 }
 
 #[derive(Args, Debug)]
@@ -228,15 +218,12 @@ mod tests {
             "a.dsn",
             "--kicad-project",
             "p.kicad_pro",
-            "--schema",
-            "legacy",
         ])
         .unwrap();
         let Command::Drc(d) = cli.command else {
             panic!("expected drc")
         };
         assert_eq!(d.kicad_project, Some(PathBuf::from("p.kicad_pro")));
-        assert_eq!(d.schema, DrcSchema::Legacy);
         assert!(matches!(
             Cli::try_parse_from(["copperroute", "info", "a.dsn"])
                 .unwrap()

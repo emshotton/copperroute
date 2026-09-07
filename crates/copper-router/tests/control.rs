@@ -11,7 +11,7 @@ use copper_router::autoroute::maze::{AutorouteControl, ViaPricing};
 use copper_settings::RouterSettings;
 
 fn fixture_board(name: &str) -> Board {
-    let path = parity::fixture(name);
+    let path = testkit::fixture(name);
     let bytes = std::fs::read(&path)
         .unwrap_or_else(|e| panic!("cannot read fixture {}: {e}", path.display()));
     match copper_dsn::read_board(&bytes[..], None, Some(name), &DsnReadOptions::default()) {

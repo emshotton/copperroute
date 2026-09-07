@@ -12,7 +12,7 @@ use copper_router::autoroute::maze::{MazeAdjustment, MazeSearchElement};
 const SPLITTER: &str = "Issue143-rpi_splitter.dsn";
 
 fn fixture_board(name: &str) -> Board {
-    let path = parity::fixture(name);
+    let path = testkit::fixture(name);
     let bytes = std::fs::read(&path)
         .unwrap_or_else(|e| panic!("cannot read fixture {}: {e}", path.display()));
     match copper_dsn::read_board(&bytes[..], None, Some(name), &DsnReadOptions::default()) {
@@ -255,9 +255,6 @@ fn a_room_and_an_item_with_the_same_numeric_id_do_not_collide() {
 
 #[test]
 fn a_room_enters_the_boards_own_compensated_tree_before_its_items() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board(SPLITTER);
     let bbox = board.bounding_box;
     let probe = TileShape::Box(bbox);
@@ -298,9 +295,6 @@ fn a_room_enters_the_boards_own_compensated_tree_before_its_items() {
 
 #[test]
 fn removing_a_room_twice_is_a_no_op_not_a_panic() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board(SPLITTER);
     let shape = TileShape::Box(board.bounding_box);
     let mut store = ExpansionRoomStore::new();
@@ -336,9 +330,6 @@ fn first_item_with_shapes(board: &mut Board) -> (ItemId, usize) {
 
 #[test]
 fn expansion_room_array_resizes_and_preserves() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board(SPLITTER);
     let tree = board.default_tree_id();
     let (item, count) = first_item_with_shapes(&mut board);
@@ -411,9 +402,6 @@ fn expansion_room_array_resizes_and_preserves() {
 
 #[test]
 fn a_stale_index_drops_the_autoroute_info() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board(SPLITTER);
     let tree = board.default_tree_id();
     let (item, count) = first_item_with_shapes(&mut board);
@@ -551,9 +539,6 @@ fn door_exists_and_remove_door_walk_the_rooms_door_list() {
 
 #[test]
 fn an_obstacle_room_reads_its_shape_once_and_its_layer_every_time() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board(SPLITTER);
     let tree = board.default_tree_id();
     let (item, _) = first_item_with_shapes(&mut board);
@@ -591,9 +576,6 @@ fn an_obstacle_room_reads_its_shape_once_and_its_layer_every_time() {
 
 #[test]
 fn a_target_door_intersects_the_item_with_its_room_and_a_null_room_is_empty() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board(SPLITTER);
     let tree = board.default_tree_id();
     let (item, _) = first_item_with_shapes(&mut board);
@@ -778,9 +760,6 @@ fn a_two_dimensional_door_between_two_free_space_rooms_uses_the_restraint_line()
 
 #[test]
 fn a_two_dimensional_door_touching_an_obstacle_room_falls_to_the_gravity_branch() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board(SPLITTER);
     let tree = board.default_tree_id();
     let (item, _) = first_item_with_shapes(&mut board);
@@ -817,9 +796,6 @@ fn an_empty_door_shape_yields_no_sections_at_all() {
 
 #[test]
 fn clear_takes_the_rooms_out_of_the_boards_tree_before_draining_the_arenas() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board(SPLITTER);
     let shape = TileShape::Box(board.bounding_box);
     let mut store = ExpansionRoomStore::new();

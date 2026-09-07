@@ -200,13 +200,10 @@ matrices the precedence suite feeds in and the trimmed
 
 ### What needs the fixture corpus
 
-`../freerouting` (or `FREEROUTING_JAVA_DIR`) supplies the DSN and `.rules`
-fixtures; it is not vendored. `corpus.rs`, `precedence.rs`, `sources.rs` and
-`json.rs` skip with a printed message when it is absent;
-`board_optimizations.rs`'s three `*_golden_*` tests read a fixture board and
-panic without it, while its synthetic-board tests — the majority — need
-nothing. `copy_fields`, `field_path`, `router_settings`, `env_source`,
-`cli_source` and `struct_shape` are pure.
+`tests/corpus` supplies the DSN and `.rules` fixtures for `corpus.rs`,
+`precedence.rs`, `sources.rs`, `json.rs` and `board_optimizations.rs`'s
+three `*_golden_*` tests. `copy_fields`, `field_path`, `router_settings`,
+`env_source`, `cli_source` and `struct_shape` are pure.
 
 ## Conventions this crate shares with the workspace
 

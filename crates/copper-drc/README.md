@@ -33,11 +33,11 @@ observe.
 | the counters | `max_connections()`, `get_incomplete_count()`, `get_incomplete_count_for_net(n)`, `get_length_violation_count()`, `get_length_violation(n)`, `recalculate_length_violations()` |
 | one net's state | `get_net_incompletes(n) -> Option<&NetIncompletes>`, `recalculate_net_incompletes(n)`, `..._with(n, &[ItemId])` |
 | the KiCad DRC report | `generate_report(&DrcCoordinates, &DrcReportOptions) -> KiCadDrcReport` |
-| that report as JSON | `report_to_json(&DrcCoordinates, &DrcReportOptions, DrcJsonFlavor) -> Result<String, DrcError>` |
-| a hand-built report as JSON | `KiCadDrcReport::to_json(DrcJsonFlavor)` |
+| that report as JSON | `report_to_json(&DrcCoordinates, &DrcReportOptions) -> Result<String, DrcError>` |
+| a hand-built report as JSON | `KiCadDrcReport::to_json()` |
 | the clearance block of the board statistics | `BoardStatisticsClearanceViolations::from_violations(&[DrcViolation], board_unit_to_um_factor)` |
 | constraints from a KiCad project file | `apply_kicad_project(&project_json, &mut board, &transform)` |
-| normalising two DRC documents for comparison | `parity::normalize_drc_json(&str)` (the `tests/parity` helper crate) |
+| normalising two DRC documents for comparison | `testkit::normalize_drc_json(&str)` (the `tests/testkit` helper crate) |
 
 `generate_report` and `report_to_json` are `&mut self` for the same reason
 `new` takes `&mut Board`: they call `get_all_violations` internally.
@@ -98,31 +98,6 @@ pub struct DrcCoordinates {
 value, and the report widens it to `f64` on the way out; typing the input
 `f64` would let a caller hand in a number the scorer cannot produce.
 
-## The two schema flavors
-
-The KiCad DRC schema (`https://schemas.kicad.org/drc.v1.json`) spells its
-keys in snake_case. The report can be written in that spelling
-(`DrcJsonFlavor::KiCad`, which the `copperroute drc` command uses by default)
-or in the camelCase variant earlier releases wrote (`DrcJsonFlavor::Legacy`,
-selectable with `--schema legacy`). The two differ in exactly eight strings:
-
-| field | `Legacy` | `KiCad` |
-|---|---|---|
-| coordinate unit | `coordinateUnits` | `coordinate_units` |
-| KiCad version | `kicadVersion` | `kicad_version` |
-| router version | `copperrouteVersion` | `copperroute_version` |
-| unconnected list | `unconnectedItems` | `unconnected_items` |
-| schematic parity | `schematicParity` | `schematic_parity` |
-| quality score | `qualityScore` | `quality_score` |
-| violation `type` | `holeClearance` | `hole_clearance` |
-| violation `type` | `unconnectedItems` | `unconnected_items` |
-
-`crates/copper-drc/tests/report_json.rs::flavors_differ_only_in_the_key_tables_eight_strings`
-proves it mechanically. Everything below the key is
-`copper_dsn::format::json`'s: two-space indent, `": "` after every key, no
-trailing newline, shortest round-trip floats, `null` omitted rather than
-written.
-
 ## Determinism
 
 Every walk that could depend on hash order is pinned to item id:
@@ -171,7 +146,7 @@ the process locale.
 | `net_incompletes.rs` | `NetIncompletes`: net-item order, the triangulation, length violations |
 | `incompletes.rs` | `calculate_all_incompletes`, the counters, `BoardStatisticsClearanceViolations` |
 | `report.rs` | `generate_report` and the four report types, as normalised text |
-| `report_json.rs` | `report_to_json`: both flavors' key order, the escape and number rules |
+| `report_json.rs` | `report_to_json`: the key order, the escape and number rules |
 | `kicad_oracle.rs` | the checker against KiCad's own DRC output on the committed boards |
 | `corpus.rs` | the whole DRC path over every `.dsn` in the fixture corpus (`#[cfg_attr(debug_assertions, ignore)]`) |
 
@@ -192,15 +167,14 @@ The committed reference reports in `tests/reference/drc-*` (eight stems
 covering every violation type, both auxiliary input paths and both zero and
 non-trivial quality scores) are the goldens `crates/copperroute`'s
 end-to-end tests compare the `drc` command against;
-`scripts/gen-drc-reference.sh` regenerates them.
+`COPPERROUTE_REGOLDEN=<label> cargo test -p copperroute --test cli_e2e`
+regenerates them.
 
 ### What needs the fixture corpus
 
-`../freerouting` (or `FREEROUTING_JAVA_DIR`) supplies the `.dsn` corpus; it
-is not vendored. Every fixture-reading test in this crate calls
-`parity::require_java_dir()` first and returns with a printed SKIP when it
-is absent. The synthetic-board tests (the majority of `net_incompletes.rs`,
-`incompletes.rs`, `checks.rs` and `report.rs`) need nothing.
+`tests/corpus` supplies the `.dsn` boards. The synthetic-board tests (the
+majority of `net_incompletes.rs`, `incompletes.rs`, `checks.rs` and
+`report.rs`) need nothing.
 
 ## Known limitations
 

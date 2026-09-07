@@ -1,9 +1,7 @@
 use std::path::Path;
 
-use copper_drc::report::DrcJsonFlavor;
-
 use crate::ExitCode;
-use crate::cli::{Cli, DrcArgs, DrcSchema};
+use crate::cli::{Cli, DrcArgs};
 use crate::ops::drc::{DrcRequest, drc, report_date};
 use crate::ops::load::{BoardSource, LoadRequest};
 
@@ -16,10 +14,6 @@ pub fn run(cli: &Cli, args: &DrcArgs) -> ExitCode {
 
     let outcome = match drc(&DrcRequest {
         load,
-        flavor: match args.schema {
-            DrcSchema::Kicad => DrcJsonFlavor::KiCad,
-            DrcSchema::Legacy => DrcJsonFlavor::Legacy,
-        },
         date: report_date(std::time::SystemTime::now()),
     }) {
         Ok(outcome) => outcome,

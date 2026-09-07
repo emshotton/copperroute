@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-05T02:13:39.383685Z",
-  "app_version": "2.3.1-SNAPSHOT",
+  "generated_at": "2026-09-07T05:09:54.365590Z",
+  "app_version": "0.1.0",
   "git_sha": "unknown",
   "fixture": {
     "filename": "Issue508-DAC2020_bm01.dsn",
@@ -9,7 +9,7 @@
   },
   "settings_snapshot": {
     "enabled": true,
-    "algorithm": "freerouting-router",
+    "algorithm": "copperroute-router",
     "fanout": {
       "enabled": true,
       "max_passes": 20,
@@ -23,9 +23,9 @@
       "pin_sorting_order": "outer_first",
       "fallback_to_board_vias": true
     },
-    "copper_to_edge_clearance_um": 500.0,
-    "hole_clearance_um": 0.0,
-    "neck_width_um": 0.0,
+    "copper_to_edge_clearance_um": 500,
+    "hole_clearance_um": 0,
+    "neck_width_um": 0,
     "strict_drc": false,
     "job_timeout": "12:00:00",
     "max_passes": 2,
@@ -34,7 +34,7 @@
     "automatic_neckdown": true,
     "optimizer": {
       "enabled": true,
-      "algorithm": "freerouting-optimizer",
+      "algorithm": "copperroute-optimizer",
       "max_passes": 100,
       "max_items": 2147483647,
       "max_threads": 7,
@@ -45,24 +45,23 @@
       "max_autoroute_passes": 6
     },
     "scoring": {
-      "default_preferred_direction_trace_cost": 1.0,
-      "default_undesired_direction_trace_cost": 1.0,
+      "default_preferred_direction_trace_cost": 1,
+      "default_undesired_direction_trace_cost": 1,
       "via_costs": 50,
       "plane_via_costs": 5,
       "start_ripup_costs": 100,
-      "unrouted_net_penalty": 5000000.0,
-      "clearance_violation_penalty": 1000000.0,
-      "bend_penalty": 10.0,
-      "default_bend_cost": 0.0,
+      "unrouted_net_penalty": 5000000,
+      "clearance_violation_penalty": 1000000,
+      "bend_penalty": 10,
+      "default_bend_cost": 0,
       "smd_via_cost_factor": 0.1
     },
-    "max_threads": 7,
-    "result_json": "/var/folders/w3/ts5st7dx3n9byscpknnt1fh00000gn/T/fr-cli-e2e/ref-router-dac2020-bm01/manifest.json"
+    "max_threads": 7
   },
   "phases": {
     "fanout": {},
     "autorouter": {
-      "duration_seconds": 79.402,
+      "duration_seconds": 76.988,
       "passes_completed": 2
     },
     "optimizer": {}
@@ -78,8 +77,8 @@
         "height": -1317.74
       },
       "size": {
-        "x": 0.0,
-        "y": 0.0,
+        "x": 0,
+        "y": 0,
         "width": 1017.999,
         "height": 535.404
       }
@@ -89,9 +88,9 @@
       "signal_count": 2
     },
     "items": {
-      "total_count": 853,
-      "trace_count": 402,
-      "via_count": 131,
+      "total_count": 837,
+      "trace_count": 416,
+      "via_count": 101,
       "conduction_area_count": 0,
       "drill_item_count": 0,
       "pin_count": 319,
@@ -110,50 +109,50 @@
     },
     "connections": {
       "maximum_count": 195,
-      "incomplete_count": 32
+      "incomplete_count": 9
     },
     "traces": {
-      "total_count": 402,
-      "total_segment_count": 911,
-      "total_length": 31470.363,
-      "total_length_mm": 3147.0364,
-      "total_weighted_length": 9.305621E7,
-      "average_length": 78.284485,
-      "total_vertical_length": 4350.024,
-      "total_horizontal_length": 13270.937,
-      "total_angled_length": 10263.812
+      "total_count": 416,
+      "total_segment_count": 1286,
+      "total_length": 42500.805,
+      "total_length_mm": 4250.0806,
+      "total_weighted_length": 125855820,
+      "average_length": 102.16539,
+      "total_vertical_length": 7358.28,
+      "total_horizontal_length": 15053.405,
+      "total_angled_length": 14061.192
     },
     "bends": {
-      "total_count": 509,
-      "90_degree_count": 5,
-      "45_degree_count": 504,
+      "total_count": 870,
+      "90_degree_count": 2,
+      "45_degree_count": 868,
       "other_angle_count": 0
     },
     "vias": {
-      "total_count": 131,
-      "through_hole_count": 131,
+      "total_count": 101,
+      "through_hole_count": 101,
       "blind_count": 0,
       "buried_count": 0
     },
     "clearance_violations": {
       "total_count": 0,
-      "min_violation_um": 0.0,
-      "max_violation_um": 0.0,
-      "avg_violation_um": 0.0
+      "min_violation_um": 0,
+      "max_violation_um": 0,
+      "avg_violation_um": 0
     },
     "fanout": {
       "total_smd_pins": 187,
-      "pins_to_escape": 96,
-      "escaped_count": 186
+      "pins_to_escape": 18,
+      "escaped_count": 182
     }
   },
-  "normalized_score": 835.88226,
+  "normalized_score": 953.8277,
   "resource_usage": {
-    "cpu_time": 0.0,
-    "max_memory": 0.0,
-    "peak_memory": 0.0,
-    "io_read": 0.0,
-    "io_written": 0.0
+    "cpu_time": 0,
+    "max_memory": 0,
+    "peak_memory": 0,
+    "io_read": 0,
+    "io_written": 0
   },
   "final_state": "COMPLETED",
   "exit_code": 0,

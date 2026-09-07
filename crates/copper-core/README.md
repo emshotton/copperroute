@@ -155,7 +155,7 @@ SERVER_VERSION = env!("CARGO_PKG_VERSION")
 The crate's own version is what the manifest's `app_version`, the DRC
 report's `router_version` and the MCP `serverInfo` carry. The SES/DSN
 `(host_cad …)`/`(host_version …)` are echoed back **from the input file** and
-never carry it. `tests/parity`'s manifest normaliser drops `app_version`, so
+never carry it. `tests/testkit`'s manifest normaliser drops `app_version`, so
 a committed manifest golden does not move when the crate version does.
 
 ## The result manifest (`manifest.rs`)
@@ -218,6 +218,4 @@ and order digest included), `pipeline` (the whole pipeline with a recording
 sink, comparing session bytes), `register`, `stats`, `summary` and
 `timespan` (the 30 rows of `tests/data/p8t0-timespans.txt`).
 
-The suites that read a board fixture take it from the fixture corpus in a
-sibling `../freerouting` checkout (`FREEROUTING_JAVA_DIR` overrides the
-location) and skip with a printed message without it.
+The suites that read a board fixture take it from `tests/corpus`.

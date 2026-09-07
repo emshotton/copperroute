@@ -1,5 +1,5 @@
 route
-<JAVA_DIR>/fixtures/Issue035-ReadPlaceScope.dsn
+<CORPUS>/fixtures/Issue035-ReadPlaceScope.dsn
 -o
 <OUT>/route.ses
 --max-passes

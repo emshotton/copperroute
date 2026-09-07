@@ -101,7 +101,7 @@ mod routable_layers_safety_check_test {
     use super::*;
 
     fn load(name: &str) -> Board {
-        let path = parity::fixture(name);
+        let path = testkit::fixture(name);
         let file = std::fs::File::open(&path)
             .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
         match copper_dsn::read_board(file, None, Some(name), &DsnReadOptions::default()) {

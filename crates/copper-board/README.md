@@ -118,9 +118,7 @@ deliberately leaves out (on-demand caches whose state records how often the
 board has been measured rather than what it is).
 
 Tests that read a board fixture take it from `tests/data/` or, for the larger
-boards, from the fixture corpus in a sibling `../freerouting` checkout
-(`FREEROUTING_JAVA_DIR` overrides the location); those skip with a printed
-message when the corpus is absent.
+boards, from `tests/corpus`.
 
 ## Conventions this crate shares with the workspace
 

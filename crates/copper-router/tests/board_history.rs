@@ -16,7 +16,7 @@ const EMPTY_BOARD: &str = "fixtures/empty_board.dsn";
 const SETONIX: &str = "fixtures/Issue159-setonix_2hp-pcb.dsn";
 
 fn load_board(rel_path: &str) -> Board {
-    let path = parity::reference_dir().join(rel_path);
+    let path = testkit::corpus_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path
@@ -306,7 +306,7 @@ fn port_golden_path() -> std::path::PathBuf {
 }
 
 fn assert_lines_match(actual: &[String]) {
-    if parity::regolden_label().is_some() {
+    if testkit::regolden_label().is_some() {
         let mut text = actual
             .iter()
             .map(|line| line.trim_end())

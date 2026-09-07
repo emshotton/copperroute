@@ -1,3 +1,0 @@
-bare-jar     identical
-             P7T9 mode batch and `java -jar <jar> -de … -do …` produced the same
-             SES byte for byte (56155 B), so the driver is the jar.

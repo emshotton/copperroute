@@ -40,9 +40,7 @@ and `--log-level <off|error|warn|info|debug|trace>` set the log level;
 | `--set router.<section>.<field>=<value>` | override one setting; repeatable. `router.max_items=N` stops the optimizer as well as the router, where `--max-passes` stops only the router |
 | `--visualize <dir>` | write one SVG frame per sampled maze step into an absent or empty directory; `--visualize-every N`, `--visualize-max-frames N`, `--visualize-width`, `--visualize-height` bound it (`docs/routing-visualizer.md`) |
 
-`drc` takes `--ses`, `--rules`, `--kicad-project`, `-o <report>` and
-`--schema <kicad|legacy>` (default `kicad`; the other spelling is the
-camelCase variant of the same document).
+`drc` takes `--ses`, `--rules`, `--kicad-project` and `-o <report>`.
 
 ## Settings
 
@@ -143,28 +141,22 @@ suites:
   compare the session bytes, the exit code and the normalised manifest
   against the committed `tests/reference/cli-<stem>/` outputs; the `ci` stems
   run by default, the `slow` ones under
-  `COPPERROUTE_SLOW_PARITY=1 cargo test --release`.
+  `COPPERROUTE_SLOW=1 cargo test --release`.
 * **`mcp_stdio.rs`** drives the server through `initialize`, notifications,
   `ping`, `tools/list`, `tools/call`, cancellation, a panicking tool, a
   malformed line and EOF, over in-process pipes and over the spawned binary.
 
-The reference and corpus tests need the fixture corpus in a sibling
-`../freerouting` checkout (`FREEROUTING_JAVA_DIR` overrides the location)
-and skip cleanly without it.
+The reference and corpus tests read their boards from `tests/corpus`.
 
 ```sh
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all --check
-COPPERROUTE_SLOW_PARITY=1 cargo test --release            # the slow lanes
+COPPERROUTE_SLOW=1 cargo test --release            # the slow lanes
 
 # re-cut the CLI goldens from the binary, after a change that is meant to move them
 COPPERROUTE_REGOLDEN=<label> cargo test -p copperroute --test cli_e2e
 ```
 
-The other reference families have generators under `scripts/`:
-`gen-drc-reference.sh` for the eight `drc-*` reports, `gen-batch-reference.sh`
-for the whole-board `batch.*` files `copper-router`'s `batch_parity` reads,
-`gen-router-reference.sh` for the per-connection `router.jsonl` files, and
-`gen-reference.sh` for the DSN/SES writer references. `tests/reference/README.md`
-explains the lanes and when a family is re-cut.
+The other reference families are re-cut the same way from their own
+suites; `tests/reference/README.md` lists them.

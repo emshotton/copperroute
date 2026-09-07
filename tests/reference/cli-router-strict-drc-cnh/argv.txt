@@ -1,5 +1,5 @@
 route
-<JAVA_DIR>/fixtures/Issue555-CNH_Functional_Tester_1.dsn
+<CORPUS>/fixtures/Issue555-CNH_Functional_Tester_1.dsn
 -o
 <OUT>/route.ses
 --max-passes

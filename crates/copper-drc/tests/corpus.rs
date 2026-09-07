@@ -3,12 +3,12 @@ use std::path::{Path, PathBuf};
 
 use copper_board::Board;
 use copper_drc::report::{DrcCoordinates, DrcReportOptions};
-use copper_drc::{DesignRulesChecker, DrcJsonFlavor, DrcViolationKind};
+use copper_drc::{DesignRulesChecker, DrcViolationKind};
 use copper_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
 
 fn corpus() -> Vec<PathBuf> {
     let mut found = Vec::new();
-    collect(&parity::reference_dir().join("fixtures"), &mut found);
+    collect(&testkit::corpus_dir().join("fixtures"), &mut found);
     found.sort();
     found
 }
@@ -46,9 +46,6 @@ fn read(bytes: &[u8], name: &str) -> Option<(Board, CoordinateTransform)> {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn every_fixture_reports_without_panicking_and_the_two_sources_add_up() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let files = corpus();
     assert!(
         files.len() >= 105,
@@ -115,25 +112,25 @@ fn every_fixture_reports_without_panicking_and_the_two_sources_add_up() {
         );
 
         let text = drc
-            .report_to_json(&coords, &options, DrcJsonFlavor::Legacy)
+            .report_to_json(&coords, &options)
             .unwrap_or_else(|e| panic!("{name}: report_to_json failed: {e}"));
         let json: serde_json::Value = serde_json::from_str(&text)
             .unwrap_or_else(|e| panic!("{name}: report_to_json wrote invalid JSON: {e}"));
         let object = json.as_object().expect("a JSON object");
         for key in [
             "$schema",
-            "coordinateUnits",
+            "coordinate_units",
             "date",
-            "kicadVersion",
-            "copperrouteVersion",
+            "kicad_version",
+            "copperroute_version",
             "source",
-            "unconnectedItems",
+            "unconnected_items",
             "violations",
-            "schematicParity",
+            "schematic_parity",
         ] {
             assert!(object.contains_key(key), "{name}: JSON has no {key}");
         }
-        assert!(!object.contains_key("qualityScore"), "{name}");
+        assert!(!object.contains_key("quality_score"), "{name}");
 
         checked += 1;
     }

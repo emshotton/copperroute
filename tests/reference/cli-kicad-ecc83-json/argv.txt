@@ -1,5 +1,5 @@
 route
-<JAVA_DIR>/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.json
+<CORPUS>/fixtures/Issue649-kicad_ecc83-pp_input_board_v1.json
 -o
 <OUT>/route.ses
 --max-passes

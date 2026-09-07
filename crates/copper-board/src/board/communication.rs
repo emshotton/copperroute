@@ -11,7 +11,6 @@ pub struct Communication {
     pub string_quote: String,
     pub constants: Vec<Vec<String>>,
     pub write_resolution: Option<WriteResolution>,
-    pub dsn_file_generated_by_host: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -94,7 +93,6 @@ impl Default for Communication {
             string_quote: "\"".to_string(),
             constants: Vec::new(),
             write_resolution: None,
-            dsn_file_generated_by_host: false,
         }
     }
 }
@@ -109,7 +107,6 @@ mod tests {
         assert_eq!(communication.string_quote, "\"");
         assert!(communication.constants.is_empty());
         assert_eq!(communication.write_resolution, None);
-        assert!(!communication.dsn_file_generated_by_host);
     }
 
     #[test]
@@ -124,7 +121,6 @@ mod tests {
         assert_eq!(communication.unit, Unit::Mm);
         assert_eq!(communication.resolution, 1000);
         assert_eq!(communication.string_quote, "\"");
-        assert!(!communication.dsn_file_generated_by_host);
     }
 
     #[test]

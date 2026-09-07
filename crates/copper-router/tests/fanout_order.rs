@@ -18,7 +18,7 @@ fn load_board(rel_path: &str) -> Board {
 }
 
 fn load_board_with_rules(rel_path: &str, rules: Option<&str>) -> (Board, bool) {
-    let path: PathBuf = parity::reference_dir().join(rel_path);
+    let path: PathBuf = testkit::corpus_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path

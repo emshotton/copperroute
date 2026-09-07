@@ -19,8 +19,8 @@ pub use error::DrcError;
 pub use net_incompletes::NetIncompletes;
 pub use plane_connectivity::PlaneConnectivity;
 pub use report::{
-    DrcCoordinates, DrcJsonFlavor, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport,
-    KiCadDrcViolation, KiCadDrcViolationItem,
+    DrcCoordinates, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport, KiCadDrcViolation,
+    KiCadDrcViolationItem,
 };
 pub use statistics::BoardStatisticsClearanceViolations;
 pub use unconnected::{UnconnectedItems, UnconnectedKind};
@@ -35,8 +35,8 @@ pub mod prelude {
     pub use crate::net_incompletes::NetIncompletes;
     pub use crate::plane_connectivity::PlaneConnectivity;
     pub use crate::report::{
-        DrcCoordinates, DrcJsonFlavor, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport,
-        KiCadDrcViolation, KiCadDrcViolationItem,
+        DrcCoordinates, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport, KiCadDrcViolation,
+        KiCadDrcViolationItem,
     };
     pub use crate::statistics::BoardStatisticsClearanceViolations;
     pub use crate::unconnected::{UnconnectedItems, UnconnectedKind};

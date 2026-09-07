@@ -1,9 +1,9 @@
 {
   "$schema": "https://schemas.kicad.org/drc.v1.json",
   "coordinate_units": "mm",
-  "date": "2026-09-05T04:36:16.39026Z",
+  "date": "2026-09-07T05:07:15.81674Z",
   "kicad_version": "N/A",
-  "freerouting_version": "Freerouting 2.3.1-SNAPSHOT",
+  "copperroute_version": "Copperroute 0.1.0",
   "source": "Issue593-BBD_Mars-64.dsn",
   "unconnected_items": [
     {
@@ -1711,5 +1711,5 @@
   ],
   "violations": [],
   "schematic_parity": [],
-  "quality_score": 0.0
+  "quality_score": 0
 }

@@ -938,7 +938,7 @@ fn every_settings_field_is_in_the_schema_and_vice_versa() {
 }
 
 fn dsn(relative: &str) -> String {
-    parity::reference_dir().join(relative).display().to_string()
+    testkit::corpus_dir().join(relative).display().to_string()
 }
 
 #[test]
@@ -998,11 +998,8 @@ fn assert_tool_list(tools: &Value) {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_four_tools_over_spawned_pipes() {
-    if std::env::var_os("COPPERROUTE_SLOW_PARITY").is_none() {
-        eprintln!("SKIP: set COPPERROUTE_SLOW_PARITY=1 to run the MCP board lane");
-        return;
-    }
-    if !parity::require_reference_dir() {
+    if std::env::var_os("COPPERROUTE_SLOW").is_none() {
+        eprintln!("SKIP: set COPPERROUTE_SLOW=1 to run the MCP board lane");
         return;
     }
     let board = dsn("examples/tutorial_board/tutorial_board.dsn");
@@ -1025,9 +1022,8 @@ fn the_four_tools_over_spawned_pipes() {
     assert_tool_list(&list["result"]["tools"]);
 
     let routed = pipes.call(3, "route_board", json!({"dsn_path": board}));
-    let expected = std::fs::read_to_string(parity::cli_reference("tutorial_board", "route.ses"))
+    let expected = std::fs::read_to_string(testkit::cli_reference("tutorial_board", "route.ses"))
         .expect("the p8t1 reference");
-    let expected = parity::normalize_ses_head_tokens(&expected);
     let actual = routed["ses_text"].as_str().expect("ses_text");
     assert_eq!(
         actual, expected,
@@ -1055,11 +1051,11 @@ fn the_four_tools_over_spawned_pipes() {
         "route_board",
         json!({"dsn_path": dsn("fixtures/Issue649-kicad_ecc83-pp_input_board_v1.json")}),
     );
-    let expected = std::fs::read_to_string(parity::cli_reference("kicad-ecc83-json", "route.ses"))
+    let expected = std::fs::read_to_string(testkit::cli_reference("kicad-ecc83-json", "route.ses"))
         .expect("the p8t1 reference");
     assert_eq!(
         kicad["ses_text"].as_str().expect("ses_text"),
-        parity::normalize_ses_head_tokens(&expected),
+        expected,
         "route_board on a KiCad design JSON differs from p8t1's cli-kicad-ecc83-json/route.ses"
     );
     assert_eq!(kicad["format"], "SES");
@@ -1084,7 +1080,7 @@ fn the_four_tools_over_spawned_pipes() {
         "check_drc's report differs from the one `copperroute drc` writes"
     );
     let jar: Value = serde_json::from_str(
-        &std::fs::read_to_string(parity::reference("drc-tutorial-board", "drc.json"))
+        &std::fs::read_to_string(testkit::reference("drc-tutorial-board", "drc.json"))
             .expect("the drc reference"),
     )
     .expect("the reference is JSON");
@@ -1117,9 +1113,6 @@ fn the_four_tools_over_spawned_pipes() {
 
 #[test]
 fn an_output_path_answers_a_path_and_no_body() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let dir = std::env::temp_dir()
         .join("fr-mcp-stdio")
         .join("an_output_path_answers_a_path_and_no_body");
@@ -1151,9 +1144,6 @@ fn an_output_path_answers_a_path_and_no_body() {
 
 #[test]
 fn a_sparse_settings_payload_composes_at_priority_70() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let board = dsn("fixtures/Issue143-rpi_splitter.dsn");
     let slow_board = dsn("fixtures/Issue733-kicad_complex_hierarchy_input_design.json");
     let mut pipes = Pipes::start();
@@ -1255,9 +1245,6 @@ fn a_non_finite_float_in_settings_is_refused() {
 
 #[test]
 fn cancelling_route_board_mid_run_returns_timed_out_false_and_a_partial_result() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut pipes = Pipes::start();
     pipes.write(&json!({
         "jsonrpc": "2.0", "id": 1, "method": "tools/call",

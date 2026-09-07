@@ -1,4 +1,0 @@
-bare-jar     identical
-             mode batch and the bare `-de … -do …` program produced the same SES
-             byte for byte (4260 B), so the driver is the program
-             (port lane).

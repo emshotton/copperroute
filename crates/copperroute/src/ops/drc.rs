@@ -1,7 +1,7 @@
 use copper_board::Board;
 use copper_core::{BoardStatistics, RoutingJob};
 use copper_drc::DesignRulesChecker;
-use copper_drc::report::{DrcCoordinates, DrcJsonFlavor, DrcReportOptions, KiCadDrcReport};
+use copper_drc::report::{DrcCoordinates, DrcReportOptions, KiCadDrcReport};
 use copper_settings::sources::DsnFileSettings;
 use copper_settings::{HostEnvironment, SettingsSource};
 
@@ -11,7 +11,6 @@ use super::settings::{self, SettingsOverrides};
 
 pub struct DrcRequest {
     pub load: LoadRequest,
-    pub flavor: DrcJsonFlavor,
     pub date: String,
 }
 
@@ -49,7 +48,7 @@ pub fn drc(request: &DrcRequest) -> Result<DrcOutcome, OpError> {
     report.quality_score = quality_score(&mut board, &job, &request.load.settings).map(f64::from);
 
     let json = report
-        .to_json(request.flavor)
+        .to_json()
         .map_err(|error| OpError::Load(format!("Couldn't serialise the DRC report: {error}")))?;
     let violation_count = report.violations.len();
     Ok(DrcOutcome {

@@ -17,12 +17,8 @@ fn read_pcb<T>(text: &str, f: impl FnOnce(bool, &mut ReadScopeParameter<'_>) -> 
 }
 
 fn fixture(name: &str) -> String {
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../freerouting/fixtures/"
-    );
-    std::fs::read_to_string(format!("{path}{name}"))
-        .unwrap_or_else(|e| panic!("fixture {name}: {e}"))
+    let path = testkit::fixture(name);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("fixture {}: {e}", path.display()))
 }
 
 fn test_data(name: &str) -> String {

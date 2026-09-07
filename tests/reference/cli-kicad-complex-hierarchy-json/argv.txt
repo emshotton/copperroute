@@ -1,4 +1,4 @@
 route
-<JAVA_DIR>/fixtures/Issue733-kicad_complex_hierarchy_input_design.json
+<CORPUS>/fixtures/Issue733-kicad_complex_hierarchy_input_design.json
 -o
 <OUT>/route.ses

@@ -11,18 +11,17 @@ struct Row {
     ses: PathBuf,
     pro: PathBuf,
     ignore: Vec<String>,
-    needs_reference: bool,
 }
 
-fn resolve(field: &str) -> (PathBuf, bool) {
-    match field.strip_prefix("java:") {
-        Some(rest) => (parity::reference_dir().join(rest), true),
-        None => (parity::workspace_root().join(field), false),
+fn resolve(field: &str) -> PathBuf {
+    match field.strip_prefix("corpus:") {
+        Some(rest) => testkit::corpus_dir().join(rest),
+        None => testkit::workspace_root().join(field),
     }
 }
 
 fn rows() -> Vec<Row> {
-    let path = parity::workspace_root().join("tests/reference/kicad-drc-fixtures.txt");
+    let path = testkit::workspace_root().join("tests/reference/kicad-drc-fixtures.txt");
     let text = std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
     text.lines()
@@ -30,9 +29,9 @@ fn rows() -> Vec<Row> {
         .filter(|line| !line.is_empty() && !line.starts_with('#'))
         .map(|line| {
             let fields: Vec<&str> = line.split('|').map(str::trim).collect();
-            let (dsn, dsn_is_reference) = resolve(fields[1]);
-            let (ses, ses_is_reference) = resolve(fields[2]);
-            let (pro, pro_is_reference) = resolve(fields[4]);
+            let dsn = resolve(fields[1]);
+            let ses = resolve(fields[2]);
+            let pro = resolve(fields[4]);
             Row {
                 stem: fields[0].to_string(),
                 dsn,
@@ -47,7 +46,6 @@ fn rows() -> Vec<Row> {
                             .collect()
                     })
                     .unwrap_or_default(),
-                needs_reference: dsn_is_reference || ses_is_reference || pro_is_reference,
             }
         })
         .collect()
@@ -117,8 +115,8 @@ fn port_counts(board: &mut Board) -> (BTreeMap<String, usize>, usize) {
 }
 
 fn oracle_counts(stem: &str) -> Option<(BTreeMap<String, usize>, usize)> {
-    let path = parity::reference(stem, "kicad-drc.json");
-    if !parity::require_reference(&path) {
+    let path = testkit::reference(stem, "kicad-drc.json");
+    if !testkit::require_reference(&path) {
         return None;
     }
     let text = std::fs::read_to_string(&path).expect("the reference reads");
@@ -141,9 +139,6 @@ fn oracle_counts(stem: &str) -> Option<(BTreeMap<String, usize>, usize)> {
 fn the_port_matches_kicad_cli_per_violation_type() {
     let mut failures = Vec::new();
     for row in rows() {
-        if row.needs_reference && !parity::require_reference_dir() {
-            continue;
-        }
         let Some((expected, expected_unconnected)) = oracle_counts(&row.stem) else {
             continue;
         };

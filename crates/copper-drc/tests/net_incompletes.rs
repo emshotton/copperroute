@@ -6,7 +6,7 @@ use copper_dsn::{BoardReadResult, DsnReadOptions};
 use copper_geometry::{FloatPoint, IntBox, IntPoint, IntVector, Point, Polyline, Shape, TileShape};
 
 fn fixture_board(name: &str) -> Board {
-    let path = parity::fixture(name);
+    let path = testkit::fixture(name);
     let bytes = std::fs::read(&path)
         .unwrap_or_else(|e| panic!("cannot read fixture {}: {e}", path.display()));
     match copper_dsn::read_board(&bytes[..], None, Some(name), &DsnReadOptions::default()) {
@@ -50,9 +50,6 @@ fn all_net_incompletes(board: &Board) -> Vec<NetIncompletes> {
 
 #[test]
 fn the_airline_endpoints_are_a_hash_dependent_choice() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     for stem in FIXTURES {
         let board = fixture_board(&format!("{stem}.dsn"));
         let jvm = std::fs::read_to_string(
@@ -158,9 +155,6 @@ impl Line {
 
 #[test]
 fn every_port_airline_is_one_some_jvm_run_picks() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     for stem in FIXTURES {
         let board = fixture_board(&format!("{stem}.dsn"));
         let union_text = std::fs::read_to_string(

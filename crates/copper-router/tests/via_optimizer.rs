@@ -45,7 +45,7 @@ fn fixture_of(tag: &str) -> &'static str {
 fn p7t4_rows(tag: &str, mode: i32) -> Vec<String> {
     let mut out = Vec::new();
     let design_name = fixture_of(tag);
-    let path = parity::fixture(design_name);
+    let path = testkit::fixture(design_name);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let mut board =
@@ -620,7 +620,7 @@ fn routed_j2() -> Board {
 }
 
 fn routed(design_name: &str) -> Board {
-    let path = parity::fixture(design_name);
+    let path = testkit::fixture(design_name);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let mut board =

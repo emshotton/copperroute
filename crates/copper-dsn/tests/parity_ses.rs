@@ -71,7 +71,7 @@ fn design_name(path: &Path) -> String {
 }
 
 fn write_ses(relative_fixture: &str, design: &str) -> String {
-    let fixture = parity::reference_dir().join(relative_fixture);
+    let fixture = testkit::corpus_dir().join(relative_fixture);
     let (board, ct) = read_fixture(&fixture);
     let mut actual: Vec<u8> = Vec::new();
     ses_writer::write(&board, &ct, &mut actual, design).expect("write must succeed into a Vec");
@@ -79,48 +79,54 @@ fn write_ses(relative_fixture: &str, design: &str) -> String {
 }
 
 fn assert_ses_parity(stem: &str, relative_fixture: &str) {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let reference = parity::reference(stem, "unrouted.ses");
-    if !parity::require_reference(&reference) {
-        return;
-    }
+    let reference = testkit::reference(stem, "unrouted.ses");
     let actual = write_ses(relative_fixture, stem);
-    parity::assert_text_parity(&actual, &reference);
+    if testkit::regolden_label().is_some() {
+        std::fs::create_dir_all(reference.parent().expect("a stem directory"))
+            .expect("the reference directory is creatable");
+        std::fs::write(&reference, &actual).expect("the reference is writable");
+        return;
+    }
+    if !testkit::require_reference(&reference) {
+        return;
+    }
+    testkit::assert_text_parity(&actual, &reference);
 }
 
 #[test]
-fn tutorial_board_ses_matches_java() {
+fn tutorial_board_ses_matches_the_reference() {
     assert_ses_parity(FIXTURES[0].0, FIXTURES[0].1);
 }
 
 #[test]
-fn issue026_j2_reference_ses_matches_java() {
+fn issue026_j2_reference_ses_matches_the_reference() {
     assert_ses_parity(FIXTURES[1].0, FIXTURES[1].1);
 }
 
 #[test]
-fn issue103_board_unrouted_ses_matches_java() {
+fn issue103_board_unrouted_ses_matches_the_reference() {
     assert_ses_parity(FIXTURES[2].0, FIXTURES[2].1);
 }
 
 #[test]
-fn issue143_rpi_splitter_ses_matches_java() {
+fn issue143_rpi_splitter_ses_matches_the_reference() {
     assert_ses_parity(FIXTURES[3].0, FIXTURES[3].1);
 }
 
 #[test]
-fn every_reference_is_byte_for_byte_identical_to_java() {
-    if !parity::require_reference_dir() {
-        return;
-    }
+fn every_reference_is_byte_for_byte_identical() {
     for (stem, relative_fixture) in FIXTURES.iter().chain(RULING_G_FIXTURES.iter()).copied() {
-        let reference_path = parity::reference(stem, "unrouted.ses");
-        if !parity::require_reference(&reference_path) {
+        let reference_path = testkit::reference(stem, "unrouted.ses");
+        let actual = write_ses(relative_fixture, stem).into_bytes();
+        if testkit::regolden_label().is_some() {
+            std::fs::create_dir_all(reference_path.parent().expect("a stem directory"))
+                .expect("the reference directory is creatable");
+            std::fs::write(&reference_path, &actual).expect("the reference is writable");
             continue;
         }
-        let actual = write_ses(relative_fixture, stem).into_bytes();
+        if !testkit::require_reference(&reference_path) {
+            continue;
+        }
         let expected = std::fs::read(&reference_path).expect("reference must be readable");
         if actual == expected {
             continue;
@@ -151,8 +157,8 @@ fn no_reference_contains_a_wire() {
         .copied()
         .filter(|(stem, _)| *stem != WIRE_BEARING_STEM)
     {
-        let reference_path = parity::reference(stem, "unrouted.ses");
-        if !parity::require_reference(&reference_path) {
+        let reference_path = testkit::reference(stem, "unrouted.ses");
+        if !testkit::require_reference(&reference_path) {
             continue;
         }
         let reference = std::fs::read_to_string(&reference_path).expect("reference readable");
@@ -166,9 +172,6 @@ fn no_reference_contains_a_wire() {
 
 #[test]
 fn valid_header() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let content = write_ses(
         "fixtures/Issue026-J2_reference.dsn",
         "Issue026-J2_reference.dsn",
@@ -186,9 +189,6 @@ fn valid_header() {
 
 #[test]
 fn output_is_non_empty() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let content = write_ses("fixtures/Issue143-rpi_splitter.dsn", "test.dsn");
     assert!(
         !content.is_empty(),
@@ -206,10 +206,7 @@ fn placement_rotation_formatting_matches_kicad_style() {
 
 #[test]
 fn issue742_placement_and_library_out_are_well_formed() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let fixture = parity::reference_dir().join("fixtures/Issue742-tastexx-pcb.dsn");
+    let fixture = testkit::corpus_dir().join("fixtures/Issue742-tastexx-pcb.dsn");
     if !fixture.exists() {
         eprintln!("SKIP: {} missing", fixture.display());
         return;
@@ -232,8 +229,8 @@ fn issue742_placement_and_library_out_are_well_formed() {
 
 #[test]
 fn ruling_g_references_do_carry_wires() {
-    let reference_path = parity::reference(WIRE_BEARING_STEM, "unrouted.ses");
-    if !parity::require_reference(&reference_path) {
+    let reference_path = testkit::reference(WIRE_BEARING_STEM, "unrouted.ses");
+    if !testkit::require_reference(&reference_path) {
         return;
     }
     let reference = std::fs::read_to_string(&reference_path).expect("reference readable");
@@ -247,9 +244,6 @@ fn ruling_g_references_do_carry_wires() {
 
 #[test]
 fn every_fixture_is_balanced_with_unique_library_padstacks() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     for (stem, relative_fixture) in FIXTURES.iter().chain(RULING_G_FIXTURES.iter()).copied() {
         let content = write_ses(relative_fixture, stem);
         common::assert_balanced_scopes(&content);

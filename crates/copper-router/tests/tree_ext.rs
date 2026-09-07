@@ -787,7 +787,7 @@ fn route_ninety_degree_fixture() -> String {
     use copper_settings::sources::{CliSettings, DsnFileSettings, EnvironmentVariablesSource};
     use copper_settings::{HostEnvironment, SettingsInputs, SettingsSource, resolve_headless};
 
-    let root = parity::workspace_root();
+    let root = testkit::workspace_root();
     let dsn = root.join(format!(
         "crates/copper-router/tests/data/{NINETY_DEGREE_STEM}.dsn"
     ));

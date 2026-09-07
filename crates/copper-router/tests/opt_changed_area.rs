@@ -430,7 +430,7 @@ fn transcript_mode(mode: i32) -> Vec<&'static str> {
 
 fn p7t3_rows(mode: i32) -> Vec<String> {
     let mut out = Vec::new();
-    let path = parity::fixture("Issue143-rpi_splitter.dsn");
+    let path = testkit::fixture("Issue143-rpi_splitter.dsn");
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = "Issue143-rpi_splitter.dsn";

@@ -1,44 +1,19 @@
 use copper_board::prelude::*;
 use copper_drc::DesignRulesChecker;
-use copper_drc::report::{
-    DrcCoordinates, DrcJsonFlavor, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport,
-};
+use copper_drc::report::{DrcCoordinates, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport};
 use copper_dsn::{BoardReadResult, CoordinateTransform, DsnReadOptions};
 
 mod common;
 use common::JAR_VERSION;
 
 const DEV_BOARD: &str = "Issue575-drc_dev-board_4_hole_clearance_violations.dsn";
-const BBD_MARS_64: &str = "Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn";
-const EMPTY_BOARD: &str = "empty_board.dsn";
-
-const GOLDEN_FIXTURES: [&str; 3] = [DEV_BOARD, BBD_MARS_64, EMPTY_BOARD];
+const DATE: &str = "2026-08-29T01:38:28.155317-07:00";
 
 #[allow(clippy::excessive_precision)]
 const DEV_BOARD_SCORE: f32 = 902.078369140625;
 
-fn data_dir() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data")
-}
-
-fn golden(fixture: &str) -> String {
-    let stem = fixture.strip_suffix(".dsn").expect("a .dsn fixture name");
-    let path = data_dir().join(format!("{stem}.head.json"));
-    std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("cannot read golden {}: {e}", path.display()))
-}
-
-fn date_of(golden: &str) -> String {
-    for line in golden.lines() {
-        if let Some(rest) = line.trim().strip_prefix("\"date\": \"") {
-            return rest.trim_end_matches(',').trim_matches('"').to_string();
-        }
-    }
-    panic!("no date in the golden");
-}
-
 fn fixture_board(name: &str) -> (Board, CoordinateTransform) {
-    let path = parity::fixture(name);
+    let path = testkit::fixture(name);
     let bytes = std::fs::read(&path)
         .unwrap_or_else(|e| panic!("cannot read fixture {}: {e}", path.display()));
     match copper_dsn::read_board(&bytes[..], None, Some(name), &DsnReadOptions::default()) {
@@ -69,12 +44,7 @@ fn options(source: &str, date: &str, quality_score: Option<f32>) -> DrcReportOpt
     }
 }
 
-fn json_for(
-    fixture: &str,
-    date: &str,
-    quality_score: Option<f32>,
-    flavor: DrcJsonFlavor,
-) -> String {
+fn json_for(fixture: &str, quality_score: Option<f32>) -> String {
     let (mut board, transform) = fixture_board(fixture);
     let board_unit = board.communication.unit;
     let coords = DrcCoordinates {
@@ -82,7 +52,7 @@ fn json_for(
         board_unit,
     };
     DesignRulesChecker::new(&mut board)
-        .report_to_json(&coords, &options(fixture, date, quality_score), flavor)
+        .report_to_json(&coords, &options(fixture, DATE, quality_score))
         .expect("the report serialises")
 }
 
@@ -101,57 +71,14 @@ fn line_with(json: &str, key: &str) -> String {
 }
 
 fn bare_report(source: &str) -> KiCadDrcReport {
-    KiCadDrcReport::new("mm", source, "Freerouting probe", "2026-08-29T00:00:00Z")
+    KiCadDrcReport::new("mm", source, "Copperroute probe", "2026-08-29T00:00:00Z")
 }
 
 #[test]
-fn head_flavor_key_order() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let date = date_of(&golden(DEV_BOARD));
-
-    let with_score = json_for(
-        DEV_BOARD,
-        &date,
-        Some(DEV_BOARD_SCORE),
-        DrcJsonFlavor::default(),
-    );
+fn key_order_is_kicads() {
+    let with_score = json_for(DEV_BOARD, Some(DEV_BOARD_SCORE));
     assert_eq!(
         top_level_keys(&with_score),
-        [
-            "$schema",
-            "coordinateUnits",
-            "date",
-            "kicadVersion",
-            "copperrouteVersion",
-            "source",
-            "unconnectedItems",
-            "violations",
-            "schematicParity",
-            "qualityScore",
-        ]
-    );
-
-    let without = json_for(DEV_BOARD, &date, None, DrcJsonFlavor::Legacy);
-    assert_eq!(top_level_keys(&without), top_level_keys(&with_score)[..9]);
-    assert!(!without.contains("qualityScore"));
-}
-
-#[test]
-fn kicad_flavor_key_order() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let date = date_of(&golden(DEV_BOARD));
-    let json = json_for(
-        DEV_BOARD,
-        &date,
-        Some(DEV_BOARD_SCORE),
-        DrcJsonFlavor::KiCad,
-    );
-    assert_eq!(
-        top_level_keys(&json),
         [
             "$schema",
             "coordinate_units",
@@ -165,116 +92,61 @@ fn kicad_flavor_key_order() {
             "quality_score",
         ]
     );
-}
 
-#[test]
-fn flavors_differ_only_in_the_key_tables_eight_strings() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    const REWRITES: [(&str, &str); 7] = [
-        ("coordinateUnits", "coordinate_units"),
-        ("kicadVersion", "kicad_version"),
-        ("copperrouteVersion", "copperroute_version"),
-        ("unconnectedItems", "unconnected_items"),
-        ("schematicParity", "schematic_parity"),
-        ("qualityScore", "quality_score"),
-        ("holeClearance", "hole_clearance"),
-    ];
-
-    for fixture in GOLDEN_FIXTURES {
-        let date = date_of(&golden(fixture));
-        let head = json_for(fixture, &date, Some(DEV_BOARD_SCORE), DrcJsonFlavor::Legacy);
-        let kicad = json_for(fixture, &date, Some(DEV_BOARD_SCORE), DrcJsonFlavor::KiCad);
-
-        let mut renamed = head.clone();
-        for (from, to) in REWRITES {
-            renamed = renamed.replace(&format!("\"{from}\""), &format!("\"{to}\""));
-        }
-        assert_eq!(renamed, kicad, "{fixture}");
-
-        assert_ne!(head, kicad, "{fixture}");
-    }
+    let without = json_for(DEV_BOARD, None);
+    assert_eq!(top_level_keys(&without), top_level_keys(&with_score)[..9]);
+    assert!(!without.contains("quality_score"));
 }
 
 #[test]
 fn quality_score_is_plain_decimal_text() {
-    let expected = std::fs::read_to_string(data_dir().join("gson-escapes.txt"))
-        .expect("cannot read tests/data/gson-escapes.txt");
-
     let mut score = bare_report("probe");
     score.quality_score = Some(f64::from(DEV_BOARD_SCORE));
-    let score_902 = line_with(
-        &score.to_json(DrcJsonFlavor::Legacy).unwrap(),
-        "qualityScore",
-    );
+    let score_902 = line_with(&score.to_json().unwrap(), "quality_score");
+    assert_eq!(score_902, "\"quality_score\": 902.078369140625");
 
     score.quality_score = Some(1.0e7);
-    let score_1e7 = line_with(
-        &score.to_json(DrcJsonFlavor::Legacy).unwrap(),
-        "qualityScore",
-    );
+    let score_1e7 = line_with(&score.to_json().unwrap(), "quality_score");
+    assert_eq!(score_1e7, "\"quality_score\": 10000000");
+}
 
-    let html = bare_report("<'&=>\"")
-        .to_json(DrcJsonFlavor::Legacy)
-        .unwrap();
-    let separators = bare_report("a\u{2028}b\u{2029}c")
-        .to_json(DrcJsonFlavor::Legacy)
-        .unwrap();
-
-    let actual = format!(
-        "qualityScore-902\t{score_902}\n\
-         qualityScore-1e7\t{score_1e7}\n\
-         source-html\t{}\n\
-         source-separators\t{}\n",
-        line_with(&html, "\"source\""),
+#[test]
+fn strings_are_written_without_html_or_separator_escapes() {
+    let html = bare_report("<'&=>\"").to_json().unwrap();
+    assert_eq!(line_with(&html, "\"source\""), "\"source\": \"<'&=>\\\"\",");
+    let separators = bare_report("a\u{2028}b\u{2029}c").to_json().unwrap();
+    assert_eq!(
         line_with(&separators, "\"source\""),
+        "\"source\": \"a\\u2028b\\u2029c\","
     );
-    assert_eq!(actual, expected);
-
-    assert!(score_1e7.ends_with("10000000"), "{score_1e7}");
-    assert!(score_902.ends_with("902.078369140625"), "{score_902}");
 }
 
 #[test]
 fn schema_is_verbatim_and_schematic_parity_is_empty() {
-    let json = bare_report("probe").to_json(DrcJsonFlavor::Legacy).unwrap();
+    let json = bare_report("probe").to_json().unwrap();
     assert!(
         json.contains("  \"$schema\": \"https://schemas.kicad.org/drc.v1.json\",\n"),
         "{json}"
     );
-    assert!(json.contains("\n  \"schematicParity\": []\n}"), "{json}");
+    assert!(json.contains("\n  \"schematic_parity\": []\n}"), "{json}");
     for escape in ["\\u003c", "\\u003e", "\\u0026", "\\u003d", "\\u0027"] {
         assert!(!json.contains(escape), "{escape} in {json}");
     }
 }
 
 #[test]
-fn dates_are_iso_offset() {
-    const SAMPLED: &str = "2026-08-29T01:38:28.155317-07:00";
+fn dates_are_written_verbatim() {
     let mut report = bare_report("probe");
-    report.date = SAMPLED.to_string();
-    let json = report.to_json(DrcJsonFlavor::Legacy).unwrap();
+    report.date = DATE.to_string();
+    let json = report.to_json().unwrap();
     assert!(
-        json.contains(&format!("  \"date\": \"{SAMPLED}\",\n")),
+        json.contains(&format!("  \"date\": \"{DATE}\",\n")),
         "{json}"
     );
-
-    if parity::require_reference_dir() {
-        let date = date_of(&golden(DEV_BOARD));
-        assert_eq!(date.len(), SAMPLED.len(), "{date}");
-        assert!(
-            date.contains('T') && (date.contains('+') || date[10..].contains('-')),
-            "{date}"
-        );
-    }
 }
 
 #[test]
 fn report_to_json_is_generate_report_then_to_json() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let (mut board, transform) = fixture_board(DEV_BOARD);
     let board_unit = board.communication.unit;
     let coords = DrcCoordinates {
@@ -286,19 +158,17 @@ fn report_to_json_is_generate_report_then_to_json() {
     let mut checker = DesignRulesChecker::new(&mut board);
     let direct = checker
         .generate_report(&coords, &options)
-        .to_json(DrcJsonFlavor::Legacy)
+        .to_json()
         .unwrap();
-    let through = checker
-        .report_to_json(&coords, &options, DrcJsonFlavor::Legacy)
-        .unwrap();
+    let through = checker.report_to_json(&coords, &options).unwrap();
     assert_eq!(direct, through);
 }
 
 #[test]
-fn a_non_finite_coordinate_is_refused_where_gson_throws() {
+fn a_non_finite_coordinate_is_refused() {
     let mut report = bare_report("probe");
     report.quality_score = Some(f64::NAN);
-    assert!(report.to_json(DrcJsonFlavor::Legacy).is_err());
+    assert!(report.to_json().is_err());
 
     let mut report = bare_report("probe");
     report.add_violation(copper_drc::report::KiCadDrcViolation::new(
@@ -311,7 +181,7 @@ fn a_non_finite_coordinate_is_refused_where_gson_throws() {
             "1",
         )],
     ));
-    assert!(report.to_json(DrcJsonFlavor::KiCad).is_err());
+    assert!(report.to_json().is_err());
 }
 
 #[test]
@@ -327,7 +197,7 @@ fn a_hand_built_position_renders_through_the_formatter() {
             "1",
         )],
     ));
-    let json = report.to_json(DrcJsonFlavor::Legacy).unwrap();
+    let json = report.to_json().unwrap();
     assert!(json.contains("\"x\": 10000000"), "{json}");
     assert!(json.contains("\"y\": -72.18960000000001"), "{json}");
 }

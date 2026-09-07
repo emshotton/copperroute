@@ -1,7 +1,7 @@
 use copper_core::{RoutingJob, SessionId, load_board_if_needed, summarise};
 
 fn load(relative: &str) -> copper_board::Board {
-    let path = parity::reference_dir().join(relative);
+    let path = testkit::corpus_dir().join(relative);
     let mut job = RoutingJob::new(SessionId::NIL);
     job.set_input(&path)
         .unwrap_or_else(|e| panic!("cannot set {} as input: {e}", path.display()));
@@ -12,9 +12,6 @@ fn load(relative: &str) -> copper_board::Board {
 
 #[test]
 fn the_summary_names_every_layer_net_and_component() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load("fixtures/Issue143-rpi_splitter.dsn");
     let summary = summarise(&mut board, None);
 
@@ -50,9 +47,6 @@ fn the_summary_names_every_layer_net_and_component() {
 
 #[test]
 fn the_summary_counts_agree_with_the_statistics() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     for stem in [
         "fixtures/Issue143-rpi_splitter.dsn",
         "fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn",
@@ -85,9 +79,6 @@ fn the_summary_counts_agree_with_the_statistics() {
 
 #[test]
 fn the_metadata_comes_from_the_boards_own_communication() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load("examples/tutorial_board/tutorial_board.dsn");
     let summary = summarise(&mut board, None);
     assert_eq!(summary.metadata.host_cad.as_deref(), Some("KiCad's Pcbnew"));
@@ -99,9 +90,6 @@ fn the_metadata_comes_from_the_boards_own_communication() {
 
 #[test]
 fn the_top_level_key_order_is_declaration_order() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load("fixtures/Issue143-rpi_splitter.dsn");
     let text = summarise(&mut board, None).to_json_pretty();
     let keys: Vec<&str> = ["layers", "nets", "components", "statistics", "metadata"]

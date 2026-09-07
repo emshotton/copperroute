@@ -14,7 +14,7 @@ const RPI: &str = "fixtures/Issue143-rpi_splitter.dsn";
 const ECC83: &str = "fixtures/Issue649-kicad_ecc83-pp_input_board_v1.dsn";
 
 fn load_board(rel_path: &str) -> Board {
-    let path = parity::reference_dir().join(rel_path);
+    let path = testkit::corpus_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path
@@ -78,9 +78,6 @@ impl ProgressSink for Recorder {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn an_empty_smd_pin_set_skips_the_pre_pass() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load_board(ECC83);
     assert!(
         board.get_smd_pins().is_empty(),
@@ -111,9 +108,6 @@ fn an_empty_smd_pin_set_skips_the_pre_pass() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn a_board_with_smd_pins_runs_the_pre_pass_and_reports_it() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load_board(RPI);
     let mut settings = build_settings(&board);
     settings.max_passes = Some(1);
@@ -143,9 +137,6 @@ fn a_board_with_smd_pins_runs_the_pre_pass_and_reports_it() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn zero_routed_pins_ends_the_loop() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load_board(RPI);
     let settings = build_settings(&board);
     let stop = RouterStop::new();
@@ -204,9 +195,6 @@ fn the_stops_are_tested_in_order() {
 
 #[test]
 fn ripup_costs_scale_with_the_pass_number() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let board = load_board(RPI);
     let mut settings = build_settings(&board);
     let start = settings.get_start_ripup_costs();
@@ -243,9 +231,6 @@ fn ripup_costs_scale_with_the_pass_number() {
 
 #[test]
 fn a_pin_whose_net_does_not_resolve_cannot_use_vias() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load_board(RPI);
     let mut settings = build_settings(&board);
 
@@ -283,9 +268,6 @@ fn a_pin_whose_net_does_not_resolve_cannot_use_vias() {
 
 #[test]
 fn the_max_items_gate_treats_a_non_positive_limit_as_no_limit() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let board = load_board(RPI);
     let mut settings = build_settings(&board);
     let fanout_settings = settings.fanout.get_or_insert_with(Default::default);
@@ -317,9 +299,6 @@ fn the_max_items_gate_treats_a_non_positive_limit_as_no_limit() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_stage_deadline_never_touches_the_stop_flag() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load_board(RPI);
     let mut settings = build_settings(&board);
     settings
@@ -375,9 +354,6 @@ fn an_expired_job_deadline_stops_fanout_and_clears_the_changed_area() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn the_progress_sink_sees_the_1_based_pass_number() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load_board(RPI);
     let settings = build_settings(&board);
     let stop = RouterStop::new();
@@ -428,9 +404,6 @@ fn the_progress_sink_sees_the_1_based_pass_number() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn a_recording_sink_changes_no_fanout_byte() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut quiet = load_board(RPI);
     let settings = build_settings(&quiet);
     let stop = RouterStop::new();
@@ -594,9 +567,6 @@ fn the_documented_timeout_spellings_parse() {
 
 #[test]
 fn an_unparseable_fanout_timeout_is_refused() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = load_board(RPI);
     let mut settings = build_settings(&board);
     {
@@ -643,9 +613,6 @@ fn an_unparseable_fanout_timeout_is_refused() {
 
 #[test]
 fn the_fanout_recovery_in_the_batch_loop_fires_once() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let board = load_board(RPI);
     let mut settings = build_settings(&board);
     settings.fanout.get_or_insert_with(Default::default).enabled = Some(true);

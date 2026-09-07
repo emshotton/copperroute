@@ -4,7 +4,6 @@ pub mod build;
 pub mod json;
 
 pub use build::{DrcCoordinates, DrcReportOptions, item_description};
-pub use json::DrcJsonFlavor;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct KiCadDrcReport {

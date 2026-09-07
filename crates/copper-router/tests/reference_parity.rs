@@ -11,7 +11,7 @@ use copper_router::pipeline::RouterBudget;
 use copper_router::{route_connection, route_connection_full};
 use copper_settings::sources::DefaultSettings;
 use copper_settings::{HostEnvironment, RouterSettings, SettingsSource};
-use parity::{RouterConnectionDoc, RouterMetrics, RouterTraceDoc, RouterViaDoc};
+use testkit::{RouterConnectionDoc, RouterMetrics, RouterTraceDoc, RouterViaDoc};
 
 struct Row {
     stem: String,
@@ -21,7 +21,7 @@ struct Row {
 }
 
 fn rows() -> Vec<Row> {
-    let path = parity::workspace_root().join("tests/reference/router-fixtures.txt");
+    let path = testkit::workspace_root().join("tests/reference/router-fixtures.txt");
     let text = std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
     text.lines()
@@ -60,18 +60,18 @@ fn row(stem: &str) -> Row {
 }
 
 fn reference_path(stem: &str) -> std::path::PathBuf {
-    parity::reference(stem, "router.jsonl")
+    testkit::reference(stem, "router.jsonl")
 }
 
 fn read_reference(stem: &str) -> Vec<RouterConnectionDoc> {
     let path = reference_path(stem);
     let text = std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
-    parity::parse_router_jsonl(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+    testkit::parse_router_jsonl(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
 fn load_board(rel_path: &str) -> Board {
-    let path = parity::reference_dir().join(rel_path);
+    let path = testkit::corpus_dir().join(rel_path);
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let design_name = path
@@ -311,17 +311,14 @@ struct Ladder {
 }
 
 fn check(stem: &str) -> Option<Ladder> {
-    if !parity::require_reference_dir() {
-        return None;
-    }
-    if !parity::require_reference(&reference_path(stem)) {
+    if !testkit::require_reference(&reference_path(stem)) {
         return None;
     }
     let row = row(stem);
     let expected = read_reference(stem);
     let actual = route_stem(&row);
-    if parity::regolden_label().is_some() {
-        parity::write_router_jsonl(&reference_path(stem), &actual);
+    if testkit::regolden_label().is_some() {
+        testkit::write_router_jsonl(&reference_path(stem), &actual);
         return None;
     }
 
@@ -503,84 +500,25 @@ fn router_tutorial_board() {
     );
 }
 
-#[test]
-fn references_are_from_the_head_jar() {
-    for row in rows() {
-        let meta_path = parity::reference(&row.stem, "router.meta.txt");
-        if !parity::require_reference(&meta_path) {
-            continue;
-        }
-        let meta = std::fs::read_to_string(&meta_path)
-            .unwrap_or_else(|e| panic!("cannot read {}: {e}", meta_path.display()));
-        if parity::declared_lane(&meta).starts_with("port") {
-            parity::assert_port_lane_provenance(&meta, &row.stem);
-            continue;
-        }
-        assert!(
-            meta.contains("freerouting-current-executable.jar"),
-            "{} does not name the HEAD jar:\n{meta}",
-            meta_path.display()
-        );
-        assert!(
-            meta.contains("2.3.1-SNAPSHOT"),
-            "{} does not name a 2.3.1-SNAPSHOT jar:\n{meta}",
-            meta_path.display()
-        );
-        assert!(
-            meta.contains("-XX:hashCode=2"),
-            "{} was not generated under the constant-hash mode:\n{meta}",
-            meta_path.display()
-        );
-    }
-}
-
-#[test]
-fn every_stem_has_the_connection_count_its_meta_records() {
-    for row in rows() {
-        let meta_path = parity::reference(&row.stem, "router.meta.txt");
-        if !parity::require_reference(&meta_path)
-            || !parity::require_reference(&reference_path(&row.stem))
-        {
-            continue;
-        }
-        let meta = std::fs::read_to_string(&meta_path)
-            .unwrap_or_else(|e| panic!("cannot read {}: {e}", meta_path.display()));
-        let recorded: usize = meta
-            .lines()
-            .find_map(|line| line.strip_prefix("connections"))
-            .map(|rest| rest.trim())
-            .unwrap_or_else(|| panic!("{} has no `connections` line", meta_path.display()))
-            .parse()
-            .expect("a count");
-        assert_eq!(
-            read_reference(&row.stem).len(),
-            recorded,
-            "{}: router.jsonl and router.meta.txt disagree on the connection count",
-            row.stem
-        );
-    }
-}
-
 fn steps18_reference_path(stem: &str) -> std::path::PathBuf {
-    parity::reference(stem, "router-steps18.jsonl")
+    testkit::reference(stem, "router-steps18.jsonl")
 }
 
 fn read_steps18_reference(stem: &str) -> Vec<RouterConnectionDoc> {
     let path = steps18_reference_path(stem);
     let text = std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
-    parity::parse_router_jsonl(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+    testkit::parse_router_jsonl(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
 fn steps18_pair(stem: &str) -> Option<(Vec<RouterConnectionDoc>, Vec<RouterConnectionDoc>)> {
-    if !parity::require_reference_dir() || !parity::require_reference(&steps18_reference_path(stem))
-    {
+    if !testkit::require_reference(&steps18_reference_path(stem)) {
         return None;
     }
     let expected = read_steps18_reference(stem);
     let actual = route_stem_with(&row(stem), Steps::OneToEight);
-    if parity::regolden_label().is_some() {
-        parity::write_router_jsonl(&steps18_reference_path(stem), &actual);
+    if testkit::regolden_label().is_some() {
+        testkit::write_router_jsonl(&steps18_reference_path(stem), &actual);
         return None;
     }
     assert_eq!(

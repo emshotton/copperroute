@@ -8,7 +8,7 @@ use copper_geometry::{
 };
 
 fn fixture_board(name: &str) -> Board {
-    let path = parity::fixture(name);
+    let path = testkit::fixture(name);
     let bytes = std::fs::read(&path)
         .unwrap_or_else(|e| panic!("cannot read fixture {}: {e}", path.display()));
     match copper_dsn::read_board(&bytes[..], None, Some(name), &DsnReadOptions::default()) {
@@ -36,18 +36,12 @@ fn counters(board: &mut Board) -> (i32, usize, usize, usize) {
 
 #[test]
 fn dev_board_counts() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
     assert_eq!(counters(&mut board), (96, 9, 9, 9));
 }
 
 #[test]
 fn bbd_mars_64_counts() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board =
         fixture_board("Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn");
     assert_eq!(counters(&mut board), (106, 3, 3, 3));
@@ -55,18 +49,12 @@ fn bbd_mars_64_counts() {
 
 #[test]
 fn natural_tone_preamp_counts() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board("Issue575-drc_Natural_Tone_Preamp_7_unconnected_items.dsn");
     assert_eq!(counters(&mut board), (218, 145, 145, 145));
 }
 
 #[test]
 fn empty_board_has_no_incompletes() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board("empty_board.dsn");
     assert_eq!(counters(&mut board), (0, 0, 0, 0));
     let mut drc = DesignRulesChecker::new(&mut board);
@@ -139,9 +127,6 @@ fn an_empty_net_contributes_nothing() {
 
 #[test]
 fn lazy_initialisation_matches_java() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
     let mut drc = DesignRulesChecker::new(&mut board);
 
@@ -176,9 +161,6 @@ fn lazy_initialisation_matches_java() {
 
 #[test]
 fn out_of_range_net_numbers_answer_the_java_defaults() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
     let max_net_number = board.rules.nets.max_net_number();
     let mut drc = DesignRulesChecker::new(&mut board);
@@ -226,9 +208,6 @@ fn recalculate_net_incompletes_initialises_and_returns() {
 
 #[test]
 fn statistics_block() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board =
         fixture_board("Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn");
     let factor = Unit::scale(1.0, board.communication.unit, Unit::Um)
@@ -414,9 +393,6 @@ fn insert_conduction_area(board: &mut Board) {
 
 #[test]
 fn a_net_subset_count_matches_the_full_pass() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
     let max_net_number = board.rules.nets.max_net_number();
     let (full, per_net) = {

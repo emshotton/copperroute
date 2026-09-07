@@ -1043,7 +1043,7 @@ fn the_stub_takes_the_width_of_the_layer_it_lands_on() {
 fn read_per_layer_width_board() -> Board {
     use copper_dsn::{BoardReadResult, DsnReadOptions};
 
-    let root = parity::workspace_root();
+    let root = testkit::workspace_root();
     let dsn = root.join(format!(
         "crates/copper-router/tests/data/{PER_LAYER_WIDTH_STEM}.dsn"
     ));

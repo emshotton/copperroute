@@ -214,7 +214,7 @@ struct Run {
 /// reproduced exactly, because a run that loaded the board differently would route a different
 /// board and the guard counts would be of something else.
 fn route_stem(stem: &Stem, instrumented: bool) -> Run {
-    let dsn = parity::reference_dir().join(stem.dsn);
+    let dsn = testkit::corpus_dir().join(stem.dsn);
     let bytes =
         std::fs::read(&dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
     let file_name = dsn
@@ -319,13 +319,10 @@ fn stems(ci_only: bool) -> impl Iterator<Item = &'static Stem> {
 #[test]
 #[cfg_attr(
     debug_assertions,
-    ignore = "slow in debug; run with COPPERROUTE_SLOW_PARITY=1 --release for all eight stems"
+    ignore = "slow in debug; run with COPPERROUTE_SLOW=1 --release for all eight stems"
 )]
 fn the_three_guards_are_counted_on_every_router_stem() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let ci_only = std::env::var_os("COPPERROUTE_SLOW_PARITY").is_none();
+    let ci_only = std::env::var_os("COPPERROUTE_SLOW").is_none();
     let mut report = String::new();
     // **Collected, not asserted per stem.** A `assert_eq!` inside the loop stops at the first
     // moved row, and on this suite a stem costs minutes — so a task that moves four rows would
@@ -384,13 +381,10 @@ fn the_three_guards_are_counted_on_every_router_stem() {
 #[test]
 #[cfg_attr(
     debug_assertions,
-    ignore = "slow in debug; run with COPPERROUTE_SLOW_PARITY=1 --release for all eight stems"
+    ignore = "slow in debug; run with COPPERROUTE_SLOW=1 --release for all eight stems"
 )]
 fn instrumentation_changes_no_board_byte() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-    let ci_only = std::env::var_os("COPPERROUTE_SLOW_PARITY").is_none();
+    let ci_only = std::env::var_os("COPPERROUTE_SLOW").is_none();
     for stem in stems(ci_only) {
         let off = route_stem(stem, false);
         let on = route_stem(stem, true);
@@ -421,12 +415,9 @@ fn instrumentation_changes_no_board_byte() {
 #[test]
 #[cfg_attr(
     debug_assertions,
-    ignore = "needs a routed board; run with COPPERROUTE_SLOW_PARITY=1 --release"
+    ignore = "needs a routed board; run with COPPERROUTE_SLOW=1 --release"
 )]
 fn a_shortened_trace_makes_a_recorded_index_stale_and_clears_the_array_that_held_it() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let stem = STEMS
         .iter()
         .find(|s| s.name == "router-rpi-splitter")

@@ -194,12 +194,8 @@ fn max_items_stops_all_and_max_passes_stops_the_router_only() {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn max_items_optimises_like_max_passes() {
-    if !parity::require_reference_dir() {
-        return;
-    }
-
     fn route(max_items: Option<i32>, max_passes: i32) -> (StopRequestState, TaskState, u64) {
-        let path = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+        let path = testkit::corpus_dir().join("fixtures/Issue143-rpi_splitter.dsn");
         let file = std::fs::File::open(&path)
             .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
         let mut board = match copper_dsn::read_board(
@@ -253,7 +249,7 @@ fn max_items_optimises_like_max_passes() {
     assert_ne!(by_passes_state, TaskState::Idle);
 
     let unoptimised = {
-        let path = parity::reference_dir().join("fixtures/Issue143-rpi_splitter.dsn");
+        let path = testkit::corpus_dir().join("fixtures/Issue143-rpi_splitter.dsn");
         let file = std::fs::File::open(&path).expect("cannot open the fixture");
         let mut board = match copper_dsn::read_board(
             file,
@@ -324,9 +320,6 @@ fn a_stop_without_a_deadline_never_times_out() {
 
 #[test]
 fn an_unexpired_deadline_is_invisible() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let without = route_mini_pass(&RouterStop::new(), &mut NoopProgressSink);
     let far_future = RouterStop::with_deadline(3_600_000);
     let with = route_mini_pass(&far_future, &mut NoopProgressSink);
@@ -353,9 +346,6 @@ impl ProgressSink for RecordingSink {
 
 #[test]
 fn a_recording_sink_changes_no_board_byte() {
-    if !parity::require_reference_dir() {
-        return;
-    }
     let quiet = route_mini_pass(&RouterStop::new(), &mut NoopProgressSink);
 
     let mut recorder = RecordingSink::default();
@@ -802,7 +792,7 @@ struct MiniPass {
 }
 
 fn route_mini_pass(stop: &RouterStop, progress: &mut dyn ProgressSink) -> MiniPass {
-    let path = parity::reference_dir().join("fixtures/Issue508-DAC2020_bm01.dsn");
+    let path = testkit::corpus_dir().join("fixtures/Issue508-DAC2020_bm01.dsn");
     let file = std::fs::File::open(&path)
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", path.display()));
     let mut board = match copper_dsn::read_board(

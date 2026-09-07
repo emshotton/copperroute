@@ -1,9 +1,9 @@
 {
   "$schema": "https://schemas.kicad.org/drc.v1.json",
   "coordinate_units": "mm",
-  "date": "2026-09-05T04:36:15.595899Z",
+  "date": "2026-09-07T05:07:15.610425Z",
   "kicad_version": "N/A",
-  "freerouting_version": "Freerouting 2.3.1-SNAPSHOT",
+  "copperroute_version": "Copperroute 0.1.0",
   "source": "Issue575-drc_dev-board_4_hole_clearance_violations.dsn",
   "unconnected_items": [
     {
@@ -61,7 +61,7 @@
           "description": "Trace [GND]",
           "pos": {
             "x": 127.625,
-            "y": -67.0
+            "y": -67
           },
           "uuid": "762"
         },
@@ -228,7 +228,7 @@
         {
           "description": "Pin [GND]",
           "pos": {
-            "x": 124.0,
+            "x": 124,
             "y": -87.05
           },
           "uuid": "120"
@@ -356,7 +356,7 @@
         {
           "description": "Trace [GND]",
           "pos": {
-            "x": 124.0,
+            "x": 124,
             "y": -86.61415
           },
           "uuid": "726"

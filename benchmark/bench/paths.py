@@ -13,6 +13,7 @@ REPORTS = ROOT / "reports"
 VENDOR_KICAD = ROOT / "vendor" / "kicad"
 JAVA_REPO = ROOT.parent.parent / "freerouting"
 RUST_REPO = ROOT.parent
+TEST_CORPUS = RUST_REPO / "tests" / "corpus" / "fixtures"
 
 
 def _load_dotenv(path: Path) -> None:

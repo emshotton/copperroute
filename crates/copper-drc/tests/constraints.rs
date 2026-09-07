@@ -7,7 +7,7 @@ use copper_drc::{DrcError, DrcViolationKind};
 use copper_dsn::{BoardReadResult, DsnReadOptions};
 
 fn spike_board() -> Board {
-    let path = parity::workspace_root().join("benchmark/tests/data/spike/spike.dsn");
+    let path = testkit::workspace_root().join("benchmark/tests/data/spike/spike.dsn");
     let bytes =
         std::fs::read(&path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
     match copper_dsn::read_board(&bytes[..], None, Some("spike"), &DsnReadOptions::default()) {
@@ -95,7 +95,7 @@ fn track_width_minimum_and_severity_default() {
 }
 
 fn spike_board_with_transform() -> (Board, copper_dsn::CoordinateTransform) {
-    let path = parity::workspace_root().join("benchmark/tests/data/spike/spike.dsn");
+    let path = testkit::workspace_root().join("benchmark/tests/data/spike/spike.dsn");
     let bytes = std::fs::read(&path).expect("the spike DSN is in the repo");
     match copper_dsn::read_board(&bytes[..], None, Some("spike"), &DsnReadOptions::default()) {
         BoardReadResult::Success {
@@ -117,7 +117,7 @@ fn spike_board_with_transform() -> (Board, copper_dsn::CoordinateTransform) {
 
 fn spike_project() -> String {
     std::fs::read_to_string(
-        parity::workspace_root().join("benchmark/tests/data/spike/stripped.kicad_pro"),
+        testkit::workspace_root().join("benchmark/tests/data/spike/stripped.kicad_pro"),
     )
     .expect("the spike project is in the repo")
 }
