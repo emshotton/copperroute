@@ -5,7 +5,7 @@ import { applyProject } from "./project.js";
 self.onmessage = async ({ data }) => {
   try {
     if (/\.dsn$/i.test(data.name ?? "")) {
-      const { default: init, preview_dsn, route_dsn } = await import("./pkg/fr_web.js");
+      const { default: init, preview_dsn, route_dsn } = await import("./pkg/copper_web.js");
       await init();
       self.postMessage({ type: "preview", ...JSON.parse(preview_dsn(data.text, data.name)) });
       if (data.action === "preview") {
@@ -47,7 +47,7 @@ self.onmessage = async ({ data }) => {
       svg: previewBoard(exportBoard(input, input.board)),
       warnings: input.warnings,
     });
-    const { default: init, route_board } = await import("./pkg/fr_web.js");
+    const { default: init, route_board } = await import("./pkg/copper_web.js");
     await init();
     self.postMessage({
       type: "status",

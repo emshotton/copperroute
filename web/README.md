@@ -150,7 +150,7 @@ subset of the native S-expression format into that existing representation.
 `app.js` manages file selection, worker lifecycle, result state, and Blob downloads.
 `worker.js` renders native geometry on selection. On Route it imports the board,
 applies project classes, loads WASM, routes, then sends the final preview and PCB. All parsing and routing happens in the worker.
-`crates/fr-web` resolves normal headless settings, loads the existing JSON format,
+`crates/copper-web` resolves normal headless settings, loads the existing JSON format,
 invokes `fr_core::RoutingPipeline`, and returns the JSON output plus route metrics.
 Routing `std::time::Instant` uses are replaced with `web_time`, a native alias on
 native targets and a browser clock on WASM. `ProgressSink::on_board_update` lends

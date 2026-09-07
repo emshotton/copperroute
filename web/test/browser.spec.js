@@ -133,7 +133,7 @@ test("cancel terminates the worker and a new attempt succeeds", async ({
   await page.goto("/");
   await page.locator("#demo").click();
   await expect(page.locator("#route")).toBeEnabled();
-  await page.route("**/pkg/fr_web_bg.wasm", async (route) => {
+  await page.route("**/pkg/copper_web_bg.wasm", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 400));
     await route.continue();
   });
@@ -141,7 +141,7 @@ test("cancel terminates the worker and a new attempt succeeds", async ({
   await page.locator("#cancel").click();
   await expect(page.locator("#badge")).toHaveText("Cancelled");
   await expect(page.locator("#pcb")).toBeHidden();
-  await page.unroute("**/pkg/fr_web_bg.wasm");
+  await page.unroute("**/pkg/copper_web_bg.wasm");
   await page.locator("#route").click();
   await expect(page.locator("#pcb")).toBeVisible({ timeout: 80000 });
 });
@@ -238,7 +238,7 @@ test("Route board discards existing tracks, arcs and vias and routes fresh coppe
   ).toBeVisible();
   let release;
   const paused = new Promise((resolve) => (release = resolve));
-  await page.route("**/pkg/fr_web_bg.wasm", async (route) => {
+  await page.route("**/pkg/copper_web_bg.wasm", async (route) => {
     await paused;
     await route.continue();
   });
@@ -331,7 +331,7 @@ test("preview accepts replacement drops while routing and opens the picker by ke
   await picker;
   let release;
   const gate = new Promise((resolve) => (release = resolve));
-  await page.route("**/pkg/fr_web_bg.wasm", async (route) => {
+  await page.route("**/pkg/copper_web_bg.wasm", async (route) => {
     await gate;
     await route.continue().catch(() => {});
   });

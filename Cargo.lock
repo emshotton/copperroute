@@ -224,6 +224,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "copper-web"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "copper-board",
+ "copper-core",
+ "copper-drc",
+ "copper-dsn",
+ "copper-geometry",
+ "copper-settings",
+ "js-sys",
+ "serde_json",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "copperroute"
 version = "0.1.0"
 dependencies = [
@@ -241,22 +257,6 @@ dependencies = [
  "thiserror",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "fr-web"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "copper-board",
- "copper-core",
- "copper-drc",
- "copper-dsn",
- "copper-geometry",
- "copper-settings",
- "js-sys",
- "serde_json",
- "wasm-bindgen",
 ]
 
 [[package]]
