@@ -423,3 +423,10 @@ fn a_net_subset_count_matches_the_full_pass() {
         0
     );
 }
+
+#[test]
+fn read_only_airlines_match_the_checker() {
+    let mut board = fixture_board("Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
+    let expected = DesignRulesChecker::new(&mut board).get_all_airlines();
+    assert_eq!(copper_drc::all_airlines(&board), expected);
+}

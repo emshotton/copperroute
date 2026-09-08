@@ -254,7 +254,7 @@ test("Route board discards existing tracks, arcs and vias and routes fresh coppe
       '#preview svg polyline[stroke="#f26d78"], #preview svg polyline[stroke="#68b8ff"]',
     ),
   ).toHaveCount(0);
-  await expect(page.locator("#preview svg path")).toHaveCount(0);
+  await expect(page.locator("#preview svg > path")).toHaveCount(0);
   release();
   await expect(page.locator("#pcb")).toBeVisible({ timeout: 80000 });
   await expect(page.locator("#metrics")).toContainText("0 unrouted connections");
@@ -831,4 +831,91 @@ test("switching to an example without a project drops the previous board's rules
 
   await expect(page.locator("#rules-summary")).not.toContainText("easyduino");
   await expect(page.locator("#project-name")).not.toContainText("easyduino");
+});
+
+test("live frames carry a ratsnest for exactly as long as connections remain", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const messages = await page.evaluate(
+    ({ text, rules }) =>
+      new Promise((resolve, reject) => {
+        const worker = new Worker("./worker.js", { type: "module" }),
+          seen = [];
+        const timeout = setTimeout(() => {
+          worker.terminate();
+          reject(Error("No routing result"));
+        }, 20000);
+        worker.onmessage = ({ data }) => {
+          if (data.svg)
+            seen.push({
+              type: data.type,
+              incomplete: data.incomplete,
+              ratsnest: data.svg.includes("ratsnest"),
+            });
+          if (data.type === "result" || data.type === "error") {
+            clearTimeout(timeout);
+            worker.terminate();
+            data.type === "error" ? reject(Error(data.text)) : resolve(seen);
+          }
+        };
+        worker.postMessage({
+          text,
+          name: "live.kicad_pcb",
+          rules,
+          passes: 3,
+          seconds: 15,
+        });
+      }),
+    { text: readFileSync("example.kicad_pcb", "utf8"), rules },
+  );
+  expect(messages.some((m) => m.type === "preview" && m.ratsnest)).toBe(true);
+  expect(messages.filter((m) => m.incomplete > 0).length).toBeGreaterThan(0);
+  for (const frame of messages.filter((m) => m.incomplete !== undefined))
+    expect(frame.ratsnest).toBe(frame.incomplete > 0);
+});
+
+test("the unrouted connections of a selected board are drawn and can be hidden", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const source = readFileSync("example.kicad_pcb", "utf8");
+  await page.locator("#file").setInputFiles({
+    name: "unrouted.kicad_pcb",
+    mimeType: "text/plain",
+    buffer: Buffer.from(source.replace(/\n\s*\(segment [^\n]*\)/g, "")),
+  });
+  await expect(page.locator("#preview .ratsnest")).toBeVisible();
+
+  await page.locator("#show-ratsnest").uncheck();
+  await expect(page.locator("#preview .ratsnest")).toBeHidden();
+  await page.locator("#show-ratsnest").check();
+  await expect(page.locator("#preview .ratsnest")).toBeVisible();
+});
+
+test("routing clears the ratsnest it started with", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#demo").click();
+  await expect(page.locator("#preview .ratsnest")).toBeVisible();
+
+  await page.locator("#route").click();
+  await expect(page.locator("#badge")).toHaveText("Routing complete", {
+    timeout: 60000,
+  });
+  await expect(page.locator("#preview .ratsnest")).toHaveCount(0);
+});
+
+test("hiding the unrouted connections survives the live frames of a route", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator("#demo").click();
+  await expect(page.locator("#preview .ratsnest")).toBeVisible();
+  await page.locator("#show-ratsnest").uncheck();
+
+  await page.locator("#route").click();
+  await expect(page.locator("#badge")).toHaveText("Routing complete", {
+    timeout: 60000,
+  });
+  await expect(page.locator("#show-ratsnest")).not.toBeChecked();
 });

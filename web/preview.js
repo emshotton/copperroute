@@ -17,7 +17,7 @@ export function previewLayers(text) {
 }
 // Display native geometry independently of the router's supported import subset.
 // All coordinates are numeric and all text is XML-escaped.
-export function previewBoard(text) {
+export function previewBoard(text, airlines = []) {
   const root = parse(text),
     points = [],
     shapes = [],
@@ -221,6 +221,15 @@ export function previewBoard(text) {
       `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="#edcf86"/><circle cx="${p.x}" cy="${p.y}" r="${num(value(v, "drill", 0.3)) / 2}" fill="#101c25"/>`,
     );
   }
+  const ratsnest = airlines.map(({ from, to }) => {
+    const a = { x: num(from?.[0]), y: num(from?.[1]) },
+      b = { x: num(to?.[0]), y: num(to?.[1]) };
+    collect([a, b]);
+    return `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
+  });
+  const ratsnestGroup = ratsnest.length
+    ? `<g class="ratsnest" fill="none" stroke="#e8f0f2" stroke-width="0.06" stroke-dasharray="0.35 0.25" opacity="0.4"><path d="${ratsnest.join(" ")}"/></g>`
+    : "";
   if (!points.length) throw Error("No displayable board geometry found.");
   const bounds = points.reduce(
     (b, p) => ({
@@ -235,5 +244,5 @@ export function previewBoard(text) {
     y = bounds.y - 2,
     w = bounds.right - x + 2,
     h = bounds.bottom - y + 2;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}" role="img" aria-label="Native KiCad board preview"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#101c25"/>${shapes.join("")}${labels.join("")}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}" role="img" aria-label="Native KiCad board preview"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#101c25"/>${shapes.join("")}${ratsnestGroup}${labels.join("")}</svg>`;
 }

@@ -1,10 +1,74 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
-use copper_board::{Board, DelaunayCorner, ItemId, ItemKind, PlanarDelaunayTriangulation};
+use copper_board::{Board, DelaunayCorner, Item, ItemId, ItemKind, PlanarDelaunayTriangulation};
 use copper_geometry::FloatPoint;
 
 use crate::airline::AirLine;
+
+/// The connectable items of every net, indexed by net number minus one.
+pub fn net_item_lists(board: &Board) -> Vec<Vec<ItemId>> {
+    let mut lists: Vec<Vec<ItemId>> =
+        vec![Vec::new(); board.rules.nets.max_net_number().max(0) as usize];
+    for id in board.items_in_board_order() {
+        let Some(item) = board.get_item(id) else {
+            debug_assert!(
+                false,
+                "board item {id:?} vanished between the walk and the lookup"
+            );
+            continue;
+        };
+        if !item.is_connectable() {
+            continue;
+        }
+        for i in 0..item.net_count() {
+            if let Some(list) = usize::try_from(item.get_net_number(i) - 1)
+                .ok()
+                .and_then(|index| lists.get_mut(index))
+            {
+                list.push(id);
+            }
+        }
+    }
+    lists
+}
+
+/// The largest number of connections the nets on `board` can ask for.
+pub fn max_connections(board: &Board, lists: &[Vec<ItemId>]) -> i32 {
+    lists
+        .iter()
+        .filter(|list| !list.is_empty())
+        .map(|list| {
+            let endpoints = list
+                .iter()
+                .filter(|&&id| {
+                    matches!(
+                        board.get_item(id).map(Item::kind),
+                        Some(ItemKind::Pin | ItemKind::ConductionArea),
+                    )
+                })
+                .count() as i64;
+            i32::try_from(endpoints - 1).unwrap_or(0).max(0)
+        })
+        .sum()
+}
+
+pub fn all_incompletes(board: &Board) -> Vec<NetIncompletes> {
+    net_item_lists(board)
+        .iter()
+        .enumerate()
+        .map(|(i, items)| NetIncompletes::new(i as i32 + 1, items, board))
+        .collect()
+}
+
+/// The unrouted connections of every net, without the [`crate::DesignRulesChecker`] cache that
+/// [`crate::DesignRulesChecker::get_all_airlines`] needs a mutable board to build.
+pub fn all_airlines(board: &Board) -> Vec<AirLine> {
+    all_incompletes(board)
+        .into_iter()
+        .flat_map(|net| net.incompletes)
+        .collect()
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NetIncompletes {
