@@ -16,7 +16,7 @@ pub use airline::AirLine;
 pub use checker::DesignRulesChecker;
 pub use constraints::apply_kicad_project;
 pub use error::DrcError;
-pub use net_incompletes::NetIncompletes;
+pub use net_incompletes::{NetIncompletes, all_airlines};
 pub use plane_connectivity::PlaneConnectivity;
 pub use report::{
     DrcCoordinates, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport, KiCadDrcViolation,

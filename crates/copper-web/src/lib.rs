@@ -84,18 +84,13 @@ fn route(
         .with_deadline_from(copper_core::Deadline::in_seconds(seconds as i64));
     let mut observer = BrowserProgress {
         callback: on_progress,
+        transform: loaded.transform,
     };
     let result =
         copper_core::RoutingPipeline::run_with_progress(&mut loaded.board, &ctx, &mut observer)
             .map_err(|error| error.to_string())?;
-    let airline_nets: Vec<i32> = {
-        let mut drc = copper_drc::DesignRulesChecker::new(&mut loaded.board);
-        drc.calculate_all_incompletes();
-        drc.get_all_airlines()
-            .iter()
-            .map(|airline| airline.net_number)
-            .collect()
-    };
+    let airlines = copper_drc::all_airlines(&loaded.board);
+    let airline_nets: Vec<i32> = airlines.iter().map(|airline| airline.net_number).collect();
     let unselected_incomplete =
         incomplete_on_unselected_nets(&airline_nets, settings.net_filter.as_ref());
     let board: serde_json::Value =
@@ -105,6 +100,7 @@ fn route(
         "board": board,
         "incomplete": result.incomplete_count(),
         "incompleteOnUnselectedNets": unselected_incomplete,
+        "airlines": airline_details(&loaded.transform, &airlines),
         "violations": result.violation_count(),
         "drcDetails": violation_details(&loaded.board, &loaded.transform, &result.drc_violations),
         "initialDrcDetails": initial_drc,
@@ -150,6 +146,7 @@ fn net_filter_from_names(
 /// Runs in the Web Worker, so callbacks can post frames while WASM is busy.
 struct BrowserProgress {
     callback: js_sys::Function,
+    transform: copper_dsn::CoordinateTransform,
 }
 
 impl copper_core::ProgressSink for BrowserProgress {
@@ -157,10 +154,12 @@ impl copper_core::ProgressSink for BrowserProgress {
         let copper_core::RoutingEvent::BoardUpdated { counters } = event else {
             return;
         };
+        let airlines = airline_details(&self.transform, &copper_drc::all_airlines(board));
         let board: serde_json::Value = serde_json::from_str(&copper_dsn::kicad::write(board, "live"))
             .expect("the board writer produces valid JSON");
         let frame = serde_json::json!({
             "board": board,
+            "airlines": airlines,
             "pass": counters.pass_count,
             "incomplete": counters.incomplete_count,
             "routed": counters.routed_count,
@@ -171,6 +170,38 @@ impl copper_core::ProgressSink for BrowserProgress {
             .callback
             .call1(&JsValue::NULL, &JsValue::from_str(&frame.to_string()));
     }
+}
+
+#[wasm_bindgen]
+pub fn board_airlines_json(json: &str) -> Result<String, JsValue> {
+    console_error_panic_hook::set_once();
+    board_airlines(json).map_err(|error| JsValue::from_str(&error))
+}
+
+fn board_airlines(json: &str) -> Result<String, String> {
+    let loaded = copper_core::parse_board_result(copper_dsn::kicad::read_board(json, None))
+        .map_err(|error| error.to_string())?;
+    Ok(airline_details(&loaded.transform, &copper_drc::all_airlines(&loaded.board)).to_string())
+}
+
+fn airline_details(
+    transform: &copper_dsn::CoordinateTransform,
+    airlines: &[copper_drc::AirLine],
+) -> serde_json::Value {
+    let corner = |point| {
+        let p = transform.board_to_dsn_point(point);
+        serde_json::json!([p[0], -p[1]])
+    };
+    airlines
+        .iter()
+        .map(|airline| {
+            serde_json::json!({
+                "net": airline.net_number,
+                "from": corner(&airline.from_corner),
+                "to": corner(&airline.to_corner),
+            })
+        })
+        .collect()
 }
 
 fn violation_details(
@@ -234,6 +265,58 @@ mod tests {
     #[test]
     fn without_a_filter_no_incomplete_belongs_to_an_unselected_net() {
         assert_eq!(incomplete_on_unselected_nets(&[1, 2, 3], None), 0);
+    }
+
+    const TWO_PADS_ON_ONE_NET: &str = r#"{
+        "layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+        "outline":{"corners":[{"x":0,"y":0},{"x":20,"y":0},{"x":20,"y":20},{"x":0,"y":20}]},
+        "components":[
+          {"reference":"U1","footprint":"F","position":{"x":2,"y":2},
+           "pads":[{"name":"1","netName":"sig","size":{"x":1.0,"y":1.0},"layers":["F.Cu"]}]},
+          {"reference":"U2","footprint":"F","position":{"x":12,"y":2},
+           "pads":[{"name":"1","netName":"sig","size":{"x":1.0,"y":1.0},"layers":["F.Cu"]}]}]
+    }"#;
+
+    #[test]
+    fn two_unjoined_pads_on_a_net_report_one_airline_between_their_centres() {
+        let airlines: serde_json::Value =
+            serde_json::from_str(&board_airlines(TWO_PADS_ON_ONE_NET).unwrap()).unwrap();
+        assert_eq!(
+            airlines,
+            serde_json::json!([{"net": 1, "from": [12.0, 2.0], "to": [2.0, 2.0]}])
+        );
+    }
+
+    #[test]
+    fn a_trace_joining_the_pads_leaves_no_airline() {
+        let joined = TWO_PADS_ON_ONE_NET.replace(
+            r#""components":["#,
+            r#""traces":[{"netName":"sig","width":0.2,"layerIndex":0,
+                 "points":[{"x":2,"y":2},{"x":12,"y":2}]}],
+               "components":["#,
+        );
+        let airlines: serde_json::Value =
+            serde_json::from_str(&board_airlines(&joined).unwrap()).unwrap();
+        assert_eq!(airlines, serde_json::json!([]));
+    }
+
+    #[test]
+    fn airlines_are_reported_in_the_same_flipped_millimetres_as_violations() {
+        let transform = copper_dsn::CoordinateTransform::new(1000.0, 5.0, 7.0).unwrap();
+        let airline = copper_drc::AirLine::new(
+            4,
+            copper_board::ItemId(0),
+            copper_geometry::FloatPoint {
+                x: 2000.0,
+                y: 3000.0,
+            },
+            copper_board::ItemId(1),
+            copper_geometry::FloatPoint { x: -1000.0, y: 0.0 },
+        );
+        assert_eq!(
+            airline_details(&transform, &[airline]),
+            serde_json::json!([{"net": 4, "from": [7.0, -10.0], "to": [4.0, -7.0]}])
+        );
     }
 
     #[test]

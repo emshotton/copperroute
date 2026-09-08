@@ -48,6 +48,26 @@ test("DSN drop previews, reroutes with embedded rules, and downloads DSN/SES/SVG
   expect(errors).toEqual([]);
 });
 
+test("a dropped DSN shows its unrouted connections until they are routed", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#file").setInputFiles({
+    name: "unrouted.dsn",
+    mimeType: "text/plain",
+    buffer: Buffer.from(
+      readFileSync("test/example.dsn", "utf8").replace(
+        /\(wire [^\n]*\(type protect\)\)/,
+        "",
+      ),
+    ),
+  });
+  await expect(page.locator("#preview .ratsnest")).toBeVisible();
+  await page.locator("#route").click();
+  await expect(page.locator("#metrics")).toContainText("0 unrouted connections", {
+    timeout: 30000,
+  });
+  await expect(page.locator("#preview .ratsnest")).toHaveCount(0);
+});
+
 test("invalid DSN reports an error and allows replacement", async ({ page }) => {
   await page.goto("/");
   await page.locator("#file").setInputFiles({ name: "bad.dsn", mimeType: "text/plain", buffer: Buffer.from("not a board") });

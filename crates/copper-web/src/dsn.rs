@@ -220,8 +220,33 @@ fn svg(board: &Board) -> String {
             }
         }
     }
+    out.push_str(&airline_svg(
+        &copper_drc::all_airlines(board),
+        margin / 20.0,
+    ));
     out.push_str("</svg>");
     out
+}
+
+fn airline_svg(airlines: &[copper_drc::AirLine], width: f64) -> String {
+    if airlines.is_empty() {
+        return String::new();
+    }
+    let d = airlines
+        .iter()
+        .map(|a| {
+            format!(
+                "M {} {} L {} {}",
+                a.from_corner.x, -a.from_corner.y, a.to_corner.x, -a.to_corner.y
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    format!(
+        r##"<g class="ratsnest" fill="none" stroke="#e8f0f2" stroke-width="{width}" stroke-dasharray="{} {}" opacity="0.4"><path d="{d}"/></g>"##,
+        width * 6.0,
+        width * 4.0
+    )
 }
 
 fn drill_svg(center: FloatPoint, radius: f64) -> String {
@@ -229,4 +254,48 @@ fn drill_svg(center: FloatPoint, radius: f64) -> String {
         r##"<circle cx="{}" cy="{}" r="{radius}" fill="#101c25"/>"##,
         center.x, -center.y
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use copper_board::ItemId;
+    use copper_drc::AirLine;
+
+    fn airline(from: (f64, f64), to: (f64, f64)) -> AirLine {
+        AirLine::new(
+            1,
+            ItemId(0),
+            FloatPoint {
+                x: from.0,
+                y: from.1,
+            },
+            ItemId(1),
+            FloatPoint { x: to.0, y: to.1 },
+        )
+    }
+
+    #[test]
+    fn airlines_are_drawn_as_one_path_with_the_y_flip_the_rest_of_the_svg_uses() {
+        let svg = airline_svg(&[airline((0.0, 5.0), (10.0, 20.0))], 1.0);
+        assert!(svg.contains(r#"<path d="M 0 -5 L 10 -20"/>"#), "{svg}");
+        assert!(svg.contains(r#"class="ratsnest""#), "{svg}");
+    }
+
+    #[test]
+    fn several_airlines_share_the_one_path() {
+        let svg = airline_svg(
+            &[
+                airline((0.0, 4.0), (1.0, 1.0)),
+                airline((2.0, 2.0), (3.0, 3.0)),
+            ],
+            1.0,
+        );
+        assert!(svg.contains(r#"d="M 0 -4 L 1 -1 M 2 -2 L 3 -3""#), "{svg}");
+    }
+
+    #[test]
+    fn a_fully_routed_board_draws_no_ratsnest_group_at_all() {
+        assert_eq!(airline_svg(&[], 1.0), "");
+    }
 }

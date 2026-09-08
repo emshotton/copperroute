@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use copper_board::{Board, Item, ItemId, ItemKind};
+use copper_board::{Board, ItemId, ItemKind};
 
 use crate::DrcViolation;
 use crate::airline::AirLine;
@@ -135,51 +135,10 @@ impl<'a> DesignRulesChecker<'a> {
 
     pub fn calculate_all_incompletes(&mut self) {
         let board = &*self.board;
-
-        let max_net_no = board.rules.nets.max_net_number();
-        let mut net_item_lists: Vec<Vec<ItemId>> = vec![Vec::new(); max_net_no.max(0) as usize];
-
-        for id in board.items_in_board_order() {
-            let Some(item) = board.get_item(id) else {
-                debug_assert!(
-                    false,
-                    "board item {id:?} vanished between the walk and the lookup"
-                );
-                continue;
-            };
-            if !item.is_connectable() {
-                continue;
-            }
-            for i in 0..item.net_count() {
-                let index = item.get_net_number(i) - 1;
-                if let Some(list) = usize::try_from(index)
-                    .ok()
-                    .and_then(|index| net_item_lists.get_mut(index))
-                {
-                    list.push(id);
-                }
-            }
-        }
-
-        self.max_connections = net_item_lists
-            .iter()
-            .filter(|list| !list.is_empty())
-            .map(|list| {
-                let endpoint_count = list
-                    .iter()
-                    .filter(|&&id| {
-                        matches!(
-                            board.get_item(id).map(Item::kind),
-                            Some(ItemKind::Pin | ItemKind::ConductionArea),
-                        )
-                    })
-                    .count() as i64;
-                i32::try_from(endpoint_count - 1).unwrap_or(0).max(0)
-            })
-            .sum();
-
+        let lists = crate::net_incompletes::net_item_lists(board);
+        self.max_connections = crate::net_incompletes::max_connections(board, &lists);
         self.net_incompletes = Some(
-            net_item_lists
+            lists
                 .iter()
                 .enumerate()
                 .map(|(i, items)| NetIncompletes::new(i as i32 + 1, items, board))

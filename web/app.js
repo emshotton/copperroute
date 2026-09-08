@@ -106,6 +106,16 @@ function showLayers(layers) {
   dot.className = "pads";
   pads.append(dot, document.createTextNode(" Pads & vias"));
   legend.append(pads);
+  const unrouted = document.createElement("label"),
+    box = document.createElement("input"),
+    dash = document.createElement("i");
+  box.type = "checkbox";
+  box.id = "show-ratsnest";
+  box.checked = !$("preview").classList.contains("no-ratsnest");
+  box.onchange = () =>
+    $("preview").classList.toggle("no-ratsnest", !box.checked);
+  unrouted.append(box, dash, document.createTextNode(" Unrouted"));
+  legend.append(unrouted);
 }
 function showDrc(data) {
   const panel = $("drc-results");
@@ -216,7 +226,7 @@ function select(file) {
       updateRuleControls();
     }
     if (data.type === "ready") showNets(data.nets);
-    if (data.type === "ready" || data.type === "error") {
+    if (data.type === "done" || data.type === "error") {
       active.terminate();
       previewWorker = null;
       if (!worker) status(data.type === "error" ? data.text : "");
