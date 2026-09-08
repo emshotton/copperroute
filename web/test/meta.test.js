@@ -26,10 +26,12 @@ test("robots.txt allows crawling and points at the sitemap", () => {
   assert.match(robots, /^Sitemap: https:\/\/copperroute\.net\/sitemap\.xml$/m);
 });
 
-test("robots.txt keeps crawlers out of the heavy asset directories", () => {
-  const robots = read("robots.txt");
-  assert.match(robots, /^Disallow: \/examples\/$/m);
-  assert.match(robots, /^Disallow: \/pkg\/$/m);
+test("robots.txt keeps crawlers out of the heavy example boards", () => {
+  assert.match(read("robots.txt"), /^Disallow: \/examples\/$/m);
+});
+
+test("robots.txt leaves /pkg/ crawlable, so renderers can load the app", () => {
+  assert.doesNotMatch(read("robots.txt"), /^Disallow: \/pkg\/$/m);
 });
 
 test("sitemap.xml lists the site root", () => {
