@@ -1,4 +1,4 @@
-use copper_dsn::kicad::pcb::structure::{read_net_classes, Layers, NetTable};
+use copper_dsn::kicad::pcb::structure::{Layers, NetTable, read_net_classes};
 use copper_dsn::kicad::sexpr::parse;
 
 const LAYERS: &str = r#"(layers (0 "F.Cu" signal) (2 "B.Cu" signal) (1 "F.Mask" user))"#;
@@ -83,9 +83,8 @@ fn it_rejects_an_out_of_range_net_id() {
 
 #[test]
 fn it_resolves_a_track_net_by_name_on_new_boards() {
-    let text = format!(
-        r#"(kicad_pcb (version 20260101) {LAYERS} (net 1 "GND") (segment (net "VCC")))"#
-    );
+    let text =
+        format!(r#"(kicad_pcb (version 20260101) {LAYERS} (net 1 "GND") (segment (net "VCC")))"#);
     let root = parse(&text).expect("it parses");
     let nets = NetTable::read(&root).expect("nets");
     let segment = root.child("segment").expect("a segment");
@@ -158,9 +157,8 @@ fn it_assigns_board_nets_to_their_declared_class_in_finish() {
 
 #[test]
 fn it_registers_a_newly_seen_named_net_so_finish_can_assign_it() {
-    let text = format!(
-        r#"(kicad_pcb (version 20260101) {LAYERS} (net 1 "GND") (segment (net "VCC")))"#
-    );
+    let text =
+        format!(r#"(kicad_pcb (version 20260101) {LAYERS} (net 1 "GND") (segment (net "VCC")))"#);
     let root = parse(&text).expect("it parses");
     let nets = NetTable::read(&root).expect("nets");
     let segment = root.child("segment").expect("a segment");

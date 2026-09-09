@@ -11,17 +11,28 @@ const LAYERS: &str = r#"(layers (0 "F.Cu" signal) (2 "B.Cu" signal))"#;
 
 #[test]
 fn it_imports_the_example_board() {
-    let imported = read_pcb(&example(), "example", &default_net_class()).expect("the board imports");
-    assert!(!imported.board.components.as_ref().expect("components").is_empty());
+    let imported =
+        read_pcb(&example(), "example", &default_net_class()).expect("the board imports");
+    assert!(
+        !imported
+            .board
+            .components
+            .as_ref()
+            .expect("components")
+            .is_empty()
+    );
     assert!(imported.board.outline.is_some());
     assert!(!imported.board.nets.as_ref().expect("nets").is_empty());
 }
 
 #[test]
 fn the_imported_board_loads_through_the_reader() {
-    let imported = read_pcb(&example(), "example", &default_net_class()).expect("the board imports");
+    let imported =
+        read_pcb(&example(), "example", &default_net_class()).expect("the board imports");
     match read_board_json(imported.board, None) {
-        BoardReadResult::Success { board: Some(board), .. } => {
+        BoardReadResult::Success {
+            board: Some(board), ..
+        } => {
             assert!(board.get_layer_count() >= 1);
         }
         other => panic!("expected a loaded board, got {other:?}"),
@@ -89,7 +100,15 @@ fn duplicate_warnings_are_collapsed_to_one() {
         "expected the duplicate warning collapsed once, got {:?}",
         imported.warnings
     );
-    assert_eq!(imported.board.conductionAreas.as_ref().expect("areas").len(), 2);
+    assert_eq!(
+        imported
+            .board
+            .conductionAreas
+            .as_ref()
+            .expect("areas")
+            .len(),
+        2
+    );
 }
 
 #[test]
@@ -114,8 +133,7 @@ fn default_net_class_matches_what_read_pcb_falls_back_to() {
 fn it_rejects_invalid_routing_rules() {
     let mut bad = default_net_class();
     bad.clearance = 0.0;
-    let error =
-        read_pcb("(kicad_pcb (version 20241229))", "t", &bad).expect_err("it fails");
+    let error = read_pcb("(kicad_pcb (version 20241229))", "t", &bad).expect_err("it fails");
     assert_eq!(error.message, "Invalid routing rules.");
 }
 
@@ -124,8 +142,7 @@ fn it_rejects_a_via_drill_that_is_not_smaller_than_the_diameter() {
     let mut bad = default_net_class();
     bad.viaDrill = 0.6;
     bad.viaDiameter = 0.6;
-    let error =
-        read_pcb("(kicad_pcb (version 20241229))", "t", &bad).expect_err("it fails");
+    let error = read_pcb("(kicad_pcb (version 20241229))", "t", &bad).expect_err("it fails");
     assert_eq!(error.message, "Via drill must be smaller than diameter.");
 }
 

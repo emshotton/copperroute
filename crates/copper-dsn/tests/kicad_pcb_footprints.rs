@@ -10,7 +10,8 @@ fn read(body: &str) -> (Vec<copper_dsn::kicad::ComponentJson>, Vec<String>) {
     let layers = Layers::read(&root).expect("layers");
     let nets = NetTable::read(&root).expect("nets");
     let mut warnings = Vec::new();
-    let (components, _) = read_components(&root, &layers, &nets, &mut warnings).expect("components");
+    let (components, _) =
+        read_components(&root, &layers, &nets, &mut warnings).expect("components");
     (components, warnings)
 }
 
@@ -77,7 +78,11 @@ fn it_warns_that_rounded_pads_route_as_rectangles() {
         r#" (pad "1" smd roundrect (at 0 0) (size 1 1) (roundrect_rratio 0.25)"#,
         r#" (layers "F.Cu") (net 1 "GND")))"#,
     ));
-    assert!(warnings.iter().any(|w| w.contains("corner radius for hole DRC")));
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("corner radius for hole DRC"))
+    );
 }
 
 #[test]

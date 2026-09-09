@@ -58,13 +58,15 @@ fn it_reads_a_through_via() {
 
 #[test]
 fn it_rejects_a_blind_via() {
-    let root = root_of(
-        r#"(via blind (at 5 6) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1))"#,
-    );
+    let root =
+        root_of(r#"(via blind (at 5 6) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1))"#);
     let layers = Layers::read(&root).expect("layers");
     let nets = NetTable::read(&root).expect("nets");
     let error = read_vias(&root, &layers, &nets).expect_err("it fails");
-    assert_eq!(error.message, "Locked, blind, and micro vias are not supported yet.");
+    assert_eq!(
+        error.message,
+        "Locked, blind, and micro vias are not supported yet."
+    );
 }
 
 #[test]
@@ -100,7 +102,10 @@ fn it_rejects_a_netless_copper_zone() {
     let nets = NetTable::read(&root).expect("nets");
     let mut warnings = Vec::new();
     let error = check_zones(&root, &nets, &mut warnings).expect_err("it fails");
-    assert_eq!(error.message, "Netless copper zones are not supported for routing yet.");
+    assert_eq!(
+        error.message,
+        "Netless copper zones are not supported for routing yet."
+    );
 }
 
 #[test]
@@ -128,7 +133,10 @@ fn it_reserves_copper_text_as_an_obstacle() {
     let polygon = areas[0].polygon.as_ref().expect("a polygon");
     assert_eq!(polygon.len(), 4);
     let corners: Vec<(f64, f64)> = polygon.iter().map(|p| (p.x, p.y)).collect();
-    assert_eq!(corners, vec![(3.0, 4.0), (7.0, 4.0), (7.0, 6.0), (3.0, 6.0)]);
+    assert_eq!(
+        corners,
+        vec![(3.0, 4.0), (7.0, 4.0), (7.0, 6.0), (3.0, 6.0)]
+    );
     assert!(warnings.iter().any(|w| w.contains("Copper text")));
 }
 
@@ -138,5 +146,8 @@ fn it_rejects_a_via_whose_layer_span_skips_an_inner_layer() {
     let layers = Layers::read(&root).expect("layers");
     let nets = NetTable::read(&root).expect("nets");
     let error = read_vias(&root, &layers, &nets).expect_err("it fails");
-    assert_eq!(error.message, "Only through vias assigned to a net are supported.");
+    assert_eq!(
+        error.message,
+        "Only through vias assigned to a net are supported."
+    );
 }

@@ -1575,15 +1575,17 @@ fn it_reads_a_board_from_a_parsed_dto() {
     let from_text = read_board(json, None);
 
     let unpack = |result: BoardReadResult| match result {
-        BoardReadResult::Success {
-            board: Some(b), ..
-        } => b,
+        BoardReadResult::Success { board: Some(b), .. } => b,
         other => panic!("expected a loaded board, got {other:?}"),
     };
     let dto_board = unpack(from_dto);
     let text_board = unpack(from_text);
 
-    assert_eq!(dto_board.get_layer_count(), 3, "the fixture defines 3 layers");
+    assert_eq!(
+        dto_board.get_layer_count(),
+        3,
+        "the fixture defines 3 layers"
+    );
     assert_eq!(
         dto_board.rules.net_classes.count(),
         2,

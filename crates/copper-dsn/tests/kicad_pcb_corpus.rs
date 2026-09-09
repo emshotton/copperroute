@@ -33,7 +33,10 @@ fn it_imports_the_solder_mask_validation_boards() {
             .join(stem)
             .join("stripped.kicad_pcb");
         if !path.exists() {
-            failures.push(format!("{stem}: no stripped.kicad_pcb at {}", path.display()));
+            failures.push(format!(
+                "{stem}: no stripped.kicad_pcb at {}",
+                path.display()
+            ));
             continue;
         }
         let text = std::fs::read_to_string(&path).expect("the board reads");
