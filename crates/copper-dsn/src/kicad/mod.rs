@@ -1,5 +1,6 @@
 pub mod dto;
 pub mod reader;
+pub mod sexpr;
 pub mod writer;
 
 pub use dto::{
