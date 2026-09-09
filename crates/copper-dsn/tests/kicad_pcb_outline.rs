@@ -77,6 +77,28 @@ fn it_rejects_a_board_with_no_outline() {
 }
 
 #[test]
+fn it_rejects_a_footprint_with_an_invalid_angle() {
+    let text = board(concat!(
+        r#"(footprint "test" (layer "F.Cu") (at 0 0 garbage)"#,
+        r#"(fp_line (start 0 0) (end 10 0) (layer "Edge.Cuts")))"#,
+    ));
+    let root = parse(&text).expect("it parses");
+    let error = outline_paths(&root).expect_err("it fails");
+    assert_eq!(error.message, "Invalid outline coordinate.");
+}
+
+#[test]
+fn it_accepts_a_footprint_with_no_angle() {
+    let text = board(concat!(
+        r#"(footprint "test" (layer "F.Cu") (at 0 0)"#,
+        r#"(fp_line (start 0 0) (end 10 0) (layer "Edge.Cuts")))"#,
+    ));
+    let root = parse(&text).expect("it parses");
+    let paths = outline_paths(&root).expect("outline paths");
+    assert_eq!(paths.paths.len(), 1);
+}
+
+#[test]
 fn it_rejects_separate_outlines() {
     let text = board(concat!(
         r#"(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))"#,

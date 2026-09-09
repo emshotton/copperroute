@@ -31,19 +31,17 @@ fn child_nodes(node: &Node) -> impl Iterator<Item = &Node> {
     })
 }
 
-pub fn footprint_point(fp: &Node, x: f64, y: f64) -> (f64, f64) {
-    let at = fp.child("at");
-    let parse = |index: usize, default: f64| -> f64 {
-        at.and_then(|node| node.atom(index))
-            .and_then(|text| text.parse::<f64>().ok())
-            .unwrap_or(default)
+pub fn footprint_point(fp: &Node, x: f64, y: f64) -> Result<(f64, f64), PcbError> {
+    let anchor = point(fp, "at")?;
+    let angle = match fp.child("at").and_then(|at| at.atom(3)) {
+        Some(text) => num(text)?,
+        None => 0.0,
     };
-    let anchor = (parse(1, 0.0), parse(2, 0.0));
-    let angle = parse(3, 0.0) * std::f64::consts::PI / 180.0;
-    (
+    let angle = angle * std::f64::consts::PI / 180.0;
+    Ok((
         anchor.0 + x * angle.cos() + y * angle.sin(),
         anchor.1 - x * angle.sin() + y * angle.cos(),
-    )
+    ))
 }
 
 fn sample(
@@ -208,11 +206,10 @@ fn collect(
         return Err(PcbError::new("outline", "Empty outline path."));
     }
     if let Some(fp) = fp {
-        point(fp, "at")?;
         points = points
             .into_iter()
             .map(|p| footprint_point(fp, p.0, p.1))
-            .collect();
+            .collect::<Result<Vec<_>, _>>()?;
     }
     paths.push(points);
     Ok(())
