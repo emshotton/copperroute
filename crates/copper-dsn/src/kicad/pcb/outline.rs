@@ -231,6 +231,38 @@ fn area(points: &[(f64, f64)]) -> f64 {
         .abs()
 }
 
+fn centroid(points: &[(f64, f64)]) -> (f64, f64) {
+    let n = points.len() as f64;
+    let (sx, sy) = points
+        .iter()
+        .fold((0.0, 0.0), |(sx, sy), p| (sx + p.0, sy + p.1));
+    (sx / n, sy / n)
+}
+
+/// Orders loops by descending area, largest first (so the board boundary sorts to the front),
+/// with ties (including near-ties from `area`'s summation order and hole sampling, which are not
+/// bit-identical across targets) broken by centroid and then by first point. Without this, two
+/// loops whose true areas are equal or coincidentally close would order by whichever few-ULP
+/// noise the local `f64::sin`/`cos` happened to produce, which is not guaranteed stable across
+/// architectures or standard library versions — so the same board could import to different item
+/// ids on different machines.
+fn loop_order(a: &[(f64, f64)], b: &[(f64, f64)]) -> std::cmp::Ordering {
+    const AREA_GRANULARITY: f64 = 1e6;
+    let rounded_area = |points: &[(f64, f64)]| (area(points) * AREA_GRANULARITY).round() as i64;
+    rounded_area(b)
+        .cmp(&rounded_area(a))
+        .then_with(|| {
+            let (ax, ay) = centroid(a);
+            let (bx, by) = centroid(b);
+            ax.total_cmp(&bx).then_with(|| ay.total_cmp(&by))
+        })
+        .then_with(|| {
+            a[0].0
+                .total_cmp(&b[0].0)
+                .then_with(|| a[0].1.total_cmp(&b[0].1))
+        })
+}
+
 fn inside(p: (f64, f64), poly: &[(f64, f64)]) -> bool {
     let mut result = false;
     let mut j = poly.len() - 1;
@@ -285,7 +317,7 @@ pub fn assemble_outline(paths: &OutlinePaths) -> Result<Outline, PcbError> {
         loops.push(loop_points);
     }
 
-    loops.sort_by(|a, b| area(b).partial_cmp(&area(a)).unwrap());
+    loops.sort_by(|a, b| loop_order(a, b));
     let boundary = loops.remove(0);
 
     if loops

@@ -3,7 +3,7 @@ use copper_dsn::kicad::pcb::read_pcb;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const TOLERANCE: f64 = 0.005;
+const TOLERANCE: f64 = 1e-9;
 
 fn node_available() -> bool {
     Command::new("node")
@@ -16,21 +16,26 @@ fn boards() -> Vec<PathBuf> {
     let root = testkit::workspace_root();
     let mut paths = vec![root.join("web/example.kicad_pcb")];
     let examples = root.join("web/examples");
-    if let Ok(entries) = std::fs::read_dir(&examples) {
-        for entry in entries.flatten() {
-            let dir = entry.path();
-            if let Ok(inner) = std::fs::read_dir(&dir) {
-                for file in inner.flatten() {
-                    let path = file.path();
-                    if path.extension().is_some_and(|e| e == "kicad_pcb") {
-                        paths.push(path);
-                    }
+    let top_level = std::fs::read_dir(&examples)
+        .unwrap_or_else(|e| panic!("{} must exist and be readable: {e}", examples.display()));
+    for entry in top_level.flatten() {
+        let dir = entry.path();
+        if let Ok(inner) = std::fs::read_dir(&dir) {
+            for file in inner.flatten() {
+                let path = file.path();
+                if path.extension().is_some_and(|e| e == "kicad_pcb") {
+                    paths.push(path);
                 }
             }
         }
     }
     paths.retain(|p| p.exists());
     paths.sort();
+    assert!(
+        paths.len() >= 7,
+        "expected at least 7 example boards (1 top-level plus web/examples/*), found {}: {paths:?}",
+        paths.len()
+    );
     paths
 }
 
@@ -52,8 +57,6 @@ fn javascript_board(path: &Path, name: &str) -> serde_json::Value {
     serde_json::from_slice(&out.stdout).expect("the JS emits JSON")
 }
 
-/// The centroid of a polygon (an array of `{x, y}` objects), scaled and rounded to thousandths
-/// of a millimetre so it can serve as a sort key.
 fn polygon_key(polygon: &serde_json::Value) -> (i64, i64) {
     let points = polygon.as_array().map(Vec::as_slice).unwrap_or_default();
     let get = |p: &serde_json::Value, field: &str| {
@@ -105,11 +108,8 @@ fn allowed_gap(parent_path: &str, key: &str, present: &serde_json::Value) -> boo
     }
 }
 
-/// Recursively diffs two JSON values. Numbers compare within `TOLERANCE`; every other type
-/// requires exact equality. Objects are compared over the union of both sides' keys, so a field
-/// present on only one side is always reported, in either direction, unless `allowed_gap` names
-/// it as one of the documented DTO-shape exceptions. Object fields are joined onto the path with
-/// `::` (see `allowed_gap`); array elements get a bracketed index suffixed directly.
+/// Object fields are joined onto the path with `::` (see `allowed_gap`); array elements get a
+/// bracketed index suffixed directly.
 ///
 /// `outline::cutouts` is compared by sorting each side by polygon centroid first: the order the
 /// board's internal cutouts come out in depends on the exact floating-point value computed for
@@ -183,6 +183,11 @@ fn compare(
 #[test]
 fn the_port_matches_the_javascript_adapter() {
     if !node_available() {
+        assert!(
+            std::env::var("REQUIRE_NODE").is_err(),
+            "REQUIRE_NODE is set but node is not available: the port's primary correctness \
+             check did not run"
+        );
         eprintln!("skipping: node is not available");
         return;
     }
@@ -195,12 +200,7 @@ fn the_port_matches_the_javascript_adapter() {
         ..Default::default()
     };
     let mut failures = Vec::new();
-    let boards = boards();
-    assert!(
-        !boards.is_empty(),
-        "no example boards were found to compare"
-    );
-    for path in boards {
+    for path in boards() {
         let stem = path
             .file_name()
             .unwrap_or_default()
@@ -215,7 +215,6 @@ fn the_port_matches_the_javascript_adapter() {
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
 }
 
-#[cfg(test)]
 mod comparator_self_test {
     use super::compare;
     use serde_json::json;
@@ -291,8 +290,6 @@ mod comparator_self_test {
 
     #[test]
     fn the_documented_dto_gaps_are_narrow_to_their_own_field_and_parent() {
-        // netClasses[N].viaInPadAllowed is a different, already-Option field that both sides
-        // already agree on by omitting; the top-level exception must not reach it.
         let want = json!({"netClasses": [{"name": "Default"}]});
         let got = json!({"netClasses": [{"name": "Default", "viaInPadAllowed": false}]});
         assert_eq!(

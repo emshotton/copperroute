@@ -99,6 +99,34 @@ fn it_accepts_a_footprint_with_no_angle() {
 }
 
 #[test]
+fn equal_area_cutouts_sort_by_geometry_not_by_declaration_order() {
+    let declared_a_then_b = board(concat!(
+        r#"(gr_rect (start 10 10) (end 20 20) (layer "Edge.Cuts"))"#,
+        r#"(gr_rect (start 25 10) (end 35 20) (layer "Edge.Cuts"))"#,
+        r#"(gr_rect (start 0 0) (end 100 100) (layer "Edge.Cuts"))"#,
+    ));
+    let declared_b_then_a = board(concat!(
+        r#"(gr_rect (start 25 10) (end 35 20) (layer "Edge.Cuts"))"#,
+        r#"(gr_rect (start 10 10) (end 20 20) (layer "Edge.Cuts"))"#,
+        r#"(gr_rect (start 0 0) (end 100 100) (layer "Edge.Cuts"))"#,
+    ));
+    let outline_of = |text: &str| {
+        let root = parse(text).expect("it parses");
+        assemble_outline(&outline_paths(&root).expect("paths")).expect("an outline")
+    };
+    let first = outline_of(&declared_a_then_b);
+    let second = outline_of(&declared_b_then_a);
+    assert_eq!(first.cutouts.len(), 2);
+    assert_eq!(
+        first.cutouts, second.cutouts,
+        "two equal-area cutouts must land in the same order regardless of which one the file \
+         declares first"
+    );
+    let leftmost_x: Vec<f64> = first.cutouts[0].iter().map(|p| p.0).collect();
+    assert_eq!(leftmost_x.iter().cloned().fold(f64::MAX, f64::min), 10.0);
+}
+
+#[test]
 fn it_rejects_separate_outlines() {
     let text = board(concat!(
         r#"(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))"#,
