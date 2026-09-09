@@ -52,6 +52,36 @@ fn it_rejects_an_unknown_net_number() {
 }
 
 #[test]
+fn it_treats_net_zero_as_no_net() {
+    let root = parse(&board(r#"(net 1 "GND") (segment (net 0))"#)).expect("it parses");
+    let nets = NetTable::read(&root).expect("nets");
+    let segment = root.child("segment").expect("a segment");
+    assert_eq!(nets.name_of(segment).expect("a name"), "");
+}
+
+#[test]
+fn it_rejects_non_numeric_net_text() {
+    let root = parse(&board(r#"(net 1 "GND") (segment (net abc))"#)).expect("it parses");
+    let nets = NetTable::read(&root).expect("nets");
+    let segment = root.child("segment").expect("a segment");
+    assert_eq!(
+        nets.name_of(segment).expect_err("it fails").message,
+        "Invalid or excessive board coordinate."
+    );
+}
+
+#[test]
+fn it_rejects_an_out_of_range_net_id() {
+    let root = parse(&board(r#"(net 1 "GND") (segment (net 999999999))"#)).expect("it parses");
+    let nets = NetTable::read(&root).expect("nets");
+    let segment = root.child("segment").expect("a segment");
+    assert_eq!(
+        nets.name_of(segment).expect_err("it fails").message,
+        "Invalid or excessive board coordinate."
+    );
+}
+
+#[test]
 fn it_resolves_a_track_net_by_name_on_new_boards() {
     let text = format!(
         r#"(kicad_pcb (version 20260101) {LAYERS} (net 1 "GND") (segment (net "VCC")))"#

@@ -113,7 +113,10 @@ impl NetTable {
             }
             return Ok(name.to_string());
         }
-        let id = node.number("net").unwrap_or(0.0) as i32;
+        let id = match node.value("net") {
+            Some(text) => number(text)? as i32,
+            None => 0,
+        };
         if id == 0 {
             return Ok(String::new());
         }
