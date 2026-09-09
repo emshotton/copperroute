@@ -35,10 +35,16 @@ COPPERROUTE_CORRIDOR_GUIDANCE=0 copperroute route board.dsn -o board.ses
 
 ### With a KiCad project
 
-The router does not read `.kicad_pcb` files directly. Export the board from
-KiCad with **File → Export → Specctra DSN**, then pass the project file so
-the run uses the project's design rules instead of the defaults baked into
-the DSN:
+`copperroute` reads a `.kicad_pcb` board directly — it carries its own net
+classes, so no project file is needed:
+
+```sh
+copperroute route board.kicad_pcb -o board.ses
+copperroute drc board.kicad_pcb --ses board.ses -o report.json
+```
+
+To route from a Specctra export instead, pass the project file so the run
+uses the project's design rules instead of the defaults baked into the DSN:
 
 ```sh
 copperroute route board.dsn --kicad-project board.kicad_pro -o board.ses
@@ -55,7 +61,7 @@ The workspace is split into crates, each with its own README:
 
 - `copper-geometry` — exact-arithmetic planar geometry
 - `copper-board` — the board model, design rules and spatial indexes
-- `copper-dsn` — `.dsn`, `.ses`, `.rules` and KiCad board JSON readers and writers
+- `copper-dsn` — `.dsn`, `.ses`, `.rules` and KiCad board JSON readers and writers, and a `.kicad_pcb` reader
 - `copper-settings` — router configuration from files, environment and CLI
 - `copper-router` — fanout, maze routing and the optimizer
 - `copper-drc` — the design-rule checker and KiCad DRC report writer

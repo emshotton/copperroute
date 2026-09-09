@@ -38,7 +38,7 @@ pub enum Command {
 
 #[derive(Args, Debug)]
 pub struct RouteArgs {
-    /// A Specctra DSN or a KiCad board JSON.
+    /// A Specctra DSN, a KiCad board JSON, or a KiCad .kicad_pcb board.
     pub input: PathBuf,
     /// Where to write the session: a .ses (Specctra) or a .json (KiCad session).
     #[arg(short, long, value_parser = parse_output_path)]
@@ -83,7 +83,7 @@ pub struct RouteArgs {
 
 #[derive(Args, Debug)]
 pub struct DrcArgs {
-    /// A Specctra DSN or a KiCad board JSON.
+    /// A Specctra DSN, a KiCad board JSON, or a KiCad .kicad_pcb board.
     pub input: PathBuf,
     /// A session to apply before checking, so the report describes the routed board.
     #[arg(long)]
@@ -101,7 +101,7 @@ pub struct DrcArgs {
 
 #[derive(Args, Debug)]
 pub struct InfoArgs {
-    /// A Specctra DSN or a KiCad board JSON.
+    /// A Specctra DSN, a KiCad board JSON, or a KiCad .kicad_pcb board.
     pub input: PathBuf,
 }
 

@@ -71,9 +71,12 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
     }
 
     let input = job.get_input().expect("the input was just set");
-    if !matches!(input.format, FileFormat::Dsn | FileFormat::KicadDesignJson) {
+    if !matches!(
+        input.format,
+        FileFormat::Dsn | FileFormat::KicadDesignJson | FileFormat::KicadPcb
+    ) {
         return Err(OpError::Input(format!(
-            "'{}' is not a board: only Specctra DSN and KiCad board JSON are accepted, got {}",
+            "'{}' is not a board: only Specctra DSN, KiCad board JSON and KiCad boards are accepted, got {}",
             input.get_filename(),
             input.format.name()
         )));
