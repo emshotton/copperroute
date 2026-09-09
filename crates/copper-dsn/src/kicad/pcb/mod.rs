@@ -1,4 +1,19 @@
 pub mod outline;
+pub mod structure;
+
+use crate::kicad::NetClassJson;
+
+pub fn default_net_class() -> NetClassJson {
+    NetClassJson {
+        viaInPadAllowed: None,
+        name: Some("Default".to_string()),
+        clearance: 0.2,
+        traceWidth: 0.25,
+        viaDiameter: 0.6,
+        viaDrill: 0.3,
+        netNames: Some(Vec::new()),
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PcbError {
