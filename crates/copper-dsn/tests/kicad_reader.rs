@@ -1556,3 +1556,21 @@ fn explicit_zero_pad_drill_does_not_become_an_estimated_hole() {
         "hole rules must not inflate an undrilled pad"
     );
 }
+
+#[test]
+fn it_reads_a_board_from_a_parsed_dto() {
+    use copper_dsn::kicad::{KiCadBoardJson, read_board_json};
+
+    let json = "{}";
+    let dto: KiCadBoardJson = serde_json::from_str(json).expect("the DTO parses");
+    let from_dto = read_board_json(dto, None);
+    let from_text = read_board(json, None);
+
+    let layers = |result: &BoardReadResult| match result {
+        BoardReadResult::Success {
+            board: Some(b), ..
+        } => b.get_layer_count(),
+        other => panic!("expected a loaded board, got {other:?}"),
+    };
+    assert_eq!(layers(&from_dto), layers(&from_text));
+}
