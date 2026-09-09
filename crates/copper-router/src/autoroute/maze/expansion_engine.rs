@@ -103,11 +103,9 @@ impl MazeExpansionEngine {
             - i32::try_from(drill_first_layer).unwrap_or(i32::MAX);
         let mut expansion_value = from_element.expansion_value
             + f64::from(add_costs)
-            + nearest_point.weighted_distance(
-                &compare_corner,
-                search.ctrl.trace_costs[layer].horizontal,
-                search.ctrl.trace_costs[layer].vertical,
-            );
+            + search
+                .ctrl
+                .movement_cost(&nearest_point, &compare_corner, layer);
         let (new_backtrack_door, new_section_no_of_backtrack_door) =
             if matches!(from_element.door, ExpandableRef::Page(_)) {
                 (

@@ -1,8 +1,9 @@
+use super::corridor::Corridor;
 use copper_board::ids::{ItemId, NetClassId};
 use copper_board::rules::{PadstackLookup, ViaRule};
 use copper_board::structure::Unit;
 use copper_board::{Board, Item};
-use copper_geometry::Point;
+use copper_geometry::{FloatPoint, Point};
 use copper_settings::{ExpansionCostFactor, RouterSettings};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -20,6 +21,7 @@ pub struct ViaMask {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AutorouteControl {
+    corridor: Option<Corridor>,
     pub trace_costs: Vec<ExpansionCostFactor>,
     pub bend_costs: Vec<f64>,
     pub with_neckdown: bool,
@@ -73,6 +75,18 @@ pub fn board_units_per_mm(board: &Board) -> f64 {
 }
 
 impl AutorouteControl {
+    pub(super) fn movement_cost(&self, from: &FloatPoint, to: &FloatPoint, layer: usize) -> f64 {
+        let distance = from.weighted_distance(
+            to,
+            self.trace_costs[layer].horizontal,
+            self.trace_costs[layer].vertical,
+        );
+        let Some(corridor) = &self.corridor else {
+            return distance;
+        };
+        distance * (1.0 + 0.25 * corridor.outside_fraction(from, to))
+    }
+
     pub fn new(
         board: &Board,
         net_no: i32,
@@ -101,6 +115,12 @@ impl AutorouteControl {
         let mut control = AutorouteControl::private(board, settings, trace_costs);
         control.via_pricing = via_pricing;
         control.init_net(net_no, board, via_costs);
+        static GUIDANCE: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
+            std::env::var_os("COPPERROUTE_CORRIDOR_GUIDANCE").is_some()
+        });
+        if *GUIDANCE {
+            control.corridor = Corridor::for_net(board, net_no);
+        }
         control
     }
 
@@ -148,6 +168,7 @@ impl AutorouteControl {
         }
 
         AutorouteControl {
+            corridor: None,
             trace_costs: trace_costs.to_vec(),
             bend_costs,
             with_neckdown: settings.get_automatic_neckdown(),

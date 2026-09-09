@@ -687,13 +687,13 @@ impl MazeSearchEngine<'_> {
         let expansion_value = from_element.expansion_value
             + f64::from(add_costs)
             + bend_cost_penalty
-            + shape_entry_middle.weighted_distance(
+            + self.ctrl.movement_cost(
+                &shape_entry_middle,
                 &from_element
                     .shape_entry
                     .a
                     .middle_point(&from_element.shape_entry.b),
-                self.ctrl.trace_costs[layer].horizontal,
-                self.ctrl.trace_costs[layer].vertical,
+                layer,
             );
         // :883-884.
         let sorting_value = expansion_value
