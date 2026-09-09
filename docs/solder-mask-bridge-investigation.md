@@ -102,3 +102,34 @@ track at a chosen gap, and chosen `pad_to_mask_clearance` / `solder_mask_min_wid
 the sweep runs DRC per gap and counts error-severity violations by type. `solder_mask_min_width`
 had no effect on this geometry at any value tested — it governs the web between two
 apertures, not copper under mask.
+
+## Can the native KiCad reader measure stage two?
+
+Stage two needs mask settings out of a `.kicad_pcb`'s `(setup)` block, which the native
+reader (`copper_dsn::kicad::pcb::read_pcb`) reads directly rather than through a DSN plus
+`--kicad-board`. Whether stage two can run on that path instead depends on how much of the
+corpus the reader accepts, which requires the corpus.
+
+`crates/copper-dsn/tests/kicad_pcb_corpus.rs` checks the eleven cells with the largest
+`solder_mask_bridge` counts; `scripts/kicad-pcb-import-survey.sh <corpus root>` runs
+`copperroute info` across the whole corpus and reports an accept rate. Both are opt-in and
+have not been run against the corpus: it lives on em@workbench, not in this checkout. Run
+
+```
+COPPERROUTE_PCBENCH=<corpus root> cargo test -p copper-dsn --test kicad_pcb_corpus -- --nocapture
+scripts/kicad-pcb-import-survey.sh <corpus root>
+```
+
+to get the accept rate and the per-board refusal reasons before stage two is planned. Sort
+each refusal into one of two categories:
+
+- a **porting bug**, where `node crates/copper-dsn/tests/data/kicad_pcb_parity.mjs <board>`
+  accepts the same board the Rust refuses — fix it;
+- a **shared limitation**, where the JS adapter refuses it too, for a construct neither
+  supports (net ties, footprint zones, concave custom pads, and zone keepouts that restrict
+  tracks or vias are the ones `read_pcb` currently refuses outright) — leave it, and record
+  it here rather than chasing a bug that is not there.
+
+If the accept rate against the corpus turns out low and the refusals are mostly shared
+limitations rather than porting bugs, stage two should reach the mask settings through
+`--kicad-board` beside a DSN instead of the native path.
