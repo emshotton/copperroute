@@ -2109,3 +2109,51 @@ gainers / unchanged violations, CPU ratio 0.99056. The two LPC2148 copies
 account for the +10 width violations; their insertion-margin/neckdown root
 cause is documented above. Incremental comparison against zero guard and
 remaining regressing-board inspection precede the projection commit.
+
+
+Committed zero-distance guard as **26595d8** after its latest-main workspace
+gate. Applied the reviewed projection patch on top; combined production
+via source SHA256 is 62fab1ae785257ff7695751eeba0ecd32a5c40f667a141c84a0d42fcd09f0b8a,
+matching the built cumulative and latest-main helpers. Primary full workspace
+test is running in `workspace-primary-latest-both-guards.log`.
+
+Incremental projection comparison versus cache+zero: KiCad 740, 10 improved /
+3 regressed, -137 U, 2 DRC gainers, +10 routing V, CPU ratio 0.96901;
+Java 101, 2 improved / 1 regressed, -6 U, zero gainers / unchanged V,
+CPU ratio 0.99199. Two newly clean boards (Hardware Playground serial gateway
+and Starling); zero clean losses. No newly unscored boards. Newly scored
+Java fixture is recorded separately in `routing-quality-cumulative-results.json`.
+
+Reviewed every incremental U regression's saved metrics: Blitz Rev.K
+331 -> 344 and Blitz copy 330 -> 345, both variants TIMED_OUT in pass1
+at approximately 303 CPU seconds; Karabas revG 79 -> 81, both TIMED_OUT
+in pass4 at approximately 301 CPU seconds. Java issue420 214 -> 215
+referee U, both self-report 377 U and TIMED_OUT at approximately 303 CPU
+seconds. These measurements establish deadline-limited outputs, not proof
+that longer runs eliminate the losses. All remain in the comparison.
+Blitz originals are complete and DRC-clean, 33,679.8394 mm / 527 vias
+versus approximately 14,500-15,043 mm / 677-681 vias in our incomplete
+outputs. Karabas original is complete with no routing violations,
+10,188.6705 mm / 776 vias, versus approximately 7,468-7,598 mm / 314-315
+vias in our incomplete outputs. Partial wirelength cannot establish an
+efficiency improvement. LPC2148's real width and mask trade is retained.
+
+Final exact-main corpus batch `quality-pr-main-6886640` launched on EPYC,
+bench PID1195986. Main=6886640; zero-only=26595d8; change is explicitly
+labelled 26595d8-projection-62fab1ae until the tested projection source is
+committed. All three immutable binary hashes and source provenance are
+saved in `pr-final-source-provenance.json` on laptop and backed-up server
+logs. Configuration: 845 boards, 300 seconds, ten passes, one thread,
+96 jobs. Referee environment comes from the previously verified server
+wrapper. Both artifact and metadata backups to workbench remain active.
+
+
+Primary latest-main cache+both-guards `cargo test --workspace` passed:
+**2,565 tests, zero failures, zero warnings**, process exit0. Existing
+JVM recordings remain unchanged. Landing projection as a separate commit
+with the explicit cumulative -143 U / +10 routing V trade, two new clean
+boards and no clean losses. The two duplicate LPC2148 boards gain five
+width violations apiece while losing 61 unrouted connections each. This
+is an intentional progress correction backed by the reproduced oscillation,
+not a claim that its additional routing is DRC-clean. Latest-main full
+comparison remains running and will determine the final PR recommendation.

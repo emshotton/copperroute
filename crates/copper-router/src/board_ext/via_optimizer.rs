@@ -229,12 +229,13 @@ impl ViaOptimizer {
                 let float_via_center = via_center.to_float();
                 let float_prev_corner = prev_corner.to_float();
                 if float_check_corner.scalar_product(&float_via_center, &float_prev_corner) != 0.0 {
-                    let current_line = FloatLine::new(float_check_corner, float_prev_corner);
-                    let projection = Point::Int(
-                        current_line
-                            .perpendicular_projection(&float_via_center)
-                            .round(),
-                    );
+                    let Some(projection) = Self::fanout_projection(
+                        float_via_center,
+                        float_check_corner,
+                        float_prev_corner,
+                    ) else {
+                        return Ok(false);
+                    };
                     let diff_vector = projection.difference_by(&via_center);
                     let mut projection_ok = true;
                     let angle_restriction = board.rules.trace_angle_restriction;
@@ -317,6 +318,22 @@ impl ViaOptimizer {
             )?;
         }
         Ok(true)
+    }
+
+    fn fanout_projection(
+        via: FloatPoint,
+        corner: FloatPoint,
+        previous: FloatPoint,
+    ) -> Option<Point> {
+        let line = FloatLine::new(corner, previous);
+        let projection = Point::Int(line.perpendicular_projection(&via).round());
+        // Exact perpendicular projection shortens the path to the corner.
+        // Rounding can reverse that improvement and recreate a just-consumed
+        // one-unit stub, causing changed-area optimization to cycle forever.
+        if projection.to_float().distance_square(&corner) >= via.distance_square(&corner) {
+            return None;
+        }
+        Some(projection)
     }
 
     pub fn reposition_via_toward_location(
@@ -949,4 +966,39 @@ mod tests {
             None
         );
     }
+}
+
+#[cfg(test)]
+mod projection_regression_tests {
+    use super::*;
+
+    #[test]
+    fn rounded_fanout_projection_does_not_reverse_a_corner_move() {
+        // Starling's stalled via alternates x=1366118 and x=1366119.
+        // The exact perpendicular projection is useful, but integer rounding
+        // moves the via farther from its next corner and recreates the stub
+        // consumed by the preceding optimization step.
+        let via = FloatPoint::new(1366118.0, -765089.0);
+        let corner = FloatPoint::new(1366118.0, -765088.0);
+        let previous = FloatPoint::new(1357463.0, -756433.0);
+        let snapped = FloatLine::new(corner, previous)
+            .perpendicular_projection(&via)
+            .round();
+        let snapped = Point::Int(snapped).to_float();
+        assert!(snapped.distance(&corner) >= via.distance(&corner));
+        assert_eq!(ViaOptimizer::fanout_projection(via, corner, previous), None);
+    }
+
+    #[test]
+    fn fanout_projection_preserves_a_shortening_grid_move() {
+        assert_eq!(
+            ViaOptimizer::fanout_projection(
+                FloatPoint::new(4.0, 2.0),
+                FloatPoint::new(0.0, 0.0),
+                FloatPoint::new(10.0, 10.0),
+            ),
+            Some(Point::new(3, 3))
+        );
+    }
+
 }
