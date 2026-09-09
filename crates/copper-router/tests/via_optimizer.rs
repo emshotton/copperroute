@@ -855,3 +855,66 @@ fn dump_board(board: &Board) -> Vec<String> {
     }
     rows
 }
+
+#[test]
+fn fanout_via_does_not_report_a_move_that_rounds_to_its_current_location() {
+    let mut board = empty_board();
+    let class = board.rules.get_default_net_class();
+    board.rules.nets.add("obstacle", 1, false, class);
+    let center = Point::new(0, 0);
+    let via = board
+        .insert_via(
+            copper_board::PadstackId(1),
+            center.clone(),
+            vec![1],
+            1,
+            FixedState::Unfixed,
+            false,
+        )
+        .unwrap();
+    board
+        .insert_via(
+            copper_board::PadstackId(1),
+            Point::new(125, 125),
+            vec![2],
+            1,
+            FixedState::UserFixed,
+            false,
+        )
+        .unwrap();
+    board
+        .insert_trace_without_cleaning(
+            Polyline::from_points(&[center.clone(), Point::new(1, 1)]),
+            0,
+            31,
+            vec![1],
+            1,
+            FixedState::Unfixed,
+        )
+        .unwrap();
+    // The obstacle's nearest corner is (105,105). Including the existing
+    // 16-unit clearance safety margin and 1-unit endpoint reserve leaves
+    // 105*sqrt(2) - (31 + 100 + 16 + 1) = 0.4924 units of movement.
+    let distance = board.check_trace_segment(&center, &Point::new(1, 1), 0, &[1], 31, 1, false);
+    assert!(
+        distance > 0.0 && distance < 0.7,
+        "expected a positive sub-grid movement, got {distance}"
+    );
+    assert_eq!(
+        ViaOptimizer::reposition_via_toward_location(
+            &mut board,
+            via,
+            &IntPoint::new(1, 1),
+            31,
+            0,
+            1
+        ),
+        Some(center.clone())
+    );
+    let changed = ViaOptimizer::opt_plane_or_fanout_via(&mut board, via, 500, 10).unwrap();
+    assert_eq!(board.drill_center(via), Some(center));
+    assert!(
+        !changed,
+        "rounding to the existing location must not restart changed-area optimization"
+    );
+}

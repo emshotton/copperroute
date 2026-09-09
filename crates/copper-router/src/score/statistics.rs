@@ -1,3 +1,5 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use copper_board::items::Item;
 use copper_board::rules::BoardRules;
 use copper_board::structure::{FixedState, Unit};
@@ -399,6 +401,23 @@ impl BoardStatistics {
 
     fn fanout_census(board: &mut Board) -> BoardStatisticsFanout {
         let smd_pins = board.get_smd_pins();
+        let connected_pins = {
+            let mut connectivity = CensusConnectivity::new(board);
+            smd_pins
+                .iter()
+                .copied()
+                .filter(|&pin| {
+                    let item = board
+                        .get_item(pin)
+                        .expect("get_smd_pins returns existing pins");
+                    !item.net_nos().is_empty()
+                        && item
+                            .net_nos()
+                            .iter()
+                            .all(|&net| connectivity.connected_to_all(pin, net))
+                })
+                .collect::<BTreeSet<_>>()
+        };
         let mut total_pins = 0_i32;
         let mut escaped = 0_i32;
         let mut already_connected = 0_i32;
@@ -411,14 +430,7 @@ impl BoardStatistics {
                 continue;
             }
             total_pins += 1;
-            let connected_on_every_net = (0..net_count).all(|net_index| {
-                let net_number = board
-                    .get_item(pin)
-                    .expect("the pin was just read")
-                    .get_net_number(net_index);
-                board.unconnected_set(pin, net_number).is_empty()
-            });
-            if connected_on_every_net {
+            if connected_pins.contains(&pin) {
                 already_connected += 1;
             }
             if BoardStatistics::is_pin_escaped(board, pin) {
@@ -538,4 +550,116 @@ fn to_degrees(radians: f64) -> f64 {
 
 fn scale_f32(value: f32, from_unit: Unit, to_unit: Unit) -> f32 {
     Unit::scale(f64::from(value), from_unit, to_unit) as f32
+}
+
+/// Connectivity queries for one fanout census, during which the board is unchanged.
+struct CensusConnectivity<'a> {
+    board: &'a Board,
+    contacts: BTreeMap<ItemId, BTreeSet<ItemId>>,
+    #[cfg(test)]
+    contact_queries: usize,
+}
+
+impl<'a> CensusConnectivity<'a> {
+    fn new(board: &'a Board) -> Self {
+        Self {
+            board,
+            contacts: BTreeMap::new(),
+            #[cfg(test)]
+            contact_queries: 0,
+        }
+    }
+
+    fn contacts(&mut self, id: ItemId) -> BTreeSet<ItemId> {
+        self.contacts
+            .entry(id)
+            .or_insert_with(|| {
+                #[cfg(test)]
+                {
+                    self.contact_queries += 1;
+                }
+                self.board.normal_contacts(id)
+            })
+            .clone()
+    }
+
+    fn connected_to_all(&mut self, id: ItemId, net_number: i32) -> bool {
+        let Some(item) = self.board.get_item(id) else {
+            return true;
+        };
+        if net_number > 0 && !item.contains_net(net_number) {
+            return true;
+        }
+        let mut remaining = BTreeSet::new();
+        if net_number > 0 {
+            remaining.extend(self.board.get_connectable_items(net_number));
+        } else {
+            for net in item.net_nos() {
+                remaining.extend(self.board.get_connectable_items(*net));
+            }
+        }
+        let mut visited = BTreeSet::from([id]);
+        let mut pending = vec![id];
+        while let Some(current) = pending.pop() {
+            remaining.remove(&current);
+            for contact in self.contacts(current) {
+                let Some(item) = self.board.get_item(contact) else {
+                    continue;
+                };
+                if net_number > 0 && !item.contains_net(net_number) {
+                    continue;
+                }
+                if visited.insert(contact) {
+                    pending.push(contact);
+                }
+            }
+        }
+        remaining.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod census_tests {
+    use super::*;
+
+    #[test]
+    fn census_reuses_geometry_queries_without_changing_multinet_reachability() {
+        let source = include_bytes!("../../tests/data/p9t13-multi-net-smd-pin.dsn");
+        let result = copper_dsn::read_board(
+            &source[..],
+            None,
+            Some("census"),
+            &copper_dsn::DsnReadOptions::default(),
+        );
+        let board = match result {
+            copper_dsn::BoardReadResult::Success { board, .. } => board.unwrap(),
+            other => panic!("fixture failed: {other:?}"),
+        };
+        let mut census = CensusConnectivity::new(&board);
+        let mut queries = Vec::new();
+        for item in board.items.values() {
+            for net in item.net_nos().iter().copied().chain([0, -1, 999]) {
+                queries.push((item.id(), net));
+            }
+        }
+        for &(id, net) in &queries {
+            assert_eq!(
+                census.connected_to_all(id, net),
+                board.unconnected_set(id, net).is_empty(),
+                "connectivity differs for {id:?}, net {net}"
+            );
+        }
+        let first_queries = census.contact_queries;
+        assert!(first_queries > 0, "exercise actual geometric queries");
+        for &(id, net) in queries.iter().rev() {
+            assert_eq!(
+                census.connected_to_all(id, net),
+                board.unconnected_set(id, net).is_empty()
+            );
+        }
+        assert_eq!(
+            census.contact_queries, first_queries,
+            "a second census query over the same immutable board must reuse contact geometry"
+        );
+    }
 }

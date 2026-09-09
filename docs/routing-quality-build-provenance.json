@@ -1,0 +1,24 @@
+{
+  "run": "quality-pr-main-6886640",
+  "baseline_commit": "6886640d0cc83cfa4d1a7f5a1dc3daf515b766fe",
+  "zero_guard_commit": "26595d8",
+  "change_identity": "26595d8-projection-62fab1ae",
+  "change_note": "Benchmark label 26595d8-projection-62fab1ae is source-equivalent to committed cd539fd. Three changed source/test hashes match the immutable workbench build; latest-main full workspace gate passed 2565 tests.",
+  "source_sha256": {
+    "crates/copper-router/src/score/statistics.rs": "f90de93cd63eede4fba39fb84a9071ebceec816301441c8fbdcc1e8b00afd879",
+    "crates/copper-router/src/board_ext/via_optimizer.rs": "62fab1ae785257ff7695751eeba0ecd32a5c40f667a141c84a0d42fcd09f0b8a",
+    "crates/copper-router/tests/via_optimizer.rs": "394c90456182cac69b95a874179f3336720d299b6ab7926b9a93fe1a96c2cc5b"
+  },
+  "binary_sha256": {
+    "main": "e3eb7b36df5afda3669892cbd363e370591af84ba312a2b2628c5303617491ff",
+    "zero-only": "d5c6301b3e46ee066c77d2c4139d11812b523f5d1ba1c177888d962050a1f75f",
+    "change": "d136af60da4b6bfe841cdb649390134e5c1c8bb77549e30c09b8e39c064e0b08"
+  },
+  "change_commit": "cd539fd0b669b4decf32975ae5e4d1f54feaf47b",
+  "final_source_sha256": {
+    "crates/copper-router/src/score/statistics.rs": "f90de93cd63eede4fba39fb84a9071ebceec816301441c8fbdcc1e8b00afd879",
+    "crates/copper-router/src/board_ext/via_optimizer.rs": "37b88cb680a8417aa4348c1af03115c41143709d98eb8ecdbe6a1a48a886eb72",
+    "crates/copper-router/tests/via_optimizer.rs": "394c90456182cac69b95a874179f3336720d299b6ab7926b9a93fe1a96c2cc5b"
+  },
+  "post_benchmark_difference": "Removal of one blank line in the projection test module; no production changes. Full workspace suite passed again afterwards (2565 tests)."
+}

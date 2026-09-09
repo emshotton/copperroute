@@ -1,0 +1,1056 @@
+{
+  "run": "quality-epyc-cumulative-01",
+  "base_main": "636e039",
+  "comparisons": [
+    {
+      "parent": "census",
+      "candidate": "census-via-progress",
+      "attempts": [
+        845,
+        845
+      ],
+      "groups": {
+        "kicad": {
+          "pairs": 740,
+          "improved": 3,
+          "regressed": 4,
+          "delta_unrouted": -25,
+          "drc_gainers": 0,
+          "delta_violations": 0,
+          "cpu_ratio": 0.996208034372466,
+          "regressions": [
+            {
+              "board": "pcbench-Blitz_.C68",
+              "before": {
+                "unrouted": 312,
+                "violations": 0,
+                "cpu_s": 303.12,
+                "passes": 1,
+                "self": {
+                  "unrouted": 303,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 686,
+                  "wirelength_mm": 15358.648,
+                  "bends": 2156,
+                  "score": 780.1057,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 321,
+                "violations": 0,
+                "cpu_s": 303.20000000000005,
+                "passes": 1,
+                "self": {
+                  "unrouted": 313,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 685,
+                  "wirelength_mm": 14978.616,
+                  "bends": 2108,
+                  "score": 772.849,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-Blitz_Rev.K_C68",
+              "before": {
+                "unrouted": 330,
+                "violations": 0,
+                "cpu_s": 303.25,
+                "passes": 1,
+                "self": {
+                  "unrouted": 322,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 681,
+                  "wirelength_mm": 15042.552,
+                  "bends": 2122,
+                  "score": 766.3178,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 331,
+                "violations": 0,
+                "cpu_s": 302.94,
+                "passes": 1,
+                "self": {
+                  "unrouted": 323,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 681,
+                  "wirelength_mm": 15012.024,
+                  "bends": 2120,
+                  "score": 765.59204,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-karabas-nano_karabas-nano-revA",
+              "before": {
+                "unrouted": 35,
+                "violations": 0,
+                "cpu_s": 300.69,
+                "passes": 6,
+                "self": {
+                  "unrouted": 35,
+                  "nets": 605,
+                  "violations": 0,
+                  "vias": 344,
+                  "wirelength_mm": 8735.818,
+                  "bends": 2139,
+                  "score": 942.1332,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 37,
+                "violations": 0,
+                "cpu_s": 300.69,
+                "passes": 6,
+                "self": {
+                  "unrouted": 37,
+                  "nets": 605,
+                  "violations": 0,
+                  "vias": 343,
+                  "wirelength_mm": 8615.122,
+                  "bends": 2151,
+                  "score": 938.82733,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-karabas-nano_karabas-nano-revB",
+              "before": {
+                "unrouted": 54,
+                "violations": 0,
+                "cpu_s": 300.71000000000004,
+                "passes": 5,
+                "self": {
+                  "unrouted": 54,
+                  "nets": 613,
+                  "violations": 0,
+                  "vias": 331,
+                  "wirelength_mm": 8049.5576,
+                  "bends": 1704,
+                  "score": 911.8951,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 64,
+                "violations": 0,
+                "cpu_s": 300.75,
+                "passes": 4,
+                "self": {
+                  "unrouted": 64,
+                  "nets": 613,
+                  "violations": 0,
+                  "vias": 329,
+                  "wirelength_mm": 7949.985,
+                  "bends": 1658,
+                  "score": 895.5821,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            }
+          ]
+        },
+        "java-drc": {
+          "pairs": 101,
+          "improved": 3,
+          "regressed": 3,
+          "delta_unrouted": -14,
+          "drc_gainers": 0,
+          "delta_violations": 0,
+          "cpu_ratio": 0.9985530226753403,
+          "regressions": [
+            {
+              "board": "issue066-project_gp8b",
+              "before": {
+                "unrouted": 102,
+                "violations": 23,
+                "cpu_s": 301.2,
+                "passes": 2,
+                "self": {
+                  "unrouted": 119,
+                  "nets": 759,
+                  "violations": 2,
+                  "vias": 642,
+                  "wirelength_mm": 12404.76,
+                  "bends": 2549,
+                  "score": 842.6693,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 103,
+                "violations": 23,
+                "cpu_s": 301.34,
+                "passes": 2,
+                "self": {
+                  "unrouted": 122,
+                  "nets": 759,
+                  "violations": 2,
+                  "vias": 640,
+                  "wirelength_mm": 12382.75,
+                  "bends": 2537,
+                  "score": 838.7168,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "issue219-logicboard_smt",
+              "before": {
+                "unrouted": 146,
+                "violations": 0,
+                "cpu_s": 302.17,
+                "passes": 2,
+                "self": {
+                  "unrouted": 249,
+                  "nets": 993,
+                  "violations": 0,
+                  "vias": 990,
+                  "wirelength_mm": 11164.95,
+                  "bends": 1924,
+                  "score": 749.22864,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 150,
+                "violations": 0,
+                "cpu_s": 302.1,
+                "passes": 2,
+                "self": {
+                  "unrouted": 275,
+                  "nets": 993,
+                  "violations": 0,
+                  "vias": 985,
+                  "wirelength_mm": 10927.324,
+                  "bends": 1839,
+                  "score": 723.0456,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "issue754-avionics_hub",
+              "before": {
+                "unrouted": 61,
+                "violations": 559,
+                "cpu_s": 300.99,
+                "passes": 9,
+                "self": {
+                  "unrouted": 62,
+                  "nets": 394,
+                  "violations": 146,
+                  "vias": 11,
+                  "wirelength_mm": 14750.87,
+                  "bends": 1046,
+                  "score": 768.51483,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 62,
+                "violations": 559,
+                "cpu_s": 300.92999999999995,
+                "passes": 9,
+                "self": {
+                  "unrouted": 63,
+                  "nets": 394,
+                  "violations": 146,
+                  "vias": 11,
+                  "wirelength_mm": 14561.321,
+                  "bends": 1012,
+                  "score": 765.9771,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "newly_unscored": [],
+      "newly_scored": []
+    },
+    {
+      "parent": "census-via-progress",
+      "candidate": "census-via-guards",
+      "attempts": [
+        845,
+        845
+      ],
+      "groups": {
+        "kicad": {
+          "pairs": 740,
+          "improved": 10,
+          "regressed": 3,
+          "delta_unrouted": -137,
+          "drc_gainers": 2,
+          "delta_violations": 10,
+          "cpu_ratio": 0.969013122675049,
+          "regressions": [
+            {
+              "board": "pcbench-Blitz_Rev.K_C68",
+              "before": {
+                "unrouted": 331,
+                "violations": 0,
+                "cpu_s": 302.94,
+                "passes": 1,
+                "self": {
+                  "unrouted": 323,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 681,
+                  "wirelength_mm": 15012.024,
+                  "bends": 2120,
+                  "score": 765.59204,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 344,
+                "violations": 0,
+                "cpu_s": 303.18,
+                "passes": 1,
+                "self": {
+                  "unrouted": 336,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 677,
+                  "wirelength_mm": 14544.701,
+                  "bends": 2070,
+                  "score": 756.1582,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-Blitz_copy",
+              "before": {
+                "unrouted": 330,
+                "violations": 0,
+                "cpu_s": 303.34999999999997,
+                "passes": 1,
+                "self": {
+                  "unrouted": 322,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 681,
+                  "wirelength_mm": 15042.552,
+                  "bends": 2122,
+                  "score": 766.3178,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 345,
+                "violations": 0,
+                "cpu_s": 303.12,
+                "passes": 1,
+                "self": {
+                  "unrouted": 337,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 677,
+                  "wirelength_mm": 14512.499,
+                  "bends": 2071,
+                  "score": 755.4327,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-LPC2148_Stick_LPC2148_stick",
+              "before": {
+                "unrouted": 62,
+                "violations": 3,
+                "cpu_s": 300.14000000000004,
+                "passes": 1,
+                "self": {
+                  "unrouted": 62,
+                  "nets": 231,
+                  "violations": 0,
+                  "vias": 88,
+                  "wirelength_mm": 1877.7062,
+                  "bends": 289,
+                  "score": 731.5939,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 1,
+                "violations": 8,
+                "cpu_s": 186.9,
+                "passes": 10,
+                "self": {
+                  "unrouted": 1,
+                  "nets": 231,
+                  "violations": 0,
+                  "vias": 103,
+                  "wirelength_mm": 4775.804,
+                  "bends": 938,
+                  "score": 995.65424,
+                  "final_state": "COMPLETED",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-LPC2148_Stick__autosave-LPC2148_stick",
+              "before": {
+                "unrouted": 62,
+                "violations": 3,
+                "cpu_s": 300.15,
+                "passes": 1,
+                "self": {
+                  "unrouted": 62,
+                  "nets": 231,
+                  "violations": 0,
+                  "vias": 88,
+                  "wirelength_mm": 1877.7062,
+                  "bends": 289,
+                  "score": 731.5939,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 1,
+                "violations": 8,
+                "cpu_s": 186.87,
+                "passes": 10,
+                "self": {
+                  "unrouted": 1,
+                  "nets": 231,
+                  "violations": 0,
+                  "vias": 103,
+                  "wirelength_mm": 4775.804,
+                  "bends": 938,
+                  "score": 995.65424,
+                  "final_state": "COMPLETED",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-karabas-nano_karabas-nano-revG",
+              "before": {
+                "unrouted": 79,
+                "violations": 0,
+                "cpu_s": 300.76,
+                "passes": 4,
+                "self": {
+                  "unrouted": 79,
+                  "nets": 635,
+                  "violations": 0,
+                  "vias": 315,
+                  "wirelength_mm": 7597.58,
+                  "bends": 1646,
+                  "score": 875.57806,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 81,
+                "violations": 0,
+                "cpu_s": 300.72,
+                "passes": 4,
+                "self": {
+                  "unrouted": 81,
+                  "nets": 635,
+                  "violations": 0,
+                  "vias": 314,
+                  "wirelength_mm": 7467.561,
+                  "bends": 1627,
+                  "score": 872.4285,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            }
+          ]
+        },
+        "java-drc": {
+          "pairs": 101,
+          "improved": 2,
+          "regressed": 1,
+          "delta_unrouted": -6,
+          "drc_gainers": 0,
+          "delta_violations": 0,
+          "cpu_ratio": 0.991991852983382,
+          "regressions": [
+            {
+              "board": "issue420-contribution-board",
+              "before": {
+                "unrouted": 214,
+                "violations": 0,
+                "cpu_s": 302.58,
+                "passes": null,
+                "self": {
+                  "unrouted": 377,
+                  "nets": 1125,
+                  "violations": 0,
+                  "vias": 688,
+                  "wirelength_mm": 6494.7217,
+                  "bends": 4471,
+                  "score": 664.87366,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 215,
+                "violations": 0,
+                "cpu_s": 302.53,
+                "passes": null,
+                "self": {
+                  "unrouted": 377,
+                  "nets": 1125,
+                  "violations": 0,
+                  "vias": 698,
+                  "wirelength_mm": 6496.856,
+                  "bends": 4431,
+                  "score": 664.87366,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "newly_unscored": [],
+      "newly_scored": [
+        {
+          "board": "issue756-tomu-fpga8",
+          "unrouted": 11,
+          "violations": 853
+        }
+      ]
+    },
+    {
+      "parent": "census",
+      "candidate": "census-via-guards",
+      "attempts": [
+        845,
+        845
+      ],
+      "groups": {
+        "kicad": {
+          "pairs": 740,
+          "improved": 10,
+          "regressed": 6,
+          "delta_unrouted": -162,
+          "drc_gainers": 2,
+          "delta_violations": 10,
+          "cpu_ratio": 0.9653386582212359,
+          "regressions": [
+            {
+              "board": "pcbench-Blitz_.C68",
+              "before": {
+                "unrouted": 312,
+                "violations": 0,
+                "cpu_s": 303.12,
+                "passes": 1,
+                "self": {
+                  "unrouted": 303,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 686,
+                  "wirelength_mm": 15358.648,
+                  "bends": 2156,
+                  "score": 780.1057,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 315,
+                "violations": 0,
+                "cpu_s": 303.32,
+                "passes": 1,
+                "self": {
+                  "unrouted": 307,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 686,
+                  "wirelength_mm": 15219.629,
+                  "bends": 2142,
+                  "score": 777.203,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-Blitz_Rev.K_C68",
+              "before": {
+                "unrouted": 330,
+                "violations": 0,
+                "cpu_s": 303.25,
+                "passes": 1,
+                "self": {
+                  "unrouted": 322,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 681,
+                  "wirelength_mm": 15042.552,
+                  "bends": 2122,
+                  "score": 766.3178,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 344,
+                "violations": 0,
+                "cpu_s": 303.18,
+                "passes": 1,
+                "self": {
+                  "unrouted": 336,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 677,
+                  "wirelength_mm": 14544.701,
+                  "bends": 2070,
+                  "score": 756.1582,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-Blitz_copy",
+              "before": {
+                "unrouted": 330,
+                "violations": 0,
+                "cpu_s": 303.23,
+                "passes": 1,
+                "self": {
+                  "unrouted": 322,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 681,
+                  "wirelength_mm": 15042.552,
+                  "bends": 2122,
+                  "score": 766.3178,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 345,
+                "violations": 0,
+                "cpu_s": 303.12,
+                "passes": 1,
+                "self": {
+                  "unrouted": 337,
+                  "nets": 1378,
+                  "violations": 0,
+                  "vias": 677,
+                  "wirelength_mm": 14512.499,
+                  "bends": 2071,
+                  "score": 755.4327,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-LPC2148_Stick_LPC2148_stick",
+              "before": {
+                "unrouted": 62,
+                "violations": 3,
+                "cpu_s": 300.15,
+                "passes": 1,
+                "self": {
+                  "unrouted": 62,
+                  "nets": 231,
+                  "violations": 0,
+                  "vias": 88,
+                  "wirelength_mm": 1877.7062,
+                  "bends": 289,
+                  "score": 731.5939,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 1,
+                "violations": 8,
+                "cpu_s": 186.9,
+                "passes": 10,
+                "self": {
+                  "unrouted": 1,
+                  "nets": 231,
+                  "violations": 0,
+                  "vias": 103,
+                  "wirelength_mm": 4775.804,
+                  "bends": 938,
+                  "score": 995.65424,
+                  "final_state": "COMPLETED",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-LPC2148_Stick__autosave-LPC2148_stick",
+              "before": {
+                "unrouted": 62,
+                "violations": 3,
+                "cpu_s": 300.16999999999996,
+                "passes": 1,
+                "self": {
+                  "unrouted": 62,
+                  "nets": 231,
+                  "violations": 0,
+                  "vias": 88,
+                  "wirelength_mm": 1877.7062,
+                  "bends": 289,
+                  "score": 731.5939,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 1,
+                "violations": 8,
+                "cpu_s": 186.87,
+                "passes": 10,
+                "self": {
+                  "unrouted": 1,
+                  "nets": 231,
+                  "violations": 0,
+                  "vias": 103,
+                  "wirelength_mm": 4775.804,
+                  "bends": 938,
+                  "score": 995.65424,
+                  "final_state": "COMPLETED",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-karabas-nano_karabas-nano-revA",
+              "before": {
+                "unrouted": 35,
+                "violations": 0,
+                "cpu_s": 300.69,
+                "passes": 6,
+                "self": {
+                  "unrouted": 35,
+                  "nets": 605,
+                  "violations": 0,
+                  "vias": 344,
+                  "wirelength_mm": 8735.818,
+                  "bends": 2139,
+                  "score": 942.1332,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 37,
+                "violations": 0,
+                "cpu_s": 300.71999999999997,
+                "passes": 6,
+                "self": {
+                  "unrouted": 37,
+                  "nets": 605,
+                  "violations": 0,
+                  "vias": 346,
+                  "wirelength_mm": 8601.228,
+                  "bends": 2183,
+                  "score": 938.82715,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-karabas-nano_karabas-nano-revB",
+              "before": {
+                "unrouted": 54,
+                "violations": 0,
+                "cpu_s": 300.71000000000004,
+                "passes": 5,
+                "self": {
+                  "unrouted": 54,
+                  "nets": 613,
+                  "violations": 0,
+                  "vias": 331,
+                  "wirelength_mm": 8049.5576,
+                  "bends": 1704,
+                  "score": 911.8951,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 58,
+                "violations": 0,
+                "cpu_s": 300.63,
+                "passes": 5,
+                "self": {
+                  "unrouted": 58,
+                  "nets": 613,
+                  "violations": 0,
+                  "vias": 329,
+                  "wirelength_mm": 7996.4063,
+                  "bends": 1682,
+                  "score": 905.36993,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "pcbench-karabas-nano_karabas-nano-revG",
+              "before": {
+                "unrouted": 79,
+                "violations": 0,
+                "cpu_s": 300.72,
+                "passes": 4,
+                "self": {
+                  "unrouted": 79,
+                  "nets": 635,
+                  "violations": 0,
+                  "vias": 315,
+                  "wirelength_mm": 7597.58,
+                  "bends": 1646,
+                  "score": 875.57806,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 81,
+                "violations": 0,
+                "cpu_s": 300.72,
+                "passes": 4,
+                "self": {
+                  "unrouted": 81,
+                  "nets": 635,
+                  "violations": 0,
+                  "vias": 314,
+                  "wirelength_mm": 7467.561,
+                  "bends": 1627,
+                  "score": 872.4285,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            }
+          ]
+        },
+        "java-drc": {
+          "pairs": 101,
+          "improved": 4,
+          "regressed": 3,
+          "delta_unrouted": -20,
+          "drc_gainers": 0,
+          "delta_violations": 0,
+          "cpu_ratio": 0.9905564632658679,
+          "regressions": [
+            {
+              "board": "issue219-logicboard_smt",
+              "before": {
+                "unrouted": 146,
+                "violations": 0,
+                "cpu_s": 302.17,
+                "passes": 2,
+                "self": {
+                  "unrouted": 249,
+                  "nets": 993,
+                  "violations": 0,
+                  "vias": 990,
+                  "wirelength_mm": 11164.95,
+                  "bends": 1924,
+                  "score": 749.22864,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 147,
+                "violations": 0,
+                "cpu_s": 302.15,
+                "passes": 2,
+                "self": {
+                  "unrouted": 235,
+                  "nets": 993,
+                  "violations": 0,
+                  "vias": 995,
+                  "wirelength_mm": 11349.585,
+                  "bends": 1937,
+                  "score": 763.3272,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "issue420-contribution-board",
+              "before": {
+                "unrouted": 214,
+                "violations": 0,
+                "cpu_s": 302.62,
+                "passes": null,
+                "self": {
+                  "unrouted": 377,
+                  "nets": 1125,
+                  "violations": 0,
+                  "vias": 693,
+                  "wirelength_mm": 6510.7627,
+                  "bends": 4482,
+                  "score": 664.8736,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 215,
+                "violations": 0,
+                "cpu_s": 302.53,
+                "passes": null,
+                "self": {
+                  "unrouted": 377,
+                  "nets": 1125,
+                  "violations": 0,
+                  "vias": 698,
+                  "wirelength_mm": 6496.856,
+                  "bends": 4431,
+                  "score": 664.87366,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            },
+            {
+              "board": "issue754-avionics_hub",
+              "before": {
+                "unrouted": 61,
+                "violations": 559,
+                "cpu_s": 300.99,
+                "passes": 9,
+                "self": {
+                  "unrouted": 62,
+                  "nets": 394,
+                  "violations": 146,
+                  "vias": 11,
+                  "wirelength_mm": 14750.87,
+                  "bends": 1046,
+                  "score": 768.51483,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              },
+              "after": {
+                "unrouted": 62,
+                "violations": 559,
+                "cpu_s": 300.88,
+                "passes": 9,
+                "self": {
+                  "unrouted": 63,
+                  "nets": 394,
+                  "violations": 146,
+                  "vias": 11,
+                  "wirelength_mm": 14724.25,
+                  "bends": 1029,
+                  "score": 765.9769,
+                  "final_state": "TIMED_OUT",
+                  "version": "0.1.0",
+                  "sha": "unknown"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "newly_unscored": [],
+      "newly_scored": [
+        {
+          "board": "issue756-tomu-fpga8",
+          "unrouted": 11,
+          "violations": 853
+        }
+      ]
+    }
+  ]
+}
