@@ -6,7 +6,10 @@ shopt -s nullglob
 root="${1:?usage: kicad-pcb-import-survey.sh <corpus root>}"
 [[ -d "$root" ]] || { echo "error: $root is not a directory" >&2; exit 1; }
 
-cargo build --release -p copperroute
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+BIN="$REPO_ROOT/target/release/copperroute"
+
+cargo build --release -p copperroute --manifest-path "$REPO_ROOT/Cargo.toml"
 
 boards=("$root"/*/stripped.kicad_pcb)
 if [[ ${#boards[@]} -eq 0 ]]; then
@@ -18,12 +21,12 @@ ok=0
 fail=0
 for board in "${boards[@]}"; do
     stem=$(basename "$(dirname "$board")")
-    if ./target/release/copperroute info "$board" >/dev/null 2>&1; then
+    if "$BIN" info "$board" >/dev/null 2>&1; then
         printf 'ok    %s\n' "$stem"
         ok=$((ok + 1))
     else
         printf 'fail  %s: %s\n' "$stem" \
-            "$(./target/release/copperroute info "$board" 2>&1 | tail -1)"
+            "$("$BIN" info "$board" 2>&1 | tail -1)"
         fail=$((fail + 1))
     fi
 done

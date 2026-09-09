@@ -126,9 +126,10 @@ each refusal into one of two categories:
 - a **porting bug**, where `node crates/copper-dsn/tests/data/kicad_pcb_parity.mjs <board>`
   accepts the same board the Rust refuses — fix it;
 - a **shared limitation**, where the JS adapter refuses it too, for a construct neither
-  supports (net ties, footprint zones, concave custom pads, and zone keepouts that restrict
-  tracks or vias are the ones `read_pcb` currently refuses outright) — leave it, and record
-  it here rather than chasing a bug that is not there.
+  supports — leave it, and record it here rather than chasing a bug that is not there. See
+  `crates/copper-dsn/README.md`'s "Reading a `.kicad_pcb` file directly" section for the
+  current list of constructs `read_pcb` refuses outright; do not copy that list here, since a
+  second copy is exactly what would let this section and the README drift apart.
 
 If the accept rate against the corpus turns out low and the refusals are mostly shared
 limitations rather than porting bugs, stage two should reach the mask settings through
