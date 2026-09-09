@@ -1,0 +1,9 @@
+{
+  "crates/copper-board/src/board/clearance_override.rs": "676c71b8a18dc297dc13c083b3e985205d6d813b29f3c31315da97da43ee34db",
+  "crates/copper-router/src/pipeline/board_prep.rs": "abc3274e30a34be1ff506b0b145bc6429dcaf35a438ea54a8983d91785c02f41",
+  "crates/copper-router/src/autoroute/maze/control.rs": "e105df095507d16a630e53c866f74891f2c61995127299f67adc48d13323568d",
+  "crates/copper-router/src/autoroute/maze/expansion_engine.rs": "e7a24979e6f84a7bee422c2495b4d413e89104e62e462f04c794dd76b5cdccff",
+  "crates/copper-router/src/autoroute/maze/corridor.rs": "8252c068dc59b9b3eb542e559abc43ef90299e631212d8927755311addd2a054",
+  "crates/copper-router/src/autoroute/maze/expand.rs": "db3311ce726ea94faf9eff9e57c0b66e510abfd5b66522161104b40119b469cf",
+  "crates/copper-router/src/autoroute/maze/mod.rs": "e79fac621d107dee43bd40eaffecbf655ec71fd787af18c27773a4e2252b7459"
+}

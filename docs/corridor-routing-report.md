@@ -1,6 +1,30 @@
 # Shared corridor guidance
 
-Related signals often share a middle route and fan out at their endpoints. Original-board inspection motivated a soft geometric preference for that pattern. With `COPPERROUTE_CORRIDOR_GUIDANCE=1`, the candidate reduces unrouted connections by 241 across 751 KiCad boards relative to its matching PR25 control, with unchanged aggregate copper violations and 113 fewer reported mask violations. It remains opt-in while ordinary-board regressions are investigated.
+Related signals often share a middle route and fan out at their endpoints. This opt-in experiment adds a soft geometric preference for that pattern. The current candidate includes the KiCad project copper minimum from PR28, fixing the earlier Snappi regression while retaining broad corridor gains. Ordinary-board regressions remain; default activation is not ready.
+
+## Current full comparison with project minimums
+
+`quality-epyc-corridor-minimum-full-01`: main e9d10c2 and the combined candidate, guidance disabled/enabled in the same executable. Each has751 boards and successful KiCad referees (2,253 total); failed checks were repaired on unchanged SES. Both control and enabled candidate receive identical minimal project files containing original min_clearance and original PR25 pad-mask sidecars. Ten passes,300-second cap,one routing thread,192jobs. Results copied locally and to workbench.
+
+| Group vs control | Unrouted delta / better / worse | Copper delta / gainers | Reported mask delta / gainers | CPU ratio |
+|---|---:|---:|---:|---:|
+| PCBench740 | −172 /44 /13 | −3 /13 | −64 /12 |0.9401|
+| Local11 | +4 /0 /2 | +1 /1 |0 /0 |1.0078|
+
+Of721 both-completed pairs,495 SES files are identical. The226 changed outputs jointly have **−46 unrouted/−3 copper/−64 reported mask**; the identical outputs have−13 reported mask, a referee difference not caused by routing. The30 deadline-affected pairs contribute−122 unrouted/+1 copper/+13mask. Thus headline−168 unrouted/−2 copper includes substantial deadline effects; no speed improvement is claimed.
+
+Snappi is fully connected with **zero copper violations on both sides**. Before enforcing its project minimum, corridor guidance raised it from3 to10 copper violations. Ordinary regressions persist: azalea37→42U/45→51Cu; motorizedopener58→61U/53→54Cu. These are not outlier exemptions. All boards remain included.
+
+| Group | Completed | Connected | Median RSS MB | Max RSS MB |
+|---|---:|---:|---:|---:|
+| PCBench |711→717|588→598|12.1→12.1|370.9→369.4|
+| Local |10→10|8→7|12.1→12.1|69.8→118.8|
+
+Versus main, the stack includes PR25/PR28 and dependencies: PCBench−939U/−84Cu/−4202reportedmask,151 connectivity improvements/33 regressions,21 copper gainers,CPU0.8704; local−11U/−1Cu/0mask,3 improvements/0 connectivity regressions,1 copper gainer,CPU0.9323. The [generated summary](routing-quality-artifacts/corridor-minimum/pr-summary.md) reports a failing262-quality-loss gate. [Incremental results](routing-quality-artifacts/corridor-minimum/vs-control.json), [main comparison](routing-quality-artifacts/corridor-minimum/vs-main.json), [output identities](routing-quality-artifacts/corridor-minimum/identities.json), and [frozen source hashes](routing-quality-artifacts/corridor-minimum/source-hashes.json) are retained.
+
+The combined snapshot passed a clean workspace suite:2,586 passed/77ignored/0failed, including five corridor and two minimum-clearance tests. Seven production files in the merged review worktree match the frozen tested snapshot exactly. A fresh clean review-worktree suite also completed successfully: 2,586 passed, 77 ignored, zero failed, including doctests. Correct compilation paths and the new test names were verified. The implementation and earlier experiment evidence follow; earlier numbers below predate the project-minimum fix.
+
+## Algorithm and historical experiment
 
 The algorithm groups component pairs sharing at least four signals, excluding plane nets and nets spanning more than six components. It sorts endpoint projections and selects monotonic destination-order chains. Groups claim nets in a common deterministic order so a signal cannot count toward multiple corridors. A finite band covers the selected endpoints with width allowing the estimated trace and clearance capacity. Physical maze movement outside the band receives a 25% additive cost proportional to the segment fraction outside. Existing geometric options remain available. Destination heuristics and drill-page lower bounds are unchanged; physical door/drill movement costs include the preference. Optimizer searches also use it. This does not add bus queue ordering or reserve hard lanes.
 
