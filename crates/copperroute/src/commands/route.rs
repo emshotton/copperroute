@@ -46,6 +46,10 @@ pub fn run(cli: &Cli, args: &RouteArgs) -> ExitCode {
         }
     };
 
+    for warning in &outcome.warnings {
+        tracing::warn!("{warning}");
+    }
+
     if let Some(summary) = outcome.visualization.as_ref() {
         if let Some(error) = summary.error.as_ref() {
             tracing::warn!("routing visualization stopped after an I/O error: {error}");

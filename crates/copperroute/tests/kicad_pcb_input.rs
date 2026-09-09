@@ -54,6 +54,33 @@ fn it_reports_a_board_summary_for_a_kicad_board() {
 }
 
 #[test]
+fn it_prints_the_loaders_warnings_when_routing_a_kicad_board() {
+    let board = testkit::workspace_root().join("web/examples/easyduino/nano.kicad_pcb");
+    let dir = scratch("prints-loader-warnings");
+    let output = dir.join("out.ses");
+
+    let (_, stderr, code) = run(&[
+        "route",
+        &board.to_string_lossy(),
+        "-o",
+        &output.to_string_lossy(),
+        "--max-passes",
+        "1",
+        "--timeout",
+        "120",
+    ]);
+    assert_eq!(code, 0, "route failed: {stderr}");
+    assert!(
+        stderr.contains("copper zones will be preserved with their fill cache removed"),
+        "expected read_pcb's zone warning on stderr, got:\n{stderr}"
+    );
+    assert!(
+        stderr.contains("Curved board edges are approximated"),
+        "expected read_pcb's outline warning on stderr, got:\n{stderr}"
+    );
+}
+
+#[test]
 fn it_routes_a_kicad_board_to_a_session_that_actually_connects_the_nets() {
     let board = testkit::workspace_root().join("web/example.kicad_pcb");
     let dir = scratch("routes-to-session");
