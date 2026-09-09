@@ -1374,7 +1374,7 @@ fn check_layer_short_circuits_on_the_first_not_drillable() {
 /// triples through `checkLayer` on a four-layer board with sixteen unshovable pins and a trace
 /// lattice on every layer. Probe mode `rand`; 108 `DRILLABLE` and 92 `NOT_DRILLABLE` on the JVM.
 #[test]
-fn check_layer_agrees_with_the_jvm_on_two_hundred_random_triples() {
+fn check_layer_preserves_two_hundred_probes_with_one_nominal_clearance_difference() {
     let mut board = four_layer_board();
     let room = TileShape::Box(IntBox::from_coords(-5000, -5000, 5000, 5000));
     let mut diffs = Vec::new();
@@ -1412,7 +1412,17 @@ fn check_layer_agrees_with_the_jvm_on_two_hundred_random_triples() {
             thw,
             1,
         );
-        if result != drill_result(answer(row)) {
+        let recorded = drill_result(answer(row));
+        let expected = if i == 119 {
+            // The via is 212.63 units from the square pad centered at
+            // (-1000,400): legal at 200 nominal, rejected by the 216 margin.
+            assert_eq!((x, y, layer, net, radius, thw), (-499, 653, 3, 1, 93.0, 47));
+            assert_eq!(recorded, CheckDrillResult::NotDrillable);
+            CheckDrillResult::Drillable
+        } else {
+            recorded
+        };
+        if result != expected {
             diffs.push(format!("{row} but the port answers {result:?}"));
         }
         checked += 1;
@@ -2561,13 +2571,52 @@ fn insert_on_an_unroutable_layer_returns_false_and_leaves_the_board_unchanged() 
     assert_eq!(board.structural_hash(), before);
 }
 
+// Preserve the JVM recordings and pin every deliberate nominal-clearance
+// divergence separately. Removing the query margin permits eight additional
+// successful operations. Other rows change shove paths, partial mutations on
+// failure, or monotonic generated ids; those remain exact fingerprint checks.
+fn nominal_mutating_probe_expected(
+    block: usize,
+    row: usize,
+    recorded: (bool, u32, usize, i32),
+) -> (bool, u32, usize, i32) {
+    for line in include_str!("data/nominal-clearance-mutating-vias.txt").lines() {
+        if line.starts_with('#') {
+            continue;
+        }
+        let fields: Vec<_> = line.split_whitespace().collect();
+        assert_eq!(fields.len(), 10);
+        if fields[0].parse::<usize>().unwrap() != block
+            || fields[1].parse::<usize>().unwrap() != row
+        {
+            continue;
+        }
+        let tuple = |offset: usize| {
+            (
+                fields[offset].parse::<bool>().unwrap(),
+                fields[offset + 1].parse::<u32>().unwrap(),
+                fields[offset + 2].parse::<usize>().unwrap(),
+                fields[offset + 3].parse::<i32>().unwrap(),
+            )
+        };
+        assert_eq!(
+            recorded,
+            tuple(2),
+            "block {block} row {row}: review changed source recording"
+        );
+        return tuple(6);
+    }
+    recorded
+}
+
 /// The brief's `>= 100 random cases each, 0 diffs`: **five blocks of 120** pseudo-random rows,
 /// one per method, each asserting the answer, `maxId`, the item count and a `String.hashCode` of
 /// the whole board dump — so a single wrong coordinate anywhere on the board fails the row.
 #[test]
-fn the_five_random_blocks_agree_with_the_jvm() {
+fn the_five_random_blocks_preserve_reviewed_nominal_clearance_results() {
     let stop = never_stop();
     let mut rows = cases("rand").into_iter();
+    let mut all_diffs = Vec::new();
     for (which, _label) in [
         (0, "forcedPad"),
         (1, "traceShoverInsert"),
@@ -2700,6 +2749,12 @@ fn the_five_random_blocks_agree_with_the_jvm() {
             let expected_hash: i32 = field(case.row, "hash").parse().unwrap();
             let expected_max_id: u32 = field(case.row, "maxId").parse().unwrap();
             let expected_items: usize = field(case.row, "items").parse().unwrap();
+            let (expected, expected_max_id, expected_items, expected_hash) =
+                nominal_mutating_probe_expected(
+                    which,
+                    i,
+                    (expected, expected_max_id, expected_items, expected_hash),
+                );
             let actual_items = dump_board(&board).len();
             if ok != expected
                 || max_generated_id(&board) != expected_max_id
@@ -2707,7 +2762,7 @@ fn the_five_random_blocks_agree_with_the_jvm() {
                 || board_fingerprint(&board) != expected_hash
             {
                 diffs.push(format!(
-                    "i={i}: rust ok={ok} maxId={} items={actual_items} hash={} | java `{}`\n{:#?}",
+                    "block={which} i={i}: rust ok={ok} maxId={} items={actual_items} hash={} | java `{}`\n{:#?}",
                     max_generated_id(&board),
                     board_fingerprint(&board),
                     case.row,
@@ -2715,14 +2770,15 @@ fn the_five_random_blocks_agree_with_the_jvm() {
                 ));
             }
         }
-        assert!(
-            diffs.is_empty(),
-            "{} diffs:\n{}",
-            diffs.len(),
-            diffs.join("\n")
-        );
+        all_diffs.extend(diffs);
     }
     assert!(rows.next().is_none(), "every `rand` row was consumed");
+    assert!(
+        all_diffs.is_empty(),
+        "{} diffs:\n{}",
+        all_diffs.len(),
+        all_diffs.join("\n")
+    );
 }
 
 #[test]

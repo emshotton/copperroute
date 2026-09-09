@@ -1,0 +1,4594 @@
+{
+  "pcbench": {
+    "unrouted": {
+      "main": 5282,
+      "change": 4132,
+      "delta": -1150,
+      "better": 140,
+      "worse": 38
+    },
+    "violations": {
+      "main": 933,
+      "change": 885,
+      "delta": -48,
+      "better": 32,
+      "worse": 26
+    },
+    "mask": {
+      "main": 15193,
+      "change": 10949,
+      "delta": -4244,
+      "better": 77,
+      "worse": 11
+    },
+    "cpu_s": {
+      "main": 37459.700000000004,
+      "change": 32704.05999999999,
+      "delta": -4755.640000000014,
+      "better": 487,
+      "worse": 237
+    },
+    "peak_rss_mb": {
+      "main": 15320.10000000011,
+      "change": 15008.200000000115,
+      "delta": -311.8999999999942,
+      "better": 280,
+      "worse": 236,
+      "main_median": 13.6,
+      "change_median": 12.1,
+      "main_max": 450.4,
+      "change_max": 370.9
+    },
+    "cpu_ratio": 0.8730465006393534
+  },
+  "local": {
+    "unrouted": {
+      "main": 241,
+      "change": 226,
+      "delta": -15,
+      "better": 3,
+      "worse": 0
+    },
+    "violations": {
+      "main": 59,
+      "change": 57,
+      "delta": -2,
+      "better": 1,
+      "worse": 1
+    },
+    "mask": {
+      "main": 0,
+      "change": 0,
+      "delta": 0,
+      "better": 0,
+      "worse": 0
+    },
+    "cpu_s": {
+      "main": 849.0299999999999,
+      "change": 780.18,
+      "delta": -68.84999999999991,
+      "better": 5,
+      "worse": 6
+    },
+    "peak_rss_mb": {
+      "main": 265.2,
+      "change": 261.7,
+      "delta": -3.5,
+      "better": 4,
+      "worse": 3,
+      "main_median": 16.6,
+      "change_median": 13.6,
+      "main_max": 74.4,
+      "change_max": 76.6
+    },
+    "cpu_ratio": 0.9189074591003853
+  },
+  "regressions": [
+    {
+      "board": "kicad-issue180-test--test",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "kicad-issue184-motorizedopener--motorizedopener",
+      "unrouted_delta": -7,
+      "copper_delta": 1,
+      "mask_delta": 0
+    },
+    {
+      "board": "kicad-issue269-min_fr_test--min_fr_test",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "kicad-issue269-noviasonpowerplanes--issue269-noviasonpowerplanes",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "kicad-issue269-nowiresonpowerlayers--proba",
+      "unrouted_delta": -7,
+      "copper_delta": -3,
+      "mask_delta": 0
+    },
+    {
+      "board": "kicad-issue283-unconnectedtracesunderpads--natural_tone_preamp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "kicad-issue367-ultraflactyl--ultraflactyl",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "kicad-issue368-corneyislandwireless--corney_island_wireless",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "kicad-issue558-dev-board-autoroute-demo--dev-board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "kicad-issue632-miniautopilot--mini auto pilot",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "kicad-issue742-tastexx-pcb--tastexx-pcb",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-1-Wire-Wing-pcb_1-Wire_Wing",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -10
+    },
+    {
+      "board": "pcbench-12v-automatic-ups_ups-12v",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-16x12-bits-I2C_I2C_Servo",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-1Bitsy_1bitsy",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-2d_conduction_sk9822-matrix",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-4N35-TTL-Serial-Optoisolator_4N35-TTL-Serial-Optoisolator",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-655_testboard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -55
+    },
+    {
+      "board": "pcbench-6N137-TTL-Serial-Optoisolator_6N137-TTL-Serial-Optoisolator",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-6volt-5W-solar-cc_6vleadacidsolar",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-74Logic_SA_ADC_SA-ADC",
+      "unrouted_delta": -3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-8bit-cpu_arduino_eeprom_programmer",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-8bit-cpu_programming_interface",
+      "unrouted_delta": 3,
+      "copper_delta": 0,
+      "mask_delta": 32
+    },
+    {
+      "board": "pcbench-96boards-sensors_Sensors",
+      "unrouted_delta": -1,
+      "copper_delta": 16,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ABOVISP_ABOVISP",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ADC-PCM4202-SE_ADC-PCM4202-SE",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-AIOsense_AIOsense",
+      "unrouted_delta": -3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-APC_AtariPunkConsole",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-APM-RPi-Shield_APM-RPi-Shield",
+      "unrouted_delta": -8,
+      "copper_delta": 1,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-AS5043-Encoder_sensor-board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -12
+    },
+    {
+      "board": "pcbench-ATmega32_ExploreUltraAvrDevKit_40pin_AVRMCU",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ATtiny461Breakout_ATTiny461DevBoard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-AVR-ISP_level-shifter_AVR-ISP_level-shifter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-AVR-ISP_pogo-plug_1.27mm_AVR-ISP_pogo-plug_1.27mm",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-AVR-Playground_hello_world",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-AVR-ZIF-Programmer_AVR-ZIF-Prog",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Amiga-2000-EATX_TICK_OSC_KiCAD_TICK",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Amiga-A1012-PCB_Amiga-A1012",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-AmpOne_dev-AmpOne",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-AnalogThermometer_AnalogThermometer",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Apple-M0110-BT_Apple M0110",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -68
+    },
+    {
+      "board": "pcbench-Arduino-Theremin_arduino-theremin-v1",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Arduino_Lipo_Storage_Discharger_Lipo_Storage_Discharger",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Atmel-ICE-Header-Adapter_ice header adapter pcb",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Avem_Hardware_Avem_demo",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-AzizLight_AzizLight",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-BB-PWR-3608_BB-PWR-3608_revA",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-BB-PWR-8009_BB-PWR-8009_revA",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-BLDC-controller_BLDC_controller",
+      "unrouted_delta": -8,
+      "copper_delta": 7,
+      "mask_delta": -30
+    },
+    {
+      "board": "pcbench-BML-Badges_BML-Badges",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-BML-Badges_BML_01",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Baofeng-Interface_BaofengInterfaceIsolated",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -10
+    },
+    {
+      "board": "pcbench-BirdAttractor_BirdAttractor_RevA",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-BirdAttractor_BirdAttractor_RevC",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-BirthdayCakeKeyboard_10Key",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Biscay_Blueeye_mcu",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Biscay_Blueeye_sipm-fpga",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Blink-Eras_AVR_ISP_Pogo",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -7
+    },
+    {
+      "board": "pcbench-Blitz_.C68",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Blitz_Rev.K_C68",
+      "unrouted_delta": -101,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Blitz_copy",
+      "unrouted_delta": -105,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Box0-hv-analog-breakoutboard_breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Brushless_ESC_Brushless_ESC",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-C-BISCUIT_crowbar",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CAL430FR_CAL430F",
+      "unrouted_delta": -3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CAL430FR_CAL430F_watch",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_4CH_Mixer",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_APC_Eurorack_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Abakus_Control",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Abakus_Main",
+      "unrouted_delta": 3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Arduino_VCO_Main",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Baby_8",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Buffered_Multiple_Main",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Buffered_Multiple_SMD_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_CGS_Analog_Switch_Matrix_Control",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_CGS_Analog_Switch_Matrix_Main",
+      "unrouted_delta": -4,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Classic_ADSR_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Clock_Divider_Control",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Clock_Divider_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Dual_VCA_2_Control",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Dual_VCA_2_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Envelope_Follower_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_HAGIWO_6Ch_Gate_Sequencer_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_HAGIWO_MultiOut_Control",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_HAGIWO_MultiOut_Main",
+      "unrouted_delta": 2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_HAGIWO_Ring_Modulator_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_LFO_Main",
+      "unrouted_delta": 1,
+      "copper_delta": 1,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_MFOS_Eight_Stage_Phase_Shifter_-_Control",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_MFOS_Eight_Stage_Phase_Shifter_-_Main",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Control",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Main_1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Main_2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Main_Rectifier_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Manual_Gate_Control",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Manual_Gate_Main",
+      "unrouted_delta": -5,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Power_Modul_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_S_H_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Single_Attenuator",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Slim_Precision_Adder_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Slimline_VCA_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Slimline_Voltage_Controlled_Switch_-_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Vactrol_VCF_-_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_YuSynth_Dual_Balanced_Modulator_Main",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_YuSynth_Improved_Steiner_VCF_Main",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CapPCB_CapPcb",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Cherry-Mx-Bitboard_Cherry Mx Bitboard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ChirpHardware_chirp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CompactFlashBreakout_CompactFlashBreakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CoreOne-xCORE200-Original_CoreOne",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CubeSAT-Reaction-Wheel_Edison_Motor_Servo",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-CubeSAT-Reaction-Wheel__autosave-GPIO to motor",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Curryboard_Curryboard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-DAC-ADAU1966_DAC-ADAU1966",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -47
+    },
+    {
+      "board": "pcbench-DC25_DC25",
+      "unrouted_delta": 0,
+      "copper_delta": 1,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-DIYDAC_DIYDAC",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-DPS-1200FB_Adapter_Adapter",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-DaWeather---Project__autosave-CarteDaWeather",
+      "unrouted_delta": 0,
+      "copper_delta": -1,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-DasBlinkinput_Das Blinkinput",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Dekada_dekada",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Dekada_dekada_TopoR_curves",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-DerKnopf_digi-pot",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-DerKnopf_led-ring",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -52
+    },
+    {
+      "board": "pcbench-DerKnopf_power-supply",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-DiscoDanceFloorV1_DiscoDongle",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-DonCon2040_DonConPad",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Doorman_doorman_slot",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-DoroidOscillo-Board_Android_Oscilloscope",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-DualLM317BenchSupply_DualLM317BenchSupply",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-DustSensorShield_DustSensorShield",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-E202VAR-Natural-Radio-Receiver_e202var-vlf-radio-receiver",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-EEGFrontier_EEGFrontier",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ESP-12-breakout_ESP12E-breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ESP-Breakout_ESP-Breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ESP07-Breakout_ESP07-Breakout",
+      "unrouted_delta": -1,
+      "copper_delta": 1,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ESP32-Module-Breakout_ESP32S-breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ESP8266-MQTT-battery-monitor-hw_battery-monitor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ESPLux_Board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ESP_BaPoTeSta_ESP_BaPoTeSta",
+      "unrouted_delta": -3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ESP_WiFiSwitch_WifiSwitch",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Eggbot-Spherebot-polargraph-Controller_eggbot-spherebot-polargraph-controller",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Electronics-MainBoard_MainBoard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -147
+    },
+    {
+      "board": "pcbench-EncoderBoard_Enc_Pan_Led",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-EnvOpenPico_EliteMicro2040",
+      "unrouted_delta": 4,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-EuroPi_europi-surface-mount",
+      "unrouted_delta": -1,
+      "copper_delta": 5,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-FRM16_Relay_Module_I2C_Controller_relay_controller",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 36
+    },
+    {
+      "board": "pcbench-FT231X_breakout_FTDI_FT231XS-U_Breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -42
+    },
+    {
+      "board": "pcbench-Feather-ICE40-PCB_feather_ice40",
+      "unrouted_delta": -10,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-FlashProgrammer_flash_programmer",
+      "unrouted_delta": -3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-FogDrive_attiny45_slim",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-GameTiger_GameTiger",
+      "unrouted_delta": -6,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-HES-V2__autosave-hes",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-HES-V2_hes",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-HW-AC-Emeter_ac-power-monitor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hangul-Clock_Hangul",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware-done-with-kicad_AVRlearn",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_BL_PCB_latest",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_Touch_Switch_1ch_PCB",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_buck_led_driver",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_esp8266_uno_relay",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_hy_adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_minimal_node_rfm69w",
+      "unrouted_delta": -2,
+      "copper_delta": 1,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_nrf52832_uno",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_orange_pi_zero_node",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_pro_mini",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_rpi_zero",
+      "unrouted_delta": 0,
+      "copper_delta": 13,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_serial_gw_ATMEGA328P",
+      "unrouted_delta": 0,
+      "copper_delta": 6,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_serial_gw_maple_mini",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_usb_shield",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hardware_Playground_wifi_lights",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-HaveSome_PCB_HaveSomePCB",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -8
+    },
+    {
+      "board": "pcbench-HellScribe_HellScribe",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-HillhacksLantern_LEDLantern",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hubble_12_bit_analog_out",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hubble_16_bit_analog_out",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hubble_jacks",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hubble_leds",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hubble_mux",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Hypfer-RGB-W-LED-Controller_led_strip_controller",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-I2CTempsensor_sensors",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ID-FIX_scanConnect",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-IR-Transponder-ATTiny85-v2_Transponder_v2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ISO-port_ch340-usb-serial-isolated",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Inhibition_amplifier",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Inkjet_InkjetBreakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Inkjet_InkjetDriver",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Inkjet_PiezoDriver",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Inkjet__autosave-InkjetDriver",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-JLink-SWD_JLink-SWD",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Kefersender_UKW TX",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Keyboard_PCB_Keyboard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-KiCad-LTC6802-2_main",
+      "unrouted_delta": 0,
+      "copper_delta": -1,
+      "mask_delta": -1
+    },
+    {
+      "board": "pcbench-KosselHotendBoard_KosselHotendPCB",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-L6235-PCB_L6235",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-LAUNCHXL-F28027-isolation-PCB_project1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-LED-Square_PT4115_LED-Square_PT4115",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-LPC2148_Stick_LPC2148_stick",
+      "unrouted_delta": 0,
+      "copper_delta": -8,
+      "mask_delta": -136
+    },
+    {
+      "board": "pcbench-LPC2148_Stick__autosave-LPC2148_stick",
+      "unrouted_delta": 0,
+      "copper_delta": -8,
+      "mask_delta": -134
+    },
+    {
+      "board": "pcbench-LT3652EvalBoard_LT3652EvalBoard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-LVDS2TMDS_LVDS2TMDS",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-LadyBugShield_LBS-TEST1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-LadybugLiteBlue_HW_LadybugBlueLite",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-LiFePO4-Charge-Controller_LiFePO4-Charge-Controller",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Librecalc-Hardware__autosave-calculator",
+      "unrouted_delta": 3,
+      "copper_delta": 0,
+      "mask_delta": -28
+    },
+    {
+      "board": "pcbench-LimitSwitchesPlugin_LimitSwitchesPlugin",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-LittleArduinoProjects_LEDx16_board",
+      "unrouted_delta": 2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-LittleArduinoProjects_sevensegment_led_display_module",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-LoRaCatTrack_GPSLoRa",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-LoRaPP_loramod",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -87
+    },
+    {
+      "board": "pcbench-LongPixel_AnalogDriverMini",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-MAGFest-2017-Swadges_magfest_badges",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-MAVRIC_Hardware_ArduinoPracticeBoard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-MAVRIC_Hardware_Motherboard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-MAVRIC_Hardware_SoilBoard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-MAVRIC_Hardware__autosave-Motherboard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-MSGEQ7-Breakout-Board_MSGEQ7_Breakout_Board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Mechaduino-DR_Mechaduino DR 1.01",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -79
+    },
+    {
+      "board": "pcbench-Minitel_bbb-adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Minitel_driver_board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-MixSID_mixsid",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": -194
+    },
+    {
+      "board": "pcbench-Mouse_Mouse",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-MySRaspiGW_MySRaspiGW",
+      "unrouted_delta": -3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-MySRaspiGW_MySRaspiGW_PA_LNA",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-MySRaspiGW_MySRaspiGW_PA_LNA_Pimoroni",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-MySRaspiGW_MySRaspiGW_Pimoroni",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-NRC2016_banked_ram",
+      "unrouted_delta": -12,
+      "copper_delta": 0,
+      "mask_delta": -217
+    },
+    {
+      "board": "pcbench-NRC2016_usb_sio",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -149
+    },
+    {
+      "board": "pcbench-NRC2016_z80",
+      "unrouted_delta": -4,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-NavigationThing_NavigationThing",
+      "unrouted_delta": 0,
+      "copper_delta": -8,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-NeoWall_NeoWall",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Neptune-Hardware_DataAcquisitionBoard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-NiMH-Charger_NiMH Charger",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-OLD-Stepper-motor-board-design-project_Stepper motor driver",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-OSHW-reCamera-Series_reCamera_Basically_Board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Omega2-Berrydock_berrydock-mini",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Omega2-mini-dock_Omega2 mini-dock",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-OpAmpPassXsistorBenchSupply_OpAmpPassXsistorBenchSupply",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Open-Source-Power-Supply_PowerSupply_PCB",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Open-Source-Power-Supply_PowerSupply_PCB_backup",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-OpenHardwareExG_ActiveElectrode_OpenHardwareExG_ActiveElectrode",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield",
+      "unrouted_delta": 3,
+      "copper_delta": -9,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield_Test_Board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield_Test_Board_all_panelled",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-OpenVNAVI_driver unit",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-OpenVNAVI_motor unit",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Own-Mailbox-Hardware_eth",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -21
+    },
+    {
+      "board": "pcbench-Own-Mailbox-Hardware_mailbox",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -23
+    },
+    {
+      "board": "pcbench-PCB_constant_current_ac_hv",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-PCB_serie_led_strip",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-PCB_small_halogen_replacement",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-PGA2311_pga2311",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-POV_POV",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-PWRmeter_PWMeter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Paperino_HW_Paperino_shield",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Paperino_HW_paperino_breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Patternflow_patternflow",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Phased-Array-Microphone-using-FPGA_SateliteMicrophone",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Pi1541io_Pi1541io",
+      "unrouted_delta": -8,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Pi5_PCIe_Pi5_PCIe",
+      "unrouted_delta": 0,
+      "copper_delta": -5,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-PixyWirelessShield_Shield PIXY",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-PmodHDMIIn_PmodHDMIIn",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -97
+    },
+    {
+      "board": "pcbench-PocketBone_pocketbone-kicad",
+      "unrouted_delta": -43,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Practicas-Curso-Kicad_Ejercicio_2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Practicas-Curso-Kicad_Salguero_Federico2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Prototyping_Workshop_Prototyping_PCB",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-PsuFanController_FanController",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-QRPCard_QRPCard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-R1002_R1002",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RC2014_RC2014 IDE",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RC2014_RC2014 RAM",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RC2014_RC2014 Tandy Sound Card",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RC6502-Apple-1-Replica_RC6502_Apple_1_SBC",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RC6502-Apple-1-Replica_RC6502_Terminal",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RC6502-Apple-1-Replica_RC6502_VDU",
+      "unrouted_delta": 3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RFM69HCW_ATSHA204A_Breakout_RFM69HCW_ATSHA204A_Breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RGBMatrixPanelCPLD-PhotonBackpack_RGBMatrixPanel_CPLD_negative",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RGBMatrixPanelCPLD-PhotonBackpack_RGBMatrixPanel_CPLD_positive",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RPi-PWM-Fan-interface_RPi PWM Fan interface",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -8
+    },
+    {
+      "board": "pcbench-RX5808_diversityModule",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RX5808_rx5808_4button",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Raspberry-Pi-Soft-Power-Controller_Switching Supply TPS563208 MCI",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Raspberry-Pi-Soft-Power-Controller_Zero Current Soft Power",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ReSDMAC_ReSDMAC",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ReST32_ReST RRD-FGC-Adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ReST32_ReST SD-Module",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Retro1DecodingModules_AddressDecoderModule",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RetroWiFiModem_RetroWiFiModem",
+      "unrouted_delta": -1,
+      "copper_delta": 1,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RoBoC_CameraAdaptor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-RoBoC_RoboticsMKII",
+      "unrouted_delta": 0,
+      "copper_delta": -5,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-S1G-Mod_JST_Adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -3
+    },
+    {
+      "board": "pcbench-S4A-Mini-board_s4a-mini-board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-SMDBreakouts_smd_breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -3
+    },
+    {
+      "board": "pcbench-SMDBreakouts_smd_breakout_quad",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -3
+    },
+    {
+      "board": "pcbench-SNAP-Badge_SNAP_badge",
+      "unrouted_delta": -34,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-SOICbite_SOICbite_SWD",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-STM32F303_LQFP48_STM32_LQFP48",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -80
+    },
+    {
+      "board": "pcbench-STM32F373_LQFP48_STM32_LQFP48",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -67
+    },
+    {
+      "board": "pcbench-Shift-in-32-HC165_shift-in",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Shift-out-32-HC595_Shift-out",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-SimpleCPLD_SimpleCPLD",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-SmartLaserCO2-PCB_LaserPointer",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-SmartLaserCO2-PCB_OptAdjust",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-SmartLaserCO2-PCB_WaterCool",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Solare-BQ24210_Solare-BQ24210",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": -5
+    },
+    {
+      "board": "pcbench-SparkSwitch_SparkProtectionSwitch",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Starburst-One_alpha",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Starling_Starling_V1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Starling__autosave-Starling WiPSU ver_0.1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-SynthDrumTrigger_Synth Drum Trigger",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-TB6600StepperDriver_DEW_TB6600-V1",
+      "unrouted_delta": -24,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-TK44_TK44",
+      "unrouted_delta": -1,
+      "copper_delta": -3,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-TLPHnodeV2_TLPHnodeV2",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": -70
+    },
+    {
+      "board": "pcbench-TMC261-stepstick_TMC261-stepstick-v1.1",
+      "unrouted_delta": -15,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-TX5823_TX5823",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Teensy-3.5-Breakout-Boaard_PropShield_Uno",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Teensy-3.5-Breakout-Boaard_TeensyMegaIoShield",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Teensy-3.5-Breakout-Boaard_Test",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Teensy-Hats_Teensy-7-Segment-Hat",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Teensy-Hats_Teensy-LCD-LiDAR-Hat",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-TeensyProtoboard_TeensyProtoboard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ThinkerShield_ThinkerShield",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-TinyTracker_ub-minimal",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -83
+    },
+    {
+      "board": "pcbench-ToslinkCNC_Toslink PlanetCNC ECO shield",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ToslinkCNC__autosave-ToslinkCNC_OneAxis",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ToslinkCNC_toslink_arduino_shield",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-TripleDelay2399_TripleDelay2399",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ULPI-Pmod_ULPI-Pmod",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-UProgrammer-Hardware_Programmer",
+      "unrouted_delta": -21,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-UltraPIF_Hardware_led",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-UltraPIF_Hardware_pif_adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-UltrasonicSystem_Schematic",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-UniversalBoard4Nucleo_Nucleo_Universal_Board",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Usb-Serial-Breakout-Cp2102_cp2102",
+      "unrouted_delta": -3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-VC4000MultiROM_MultiRomCard",
+      "unrouted_delta": -4,
+      "copper_delta": 2,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-VM-sensor-PT1000_vm-sensor-pt100",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Ventilator_indicator-board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Ventilator_pressure_XGZP6897A",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Ventilator_pressure_mpx5700ap_gp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Ventilator_pressure_mpxv5004_10dp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Ventilator_pressure_mpxv5004dp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Ventilator_pressure_mpxv5010dp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Ventilator_pressure_ms4525do",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-WHCS-Base-Station_base-station",
+      "unrouted_delta": 0,
+      "copper_delta": -6,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-WS2811LEDMatrix_matrixcontrol",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-WeatherSpot_vreg_pressure",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-WordClock_v2.0_WordClock_v2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-Youyue-858D-plus-MCU-adapter_youyue-858d-plus-mcu-adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-abus-cfa1000-display-grabber_acs-display-grabber",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 1
+    },
+    {
+      "board": "pcbench-aciduino_aciduino_pcb",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-airqualitystation_hardware",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-akuhei_akuhei",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-alu_gate_xnor_2in",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-amalthea_amalthea_rev0",
+      "unrouted_delta": -25,
+      "copper_delta": 0,
+      "mask_delta": 2
+    },
+    {
+      "board": "pcbench-analog_esr_meter_esr_meter_rev_a",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-anima_MotorDrive",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-antdroid-board_antdroid-board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-apa102lantern_apa102-lantern-side",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-arduino-led-driver_arduino-led-driver",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-arduino_arduino leds",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-atmegax8-protoboard_atmegax8-protoboard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -39
+    },
+    {
+      "board": "pcbench-atmel-programmer_atmel_programmer",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-audio_relay_input_switch_relay_switch",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-audprog_audprog_v2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -1
+    },
+    {
+      "board": "pcbench-autohat-board_inverted-usd-adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 7,
+      "mask_delta": -9
+    },
+    {
+      "board": "pcbench-autohat-board_usd-adapter",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": -11
+    },
+    {
+      "board": "pcbench-avr-fuser-32_adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 25,
+      "mask_delta": -266
+    },
+    {
+      "board": "pcbench-avr_ledprojector_avr_ledprojection",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-avr_ledprojector_avr_ledprojection-0402",
+      "unrouted_delta": 3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-azalea_azalea",
+      "unrouted_delta": -39,
+      "copper_delta": 5,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-badge2016_Badge_init",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 20
+    },
+    {
+      "board": "pcbench-balena-rover-wide-hat_resin-rover",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -139
+    },
+    {
+      "board": "pcbench-basic_esp_board_basic_esp_board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-beast-phat_beast-phat",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-bee-light-measurement-matrix_bee-light-measurement-matrix",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-beer-gauge_sensorboard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-beryl_rain_beryl_rain",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-beyblock20_beyblock20",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-bikedar_bikedar",
+      "unrouted_delta": 0,
+      "copper_delta": 1,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-blackmagic-isolated_mmp",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-bldc-gimbal-1d_gimbal-board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-blinky-badge_blinky",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-bms-8s50-ic_bms-8s50-ic",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-bmw-ibus-bluetooth_bmw_bt_cdcemu_analog",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-bmw-ibus-bluetooth_bmw_bt_cdcemu_digital",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-board_armjtag_pmod_compatible_armjtag-pmod",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-boards_shift-register-demo-v2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-boatcontrol_CommonCathode60A",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-boatcontrol_NonLatchingNO30A",
+      "unrouted_delta": -5,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-bobc_LCD-panel-adapter-lvc",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-bobc_MS-F100",
+      "unrouted_delta": -12,
+      "copper_delta": 0,
+      "mask_delta": -69
+    },
+    {
+      "board": "pcbench-bobc_led_clock",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-bobc_matrix_clock",
+      "unrouted_delta": -28,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-bpnode-bb_BPnode-BB",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-breakout-boards_50-to-100",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-breakout-boards_avr-isp-x2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-breakout-boards_esp8266-jtag",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -25
+    },
+    {
+      "board": "pcbench-breakout-boards_swd-and-uart",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-breakout-boards_swd-to-wires",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-bristle_bot_light_follow_bristle_bot",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-busblaster-to-swd_busblaster-to-swd",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-bypass_crossmix_bypass_crossmix",
+      "unrouted_delta": -9,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-can_firewall_hardware_CAN_Firewall",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-cdm324_backpack_cdm324",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ciurlys_ciurlys",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-clock_lcdb4",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-cnlohr_wiflier",
+      "unrouted_delta": -15,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-cnlohr_wiflier_B",
+      "unrouted_delta": -22,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-continuity-tester_continuity-tester",
+      "unrouted_delta": -1,
+      "copper_delta": -4,
+      "mask_delta": -3
+    },
+    {
+      "board": "pcbench-cookiecutter-xsproduct_{{cookiecutter.product_name}}",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-crossover-schiit-stack_xover4schiit",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-custom_cpu--ALU_custom_cpu--ALU",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-custom_cpu--register_custom_cpu--register",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-data-manager_data-manager",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-decelerator4030_decelerator4030",
+      "unrouted_delta": -54,
+      "copper_delta": -2,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-denbit_basic",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-deskbot_breakout",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-devttys0_IRis",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-digital_clock_led_clock_3_and_4_digit",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-digital_clock_led_clock_v1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-disco-dongle_DiscoDongle",
+      "unrouted_delta": 0,
+      "copper_delta": -1,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-divergence_meter_dm_control",
+      "unrouted_delta": -10,
+      "copper_delta": 0,
+      "mask_delta": -3
+    },
+    {
+      "board": "pcbench-domotics_base-board-arranged",
+      "unrouted_delta": 0,
+      "copper_delta": -3,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-dorkyboard_keyboard",
+      "unrouted_delta": 4,
+      "copper_delta": 0,
+      "mask_delta": -114
+    },
+    {
+      "board": "pcbench-drawduino_drawduino",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-dust_sensor_dust_sensor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-dustbox_Dustbox",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-eBUS-Adapter_Groeger",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-eeg_brainboard_batteryv0",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-eink-adapter_eink",
+      "unrouted_delta": -34,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-epaper-102_epaper-102",
+      "unrouted_delta": 0,
+      "copper_delta": 6,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-epapercard_epapercard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -73
+    },
+    {
+      "board": "pcbench-ergo-snm-keyboard_receiver",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp-leipa_esp-12",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp-serial-terminal_esp-com",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp12-appliance_mod_esp12-appliance-mod",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp12-breakout_ESP12Breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -12
+    },
+    {
+      "board": "pcbench-esp32-4-channel-relays_esp32-4-channel-relays",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp32-ethernet_esp32-ethernet",
+      "unrouted_delta": 0,
+      "copper_delta": -1,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp32stack_esp32stack",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp8266-for-uppatvind_Air-Purifier-Uppatvind",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp8266_32x32panel_esp_12_f_595",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp8266_32x32panel_esp_12_f_595_ORDERED",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp8266_envmonitor_environment-monitor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp8266_envmonitor_environment-monitor-1.2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp8266_envmonitor_environment-monitor-1.4",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp8266_link_test_esp_micro85-only",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp8266_network_speaker_esp_network_speaker",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esp8266_wi07_3_adapter_esp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-espalarm_alarm",
+      "unrouted_delta": 0,
+      "copper_delta": -5,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esper_EsperDNS",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-esper_programmer",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-espeverywhere__autosave-espeverywhere_breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-espionage_esplight",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-everled_everled",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ezusb-logicanalyzer_cypress_logic_analyzer",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-f.60_keyboard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-fan_controller_fan_controller",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-fifogfx_c64cart",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -1
+    },
+    {
+      "board": "pcbench-filament_extruder_sensor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-fingerprint-with-esp32_quet van tay",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-firefly-jar_solar_lamp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-fp2_extension_sample_fp2_usb_breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -27
+    },
+    {
+      "board": "pcbench-free-of-charge_BMS",
+      "unrouted_delta": -9,
+      "copper_delta": 0,
+      "mask_delta": 5
+    },
+    {
+      "board": "pcbench-freeDSP-CLASSIC-SMD-BALANCED_FreeDSP_BAL",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-freeUSBi_USBi_Programmer",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ftdi-jtag-programmer_JTAGProgrammer",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-BRK-M-XS",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-BRK-TR-A",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-CART256K-A",
+      "unrouted_delta": 8,
+      "copper_delta": -2,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-CART32K-A",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-CARTPP-XC",
+      "unrouted_delta": 2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-LIVE32",
+      "unrouted_delta": -5,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-MBCTEST",
+      "unrouted_delta": -3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-gdrom_adapter_board_adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-gepetto_circuito",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-guitar_fret",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-gwurrbus_pwm",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hackaday_esp-14_power_meter__autosave-esp-14",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -20
+    },
+    {
+      "board": "pcbench-hackpad_orpheuspad_pcb",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hackyflasher_Flasher",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hardware-designs_c-trigger",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hardware-designs_m-trigger",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hardware-designs_nixie-combo",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hardware-designs_nixie-power",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hardware-designs_soil-moisture-sensor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hardware-designs_solar-harvester",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hardware-designs_spsgrf-board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hbr-mk2_hbr-mk2-bpfs",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hbr-mk2_hbr-mk2-digital",
+      "unrouted_delta": 2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hbr-mk2_hbr-mk2-lpfs",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-headstage-adapter_headstage adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -62
+    },
+    {
+      "board": "pcbench-helmholtz-servo_CurrentServo",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hm-mod-rpi-rtc_hm-mod-rpi-rtc",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hw_trials_demo",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-hwstar_ac-power-monitor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-icehat_icehat",
+      "unrouted_delta": -11,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-imfr-schematics_Telescopio",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-induction-hob_temperature-sender",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-jadonk_PocketBone",
+      "unrouted_delta": -47,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-jdy-08-board_jdy-08",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-juno-chorus-clone_juno-chorus-clone",
+      "unrouted_delta": -2,
+      "copper_delta": -34,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-karabas-nano_karabas-nano-revA",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-karabas-nano_karabas-nano-revB",
+      "unrouted_delta": -39,
+      "copper_delta": 0,
+      "mask_delta": 5
+    },
+    {
+      "board": "pcbench-karabas-nano_karabas-nano-revC",
+      "unrouted_delta": -23,
+      "copper_delta": 0,
+      "mask_delta": 1
+    },
+    {
+      "board": "pcbench-karabas-nano_karabas-nano-revG",
+      "unrouted_delta": -16,
+      "copper_delta": 0,
+      "mask_delta": 6
+    },
+    {
+      "board": "pcbench-karabas-nano_wifi_revA",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kassenautomat.mdb-interface_mdb-interface",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": -134
+    },
+    {
+      "board": "pcbench-keyboards_Djinn",
+      "unrouted_delta": -6,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kicad-guitar-preamp_Preamp-Instructables",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kicad-projects_BatCharge",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kicad-projects_ili9341-breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kicad_bbb-melzi",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kika-in-space_DS8500",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kika-in-space_analog-test-board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kinetoscope_ethernet",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kinetoscope_microcontroller",
+      "unrouted_delta": 4,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kinetoscope_sram-bank",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kit2-led-cube_led_cube",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_12V5A_breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_12_24_boost_converter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_40-channel-hv-switching-board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -161
+    },
+    {
+      "board": "pcbench-kitspace_4_switch_array",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_8_switch_array",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_BQ25570_Harvester",
+      "unrouted_delta": -5,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_CH330",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_CO2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_DIY_detector",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_Lcr_addon",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_Minisumo_V2.1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_OSO-BOOK-C1",
+      "unrouted_delta": 0,
+      "copper_delta": 1,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_OtterScreen",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_PSLab",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_Potentiometer_mount_4LED",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_Potentiometer_mount_8LED",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_RPi_shield",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_T32_ref",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -109
+    },
+    {
+      "board": "pcbench-kitspace_USB-C-Screen-Adapter",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_USB-C-Screen-Adapter-LDR6023SS",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace__autosave-nunchuk_breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_aquarius",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_ardfpga",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_beehive",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_dropbot-front-panel",
+      "unrouted_delta": -4,
+      "copper_delta": 0,
+      "mask_delta": -203
+    },
+    {
+      "board": "pcbench-kitspace_dropbot_control_board",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": -154
+    },
+    {
+      "board": "pcbench-kitspace_dynamixel_shield",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_esp8266",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -33
+    },
+    {
+      "board": "pcbench-kitspace_flypi",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_flypi_v2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_gas_sensor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_grove_adaptor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_hbridge_driver",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_hp_led_switch",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_hum_temp_sensor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_ideal_diode",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_ir_sensor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_led_driver",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_level_shifter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_minisumo_v3",
+      "unrouted_delta": 0,
+      "copper_delta": -3,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_nunchuk_breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_peltier",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_piezo_amplifier",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_pmt_combiner",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_power_supply",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_sensor",
+      "unrouted_delta": -3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_solenoid_driver",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_spike_n_hold",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_sympetrum-v2%20NFF1.1",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": -52
+    },
+    {
+      "board": "pcbench-kitspace_teensy-fx",
+      "unrouted_delta": -4,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_temp_breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_threeboard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_training_board_v02",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_trans_switch_volt_amp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_tt_nano_HAT_b1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_tt_nano_HAT_b2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-kitspace_tt_opt101_module_b1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-klangorium_logic_noise_playground",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-komputer-klavier_KomputerKlavier",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-led-wordclock_wordclock",
+      "unrouted_delta": -5,
+      "copper_delta": -7,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-led_array_atmega8_led_array",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-lfi-rig_lfi-driver",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-light-painting-wand_light-wand",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-linklayer_contact",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-low-power-counter_lpcounter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-m2-electronics_m2fc",
+      "unrouted_delta": -1,
+      "copper_delta": 7,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-m2-electronics_m2pogo",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-m2-electronics_m2r",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-m2-electronics_m2rl",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-mac-pro-conversion_front-panel-power-adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-magic-table_etch-a-sketch_cyclone",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-makerspace-emonth_resistor_board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-marlin-neopixel-bridge_ATtiny85_Marneo",
+      "unrouted_delta": -3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-mavbridge_mavbridge",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -8
+    },
+    {
+      "board": "pcbench-maytal_Maytal",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-mdbwerk_mdbwerk",
+      "unrouted_delta": -2,
+      "copper_delta": -4,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-mearm-base-pcb_ServoPCB",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-mechkeys_lfk78-jtag",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-medusa_medusa_rs422_rx",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-memory-display_memory-display",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-memsarray_mems_array",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": -119
+    },
+    {
+      "board": "pcbench-microphone_preamp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-mightyduino_mightyduino",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": -14
+    },
+    {
+      "board": "pcbench-mikoto_mikoto-flashbed",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-mini_ice40_mini_ice40",
+      "unrouted_delta": 0,
+      "copper_delta": -6,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-miniboard-opamp_miniboard-opamp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-miniboard-stm32f0_miniboard-stm32f0",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 2
+    },
+    {
+      "board": "pcbench-mobile-sensor-pcb_mobile-sensor-pcb",
+      "unrouted_delta": -2,
+      "copper_delta": -6,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-mojo-nes_mojo-nes",
+      "unrouted_delta": -8,
+      "copper_delta": 0,
+      "mask_delta": -28
+    },
+    {
+      "board": "pcbench-motor-3xdrv8833-hw_ver1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-mppt-2420-hc_mppt-2420-hc",
+      "unrouted_delta": 0,
+      "copper_delta": -4,
+      "mask_delta": -4
+    },
+    {
+      "board": "pcbench-mppt-2420-hpx_mppt-2420-hpx",
+      "unrouted_delta": 1,
+      "copper_delta": -3,
+      "mask_delta": -3
+    },
+    {
+      "board": "pcbench-nRF24breakoutBoard_nRF24-breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-nand_programmer_adapter_tsop48",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-nanoSwinSidC_nanoSwinSidC",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-navelino-leaf_navelino-leaf",
+      "unrouted_delta": -3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-nextbusclock_NextBusClockV1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-nfl-led-scoreboard_passive-rpi-hub75-adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-nfl-led-scoreboard_passive3-rpi-hub75-adapter",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-nikon_gps_nikon_gps",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-nixie-clock_ab18x5-breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-nodemcu-backstage_NodeMCU Backstage",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-nodemcu-basecamp_NodeMCU Basecamp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-nonSNES_SNSP-CPU-1CHIP",
+      "unrouted_delta": -60,
+      "copper_delta": 1,
+      "mask_delta": -1
+    },
+    {
+      "board": "pcbench-nrf2rfm69_nrf2rfm69",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-nunchuk_rf_hw_NunchukRF_V3",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-oasis_ledboard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-oled-bmp280-touch_oled-bmp280-touch",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-one-shift-register_one-shift-register",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-onion2-breakout_onion2 breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-opentilt_opentilt2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-oshtimer_transponder",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ottawa-badges-2016_ottawa-badge-tagger-2016",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -3
+    },
+    {
+      "board": "pcbench-ozinverter_ozinverterkicad",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-pcb-covox-amp-v2_pcb-covox-amp-v2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-pcb-covox-amp_pcb-covox-amp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-pcb-ks0108-128x64-glcd_circuit",
+      "unrouted_delta": -6,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-pcb-usb-ft245r-parallel-adapter_pcb-usb-ft245r-parallel-adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -8
+    },
+    {
+      "board": "pcbench-pesho_pesho",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-phone_rtty_interface_phone_rtty_rev_a",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-phone_rtty_interface_phone_rtty_rev_b",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-photon_Sprinkler_sprinkler",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-pi-zero-stepper-board_pi-zero-stepper-board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-pi_plant_MCP3002",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-pico-pi-rel_pico-pi",
+      "unrouted_delta": 3,
+      "copper_delta": 0,
+      "mask_delta": -49
+    },
+    {
+      "board": "pcbench-pmw3360-pcb_pmw3360_pcb_jst",
+      "unrouted_delta": 2,
+      "copper_delta": 2,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-pocketbone-kicad_pocketbone-kicad",
+      "unrouted_delta": -47,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-polypoint_pinpoint_timebase",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-ponyser-pcb_Ponyser",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-preamp-two_input-selector",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-preamp-two_mcu-board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-preamp-two_mdac-attenuator",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-prog-cc-100mA_prog-cc-100mA",
+      "unrouted_delta": -3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-project-hydra-meshtastic-pcb_meshtastic-diy",
+      "unrouted_delta": -2,
+      "copper_delta": 1,
+      "mask_delta": 2
+    },
+    {
+      "board": "pcbench-pulse_v1_pulse",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-pusheenz40_sadcatz40",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-pwm-2420-lus_pwm-2420-lus",
+      "unrouted_delta": 1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-radio_antenna-iridium",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-raspberry_pi_pullup_button_pullup_shutdown_button",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-raspberry_pi_pullup_button_pullup_shutdown_button(revB)",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rc2014_bank_switcher_z80_cpm_mmu",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-real-time-chess_kfchess",
+      "unrouted_delta": -5,
+      "copper_delta": -9,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-recalbox-gpio-board__autosave-board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-recalbox-gpio-board_board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-retrocon_bbb-adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-retrocon_driver_board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-retroreflectors_TANGOFLOCK",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rfcx-sentinel-pcb_Mainboard",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rfidBoard_rfid",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rgb-led_rgb-led-v2",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rgb-strip-controller__autosave-rgb-strip",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -22
+    },
+    {
+      "board": "pcbench-rgb2ypbpr_rgb2ypbpr",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rjw57_cpu-board",
+      "unrouted_delta": 0,
+      "copper_delta": -2,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-roomba-ESP12E_roomba-esp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rotary-encoder-breakout_rotary-encoder-breakout",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-royer_royer",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rp2040-dmxsun_baseboard_2slots",
+      "unrouted_delta": 0,
+      "copper_delta": -2,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rp2040-dmxsun_baseboard_4slots",
+      "unrouted_delta": 0,
+      "copper_delta": -5,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rs485-moist-sensor_adapter-por",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": -13
+    },
+    {
+      "board": "pcbench-rs485-moist-sensor_interconnect",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rs485-moist-sensor_rs485-moist-sensor",
+      "unrouted_delta": 2,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rufs__autosave-simple_kicad_schema_and_pcb_v1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rufs_aprs_tracker",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rufs_dra818v_breakout_board",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rufs_simple_kicad_schema_and_pcb_v1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rufs_smart_psu",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rufs_spv1040_power_controller",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-rxadc_14_rxadc_14",
+      "unrouted_delta": 4,
+      "copper_delta": 0,
+      "mask_delta": -53
+    },
+    {
+      "board": "pcbench-saiboard_3x8",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-saiboard_8x3",
+      "unrouted_delta": 0,
+      "copper_delta": -5,
+      "mask_delta": -1
+    },
+    {
+      "board": "pcbench-scimpy_amp",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-scimpy_crossover",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-scimpy_powersupply",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-scimpy_volumebuffer",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-sensorboard_DiffIR",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-sensorboard_DiffIR.kicad_pcb_narrow",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-shutter_Shutter V4",
+      "unrouted_delta": -6,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-shutter_speed_tester_shutter_speed_tester",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-simplebus2-intercom_repeater_v2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-sms-cart-32k_cart",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-smt-zvs-driver_IH10-sl",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-snappi-zero_snappi-zero",
+      "unrouted_delta": 0,
+      "copper_delta": 2,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-soil-moisture-sensor-analog_analog-moist-sensor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-solar-lanterns_proto1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-sonic3_feram_adapter_sonic3_feram_adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-spisolator_spisolator",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-split-pcb-throughole_splanck throughhole",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-srambo_1_srambo_1",
+      "unrouted_delta": -2,
+      "copper_delta": 0,
+      "mask_delta": -53
+    },
+    {
+      "board": "pcbench-ssr-wifi_adapter",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -107
+    },
+    {
+      "board": "pcbench-starfish_starfish",
+      "unrouted_delta": -13,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-starsynctrackers_reset_switch",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-stlinkv2_breakout_stlink_breakout",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-stm32_ccd_camera_ccd",
+      "unrouted_delta": -1,
+      "copper_delta": 1,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-stubby_hex",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-sv650sds_sds_tool",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-taira-keyboard_tairakb",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-tbd_tbd",
+      "unrouted_delta": -1,
+      "copper_delta": -2,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-tdstat_TDstatv2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-technoshield-ui-hw_technoshield",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-teensy-touch_teensy-touch",
+      "unrouted_delta": 0,
+      "copper_delta": -3,
+      "mask_delta": -16
+    },
+    {
+      "board": "pcbench-teensy-weather-badge_teensyi2c",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-teensy-wifi-weather-logger_teensyi2c",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-temperature-alarm_controller",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-tepmachcha_tepmachcha",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-tessel-ice40__autosave-project",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-thatmicpre_thatmicpre_v1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-thatmicpre_thatmicpre_v2",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-thegrid_thegrid",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-thingBot-LoRa_thingBot-LoRa_v1P0",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-thingBot-LoRa_thingBot-LoRa_v1P1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-timecircuits-hardware_BTTF-TimeCircuits",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -42
+    },
+    {
+      "board": "pcbench-tiny-8088_Computer",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-tinyFISH_tinyBRUSH",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-tinyisp-micro_tinyispmicro",
+      "unrouted_delta": -1,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-tinymuseum_museum",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-type5_type5",
+      "unrouted_delta": 0,
+      "copper_delta": 4,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-uC3Moy_uC3Moy",
+      "unrouted_delta": 0,
+      "copper_delta": 1,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-uSKY_uSKY",
+      "unrouted_delta": -3,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-uext-esp32_UEXT_ESP32",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-usb_rs232c_usb_rs232c_rev_a",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-vatx_vatx",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-vdcmon_vdcmon",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-wavegen_rev3",
+      "unrouted_delta": -47,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-wavegen_waveform-generator",
+      "unrouted_delta": -10,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-wavegen_waveform-generator-rev1",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -58
+    },
+    {
+      "board": "pcbench-wavegen_wavegen",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": -58
+    },
+    {
+      "board": "pcbench-wifiLCD_wifilcd",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-xmasOrn_xmasOrn",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-xwhatits-capsense-controller_model-f-3178-adaptor",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-z2amiller_sensorboard_programmer",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-zx-sizif-128_sizif128",
+      "unrouted_delta": -7,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-zx-sizif-512-ext_sizif512ext",
+      "unrouted_delta": -37,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-zx-sizif-512-wifi_sizif512-wifi",
+      "unrouted_delta": 0,
+      "copper_delta": 0,
+      "mask_delta": 0
+    },
+    {
+      "board": "pcbench-zx-sizif-xxs_sizif-xxs",
+      "unrouted_delta": -8,
+      "copper_delta": 0,
+      "mask_delta": 0
+    }
+  ]
+}
