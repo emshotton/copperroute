@@ -104,10 +104,6 @@ fn it_rejects_an_unsupported_pad_shape() {
         r#"(footprint "U" (layer "F.Cu") (at 0 0)"#,
         r#" (pad "1" smd trapezoid (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
     ));
-    // web/kicad.js:271-277 resolves a footprint's reference from
-    // (property "Reference" ...), then (fp_text reference ...), then
-    // falls back to `FP{index}` -- never the footprint's own name ("U").
-    // With no reference property present, this fixture resolves to "FP0".
     assert_eq!(error, "Unsupported pad FP0.1: smd/trapezoid");
 }
 

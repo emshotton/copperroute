@@ -361,8 +361,6 @@ pub fn read_components(
             for name in &pad_layers {
                 layers.index_of(name)?;
             }
-            // A pad confined to non-copper layers (e.g. paste-only apertures)
-            // reserves no routing obstacle and is dropped.
             if pad_layers.is_empty() {
                 continue;
             }
