@@ -115,20 +115,22 @@ fn read_node(
                 });
             }
             Some(b'(') => values.push(Value::Node(read_node(text, bytes, cursor, depth + 1)?)),
-            Some(b'"') => values.push(Value::Atom(read_quoted(text, bytes, cursor))),
+            Some(b'"') => values.push(Value::Atom(read_quoted(text, bytes, cursor)?)),
             Some(_) => values.push(Value::Atom(read_bare(text, bytes, cursor))),
         }
     }
 }
 
-fn read_quoted(text: &str, bytes: &[u8], cursor: &mut usize) -> String {
+fn read_quoted(text: &str, bytes: &[u8], cursor: &mut usize) -> Result<String, SexprError> {
     *cursor += 1;
     let mut out = String::new();
+    let mut closed = false;
     while *cursor < bytes.len() {
         let start = *cursor;
         match bytes[start] {
             b'"' => {
                 *cursor += 1;
+                closed = true;
                 break;
             }
             b'\\' => {
@@ -146,7 +148,10 @@ fn read_quoted(text: &str, bytes: &[u8], cursor: &mut usize) -> String {
             }
         }
     }
-    out
+    if !closed {
+        return Err(SexprError("Unclosed string."));
+    }
+    Ok(out)
 }
 
 fn read_bare(text: &str, bytes: &[u8], cursor: &mut usize) -> String {

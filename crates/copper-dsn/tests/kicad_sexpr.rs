@@ -55,3 +55,15 @@ fn it_keeps_source_spans() {
     let net = node.child("net").expect("a net");
     assert_eq!(&text[net.start..net.end], "(net 1 A)");
 }
+
+#[test]
+fn it_rejects_an_unclosed_string() {
+    let error = parse("(a \"abc").expect_err("it fails");
+    assert_eq!(error.to_string(), "Unclosed string.");
+}
+
+#[test]
+fn it_rejects_a_trailing_escape() {
+    let error = parse("(a \"abc\\").expect_err("it fails");
+    assert_eq!(error.to_string(), "Unclosed string.");
+}
