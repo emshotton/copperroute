@@ -67,10 +67,8 @@ fn kicad_read_board(text: &str) -> BoardReadResult {
 pub fn load_from_kicad_pcb(
     text: &str,
     name: &str,
-    job: &mut RoutingJob,
     settings: &mut RouterSettings,
 ) -> Result<LoadedBoard, Error> {
-    let _ = job;
     let ParsedBoard {
         mut board,
         transform,
@@ -225,7 +223,7 @@ pub fn load_board_if_needed(job: &mut RoutingJob) -> Result<LoadedBoard, Error> 
         load_from_kicad_json(&text, job, &mut settings)
     } else if format == FileFormat::KicadPcb {
         let text = String::from_utf8_lossy(&data).into_owned();
-        load_from_kicad_pcb(&text, &name, job, &mut settings)
+        load_from_kicad_pcb(&text, &name, &mut settings)
     } else {
         load_from_specctra_dsn(&data, job, &mut settings)
     };

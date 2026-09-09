@@ -545,6 +545,7 @@ impl RoutingJob {
         let derived = match input_format {
             Some(FileFormat::Frb) => Some(BINARY_FILE_EXTENSION),
             Some(FileFormat::Dsn) => Some(SES_FILE_EXTENSION),
+            Some(FileFormat::KicadPcb) => Some(SES_FILE_EXTENSION),
             Some(FileFormat::KicadDesignJson) => Some("json"),
             _ => None,
         };
