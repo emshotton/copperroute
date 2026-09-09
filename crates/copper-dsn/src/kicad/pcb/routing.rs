@@ -30,10 +30,13 @@ fn point(node: &Node, key: &str) -> Result<(f64, f64), PcbError> {
 }
 
 fn has_flag(node: &Node, key: &str) -> bool {
+    has_atom(node, key) || node.child(key).is_some()
+}
+
+fn has_atom(node: &Node, key: &str) -> bool {
     node.values
         .iter()
         .any(|value| matches!(value, Value::Atom(text) if text == key))
-        || node.child(key).is_some()
 }
 
 fn atom_str(value: &Value) -> &str {
@@ -84,7 +87,7 @@ pub fn read_traces(
 pub fn read_vias(root: &Node, layers: &Layers, nets: &NetTable) -> Result<Vec<ViaJson>, PcbError> {
     let mut vias = Vec::new();
     for (id, node) in root.children("via").enumerate() {
-        if has_flag(node, "locked") || has_flag(node, "blind") || has_flag(node, "micro") {
+        if has_flag(node, "locked") || has_atom(node, "blind") || has_atom(node, "micro") {
             return Err(PcbError::new(
                 SECTION,
                 "Locked, blind, and micro vias are not supported yet.",
@@ -210,7 +213,7 @@ pub fn read_copper_text(
         let lines: Vec<&str> = text.split('\n').collect();
         let longest = lines
             .iter()
-            .map(|line| line.chars().count())
+            .map(|line| line.encode_utf16().count())
             .max()
             .unwrap_or(0) as f64;
         let width = longest * size.0 * 1.5 + size.1;

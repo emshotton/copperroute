@@ -18,6 +18,20 @@ fn it_reads_a_track() {
     assert_eq!(traces.len(), 1);
     assert_eq!(traces[0].netName.as_deref(), Some("GND"));
     assert_eq!(traces[0].layerIndex, 0);
+    assert_eq!(traces[0].width, 0.25);
+    let points = traces[0].points.as_ref().expect("points");
+    assert_eq!(points.len(), 2);
+    assert_eq!((points[0].x, points[0].y), (1.0, 2.0));
+    assert_eq!((points[1].x, points[1].y), (3.0, 4.0));
+}
+
+#[test]
+fn it_rejects_a_track_without_a_net() {
+    let root = root_of(r#"(segment (start 1 2) (end 3 4) (width 0.25) (layer "F.Cu"))"#);
+    let layers = Layers::read(&root).expect("layers");
+    let nets = NetTable::read(&root).expect("nets");
+    let error = read_traces(&root, &layers, &nets).expect_err("it fails");
+    assert_eq!(error.message, "Tracks without a net are not supported yet.");
 }
 
 #[test]
@@ -59,7 +73,25 @@ fn it_warns_about_copper_zones_without_routing_against_them() {
     let nets = NetTable::read(&root).expect("nets");
     let mut warnings = Vec::new();
     check_zones(&root, &nets, &mut warnings).expect("zones are accepted");
-    assert!(warnings.iter().any(|w| w.contains("fill cache removed")));
+    assert_eq!(
+        warnings,
+        vec![
+            "1 copper zones will be preserved with their fill cache removed. Routing uses \
+             tracks only; refill zones in KiCad (B), then run DRC."
+        ]
+    );
+}
+
+#[test]
+fn it_warns_about_preserved_keepouts_that_allow_tracks_and_vias() {
+    let root = root_of(r#"(zone (layer "F.Cu") (keepout (tracks allowed) (vias allowed)))"#);
+    let nets = NetTable::read(&root).expect("nets");
+    let mut warnings = Vec::new();
+    check_zones(&root, &nets, &mut warnings).expect("the keepout is accepted");
+    assert_eq!(
+        warnings,
+        vec!["1 keepout areas allow tracks and vias and are preserved for KiCad zone refill."]
+    );
 }
 
 #[test]
