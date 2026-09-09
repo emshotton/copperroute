@@ -2321,3 +2321,154 @@ CPU 180.91 versus 179.61 seconds. The original full-run 108 -> 132 U /
 This is supplementary evidence; the original full run remains recorded.
 No routing runs or required validation remain pending. The proposed
 combined changes retain their measured trade-offs for case-by-case review.
+
+### Independent mask DRC accuracy work after PR #21
+
+Checker changes are isolated on `fix/kicad-mask-drc` for independent review.
+Scope: pad mask exposure and expansion import, project mask-to-copper clearance,
+foreign track/via checks with exact distance refinement, and explicit footprint
+allow-bridge permission. No nominal-clearance or router mask-floor changes are
+in this worktree. External KiCad remains final referee.
+
+Four real KiCad 10.0.3 reference cases cover: legal copper but illegal mask
+clearance; extra mask-to-copper clearance; off-axis corner clearance; explicitly
+allowed footprint bridges. Browser/native tests failed for missing permission
+before implementation. Four targeted tests and 47 web tests pass. Full workspace
+validation is running in `/tmp/quality-kicad-mask-drc-workspace-02.log`.
+
+Finished LPC session comparison found two octagonal-corner false positives and
+fixed them: 113 initial internal mask reports become 111, of which 107 match a
+KiCad pad/foreign-net/layer key and four are KiCad-confirmed on isolated copies.
+KiCad full-board report has 143 routing-involved mask reports, 199 total; this
+is not a segment-level precision/recall claim. The mask-safe LPC control has
+zero routing mask reports in both checkers (KiCad total 68 fixed-geometry errors).
+Encoder nominal control has zero routing mask reports in both checkers (KiCad
+total 39), with 137/150 original pads matched and eight unmatched synthetic
+router pins. Diagnostic matching coverage is incomplete and must be reported.
+
+Native import currently rejects net ties through the browser adapter; do not
+claim net-tie checking support. Pad-to-pad mask webs and mask artwork are not
+covered by this first check. Corpus and detailed accuracy validation remain
+required before committing and opening a behavior PR. Latest origin/main checked
+with fetch: e9d10c2, unchanged from the completed 751-board baseline.
+
+### Checker validation complete; independent corpus candidate queued
+
+Full workspace suite completed successfully: 2570 passed, 0 failed, 77 ignored.
+Log: `/tmp/quality-kicad-mask-drc-workspace-02.log`. Web: 47 passed. This includes
+the allowed-bridge test retaining ordinary copper-clearance diagnostics.
+
+Frozen source transferred to workbench helper `~/copperroute-kicad-drc`, based
+on e9d10c2. All 31 transferred file hashes verified. Source archive and manifest:
+`/tmp/quality-kicad-drc-source.tar.gz`, `quality-kicad-drc-source-files.sha256`.
+An incidental KiCad .prl is present in the frozen transfer but removed from the
+local proposed change; it does not affect compilation. Do not mutate queued source.
+
+Queued driver PID 336231 waits for retry driver 285526, then builds the checker
+and routes the 751 KiCad boards with normal referee environment. Run ID
+`quality-kicad-drc-01`, candidate `mask-drc`; log `/tmp/quality-kicad-drc-full.log`.
+This DSN routing run validates unchanged routing quality and measures checker
+cost on ordinary inputs. DSN lacks pad-mask metadata, so this alone cannot prove
+new mask-check accuracy; finished-session metadata audits and native KiCad
+oracle tests provide separate evidence for that behavior.
+
+### Separate PR prioritized at the user's request
+
+Rebased the independent checker worktree directly onto origin/main e9d10c2,
+removing the unrelated Java-referee tooling commit from this PR's ancestry.
+Preserved all proposed checker files and verified their hashes against the
+frozen workbench candidate; only the log needed a textual conflict resolution.
+No routing work is part of this branch. Dedicated review report prepared at
+`docs/kicad-solder-mask-drc-report.md`; full-corpus table remains explicitly pending.
+
+The Mailbox IC1 audit gives stronger accuracy evidence: 219 internal reports
+all match unsaturated KiCad aperture probes, and both produce exactly the same
+183 unique pad/foreign-net keys. Auditing the other 337 physical pad apertures
+is still running locally. Checker release prebuild started on workbench at nice
+15 with two Cargo jobs (driver 372954), so it can use spare capacity before the
+queued corpus run without changing the candidate source or 12-job run schedule.
+
+### Whole-mailbox accuracy audit completed
+
+All 465 physical pad apertures on the main-routed mailbox board were checked
+individually with KiCad, retaining other copper. All probes stay below the
+per-type report limit. The 353 internal reports all match KiCad pad/net/layer
+keys: 302 unique internal keys, no extras, versus 305 KiCad keys. Inspected all
+three missing keys: D2.3 against VDD_BATT, IC2.58 against DDR_DO11, and one
+physical P3.5 against 5VOUT. KiCad identifies the relevant pad as `<no net>`
+in every case, matching the current check's explicit unnetted-pad exclusion.
+Document this limitation; it is not an unexplained geometric disagreement.
+Artifacts: `regression-audit/mailbox-full-internal-pair-audit.json` and
+`mailbox-other-mask-probes/summary.json`. The independent PR accuracy report
+now includes this complete physical-pad audit alongside the LPC corner cases.
+
+### Negative-expansion review hypothesis rejected as unproven
+
+Final review considered a fully overlapping foreign track inside a shrunken
+pad mask. A synthetic Rust test failed to report a mask bridge, but the actual
+KiCad derivative did not report one either: pcbnew SaveBoard reassigned the
+isolated track to the pad's N1 net, so the supposedly foreign N2 test copper was
+not foreign in the oracle board. This is not evidence supporting a checker fix.
+Removed the unverified test and made no implementation change. Verified every
+checker source hash still matches the frozen benchmark candidate. Artifacts:
+`/tmp/quality-kicad-mask-negative-oracle/` and the generator/red-test log. Negative
+margin import remains covered; no claim of complete mask geometry parity is made.
+
+### Checker compatibility follow-up: deadline controls
+
+At 528 scored pairs in `quality-kicad-drc-01`, all 507 pairs without a
+timeout have byte-identical SES files. The other 21 pairs include a timeout
+on at least one side. Intermediate regressions include azalea (+11 routing
+violations, 8 versus 10 passes), decelerator4030 (+5 unrouted and +1 routing
+violation, both still in pass 1), and bms-8s50-ic (+1 unrouted, 5 versus 6
+passes). These results remain in the standard 300-second comparison.
+
+Queued `quality-kicad-drc-controls-01` after the full-run driver exits:
+the same frozen main and checker binaries, those three boards, 10 passes,
+1,200-second limits, one thread and six jobs. This diagnostic asks whether
+the outputs converge when the deadline permits more routing; it does not
+replace the standard corpus measurement or establish a timing improvement.
+Driver `/tmp/quality-kicad-drc-timeout-controls.sh`, workbench PID 446063.
+
+### Independent checker full run complete
+
+`quality-kicad-drc-01`: all 751 KiCad referees valid. Total main → checker:
+5,564 → 5,304 unrouted; 1,006 → 1,004 ordinary routing violations;
+13,834 → 13,915 reported mask violations; 38,142.29 → 35,694.91 CPU seconds.
+PCBench: 14 connection improvements, four regressions, net −252; two
+ordinary-violation gainers, net −2; CPU ratio 0.9333. Local: one connection
+improvement, zero regressions, net −8; unchanged ordinary violations; CPU
+ratio 1.0676. The regression gate fails on four connection losses.
+
+All 718 non-timeout pairs have byte-identical SES output; 33 pairs include
+a timeout. Mask-count differences on identical routes are at/above KiCad's
+report cap. Do not claim a checker-driven route improvement from these
+300-second results. Full details and export are copied to the laptop.
+
+Controls01 is running on azalea, decelerator4030 and bms-8s50-ic. Controls02
+adds the final two connection-loss cases, karabas-nano-revC and
+zx-sizif-512-ext, with four jobs (PID 464667). Combined control concurrency
+is ten, below the workbench limit of twelve. Both use 1,200 seconds and
+ten passes. No benchmark source or binary has changed.
+
+Added deterministic-work diagnostic `quality-kicad-drc-items-01` on the
+same five boards and frozen binaries. `router.max_items=100` counts
+routed items in pass_runner.rs and requests a stop before optimization;
+it is not an input-board size cutoff. Two jobs plus the ten longer-control
+jobs keep total routing concurrency at twelve. A 600-second ceiling still
+protects the host; only pairs that reach the work limit without timing out
+can support an equal-work comparison. Driver PID 464990, script
+`/tmp/quality-kicad-drc-items.sh`. This does not replace full-board results.
+
+Azalea longer control completed on both frozen binaries: ten passes,
+byte-identical SES SHA256 a920b9182151c617a40dc23bb9d7b0ead96388a833320eb5b2c155e6aa833436,
+76 unrouted / 40 ordinary violations / 159 mask reports on each side, both
+KiCad referees valid. CPU 286.74 versus 313.96 seconds. This resolves the
+azalea +11-violation concern as a deadline-state difference on this board;
+it does not resolve the other four connection-loss boards.
+
+BMS longer control completed on both sides: identical SES SHA256
+1281ac9bbad85ec58f7a735a91222479e8b06d519891794daa3c7ce76e7c62fe,
+ten passes, 53 unrouted / zero ordinary violations / 88 mask reports,
+CPU 542.78/544.90 seconds. The original 300-second one-connection loss
+is therefore a different cutoff state, not a different completed route.

@@ -240,6 +240,8 @@ export function importBoard(text, name, rules, options = {}) {
     throw Error("Separate board outlines are not supported yet.");
   if (loops.length) warnings.push(`${loops.length} internal cutouts are reserved on every copper layer.`);
   const components = [];
+  const setup = child(root, "setup");
+  const boardMaskMargin = setup ? number(val(setup, "pad_to_mask_clearance", 0)) : 0;
   for (const [fi, fp] of [
     ...children(root, "footprint"),
     ...children(root, "module"),
@@ -359,6 +361,13 @@ export function importBoard(text, name, rules, options = {}) {
           ) ?? [];
       padLayers.forEach(layerIndex);
       if (!padLayers.length) continue; // Paste-only apertures are not copper obstacles.
+      const maskMargin = number(val(pad, "solder_mask_margin", val(fp, "solder_mask_margin", boardMaskMargin)));
+      const rawLayers = child(pad, "layers")?.values.slice(1) ?? [];
+      const solderMaskExpansion = Object.fromEntries(
+        ["F.Mask", "B.Mask"]
+          .filter((layer) => rawLayers.includes(layer) || rawLayers.includes("*.Mask"))
+          .map((layer) => [layer, maskMargin]),
+      );
       // The JSON reader has component rotation but no individual pad rotation.
       // Give each pad a component with its absolute placement and angle.
       components.push({
@@ -381,6 +390,8 @@ export function importBoard(text, name, rules, options = {}) {
             nonPlated: type === "np_thru_hole",
             drillEstimated: slotted,
             layers: padLayers,
+            solderMaskExpansion,
+            allowSolderMaskBridges: child(fp, "attr")?.values.includes("allow_soldermask_bridges") ?? false,
           },
         ],
       });

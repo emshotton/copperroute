@@ -913,13 +913,34 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             } else {
                 Vec::new()
             };
-            board.insert_pin(
+            let pin_id = board.insert_pin(
                 board_comp_id,
                 i32::try_from(pad_index).unwrap_or(i32::MAX),
                 net_numbers,
                 outline_clearance_no,
                 FixedState::SystemFixed,
             );
+            if let Some(copper_board::Item::Pin(pin)) = board.items.get_mut(&pin_id) {
+                pin.allow_solder_mask_bridges = pad.allowSolderMaskBridges;
+            }
+            if let Some(mask) = &pad.solderMaskExpansion {
+                for (name, expansion) in mask {
+                    let layer = match name.as_str() {
+                        "F.Mask" => 0,
+                        "B.Mask" => layer_count - 1,
+                        _ => return parse_error("components", "Unknown solder mask layer"),
+                    };
+                    let distance = expansion * scale_factor;
+                    if !distance.is_finite() || distance.abs() > f64::from(i32::MAX) {
+                        return parse_error("components", "Invalid solder mask expansion");
+                    }
+                    let Some(copper_board::Item::Pin(pin)) = board.items.get_mut(&pin_id) else {
+                        unreachable!()
+                    };
+                    pin.solder_mask_expansion
+                        .insert(layer, distance.round() as i32);
+                }
+            }
         }
     }
 

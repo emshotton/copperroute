@@ -90,6 +90,32 @@ fn two_pads_of_the_same_shapes_and_drill_share_one_padstack() {
 }
 
 #[test]
+fn mask_expansion_stays_per_pad_and_uses_absolute_outer_layers() {
+    let mut input: serde_json::Value = serde_json::from_str(&two_pads_on(
+        r#""F.Cu","B.Cu""#,
+        r#""F.Cu","B.Cu""#,
+        0.3,
+        0.3,
+    ))
+    .unwrap();
+    input["components"][0]["pads"][0]["solderMaskExpansion"] = serde_json::json!({"F.Mask": 0.2});
+    input["components"][1]["pads"][0]["solderMaskExpansion"] = serde_json::json!({"B.Mask": -0.05});
+    let board = board(&input.to_string());
+    assert_eq!(first_pin_padstack(&board, 0), first_pin_padstack(&board, 1));
+    for pin in board.get_pins() {
+        let copper_board::Item::Pin(pin) = board.get_item(pin).unwrap() else {
+            unreachable!()
+        };
+        let expected = if pin.hdr.get_component_id() == 1 {
+            [(0, 2000)].into_iter().collect()
+        } else {
+            [(3, -500)].into_iter().collect()
+        };
+        assert_eq!(pin.solder_mask_expansion, expected);
+    }
+}
+
+#[test]
 fn a_drilled_and_an_undrilled_pad_do_not_share_attach_allowed() {
     let board = board(&two_pads_on(
         r#""F.Cu","In1.Cu""#,

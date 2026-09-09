@@ -3,6 +3,7 @@ pub mod edge;
 pub mod geometry;
 pub mod holes;
 pub mod single;
+pub mod solder_mask;
 
 use copper_board::{Board, DrcConstraints};
 
@@ -15,6 +16,7 @@ pub fn run_all(board: &mut Board, constraints: &DrcConstraints) -> Vec<DrcViolat
     holes::run(board, constraints, &mut out);
     single::run(board, constraints, &mut out);
     edge::run(board, constraints, &mut out);
+    solder_mask::run(board, constraints, &mut out);
     out.sort_by(|a, b| {
         (
             a.first_item.0,

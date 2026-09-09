@@ -435,6 +435,8 @@ impl Connectable for Via {
 pub struct Pin {
     pub hdr: ItemHeader,
     pub drill: DrillItemData,
+    pub allow_solder_mask_bridges: bool,
+    pub solder_mask_expansion: std::collections::BTreeMap<usize, i32>,
     pin_index: i32,
     changed_to: Option<ItemId>,
     shapes: OnceLock<Vec<Option<Shape>>>,
@@ -446,6 +448,8 @@ impl PartialEq for Pin {
             && self.drill == other.drill
             && self.pin_index == other.pin_index
             && self.changed_to == other.changed_to
+            && self.solder_mask_expansion == other.solder_mask_expansion
+            && self.allow_solder_mask_bridges == other.allow_solder_mask_bridges
     }
 }
 
@@ -473,13 +477,18 @@ impl Pin {
             hdr,
             drill: DrillItemData::new(None),
             pin_index,
+            solder_mask_expansion: Default::default(),
+            allow_solder_mask_bridges: false,
             changed_to: None,
             shapes: OnceLock::new(),
         }
     }
 
     pub fn copy(&self, new_id: ItemId) -> Pin {
-        Pin::new(copied_header(&self.hdr, new_id), self.pin_index)
+        let mut result = Pin::new(copied_header(&self.hdr, new_id), self.pin_index);
+        result.solder_mask_expansion = self.solder_mask_expansion.clone();
+        result.allow_solder_mask_bridges = self.allow_solder_mask_bridges;
+        result
     }
 
     pub fn get_pin_index(&self) -> i32 {
