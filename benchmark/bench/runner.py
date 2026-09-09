@@ -33,7 +33,6 @@ class RunConfig:
     jobs: int = 1  # number of cells (candidate x board x seed) to run concurrently
     tier: str | None = None
     board_ids: list[str] = field(default_factory=list)
-    referee_java: dict | None = None
     candidates_file: str | None = None
     grace_s: int = 60  # extra time (beyond timeout_s) the suite waits before killing the process group
 
@@ -138,7 +137,6 @@ def run(cfg: RunConfig, referee: RefereeHook | None,
                  "threads": cfg.threads, "jobs": cfg.jobs, "tier": cfg.tier,
                  "boards": [b.id for b in cfg.boards]},
         "candidates": [c.to_json() for c in cfg.candidates],
-        "referee_java": cfg.referee_java,
         "candidates_file": cfg.candidates_file,
         "cells": [],
     }

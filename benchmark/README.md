@@ -20,25 +20,21 @@ cd benchmark
 uv sync
 ```
 
-Build the Rust release binary and the Java reference from their respective checkouts:
+Build the Rust release binary and import KiCad reference boards:
 
 ```bash
 cargo build --release --locked --manifest-path ../Cargo.toml
-(cd ../../freerouting && ./gradlew executableJar)
-uv run bench corpus init
-uv run bench corpus list --tier canary
+uv run bench corpus kicad-fixtures
+uv run bench corpus list --tier kicad-fixtures
 ```
 
-The Java checkout defaults to `freerouting/` alongside the Rust repository, **two levels up
-from `benchmark/`**. It must provide `build/libs/freerouting-current-executable.jar`, including
-DRC-only mode. The Java candidate and the Java referee are separate roles: keep the referee
-fixed when comparing routers or revisions. A downloaded upstream release may be a candidate
-without supporting the referee's DRC interface.
+Java is optional as a router candidate. To compare it, build `./gradlew executableJar` in
+`../../freerouting`. KiCad is the only DRC reference for all candidates.
 
 Copy [.env.example](.env.example) to `.env` for machine-specific tool paths. Python and the
 remote scripts load `benchmark/.env`; shell environment values take precedence. `{java}` in
 candidate commands uses `FREEROUTING_JAVA`, otherwise a Gradle-downloaded JDK or `java` on PATH.
-`FREEROUTING_JAR` selects the default **referee** jar; it does not rewrite candidate commands.
+`FREEROUTING_JAR` does not rewrite candidate commands.
 
 The manifest is tracked, but board input files, binaries and raw results are gitignored.
 A fresh worktree needs corpus import or a copy of the corresponding inputs before routing.
@@ -51,13 +47,13 @@ checkout and `rs-main` from this checkout's `target/release/copperroute`. `rs-ma
 it runs the binary you built, not an automatic checkout of `main`.
 
 ```bash
-uv run bench run --candidates java-current,rs-main --tier canary \
+uv run bench run --candidates java-current,rs-main --tier kicad-fixtures \
   --seeds 3 --threads 1 --jobs 1 --max-passes 100 --timeout 120 --run-id java-vs-rust
 uv run bench compare --baseline java-current --against rs-main \
   --runs java-vs-rust --out java-vs-rust
 ```
 
-Start with canary boards to check the pipeline, then repeat on a broader shared tier such as
+Start with KiCad fixtures to check the pipeline, then repeat on a broader shared tier such as
 `pcbench` with the same settings for both routers. Use a new run ID each time. Existing run
 directories are never reused, so old sessions or metrics cannot leak into new measurements.
 
@@ -112,7 +108,7 @@ candidate TOML file's directory.
 
 ```bash
 uv run bench run --candidates-file candidates.local.toml --candidates rs-head,rs-change \
-  --tier canary --seeds 3 --threads 1 --jobs 1 --max-passes 100 --timeout 120 \
+  --tier kicad-fixtures --seeds 3 --threads 1 --jobs 1 --max-passes 100 --timeout 120 \
   --run-id head-vs-change
 uv run bench compare --baseline rs-head --against rs-change --runs head-vs-change \
   --out head-vs-change --fail-on-regression
@@ -192,8 +188,8 @@ cells, shared by both sides. If no positive denominator is available, retain the
 for display and omit the score comparison. This avoids manufacturing zero scores for boards
 with missing net counts. Candidate failures are charged the same shared connection count. Raw
 metrics and exports retain their original scores; the compare JSON records `config.score_basis`
-and each board's `score_n`. `bench corpus connections` measures manifest connection counts
-with the Java referee. Keep the manifest fixed across comparisons and inspect connectivity,
+and each board's `score_n`. Historical manifest connection counts remain readable.
+Keep the manifest fixed across comparisons and inspect connectivity,
 violations, length and vias alongside the normalized score.
 
 ### Timing and parallelism
@@ -225,7 +221,10 @@ individual license terms before sharing inputs. `--skip-existing` is the import 
 `--force` regenerates boards. Use `--ids` for PCBench directory names and `--boards` on `run`
 for manifest board IDs; both accept comma-separated values.
 
-DSN fixtures use the Java jar's DRC-only mode. KiCad boards use `kicad-cli pcb drc` after the
+Scored runs select only KiCad-backed boards by default. DSN-only fixtures can be routed with
+`--no-referee` for diagnostics, but cannot be scored. Explicitly selecting them for scoring
+produces an error before routing. Historical Java results remain readable, but cannot be
+rescored with Java. KiCad boards use `kicad-cli pcb drc` after the
 suite imports the session with `vendor/kicad/ses_to_board.py`. The referee preserves project
 rules or reconstructs legacy rules, refills zones, and counts routing-related DRC errors.
 KiCad failures remain unjudged; there is no automatic Java fallback. KiCad requires both
@@ -236,39 +235,20 @@ uv run bench referee --run head-vs-change --only-missing --jobs 1
 uv run bench corpus revalidate --origin pcbench --regenerate-projects --rerun-drc --jobs 4
 ```
 
-Java-scored runs record the resolved referee command and jar SHA-256 in `meta.json`, and Java
-measurements record the same identity in `metrics.json`. `bench referee --only-missing` reuses
-that recorded referee and refuses a changed jar. For a rebuilt jar at the recorded path,
-rescore the full run by dropping `--only-missing`:
-
-```bash
-uv run bench referee --run head-vs-change
-```
-
-Use `--candidates-file local-referee.toml` to select a different referee path. A top-up accepts
-a local copy of a remote jar when its SHA-256 matches; changing the jar requires a full rescore.
-For example, put `[referee.java]` with `exec = ["{java}", "-jar", "/local/reference.jar"]` in
-that file, then run:
-
-```bash
-uv run bench referee --run head-vs-change --only-missing --candidates-file local-referee.toml
-```
-
-An empty top-up does not resolve Java. KiCad-only runs and rescoring do not need a Java jar.
-Full rescoring records an incomplete marker before starting and updates the run's referee
-identity only after all cells are processed. If interrupted, the previous identity and marker
-remain, comparisons warn, and a new full rescore is required; a top-up cannot complete a partial
-replacement of existing metrics. Individual referee failures remain visible as failed/unjudged
-cells even when the rescore attempt finishes. For older runs or runs made with `--no-referee`,
-use their original candidates file when first scoring them.
+Full rescoring records an incomplete marker before starting and clears it only after all
+cells are processed. Interrupted rescoring excludes the affected run from quality comparisons;
+rerun without `--only-missing` to finish. Individual referee failures remain visible as
+failed/unjudged cells even when the rescore attempt finishes. Rescoring does not require
+candidate binaries or a candidates file. Legacy runs containing DSN-only cells must be kept
+as historical records; scoring them is rejected before any results are modified.
 
 Revalidation can change corpus membership and ground truth. Finish it before benchmarking and
 keep the corpus fixed between candidates. Compare/export currently use the current manifest;
 archive it along with inputs if a result needs to remain reproducible after corpus updates.
-Candidate and Java referee processes receive isolated HOME/XDG directories to prevent saved
+Candidate processes receive isolated HOME/XDG directories to prevent saved
 router settings leaking between invocations. Their `JAVA_TOOL_OPTIONS` also includes
 `-Djava.awt.headless=true -Dapple.awt.UIElement=true` to disable AWT windows and suppress
-normal macOS GUI activation, including for referee and connection-count probes. Existing
+normal macOS GUI activation for Java candidates. Existing
 `JAVA_TOOL_OPTIONS` are preserved; only subprocess environments are changed. Reports warn about results lacking isolation data.
 
 ## Reports, exports and history
@@ -310,7 +290,7 @@ suite and Java jar, launches a detached job, and pulls results back.
 ```bash
 scripts/remote-setup.sh "$BENCH_REMOTE_HOST"
 scripts/remote-run.sh "$BENCH_REMOTE_HOST" --remote-dir copperroute/benchmark --jobs 1 -- \
-  --candidates java-current,rs-main --seeds 3 --threads 1 --tier canary \
+  --candidates java-current,rs-main --seeds 3 --threads 1 --tier kicad-fixtures \
   --max-passes 100 --timeout 120 --run-id remote-java-vs-rust
 ```
 

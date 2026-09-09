@@ -30,7 +30,7 @@ def test_init_from_fixtures_copies_and_tags(tmp_path, monkeypatch):
     ids = {b.id for b in boards}
     assert ids == {"dac2020-bm01", "issue143-rpi_splitter_mod"}
     bm01 = next(b for b in boards if b.id == "dac2020-bm01")
-    assert bm01.referee == "java-drc"
+    assert bm01.referee == "none"
     assert {"regression", "dac2020", "hard"} <= set(bm01.tiers)
     assert bm01.nets == 3 and bm01.layers == 2
     assert (tmp_path / "corpus" / "dsn" / "Issue508-DAC2020_bm01.dsn").exists()

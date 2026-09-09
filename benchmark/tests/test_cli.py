@@ -11,7 +11,7 @@ FAKE = Path(__file__).parent / "fake_router.py"
 DATA = Path(__file__).parent / "data"
 
 
-def _env(tmp_path, monkeypatch, board_source="dsn/mini.dsn"):
+def _env(tmp_path, monkeypatch, board_source="dsn/mini.dsn", referee="kicad"):
     monkeypatch.setattr(corpus, "CORPUS", tmp_path / "corpus")
     monkeypatch.setattr(runner, "RESULTS", tmp_path / "results")
     monkeypatch.setattr(paths, "REPORTS", tmp_path / "reports")
@@ -19,7 +19,7 @@ def _env(tmp_path, monkeypatch, board_source="dsn/mini.dsn"):
     (tmp_path / "corpus" / "dsn").mkdir(parents=True)
     (tmp_path / "corpus" / "dsn" / "mini.dsn").write_text((DATA / "mini.dsn").read_text())
     board = Board(id="mini", source=board_source, origin="freerouting-fixtures",
-                  referee="java-drc", tiers=["canary"], nets=3, layers=2)
+                  referee=referee, tiers=["canary"], nets=3, layers=2)
     corpus.save_manifest([board])
     (tmp_path / "candidates.toml").write_text(
         f'[candidates.fake]\nkind = "other"\nexec = ["{sys.executable}", "{FAKE}"]\nsha = "f"\n'
@@ -121,7 +121,7 @@ def _cell(score=900.0):
     return {"clean_pass": True, "unrouted": 0, "violations": 0, "vias": 4, "wirelength_mm": 100.0,
             "score": score, "wall_s": 10.0, "cpu_s": 10.0, "peak_rss_mb": 200.0, "passes": 3,
             "failed": False, "unjudged": False, "disagreement": False, "timed_out": False,
-            "wirelength_ratio": None, "via_ratio": None, "referee": "java-drc"}
+            "wirelength_ratio": None, "via_ratio": None, "referee": "kicad"}
 
 
 def test_compare_incompatible_runs_prints_both_full_configs(tmp_path, monkeypatch):
@@ -160,7 +160,7 @@ def test_referee_jobs_scores_cells_concurrently(tmp_path, monkeypatch):
 
     calls = []
 
-    def fake_score_cell(board, cell, java_exec):
+    def fake_score_cell(board, cell):
         calls.append(cell)
         m = {"unrouted": 0, "violations": 0, "score": 1000.0, "clean_pass": True,
              "failed": False, "disagreement": False}
@@ -198,7 +198,7 @@ def test_export_then_plot_cli_pipeline(tmp_path, monkeypatch):
                                       "--no-referee", "--run-id", "t1"])
     assert r.exit_code == 0, r.output
 
-    def fake_score_cell(board, cell, java_exec):
+    def fake_score_cell(board, cell):
         m = {"unrouted": 0, "violations": 0, "score": 950.0, "clean_pass": True,
              "cpu_s": 1.0, "wall_s": 1.0, "peak_rss_mb": 100.0, "vias": 2,
              "wirelength_mm": 50.0, "wirelength_ratio": None, "via_ratio": None,
@@ -274,19 +274,6 @@ def test_run_does_not_overwrite_previous_results(tmp_path, monkeypatch):
     assert meta_path.read_bytes() == original
 
 
-def test_selected_candidate_referee_override_is_used(tmp_path, monkeypatch):
-    _env(tmp_path, monkeypatch)
-    custom = tmp_path / "custom.toml"
-    custom.write_text((tmp_path / "candidates.toml").read_text()
-                      + '\n[referee.java]\nexec = ["custom-java"]\n')
-    calls = []
-    monkeypatch.setattr(cli.referee, "score_cell", lambda b, c, j: calls.append(j))
-    result = CliRunner().invoke(cli.main, ["run", "--candidates", "fake", "--candidates-file", str(custom),
-                                           "--boards", "mini", "--seeds", "1", "--run-id", "custom"])
-    assert result.exit_code == 0, result.output
-    assert calls == [["custom-java"]]
-
-
 def test_regression_gate_writes_reports_before_failing(tmp_path, monkeypatch):
     _env(tmp_path, monkeypatch)
     _write_run(tmp_path / "results", "r", {"head": {"mini": [_cell()] * 3},
@@ -323,56 +310,12 @@ def test_kicad_only_run_and_rescore_do_not_resolve_java(tmp_path, monkeypatch):
     corpus.save_manifest([board])
     def no_java(*args):
         raise AssertionError("Java must not be resolved")
-    monkeypatch.setattr(cli, "_java_exec", no_java)
-    monkeypatch.setattr(cli.referee, "score_cell", lambda b, c, j: _cell())
+    monkeypatch.setattr(paths, "java_exe", no_java)
+    monkeypatch.setattr(cli.referee, "score_cell", lambda b, c: _cell())
     r = CliRunner().invoke(cli.main, ["run", "--candidates", "fake", "--run-id", "kicad"])
     assert r.exit_code == 0, r.output
     r = CliRunner().invoke(cli.main, ["referee", "--run", "kicad"])
     assert r.exit_code == 0, r.output
-
-
-def test_missing_java_is_a_clean_cli_error(tmp_path, monkeypatch):
-    _env(tmp_path, monkeypatch)
-    def unavailable(*args):
-        raise paths.ToolMissing("jar missing")
-    monkeypatch.setattr(cli, "_java_exec", unavailable)
-    r = CliRunner().invoke(cli.main, ["run", "--candidates", "fake"])
-    assert r.exit_code != 0 and "Java referee unavailable: jar missing" in r.output
-
-
-def test_top_up_reuses_recorded_referee_and_default_is_one_repetition(tmp_path, monkeypatch):
-    _env(tmp_path, monkeypatch)
-    custom = tmp_path / "custom.toml"
-    custom.write_text((tmp_path / "candidates.toml").read_text() + '\n[referee.java]\nexec=["custom-java"]\n')
-    calls = []
-    def score(b, c, j):
-        calls.append(j)
-        return _cell()
-    monkeypatch.setattr(cli.referee, "score_cell", score)
-    r = CliRunner().invoke(cli.main, ["run", "--candidates", "fake", "--candidates-file", str(custom), "--run-id", "r"])
-    assert r.exit_code == 0, r.output
-    meta = runner.load_meta(tmp_path / "results" / "r")
-    assert meta["args"]["seeds"] == 1
-    assert meta["referee_java"]["exec"] == ["custom-java"]
-    mp = runner.cell_dir(tmp_path / "results" / "r", "fake", "mini", 1) / "metrics.json"
-    assert json.loads(mp.read_text())["referee_identity"]["exec"] == ["custom-java"]
-    mp.unlink()
-    custom.unlink()
-    r = CliRunner().invoke(cli.main, ["referee", "--run", "r", "--only-missing"])
-    assert r.exit_code == 0, r.output
-    assert calls == [["custom-java"], ["custom-java"]]
-
-
-def test_changed_referee_jar_cannot_silently_top_up(tmp_path, monkeypatch):
-    _env(tmp_path, monkeypatch)
-    jar = tmp_path / "referee.jar"
-    jar.write_bytes(b"old-jar")
-    command = ["java", "-jar", str(jar)]
-    recorded = cli._java_identity(command)
-    jar.write_bytes(b"new-jar")
-    import pytest
-    with pytest.raises(cli.click.ClickException, match="jar has changed"):
-        cli._referee_config([corpus.load_manifest()[0]], recorded=recorded)
 
 
 def test_timing_only_losses_are_advisory_unless_requested(tmp_path, monkeypatch):
@@ -385,90 +328,11 @@ def test_timing_only_losses_are_advisory_unless_requested(tmp_path, monkeypatch)
     assert r.exit_code != 0
 
 
-def _recorded_java_run(tmp_path, monkeypatch):
+def test_interrupted_rescore_is_detected(tmp_path, monkeypatch):
     _env(tmp_path, monkeypatch)
-    jar = tmp_path / "referee.jar"
-    jar.write_bytes(b"original")
-    identity = cli._java_identity(["java", "-jar", str(jar)])
     run = _write_run(tmp_path / "results", "r", {"fake": {"mini": [_cell()] * 3}})
-    meta = runner.load_meta(run)
-    meta["referee_java"] = identity
-    (run / "meta.json").write_text(json.dumps(meta))
-    for seed in (1, 2, 3):
-        mp = runner.cell_dir(run, "fake", "mini", seed) / "metrics.json"
-        mp.write_text(json.dumps(dict(_cell(), referee_identity=identity)))
-    def score(b, c, j):
-        result = _cell()
-        (c / "metrics.json").write_text(json.dumps(result))
-        return result
-    monkeypatch.setattr(cli.referee, "score_cell", score)
-    return run, jar, identity
-
-
-def test_full_rescore_accepts_rebuilt_jar_and_commits_identity_after_scoring(tmp_path, monkeypatch):
-    run, jar, old = _recorded_java_run(tmp_path, monkeypatch)
-    jar.write_bytes(b"rebuilt")
-    def score(b, c, j):
-        assert runner.load_meta(run)["referee_java"] == old
-        assert runner.load_meta(run)["referee_rescore"]["status"] == "incomplete"
-        return _cell()
-    monkeypatch.setattr(cli.referee, "score_cell", score)
-    result = CliRunner().invoke(cli.main, ["referee", "--run", "r"])
-    assert result.exit_code == 0, result.output
-    meta = runner.load_meta(run)
-    assert meta["referee_java"]["jar_sha256"] != old["jar_sha256"]
-    assert meta["referee_rescore"]["status"] == "complete"
-
-
-def test_referee_noop_does_not_resolve_explicit_candidates_file(tmp_path, monkeypatch):
-    run, jar, old = _recorded_java_run(tmp_path, monkeypatch)
-    config = tmp_path / "local.toml"
-    config.write_text(f'[referee.java]\nexec=["java", "-jar", "{jar}"]\n')
-    jar.unlink()
-    before = (run / "meta.json").read_bytes()
-    result = CliRunner().invoke(cli.main, ["referee", "--run", "r", "--only-missing", "--candidates-file", str(config)])
-    assert result.exit_code == 0, result.output
-    assert "nothing left" in result.output
-    assert (run / "meta.json").read_bytes() == before
-
-
-def test_kicad_only_topup_preserves_recorded_java_identity(tmp_path, monkeypatch):
-    run, jar, old = _recorded_java_run(tmp_path, monkeypatch)
-    board = corpus.load_manifest()[0]
-    board.referee = "kicad"
-    corpus.save_manifest([board])
-    (runner.cell_dir(run, "fake", "mini", 3) / "metrics.json").unlink()
-    config = tmp_path / "local.toml"
-    config.write_text('[referee.java]\nexec=["java", "-jar", "/missing.jar"]\n')
-    result = CliRunner().invoke(cli.main, ["referee", "--run", "r", "--only-missing", "--candidates-file", str(config)])
-    assert result.exit_code == 0, result.output
-    assert runner.load_meta(run)["referee_java"] == old
-
-
-def test_topup_accepts_local_copy_of_remote_jar(tmp_path, monkeypatch):
-    run, jar, old = _recorded_java_run(tmp_path, monkeypatch)
-    remote = dict(old, exec=["/remote/java", "-jar", "/remote/referee.jar"])
-    meta = runner.load_meta(run)
-    meta["referee_java"] = remote
-    (run / "meta.json").write_text(json.dumps(meta))
-    (runner.cell_dir(run, "fake", "mini", 3) / "metrics.json").unlink()
-    config = tmp_path / "local.toml"
-    config.write_text(f'[referee.java]\nexec=["java", "-jar", "{jar}"]\n')
-    args = ["referee", "--run", "r", "--only-missing", "--candidates-file", str(config)]
-    jar.write_bytes(b"different")
-    rejected = CliRunner().invoke(cli.main, args)
-    assert rejected.exit_code != 0 and "cannot change" in rejected.output
-    jar.write_bytes(b"original")
-    accepted = CliRunner().invoke(cli.main, args)
-    assert accepted.exit_code == 0, accepted.output
-    assert runner.load_meta(run)["referee_java"] == old
-
-
-def test_interrupted_rescore_keeps_previous_identity_and_is_detected(tmp_path, monkeypatch):
-    run, jar, old = _recorded_java_run(tmp_path, monkeypatch)
-    jar.write_bytes(b"replacement")
     calls = []
-    def score(b, c, j):
+    def score(b, c):
         calls.append(c)
         if len(calls) == 2:
             raise KeyboardInterrupt()
@@ -476,26 +340,16 @@ def test_interrupted_rescore_keeps_previous_identity_and_is_detected(tmp_path, m
     monkeypatch.setattr(cli.referee, "score_cell", score)
     result = CliRunner().invoke(cli.main, ["referee", "--run", "r"])
     assert result.exit_code != 0
-    assert runner.load_meta(run)["referee_java"] == old
     assert runner.load_meta(run)["referee_rescore"]["status"] == "incomplete"
     cmp = compare.compare([run], "fake", ["fake"], corpus.load_manifest())
     assert any("rescore is incomplete" in w for w in cmp["warnings"])
     assert "mini" in cmp["coverage"]["fake"]["skipped_boards"]
     result = CliRunner().invoke(cli.main, ["referee", "--run", "r", "--only-missing"])
     assert result.exit_code != 0 and "rerun without" in result.output
-    monkeypatch.setattr(cli.referee, "score_cell", lambda b, c, j: _cell())
+    monkeypatch.setattr(cli.referee, "score_cell", lambda b, c: _cell())
     result = CliRunner().invoke(cli.main, ["referee", "--run", "r"])
     assert result.exit_code == 0, result.output
     assert runner.load_meta(run)["referee_rescore"]["status"] == "complete"
-
-
-def test_referee_missing_jar_argument_is_a_clean_error(tmp_path, monkeypatch):
-    _env(tmp_path, monkeypatch)
-    config = tmp_path / "candidates.toml"
-    config.write_text(config.read_text() + '\n[referee.java]\nexec=["java", "-jar"]\n')
-    result = CliRunner().invoke(cli.main, ["run", "--candidates", "fake"])
-    assert result.exit_code != 0
-    assert "-jar requires a following jar path" in result.output
 
 
 def test_requested_performance_gate_fails_insufficient_samples_and_explains_help(tmp_path, monkeypatch):

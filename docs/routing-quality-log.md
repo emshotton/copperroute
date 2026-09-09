@@ -2321,3 +2321,72 @@ CPU 180.91 versus 179.61 seconds. The original full-run 108 -> 132 U /
 This is supplementary evidence; the original full run remains recorded.
 No routing runs or required validation remain pending. The proposed
 combined changes retain their measured trade-offs for case-by-case review.
+
+## 2026-09-08: follow-up after PR #21, KiCad-only validation
+
+Baseline: merged main `e9d10c21`, isolated worktree `copperroute-mask-quality`,
+branch `routing-quality-kicad`. The user requested removing Java DRC scoring and
+revisiting nominal clearance + smoothing + the now-merged connection-check cache,
+then exploring larger structural algorithm changes on workbench.
+
+### KiCad-only benchmark scoring (tooling change)
+
+Removed the Java DRC execution module, Java referee configuration and the Java-based
+`corpus connections` command. Java can still be compared as a router candidate.
+Default scored runs select only KiCad boards; explicit DSN-only scoring and legacy
+DSN rescoring fail before routing or modifying results. `--no-referee` remains
+available for DSN routing diagnostics. Historical reports remain readable.
+
+Failing-first tests reproduced three unwanted behaviors: automatic selection of a
+Java-only fixture, acceptance of explicit DSN scoring, and mutation of legacy
+results during rescoring. All three passed after the change. Adapting the existing
+interrupted-rescore test to KiCad uncovered that comparisons only guarded Java
+measurements during incomplete rescoring; the guard now excludes all measurements
+from such runs until a full rescore completes.
+
+### New main baseline (in progress)
+
+Workbench built the exact merged-main release binary in `~/copperroute-kicad-main`.
+Copied the previously missing 11 usable local KiCad fixtures to its durable corpus.
+Run `quality-kicad-main-e9d10c2` selects **751 KiCad boards (740 PCBench + 11 KiCad
+fixtures)**, with 10 passes, 300-second timeout, one router thread and 12 jobs.
+KiCad CLI, KiCad Python and GNU time are explicitly configured. No Java referee
+is involved. This differs from the old 845-board population (740 KiCad + 105 DSN),
+so future totals must not be compared directly with old mixed-referee totals.
+
+### Nominal-clearance mask investigation (no fix implemented yet)
+
+The prior LPC2148 audit identified a real missing constraint: its global mask
+expansion is 0.2 mm while DSN copper clearance is 0.1778 mm. Nominal routing places
+a foreign-net track 0.18058096 mm from P1 pad 38: copper-legal, but its mask aperture
+exposes that track. The original designer leaves at least 1.016 mm at this location.
+The original already has 72 mask errors; the previous main/nominal outputs had
+130/199. The native KiCad DTO and DSN input both currently omit mask metadata.
+Investigating per-pad outer-layer constraints rather than a blanket clearance
+increase. KiCad's own mask checker and documentation confirm that aperture-to-
+foreign-copper clearance is a separate constraint:
+https://docs.kicad.org/doxygen/drc__test__provider__solder__mask_8cpp_source.html
+
+Tooling validation so far: `uv run pytest -q` passed **257 tests**, with one
+integration test skipped because this fresh worktree has no imported KiCad inputs.
+A real workbench smoke check found 24 scored cells, all referee status `ok`, and
+nonzero violations on two of them. The full Rust workspace check is still running.
+
+KiCad 10.0.3 `pcbnew` inspection of the original LPC board confirms 331 pads at
+0.2 mm expansion: 204 front-only, 122 both sides, five back-only. Any constraint
+import must preserve those layer distinctions. KiCad's checker separately uses
+mask-to-copper clearance for aperture/copper tests and web width for aperture/
+aperture tests; importing only a board-wide copper floor would conflate them.
+
+Structural research leads for the next stage (not yet implemented or measured):
+- McMurchie and Ebeling, PathFinder: history-dependent negotiated congestion.
+  https://janders.eecg.utoronto.ca/1387_2015/readings/pathfinder.pdf
+- Kahng et al., TritonRoute: detailed routing with search and repair.
+  https://vlsicad.ucsd.edu/Publications/Journals/j133.pdf
+CopperRoute already carries per-item rip-up costs and board history, so first
+check whether repeated congestion survives item replacement and whether repair
+actually targets the DRC-producing geometry before proposing a new mechanism.
+
+Final tooling validation: Rust workspace **2565 passed, zero failed** (`cargo test --workspace`); benchmark **257 passed, one skipped**.
+No router behavior changed in the KiCad-only scoring commit; the running corpus
+baseline is for the subsequent routing experiments.
