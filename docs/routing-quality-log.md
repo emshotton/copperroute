@@ -2472,3 +2472,42 @@ BMS longer control completed on both sides: identical SES SHA256
 ten passes, 53 unrouted / zero ordinary violations / 88 mask reports,
 CPU 542.78/544.90 seconds. The original 300-second one-connection loss
 is therefore a different cutoff state, not a different completed route.
+
+`quality-kicad-drc-items-01` completed: all five 100-item pairs have identical
+SES bytes and KiCad scores, no timeouts, all ten referees valid. Both
+candidate exports and details are saved on workbench and copied to the
+laptop. An exporter assertion fixed at 751 initially stopped collection;
+the helper now requires status=complete and exact equality with the run's
+requested board set. No routing or scoring was repeated.
+
+Separate checker draft PR opened: https://github.com/emshotton/copperroute/pull/22
+(commit b80589a). It includes the full corpus report and explicitly retains
+the failed standard gate. Longer controls are still being assessed before
+marking ready. The router, Java-referee-removal tooling and mask-cap
+experiments are not included in this PR.
+
+Longer controls for ZX-Sizif-512-ext and Karabas-nano-revC both finish
+ten passes with byte-identical SES files and identical KiCad scores.
+ZX: 38 unrouted / zero ordinary violations / 183 mask reports, CPU
+749.44/794.59s. Karabas: 40 / 1 / 199, CPU 845.90/912.89s. Their exports
+and full details are retained on workbench and copied to the laptop.
+Only decelerator remains running in the 1,200-second control.
+
+Repeated `cargo test --workspace` before the final report commit:
+2,570 passed, zero failed, 77 ignored, log
+`/tmp/quality-kicad-mask-drc-workspace-03.log`. No code changed after
+the frozen full-corpus measurement.
+
+Final decelerator control: both time out in pass six at 1,200 seconds,
+with 192 unrouted / 14 ordinary violations / zero mask reports. CPU
+1,197.02/1,197.17s. SES hashes differ: these are different partial routes,
+not proven equivalent finished solutions. Its 100-item prefix is identical.
+All longer-control scores are now retained on workbench and the laptop.
+
+Checker review decision: prepare PR #22 for review with the failed standard
+gate visible. The checker adds KiCad-confirmed detection; 718 full-corpus
+non-timeout pairs are byte-identical, all five deterministic-work controls
+match, and four longer controls converge exactly. Decelerator's finished
+route equivalence remains unproven, but its longer quality counts agree.
+No routing-policy or timing improvement is claimed for this independent
+checker change. Continue with the mask-gap routing candidate separately.

@@ -87,24 +87,41 @@ Memory (per-job peak RSS; medians and maxima across the population):
 | Local | 20.40 → 20.50 | 75.20 → 109.10 |
 | All | 15.20 → 15.40 | 453.10 → 453.60 |
 
-Longer 1,200-second controls on the four connection-loss boards and azalea
-(which gained 11 ordinary violations while reducing unrouted connections)
-are running, runs `quality-kicad-drc-controls-01` and `-02`. They use
-the same frozen binaries, one thread, and ten passes. These ask whether
-the outputs converge when not cut off at different routing stages.
+Longer 1,200-second controls are complete, runs
+`quality-kicad-drc-controls-01` and `-02`. They use the same frozen binaries,
+one thread and ten passes; every referee succeeded.
+
+| Board | State on both sides | Unrouted, each | Ordinary violations, each | Mask reports, each | SES files | CPU seconds main → checker |
+|---|---|---:|---:|---:|---|---:|
+| azalea | Completed, ten passes | 76 | 40 | 159 | Identical | 286.74 → 313.96 |
+| bms-8s50-ic | Completed, ten passes | 53 | 0 | 88 | Identical | 542.78 → 544.90 |
+| zx-sizif-512-ext | Completed, ten passes | 38 | 0 | 183 | Identical | 749.44 → 794.59 |
+| karabas-nano-revC | Completed, ten passes | 40 | 1 | 199 | Identical | 845.90 → 912.89 |
+| decelerator4030 | Timed out, six passes | 192 | 14 | 0 | Different partial routes | 1,197.02 → 1,197.17 |
+
+The four completed controls establish identical finished routing for their
+boards. Decelerator has equal quality counts at the longer cutoff but
+still produces different partial routes; complete-route equivalence on that
+board is unproven. The standard 300-second gate remains failed, and its
+measurements are not replaced with these diagnostics.
 
 This DSN run tests routing compatibility and cost; native-import oracle tests
 and session audits separately validate the new mask behavior. No timing or
 routing-quality improvement is claimed for the checker itself. One timing
 repetition does not establish a speedup.
 
-The azalea longer control is complete: both binaries finish ten passes and
-produce byte-identical SES files, 76 unrouted connections, 40 ordinary
-violations, and 159 mask reports. This contrasts with the 300-second runs
-(74/68 unrouted and 42/53 ordinary violations), showing that their different
-cutoff states explain this board's apparent checker regression. CPU time is
-286.74/313.96 seconds in this one diagnostic pair; no timing claim is made.
-The bms-8s50-ic longer control also converges: identical SES files, ten
-passes, 53 unrouted, zero ordinary violations and 88 mask reports. CPU
-time is 542.78/544.90 seconds. The remaining three longer controls and
-a 100-routed-item diagnostic are pending.
+The deterministic-work diagnostic `quality-kicad-drc-items-01` is complete.
+All five pairs stop after 100 routed items without a timeout, produce
+byte-identical SES files, and have identical external KiCad scores:
+
+| Board | Unrouted, each | Ordinary violations, each | Mask reports, each |
+|---|---:|---:|---:|
+| azalea | 110 | 39 | 159 |
+| decelerator4030 | 499 (report cap) | 2 | 0 |
+| bms-8s50-ic | 101 | 0 | 88 |
+| karabas-nano-revC | 184 | 1 | 199 (report cap) |
+| zx-sizif-512-ext | 306 | 0 | 183 |
+
+This establishes matching output for the tested routing prefix on all five
+problem boards; it does not claim complete-board convergence for decelerator. All ten
+referee checks succeeded.
