@@ -87,8 +87,9 @@ gives the net class values the reader falls back on when the file has no `Defaul
 class.
 
 - **Some constructs are refused outright.** Curved tracks, net ties, footprint zones, locked
-  tracks, concave custom pads, zone keepouts that restrict tracks or vias, and netless copper
-  zones all fail the read rather than being approximated.
+  tracks, concave custom pads, zone keepouts that restrict tracks or vias, netless copper
+  zones, locked/blind/micro vias, and through vias with no net all fail the read rather than
+  being approximated.
 - **Copper zones that carry a net are kept, not routed.** They come through with their fill
   cache removed and a warning attached: the reader works in tracks only, and expects KiCad to
   refill zones once the board comes back.

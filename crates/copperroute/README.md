@@ -149,6 +149,8 @@ suites:
 * **`mcp_stdio.rs`** drives the server through `initialize`, notifications,
   `ping`, `tools/list`, `tools/call`, cancellation, a panicking tool, a
   malformed line and EOF, over in-process pipes and over the spawned binary.
+* **`kicad_pcb_input.rs`** runs the binary against a `.kicad_pcb` board:
+  `info`'s summary, `route`'s session and its loader warnings on stderr.
 
 The reference and corpus tests read their boards from `tests/corpus`.
 

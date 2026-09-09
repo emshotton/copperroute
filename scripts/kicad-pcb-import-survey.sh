@@ -6,7 +6,7 @@ shopt -s nullglob
 root="${1:?usage: kicad-pcb-import-survey.sh <corpus root>}"
 [[ -d "$root" ]] || { echo "error: $root is not a directory" >&2; exit 1; }
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/.." && pwd)"
 BIN="$REPO_ROOT/target/release/copperroute"
 
 cargo build --release -p copperroute --manifest-path "$REPO_ROOT/Cargo.toml"
