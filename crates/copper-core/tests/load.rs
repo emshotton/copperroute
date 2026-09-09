@@ -2,7 +2,8 @@ use copper_board::Board;
 use copper_core::{
     Error, FileFormat, RoutingJob, SessionId, apply_immediate_post_load_processing,
     apply_router_settings_for_loaded_board, calculate_crc32_for_board, load_board_if_needed,
-    load_from_kicad_json, load_from_specctra_dsn, save_as_specctra_session_ses,
+    load_from_kicad_json, load_from_specctra_dsn, parse_board_if_needed,
+    save_as_specctra_session_ses,
 };
 use copper_dsn::{BoardReadResult, DsnReadOptions};
 use copper_settings::sources::DefaultSettings;
@@ -48,15 +49,14 @@ fn only_dsn_and_json_are_accepted() {
     assert!(matches!(error, Error::Load(_)));
     assert_eq!(
         error.to_string(),
-        "Cannot load board: only DSN and JSON formats are supported, got SES",
-        "the message is Java's, verbatim"
+        "Cannot load board: only DSN, KiCad JSON and KiCad PCB formats are supported, got SES"
     );
 
     let mut job = job_for("fixtures/Issue593-BBD_Mars-64.rules");
     let error = load_board_if_needed(&mut job).expect_err("a RULES input is refused");
     assert_eq!(
         error.to_string(),
-        "Cannot load board: only DSN and JSON formats are supported, got RULES"
+        "Cannot load board: only DSN, KiCad JSON and KiCad PCB formats are supported, got RULES"
     );
 
     let mut job = RoutingJob::new(SessionId::default());
@@ -102,6 +102,30 @@ fn a_kicad_json_input_loads_a_real_board() {
         .expect("an empty JSON object is a Success, as it is in the jar");
     assert_eq!(loaded.board.get_items().count(), 1, "the generated outline");
     assert_eq!(loaded.warnings.len(), 1, "the missing-outline warning");
+}
+
+#[test]
+fn a_kicad_pcb_input_loads_a_real_board() {
+    let mut job = RoutingJob::new(SessionId::default());
+    job.set_input(&testkit::workspace_root().join("web/example.kicad_pcb"))
+        .expect("set_input succeeds");
+    assert_eq!(
+        job.get_input().expect("an input").format,
+        FileFormat::KicadPcb,
+        "the guard lets this format through"
+    );
+    assert_eq!(job.name, "example", "the design name is the file's stem");
+
+    let parsed = parse_board_if_needed(&job).expect("a KiCad PCB input parses");
+    assert_eq!(parsed.board.get_items().count(), 5);
+    assert_eq!(parsed.board.get_layer_count(), 2);
+    assert!(
+        parsed.metadata.is_some(),
+        "read_board_json builds a BoardMetadata for a KiCad PCB, like it does for KiCad JSON"
+    );
+
+    let loaded = load_board_if_needed(&mut job).expect("a KiCad PCB input loads");
+    assert_eq!(loaded.board.get_items().count(), 5);
 }
 
 #[test]

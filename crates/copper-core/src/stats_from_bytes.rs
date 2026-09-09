@@ -18,7 +18,8 @@ impl BoardStatisticsExt for BoardStatistics {
             | FileFormat::Rules
             | FileFormat::Scr
             | FileFormat::DrcJson
-            | FileFormat::KicadSessionJson => {}
+            | FileFormat::KicadSessionJson
+            | FileFormat::KicadPcb => {}
         }
 
         stats
