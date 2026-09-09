@@ -32,8 +32,8 @@ fn boards() -> Vec<PathBuf> {
     paths.retain(|p| p.exists());
     paths.sort();
     assert!(
-        paths.len() >= 7,
-        "expected at least 7 example boards (1 top-level plus web/examples/*), found {}: {paths:?}",
+        paths.len() >= 8,
+        "expected at least 8 example boards (1 top-level plus web/examples/*), found {}: {paths:?}",
         paths.len()
     );
     paths
