@@ -54,22 +54,11 @@ fn it_reports_a_board_summary_for_a_kicad_board() {
 }
 
 #[test]
-fn it_prints_the_loaders_warnings_when_routing_a_kicad_board() {
+fn it_prints_the_loaders_warnings_when_inspecting_a_kicad_board() {
     let board = testkit::workspace_root().join("web/examples/easyduino/nano.kicad_pcb");
-    let dir = scratch("prints-loader-warnings");
-    let output = dir.join("out.ses");
 
-    let (_, stderr, code) = run(&[
-        "route",
-        &board.to_string_lossy(),
-        "-o",
-        &output.to_string_lossy(),
-        "--max-passes",
-        "1",
-        "--timeout",
-        "120",
-    ]);
-    assert_eq!(code, 0, "route failed: {stderr}");
+    let (_, stderr, code) = run(&["info", &board.to_string_lossy()]);
+    assert_eq!(code, 0, "info failed: {stderr}");
     assert!(
         stderr.contains("copper zones will be preserved with their fill cache removed"),
         "expected read_pcb's zone warning on stderr, got:\n{stderr}"

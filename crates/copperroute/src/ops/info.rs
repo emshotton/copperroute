@@ -7,10 +7,16 @@ pub struct InfoRequest {
     pub load: LoadRequest,
 }
 
-pub fn info(request: &InfoRequest) -> Result<BoardSummary, OpError> {
+pub struct InfoOutcome {
+    pub summary: BoardSummary,
+    pub warnings: Vec<String>,
+}
+
+pub fn info(request: &InfoRequest) -> Result<InfoOutcome, OpError> {
     let mut loaded = load(&request.load)?;
-    Ok(copper_core::summarise(
-        &mut loaded.board,
-        loaded.metadata.as_ref(),
-    ))
+    let summary = copper_core::summarise(&mut loaded.board, loaded.metadata.as_ref());
+    Ok(InfoOutcome {
+        summary,
+        warnings: loaded.warnings,
+    })
 }
