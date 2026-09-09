@@ -129,6 +129,34 @@ fn a_kicad_pcb_input_loads_a_real_board() {
 }
 
 #[test]
+fn a_kicad_pcb_inputs_read_pcb_warnings_reach_the_parsed_board() {
+    let mut job = RoutingJob::new(SessionId::default());
+    job.set_input(&testkit::workspace_root().join("web/examples/easyduino/nano.kicad_pcb"))
+        .expect("set_input succeeds");
+
+    let parsed = parse_board_if_needed(&job).expect("a KiCad PCB input parses");
+    assert_eq!(
+        parsed.warnings,
+        vec![
+            "3 copper zones will be preserved with their fill cache removed. Routing uses \
+             tracks only; refill zones in KiCad (B), then run DRC."
+                .to_string(),
+            "Curved board edges are approximated within 0.005 mm for routing; the original \
+             outline is preserved in downloads."
+                .to_string(),
+            "Rounded pads retain their corner radius for hole DRC; routing uses enclosing \
+             rectangles."
+                .to_string(),
+            "Plated slots retain their copper pad geometry; slot-specific drill checks \
+             require KiCad DRC. Original slots are preserved in downloads."
+                .to_string(),
+        ],
+        "read_pcb's own warnings must reach the caller through ParsedBoard, not just \
+         read_board_json's"
+    );
+}
+
+#[test]
 fn the_loader_runs_read_then_the_settings_pass_then_the_post_load_pass() {
     let path = testkit::corpus_dir()
         .join("fixtures/Issue575-drc_dev-board_4_hole_clearance_violations.dsn");
