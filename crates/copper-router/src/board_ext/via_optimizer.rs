@@ -269,6 +269,12 @@ impl ViaOptimizer {
         let Some(new_via_location) = new_via_location else {
             return Ok(false);
         };
+        // A positive sub-grid allowance can round back to the current location.
+        // As in opt_via_location, this is not progress: reporting a successful
+        // move would keep changed-area fanout optimization running indefinitely.
+        if new_via_location == via_center {
+            return Ok(false);
+        }
         if let Some(contact_plane) = contact_plane {
             let plane_layer = match board.get_item(contact_plane) {
                 Some(Item::ConductionArea(area)) => area.get_layer(),

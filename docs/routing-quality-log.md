@@ -1800,3 +1800,312 @@ Primary census `cargo test --workspace` exited 0: **2,555 passed, zero
 failed, zero warnings**. Removed only the two temporary benchmark corpus
 symlinks; their targets and the original checkout are untouched. The commit
 contains only statistics.rs, this running log, and the measured results JSON.
+
+
+### EPYC completed census replication and referee repeatability audit
+
+The census-only fix is committed as `0217f96`. The new-server baseline and
+census cohorts both finished all 845 attempts in `quality-epyc-full-01`.
+Baseline has 840 scored cells, census 842. Matched results (same server,
+96 jobs, same binaries/runtime, 300-second cap):
+
+| Referee | Matched boards | U improved / regressed | Delta U | DRC gainers | Delta routing V | CPU ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| KiCad | 739 | 5 / 5 | -708 | 1 | +3 | 0.99141 |
+| Java DRC | 101 | 4 / 2 | -39 | 0 | 0 | 0.97008 |
+
+No newly unscored outputs. Baseline failures include the four existing Java
+failures plus `pcbench-teensy-weather-badge_teensyi2c`. Census newly scores
+that PCBench board (0 U / 0 V) and issue756-tomu-fpga8 (11 U / 853 Java V);
+neither is included in matched gains. Exports for both completed cohorts
+were generated immediately and verified in workbench's metadata mirror.
+
+All three additional routing violations are on nonSNES: one PA5 clearance
+against the same U2 copper rectangle UUID previously investigated, plus two
+Net-(P1-IRQ) shorts against U2 rectangle UUID
+`76d0344a-c5da-4e58-b809-f59992a6205a`. This is consistent with the known
+loss of copper-rectangle semantics in its DSN; the new shorts still count
+as actual KiCad violations. Census leaves 121 U versus baseline 319 U on
+this server. Five PCBench U regressions are ReSDMAC +1, decelerator4030 +1,
+and Karabas revisions B +3, C +3, G +2. Further per-board inspection remains
+required for the newly observed regressions; do not silently dismiss them
+as deadlines. EPYC and workbench counts differ and are reported separately.
+
+A new measurement limitation was reproduced, without modifying any routing:
+24 paired census boards have different solder-mask error counts; 20 of
+those pairs have byte-identical out.ses files. For badge2016, ran KiCad DRC
+three more times on the **same saved baseline routed.kicad_pcb** with the
+same project and CLI arguments. Mask error totals were **870, 869, 871**;
+the original baseline referee recorded 868. Thus at least some mask-count
+variation is downstream of routing/import, in repeated DRC itself. This
+does not negate the geometrically proven nominal-clearance mask overlap,
+and does not justify subtracting arbitrary counts from previous experiments.
+Small mask changes need repeat scoring before causal attribution. Reports
+are preserved locally in `/tmp/copperroute-quality/epyc-mask-repeat/` and
+on the server in its backed-up `copperroute-logs/mask-repeat/`; paired SES
+audit is `epyc-census-mask-ses-audit.json` locally.
+
+Prepared cumulative census + zero-distance via guard helper at 0217f96.
+`cargo test --workspace` passed **2,556 tests, zero failures/warnings**,
+log `/tmp/copperroute-quality/workspace-census-via-progress.log`.
+The cumulative three-fix helper previously passed 2,558 tests. Building
+both Linux candidates sequentially with two build jobs on workbench;
+full cumulative validation is still pending, so no via fix is committed.
+
+
+Follow-up inspection: all five new EPYC KiCad U regressions have router
+`final_state=TIMED_OUT` in both variants, with equal pass counts within
+pairs: ReSDMAC 3, decelerator4030 2, Karabas C 5, G 4, B 5. CPU is
+300.28–301.73 seconds. This supports a deadline-related hypothesis but is
+not itself a matched longer-run reproduction. Original ReSDMAC is complete
+with 1,965.2484 mm / 171 vias / 0 routing V; decelerator4030 is complete
+with 28,322.1397 mm / 865 vias / 0 routing V. These remain useful original
+boards for further inspection.
+
+The partial projection cohort had one apparent new referee failure on
+DoroidOscillo. Its referee log says `Unable to access the X Display` during
+SES import; router output exists. Copied the entire cell to a separate
+audit directory and rescored the unchanged SES under a fresh xvfb-run.
+That succeeded: 4 U / 0 routing V / 48 mask errors, 101 vias, 1,777.7735 mm.
+Original run cell remains intact. Thus this specific failure is referee
+infrastructure, not a routing failure; final exports must explicitly
+account for the rescoring rather than hiding the missing cell. Audit:
+`/root/copperroute-logs/referee-retry/pcbench-DoroidOscillo-Board_Android_Oscilloscope/`.
+
+
+Cumulative Linux source hashes verified against local test manifests; both
+release builds succeeded. Shipped binaries and verified matching SHA-256:
+`census-via-progress` d2083f8a8682aa88494e87272d80b51577e29d05337628ab85685187cbcc516a;
+`census-via-guards` 49aec77e96d2e301e656da4c4414aad60204a72110a01aa7c608da9368c54b66.
+Queued `/root/server-cumulative.sh` under a nonblocking flock. It waits for
+the current full batch's completion marker, then runs parent census,
+census + zero-distance, and census + both via guards on all 845 boards,
+96 jobs / one routing thread / 300 seconds / ten passes. Run ID
+`quality-epyc-cumulative-01`, config `/root/server-cumulative.toml`.
+This supplies direct cumulative comparisons before any further commit.
+Both existing workbench backup loops cover the new run's results/exports.
+
+
+### Projection DRC trade: LPC2148 saved/autosave pair
+
+The first two projection DRC gainers are duplicate versions of LPC2148
+(saved and autosave), each 62 -> 1 U and 3 -> 8 routing V. All eight
+candidate errors are track widths 0.2498 mm against KiCad's 0.254 mm
+minimum. Candidate completes ten passes in 193.39 CPU seconds (saved
+version); baseline times out in pass one at 300.18 seconds. Candidate
+4,775.8046 mm / 103 vias versus original 5,513.9113 mm / 116 vias; the
+original is complete with zero routing V (72 preexisting mask errors).
+
+Opened original routed board with pcbnew: U1 pad 6 GND is centered at
+(119.868, 59.578), size 1.0 x 0.25 mm. Designer escapes straight outward
+on F.Cu with **0.3048 mm** track to (119.868, 57.54148). Router's offending
+GND escape uses **0.2498 mm**. `Pin::get_trace_neckdown_halfwidth` computes
+half the minimum pad width minus one internal unit, explaining this exact
+width. DSN nominal width is 254 um; its pad is narrower than that, but the
+original demonstrates the escape need not itself be narrower than the pad.
+Previous nominal-clearance full experiment routes this same saved board
+0 U / 0 routing V; standalone smoothing remains 62 U / 3 V. Thus the via
+projection fix exposes existing unnecessary neckdown while letting routing
+finish. Do not reject it solely because the two versions gain five V each;
+also do not call it DRC neutral. No width patch made without reproducing
+why the legal full-width escape was rejected.
+
+
+LPC neckdown instrumentation (isolated `copperroute-quality-lpc-diagnostic`
+helper, projection-only source plus environment-gated logging) reproduced
+U1 GND pin ItemId(619), center (1198680,-595780). Nominal half-width 1270,
+neck half-width 1249, clearance including margin 1794. It checks a segment
+from (1197980,-587614) to (1197980,-595080), returns only 101 units of
+full-width permission, then the final diagonal to the pad returns zero.
+This locates the decision precisely; diagnostic routing is still running.
+No diagnostic changes are on the primary branch or benchmark candidates.
+
+
+Confirmed neighboring U1 pad 7 /VDDA at (119.368,59.578), size 1.0 x
+0.25 mm, rotation 270 degrees, from the original board. Its right edge
+is x=119.493 mm. The logged nominal-width GND segment is centered at
+119.798 mm with half-width 0.127 mm: copper gap is **0.178 mm**.
+DSN requires **0.1778 mm**, so the full-width segment has 0.0002 mm
+clearance to spare. Insertion's margin-inclusive check requires **0.1794
+mm**, rejecting it by 0.0014 mm. Necking to 0.2498 mm total width raises
+the gap to 0.1801 mm and clears that artificial margin, at the cost of a
+real minimum-width violation. This is the same measured maze/insertion
+margin mismatch as the AVR regression, now tied to the projection fix's
+DRC trade. It strengthens the case for nominal clearance, while leaving
+its separately measured solder-mask trade and missing-output cases open.
+No speculative blanket minimum-width clamp added.
+
+
+Projection cohort finished 845 attempts, 840 scored before infrastructure
+rescore. Matched KiCad 738: 6 U improvements / 3 regressions, -139 U,
+2 DRC gainers / +10 V, CPU ratio 0.98134; Java 101: 3 / 3, -1 U,
+0 DRC gainers / unchanged V, CPU ratio 1.00192. One newly unscored KiCad
+cell is the documented display failure; its copied-cell retry succeeds.
+Baseline teensy-weather-badge's failed import also succeeds when retried
+in a separate audit directory: 0 U / 0 routing V, 2 invalid-outline errors.
+These retries do not reroute and original cohort metrics remain preserved.
+Final corrected comparisons must account for both repaired referee cells.
+
+
+Applied the two proven successful referee retries to their completed
+original cells after asserting identical SES bytes and saving the entire
+pre-repair cells under `/root/copperroute-logs/pre-referee-repair/`.
+Rebuilt metrics through `bench.metrics.build`, regenerated the four
+completed exports, and saved provenance in `referee-repairs.json`.
+Corrected baseline, zero-distance, and projection each have 841 scored
+cells; census 842 (newly scores issue756-tomu-fpga8). All three candidate
+comparisons now cover all 740 KiCad boards, with no new referee failures.
+Net U/V and improvement/regression counts are unchanged. Exact corrected
+CPU ratios and aggregates are in `docs/routing-quality-epyc-results.json`.
+
+LPC diagnostic completed ten passes in 92.624 seconds. Archived its
+instrumentation patch as `/tmp/copperroute-quality/lpc-neck-diagnostic.patch`
+and removed the instrumentation from the helper source. The production
+branch remains census-only, with new findings in the running log.
+
+
+### Proba actual-clearance lead: independently reproduced by Rust DRC
+
+Ran CopperRoute `drc` on the baseline Proba 300-second pilot's DSN plus
+exported SES. Import succeeded: 816 wires, 302 vias, zero import errors.
+Rust DRC reports GNDREF trace vs +3V3 trace clearance 0.1017 mm, and
+GNDREF via vs +3V3 trace 0.0517 mm, both against explicit DSN 0.1500 mm.
+These correspond to KiCad's 0.1016 / 0.0516 mm errors at via
+(185.2479,98.2516) on the GND layer. Rust groups the affected polyline as
+one trace, explaining two Rust reports versus three KiCad segment reports.
+DSN GND and PWR classes both explicitly specify 200 um width / 150 um
+clearance; all four layers are signal layers. Thus unlike Azalea, this is
+not explained by an omitted local clearance rule. Need capture when the
+violation first enters the board before proposing a fix. DRC command exit
+1 is the expected detected-violation result, not a failed import. Artifacts:
+`/tmp/copperroute-quality/proba-internal-drc.{json,log}`.
+
+
+Proba first-pass isolation completed normally (144.275 seconds, max passes
+one), already containing the target via/trace and trace/trace clearance
+errors. Added environment-gated after-connection DRC in a separate
+`copperroute-quality-proba-diagnostic` helper. It first detects the target
+immediately after routing ItemId(628), net 12 GNDREF, in pass one. Report:
+Via ItemId(6657) vs +3V3 Trace ItemId(35542), layer 1, expected 1500 internal
+units / actual 516.985855. Requested a safe router stop after that complete
+connection; captured SES/result/log in `/tmp/copperroute-quality/proba-first-violation*`.
+Diagnostic run took 23.18 seconds. A second diagnostic checkpoint before
+`opt_changed_area` is being built to distinguish insertion from subsequent
+optimization. No production patch inferred from the DRC symptoms alone.
+
+
+EPYC first batch completed at 2026-09-09 04:39:26 UTC; cumulative batch
+started automatically at 04:39:30. Verified live wrapper 3599523, uv
+3599538, and active census cells. All six first-batch exports verified in
+workbench's metadata backup. Smoothing+empty-proposal final matched KiCad:
+740 pairs, 13 improvements / 8 regressions, -25 U, one DRC gainer,
+-14 routing V, CPU ratio 1.00684. Java: 101 pairs, 6 / 5, -12 U,
+zero DRC gainers / unchanged V, CPU ratio 0.99792. No newly unscored
+outputs. Five candidate experiments plus baseline are now complete on
+EPYC. Exact results JSON updated separately from the workbench report.
+
+Proba second diagnostic: the target clearance violation is already present
+before opt_changed_area, involving via6657 and trace35535. The later
+optimizer changes the trace identity to35542 while preserving the same
+0.0517 mm gap. This excludes post-route optimization as the first source.
+Added finer checkpoints around forced trace insertion and endpoint joins
+in the isolated diagnostic helper; next run is underway.
+
+
+Proba third diagnostic narrows first introduction further: immediately
+after forced GNDREF trace insertion on layer 1, before endpoint connection
+and before opt_changed_area. The inserted segment runs horizontally from
+(1870653,-983017) to (1851623,-983017). Its shove leaves +3V3 at y=-979500,
+3517 units from the new GND trace: that clears two 1000-unit half-widths
+plus the 1500-unit rule. But the existing GND via is at y=-982516,
+501 units above the new GND line, and therefore only 3016 units from the
+shoved +3V3 line. Its 1500-unit radius plus the foreign trace's 1000-unit
+half-width leave approximately 517 units clearance, below 1500. Need
+capture the original foreign trace geometry to build a minimal shove
+reproduction; do not patch based only on this geometric explanation.
+
+
+Prepared primary PR branch step two by applying the reviewed zero-distance
+via guard patch on top of 0217f96. Full primary workspace test gate is
+running in `/tmp/copperroute-quality/workspace-primary-census-via-progress.log`.
+No commit until cumulative corpus comparison is complete. Remote binary
+remains immutable and source-equivalent to this branch step. The primary
+now has two changed source/test files plus reporting updates; projection
+and diagnostic instrumentation are not applied there.
+
+
+User requested CONTRIBUTING.md compliance and the benchmark report pasted
+into the PR. Read the file and fetched origin/main: it advanced from
+636e039 to **6886640** (ratsnest viewer PR). Reviewed the Rust diff: existing
+connectivity list/max-connection calculations are extracted into shared
+functions, with viewer consumers added. Nonetheless, final PR comparison
+will use that exact latest main, not substitute old-main measurements.
+Primary old-base census+zero workspace gate passed **2,556 / 0 failures /
+0 warnings**. Preserved work with a named stash, rebased onto origin/main,
+and restored successfully. Census commit is now **84edea1** (formerly
+0217f96); pending zero-distance source/test and all reporting files survived.
+New primary workspace gate is running after the rebase.
+
+Shipped main's incremental git bundle to workbench. Detached helpers at
+6886640: `copperroute-quality-main-6886640`, `...-latest-via-progress`,
+`...-latest-via-guards`. Applied previously verified cumulative source
+archives to the latter two. Release builds use --locked and two build
+jobs sequentially; no active candidate binaries changed. Final comparison
+will use the requested imported 845-board corpus, including every selected
+PCBench board, and paste actual `bench pr-summary` output into the PR.
+CPU observations will be reported as single-repetition measurements, not
+a timing-speedup claim (CONTRIBUTING requires three repetitions for that).
+
+Proba before-shove geometry captured successfully: only two nearby layer-1
+traces, GNDREF35531 and +3V3(net32)35530. Full line equations and after-shove
+items are saved in `proba-stage4.log`. Archived all diagnostic source edits
+as `/tmp/copperroute-quality/proba-diagnostic-reviewed.patch` and restored
+the helper's three instrumented files; helper is clean. Further minimal
+shove-test work is parked while finishing the PR's existing validated fixes.
+
+
+Prepared final-run wrapper `/root/server-pr-final.sh` (not launched yet).
+It waits for the previous cumulative batch and verified latest-binary
+readiness, then runs latest main, zero-only cumulative, and both-via-guards
+cumulative on the requested 845 boards. It generates the required
+`bench compare --baseline main --against change --fail-on-regression`
+and `bench pr-summary`, using CPU timing. A nonzero comparison gate is
+saved as evidence, not suppressed as success. Reports and PR summary are
+copied into the backed-up logs directory. Final config/commit identities
+and binary readiness remain to be supplied after validation and builds.
+
+
+Rebased primary census+zero `cargo test --workspace` completed: **2,563
+passed, zero failed, zero warnings**, reflecting the newly landed main
+tests. Log `/tmp/copperroute-quality/workspace-primary-latest-via-progress.log`.
+Latest baseline release hash e3eb7b36df5afda3669892cbd363e370591af84ba312a2b2628c5303617491ff;
+latest census+zero hash d5c6301b3e46ee066c77d2c4139d11812b523f5d1ba1c177888d962050a1f75f.
+Both built --release --locked on workbench and are transferring to EPYC.
+
+Cumulative zero-distance guard has completed all 740 KiCad scores: three
+U improvements, four regressions, -25 U, zero DRC gainers / unchanged
+routing V, CPU ratio 0.99621. Regressions: Blitz .C68 +9, Blitz Rev.K +1,
+Karabas A +2, Karabas B +10. All are router TIMED_OUT; first three end in
+the same pass in both variants, Karabas B ends pass4 versus parent pass5.
+These losses remain counted, not excused by their deadline sensitivity.
+Remaining Java cells must finish before commit numbers are finalized.
+
+
+Cumulative batch `quality-epyc-cumulative-01` is complete (845 attempts per
+candidate). Zero-distance guard versus cache parent, on 841 common scored
+boards: KiCad 740, 3 improved / 4 regressed, -25 unrouted, no DRC gainers,
+0 routing violation change, CPU ratio 0.99621; Java 101, 3 improved /
+3 regressed, -14 unrouted, no DRC gainers, 0 violation change, CPU ratio
+0.99855. No newly unscored boards. Aggregate -39 unrouted / unchanged DRC.
+The four KiCad regressions and deadline observations are recorded above.
+These measured old-main cumulative results support landing the zero-distance
+guard separately; exact latest-main validation remains required for the PR.
+Latest-main workspace gate: 2,563 passed, no failures or warnings.
+
+Both guards versus cache parent also completed: KiCad 740, 10 improved /
+6 regressed, -162 unrouted, 2 DRC gainers / +10 routing violations, CPU
+ratio 0.96534; Java 101, 4 improved / 3 regressed, -20 unrouted, no DRC
+gainers / unchanged violations, CPU ratio 0.99056. The two LPC2148 copies
+account for the +10 width violations; their insertion-margin/neckdown root
+cause is documented above. Incremental comparison against zero guard and
+remaining regressing-board inspection precede the projection commit.
