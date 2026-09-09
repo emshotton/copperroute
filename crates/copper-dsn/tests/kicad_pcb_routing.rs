@@ -1,0 +1,110 @@
+use copper_dsn::kicad::pcb::routing::{check_zones, read_copper_text, read_traces, read_vias};
+use copper_dsn::kicad::pcb::structure::{Layers, NetTable};
+use copper_dsn::kicad::sexpr::parse;
+
+const LAYERS: &str = r#"(layers (0 "F.Cu" signal) (2 "B.Cu" signal))"#;
+
+fn root_of(body: &str) -> copper_dsn::kicad::sexpr::Node {
+    let text = format!("(kicad_pcb (version 20241229) {LAYERS} (net 1 \"GND\") {body})");
+    parse(&text).expect("it parses")
+}
+
+#[test]
+fn it_reads_a_track() {
+    let root = root_of(r#"(segment (start 1 2) (end 3 4) (width 0.25) (layer "F.Cu") (net 1))"#);
+    let layers = Layers::read(&root).expect("layers");
+    let nets = NetTable::read(&root).expect("nets");
+    let traces = read_traces(&root, &layers, &nets).expect("traces");
+    assert_eq!(traces.len(), 1);
+    assert_eq!(traces[0].netName.as_deref(), Some("GND"));
+    assert_eq!(traces[0].layerIndex, 0);
+}
+
+#[test]
+fn it_rejects_a_locked_track() {
+    let root = root_of(
+        r#"(segment (start 1 2) (end 3 4) (width 0.25) (layer "F.Cu") (net 1) (locked yes))"#,
+    );
+    let layers = Layers::read(&root).expect("layers");
+    let nets = NetTable::read(&root).expect("nets");
+    let error = read_traces(&root, &layers, &nets).expect_err("it fails");
+    assert_eq!(error.message, "Locked tracks are not supported yet.");
+}
+
+#[test]
+fn it_reads_a_through_via() {
+    let root = root_of(r#"(via (at 5 6) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1))"#);
+    let layers = Layers::read(&root).expect("layers");
+    let nets = NetTable::read(&root).expect("nets");
+    let vias = read_vias(&root, &layers, &nets).expect("vias");
+    assert_eq!(vias.len(), 1);
+    assert_eq!(vias[0].startLayerIndex, 0);
+    assert_eq!(vias[0].endLayerIndex, 1);
+}
+
+#[test]
+fn it_rejects_a_blind_via() {
+    let root = root_of(
+        r#"(via blind (at 5 6) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1))"#,
+    );
+    let layers = Layers::read(&root).expect("layers");
+    let nets = NetTable::read(&root).expect("nets");
+    let error = read_vias(&root, &layers, &nets).expect_err("it fails");
+    assert_eq!(error.message, "Locked, blind, and micro vias are not supported yet.");
+}
+
+#[test]
+fn it_warns_about_copper_zones_without_routing_against_them() {
+    let root = root_of(r#"(zone (net 1) (layer "F.Cu"))"#);
+    let nets = NetTable::read(&root).expect("nets");
+    let mut warnings = Vec::new();
+    check_zones(&root, &nets, &mut warnings).expect("zones are accepted");
+    assert!(warnings.iter().any(|w| w.contains("fill cache removed")));
+}
+
+#[test]
+fn it_rejects_a_netless_copper_zone() {
+    let root = root_of(r#"(zone (layer "F.Cu"))"#);
+    let nets = NetTable::read(&root).expect("nets");
+    let mut warnings = Vec::new();
+    let error = check_zones(&root, &nets, &mut warnings).expect_err("it fails");
+    assert_eq!(error.message, "Netless copper zones are not supported for routing yet.");
+}
+
+#[test]
+fn it_rejects_a_keepout_that_restricts_tracks() {
+    let root = root_of(r#"(zone (layer "F.Cu") (keepout (tracks not_allowed) (vias allowed)))"#);
+    let nets = NetTable::read(&root).expect("nets");
+    let mut warnings = Vec::new();
+    let error = check_zones(&root, &nets, &mut warnings).expect_err("it fails");
+    assert_eq!(
+        error.message,
+        "Zone keepouts that restrict tracks or vias are not supported for routing yet."
+    );
+}
+
+#[test]
+fn it_reserves_copper_text_as_an_obstacle() {
+    let root = root_of(
+        r#"(gr_text "HI" (at 5 5 0) (layer "F.Cu") (effects (font (size 1 1) (thickness 0.15))))"#,
+    );
+    let layers = Layers::read(&root).expect("layers");
+    let mut warnings = Vec::new();
+    let areas = read_copper_text(&root, &layers, &mut warnings).expect("areas");
+    assert_eq!(areas.len(), 1);
+    assert!(areas[0].isObstacle);
+    let polygon = areas[0].polygon.as_ref().expect("a polygon");
+    assert_eq!(polygon.len(), 4);
+    let corners: Vec<(f64, f64)> = polygon.iter().map(|p| (p.x, p.y)).collect();
+    assert_eq!(corners, vec![(3.0, 4.0), (7.0, 4.0), (7.0, 6.0), (3.0, 6.0)]);
+    assert!(warnings.iter().any(|w| w.contains("Copper text")));
+}
+
+#[test]
+fn it_rejects_a_via_whose_layer_span_skips_an_inner_layer() {
+    let root = root_of(r#"(via (at 5 6) (size 0.6) (drill 0.3) (layers "F.Cu" "In1.Cu") (net 1))"#);
+    let layers = Layers::read(&root).expect("layers");
+    let nets = NetTable::read(&root).expect("nets");
+    let error = read_vias(&root, &layers, &nets).expect_err("it fails");
+    assert_eq!(error.message, "Only through vias assigned to a net are supported.");
+}

@@ -1,5 +1,6 @@
 pub mod footprints;
 pub mod outline;
+pub mod routing;
 pub mod structure;
 
 use crate::kicad::NetClassJson;
