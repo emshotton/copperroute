@@ -46,12 +46,18 @@ the trade-off. Nominal and its smoothing combination remain on hold for DRC
 and missing-output trade-offs. Images and standalone smoothing do not currently
 improve PCBench connections. A small regression count is not an automatic veto.
 
-Active validation: workbench via-progress, plus temporary-server batch
-`quality-epyc-full-01` with main, census, via-progress, via-projection,
-nominal+smoothing+census and smoothing-noop. The replaced workbench waiters
-are stopped; results and artifacts are continuously copied back to workbench.
-The cache+two-via-guards composition has local tests only and is not yet in
-a full-corpus run.
+Latest status (2026-09-09 UTC): all experiments and focused repeats are
+complete. Three fixes are separately committed on main6886640. Final
+workspace gate: 2,565 passed, zero failures or warnings. Final matched
+corpus result: -935 unrouted / +14 routing violations; KiCad -882 / +15,
+Java -53 / -1. KiCad mask errors +151. Two routing-clean gains, no clean
+losses. The automatic regression gate fails and is retained in the PR
+report. Nominal clearance remains held; the negative standalone workbench
+zero-guard run and its follow-up repeats are retained. See
+[routing-quality-comparison.md](routing-quality-comparison.md),
+[routing-quality-pr-results.json](routing-quality-pr-results.json), and
+[the full benchmark summary](routing-quality-pr-performance.md).
+All server results are backed up; the temporary server is released.
 
 ## Measurement audit (2026-09-08)
 
@@ -2157,3 +2163,161 @@ width violations apiece while losing 61 unrouted connections each. This
 is an intentional progress correction backed by the reproduced oscillation,
 not a claim that its additional routing is DRC-clean. Latest-main full
 comparison remains running and will determine the final PR recommendation.
+
+
+### Workbench standalone zero guard: contradictory repeat, retained
+
+`quality-via-progress-full` completed all 845 attempts. Before referee repair,
+KiCad 732 matched scores: 3 improved / 11 regressed, +172 U, 1 DRC gainer /
+-7 V, CPU ratio 1.02143. Java 101: 5 improved / 8 regressed, +21 U, no
+DRC gainers / unchanged V, CPU ratio 1.04713. Eight newly unscored KiCad
+outputs: seven SES-import failures and Djinn's missing output. This contradicts
+the positive EPYC standalone and cumulative measurements and remains part
+of the evidence; no favorable subset substitutes for it.
+
+Every U-regressing output is TIMED_OUT. Several large KiCad losses
+(Karabas revisions A/B/C/G, 40-channel switch, Dropbot panel) received
+only about 193-209 CPU seconds, versus about 299-301 in the old baseline.
+This establishes a CPU-budget confound under the wall-time deadline, not
+proof that contention accounts for every loss. Djinn hit the external
+360-second limit and produced no SES; its recorded CPU/RSS zeros are
+missing measurements, not zero actual resource consumption.
+
+Preserved all seven failed-import cells under workbench
+`~/copperroute-server-backup/workbench-via-referee-repairs*/original/`.
+The first diagnostic retry omitted the explicit KiCad CLI variable,
+failed tool discovery, and changed no benchmark cells. The second retry
+uses the explicit installed CLI and a fresh X display per board. Six of
+seven have now succeeded on byte-identical saved SES, with original
+metrics/referee artifacts retained before rebuilding metrics. Final repaired
+counts must replace the preliminary numbers above in the summary tables.
+
+Started `quality-via-progress-regression-repeat` on workbench, bench PID85433:
+13 KiCad boards (every U regressor or DRC gainer, plus missing-output Djinn),
+both original main636 binary and unchanged zero-distance binary, 300 seconds,
+ten passes, one routing thread, jobs12. No concurrent release builds.
+This targeted matched repeat investigates the observed losses; it will
+not replace the completed full run. Final latest-main EPYC batch remains
+active and has started its combined candidate.
+
+Clarified clean-pass terminology: the two projection clean gains mean
+zero U and zero routing V. Starling has zero errors of all KiCad types;
+Hardware Playground serial gateway has nine courtyard/outline errors
+(six pth_inside_courtyard, three invalid_outline).
+
+
+All seven workbench import retries succeeded; unchanged SES hashes and
+original failures are recorded in `workbench-via-referee-repairs.json`
+on the laptop and workbench backup. Re-exported the run. Final matched
+KiCad 739: 3 improved / 12 regressed, +196 U, 2 DRC gainers / -6 V,
+CPU ratio 1.01658. Java unchanged at +21 U / 0 V / CPU 1.04713.
+Djinn is the sole newly unscored board. Referee repair adds SRAM-bank
+108 -> 132 U and 0 -> 1 V to the investigated regression set.
+
+
+Final PR checks: fetched origin/main again; it remains 6886640, the
+benchmarked baseline. Whole-workspace formatting check flags pre-existing
+formatting in unchanged copper-dsn/tests/kicad_browser_geometry.rs and
+copper-web/src/lib.rs, plus one extra blank line in the new projection
+test module. Removed only that new blank line; all three changed Rust
+files now pass rustfmt --check. A final workspace test is running in
+`workspace-primary-final-format.log`. Production code is byte-identical
+to the benchmarked source; the sole new source-file difference is test
+whitespace. No unrelated baseline formatting changed.
+
+Latest-main candidate `change` has an infrastructure referee failure on
+HellScribe: original log says 'Unable to access the X Display'. Copied
+the complete cell to `/root/copperroute-logs/pr-final-referee-retry/`,
+rescored byte-identical SES with a fresh X display: 0 U / 0 routing V /
+0 all-type errors, 21 vias, 1,567.7648 mm. Original run is still active;
+repair application and comparison regeneration wait for its completion.
+This will be recorded as referee repair, not rerouting.
+
+
+Final post-format workspace suite completed with exit0: **2,565 passed,
+zero failures, zero warnings**. No production changes after the measured
+build; only removal of a blank line in the projection test module.
+
+
+### Final-run decelerator4030 clearance gainer
+
+Inspected main/zero/combined saved KiCad DRCs. Main and cache+zero each
+have 12 clearance errors; combined has 14 (+2 net). Additional combined
+pairs include TCK tracks on Dolna against GND via (160.3862,42.7482):
+actual gaps 0.1774 / 0.1304 mm against required 0.2 mm. Another new pair
+is _RMC against +5V via (87.6838,78.2013), gap 0.1565 mm. Some earlier
+ARM13 pairs disappear, so raw new-pair count differs from net +2.
+
+DSN explicitly specifies default clearance 100 um and Power class
+(+3.3V,+5V,GND) clearance 200 um, width 381 um and 900:500 via rule.
+The SES includes a 550:250 GND via at the offending point. The original
+board is complete, 0 routing errors / 2 outline errors, 28,322.1397 mm
+and 865 vias. This is not evidence that KiCad's 0.2 mm requirement was
+omitted from the DSN.
+
+Imported combined SES into CopperRoute's own DRC: 1,708 wires / 566 vias,
+zero import errors. Checker reports 12 clearance item-pair errors,
+including GND-via/TCK at expected 0.2000 mm / actual 0.1303 mm, plus
+267 dangling vias and one dangling trace. KiCad counts individual track
+segments, so its 14 clearance reports are not directly comparable to
+our polyline-pair count. The rule exists and the checker recognizes the
+violation. Whether clearance is lost during routing or geometry changes
+later requires an insertion-level reproduction; no speculative patch
+was added. The +2 KiCad change remains a real regression in the report.
+Artifacts: `decelerator-internal-drc.json` and `.log`, copied to laptop
+and automatically backed up from server logs.
+
+
+### Final exact-main full corpus complete
+
+`quality-pr-main-6886640` completed all three 845-attempt cohorts. Applied
+HellScribe referee repair only after completion, preserved the original
+cell and original comparison/summary in `pr-final-pre-referee-repair`,
+then rebuilt metrics, re-exported and reran compare/pr-summary.
+
+Combined versus latest main, matched KiCad740: 11 U improvements /
+4 regressions, -882 U, 4 DRC gainers / +15 routing V, CPU ratio 0.95025.
+Java101: 5 improvements / 3 regressions, -53 U, no DRC gainers / -1 V,
+CPU ratio 0.95918. Aggregate -935 U / +14 V. Two routing-clean gains,
+no clean losses. KiCad solder-mask +151 / all-type errors +166.
+No newly unscored boards. issue756-tomu-fpga8 newly scores 11 U / 853 V
+and is excluded from matched improvement totals.
+
+`bench compare --fail-on-regression` exits1, reporting eight quality
+losses (its score-based category is broader than U regression). Its
+comparison includes failure cells as well as successfully scored boards;
+our referee-based matched quality table uses 841 boards. Do not present
+the failed gate as passing or substitute aggregate gains for its output.
+Full unabridged `bench pr-summary` is 83 KB, mostly repeated single-sample
+noise caveats, saved as `routing-quality-pr-performance.md`.
+
+Workbench 13-board matched repeat completed. Baseline Djinn lacks SES,
+zero guard newly scores it at 393 U / 0 V. On 12 common scored boards:
+5 U improvements / 2 regressions, +7 U, one DRC gainer / +5 V, CPU
+ratio 0.98790. The two U losses are ReSDMAC 128 -> 145 and decelerator
+412 -> 483, both around 300 CPU seconds. Chess improves 82 -> 76 U
+but gains five V (309.37 -> 268.79 CPU seconds). Thus the original
+full-run negative result is not explained entirely by contention. The
+focused repeat reduces the broad regression pattern but retains real
+losses on two deadline-limited designs. The separately queued SRAM-bank
+pair is active. These repeats remain supplementary to the full corpus.
+
+
+User requested whether the temporary EPYC server can be powered off.
+Verified no active copperroute or bench processes. Final workbench
+rsync dry-run comparison reports zero differences for detailed results
+and logs; checksum comparison reports zero export differences. Laptop
+also has final exports, matched results and full performance report.
+Stopped workbench backup-loop PIDs4179845/4181848 after verification.
+Server is released: no further work depends on it being available.
+Remaining focused repeats run on workbench.
+
+
+Final SRAM-bank matched repeat `quality-via-progress-sram-repeat` completed:
+both main636 and standalone zero guard finish ten passes with 108 KiCad
+unrouted / 0 routing violations, 171 vias and 4,339.721 mm self wirelength.
+CPU 180.91 versus 179.61 seconds. The original full-run 108 -> 132 U /
+0 -> 1 V regression does not reproduce in this matched completed run.
+This is supplementary evidence; the original full run remains recorded.
+No routing runs or required validation remain pending. The proposed
+combined changes retain their measured trade-offs for case-by-case review.

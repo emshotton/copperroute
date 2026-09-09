@@ -1,0 +1,188 @@
+{
+  "baseline_sha": "636e039ea3a2066328b002b39b75039a7dd03e82",
+  "baseline_run": "quality-epyc-full-01",
+  "experiments": [
+    {
+      "run": "quality-epyc-full-01",
+      "candidate": "census",
+      "attempted": 845,
+      "baseline_unscored": [
+        "issue006-lpc18xx_43xx_sch",
+        "issue756-tomu-fpga7",
+        "issue756-tomu-fpga8",
+        "issue756-tomu-fpga9"
+      ],
+      "newly_unscored": [],
+      "newly_scored": [
+        {
+          "board": "issue756-tomu-fpga8",
+          "unrouted": 11,
+          "violations": 853,
+          "cpu_s": 357.71
+        }
+      ],
+      "groups": {
+        "kicad": {
+          "paired": 740,
+          "u_improved": 5,
+          "u_regressed": 5,
+          "delta_unrouted": -708,
+          "drc_gainers": 1,
+          "delta_violations": 3,
+          "cpu_ratio": 0.9914126289732436,
+          "delta_mask_errors": -13,
+          "delta_all_errors": -10
+        },
+        "java-drc": {
+          "paired": 101,
+          "u_improved": 4,
+          "u_regressed": 2,
+          "delta_unrouted": -39,
+          "drc_gainers": 0,
+          "delta_violations": 0,
+          "cpu_ratio": 0.9700756995431313
+        }
+      }
+    },
+    {
+      "run": "quality-epyc-full-01",
+      "candidate": "via-progress",
+      "attempted": 845,
+      "baseline_unscored": [
+        "issue006-lpc18xx_43xx_sch",
+        "issue756-tomu-fpga7",
+        "issue756-tomu-fpga8",
+        "issue756-tomu-fpga9"
+      ],
+      "newly_unscored": [],
+      "newly_scored": [],
+      "groups": {
+        "kicad": {
+          "paired": 740,
+          "u_improved": 3,
+          "u_regressed": 2,
+          "delta_unrouted": -42,
+          "drc_gainers": 0,
+          "delta_violations": 0,
+          "cpu_ratio": 0.9967061070720244,
+          "delta_mask_errors": 2,
+          "delta_all_errors": 2
+        },
+        "java-drc": {
+          "paired": 101,
+          "u_improved": 5,
+          "u_regressed": 1,
+          "delta_unrouted": -22,
+          "drc_gainers": 0,
+          "delta_violations": 0,
+          "cpu_ratio": 1.0010891384708456
+        }
+      }
+    },
+    {
+      "run": "quality-epyc-full-01",
+      "candidate": "via-projection",
+      "attempted": 845,
+      "baseline_unscored": [
+        "issue006-lpc18xx_43xx_sch",
+        "issue756-tomu-fpga7",
+        "issue756-tomu-fpga8",
+        "issue756-tomu-fpga9"
+      ],
+      "newly_unscored": [],
+      "newly_scored": [],
+      "groups": {
+        "kicad": {
+          "paired": 740,
+          "u_improved": 6,
+          "u_regressed": 3,
+          "delta_unrouted": -139,
+          "drc_gainers": 2,
+          "delta_violations": 10,
+          "cpu_ratio": 0.9815356949676881,
+          "delta_mask_errors": 160,
+          "delta_all_errors": 170
+        },
+        "java-drc": {
+          "paired": 101,
+          "u_improved": 3,
+          "u_regressed": 3,
+          "delta_unrouted": -1,
+          "drc_gainers": 0,
+          "delta_violations": 0,
+          "cpu_ratio": 1.0019199871149713
+        }
+      }
+    },
+    {
+      "run": "quality-epyc-full-01",
+      "candidate": "nominal-smoothing-census",
+      "attempted": 845,
+      "baseline_unscored": [
+        "issue006-lpc18xx_43xx_sch",
+        "issue756-tomu-fpga7",
+        "issue756-tomu-fpga8",
+        "issue756-tomu-fpga9"
+      ],
+      "newly_unscored": [],
+      "newly_scored": [],
+      "groups": {
+        "kicad": {
+          "paired": 740,
+          "u_improved": 129,
+          "u_regressed": 50,
+          "delta_unrouted": -1163,
+          "drc_gainers": 31,
+          "delta_violations": -3,
+          "cpu_ratio": 0.8670540213352349,
+          "delta_mask_errors": 396,
+          "delta_all_errors": 393
+        },
+        "java-drc": {
+          "paired": 101,
+          "u_improved": 36,
+          "u_regressed": 3,
+          "delta_unrouted": -193,
+          "drc_gainers": 1,
+          "delta_violations": 66,
+          "cpu_ratio": 0.9314932883928675
+        }
+      }
+    },
+    {
+      "run": "quality-epyc-full-01",
+      "candidate": "smoothing-noop",
+      "attempted": 845,
+      "baseline_unscored": [
+        "issue006-lpc18xx_43xx_sch",
+        "issue756-tomu-fpga7",
+        "issue756-tomu-fpga8",
+        "issue756-tomu-fpga9"
+      ],
+      "newly_unscored": [],
+      "newly_scored": [],
+      "groups": {
+        "kicad": {
+          "paired": 740,
+          "u_improved": 13,
+          "u_regressed": 8,
+          "delta_unrouted": -25,
+          "drc_gainers": 1,
+          "delta_violations": -14,
+          "cpu_ratio": 1.006838581284154,
+          "delta_mask_errors": -5,
+          "delta_all_errors": -19
+        },
+        "java-drc": {
+          "paired": 101,
+          "u_improved": 6,
+          "u_regressed": 5,
+          "delta_unrouted": -12,
+          "drc_gainers": 0,
+          "delta_violations": 0,
+          "cpu_ratio": 0.9979238604802815
+        }
+      }
+    }
+  ]
+}

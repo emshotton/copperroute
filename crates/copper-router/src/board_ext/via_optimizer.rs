@@ -1000,5 +1000,4 @@ mod projection_regression_tests {
             Some(Point::new(3, 3))
         );
     }
-
 }
