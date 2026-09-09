@@ -920,6 +920,16 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 outline_clearance_no,
                 FixedState::SystemFixed,
             );
+            if let Some(clearance) = pad.copperClearance {
+                let distance = clearance * scale_factor;
+                if !distance.is_finite() || distance.abs() > f64::from(i32::MAX) {
+                    return parse_error("components", "Invalid pad copper clearance");
+                }
+                board.raise_pin_clearance(
+                    pin_id,
+                    &vec![distance.max(0.0).ceil() as i32; layer_count],
+                );
+            }
             if let Some(copper_board::Item::Pin(pin)) = board.items.get_mut(&pin_id) {
                 pin.allow_solder_mask_bridges = pad.allowSolderMaskBridges;
             }

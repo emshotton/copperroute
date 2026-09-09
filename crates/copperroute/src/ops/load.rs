@@ -128,61 +128,9 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
     }
     apply_kicad_project(request.kicad_project.as_deref(), &mut board, &transform);
     if let Some(path) = std::env::var_os("COPPERROUTE_PAD_CLEARANCE_JSON") {
-        #[derive(serde::Deserialize)]
-        struct PadFloor {
-            component: String,
-            pad: String,
-            x_um: f64,
-            y_um: f64,
-            front_um: f64,
-            back_um: f64,
-        }
         let floors: Vec<PadFloor> = serde_json::from_slice(&std::fs::read(&path)?)
             .map_err(|error| OpError::Input(format!("Invalid pad clearance metadata: {error}")))?;
-        let mut matched = std::collections::BTreeSet::new();
-        for id in board.get_pins() {
-            let Some(copper_board::items::Item::Pin(pin)) = board.get_item(id) else {
-                continue;
-            };
-            let component = &board.components.get(pin.hdr.get_component_id()).name;
-            let ctx = board.ctx();
-            let center = pin.get_center(&ctx).to_float();
-            let Some(name) = pin.name(&ctx) else { continue };
-            if let Some((index, floor)) = floors.iter().enumerate().find(|(_, f)| {
-                f.component == *component
-                    && (((center.x - f64::from(board.clearance_override_board_units(f.x_um)))
-                        .abs()
-                        <= 2.0
-                        && (center.y + f64::from(board.clearance_override_board_units(f.y_um)))
-                            .abs()
-                            <= 2.0)
-                        || (f.pad == name
-                            && floors
-                                .iter()
-                                .filter(|other| other.component == *component && other.pad == name)
-                                .count()
-                                == 1))
-            }) {
-                matched.insert(index);
-                let mut values = vec![0; board.get_layer_count()];
-                values[0] = board.clearance_override_board_units(floor.front_um);
-                let last = values.len() - 1;
-                values[last] = board.clearance_override_board_units(floor.back_um);
-                for (layer, value) in values.iter_mut().enumerate() {
-                    *value = board.solder_mask_clearance_limit(id, layer, *value);
-                }
-                board.raise_pin_clearance(id, &values);
-            }
-        }
-        for (index, floor) in floors.iter().enumerate() {
-            if !matched.contains(&index) {
-                tracing::warn!(
-                    "Pad clearance metadata did not match {}.{}",
-                    floor.component,
-                    floor.pad
-                );
-            }
-        }
+        apply_pad_clearance_metadata(&mut board, &floors)?;
     }
     import_session(request.session.as_deref(), &mut board, &transform);
 
@@ -265,5 +213,147 @@ fn import_session(session: Option<&Path>, board: &mut Board, transform: &Coordin
             summary.errors_encountered
         ),
         Err(error) => tracing::error!("Failed to load session file: {error}"),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct PadFloor {
+    component: String,
+    pad: String,
+    x_um: f64,
+    y_um: f64,
+    front_um: f64,
+    back_um: f64,
+    copper_um: Option<f64>,
+}
+
+fn apply_pad_clearance_metadata(board: &mut Board, floors: &[PadFloor]) -> Result<(), OpError> {
+    let copper_floors = floors
+        .iter()
+        .map(|floor| {
+            let value = floor.copper_um.unwrap_or(0.0);
+            let distance = copper_board::Unit::scale(
+                value * f64::from(board.communication.resolution.max(1)),
+                copper_board::Unit::Um,
+                board.communication.unit,
+            );
+            if !distance.is_finite() || distance < 0.0 || distance > f64::from(i32::MAX) {
+                return Err(OpError::Input(format!(
+                    "Invalid copper clearance for {}.{}",
+                    floor.component, floor.pad
+                )));
+            }
+            Ok(distance.ceil() as i32)
+        })
+        .collect::<Result<Vec<_>, OpError>>()?;
+    let mut matched = std::collections::BTreeSet::new();
+    for id in board.get_pins() {
+        let Some(copper_board::items::Item::Pin(pin)) = board.get_item(id) else {
+            continue;
+        };
+        let component = &board.components.get(pin.hdr.get_component_id()).name;
+        let ctx = board.ctx();
+        let center = pin.get_center(&ctx).to_float();
+        let Some(name) = pin.name(&ctx) else { continue };
+        if let Some((index, floor)) = floors.iter().enumerate().find(|(_, f)| {
+            f.component == *component
+                && (((center.x - f64::from(board.clearance_override_board_units(f.x_um))).abs()
+                    <= 2.0
+                    && (center.y + f64::from(board.clearance_override_board_units(f.y_um))).abs()
+                        <= 2.0)
+                    || (f.pad == name
+                        && floors
+                            .iter()
+                            .filter(|other| other.component == *component && other.pad == name)
+                            .count()
+                            == 1))
+        }) {
+            matched.insert(index);
+            let mut values = vec![0; board.get_layer_count()];
+            values[0] = board.clearance_override_board_units(floor.front_um);
+            let last = values.len() - 1;
+            values[last] = board.clearance_override_board_units(floor.back_um);
+            for (layer, value) in values.iter_mut().enumerate() {
+                *value = board
+                    .solder_mask_clearance_limit(id, layer, *value)
+                    .max(copper_floors[index]);
+            }
+            board.raise_pin_clearance(id, &values);
+        }
+    }
+    for (index, floor) in floors.iter().enumerate() {
+        if !matched.contains(&index) {
+            tracing::warn!(
+                "Pad clearance metadata did not match {}.{}",
+                floor.component,
+                floor.pad
+            );
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod pad_clearance_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn copper_metadata_is_not_limited_by_the_mask_gap_cap() {
+        let input = json!({"resolution":10000,"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+          "nets":[{"id":1,"name":"A"},{"id":2,"name":"B"}],
+          "components":[{"reference":"J1","position":{"x":0,"y":0},"layer":"F.Cu","pads":[{"name":"1","netName":"A","shape":"rect","size":{"x":1,"y":1},"layers":["F.Cu","B.Cu"]}]},
+          {"reference":"J2","position":{"x":1.2,"y":0},"layer":"F.Cu","pads":[{"name":"1","netName":"B","shape":"rect","size":{"x":1,"y":1},"layers":["F.Cu","B.Cu"]}]}]});
+        let copper_dsn::BoardReadResult::Success {
+            board: Some(mut board),
+            ..
+        } = copper_dsn::kicad::read_board(&input.to_string(), None)
+        else {
+            panic!("fixture must load")
+        };
+        let floors:Vec<PadFloor>=serde_json::from_value(json!([{"component":"J1","pad":"1","x_um":0,"y_um":0,"front_um":400,"back_um":400,"copper_um":300}])).unwrap();
+        let pin = board
+            .get_pins()
+            .into_iter()
+            .find(|id| {
+                let item = board.get_item(*id).unwrap();
+                board.components.get(item.component_id()).name == "J1"
+            })
+            .unwrap();
+        assert_eq!(board.solder_mask_clearance_limit(pin, 0, 4000), 2000);
+        apply_pad_clearance_metadata(&mut board, &floors).unwrap();
+        let class = board.get_item(pin).unwrap().clearance_class();
+        for layer in 0..2 {
+            assert!(
+                board
+                    .rules
+                    .clearance_matrix
+                    .get_value(class, 1, layer, false)
+                    >= 3000
+            );
+        }
+    }
+    #[test]
+    fn invalid_copper_metadata_is_rejected_even_without_matching_pads() {
+        for value in [-1.0, f64::INFINITY, f64::NAN, 1e30] {
+            let input = json!({"resolution":10000,"layers":[{"name":"F.Cu"},{"name":"B.Cu"}]});
+            let copper_dsn::BoardReadResult::Success {
+                board: Some(mut board),
+                ..
+            } = copper_dsn::kicad::read_board(&input.to_string(), None)
+            else {
+                panic!("fixture must load")
+            };
+            let floor = PadFloor {
+                component: "absent".into(),
+                pad: "1".into(),
+                x_um: 0.0,
+                y_um: 0.0,
+                front_um: 0.0,
+                back_um: 0.0,
+                copper_um: Some(value),
+            };
+            assert!(apply_pad_clearance_metadata(&mut board, &[floor]).is_err());
+        }
     }
 }

@@ -1,0 +1,48 @@
+{
+  "dsn_sha256": "7ee4015e73fd754db20e51b8886f5139321c36f562258df77e9d39a43a7f96d9",
+  "raw_has_text": true,
+  "dsn_keepouts": 0,
+  "dsn_wires": 0,
+  "polygon_parents": {
+    "library/image/outline": 23
+  },
+  "ground_truth": {
+    "wirelength_mm": 1061.5428,
+    "vias": 67,
+    "drv_routing": 0,
+    "drv_all": 30,
+    "project_generated": true,
+    "zones_refilled": 10,
+    "nets": 50,
+    "layers": 2,
+    "kicad_version": null,
+    "unconnected": 0,
+    "reference_complete": true
+  },
+  "original_text_errors": [],
+  "candidate_text_errors": [
+    {
+      "description": "Items shorting two nets (nets <no net> and Net-(Q2-Pad3))",
+      "items": [
+        {
+          "description": "PCB text 'D. Walter\nESC v2.1' on B.Cu",
+          "pos": {
+            "x": 174.8155,
+            "y": 81.026
+          },
+          "uuid": "512c8116-5fc4-4e65-b568-c663158d1edd"
+        },
+        {
+          "description": "Track [Net-(Q2-Pad3)] on B.Cu, length 8.6418 mm",
+          "pos": {
+            "x": 178.2796,
+            "y": 77.9541
+          },
+          "uuid": "b4cb5579-b1d9-4933-8554-d5c5a8f173b3"
+        }
+      ],
+      "severity": "error",
+      "type": "shorting_items"
+    }
+  ]
+}

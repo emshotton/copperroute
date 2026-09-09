@@ -1,0 +1,758 @@
+{
+  "dsn_sha256": "5450eabc40377cd40ff3752104135177fd2ed30bfbf2b4a0a3acb4a35f0cbc94",
+  "dsn_boundary_count": 1,
+  "dsn_keepout_count": 0,
+  "ground_truth": {
+    "wirelength_mm": 418.9995,
+    "vias": 21,
+    "drv_routing": 0,
+    "drv_all": 15,
+    "project_generated": true,
+    "zones_refilled": 1,
+    "nets": 33,
+    "layers": 2,
+    "kicad_version": null,
+    "unconnected": 0,
+    "reference_complete": true
+  },
+  "original_edge_errors": [
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 85.598,
+            "y": 58.293
+          },
+          "uuid": "26750d56-b338-4a5a-b5fe-7457bdff88f0"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 121.158,
+            "y": 65.913
+          },
+          "uuid": "7afe3688-79ac-494a-8346-8112b62fefab"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 78.74,
+            "y": 101.219
+          },
+          "uuid": "795f2239-154a-4f7a-84ea-26737b5c7a75"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 78.74,
+            "y": 101.092
+          },
+          "uuid": "4e7ef5d6-29d1-49d3-9425-4bc41ab512c3"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 78.74,
+            "y": 101.092
+          },
+          "uuid": "4e7ef5d6-29d1-49d3-9425-4bc41ab512c3"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 78.74,
+            "y": 63.627
+          },
+          "uuid": "2f5a3fca-c148-4b33-bdf0-ff2b8f01ecc5"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 78.74,
+            "y": 101.092
+          },
+          "uuid": "4e7ef5d6-29d1-49d3-9425-4bc41ab512c3"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 84.836,
+            "y": 103.886
+          },
+          "uuid": "8222414f-6fc9-443d-94e8-c8469c96c5ed"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 84.328,
+            "y": 109.982
+          },
+          "uuid": "c93ed23a-61df-4ce7-81e4-867d6342544a"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 84.836,
+            "y": 103.886
+          },
+          "uuid": "8222414f-6fc9-443d-94e8-c8469c96c5ed"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 84.328,
+            "y": 109.982
+          },
+          "uuid": "c93ed23a-61df-4ce7-81e4-867d6342544a"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 119.507,
+            "y": 109.982
+          },
+          "uuid": "32f41ac9-ece9-4013-b13a-21494c0d52ad"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 84.836,
+            "y": 103.886
+          },
+          "uuid": "8222414f-6fc9-443d-94e8-c8469c96c5ed"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 119.507,
+            "y": 109.982
+          },
+          "uuid": "32f41ac9-ece9-4013-b13a-21494c0d52ad"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 118.364,
+            "y": 109.982
+          },
+          "uuid": "18cf062d-4f51-4a3f-945a-0044ab866fa9"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 119.507,
+            "y": 109.982
+          },
+          "uuid": "32f41ac9-ece9-4013-b13a-21494c0d52ad"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 118.364,
+            "y": 109.982
+          },
+          "uuid": "18cf062d-4f51-4a3f-945a-0044ab866fa9"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 120.142,
+            "y": 101.346
+          },
+          "uuid": "b8e1a407-7e56-4d01-87de-fd31206da2d0"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape) (gap 0.2310 mm)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 119.507,
+            "y": 109.982
+          },
+          "uuid": "32f41ac9-ece9-4013-b13a-21494c0d52ad"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 120.142,
+            "y": 101.346
+          },
+          "uuid": "b8e1a407-7e56-4d01-87de-fd31206da2d0"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 121.158,
+            "y": 65.913
+          },
+          "uuid": "7afe3688-79ac-494a-8346-8112b62fefab"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 64.897
+          },
+          "uuid": "69b70539-400c-41c9-94f8-22c111e515b5"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 64.897
+          },
+          "uuid": "69b70539-400c-41c9-94f8-22c111e515b5"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 65.405
+          },
+          "uuid": "641b0cc5-a1ef-41e6-962a-994fcf6cfcd9"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 65.405
+          },
+          "uuid": "641b0cc5-a1ef-41e6-962a-994fcf6cfcd9"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 120.142,
+            "y": 101.346
+          },
+          "uuid": "b8e1a407-7e56-4d01-87de-fd31206da2d0"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 101.219
+          },
+          "uuid": "34cbf65e-2e8e-496c-9aee-9ab1144481a6"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 65.405
+          },
+          "uuid": "641b0cc5-a1ef-41e6-962a-994fcf6cfcd9"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 101.219
+          },
+          "uuid": "34cbf65e-2e8e-496c-9aee-9ab1144481a6"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 120.142,
+            "y": 101.346
+          },
+          "uuid": "b8e1a407-7e56-4d01-87de-fd31206da2d0"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    }
+  ],
+  "candidate_edge_errors": [
+    {
+      "description": "Board edge clearance violation",
+      "items": [
+        {
+          "description": "Circle on Edge.Cuts",
+          "pos": {
+            "x": 122.555,
+            "y": 105.156
+          },
+          "uuid": "00000000-0000-0000-0000-0000578ea680"
+        },
+        {
+          "description": "Track [OLED_RST] on F.Cu, length 11.1665 mm",
+          "pos": {
+            "x": 121.6565,
+            "y": 105.664
+          },
+          "uuid": "1888d3d7-cd1c-443a-9be0-f7547d3e5476"
+        }
+      ],
+      "severity": "error",
+      "type": "copper_edge_clearance"
+    },
+    {
+      "description": "Board edge clearance violation",
+      "items": [
+        {
+          "description": "Circle on Edge.Cuts",
+          "pos": {
+            "x": 122.555,
+            "y": 105.156
+          },
+          "uuid": "00000000-0000-0000-0000-0000578ea680"
+        },
+        {
+          "description": "Track [OLED_RST] on F.Cu, length 7.8767 mm",
+          "pos": {
+            "x": 127.2262,
+            "y": 100.0943
+          },
+          "uuid": "5ac21ea1-2775-416c-8f46-eb847bc7cb35"
+        }
+      ],
+      "severity": "error",
+      "type": "copper_edge_clearance"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 85.598,
+            "y": 58.293
+          },
+          "uuid": "c3bcb2ff-5963-4e79-b842-657e08d8fa31"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 121.158,
+            "y": 65.913
+          },
+          "uuid": "ed2baa7f-ca0a-417e-baf1-307fce6e9467"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 78.74,
+            "y": 101.219
+          },
+          "uuid": "da21f33f-f9f3-4958-80be-f4082857adc3"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 78.74,
+            "y": 101.092
+          },
+          "uuid": "c2ef5f90-03ba-4c75-98be-c3548cfb3da9"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 78.74,
+            "y": 101.092
+          },
+          "uuid": "c2ef5f90-03ba-4c75-98be-c3548cfb3da9"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 78.74,
+            "y": 63.627
+          },
+          "uuid": "4865044c-dba2-45d5-b643-4f7094c39181"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 78.74,
+            "y": 101.092
+          },
+          "uuid": "c2ef5f90-03ba-4c75-98be-c3548cfb3da9"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 84.836,
+            "y": 103.886
+          },
+          "uuid": "0b15010a-936c-4d8b-8c7b-73645ff631fc"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 84.328,
+            "y": 109.982
+          },
+          "uuid": "0cfccadd-0277-483d-a2e2-77f412edb78f"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 84.836,
+            "y": 103.886
+          },
+          "uuid": "0b15010a-936c-4d8b-8c7b-73645ff631fc"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 84.328,
+            "y": 109.982
+          },
+          "uuid": "0cfccadd-0277-483d-a2e2-77f412edb78f"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 119.507,
+            "y": 109.982
+          },
+          "uuid": "57c0a49c-6a90-4d00-a6be-f29e08793588"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 84.836,
+            "y": 103.886
+          },
+          "uuid": "0b15010a-936c-4d8b-8c7b-73645ff631fc"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 119.507,
+            "y": 109.982
+          },
+          "uuid": "57c0a49c-6a90-4d00-a6be-f29e08793588"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 118.364,
+            "y": 109.982
+          },
+          "uuid": "474ee71b-d3fd-4b16-805c-752cc354682b"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 119.507,
+            "y": 109.982
+          },
+          "uuid": "57c0a49c-6a90-4d00-a6be-f29e08793588"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 118.364,
+            "y": 109.982
+          },
+          "uuid": "474ee71b-d3fd-4b16-805c-752cc354682b"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 120.142,
+            "y": 101.346
+          },
+          "uuid": "5222bbbf-6cab-401d-baa6-6f32bacc6c8b"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape) (gap 0.2310 mm)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 119.507,
+            "y": 109.982
+          },
+          "uuid": "57c0a49c-6a90-4d00-a6be-f29e08793588"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 120.142,
+            "y": 101.346
+          },
+          "uuid": "5222bbbf-6cab-401d-baa6-6f32bacc6c8b"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 121.158,
+            "y": 65.913
+          },
+          "uuid": "ed2baa7f-ca0a-417e-baf1-307fce6e9467"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 64.897
+          },
+          "uuid": "d8fc123d-2172-485c-bd0e-dca4f97b6318"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 64.897
+          },
+          "uuid": "d8fc123d-2172-485c-bd0e-dca4f97b6318"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 65.405
+          },
+          "uuid": "db0a029a-ad7a-4104-a076-f8ca1577b4ec"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 65.405
+          },
+          "uuid": "db0a029a-ad7a-4104-a076-f8ca1577b4ec"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 120.142,
+            "y": 101.346
+          },
+          "uuid": "5222bbbf-6cab-401d-baa6-6f32bacc6c8b"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 101.219
+          },
+          "uuid": "0e004c2c-0aab-45e3-ac1a-53600919b5be"
+        },
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 65.405
+          },
+          "uuid": "db0a029a-ad7a-4104-a076-f8ca1577b4ec"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    },
+    {
+      "description": "Board has malformed outline (not a closed shape)",
+      "items": [
+        {
+          "description": "Segment on Edge.Cuts",
+          "pos": {
+            "x": 128.778,
+            "y": 101.219
+          },
+          "uuid": "0e004c2c-0aab-45e3-ac1a-53600919b5be"
+        },
+        {
+          "description": "Arc on Edge.Cuts",
+          "pos": {
+            "x": 120.142,
+            "y": 101.346
+          },
+          "uuid": "5222bbbf-6cab-401d-baa6-6f32bacc6c8b"
+        }
+      ],
+      "severity": "error",
+      "type": "invalid_outline"
+    }
+  ]
+}
