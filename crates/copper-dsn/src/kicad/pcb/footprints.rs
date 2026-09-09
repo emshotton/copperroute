@@ -1,33 +1,23 @@
 use std::f64::consts::PI;
 
+use super::PcbError;
 use super::outline;
 use super::structure::{Layers, NetTable};
-use super::PcbError;
 use crate::kicad::sexpr::{Node, Value};
 use crate::kicad::{ComponentJson, ConductionAreaJson, PadJson, Point2D};
 
 const SECTION: &str = "components";
 
 fn number(text: &str) -> Result<f64, PcbError> {
-    let value: f64 = text.parse().unwrap_or(f64::NAN);
-    if !value.is_finite() || value.abs() > 100_000.0 {
-        return Err(PcbError::new(
-            SECTION,
-            "Invalid or excessive board coordinate.",
-        ));
-    }
-    Ok(value)
+    super::numeric::number(SECTION, text)
 }
 
 fn xy(node: Option<&Node>) -> Result<(f64, f64), PcbError> {
-    let node = node.ok_or_else(|| PcbError::new(SECTION, "Missing coordinate."))?;
-    let x = number(node.atom(1).unwrap_or(""))?;
-    let y = number(node.atom(2).unwrap_or(""))?;
-    Ok((x, y))
+    super::numeric::xy(SECTION, node)
 }
 
 fn point(node: &Node, key: &str) -> Result<(f64, f64), PcbError> {
-    xy(node.child(key))
+    super::numeric::point(SECTION, node, key)
 }
 
 fn numeric_value(node: &Node, key: &str, fallback: f64) -> Result<f64, PcbError> {
@@ -113,16 +103,14 @@ fn custom_pad_polygon(
         .map(|node| &node.values[1..])
         .unwrap_or(&[]);
     let primitive = match primitives {
-        [Value::Node(node)]
-            if node.name() == "gr_poly" && node.value("fill") == Some("yes") =>
-        {
+        [Value::Node(node)] if node.name() == "gr_poly" && node.value("fill") == Some("yes") => {
             node
         }
         _ => {
             return Err(PcbError::new(
                 SECTION,
                 "Custom pads require one filled convex polygon.",
-            ))
+            ));
         }
     };
     let poly: Vec<(f64, f64)> = match primitive.child("pts") {
@@ -195,7 +183,7 @@ fn custom_pad_polygon(
             })
         })
         .collect();
-    samples.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap().then(a.1.partial_cmp(&b.1).unwrap()));
+    samples.sort_by(|a, b| a.0.total_cmp(&b.0).then_with(|| a.1.total_cmp(&b.1)));
     let mut reversed = samples.clone();
     reversed.reverse();
     let mut hull = convex_hull_half(&samples);
@@ -232,7 +220,10 @@ pub fn read_components(
             return Err(PcbError::new(SECTION, "Net ties are not supported yet."));
         }
         if fp.children("zone").next().is_some() {
-            return Err(PcbError::new(SECTION, "Footprint zones are not supported yet."));
+            return Err(PcbError::new(
+                SECTION,
+                "Footprint zones are not supported yet.",
+            ));
         }
 
         for node in child_nodes(fp) {
@@ -269,7 +260,10 @@ pub fn read_components(
                 pad_type,
                 Some("smd" | "connect" | "thru_hole" | "np_thru_hole")
             );
-            let shape_ok = matches!(shape, Some("circle" | "rect" | "oval" | "roundrect" | "custom"));
+            let shape_ok = matches!(
+                shape,
+                Some("circle" | "rect" | "oval" | "roundrect" | "custom")
+            );
             if !type_ok || !shape_ok {
                 return Err(PcbError::new(
                     SECTION,
@@ -289,10 +283,7 @@ pub fn read_components(
                 let size = point(pad, "size")?;
                 copper_polygon = Some(custom_pad_polygon(pad, size, warnings)?);
             } else if pad.child("primitives").is_some() {
-                return Err(PcbError::new(
-                    SECTION,
-                    "Unexpected custom pad primitives.",
-                ));
+                return Err(PcbError::new(SECTION, "Unexpected custom pad primitives."));
             }
 
             let drill_node = pad.child("drill");

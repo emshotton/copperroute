@@ -1,32 +1,18 @@
 use std::f64::consts::PI;
 
-use super::structure::{Layers, NetTable};
 use super::PcbError;
+use super::structure::{Layers, NetTable};
 use crate::kicad::sexpr::{Node, Value};
 use crate::kicad::{ConductionAreaJson, Point2D, TraceJson, ViaJson};
 
 const SECTION: &str = "routing";
 
 fn number(text: &str) -> Result<f64, PcbError> {
-    let value: f64 = text.parse().unwrap_or(f64::NAN);
-    if !value.is_finite() || value.abs() > 100_000.0 {
-        return Err(PcbError::new(
-            SECTION,
-            "Invalid or excessive board coordinate.",
-        ));
-    }
-    Ok(value)
-}
-
-fn xy(node: Option<&Node>) -> Result<(f64, f64), PcbError> {
-    let node = node.ok_or_else(|| PcbError::new(SECTION, "Missing coordinate."))?;
-    let x = number(node.atom(1).unwrap_or(""))?;
-    let y = number(node.atom(2).unwrap_or(""))?;
-    Ok((x, y))
+    super::numeric::number(SECTION, text)
 }
 
 fn point(node: &Node, key: &str) -> Result<(f64, f64), PcbError> {
-    xy(node.child(key))
+    super::numeric::point(SECTION, node, key)
 }
 
 fn has_flag(node: &Node, key: &str) -> bool {
@@ -54,7 +40,10 @@ pub fn read_traces(
     let mut traces = Vec::new();
     for (id, node) in root.children("segment").enumerate() {
         if has_flag(node, "locked") {
-            return Err(PcbError::new(SECTION, "Locked tracks are not supported yet."));
+            return Err(PcbError::new(
+                SECTION,
+                "Locked tracks are not supported yet.",
+            ));
         }
         let net_name = nets.name_of(node)?;
         if net_name.is_empty() {
@@ -147,7 +136,8 @@ pub fn check_zones(
     let mut preserved_keepouts = 0u32;
     for zone in root.children("zone") {
         if let Some(keepout) = zone.child("keepout") {
-            if keepout.value("tracks") != Some("allowed") || keepout.value("vias") != Some("allowed")
+            if keepout.value("tracks") != Some("allowed")
+                || keepout.value("vias") != Some("allowed")
             {
                 return Err(PcbError::new(
                     SECTION,
@@ -202,7 +192,7 @@ pub fn read_copper_text(
                 return Err(PcbError::new(
                     SECTION,
                     "Custom copper text fonts are not supported yet.",
-                ))
+                ));
             }
         };
         let size = point(font, "size")?;
@@ -245,7 +235,11 @@ pub fn read_copper_text(
         } else {
             -height / 2.0
         };
-        let mirror = if justify.contains(&"mirror") { -1.0 } else { 1.0 };
+        let mirror = if justify.contains(&"mirror") {
+            -1.0
+        } else {
+            1.0
+        };
         let corners = [
             (left, top),
             (left + width, top),

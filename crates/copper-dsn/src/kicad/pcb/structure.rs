@@ -9,14 +9,7 @@ const SECTION: &str = "structure";
 const NAMED_NET_VERSION: f64 = 20_260_101.0;
 
 fn number(text: &str) -> Result<f64, PcbError> {
-    let value: f64 = text.parse().unwrap_or(f64::NAN);
-    if !value.is_finite() || value.abs() > 100_000.0 {
-        return Err(PcbError::new(
-            SECTION,
-            "Invalid or excessive board coordinate.",
-        ));
-    }
-    Ok(value)
+    super::numeric::number(SECTION, text)
 }
 
 #[derive(Debug)]
@@ -38,7 +31,7 @@ impl Layers {
                 if !name.ends_with(".Cu") {
                     continue;
                 }
-                let r#type = match entry.atom(2).unwrap_or("") {
+                let r#type = match entry.atom(2).unwrap_or("undefined") {
                     "signal" | "mixed" => "signal",
                     "power" => "plane",
                     other => {
@@ -56,7 +49,10 @@ impl Layers {
             }
         }
         if entries.is_empty() || entries.len() > 32 {
-            return Err(PcbError::new(SECTION, "Expected 1\u{2013}32 copper layers."));
+            return Err(PcbError::new(
+                SECTION,
+                "Expected 1\u{2013}32 copper layers.",
+            ));
         }
         Ok(Layers { entries })
     }

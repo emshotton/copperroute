@@ -1,4 +1,5 @@
 pub mod footprints;
+mod numeric;
 pub mod outline;
 pub mod routing;
 pub mod structure;
@@ -71,7 +72,10 @@ pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<Impor
     let vias = routing::read_vias(&root, &layers, &nets)?;
 
     if root.children("arc").next().is_some() {
-        return Err(PcbError::new(SECTION, "Curved tracks are not supported yet."));
+        return Err(PcbError::new(
+            SECTION,
+            "Curved tracks are not supported yet.",
+        ));
     }
 
     let embedded_classes = root.children("net_class").count();
@@ -88,7 +92,11 @@ pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<Impor
         .first()
         .map(|class| class.clearance)
         .unwrap_or(0.0)
-        + if paths.curved { outline::OUTLINE_TOLERANCE } else { 0.0 };
+        + if paths.curved {
+            outline::OUTLINE_TOLERANCE
+        } else {
+            0.0
+        };
 
     let board = KiCadBoardJson {
         designName: Some(name.to_string()),
