@@ -1561,16 +1561,42 @@ fn explicit_zero_pad_drill_does_not_become_an_estimated_hole() {
 fn it_reads_a_board_from_a_parsed_dto() {
     use copper_dsn::kicad::{KiCadBoardJson, read_board_json};
 
-    let json = "{}";
+    let json = r#"{"unit":"MIL","resolution":1.0,
+        "layers":[{"index":0,"name":"F.Cu","type":"signal"},
+                  {"index":1,"name":"In1.Cu","type":"plane"},
+                  {"index":2,"name":"B.Cu","type":"SIGNAL"}],
+        "netClasses":[{"name":"Default","clearance":10.0,"traceWidth":15.0},
+                      {"name":"HV","clearance":40.0,"traceWidth":25.0}],
+        "clearanceRules":[{"classA":"default","classB":"HV","clearance":77.0}],
+        "outline":{"corners":[{"x":0.0,"y":0.0},{"x":100.0,"y":0.0},
+                              {"x":100.0,"y":80.0},{"x":0.0,"y":80.0}]}}"#;
     let dto: KiCadBoardJson = serde_json::from_str(json).expect("the DTO parses");
     let from_dto = read_board_json(dto, None);
     let from_text = read_board(json, None);
 
-    let layers = |result: &BoardReadResult| match result {
+    let unpack = |result: BoardReadResult| match result {
         BoardReadResult::Success {
             board: Some(b), ..
-        } => b.get_layer_count(),
+        } => b,
         other => panic!("expected a loaded board, got {other:?}"),
     };
-    assert_eq!(layers(&from_dto), layers(&from_text));
+    let dto_board = unpack(from_dto);
+    let text_board = unpack(from_text);
+
+    assert_eq!(dto_board.get_layer_count(), 3, "the fixture defines 3 layers");
+    assert_eq!(
+        dto_board.rules.net_classes.count(),
+        2,
+        "the fixture defines a non-default net class alongside the default one"
+    );
+    assert!(
+        dto_board.rules.net_classes.get_by_name("HV").is_some(),
+        "the HV net class from the DTO's netClasses must resolve on the board"
+    );
+
+    assert_eq!(dto_board.get_layer_count(), text_board.get_layer_count());
+    assert_eq!(
+        dto_board.rules.net_classes.count(),
+        text_board.rules.net_classes.count()
+    );
 }
