@@ -29,11 +29,12 @@ pub struct ImportedPcb {
     pub warnings: Vec<String>,
 }
 
-pub fn read_pcb(text: &str, defaults: &NetClassJson) -> Result<ImportedPcb, PcbError> {
+pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<ImportedPcb, PcbError> {
     let root = sexpr::parse(text).map_err(|error| PcbError::new(SECTION, &error.to_string()))?;
     if root.name() != "kicad_pcb" {
         return Err(PcbError::new(SECTION, "Expected one kicad_pcb board."));
     }
+    validate_defaults(&root, defaults)?;
 
     let mut warnings = Vec::new();
 
@@ -90,6 +91,7 @@ pub fn read_pcb(text: &str, defaults: &NetClassJson) -> Result<ImportedPcb, PcbE
         + if paths.curved { outline::OUTLINE_TOLERANCE } else { 0.0 };
 
     let board = KiCadBoardJson {
+        designName: Some(name.to_string()),
         unit: Some(UnitJson::MM),
         resolution: 10000.0,
         layers: Some(layers.entries),
@@ -124,6 +126,30 @@ pub fn read_pcb(text: &str, defaults: &NetClassJson) -> Result<ImportedPcb, PcbE
     warnings.retain(|warning| seen.insert(warning.clone()));
 
     Ok(ImportedPcb { board, warnings })
+}
+
+fn validate_defaults(root: &Node, defaults: &NetClassJson) -> Result<(), PcbError> {
+    if root
+        .children("net_class")
+        .any(|node| node.atom(1) == Some("Default"))
+    {
+        return Ok(());
+    }
+    let in_range = |value: f64| value > 0.0 && value <= 5.0;
+    if !in_range(defaults.traceWidth)
+        || !in_range(defaults.clearance)
+        || !in_range(defaults.viaDiameter)
+        || !in_range(defaults.viaDrill)
+    {
+        return Err(PcbError::new(SECTION, "Invalid routing rules."));
+    }
+    if defaults.viaDrill >= defaults.viaDiameter {
+        return Err(PcbError::new(
+            SECTION,
+            "Via drill must be smaller than diameter.",
+        ));
+    }
+    Ok(())
 }
 
 fn reject_unsupported_copper_objects(root: &Node) -> Result<(), PcbError> {
