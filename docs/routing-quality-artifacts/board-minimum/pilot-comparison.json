@@ -1,0 +1,105 @@
+{
+  "baseline": "/tmp/quality-epyc-bootstrap/quality-epyc-board-minimum-control-details.json",
+  "candidate": "/tmp/quality-epyc-bootstrap/quality-epyc-board-minimum-board-minimum-details.json",
+  "count": 6,
+  "groups": {
+    "pcbench": {
+      "boards": 6,
+      "unrouted": {
+        "baseline": 19,
+        "candidate": 18,
+        "delta": -1,
+        "better": 1,
+        "worse": 0
+      },
+      "violations": {
+        "baseline": 36,
+        "candidate": 5,
+        "delta": -31,
+        "better": 3,
+        "worse": 0
+      },
+      "mask": {
+        "baseline": 208,
+        "candidate": 207,
+        "delta": -1,
+        "better": 1,
+        "worse": 0
+      },
+      "cpu_s": {
+        "baseline": 458.03,
+        "candidate": 482.53,
+        "delta": 24.5,
+        "better": 1,
+        "worse": 5
+      },
+      "cpu_ratio": 1.0534899460734013,
+      "completed": [
+        5,
+        5
+      ],
+      "connected": [
+        3,
+        3
+      ],
+      "rss_median_mb": [
+        22.4,
+        23.9
+      ],
+      "rss_max_mb": [
+        99.8,
+        98.4
+      ]
+    }
+  },
+  "rows": [
+    {
+      "board": "pcbench-CATs-Eurosynth_LFO_Main",
+      "both_completed": true,
+      "unrouted_delta": -1,
+      "violations_delta": -1,
+      "mask_delta": 0,
+      "cpu_s_delta": 4.550000000000001
+    },
+    {
+      "board": "pcbench-Hardware_Playground_minimal_node_rfm69w",
+      "both_completed": true,
+      "unrouted_delta": 0,
+      "violations_delta": 0,
+      "mask_delta": 0,
+      "cpu_s_delta": 0.1600000000000037
+    },
+    {
+      "board": "pcbench-domotics_base-board-arranged",
+      "both_completed": true,
+      "unrouted_delta": 0,
+      "violations_delta": 0,
+      "mask_delta": 0,
+      "cpu_s_delta": 0.4099999999999966
+    },
+    {
+      "board": "pcbench-mini_ice40_mini_ice40",
+      "both_completed": true,
+      "unrouted_delta": 0,
+      "violations_delta": -27,
+      "mask_delta": 0,
+      "cpu_s_delta": 18.159999999999997
+    },
+    {
+      "board": "pcbench-snappi-zero_snappi-zero",
+      "both_completed": true,
+      "unrouted_delta": 0,
+      "violations_delta": -3,
+      "mask_delta": 0,
+      "cpu_s_delta": 1.23
+    },
+    {
+      "board": "pcbench-wavegen_rev3",
+      "both_completed": false,
+      "unrouted_delta": 0,
+      "violations_delta": 0,
+      "mask_delta": -1,
+      "cpu_s_delta": -0.009999999999990905
+    }
+  ]
+}
