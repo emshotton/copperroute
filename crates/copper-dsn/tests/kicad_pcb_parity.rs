@@ -92,6 +92,9 @@ fn polygon_key(polygon: &serde_json::Value) -> (i64, i64) {
 /// - top-level `clearanceRules` (array, KiCadBoardJson): `read_board_json` treats a missing list
 ///   as a hard error (it mimics a Java `NullPointerException`), so `read_pcb` must always produce
 ///   `[]`; `importBoard`'s DTO has no such field.
+/// - `conductionAreas[N].id` (number, ConductionAreaJson): the same DTO is shared with `write`,
+///   where `id` has no `skip_serializing_if` and so is always emitted; `importBoard` never
+///   populates this at all, and the web path deserialises the same 0 via `serde(default)`.
 fn allowed_gap(parent_path: &str, key: &str, present: &serde_json::Value) -> bool {
     use serde_json::Value;
     let top_level = !parent_path.contains("::");
@@ -100,10 +103,16 @@ fn allowed_gap(parent_path: &str, key: &str, present: &serde_json::Value) -> boo
         .next()
         .unwrap_or("")
         .starts_with("nets[");
+    let parent_is_a_conduction_area = parent_path
+        .rsplit("::")
+        .next()
+        .unwrap_or("")
+        .starts_with("conductionAreas[");
     match (key, present) {
         ("viaInPadAllowed", Value::Bool(false)) if top_level => true,
         ("containsPlane", Value::Bool(false)) if parent_is_a_net => true,
         ("clearanceRules", Value::Array(items)) if top_level => items.is_empty(),
+        ("id", Value::Number(n)) if parent_is_a_conduction_area => n.as_i64() == Some(0),
         _ => false,
     }
 }

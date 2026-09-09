@@ -1,0 +1,28 @@
+(kicad_pcb (version 20240108) (generator "pcbnew")
+  (general (thickness 1.6))
+  (paper "A4")
+  (layers (0 "F.Cu" signal) (31 "B.Cu" signal) (44 "Edge.Cuts" user))
+  (setup (pad_to_mask_clearance 0))
+  (net 0 "") (net 1 "Signal") (net 2 "Return")
+  (gr_text "Coverage
+Fixture"
+    (at 100 95 30)
+    (layer "F.Cu")
+    (effects (font (size 1 1) (thickness 0.15)) (justify mirror))
+  )
+  (footprint "Coverage:CustomPad" (layer "F.Cu") (at 105 105)
+    (property "Reference" "J1" (at 0 -3) (layer "F.SilkS") (effects (font (size 1 1) (thickness 0.15))))
+    (fp_rect (start -1 -1) (end 6 4) (layer "F.Cu") (stroke (width 0.1) (type solid)) (fill none))
+    (pad "1" smd custom (at 0 0 45) (size 0.6 0.6) (layers "F.Cu")
+      (options (clearance outline) (anchor circle))
+      (primitives
+        (gr_poly
+          (pts
+            (xy -0.4 -0.4) (xy 0.4 -0.4) (xy 0.4 0.4) (xy -0.4 0.4)
+          )
+          (width 0.1) (fill yes)
+        )
+      )
+      (net 1 "Signal"))
+    (pad "2" thru_hole circle (at 3 0) (size 1.6 1.6) (drill oval 0.6 1.0 (offset 0.1 0.05)) (layers "*.Cu" "*.Mask") (net 2 "Return")))
+  (gr_rect (start 90 90) (end 130 120) (stroke (width 0.05) (type default)) (fill none) (layer "Edge.Cuts")))
