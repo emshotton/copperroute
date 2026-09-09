@@ -1,3 +1,4 @@
+pub mod footprints;
 pub mod outline;
 pub mod structure;
 
