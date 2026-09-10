@@ -27,6 +27,10 @@ Global flags, accepted before or after the subcommand: `-v`/`-vv`/`--verbose`
 and `--log-level <off|error|warn|info|debug|trace>` set the log level;
 `--settings <file>` names a settings JSON.
 
+Corridor guidance is enabled by default. Set `COPPERROUTE_CORRIDOR_GUIDANCE=0`
+to disable it; leaving the variable unset or setting it to `1` enables guidance
+and its final shove-path safety check.
+
 `route` takes:
 
 | flag | meaning |

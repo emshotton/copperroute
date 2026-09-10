@@ -343,7 +343,31 @@ impl AutorouteControl {
 }
 
 pub(crate) fn corridor_guidance_enabled() -> bool {
-    static GUIDANCE: std::sync::LazyLock<bool> =
-        std::sync::LazyLock::new(|| std::env::var_os("COPPERROUTE_CORRIDOR_GUIDANCE").is_some());
+    static GUIDANCE: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
+        std::env::var_os("COPPERROUTE_CORRIDOR_GUIDANCE").is_none_or(|value| value != "0")
+    });
     *GUIDANCE
+}
+
+#[cfg(test)]
+mod corridor_default_tests {
+    use super::corridor_guidance_enabled;
+
+    #[test]
+    fn corridor_guidance_defaults_on_and_can_be_disabled() {
+        if let Ok(expected) = std::env::var("COPPERROUTE_TEST_CORRIDOR_EXPECTED") {
+            assert_eq!(corridor_guidance_enabled(), expected == "1");
+            return;
+        }
+        for (setting, expected) in [(None, "1"), (Some("0"), "0"), (Some("1"), "1")] {
+            let mut child = std::process::Command::new(std::env::current_exe().unwrap());
+            child.args(["--exact", "autoroute::maze::control::corridor_default_tests::corridor_guidance_defaults_on_and_can_be_disabled", "--nocapture"])
+                .env("COPPERROUTE_TEST_CORRIDOR_EXPECTED", expected)
+                .env_remove("COPPERROUTE_CORRIDOR_GUIDANCE");
+            if let Some(value) = setting {
+                child.env("COPPERROUTE_CORRIDOR_GUIDANCE", value);
+            }
+            assert!(child.status().unwrap().success(), "setting {setting:?}");
+        }
+    }
 }

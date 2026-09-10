@@ -188,3 +188,23 @@ fn corridor_guidance_also_revalidates_paths() {
     }
     verify_blocked_path();
 }
+
+#[test]
+fn default_corridor_guidance_revalidates_paths() {
+    if std::env::var_os("COPPERROUTE_TEST_DEFAULT_GUARD").is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "default_corridor_guidance_revalidates_paths",
+                "--nocapture",
+            ])
+            .env("COPPERROUTE_TEST_DEFAULT_GUARD", "1")
+            .env_remove("COPPERROUTE_CORRIDOR_GUIDANCE")
+            .env_remove("COPPERROUTE_RECHECK_SHOVED_PATH")
+            .status()
+            .unwrap();
+        assert!(status.success());
+        return;
+    }
+    verify_blocked_path();
+}
