@@ -113,8 +113,36 @@ fn issue143_rpi_splitter_ses_matches_the_reference() {
     assert_ses_parity(FIXTURES[3].0, FIXTURES[3].1);
 }
 
+// These fixtures put each component image and placement on its own line.
+// Retain the complete place record (coordinates, side, rotation, and options).
+fn placement_records(text: &str) -> Vec<(String, String)> {
+    let mut image = String::new();
+    let mut records = Vec::new();
+    for line in text.lines().map(str::trim) {
+        if let Some(name) = line.strip_prefix("(component ") {
+            image = name.trim_matches('"').to_string();
+        } else if line.starts_with("(place ") {
+            records.push((image.clone(), line.to_string()));
+        }
+    }
+    records
+}
+
+fn placed_reference(place: &str) -> &str {
+    place.split_whitespace().nth(1).unwrap().trim_matches('"')
+}
+
+fn split_placement(text: &str) -> (&str, String) {
+    let start = text.find("  (placement\n").unwrap();
+    let end = text.find("  (was_is\n").unwrap();
+    (
+        &text[start..end],
+        format!("{}{}", &text[..start], &text[end..]),
+    )
+}
+
 #[test]
-fn every_reference_is_byte_for_byte_identical() {
+fn reference_sessions_preserve_wiring_and_exact_image_placement() {
     for (stem, relative_fixture) in FIXTURES.iter().chain(RULING_G_FIXTURES.iter()).copied() {
         let reference_path = testkit::reference(stem, "unrouted.ses");
         let actual = write_ses(relative_fixture, stem).into_bytes();
@@ -128,6 +156,55 @@ fn every_reference_is_byte_for_byte_identical() {
             continue;
         }
         let expected = std::fs::read(&reference_path).expect("reference must be readable");
+        if matches!(stem, "Issue110-RelayModule" | "Issue753-CPU-85_r104") {
+            // The JVM collapsed numbered image names. Preserve every placement
+            // field and all remaining SES bytes, but check image identity against
+            // the input DSN instead of reproducing that lossy grouping.
+            let actual_text = String::from_utf8(actual.clone()).unwrap();
+            let expected_text = String::from_utf8(expected.clone()).unwrap();
+            let (actual_placements, actual_rest) = split_placement(&actual_text);
+            let (expected_placements, expected_rest) = split_placement(&expected_text);
+            assert_eq!(
+                actual_rest, expected_rest,
+                "{stem}: non-placement SES bytes"
+            );
+            let source =
+                std::fs::read_to_string(testkit::corpus_dir().join(relative_fixture)).unwrap();
+            let source_images = placement_records(&source);
+            let mut actual_places = Vec::new();
+            let mut expected_places = Vec::new();
+            for (image, place) in placement_records(actual_placements) {
+                let reference = placed_reference(&place);
+                let source_image = source_images
+                    .iter()
+                    .find(|(_, p)| placed_reference(p) == reference)
+                    .map(|(image, _)| image)
+                    .unwrap_or_else(|| panic!("{stem}: {reference} must exist in DSN placements"));
+                // Unquoted Cyrillic image names already lose characters in
+                // the scanner (also in the JVM recording). Keep those names
+                // pinned to the JVM; this change does not alter lexing.
+                let expected_image = if !source_image.is_ascii()
+                    && !source.contains(&format!("(component \"{source_image}\""))
+                {
+                    placement_records(expected_placements)
+                        .into_iter()
+                        .find(|(_, p)| placed_reference(p) == reference)
+                        .map(|(image, _)| image)
+                        .unwrap()
+                } else {
+                    source_image.clone()
+                };
+                assert_eq!(image, expected_image, "{stem}: exact image for {reference}");
+                actual_places.push(place);
+            }
+            for (_, place) in placement_records(expected_placements) {
+                expected_places.push(place);
+            }
+            actual_places.sort();
+            expected_places.sort();
+            assert_eq!(actual_places, expected_places, "{stem}: placement fields");
+            continue;
+        }
         if actual == expected {
             continue;
         }

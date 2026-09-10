@@ -1,0 +1,84 @@
+---- the_p8t3_transcript_replays_cell_for_cell stdout ----
+
+thread 'the_p8t3_transcript_replays_cell_for_cell' (4304168) panicked at crates/copper-core/tests/overrides.rs:443:17:
+assertion `left == right` failed: issue593-bbd-mars-64 0 stage after_parser: the port's board disagrees with the jar's
+--- port ---
+[stage] name=after_parser
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  reclassified=
+  tree_leaves=216 entry_id=0
+  tree_order digest=558f83db7f9fe53b head=1:0,1:4,1:1,1:5,1:2,76:0,78:0,80:0,82:0,84:0,86:0,77:0 tail=222:0,258:0,294:0,321:0,681:0,958:0,959:0,908:0,934:0,909:0,935:0,1:7
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+  mrow L1 0 null = 0 0 0
+  mrow L1 1 default = 0 2000 2000
+  mrow L1 2 smd = 0 2000 500
+
+--- jar ---
+[stage] name=after_parser
+  layers=2 classes=3 names=null,default,smd
+  outline_class=1 default_area_class=1 hole_clearance=0 items=961
+  keepouts=8 keepout_classes=1:8
+  reclassified=
+  tree_leaves=216 entry_id=0
+  tree_order digest=51459a519bd57b53 head=1:0,1:4,1:1,1:5,1:2,76:0,78:0,80:0,82:0,84:0,86:0,77:0 tail=222:0,258:0,294:0,321:0,681:0,958:0,959:0,908:0,935:0,909:0,934:0,1:7
+  matrix_sum=13000
+  msum L0 = 6500 rows=0,4000,2500
+  msum L1 = 6500 rows=0,4000,2500
+  mrow L0 0 null = 0 0 0
+  mrow L0 1 default = 0 2000 2000
+  mrow L0 2 smd = 0 2000 500
+  mrow L1 0 null = 0 0 0
+  mrow L1 1 default = 0 2000 2000
+  mrow L1 2 smd = 0 2000 500
+
+  left: "[stage] name=after_parser\n  layers=2 classes=3 names=null,default,smd\n  outline_class=1 default_area_class=1 hole_clearance=0 items=961\n  keepouts=8 keepout_classes=1:8\n  reclassified=\n  tree_leaves=216 entry_id=0\n  tree_order digest=558f83db7f9fe53b head=1:0,1:4,1:1,1:5,1:2,76:0,78:0,80:0,82:0,84:0,86:0,77:0 tail=222:0,258:0,294:0,321:0,681:0,958:0,959:0,908:0,934:0,909:0,935:0,1:7\n  matrix_sum=13000\n  msum L0 = 6500 rows=0,4000,2500\n  msum L1 = 6500 rows=0,4000,2500\n  mrow L0 0 null = 0 0 0\n  mrow L0 1 default = 0 2000 2000\n  mrow L0 2 smd = 0 2000 500\n  mrow L1 0 null = 0 0 0\n  mrow L1 1 default = 0 2000 2000\n  mrow L1 2 smd = 0 2000 500"
+ right: "[stage] name=after_parser\n  layers=2 classes=3 names=null,default,smd\n  outline_class=1 default_area_class=1 hole_clearance=0 items=961\n  keepouts=8 keepout_classes=1:8\n  reclassified=\n  tree_leaves=216 entry_id=0\n  tree_order digest=51459a519bd57b53 head=1:0,1:4,1:1,1:5,1:2,76:0,78:0,80:0,82:0,84:0,86:0,77:0 tail=222:0,258:0,294:0,321:0,681:0,958:0,959:0,908:0,935:0,909:0,934:0,1:7\n  matrix_sum=13000\n  msum L0 = 6500 rows=0,4000,2500\n  msum L1 = 6500 rows=0,4000,2500\n  mrow L0 0 null = 0 0 0\n  mrow L0 1 default = 0 2000 2000\n  mrow L0 2 smd = 0 2000 500\n  mrow L1 0 null = 0 0 0\n  mrow L1 1 default = 0 2000 2000\n  mrow L1 2 smd = 0 2000 500"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+
+---- every_port_airline_is_one_some_jvm_run_picks stdout ----
+Issue575-drc_dev-board_4_hole_clearance_violations: all 9 port airlines are in the six-run JVM union
+
+thread 'every_port_airline_is_one_some_jvm_run_picks' (4305585) panicked at crates/copper-drc/tests/net_incompletes.rs:184:17:
+Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations: airline (4, 909, 935) was picked by none of the six JVM runs
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+
+---- the_three_fixtures_match_the_jvm stdout ----
+
+thread 'the_three_fixtures_match_the_jvm' (4305754) panicked at crates/copper-drc/tests/unconnected.rs:102:9:
+assertion `left == right` failed: Issue575-drc_BBD_Mars-64_6_track_1_hole_clearance_violations.dsn
+  left: "unconnectedItems 3\nnet=1 first=Pin second=Pin items=13,87,792,873,962,963,964,965,966,967,1192,1193,1194\nnet=4 first=Pin second=Pin items=4,5,78,79,766,798,867,909,922,935,986,987,988,989,990,991,992,993,994,995,996,997,998,999,1000,1001,1002,1200,1201\nnet=7 first=Pin second=Pin items=8,726,818,1030,1031,1032,1033,1034,1035,1205,1206,1207\ntrack_dangling_candidates 2\nfirst=1031\nfirst=998\nvia_dangling 18\nfirst=1289\nfirst=1287\nfirst=1266\nfirst=1264\nfirst=1262\nfirst=1257\nfirst=1255\nfirst=1252\nfirst=1242\nfirst=1233\nfirst=1226\nfirst=1222\nfirst=1220\nfirst=1215\nfirst=1213\nfirst=1211\nfirst=1204\nfirst=1194\n"
+ right: "unconnectedItems 3\nnet=1 first=Pin second=Pin items=13,87,792,858,962,963,964,965,966,967,1192,1193,1194\nnet=4 first=Pin second=Pin items=4,5,78,79,766,798,864,909,922,934,986,987,988,989,990,991,992,993,994,995,996,997,998,999,1000,1001,1002,1200,1201\nnet=7 first=Pin second=Pin items=8,726,818,1030,1031,1032,1033,1034,1035,1205,1206,1207\ntrack_dangling_candidates 2\nfirst=1031\nfirst=998\nvia_dangling 18\nfirst=1289\nfirst=1287\nfirst=1266\nfirst=1264\nfirst=1262\nfirst=1257\nfirst=1255\nfirst=1252\nfirst=1242\nfirst=1233\nfirst=1226\nfirst=1222\nfirst=1220\nfirst=1215\nfirst=1213\nfirst=1211\nfirst=1204\nfirst=1194\n"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+
+---- issue110_relay_module_wiring_matches_javas_vias stdout ----
+
+thread 'issue110_relay_module_wiring_matches_javas_vias' (4305862) panicked at crates/copper-dsn/tests/common/mod.rs:243:9:
+assertion `left == right` failed: Issue110-RelayModule-items.txt: line 47 differs
+  left: "item 46 ComponentOutline layer=0 courtyard=false cmp=4 cl=0 nets=[]"
+ right: "item 46 ComponentOutline layer=0 courtyard=true cmp=4 cl=0 nets=[]"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+
+---- every_reference_is_byte_for_byte_identical stdout ----
+
+thread 'every_reference_is_byte_for_byte_identical' (4306564) panicked at crates/copper-dsn/tests/parity_ses.rs:145:9:
+Issue110-RelayModule: not byte-identical to /Users/em/Development/freerouting/copperroute-image-identity-main/tests/reference/Issue110-RelayModule/unrouted.ses
+line 11:
+  actual   "    )"
+  expected "      (place K2 1220000 -2040000 front 180)"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+

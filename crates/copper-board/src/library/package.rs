@@ -139,6 +139,11 @@ impl Packages {
                 other_side_package = Some(pkg);
             }
         }
+        // A numbered image can have different pads, not just a different side.
+        // Preserve its geometry when only an opposite-side definition exists.
+        if other_side_package.is_some() {
+            return other_side_package;
+        }
         let base_name = strip_side_suffix(name);
         if !equals_ignore_case(base_name, name) {
             for pkg in &self.list {
@@ -336,6 +341,33 @@ mod tests {
         );
         assert!(packages.get_by_name("SOIC8", true).is_some());
         assert!(!packages.get_by_name("SOIC8", true).unwrap().is_front);
+    }
+
+    #[test]
+    fn get_by_name_prefers_exact_variant_even_on_other_side() {
+        let mut packages = Packages::new();
+        for (name, is_front) in [("SOT-23", true), ("SOT-23", false), ("SOT-23::25", true)] {
+            packages.add(
+                name,
+                vec![],
+                None,
+                None,
+                None,
+                vec![],
+                vec![],
+                vec![],
+                is_front,
+            );
+        }
+        assert_eq!(
+            packages.get_by_name("SOT-23::25", false).unwrap().name,
+            "SOT-23::25"
+        );
+        // Keep the existing fallback for files that omit the numbered image.
+        assert_eq!(
+            packages.get_by_name("SOT-23::26", false).unwrap().name,
+            "SOT-23"
+        );
     }
 
     #[test]
