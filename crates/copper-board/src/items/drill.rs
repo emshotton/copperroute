@@ -437,6 +437,8 @@ pub struct Pin {
     pub drill: DrillItemData,
     pub allow_solder_mask_bridges: bool,
     pub solder_mask_expansion: std::collections::BTreeMap<usize, i32>,
+    pub source_footprint: Option<String>,
+    pub source_pad_number: Option<String>,
     pin_index: i32,
     changed_to: Option<ItemId>,
     shapes: OnceLock<Vec<Option<Shape>>>,
@@ -450,6 +452,8 @@ impl PartialEq for Pin {
             && self.changed_to == other.changed_to
             && self.solder_mask_expansion == other.solder_mask_expansion
             && self.allow_solder_mask_bridges == other.allow_solder_mask_bridges
+            && self.source_footprint == other.source_footprint
+            && self.source_pad_number == other.source_pad_number
     }
 }
 
@@ -479,6 +483,8 @@ impl Pin {
             pin_index,
             solder_mask_expansion: Default::default(),
             allow_solder_mask_bridges: false,
+            source_footprint: None,
+            source_pad_number: None,
             changed_to: None,
             shapes: OnceLock::new(),
         }
@@ -488,6 +494,8 @@ impl Pin {
         let mut result = Pin::new(copied_header(&self.hdr, new_id), self.pin_index);
         result.solder_mask_expansion = self.solder_mask_expansion.clone();
         result.allow_solder_mask_bridges = self.allow_solder_mask_bridges;
+        result.source_footprint = self.source_footprint.clone();
+        result.source_pad_number = self.source_pad_number.clone();
         result
     }
 

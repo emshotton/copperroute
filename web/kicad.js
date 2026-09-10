@@ -386,6 +386,8 @@ export function importBoard(text, name, rules, options = {}) {
         pads: [
           {
             name: String(pi),
+            sourceFootprint: String(fi),
+            sourcePadNumber: String(pad.values[1]),
             netName: netName(pad),
             shape,
             ...(shape === "roundrect" ? { roundRectRatio: number(val(pad, "roundrect_rratio", 0.25)) } : {}),
@@ -492,6 +494,8 @@ export function importBoard(text, name, rules, options = {}) {
     rebuildZones: !!options.rebuildZones,
     warnings: [...new Set(warnings)],
     board: {
+      allowSolderMaskBridgesInFootprints: !!setup && val(setup, "allow_soldermask_bridges_in_footprints", "no") === "yes",
+      solderMaskMinWidth: setup && child(setup, "solder_mask_min_width") ? number(val(setup, "solder_mask_min_width", 0)) : undefined,
       viaInPadAllowed: !!options.allowViaInPad,
       designName: name,
       unit: "MM",

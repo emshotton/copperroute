@@ -52,3 +52,11 @@ Run `quality-epyc-pad-copper-full-01`, candidate `pad-copper`: KiCad identifies 
 - OLED outline: [audit script](routing-quality-artifacts/oled-outline/audit.py) and [saved original/candidate DRC evidence](routing-quality-artifacts/oled-outline/audit.json). Original circle UUID `00000000-0000-0000-0000-0000578ea680`, centre (122.555, 105.156)mm, is involved in both added OLED_RST track collisions. The rectangular DSN boundary does not represent this cutout.
 
 VC4000 evidence: shove-revalidation-copper-gainers.json and shove-revalidation-vc4000-shorts.json in the shove-revalidation report artifacts. DSN polygon contexts were checked: all belong to image outlines.
+
+### RS485 moisture adapter: duplicate item identities
+
+`pcbench-rs485-moist-sensor_adapter-por` is a **confirmed report-identity outlier**, not evidence of a difficult or unrealistic routing problem. Its corpus `raw.kicad_pcb` contains ten duplicated UUID values: two occur seven times, two occur five times, and six occur twice. Those duplicates survive into the routed board. KiCad's JSON report can therefore associate a finding with the wrong physical pad; for example, the same pad UUID occurs in both U3 and U4.
+
+A diagnostic copy changed only repeated UUIDs to unique deterministic values. KiCad 10.0.6 still reports 22 mask findings, but all eight pad-pair findings then match the native checker by position (previously four matched). No geometry or corpus input was changed, and this diagnostic does not replace the headline benchmark. The original board remains in all totals; this finding does not justify dismissing routing or copper-clearance regressions.
+
+Reproduction and reports: workbench `/home/em/copperroute-epyc-results/web-structural-routing/server/results/native-mask-parity-02/duplicate-uuid-audit/`, including `audit-duplicate-uuids.py`, the diagnostic PCB, KiCad report and summary of repeated source identifiers.

@@ -22,6 +22,7 @@ pub fn canonical_class_name(name: &str) -> &str {
 #[must_use]
 pub fn from_dsn(board: &Board) -> DrcConstraints {
     let mut constraints = DrcConstraints::default();
+    constraints.solder_mask_min_width = board.rules.solder_mask_min_width;
     let matrix = &board.rules.clearance_matrix;
     for class in board.rules.net_classes.iter() {
         let name = canonical_class_name(class.get_name()).to_string();

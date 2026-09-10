@@ -404,3 +404,21 @@ test("local copper clearance inherits with the file version's zero semantics", (
   const text = source.replace('(pad "1" thru_hole circle', '(pad "1" thru_hole circle (clearance -0.1)');
   assert.equal(load(text).board.components[0].pads[0].copperClearance, -0.1);
 });
+
+test("board mask web width survives the browser adapter", () => {
+  const text = source.replace("(pad_to_mask_clearance 0)", "(pad_to_mask_clearance 0) (solder_mask_min_width 0.2)");
+  assert.equal(load(text).board.solderMaskMinWidth, 0.2);
+});
+
+test("board-wide footprint mask permission is imported", () => {
+ const text=source.replace("(pad_to_mask_clearance 0)","(pad_to_mask_clearance 0) (allow_soldermask_bridges_in_footprints yes)");
+ assert.equal(load(text).board.allowSolderMaskBridgesInFootprints,true);
+});
+
+test("flattened pads retain their source footprint and pad numbers", () => {
+  const pads = load(source).board.components.map(c => c.pads[0]);
+  assert.equal(pads[0].sourceFootprint, pads[1].sourceFootprint);
+  assert.notEqual(pads[0].sourceFootprint, pads[2].sourceFootprint);
+  assert.equal(pads[0].sourcePadNumber, "1");
+  assert.equal(pads[1].sourcePadNumber, "2");
+});

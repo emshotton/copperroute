@@ -1,0 +1,11 @@
+{
+  "crates/copper-board/src/items/drill.rs": "9570a00509ecdeddc351ea5a95b7281327235639e0decc51fa8a3f21c7412dfb",
+  "crates/copper-board/src/rules/board_rules.rs": "63009e0311e8cbadf8c5ffc5a18feeae25ed108ba670fe413867aedef8f29334",
+  "crates/copper-board/src/rules/drc_constraints.rs": "b9fca111219af0a1d7970e213f397942b3896ba7f7a6d08fe2eb16c31794b86c",
+  "crates/copper-drc/src/checks/solder_mask.rs": "d8d143bd95d1c1125ee06d41311881cce4340dadc6fccb880f7d9a4abd6cb76d",
+  "crates/copper-drc/src/constraints.rs": "d71ebf1fb9e58fad55c281ae5775a2cbe9e33d7b29679ddb2302cf567414a714",
+  "crates/copper-dsn/src/kicad/dto.rs": "c15216526bb10851fb57fb32107c912a8b127c30cdb2a9c2bd79830dda60dbbb",
+  "crates/copper-dsn/src/kicad/reader.rs": "eb72cd437a964cbd505b8e9ab76b6cd0bc4b3a34f8cad74de8ea6d203e92cb91",
+  "crates/copper-dsn/src/kicad/writer.rs": "55085c5d810f2a6881e5dea431baa44adf1bc96541336059333dfef00a574e9d",
+  "web/kicad.js": "a0435cfe4a57f21a7a61764819809ff95af10e6267ec1371ae5a386bb7d29bdf"
+}

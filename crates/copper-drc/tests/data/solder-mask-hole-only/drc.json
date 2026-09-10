@@ -1,0 +1,213 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-10T16:04:10",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning"
+    ],
+    "kicad_version": "10.0.6",
+    "schematic_parity": [],
+    "source": "mask.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [N2] on F.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 10.79,
+                        "y": 9.7
+                    },
+                    "uuid": "38d601eb-20be-427e-bb2c-2c36b5120666"
+                },
+                {
+                    "description": "Track [N2] on B.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 10.79,
+                        "y": 9.7
+                    },
+                    "uuid": "c32aa670-477f-465d-92d8-9e073a6fb021"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Board has malformed outline (no edges found on Edge.Cuts layer)",
+            "items": [
+                {
+                    "description": "PCB",
+                    "pos": {
+                        "x": 0.0,
+                        "y": 0.0
+                    },
+                    "uuid": "f1f6d622-93ec-4f09-9969-b9730af5e0c9"
+                }
+            ],
+            "severity": "error",
+            "type": "invalid_outline"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.1900 mm)",
+            "items": [
+                {
+                    "description": "Track [N2] on B.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 10.79,
+                        "y": 9.7
+                    },
+                    "uuid": "c32aa670-477f-465d-92d8-9e073a6fb021"
+                },
+                {
+                    "description": "NPTH pad of U1",
+                    "pos": {
+                        "x": 10.0,
+                        "y": 10.0
+                    },
+                    "uuid": "ec9125c9-dee1-494a-8512-e3f7dbbd3997"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.1900 mm)",
+            "items": [
+                {
+                    "description": "Track [N1] on F.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 9.21,
+                        "y": 9.7
+                    },
+                    "uuid": "a4d89e5d-39bf-45cc-8017-90f34452b64e"
+                },
+                {
+                    "description": "NPTH pad of U1",
+                    "pos": {
+                        "x": 10.0,
+                        "y": 10.0
+                    },
+                    "uuid": "ec9125c9-dee1-494a-8512-e3f7dbbd3997"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.1900 mm)",
+            "items": [
+                {
+                    "description": "Track [N2] on F.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 10.79,
+                        "y": 9.7
+                    },
+                    "uuid": "38d601eb-20be-427e-bb2c-2c36b5120666"
+                },
+                {
+                    "description": "NPTH pad of U1",
+                    "pos": {
+                        "x": 10.0,
+                        "y": 10.0
+                    },
+                    "uuid": "ec9125c9-dee1-494a-8512-e3f7dbbd3997"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of U1",
+                    "pos": {
+                        "x": 10.0,
+                        "y": 10.0
+                    },
+                    "uuid": "36d8a197-7737-40c6-9419-7b54ba8d2089"
+                },
+                {
+                    "description": "NPTH pad of U1",
+                    "pos": {
+                        "x": 10.0,
+                        "y": 10.0
+                    },
+                    "uuid": "ec9125c9-dee1-494a-8512-e3f7dbbd3997"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [N1] on F.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 9.21,
+                        "y": 9.7
+                    },
+                    "uuid": "a4d89e5d-39bf-45cc-8017-90f34452b64e"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [N2] on F.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 10.79,
+                        "y": 9.7
+                    },
+                    "uuid": "38d601eb-20be-427e-bb2c-2c36b5120666"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [N2] on B.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 10.79,
+                        "y": 9.7
+                    },
+                    "uuid": "c32aa670-477f-465d-92d8-9e073a6fb021"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        }
+    ]
+}

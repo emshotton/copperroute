@@ -8,6 +8,10 @@ fn is_false(value: &bool) -> bool {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct KiCadBoardJson {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub solderMaskMinWidth: Option<f64>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub allowSolderMaskBridgesInFootprints: bool,
     /// Explicit permission for newly routed vias to share SMD pad copper.
     #[serde(default, skip_serializing_if = "is_false")]
     pub viaInPadAllowed: bool,
@@ -125,6 +129,10 @@ pub struct ComponentJson {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct PadJson {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sourceFootprint: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sourcePadNumber: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub copperClearance: Option<f64>,
     #[serde(default)]
     pub allowSolderMaskBridges: bool,
@@ -227,6 +235,8 @@ pub struct Point2D {
 impl Default for KiCadBoardJson {
     fn default() -> KiCadBoardJson {
         KiCadBoardJson {
+            solderMaskMinWidth: None,
+            allowSolderMaskBridgesInFootprints: false,
             viaInPadAllowed: false,
             designName: None,
             hostCad: None,
@@ -277,6 +287,8 @@ impl Default for ComponentJson {
 impl Default for PadJson {
     fn default() -> PadJson {
         PadJson {
+            sourceFootprint: None,
+            sourcePadNumber: None,
             copperClearance: None,
             solderMaskExpansion: None,
             allowSolderMaskBridges: false,

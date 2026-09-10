@@ -1,9 +1,9 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use copper_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
 use copper_geometry::{FloatLine, Shape, ShapeOps, TileShape};
 
-use crate::checks::geometry::{candidates, gap_below, item_shapes};
+use crate::checks::geometry::{candidates, gap_below, has_copper, item_shapes};
 use crate::constraints::severity;
 use crate::{DrcViolation, DrcViolationKind};
 
@@ -75,13 +75,58 @@ fn pad_routing_gap(board: &Board, pad: ItemId, other: ItemId, layer: usize) -> O
     Some(distance - radius - half_width)
 }
 
+fn pad_pair_gap(board: &Board, a: ItemId, b: ItemId, layer: usize) -> Option<f64> {
+    let ctx = board.ctx();
+    let core = |id| {
+        let Item::Pin(pin) = board.get_item(id)? else {
+            return None;
+        };
+        let shape = pin.get_shape_on_layer(layer, &ctx)?;
+        if let Shape::Circle(circle) = shape {
+            return Some((
+                TileShape::Box(copper_geometry::IntBox::from_coords(
+                    circle.center.x,
+                    circle.center.y,
+                    circle.center.x,
+                    circle.center.y,
+                )),
+                f64::from(circle.radius),
+            ));
+        }
+        let radius = pin.get_padstack(&ctx)?.round_rect_radius.unwrap_or(0.0);
+        Some((shape.bounding_tile().offset(-radius), radius))
+    };
+    let (a, ar) = core(a)?;
+    let (b, br) = core(b)?;
+    let corners = b.corner_approx_arr();
+    let gap = (0..corners.len())
+        .map(|i| {
+            segment_gap(
+                &a,
+                &FloatLine::new(corners[i], corners[(i + 1) % corners.len()]),
+            )
+        })
+        .fold(f64::INFINITY, f64::min);
+    Some(gap - ar - br)
+}
+
 pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcViolation>) {
     let kind = DrcViolationKind::SolderMaskBridge;
     let severity = severity(constraints, kind);
     if severity == DrcSeverity::Ignore {
         return;
     }
+    let web_width = constraints.solder_mask_min_width.unwrap_or(0).max(0);
     let mut seen = BTreeSet::new();
+    let mut largest_margin: BTreeMap<usize, i32> = BTreeMap::new();
+    for id in board.get_pins() {
+        if let Some(Item::Pin(pin)) = board.get_item(id) {
+            for (&layer, &margin) in &pin.solder_mask_expansion {
+                let largest = largest_margin.entry(layer).or_default();
+                *largest = (*largest).max(margin);
+            }
+        }
+    }
     let clearance = constraints
         .solder_mask_to_copper_clearance
         .unwrap_or(0)
@@ -91,8 +136,8 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
             continue;
         };
         if pin.allow_solder_mask_bridges
-            || pin.hdr.net_count() == 0
             || pin.solder_mask_expansion.is_empty()
+            || !has_copper(board, pin_id)
         {
             continue;
         }
@@ -102,18 +147,74 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
                 continue;
             };
             let aperture = copper.enlarge(f64::from(*margin));
-            for other_id in candidates(board, &aperture, Some(layer), clearance) {
+            for other_id in candidates(
+                board,
+                &aperture,
+                Some(layer),
+                clearance.max(
+                    largest_margin
+                        .get(&layer)
+                        .copied()
+                        .unwrap_or(0)
+                        .saturating_add(web_width),
+                ),
+            ) {
                 let Some(other) = board.get_item(other_id) else {
                     continue;
                 };
-                if !matches!(other, Item::Trace(_) | Item::Via(_))
-                    || other.net_count() == 0
+                if other_id == pin_id
+                    || !matches!(other, Item::Trace(_) | Item::Via(_) | Item::Pin(_))
                     || other.shares_net(board.get_item(pin_id).unwrap())
                 {
                     continue;
                 }
-                let expected = f64::from(margin.saturating_add(clearance));
-                let exact_gap = pad_routing_gap(board, pin_id, other_id, layer);
+                if !has_copper(board, other_id) {
+                    continue;
+                }
+                let other_margin = if let Item::Pin(other_pin) = other {
+                    if other_pin.allow_solder_mask_bridges {
+                        continue;
+                    }
+                    let ctx = board.ctx();
+                    let Item::Pin(pin) = board.get_item(pin_id).unwrap() else {
+                        unreachable!()
+                    };
+                    let same_footprint = (pin.hdr.get_component_id() != 0
+                        && board.get_item(pin_id).unwrap().component_id() == other.component_id())
+                        || pin.source_footprint.as_ref().is_some_and(|source| {
+                            Some(source) == other_pin.source_footprint.as_ref()
+                        });
+                    let number = pin.source_pad_number.as_deref().or_else(|| pin.name(&ctx));
+                    let other_number = other_pin
+                        .source_pad_number
+                        .as_deref()
+                        .or_else(|| other_pin.name(&ctx));
+                    if same_footprint
+                        && (board.rules.allow_solder_mask_bridges_in_footprints
+                            || number
+                                .is_some_and(|name| !name.is_empty() && Some(name) == other_number))
+                    {
+                        continue;
+                    }
+                    other_pin.solder_mask_expansion.get(&layer).copied()
+                } else {
+                    None
+                };
+                let required = if other_margin.is_some() {
+                    web_width
+                } else {
+                    clearance
+                };
+                let expected = f64::from(
+                    margin
+                        .saturating_add(other_margin.unwrap_or(0))
+                        .saturating_add(required),
+                );
+                let exact_gap = if matches!(other, Item::Pin(_)) {
+                    pad_pair_gap(board, pin_id, other_id, layer)
+                } else {
+                    pad_routing_gap(board, pin_id, other_id, layer)
+                };
                 if exact_gap.is_some_and(|gap| gap >= expected) {
                     continue;
                 }
@@ -121,10 +222,12 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
                     if other_layer != layer {
                         continue;
                     }
-                    let Some((_, position)) = gap_below(&aperture, &shape, clearance) else {
+                    let other_aperture = shape.enlarge(f64::from(other_margin.unwrap_or(0)));
+                    let Some((_, position)) = gap_below(&aperture, &other_aperture, required)
+                    else {
                         continue;
                     };
-                    if !seen.insert((pin_id, other_id, layer)) {
+                    if !seen.insert((pin_id.min(other_id), pin_id.max(other_id), layer)) {
                         continue;
                     }
                     let actual = exact_gap.unwrap_or_else(|| {
