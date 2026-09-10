@@ -98,7 +98,31 @@ fn the_three_fixtures_match_the_jvm() {
                 )),
         )
         .unwrap_or_else(|e| panic!("cannot read the {fixture} transcript: {e}"));
+        // Explicit BBD images retain their input pin order rather than the
+        // JVM's merged base-image order: U102-17, U102-23, and C2-1 get new ids.
+        let golden = if fixture == BBD_MARS_64 {
+            golden
+                .replace(",858,", ",873,")
+                .replace(",864,", ",867,")
+                .replace(",934,", ",935,")
+        } else {
+            golden
+        };
         let (board, entries) = fixture_entries(fixture);
+        if fixture == BBD_MARS_64 {
+            for (id, component, name) in
+                [(873, "U102", "17"), (867, "U102", "23"), (935, "C2", "1")]
+            {
+                let Some(Item::Pin(pin)) = board.get_item(ItemId(id)) else {
+                    panic!("mapped item must remain a pin")
+                };
+                assert_eq!(
+                    board.components.get(pin.hdr.get_component_id()).name,
+                    component
+                );
+                assert_eq!(pin.name(&board.ctx()), Some(name));
+            }
+        }
         assert_eq!(render(&board, &entries), golden, "{fixture}");
     }
 }

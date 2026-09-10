@@ -3492,6 +3492,35 @@ quality-epyc-board-minimum-full-01 completed 2,253 successful KiCad-refereed cel
 
 Clean explicit-manifest precommit suite50262 exited0: 2,581 passed/77 ignored/zero failures including doctests. Correct worktree compilation paths and both new tests verified. Report and control/main comparisons included. These are ordinary project rules, not an outlier exemption.
 
+### Explicit image identity revisited on merged main
+
+Reproduced the previously logged Saiboard import bug on current code (not a newly discovered mechanism): U2/U18 receive 1.475×0.6mm rounded SOT23 geometry intended for Q3/Q5; Q3/Q5 receive0.9×0.8mm rectangular geometry instead. Q3pad1 imported(29.194,98.618)mm vsoriginal(29.1315,98.618);U2pad2(50.95,42.2875)vsoriginal(50.95,42.35). Imported copper rule is200µm, so rule absence does not explain these mismatches. NativeDSN+SES+projectDRC returns0violations whileKiCadboundaryoutput26Cu errors. Diagnosticexample removed from PR29 worktree and retained as artifact.
+
+Created experiment/image-identity-main atd84ac9e. Replayed earlier library_scope test first:13passed1failed, explicitnames dedup3→2. Applied only two earlier production files (library parser preserve names, package lookup prefer exact opposite-side beforefallback);14library tests nowpass. Fullworkspace36904 running in freshly cleaned shared target; no legacy recordings or expected outputs updated. Earlier reviewed patch includes test accommodations and references a missing preserved-image-tree-order.txt artifact; those accommodations were not applied. Reassess current full-suite differences before any commit. Historical fullrun had mixed+71U/−25Cu and deadline failures, retained as evidence.
+
+Prepared frozen image snapshot and full quality-epyc-image-main-01, main/images751each,192jobs10passes300s1thread, oldmask metadata andsame minimalprojectrules onboth. Waits behind duplicate-referencepilot4106410 andpadfull3631690; compiler runs only afterbothcomplete. Currentmainbinary reused fromnewpadfull. Integratedrefereerepair/export; fullacceptancepending.
+
+### Unchanged-session importer attribution
+
+Using fresh image-worktree CLI from the current clean-target build, imported the identical Saiboard boundary SES into corrected image geometry. Native DRC now detects13clearance/3shorts plus17dangling tracks, compared with0reports underwronggeometry. Example HallOut2 pin versus P trace actual0.1243mm matchesKiCad,expected0.2mm. KiCad has19clearance/7shorts; counts are not equivalent because native uses different item aggregation. No reroute or independentqualitygain claim fromthisaudit. Logs/report saved. Current fullworkspace shows five parity-test targets failing (overrides,net_incompletes,unconnected,dsn_reader,parity_ses), stillrunning; originalrecordings untouched. Frozenimagefull driver924409 queued behindpadfull3631690 andduplicatepilot4106410.
+
+Image workspace36904 completed2577passed/5failed/77ignored. Temporary env-gated override transcript audit removes only tree_order lines from both assertions; every other original clearance-state field passes across all cases/stages. Recorded all changed tree-order rows as evidence; restored original overrides.rs byte-for-byte. No expectation or original JVM recording changed. Other four failing targets remain under review; source frozen for queued corpus experiment.
+
+### Image parity review
+
+Applied prior explicit accommodations to all five failing targets after reviewing current differences. Original JVM files untouched. SES test now checks every non-placement byte againstJVM, every placement field againstJVM, and exact image names againstsourceDSN (retains knownCyrilliclexerexception). Relay reader keeps all wiring/vias while explicitly updating named image/outline-order expectations. BBD connectivitymaps three IDs; new independent assertions confirm873=U102-17,867=U102-23,935=C2-1. Override audit yielded exactlyfour consistenttreeorders across12changedstagecases; wrote separateRusttreeexpectations andpreservedall originalnon-orderfields. All5targetedtestbinariespassed; pinidentitycheckpassed. Fullreviewworkspace nowrunning /tmp/quality-image-main-reviewed-workspace.log. No productionchangesafterfrozenimagecandidate, no corpusacceptanceyet.
+
+### Reviewed image-import suite completed
+
+Fresh reviewed workspace session21977 exited0. All167 test summaries total2582passed/77ignored/0failed, including doctests. The five original Java-parity failures were reviewed explicitly; original JVM recording files remain unchanged and named Rust expectations account for preserved image identity. Physical identities of the three renumbered pins are independently asserted. Full corpus driver924409 remains live and routing quality-epyc-image-main-01, exact main d84ac9e versus image correction,751boards per side. No corpus success claim yet.
+
+### Image identity full validation against merged main
+
+quality-epyc-image-main-01 finished all1502KiCadok. PCBench740:−346U(25better/6worse),−49Cu(11better/3gainers),−15reportedmask(11better/7gainers),CPU0.93829,completed710→718,connected588→590,RSSmedian12.1both/max369.4→373.9MB. Local11 unchangedquality/completion/connected,CPU1.00626,RSSmedian12.1both/max71.7→70.3MB.
+
+720bothcompleted:−11U/−48Cu/−14reportedmask. Of these185SESidentical give0U0Cu/+4mask,535SESdiffer give−11U/−48Cu/−18mask. SES image names intentionally change, so a changed SES is not proof of changed wire geometry. Five ordinary completedboards loseconnections:serial_gw+2,minimal_node+2/−2Cu,Pi1541io+3,teensy-fx+1,esp32-ethernet+1/+1Cu. Balena-rover adds1Cu without connectionchange. Chess+3Cu andbms+1U aredeadlineaffected. Saiboard8x3 retains0U and loses17Cu. Historical oldbaseline image experiment was negative; current main's full result now supports preparing review, with regressions explicit. No346causalconnection or6percent speedclaim. Detailed results copied locally/workbench; generated report preparation underway.
+
+Image report prepared against reverified main d84ac9e. Original/referee regression audit confirms both completed copper gainers involve unimported local NPTH clearance rules: esp32 1.650mm, balena1.725mm; both originals0routingDRC/0unconnected. These remain ordinary regressions. Source hashes match frozen candidate; reviewed clean suite2582passed77ignored0failed. Generated gatefails19qualitylosses. Preparing a separate draft PR with the +11connection/−48Cu completed-board benefit and all losses explicit; combined local-rule/image behavior not measured.
 ### PR29 integration with merged main
 
 Previous goal turn completed the authorized merge batch (progress). Rechecked main d84ac9e and merged it into fix/kicad-pad-local-clearance without committing. Only docs/routing-quality-log.md conflicted; both experiment histories retained. Production integration needs no conflict edits. Fresh clean workspace24668 running at /tmp/quality-pad-main-integration-workspace.log; web49passed after correcting an initial npm invocation from the repository root.
@@ -3543,3 +3572,19 @@ Eight-board quality-epyc-image-pad-pilot-01 completed32KiCadok,allroutesCOMPLETE
 Queued full quality-epyc-image-pad-full-01 driver389871 behindcorridorterminalpilot382532:main,pads,combined751each,samefrozenpilotbinariesandmetadata,192jobs10passes300s1thread. No builds overlapactive measurements. Resultsbackups active. PR29finalreport updatedwithreference-remapfullcomparisons,generatorverified751exactinputs,mechanicalpadlimitation. Fresh padprecommit workspace41293 running before commit; generated report extracted,gatefailure retained.
 
 Fresh pad-remap precommit workspace41293 exited0:2586passed77ignored0failed including doctests. Allfive mappingtests pass. Refactored helper formatting preserves the exact Python AST; all751 generatedinputs already verified identical to measuredmetadata05. Gitdiff confirms no crates/webchanges from measuredb857afc. Ready to publish the incremental reference mapping and updated PR29 report: completed versusmain+1U/−140Cu; remaining NPTHkeepout gap explicit.
+
+### PR31 integration and mechanical-hole rule diagnosis
+
+Merged origin/main028f0a5 into image PR31 worktree withoutcommit. Onlyroutinglog conflict; retained both histories. Alltrackedcrates/web/manifests byteequalthe tested image-pad integration/frozencombinedsnapshot. Fresh fullworkspace11159running,sharedtarget nowimagePR31. No sourceconflictedits. Fullcombinedrun389871confirmedlive.
+
+KiCadNPTHaudit shows balena Noname1-4 each2.75mm drill/size,1.725mm explicitlocalclearance; DSNcirclekeepouts diameter3.25mm alreadyinclude0.25mm radialpadding. Esp32 REF** variants each3.3mm drill/size,1.65mm explicitlocalclearance. Existing loadermatchespins only,while these arecomponentObstacleAreas,explainingremaining unmatchedrules. A future circlekeepout rule must account for existing geometricpadding: required extra rowfloor=max(drill_radius+local_clearance−keepout_radius,0), preservinghigherexistingrows. This is a geometric hypothesis to test,notyet implemented; actual importedclass/clearance stillneedsinspection. It does not revive the rejectedglobal250µm hole-clearance hypothesis. Auditretained.
+
+PR31 post-main integration workspace11159 exits0:2587passed77ignored0failed includingdoctests;alltrackedsourceequalpreviouscombinedsnapshot. Mergecommit remains pending full benchmark assessment.
+
+### Full image/pad interaction completed
+
+quality-epyc-image-pad-full-01 finished2253KiCadok. Againstpadcontrol (productioncode/inputsequivalentnewmain028f0a5):PC740−288U(25better/4worse),−46Cu(10better/3gainers),−766reportedmask(12better/7gainers),CPU0.934578;local11unchangedqualityCPU1.000818. Completed720pairs186identical0U0Cu/−723reportedmask and534different−15U/−46Cu/−49mask. Changed SES includesimageplacementnames,notnecessarilychangedwires. No288connection/6.5percent speed/massivemaskgainclaim. Againstoldmaind84completed718pairs−14U/−186Cu. Oldmain/padcontrol againrepeats+1U/−140Cu on41changedcompletedoutputs. Positivecombinedcompletedtrade supports PR31review/mergeafterupdatedreport,while ordinaryregressions remainexplicit.
+
+Details pulledlocally;workbenchbackup underway. SourcePR31postmainworkspacealready2587passed77ignored0failed. Fourboardlocalholepilotdriver2320983 launched afterfullrun; noholequalityclaimyet. Itsinputvalidation andfrozenbinarybuildserialized; sixfocusedtests pass.
+
+PR31 finalmain audit:599baselinefiles matchcurrentmain028f0a5 and600candidatefiles matchfrozencombinedsnapshot,includingcratesource/testdata/manifests. Initialaudit mistakenly usedcandidatefilelistforbaseline and failed on the intentionallynew Rusttreeorderfile; corrected separatefilelists,completeverificationpasses. Generatedreport17qualitylosses retained. Updatedmerge rationale completed−15U/−46Cu; fourordinary+1U boards,twocompleted+1Cugainers explicit. Freshsuite2587passed77ignored0failed verified. Publishing integratedPR31 forauthorizedmerge.

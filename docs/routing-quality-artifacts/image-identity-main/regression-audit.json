@@ -1,0 +1,1513 @@
+{
+  "Hardware_Playground_serial_gw_ATMEGA328P": {
+    "ground_truth.json": {
+      "wirelength_mm": 672.9181,
+      "vias": 25,
+      "drv_routing": 0,
+      "drv_all": 158,
+      "project_generated": true,
+      "zones_refilled": 4,
+      "nets": 33,
+      "layers": 2,
+      "kicad_version": null,
+      "unconnected": 0,
+      "reference_complete": true
+    },
+    "raw-drc.json": {
+      "violations_by_type": {
+        "courtyards_overlap": 13,
+        "silk_overlap": 2,
+        "lib_footprint_issues": 39,
+        "mirrored_text_on_front_layer": 1,
+        "nonmirrored_text_on_back_layer": 1,
+        "pth_inside_courtyard": 5,
+        "silk_over_copper": 2,
+        "solder_mask_bridge": 140
+      },
+      "unconnected_items": 0
+    },
+    "main": [
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2266 mm)",
+        "items": [
+          {
+            "description": "Track [+5V] on B.Cu, length 5.8927 mm",
+            "pos": {
+              "x": 97.9893,
+              "y": 89.7639
+            },
+            "uuid": "b2dd70a5-13e4-421e-a147-0b6b5ff77b15"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V28_18",
+            "pos": {
+              "x": 98.791,
+              "y": 90.3155
+            },
+            "uuid": "fd6e3cdf-4b16-44a6-b521-8d1f8a2b0ffb"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 0.3000 mm; actual 0.2766 mm)",
+        "items": [
+          {
+            "description": "Track [+5V] on B.Cu, length 5.8927 mm",
+            "pos": {
+              "x": 97.9893,
+              "y": 89.7639
+            },
+            "uuid": "b2dd70a5-13e4-421e-a147-0b6b5ff77b15"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V28_18",
+            "pos": {
+              "x": 98.791,
+              "y": 90.3155
+            },
+            "uuid": "fd6e3cdf-4b16-44a6-b521-8d1f8a2b0ffb"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2266 mm)",
+        "items": [
+          {
+            "description": "Track [+5V] on B.Cu, length 5.8927 mm",
+            "pos": {
+              "x": 97.9893,
+              "y": 89.7639
+            },
+            "uuid": "b2dd70a5-13e4-421e-a147-0b6b5ff77b15"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V29_18",
+            "pos": {
+              "x": 99.791,
+              "y": 90.3155
+            },
+            "uuid": "d5587edc-35d8-4dff-ad68-58076d3e79c8"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 0.3000 mm; actual 0.2766 mm)",
+        "items": [
+          {
+            "description": "Track [+5V] on B.Cu, length 5.8927 mm",
+            "pos": {
+              "x": 97.9893,
+              "y": 89.7639
+            },
+            "uuid": "b2dd70a5-13e4-421e-a147-0b6b5ff77b15"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V29_18",
+            "pos": {
+              "x": 99.791,
+              "y": 90.3155
+            },
+            "uuid": "d5587edc-35d8-4dff-ad68-58076d3e79c8"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2782 mm)",
+        "items": [
+          {
+            "description": "PTH pad 1 [GND] of V21_18",
+            "pos": {
+              "x": 91.791,
+              "y": 90.3155
+            },
+            "uuid": "561bc5f6-22ba-4a4d-9cba-a615584ee25d"
+          },
+          {
+            "description": "Via [/SER_TX] on F.Cu - B.Cu",
+            "pos": {
+              "x": 92.6161,
+              "y": 90.6162
+            },
+            "uuid": "58d2cb8e-329d-4f48-835f-eaf0dc946917"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2782 mm)",
+        "items": [
+          {
+            "description": "PTH pad 1 [GND] of V21_18",
+            "pos": {
+              "x": 91.791,
+              "y": 90.3155
+            },
+            "uuid": "561bc5f6-22ba-4a4d-9cba-a615584ee25d"
+          },
+          {
+            "description": "Via [/SER_TX] on F.Cu - B.Cu",
+            "pos": {
+              "x": 92.6161,
+              "y": 90.6162
+            },
+            "uuid": "58d2cb8e-329d-4f48-835f-eaf0dc946917"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2256 mm)",
+        "items": [
+          {
+            "description": "PTH pad 1 [GND] of V19_18",
+            "pos": {
+              "x": 89.791,
+              "y": 90.3155
+            },
+            "uuid": "98b98e36-e3a2-4cf9-b32e-d9ba118dc003"
+          },
+          {
+            "description": "Track [/SER_TX] on F.Cu, length 6.3043 mm",
+            "pos": {
+              "x": 92.3662,
+              "y": 90.8661
+            },
+            "uuid": "f59f66d5-eef7-42f9-962e-84abc9904ef5"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 0.3000 mm; actual 0.2756 mm)",
+        "items": [
+          {
+            "description": "Track [/SER_TX] on F.Cu, length 6.3043 mm",
+            "pos": {
+              "x": 92.3662,
+              "y": 90.8661
+            },
+            "uuid": "f59f66d5-eef7-42f9-962e-84abc9904ef5"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V19_18",
+            "pos": {
+              "x": 89.791,
+              "y": 90.3155
+            },
+            "uuid": "98b98e36-e3a2-4cf9-b32e-d9ba118dc003"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2256 mm)",
+        "items": [
+          {
+            "description": "PTH pad 1 [GND] of V20_18",
+            "pos": {
+              "x": 90.791,
+              "y": 90.3155
+            },
+            "uuid": "c10d30e5-13e6-4b54-9c97-9ff083fff005"
+          },
+          {
+            "description": "Track [/SER_TX] on F.Cu, length 6.3043 mm",
+            "pos": {
+              "x": 92.3662,
+              "y": 90.8661
+            },
+            "uuid": "f59f66d5-eef7-42f9-962e-84abc9904ef5"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 0.3000 mm; actual 0.2756 mm)",
+        "items": [
+          {
+            "description": "Track [/SER_TX] on F.Cu, length 6.3043 mm",
+            "pos": {
+              "x": 92.3662,
+              "y": 90.8661
+            },
+            "uuid": "f59f66d5-eef7-42f9-962e-84abc9904ef5"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V20_18",
+            "pos": {
+              "x": 90.791,
+              "y": 90.3155
+            },
+            "uuid": "c10d30e5-13e6-4b54-9c97-9ff083fff005"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2256 mm)",
+        "items": [
+          {
+            "description": "PTH pad 1 [GND] of V21_18",
+            "pos": {
+              "x": 91.791,
+              "y": 90.3155
+            },
+            "uuid": "561bc5f6-22ba-4a4d-9cba-a615584ee25d"
+          },
+          {
+            "description": "Track [/SER_TX] on F.Cu, length 6.3043 mm",
+            "pos": {
+              "x": 92.3662,
+              "y": 90.8661
+            },
+            "uuid": "f59f66d5-eef7-42f9-962e-84abc9904ef5"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 0.3000 mm; actual 0.2756 mm)",
+        "items": [
+          {
+            "description": "Track [/SER_TX] on F.Cu, length 6.3043 mm",
+            "pos": {
+              "x": 92.3662,
+              "y": 90.8661
+            },
+            "uuid": "f59f66d5-eef7-42f9-962e-84abc9904ef5"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V21_18",
+            "pos": {
+              "x": 91.791,
+              "y": 90.3155
+            },
+            "uuid": "561bc5f6-22ba-4a4d-9cba-a615584ee25d"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      }
+    ],
+    "images": [
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2381 mm)",
+        "items": [
+          {
+            "description": "PTH pad 1 [GND] of V19_18",
+            "pos": {
+              "x": 89.791,
+              "y": 90.3155
+            },
+            "uuid": "1945a68c-e889-4fff-8968-f51c978559f7"
+          },
+          {
+            "description": "Track [+3V3] on F.Cu, length 6.4402 mm",
+            "pos": {
+              "x": 92.3615,
+              "y": 90.8786
+            },
+            "uuid": "4139e065-e047-4042-a7ad-609f0005a84b"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 0.3000 mm; actual 0.2881 mm)",
+        "items": [
+          {
+            "description": "Track [+3V3] on F.Cu, length 6.4402 mm",
+            "pos": {
+              "x": 92.3615,
+              "y": 90.8786
+            },
+            "uuid": "4139e065-e047-4042-a7ad-609f0005a84b"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V19_18",
+            "pos": {
+              "x": 89.791,
+              "y": 90.3155
+            },
+            "uuid": "1945a68c-e889-4fff-8968-f51c978559f7"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2381 mm)",
+        "items": [
+          {
+            "description": "Track [+3V3] on F.Cu, length 6.4402 mm",
+            "pos": {
+              "x": 92.3615,
+              "y": 90.8786
+            },
+            "uuid": "4139e065-e047-4042-a7ad-609f0005a84b"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V20_18",
+            "pos": {
+              "x": 90.791,
+              "y": 90.3155
+            },
+            "uuid": "4b115349-e038-4626-bdeb-b8af8fe470e3"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 0.3000 mm; actual 0.2881 mm)",
+        "items": [
+          {
+            "description": "Track [+3V3] on F.Cu, length 6.4402 mm",
+            "pos": {
+              "x": 92.3615,
+              "y": 90.8786
+            },
+            "uuid": "4139e065-e047-4042-a7ad-609f0005a84b"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V20_18",
+            "pos": {
+              "x": 90.791,
+              "y": 90.3155
+            },
+            "uuid": "4b115349-e038-4626-bdeb-b8af8fe470e3"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2381 mm)",
+        "items": [
+          {
+            "description": "Track [+3V3] on F.Cu, length 6.4402 mm",
+            "pos": {
+              "x": 92.3615,
+              "y": 90.8786
+            },
+            "uuid": "4139e065-e047-4042-a7ad-609f0005a84b"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V21_18",
+            "pos": {
+              "x": 91.791,
+              "y": 90.3155
+            },
+            "uuid": "edd64849-1a54-4dfd-9a04-e97ae7e47ae9"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 0.3000 mm; actual 0.2881 mm)",
+        "items": [
+          {
+            "description": "Track [+3V3] on F.Cu, length 6.4402 mm",
+            "pos": {
+              "x": 92.3615,
+              "y": 90.8786
+            },
+            "uuid": "4139e065-e047-4042-a7ad-609f0005a84b"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V21_18",
+            "pos": {
+              "x": 91.791,
+              "y": 90.3155
+            },
+            "uuid": "edd64849-1a54-4dfd-9a04-e97ae7e47ae9"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2629 mm)",
+        "items": [
+          {
+            "description": "Via [/SER_RX] on F.Cu - B.Cu",
+            "pos": {
+              "x": 91.5303,
+              "y": 89.4929
+            },
+            "uuid": "4ac31fcf-362d-4781-9b7a-be55ec635a62"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V21_18",
+            "pos": {
+              "x": 91.791,
+              "y": 90.3155
+            },
+            "uuid": "edd64849-1a54-4dfd-9a04-e97ae7e47ae9"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2629 mm)",
+        "items": [
+          {
+            "description": "Via [/SER_RX] on F.Cu - B.Cu",
+            "pos": {
+              "x": 91.5303,
+              "y": 89.4929
+            },
+            "uuid": "4ac31fcf-362d-4781-9b7a-be55ec635a62"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V21_18",
+            "pos": {
+              "x": 91.791,
+              "y": 90.3155
+            },
+            "uuid": "edd64849-1a54-4dfd-9a04-e97ae7e47ae9"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2297 mm)",
+        "items": [
+          {
+            "description": "Via [/DTR] on F.Cu - B.Cu",
+            "pos": {
+              "x": 82.7099,
+              "y": 91.4898
+            },
+            "uuid": "7c8ef7f7-db82-484d-a4f1-2601f9219c33"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V12_20",
+            "pos": {
+              "x": 82.791,
+              "y": 92.3155
+            },
+            "uuid": "9b5971c9-638b-4549-8489-7a6f48d4f758"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 0.3000 mm; actual 0.2797 mm)",
+        "items": [
+          {
+            "description": "Via [/DTR] on F.Cu - B.Cu",
+            "pos": {
+              "x": 82.7099,
+              "y": 91.4898
+            },
+            "uuid": "7c8ef7f7-db82-484d-a4f1-2601f9219c33"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V12_20",
+            "pos": {
+              "x": 82.791,
+              "y": 92.3155
+            },
+            "uuid": "9b5971c9-638b-4549-8489-7a6f48d4f758"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2297 mm)",
+        "items": [
+          {
+            "description": "Via [/DTR] on F.Cu - B.Cu",
+            "pos": {
+              "x": 82.7099,
+              "y": 91.4898
+            },
+            "uuid": "7c8ef7f7-db82-484d-a4f1-2601f9219c33"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V12_20",
+            "pos": {
+              "x": 82.791,
+              "y": 92.3155
+            },
+            "uuid": "9b5971c9-638b-4549-8489-7a6f48d4f758"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 0.3000 mm; actual 0.2797 mm)",
+        "items": [
+          {
+            "description": "Via [/DTR] on F.Cu - B.Cu",
+            "pos": {
+              "x": 82.7099,
+              "y": 91.4898
+            },
+            "uuid": "7c8ef7f7-db82-484d-a4f1-2601f9219c33"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V12_20",
+            "pos": {
+              "x": 82.791,
+              "y": 92.3155
+            },
+            "uuid": "9b5971c9-638b-4549-8489-7a6f48d4f758"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      }
+    ]
+  },
+  "Hardware_Playground_minimal_node_rfm69w": {
+    "ground_truth.json": {
+      "wirelength_mm": 528.3163,
+      "vias": 33,
+      "drv_routing": 0,
+      "drv_all": 11,
+      "project_generated": true,
+      "zones_refilled": 2,
+      "nets": 30,
+      "layers": 2,
+      "kicad_version": null,
+      "unconnected": 0,
+      "reference_complete": true
+    },
+    "raw-drc.json": {
+      "violations_by_type": {
+        "lib_footprint_issues": 22,
+        "courtyards_overlap": 2,
+        "pth_inside_courtyard": 9,
+        "silk_over_copper": 14
+      },
+      "unconnected_items": 0
+    },
+    "main": [
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2651 mm)",
+        "items": [
+          {
+            "description": "Track [+3V3] on F.Cu, length 0.2716 mm",
+            "pos": {
+              "x": 161.995,
+              "y": 69.7248
+            },
+            "uuid": "5fa14c56-1353-470e-9a13-f36c74fff125"
+          },
+          {
+            "description": "PTH pad 1 [GND] of V33_22",
+            "pos": {
+              "x": 162.077,
+              "y": 69.09
+            },
+            "uuid": "8ce8011b-3c91-4485-8f6d-9d52348c50d6"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2651 mm)",
+        "items": [
+          {
+            "description": "PTH pad 1 [GND] of V33_22",
+            "pos": {
+              "x": 162.077,
+              "y": 69.09
+            },
+            "uuid": "8ce8011b-3c91-4485-8f6d-9d52348c50d6"
+          },
+          {
+            "description": "Track [+3V3] on F.Cu, length 0.2852 mm",
+            "pos": {
+              "x": 162.1967,
+              "y": 69.9265
+            },
+            "uuid": "c919abbe-832c-4991-b64f-4bc7147efca7"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      }
+    ],
+    "images": []
+  },
+  "Pi1541io_Pi1541io": {
+    "ground_truth.json": {
+      "wirelength_mm": 1617.9715,
+      "vias": 66,
+      "drv_routing": 0,
+      "drv_all": 8,
+      "unconnected": 0,
+      "reference_complete": true,
+      "project_generated": true,
+      "zones_refilled": 2,
+      "nets": 41,
+      "layers": 2,
+      "kicad_version": "5"
+    },
+    "raw-drc.json": {
+      "violations_by_type": {
+        "silk_edge_clearance": 14,
+        "courtyards_overlap": 8,
+        "silk_overlap": 2,
+        "lib_footprint_issues": 57,
+        "track_dangling": 2
+      },
+      "unconnected_items": 0
+    },
+    "main": [
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2372 mm)",
+        "items": [
+          {
+            "description": "Track [+3V3] on F.Cu, length 12.5967 mm",
+            "pos": {
+              "x": 124.4005,
+              "y": 74.1809
+            },
+            "uuid": "260a7442-9bb4-48a5-87d2-511c4b39eabe"
+          },
+          {
+            "description": "PTH pad 4 [CLK] of J1",
+            "pos": {
+              "x": 120.077,
+              "y": 72.102
+            },
+            "uuid": "85ba36bb-a475-42ad-b679-7df59dfee2e5"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2372 mm)",
+        "items": [
+          {
+            "description": "Track [+3V3] on F.Cu, length 12.5967 mm",
+            "pos": {
+              "x": 124.4005,
+              "y": 74.1809
+            },
+            "uuid": "260a7442-9bb4-48a5-87d2-511c4b39eabe"
+          },
+          {
+            "description": "PTH pad 5 [DATA] of J1",
+            "pos": {
+              "x": 117.577,
+              "y": 69.602
+            },
+            "uuid": "e3d9b790-c2ae-4cce-a842-10be33dc064e"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2408 mm)",
+        "items": [
+          {
+            "description": "Track [/GPIO27(GEN2)] on B.Cu, length 4.8608 mm",
+            "pos": {
+              "x": 115.7244,
+              "y": 69.417
+            },
+            "uuid": "6659ed05-39ca-4df4-9e35-eb5d24302411"
+          },
+          {
+            "description": "PTH pad 5 [DATA] of J1",
+            "pos": {
+              "x": 117.577,
+              "y": 69.602
+            },
+            "uuid": "e3d9b790-c2ae-4cce-a842-10be33dc064e"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2004 mm)",
+        "items": [
+          {
+            "description": "PTH pad 1 [SRQ] of J2",
+            "pos": {
+              "x": 117.577,
+              "y": 104.922
+            },
+            "uuid": "3590b9d3-8f59-43b6-8e50-777c86d78cc0"
+          },
+          {
+            "description": "Track [/GPIO23(GEN4)] on F.Cu, length 4.7519 mm",
+            "pos": {
+              "x": 118.6793,
+              "y": 108.0047
+            },
+            "uuid": "bac1b40c-82d6-4945-a529-d455a68e2e77"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2176 mm)",
+        "items": [
+          {
+            "description": "PTH pad 2 [GND] of J1",
+            "pos": {
+              "x": 120.077,
+              "y": 82.102
+            },
+            "uuid": "3d17c3bb-b7a0-4f17-bf2f-a12aa4f99525"
+          },
+          {
+            "description": "Track [+5V] on F.Cu, length 9.4462 mm",
+            "pos": {
+              "x": 119.8963,
+              "y": 84.1382
+            },
+            "uuid": "a4467d7d-4a91-4e3d-9506-b55c14b11319"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2002 mm)",
+        "items": [
+          {
+            "description": "PTH pad 1 [SRQ] of J1",
+            "pos": {
+              "x": 117.577,
+              "y": 84.602
+            },
+            "uuid": "5f9d714d-7834-41f4-b283-e184b5420559"
+          },
+          {
+            "description": "Track [DATA] on B.Cu, length 17.5196 mm",
+            "pos": {
+              "x": 116.1768,
+              "y": 88.5218
+            },
+            "uuid": "f2dca8a2-1090-44f2-b359-abd0ad94dc89"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2002 mm)",
+        "items": [
+          {
+            "description": "PTH pad 3 [ATN] of J1",
+            "pos": {
+              "x": 117.577,
+              "y": 77.102
+            },
+            "uuid": "4615a888-06bb-4732-a4b7-b31db54d3402"
+          },
+          {
+            "description": "Track [DATA] on B.Cu, length 17.5196 mm",
+            "pos": {
+              "x": 116.1768,
+              "y": 88.5218
+            },
+            "uuid": "f2dca8a2-1090-44f2-b359-abd0ad94dc89"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2437 mm)",
+        "items": [
+          {
+            "description": "PTH pad 6 [RESET] of J2",
+            "pos": {
+              "x": 122.577,
+              "y": 97.422
+            },
+            "uuid": "03e39e8f-062e-476b-bb5c-d340d1e4769e"
+          },
+          {
+            "description": "Track [ATN] on F.Cu, length 6.8829 mm",
+            "pos": {
+              "x": 119.0207,
+              "y": 98.8657
+            },
+            "uuid": "f8dc29c6-fde5-4074-9618-27535ef22257"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2295 mm)",
+        "items": [
+          {
+            "description": "Track [SRQ] on F.Cu, length 17.4610 mm",
+            "pos": {
+              "x": 116.1475,
+              "y": 103.4925
+            },
+            "uuid": "579f351c-65a9-43e2-8383-b49a3c89e5c2"
+          },
+          {
+            "description": "PTH pad 5 [DATA] of J2",
+            "pos": {
+              "x": 117.577,
+              "y": 89.922
+            },
+            "uuid": "7c9e48c2-3d65-46f4-8010-17da191bd68e"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2295 mm)",
+        "items": [
+          {
+            "description": "PTH pad 3 [ATN] of J2",
+            "pos": {
+              "x": 117.577,
+              "y": 97.422
+            },
+            "uuid": "348360a8-c8aa-42cd-add6-36b06c3d403c"
+          },
+          {
+            "description": "Track [SRQ] on F.Cu, length 17.4610 mm",
+            "pos": {
+              "x": 116.1475,
+              "y": 103.4925
+            },
+            "uuid": "579f351c-65a9-43e2-8383-b49a3c89e5c2"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2233 mm)",
+        "items": [
+          {
+            "description": "PTH pad 1 [SRQ] of J1",
+            "pos": {
+              "x": 117.577,
+              "y": 84.602
+            },
+            "uuid": "5f9d714d-7834-41f4-b283-e184b5420559"
+          },
+          {
+            "description": "Track [ATN] on B.Cu, length 7.7148 mm",
+            "pos": {
+              "x": 119.0003,
+              "y": 90.9987
+            },
+            "uuid": "bde263f5-188c-427d-a355-92dbb2132ad4"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2233 mm)",
+        "items": [
+          {
+            "description": "PTH pad 5 [DATA] of J2",
+            "pos": {
+              "x": 117.577,
+              "y": 89.922
+            },
+            "uuid": "7c9e48c2-3d65-46f4-8010-17da191bd68e"
+          },
+          {
+            "description": "Track [ATN] on B.Cu, length 7.7148 mm",
+            "pos": {
+              "x": 119.0003,
+              "y": 90.9987
+            },
+            "uuid": "bde263f5-188c-427d-a355-92dbb2132ad4"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      }
+    ],
+    "images": [
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2252 mm)",
+        "items": [
+          {
+            "description": "PTH pad 3 [ATN] of J2",
+            "pos": {
+              "x": 117.577,
+              "y": 97.422
+            },
+            "uuid": "6e762ae3-39b2-4dee-9ec9-a387782ec052"
+          },
+          {
+            "description": "Track [/GPIO4(GCLK)] on B.Cu, length 11.1072 mm",
+            "pos": {
+              "x": 126.8313,
+              "y": 105.5415
+            },
+            "uuid": "ac587754-de6b-4a4f-afb8-b77b01d7762a"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2003 mm)",
+        "items": [
+          {
+            "description": "PTH pad 3 [ATN] of J2",
+            "pos": {
+              "x": 117.577,
+              "y": 97.422
+            },
+            "uuid": "6e762ae3-39b2-4dee-9ec9-a387782ec052"
+          },
+          {
+            "description": "Track [/GPIO4(GCLK)] on B.Cu, length 2.5790 mm",
+            "pos": {
+              "x": 118.9773,
+              "y": 97.6875
+            },
+            "uuid": "8a7898d9-7fdd-42e8-9d20-a93fd49c5e98"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2323 mm)",
+        "items": [
+          {
+            "description": "PTH pad 1 [SRQ] of J2",
+            "pos": {
+              "x": 117.577,
+              "y": 104.922
+            },
+            "uuid": "8b8aee90-bd3b-4d6b-9f16-80db8494f055"
+          },
+          {
+            "description": "Track [/GPIO22(GEN3)] on B.Cu, length 12.4363 mm",
+            "pos": {
+              "x": 123.3919,
+              "y": 108.7113
+            },
+            "uuid": "920b9927-4c1f-4a8b-bd40-a42ce380490c"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2104 mm)",
+        "items": [
+          {
+            "description": "Track [/GPIO23(GEN4)] on B.Cu, length 2.9247 mm",
+            "pos": {
+              "x": 117.6951,
+              "y": 99.5347
+            },
+            "uuid": "5f6e4ae9-1f72-402e-a2d1-2475261de634"
+          },
+          {
+            "description": "PTH pad 3 [ATN] of J2",
+            "pos": {
+              "x": 117.577,
+              "y": 97.422
+            },
+            "uuid": "6e762ae3-39b2-4dee-9ec9-a387782ec052"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2355 mm)",
+        "items": [
+          {
+            "description": "PTH pad 6 [RESET] of J1",
+            "pos": {
+              "x": 122.577,
+              "y": 77.102
+            },
+            "uuid": "0ae6fee0-1df9-45e1-9102-5e7c030fbed6"
+          },
+          {
+            "description": "Track [+5V] on F.Cu, length 14.2775 mm",
+            "pos": {
+              "x": 123.3125,
+              "y": 80.0797
+            },
+            "uuid": "8422ff7a-af84-4f24-b6b0-389a37740543"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2003 mm)",
+        "items": [
+          {
+            "description": "Track [/GPIO23(GEN4)] on B.Cu, length 18.5648 mm",
+            "pos": {
+              "x": 132.2973,
+              "y": 112.662
+            },
+            "uuid": "016c9027-0d4c-46f0-8d36-b311c5f47c37"
+          },
+          {
+            "description": "PTH pad 2 [GND] of J2",
+            "pos": {
+              "x": 120.077,
+              "y": 102.422
+            },
+            "uuid": "86b2a725-ed71-4763-a239-1b5b32bed5ce"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2031 mm)",
+        "items": [
+          {
+            "description": "Track [DATA] on B.Cu, length 17.5138 mm",
+            "pos": {
+              "x": 116.1739,
+              "y": 88.5189
+            },
+            "uuid": "8502be7f-63b6-42f2-9c32-275a17ed3a2d"
+          },
+          {
+            "description": "PTH pad 1 [SRQ] of J1",
+            "pos": {
+              "x": 117.577,
+              "y": 84.602
+            },
+            "uuid": "b95dd830-d239-478a-bcfc-bb8cd183491c"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2031 mm)",
+        "items": [
+          {
+            "description": "Track [DATA] on B.Cu, length 17.5138 mm",
+            "pos": {
+              "x": 116.1739,
+              "y": 88.5189
+            },
+            "uuid": "8502be7f-63b6-42f2-9c32-275a17ed3a2d"
+          },
+          {
+            "description": "PTH pad 3 [ATN] of J1",
+            "pos": {
+              "x": 117.577,
+              "y": 77.102
+            },
+            "uuid": "f973922d-9443-4e3d-8260-ec4ed9cbfbbd"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2036 mm)",
+        "items": [
+          {
+            "description": "Track [ATN] on F.Cu, length 7.5816 mm",
+            "pos": {
+              "x": 121.4851,
+              "y": 84.0289
+            },
+            "uuid": "18a2a12c-3d4e-4d8a-9092-3a101681934a"
+          },
+          {
+            "description": "PTH pad 5 [DATA] of J2",
+            "pos": {
+              "x": 117.577,
+              "y": 89.922
+            },
+            "uuid": "4881048f-5676-43c3-9162-5f8e0c6c6ef2"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2081 mm)",
+        "items": [
+          {
+            "description": "Track [ATN] on F.Cu, length 3.0188 mm",
+            "pos": {
+              "x": 121.4851,
+              "y": 84.0289
+            },
+            "uuid": "3a67f3ac-0f5f-4652-bccd-cb1183e64662"
+          },
+          {
+            "description": "PTH pad 2 [GND] of J1",
+            "pos": {
+              "x": 120.077,
+              "y": 82.102
+            },
+            "uuid": "888b25f3-fe49-4370-88fa-de859917a500"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2437 mm)",
+        "items": [
+          {
+            "description": "Track [ATN] on F.Cu, length 6.8829 mm",
+            "pos": {
+              "x": 119.0207,
+              "y": 98.8657
+            },
+            "uuid": "84a5406d-56df-4457-b457-53c917ab052d"
+          },
+          {
+            "description": "PTH pad 6 [RESET] of J2",
+            "pos": {
+              "x": 122.577,
+              "y": 97.422
+            },
+            "uuid": "f24b13ce-25a4-4134-892f-4c9401ab9cad"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      },
+      {
+        "description": "Clearance violation (pad clearance 0.3000 mm; actual 0.2529 mm)",
+        "items": [
+          {
+            "description": "PTH pad 5 [DATA] of J2",
+            "pos": {
+              "x": 117.577,
+              "y": 89.922
+            },
+            "uuid": "4881048f-5676-43c3-9162-5f8e0c6c6ef2"
+          },
+          {
+            "description": "Track [ATN] on F.Cu, length 6.5792 mm",
+            "pos": {
+              "x": 116.1241,
+              "y": 89.3899
+            },
+            "uuid": "b3561494-e364-4b8f-8a95-d78ebf3d95f4"
+          }
+        ],
+        "severity": "error",
+        "type": "clearance"
+      }
+    ]
+  },
+  "kitspace_teensy-fx": {
+    "ground_truth.json": {
+      "wirelength_mm": 3517.5488,
+      "vias": 115,
+      "drv_routing": 0,
+      "drv_all": 111,
+      "project_generated": true,
+      "zones_refilled": 2,
+      "nets": 90,
+      "layers": 4,
+      "kicad_version": null,
+      "unconnected": 0,
+      "reference_complete": true
+    },
+    "raw-drc.json": {
+      "violations_by_type": {
+        "silk_edge_clearance": 9,
+        "courtyards_overlap": 2,
+        "lib_footprint_issues": 82,
+        "silk_overlap": 39,
+        "silk_over_copper": 8,
+        "track_dangling": 2,
+        "solder_mask_bridge": 109
+      },
+      "unconnected_items": 0
+    },
+    "main": [],
+    "images": []
+  },
+  "esp32-ethernet_esp32-ethernet": {
+    "ground_truth.json": {
+      "wirelength_mm": 1317.0567,
+      "vias": 61,
+      "drv_routing": 0,
+      "drv_all": 5,
+      "project_generated": true,
+      "zones_refilled": 2,
+      "nets": 54,
+      "layers": 2,
+      "kicad_version": null,
+      "unconnected": 0,
+      "reference_complete": true
+    },
+    "raw-drc.json": {
+      "violations_by_type": {
+        "silk_edge_clearance": 5,
+        "courtyards_overlap": 1,
+        "lib_footprint_issues": 40,
+        "silk_over_copper": 2,
+        "pth_inside_courtyard": 4,
+        "track_dangling": 3
+      },
+      "unconnected_items": 0
+    },
+    "main": [
+      {
+        "description": "Hole clearance violation (pad clearance 1.6500 mm; actual 1.5960 mm)",
+        "items": [
+          {
+            "description": "Track [GPIO23] on B.Cu, length 7.8697 mm",
+            "pos": {
+              "x": 119.8483,
+              "y": 52.6836
+            },
+            "uuid": "e1e6798b-4b94-46e5-a034-a01d478a3772"
+          },
+          {
+            "description": "NPTH pad of REF**",
+            "pos": {
+              "x": 114.0,
+              "y": 53.8
+            },
+            "uuid": "b94de8da-db67-4875-9353-3353a69ec01a"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      }
+    ],
+    "images": [
+      {
+        "description": "Hole clearance violation (pad clearance 1.6500 mm; actual 1.5502 mm)",
+        "items": [
+          {
+            "description": "Track [GPIO23] on F.Cu, length 3.4832 mm",
+            "pos": {
+              "x": 115.4992,
+              "y": 57.1002
+            },
+            "uuid": "f9a83d1c-e618-4321-8f33-331c29e5710b"
+          },
+          {
+            "description": "NPTH pad of REF**",
+            "pos": {
+              "x": 114.0,
+              "y": 53.8
+            },
+            "uuid": "2e8164d8-2bcd-49c9-945d-d247681e07da"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 1.6500 mm; actual 1.6437 mm)",
+        "items": [
+          {
+            "description": "Track [GPIO23] on F.Cu, length 6.1506 mm",
+            "pos": {
+              "x": 119.8483,
+              "y": 52.7511
+            },
+            "uuid": "bcf54b45-a02a-4c34-b758-641f036ea00f"
+          },
+          {
+            "description": "NPTH pad of REF**",
+            "pos": {
+              "x": 114.0,
+              "y": 53.8
+            },
+            "uuid": "2e8164d8-2bcd-49c9-945d-d247681e07da"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      }
+    ]
+  },
+  "balena-rover-wide-hat_resin-rover": {
+    "ground_truth.json": {
+      "wirelength_mm": 1684.0638,
+      "vias": 55,
+      "drv_routing": 0,
+      "drv_all": 82,
+      "project_generated": true,
+      "zones_refilled": 2,
+      "nets": 94,
+      "layers": 2,
+      "kicad_version": null,
+      "unconnected": 0,
+      "reference_complete": true
+    },
+    "raw-drc.json": {
+      "violations_by_type": {
+        "silk_edge_clearance": 4,
+        "courtyards_overlap": 1,
+        "silk_overlap": 1,
+        "lib_footprint_issues": 107,
+        "silk_over_copper": 1,
+        "solder_mask_bridge": 81
+      },
+      "unconnected_items": 0
+    },
+    "main": [
+      {
+        "description": "Hole clearance violation (pad clearance 1.7250 mm; actual 1.4000 mm)",
+        "items": [
+          {
+            "description": "Track [GND] on B.Cu, length 9.6767 mm",
+            "pos": {
+              "x": 133.4733,
+              "y": 55.6
+            },
+            "uuid": "606c62b3-9970-472c-946d-32678e57e69e"
+          },
+          {
+            "description": "NPTH pad of Noname_1",
+            "pos": {
+              "x": 134.5,
+              "y": 58.5
+            },
+            "uuid": "d7583984-344d-4455-9d55-89910f0f349f"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 1.7250 mm; actual 1.2766 mm)",
+        "items": [
+          {
+            "description": "Track [GND] on B.Cu, length 5.4352 mm",
+            "pos": {
+              "x": 129.63,
+              "y": 59.4433
+            },
+            "uuid": "d083101c-eafc-462d-83fa-200b1fd41a20"
+          },
+          {
+            "description": "NPTH pad of Noname_1",
+            "pos": {
+              "x": 134.5,
+              "y": 58.5
+            },
+            "uuid": "d7583984-344d-4455-9d55-89910f0f349f"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      }
+    ],
+    "images": [
+      {
+        "description": "Hole clearance violation (pad clearance 1.7250 mm; actual 1.4000 mm)",
+        "items": [
+          {
+            "description": "Track [GND] on B.Cu, length 10.6207 mm",
+            "pos": {
+              "x": 132.5293,
+              "y": 55.6
+            },
+            "uuid": "b151569c-46b4-40a2-9367-287d369a7f85"
+          },
+          {
+            "description": "NPTH pad of Noname_1",
+            "pos": {
+              "x": 134.5,
+              "y": 58.5
+            },
+            "uuid": "fca7f604-6fc3-4645-a040-ebfeeedae35a"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 1.7250 mm; actual 1.3515 mm)",
+        "items": [
+          {
+            "description": "Track [/5V] on B.Cu, length 3.4614 mm",
+            "pos": {
+              "x": 78.9224,
+              "y": 60.0043
+            },
+            "uuid": "28a6c91b-49a4-45fe-ab32-3570124e0373"
+          },
+          {
+            "description": "NPTH pad of Noname_4",
+            "pos": {
+              "x": 76.5,
+              "y": 58.5
+            },
+            "uuid": "69330a30-b985-4d5a-be09-c6c24889878a"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      },
+      {
+        "description": "Hole clearance violation (pad clearance 1.7250 mm; actual 1.3515 mm)",
+        "items": [
+          {
+            "description": "Track [/5V] on B.Cu, length 2.3825 mm",
+            "pos": {
+              "x": 78.9224,
+              "y": 62.3868
+            },
+            "uuid": "74159d4c-cbe9-45ff-a6b8-7ed58ea27419"
+          },
+          {
+            "description": "NPTH pad of Noname_4",
+            "pos": {
+              "x": 76.5,
+              "y": 58.5
+            },
+            "uuid": "69330a30-b985-4d5a-be09-c6c24889878a"
+          }
+        ],
+        "severity": "error",
+        "type": "hole_clearance"
+      }
+    ]
+  }
+}
