@@ -1,0 +1,190 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-09T07:56:21",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning"
+    ],
+    "kicad_version": "10.0.3",
+    "schematic_parity": [],
+    "source": "mask.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "PTH pad 1 [N1] of U1",
+                    "pos": {
+                        "x": 10.0,
+                        "y": 10.0
+                    },
+                    "uuid": "7320dc67-2907-4286-af95-631928e37444"
+                },
+                {
+                    "description": "Track [N1] on F.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 9.21,
+                        "y": 9.7
+                    },
+                    "uuid": "3a98cb43-d573-4044-b796-c6b89f9e0def"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [N2] on B.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 10.83,
+                        "y": 9.7
+                    },
+                    "uuid": "576f6fc6-6dd9-42c2-ba12-fdc64077a43d"
+                },
+                {
+                    "description": "Track [N2] on F.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 10.83,
+                        "y": 9.7
+                    },
+                    "uuid": "f84aec8b-7394-4bbc-a69d-65dfcc4ced8e"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Board has malformed outline (no edges found on Edge.Cuts layer)",
+            "items": [
+                {
+                    "description": "PCB",
+                    "pos": {
+                        "x": 0.0,
+                        "y": 0.0
+                    },
+                    "uuid": "152d3f80-d512-4bd7-b73f-8c76c0456251"
+                }
+            ],
+            "severity": "error",
+            "type": "invalid_outline"
+        },
+        {
+            "description": "Front solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "Track [N2] on F.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 10.83,
+                        "y": 9.7
+                    },
+                    "uuid": "f84aec8b-7394-4bbc-a69d-65dfcc4ced8e"
+                },
+                {
+                    "description": "PTH pad 1 [N1] of U1",
+                    "pos": {
+                        "x": 10.0,
+                        "y": 10.0
+                    },
+                    "uuid": "7320dc67-2907-4286-af95-631928e37444"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [N1] on F.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 9.21,
+                        "y": 9.7
+                    },
+                    "uuid": "3a98cb43-d573-4044-b796-c6b89f9e0def"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [N2] on F.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 10.83,
+                        "y": 9.7
+                    },
+                    "uuid": "f84aec8b-7394-4bbc-a69d-65dfcc4ced8e"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [N2] on B.Cu, length 0.6000 mm",
+                    "pos": {
+                        "x": 10.83,
+                        "y": 9.7
+                    },
+                    "uuid": "576f6fc6-6dd9-42c2-ba12-fdc64077a43d"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "items": [
+                {
+                    "description": "Reference field of U1",
+                    "pos": {
+                        "x": 10.0,
+                        "y": 10.0
+                    },
+                    "uuid": "15512de7-8e12-4f35-9a6b-1efa05f15829"
+                },
+                {
+                    "description": "PTH pad 1 [N1] of U1",
+                    "pos": {
+                        "x": 10.0,
+                        "y": 10.0
+                    },
+                    "uuid": "7320dc67-2907-4286-af95-631928e37444"
+                }
+            ],
+            "severity": "warning",
+            "type": "silk_over_copper"
+        }
+    ]
+}

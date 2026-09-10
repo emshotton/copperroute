@@ -16,6 +16,7 @@ pub struct DrcConstraints {
     pub hole_clearance: Option<i32>,
     pub hole_to_hole: Option<i32>,
     pub copper_edge_clearance: Option<i32>,
+    pub solder_mask_to_copper_clearance: Option<i32>,
     pub min_via_diameter: Option<i32>,
     pub min_via_annular_width: Option<i32>,
     pub min_through_hole_diameter: Option<i32>,
@@ -42,6 +43,9 @@ impl DrcConstraints {
             hole_clearance: project.hole_clearance.or(dsn.hole_clearance),
             hole_to_hole: project.hole_to_hole.or(dsn.hole_to_hole),
             copper_edge_clearance: project.copper_edge_clearance.or(dsn.copper_edge_clearance),
+            solder_mask_to_copper_clearance: project
+                .solder_mask_to_copper_clearance
+                .or(dsn.solder_mask_to_copper_clearance),
             min_via_diameter: project.min_via_diameter.or(dsn.min_via_diameter),
             min_via_annular_width: project.min_via_annular_width.or(dsn.min_via_annular_width),
             min_through_hole_diameter: project
