@@ -86,6 +86,8 @@ fn polygon_key(polygon: &serde_json::Value) -> (i64, i64) {
 /// - top-level `viaInPadAllowed` (bool, KiCadBoardJson): `read_pcb` shares its `KiCadBoardJson`
 ///   with `kicad::writer::write`, whose byte-for-byte golden test depends on the field being
 ///   omitted when false; `importBoard` always writes it.
+/// - top-level `allowSolderMaskBridgesInFootprints` (bool, KiCadBoardJson): the same sharing with
+///   `kicad::writer::write` applies to this field too; `importBoard` always writes it.
 /// - `nets[N].containsPlane` (bool, NetJson): the same DTO is shared with `write`, where a true
 ///   value is load-bearing output; `importBoard` never populates this at all, so on the import
 ///   path it is always false on the Rust side.
@@ -110,6 +112,7 @@ fn allowed_gap(parent_path: &str, key: &str, present: &serde_json::Value) -> boo
         .starts_with("conductionAreas[");
     match (key, present) {
         ("viaInPadAllowed", Value::Bool(false)) if top_level => true,
+        ("allowSolderMaskBridgesInFootprints", Value::Bool(false)) if top_level => true,
         ("containsPlane", Value::Bool(false)) if parent_is_a_net => true,
         ("clearanceRules", Value::Array(items)) if top_level => items.is_empty(),
         ("id", Value::Number(n)) if parent_is_a_conduction_area => n.as_i64() == Some(0),

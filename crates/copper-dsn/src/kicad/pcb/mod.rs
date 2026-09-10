@@ -12,6 +12,10 @@ const SECTION: &str = "pcb";
 
 const TOP_LEVEL_COPPER_ALLOWED: &[&str] = &["segment", "footprint", "module", "zone", "arc"];
 
+fn number(text: &str) -> Result<f64, PcbError> {
+    numeric::number(SECTION, text)
+}
+
 pub fn default_net_class() -> NetClassJson {
     NetClassJson {
         viaInPadAllowed: None,
@@ -98,10 +102,28 @@ pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<Impor
             0.0
         };
 
+    let setup = root.child("setup");
+    let allow_solder_mask_bridges_in_footprints = setup
+        .map(|setup| {
+            setup
+                .value("allow_soldermask_bridges_in_footprints")
+                .unwrap_or("no")
+                == "yes"
+        })
+        .unwrap_or(false);
+    let solder_mask_min_width = match setup {
+        Some(setup) if setup.child("solder_mask_min_width").is_some() => {
+            Some(number(setup.value("solder_mask_min_width").unwrap_or("0"))?)
+        }
+        _ => None,
+    };
+
     let board = KiCadBoardJson {
         designName: Some(name.to_string()),
         unit: Some(UnitJson::MM),
         resolution: 10000.0,
+        allowSolderMaskBridgesInFootprints: allow_solder_mask_bridges_in_footprints,
+        solderMaskMinWidth: solder_mask_min_width,
         layers: Some(layers.entries),
         nets: Some(board_nets),
         netClasses: Some(net_classes),
