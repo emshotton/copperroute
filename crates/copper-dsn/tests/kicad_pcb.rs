@@ -169,6 +169,194 @@ fn defaults_are_not_validated_when_the_board_has_its_own_default_class() {
     assert_eq!(error.message, "No pads were found.");
 }
 
+fn one_pad(reference: &str, x: f64, y: f64) -> String {
+    format!(
+        r#"(footprint "{reference}" (layer "F.Cu") (at {x} {y})
+          (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#
+    )
+}
+
+#[test]
+fn pads_carry_their_footprint_index_and_their_own_pad_number() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R1" (layer "F.Cu") (at 1 1)
+          (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))
+        (footprint "R2" (layer "F.Cu") (at 3 3)
+          (pad "A2" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))))"#
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    let components = imported.board.components.expect("components");
+    let first = components[0].pads.as_ref().expect("pads")[0].clone();
+    assert_eq!(first.sourceFootprint.as_deref(), Some("0"));
+    assert_eq!(first.sourcePadNumber.as_deref(), Some("1"));
+    let second = components[1].pads.as_ref().expect("pads")[0].clone();
+    assert_eq!(second.sourceFootprint.as_deref(), Some("1"));
+    assert_eq!(second.sourcePadNumber.as_deref(), Some("A2"));
+}
+
+#[test]
+fn an_explicit_zero_pad_clearance_inherits_the_footprint_default_on_an_old_format_board() {
+    let text = format!(
+        r#"(kicad_pcb (version 20240201) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 1 1)
+          (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND") (clearance 0))))"#
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    let components = imported.board.components.expect("components");
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    assert_eq!(pad.copperClearance, None);
+}
+
+#[test]
+fn an_explicit_zero_pad_clearance_overrides_the_footprint_default_on_a_new_format_board() {
+    let text = format!(
+        r#"(kicad_pcb (version 20240202) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 1 1)
+          (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND") (clearance 0))))"#
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    let components = imported.board.components.expect("components");
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    assert_eq!(pad.copperClearance, Some(0.0));
+}
+
+#[test]
+fn a_pad_clearance_takes_priority_over_the_footprint_clearance() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 1 1) (clearance 0.3)
+          (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND") (clearance 0.15))))"#
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    let components = imported.board.components.expect("components");
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    assert_eq!(pad.copperClearance, Some(0.15));
+}
+
+#[test]
+fn a_pad_without_its_own_clearance_falls_back_to_the_footprint_clearance() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 1 1) (clearance 0.3)
+          (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))))"#
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    let components = imported.board.components.expect("components");
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    assert_eq!(pad.copperClearance, Some(0.3));
+}
+
+#[test]
+fn a_pad_and_footprint_with_no_clearance_node_carries_none() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        {})"#,
+        one_pad("R", 1.0, 1.0)
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    let components = imported.board.components.expect("components");
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    assert_eq!(pad.copperClearance, None);
+}
+
+#[test]
+fn allow_soldermask_bridges_in_footprints_reads_the_board_setup() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (setup (allow_soldermask_bridges_in_footprints yes))
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        {})"#,
+        one_pad("R", 1.0, 1.0)
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    assert!(imported.board.allowSolderMaskBridgesInFootprints);
+}
+
+#[test]
+fn allow_soldermask_bridges_in_footprints_is_false_when_setup_omits_it() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (setup (pad_to_mask_clearance 0.05))
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        {})"#,
+        one_pad("R", 1.0, 1.0)
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    assert!(!imported.board.allowSolderMaskBridgesInFootprints);
+}
+
+#[test]
+fn allow_soldermask_bridges_in_footprints_defaults_to_false_without_setup() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        {})"#,
+        one_pad("R", 1.0, 1.0)
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    assert!(!imported.board.allowSolderMaskBridgesInFootprints);
+}
+
+#[test]
+fn solder_mask_min_width_is_read_when_the_setup_node_is_present() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (setup (solder_mask_min_width 0.1))
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        {})"#,
+        one_pad("R", 1.0, 1.0)
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    assert_eq!(imported.board.solderMaskMinWidth, Some(0.1));
+}
+
+/// An explicit `0` and an absent `solder_mask_min_width` node are different values, so a present
+/// node carrying `0` must still round-trip as `Some(0.0)`, not fall through to `None`.
+#[test]
+fn solder_mask_min_width_distinguishes_an_explicit_zero_from_an_absent_node() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (setup (solder_mask_min_width 0))
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        {})"#,
+        one_pad("R", 1.0, 1.0)
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    assert_eq!(imported.board.solderMaskMinWidth, Some(0.0));
+}
+
+#[test]
+fn solder_mask_min_width_is_absent_when_setup_omits_it() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (setup (pad_to_mask_clearance 0.05))
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        {})"#,
+        one_pad("R", 1.0, 1.0)
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    assert_eq!(imported.board.solderMaskMinWidth, None);
+}
+
+#[test]
+fn solder_mask_min_width_is_absent_without_a_setup_node() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        {})"#,
+        one_pad("R", 1.0, 1.0)
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    assert_eq!(imported.board.solderMaskMinWidth, None);
+}
+
 #[test]
 fn it_reports_the_count_of_imported_embedded_net_classes() {
     let text = format!(
