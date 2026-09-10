@@ -36,4 +36,3 @@ All 705 pairs that completed without deadlines have byte-identical SES files and
 
 
 [Machine-readable full results and SES identity audit](routing-quality-artifacts/undrilled-pads/undrilled-full-01-summary.json) include origin splits and per-board differences. Raw boards, logs and source provenance are preserved on workbench under `copperroute-epyc-results/web-structural-routing/server/`.
-
