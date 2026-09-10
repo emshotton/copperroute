@@ -4,7 +4,26 @@ Numbered DSN images can have different pin names and pad geometry. Import previo
 
 On saiboard_8x3, SOT-23::1 uses 0.9×0.8mm rectangular pads while SOT-23::25 uses 1.475×0.6mm rounded rectangular pads. The old import displaced Q3 pin1 by 62.5µm relative to the original KiCad board; corrected import matches the original. An unchanged-session diagnostic previously returned no internal DRC errors with wrong geometry; corrected geometry detects 13 clearance violations and three shorts. That diagnostic demonstrates checker sensitivity, not a routing improvement or one-to-one KiCad count parity.
 
-## Full benchmark against main
+## Final validation after PR29 merged
+
+`quality-epyc-image-pad-full-01` compares `pads` (equivalent to current main **028f0a5**) with `combined` (main plus the image fix). Both receive the same verified local pad/reference metadata and project minimum rules. Candidate labels retain the earlier snapshot names; source/crate-data hashes prove the baseline matches current main and the candidate matches this integrated worktree. All **2,253 KiCad referee results succeeded** across three candidates; the additional `main` candidate is historical d84ac9e. Each candidate routed 751 boards, ten passes, 300-second cap, one routing thread, 192 jobs.
+
+| Group vs current main | Unrouted delta / improved / regressed boards | Copper delta / improved / gainers | Reported mask delta / gainers | CPU ratio |
+|---|---:|---:|---:|---:|
+| PCBench 740 | −288 / 25 / 4 | −46 / 10 / 3 | −766 / 7 | 0.93458 |
+| Local 11 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 | 1.00082 |
+
+**The 720 pairs completed by both versions give −15 unrouted connections and −46 copper violations.** Deadline effects account for the remaining apparent 273-connection improvement. No 288-connection or 6.5% speed claim. Of these completed pairs, 186 SES outputs are identical (zero U/copper difference, −723 reported mask); 534 differ (−15 U/−46 copper/−49 mask). Image-name changes can alter SES text without changing tracks. KiCad's variable mask counts on identical output prevent claiming the large raw mask reduction as a routing gain.
+
+PCBench completed boards rise 710→718, connected boards 588→590, median RSS stays 12.1MB, maximum RSS 370.9→372.7MB, CPU 34772.96→32498.04s. Local completed/connected stay 10/8; median RSS 13.6→12.1MB, maximum 74.9→78.0MB, CPU 782.41→783.05s.
+
+Four completed boards gain one unrouted connection each: minimal_node_rfm69w, Pi1541io, teensy-fx and esp32-ethernet. Esp32 also gains one copper violation; balena-rover gains one copper violation with no connection loss. All remain ordinary regressions. Serial_gw's earlier +2 connection regression is resolved when combined with the landed local pad rules. Chess adds two copper violations in a deadline-affected pair. The two completed copper gainers still involve local NPTH rules omitted when mechanical pads become DSN keepouts; a separate prototype is under measurement. No outlier exemption is used.
+
+The [generated comparison](routing-quality-artifacts/image-identity-main/post-pad/pr-summary.md) fails its aggregate gate with **17 routing-quality losses**. The completed-board improvements support merging under the accepted trade-off policy, with all losses explicit. [Full results](routing-quality-artifacts/image-identity-main/post-pad/vs-main.json) and [identity audit](routing-quality-artifacts/image-identity-main/post-pad/identities.json) are retained and backed up locally/workbench.
+
+Fresh post-merge workspace validation passed **2,587 tests, 77 ignored, zero failures**, including doctests. Production and test sources match the measured combined snapshot. Only the experiment log required merge-conflict resolution; both histories were retained. Original JVM recordings remain unchanged; the deliberate image-identity parity expectations described below remain in place.
+
+## Earlier benchmark against main d84ac9e
 
 `quality-epyc-image-main-01`: exact main d84ac9e versus main plus the two production changes, 751 boards each, **all 1,502 KiCad referees successful**. Settings: ten passes, 300 seconds, one routing thread, 192 jobs. Both sides use identical pad-mask metadata and project minimum-clearance files. PR29 local copper floors and the new reference remapping are not included. Main was rechecked unchanged after measurement. Results are copied locally and to workbench.
 

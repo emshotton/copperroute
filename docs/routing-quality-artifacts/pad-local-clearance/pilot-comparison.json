@@ -1,0 +1,97 @@
+{
+  "baseline": "/tmp/quality-epyc-bootstrap/quality-epyc-pad-copper-control-details.json",
+  "candidate": "/tmp/quality-epyc-bootstrap/quality-epyc-pad-copper-pad-copper-details.json",
+  "count": 5,
+  "groups": {
+    "pcbench": {
+      "boards": 5,
+      "unrouted": {
+        "baseline": 49,
+        "candidate": 55,
+        "delta": 6,
+        "better": 0,
+        "worse": 2
+      },
+      "violations": {
+        "baseline": 59,
+        "candidate": 13,
+        "delta": -46,
+        "better": 2,
+        "worse": 1
+      },
+      "mask": {
+        "baseline": 412,
+        "candidate": 383,
+        "delta": -29,
+        "better": 1,
+        "worse": 0
+      },
+      "cpu_s": {
+        "baseline": 428.13,
+        "candidate": 508.01,
+        "delta": 79.88,
+        "better": 3,
+        "worse": 2
+      },
+      "cpu_ratio": 1.1865788428748276,
+      "completed": [
+        5,
+        5
+      ],
+      "connected": [
+        2,
+        2
+      ],
+      "rss_median_mb": [
+        26.7,
+        27.1
+      ],
+      "rss_max_mb": [
+        66.3,
+        375.8
+      ]
+    }
+  },
+  "rows": [
+    {
+      "board": "pcbench-APM-RPi-Shield_APM-RPi-Shield",
+      "both_completed": true,
+      "unrouted_delta": 0,
+      "violations_delta": 0,
+      "mask_delta": 0,
+      "cpu_s_delta": -0.20999999999999375
+    },
+    {
+      "board": "pcbench-BLDC-controller_BLDC_controller",
+      "both_completed": true,
+      "unrouted_delta": 0,
+      "violations_delta": 1,
+      "mask_delta": -29,
+      "cpu_s_delta": 78.13
+    },
+    {
+      "board": "pcbench-Hardware_Playground_minimal_node_rfm69w",
+      "both_completed": true,
+      "unrouted_delta": 2,
+      "violations_delta": -2,
+      "mask_delta": 0,
+      "cpu_s_delta": -0.8899999999999935
+    },
+    {
+      "board": "pcbench-azalea_azalea",
+      "both_completed": true,
+      "unrouted_delta": 4,
+      "violations_delta": -45,
+      "mask_delta": 0,
+      "cpu_s_delta": 2.8700000000000045
+    },
+    {
+      "board": "pcbench-pcb-usb-ft245r-parallel-adapter_pcb-usb-ft245r-parallel-adapter",
+      "both_completed": true,
+      "unrouted_delta": 0,
+      "violations_delta": 0,
+      "mask_delta": 0,
+      "cpu_s_delta": -0.020000000000000018
+    }
+  ]
+}
