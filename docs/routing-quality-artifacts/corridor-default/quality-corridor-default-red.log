@@ -1,0 +1,45 @@
+   Compiling copper-geometry v0.1.0 (/Users/em/Development/freerouting/copperroute-corridor-default/crates/copper-geometry)
+   Compiling testkit v0.1.0 (/Users/em/Development/freerouting/copperroute-corridor-default/tests/testkit)
+   Compiling copper-board v0.1.0 (/Users/em/Development/freerouting/copperroute-corridor-default/crates/copper-board)
+   Compiling copper-dsn v0.1.0 (/Users/em/Development/freerouting/copperroute-corridor-default/crates/copper-dsn)
+   Compiling copper-drc v0.1.0 (/Users/em/Development/freerouting/copperroute-corridor-default/crates/copper-drc)
+   Compiling copper-settings v0.1.0 (/Users/em/Development/freerouting/copperroute-corridor-default/crates/copper-settings)
+   Compiling copper-router v0.1.0 (/Users/em/Development/freerouting/copperroute-corridor-default/crates/copper-router)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.55s
+     Running unittests src/lib.rs (/Users/em/Development/freerouting/copperroute-congestion-study/target/debug/deps/copper_router-b57ed484f8b7b491)
+
+running 1 test
+
+running 1 test
+
+thread 'autoroute::maze::control::corridor_default_tests::corridor_guidance_defaults_on_and_can_be_disabled' (4853584) panicked at crates/copper-router/src/autoroute/maze/control.rs:358:13:
+assertion `left == right` failed
+  left: false
+ right: true
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test autoroute::maze::control::corridor_default_tests::corridor_guidance_defaults_on_and_can_be_disabled ... FAILED
+
+failures:
+
+failures:
+    autoroute::maze::control::corridor_default_tests::corridor_guidance_defaults_on_and_can_be_disabled
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 88 filtered out; finished in 0.00s
+
+test autoroute::maze::control::corridor_default_tests::corridor_guidance_defaults_on_and_can_be_disabled ... FAILED
+
+failures:
+
+---- autoroute::maze::control::corridor_default_tests::corridor_guidance_defaults_on_and_can_be_disabled stdout ----
+
+thread 'autoroute::maze::control::corridor_default_tests::corridor_guidance_defaults_on_and_can_be_disabled' (4853582) panicked at crates/copper-router/src/autoroute/maze/control.rs:369:13:
+setting None
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    autoroute::maze::control::corridor_default_tests::corridor_guidance_defaults_on_and_can_be_disabled
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 88 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p copper-router --lib`

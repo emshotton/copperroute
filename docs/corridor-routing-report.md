@@ -1,8 +1,12 @@
 # Shared corridor guidance with final path validation
 
-Opt-in corridor guidance encourages related signals to share a routing band and fan out near their terminals. Enabling `COPPERROUTE_CORRIDOR_GUIDANCE=1` now automatically enables a final path check after all shoves. A later shove can move another net into an earlier checked segment; the new check rejects that path before inserting copper. Existing checks remain in place. The default routing configuration stays unchanged.
+Corridor guidance encourages related signals to share a routing band and fan out near their terminals. It is now enabled by default, including the final path check after all shoves. A later shove can move another net into an earlier checked segment; that check rejects the path before inserting copper. Existing checks remain in place. Set `COPPERROUTE_CORRIDOR_GUIDANCE=0` to disable guidance; unset or `1` enables it. Protected-prefix routing is a separate, unlanded experiment.
 
-The final comparison against main **54d4e80** gives **36 fewer unrouted connections and zero net copper DRC increase on 719 completed pairs**. Connections improve on 29 boards and regress on 13; copper improves on seven and increases on seven. These ordinary regressions remain counted. This supports offering the strategy as an opt-in feature, not claiming universal improvement or activating it by default.
+The user requested default activation after reviewing the measured trade. A new four-way corpus run compares previous main, previous opt-in guidance, the new default, and the explicit opt-out. See [the default activation report](corridor-default-report.md).
+
+## Original opt-in validation
+
+The final comparison against main **54d4e80** gives **36 fewer unrouted connections and zero net copper DRC increase on 719 completed pairs**. Connections improve on 29 boards and regress on 13; copper improves on seven and increases on seven. These ordinary regressions remain counted. These were the results supporting the original opt-in landing; default activation is documented separately above.
 
 `quality-epyc-shove-coupled-full-01`: main, same-binary disabled control, and guidance with its automatic guard; 751 boards per candidate, all 2,253 KiCad referees successful. Ten passes, 300-second cap, one routing thread, 192 workers. All candidates use the same project minimums and merged local-hole/pad metadata. Failed referees were rescored on unchanged SES outputs. Results are preserved on laptop and workbench. No Java DRC is used.
 
@@ -36,6 +40,6 @@ VC4000 improves 4→2 U while copper rises 11→13. KiCad identifies its back-co
 
 Failing-first tests reproduce the unsafe insertion and prove that enabling guidance alone enables its required guard. A clear multi-segment path still reaches its endpoint. Fresh `cargo test --workspace` on the actual PR branch passed **2,599 top-level tests plus three isolated child checks, 77 ignored, zero failures**. All **602 source/data/test/fixture hashes** match the frozen benchmark candidate. No JVM recordings changed. Temporary instrumentation and the diagnostic production dependency on copper-dsn are excluded.
 
-The generated benchmark gate still fails **112 routing-quality losses**. This is an explicit trade, not a clean gate. The native web-import path has not received equivalent corridor validation; guidance stays opt-in. Remaining connection and copper regressions require further work before default activation.
+The generated benchmark gate still fails **112 routing-quality losses**. This is an explicit trade, not a clean gate. The native web-import path has not received equivalent corridor validation. The known connection and copper regressions remain counted in the default-activation assessment.
 
 Artifacts: [full generated summary](routing-quality-artifacts/shove-revalidation/coupled-pr-summary.md), [comparisons](routing-quality-artifacts/shove-revalidation/coupled-comparisons.json), [session identities](routing-quality-artifacts/shove-revalidation/coupled-identities.json), [source hashes](routing-quality-artifacts/shove-revalidation/quality-shove-coupled-source-hashes.json), [fresh PR suite](routing-quality-artifacts/shove-revalidation/pr27-workspace-summary.txt), and [mechanism investigation](shove-revalidation-report.md). Earlier and negative experiments remain in [the experiment table](routing-experiment-comparison.md) and [running log](routing-quality-log.md).

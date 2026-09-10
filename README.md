@@ -26,6 +26,13 @@ copperroute mcp
 Run `copperroute --help` or `copperroute <command> --help` for the full
 option list.
 
+Corridor guidance is enabled by default: related signals are encouraged to share
+routing corridors. To disable it for a run:
+
+```sh
+COPPERROUTE_CORRIDOR_GUIDANCE=0 copperroute route board.dsn -o board.ses
+```
+
 ### With a KiCad project
 
 The router does not read `.kicad_pcb` files directly. Export the board from
