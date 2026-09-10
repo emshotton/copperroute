@@ -654,7 +654,10 @@ pub fn read_library_scope(p: &mut ReadScopeParameter<'_>) -> Result<bool, DsnErr
         let place_keepout_arr =
             board_keepouts(&current_package.place_keepouts, &coordinate_transform);
 
-        let base_package_name = strip_side_suffix(&current_package.name);
+        // Placements refer to this exact image name. Numbered images may differ
+        // in pad geometry or pin names, so do not renumber or merge them with
+        // another explicitly named image.
+        let base_package_name = current_package.name.clone();
         let mut suffix = 0u32;
         loop {
             let test_name = if suffix == 0 {
@@ -752,16 +755,6 @@ pub(crate) fn strip_dot_digits(name: &str) -> String {
     out
 }
 
-fn strip_side_suffix(name: &str) -> String {
-    if let Some(idx) = name.rfind("::") {
-        let suffix = &name[idx + 2..];
-        if !suffix.is_empty() && suffix.bytes().all(|b| b.is_ascii_digit()) {
-            return name[..idx].to_string();
-        }
-    }
-    name.to_string()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -781,14 +774,6 @@ mod tests {
         assert_eq!(strip_dot_digits("a.\u{0661}"), "a.\u{0661}");
         assert_eq!(strip_dot_digits("PAD."), "PAD.");
         assert_eq!(strip_dot_digits("µ.7x"), "µx");
-    }
-
-    #[test]
-    fn strip_side_suffix_only_strips_a_trailing_run() {
-        assert_eq!(strip_side_suffix("IMG"), "IMG");
-        assert_eq!(strip_side_suffix("IMG::1"), "IMG");
-        assert_eq!(strip_side_suffix("IMG::1::2"), "IMG::1");
-        assert_eq!(strip_side_suffix("IMG::a"), "IMG::a");
     }
 
     #[test]

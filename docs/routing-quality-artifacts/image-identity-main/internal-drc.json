@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.kicad.org/drc.v1.json",
+  "coordinate_units": "mm",
+  "date": "2026-09-10T00:25:11.113732Z",
+  "kicad_version": "N/A",
+  "copperroute_version": "Copperroute 0.1.0",
+  "source": "unrouted.dsn",
+  "unconnected_items": [],
+  "violations": [],
+  "schematic_parity": [],
+  "quality_score": 999.9869995117188
+}

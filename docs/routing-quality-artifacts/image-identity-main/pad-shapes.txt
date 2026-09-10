@@ -1,0 +1,37 @@
+   Compiling unicode-ident v1.0.24
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling syn v3.0.4
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.20
+   Compiling thiserror v2.0.20
+   Compiling serde v1.0.229
+   Compiling copper-board v0.1.0 (/Users/em/Development/freerouting/copperroute-pad-local-clearance/crates/copper-board)
+   Compiling testkit v0.1.0 (/Users/em/Development/freerouting/copperroute-pad-local-clearance/tests/testkit)
+   Compiling copper-dsn v0.1.0 (/Users/em/Development/freerouting/copperroute-pad-local-clearance/crates/copper-dsn)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.64s
+     Running `/Users/em/Development/freerouting/copperroute-congestion-study/target/debug/examples/inspect_sai_pads`
+Q5 3 center=[27194.0, -146304.0] class=2 rule-to-trace=2000
+shape=Some(Octagon(IntOctagon { left_x: 267440, bottom_y: -1467040, right_x: 276440, top_y: -1459040, upper_left_diagonal_x: 1726480, lower_right_diagonal_x: 1743480, lower_left_diagonal_x: -1199600, upper_right_diagonal_x: -1182600 }))
+Q5 2 center=[29194.0, -147254.0] class=2 rule-to-trace=2000
+shape=Some(Octagon(IntOctagon { left_x: 287440, bottom_y: -1476540, right_x: 296440, top_y: -1468540, upper_left_diagonal_x: 1755980, lower_right_diagonal_x: 1772980, lower_left_diagonal_x: -1189100, upper_right_diagonal_x: -1172100 }))
+Q5 1 center=[29194.0, -145354.0] class=2 rule-to-trace=2000
+shape=Some(Octagon(IntOctagon { left_x: 287440, bottom_y: -1457540, right_x: 296440, top_y: -1449540, upper_left_diagonal_x: 1736980, lower_right_diagonal_x: 1753980, lower_left_diagonal_x: -1170100, upper_right_diagonal_x: -1153100 }))
+Q3 3 center=[27194.0, -99568.0] class=2 rule-to-trace=2000
+shape=Some(Octagon(IntOctagon { left_x: 267440, bottom_y: -999680, right_x: 276440, top_y: -991680, upper_left_diagonal_x: 1259120, lower_right_diagonal_x: 1276120, lower_left_diagonal_x: -732240, upper_right_diagonal_x: -715240 }))
+Q3 2 center=[29194.0, -100518.0] class=2 rule-to-trace=2000
+shape=Some(Octagon(IntOctagon { left_x: 287440, bottom_y: -1009180, right_x: 296440, top_y: -1001180, upper_left_diagonal_x: 1288620, lower_right_diagonal_x: 1305620, lower_left_diagonal_x: -721740, upper_right_diagonal_x: -704740 }))
+Q3 1 center=[29194.0, -98618.0] class=2 rule-to-trace=2000
+shape=Some(Octagon(IntOctagon { left_x: 287440, bottom_y: -990180, right_x: 296440, top_y: -982180, upper_left_diagonal_x: 1269620, lower_right_diagonal_x: 1286620, lower_left_diagonal_x: -702740, upper_right_diagonal_x: -685740 }))
+U18 3 center=[72000.0, -158912.5] class=2 rule-to-trace=2000
+shape=Some(Octagon(IntOctagon { left_x: 716994, bottom_y: -1596506, right_x: 723006, top_y: -1581744, upper_left_diagonal_x: 2299620, lower_right_diagonal_x: 2318630, lower_left_diagonal_x: -878630, upper_right_diagonal_x: -859620 }))
+U18 2 center=[72950.0, -160787.5] class=2 rule-to-trace=2000
+shape=Some(Octagon(IntOctagon { left_x: 726494, bottom_y: -1615256, right_x: 732506, top_y: -1600494, upper_left_diagonal_x: 2327870, lower_right_diagonal_x: 2346880, lower_left_diagonal_x: -887880, upper_right_diagonal_x: -868870 }))
+U18 1 center=[71050.0, -160787.5] class=2 rule-to-trace=2000
+shape=Some(Octagon(IntOctagon { left_x: 707494, bottom_y: -1615256, right_x: 713506, top_y: -1600494, upper_left_diagonal_x: 2308870, lower_right_diagonal_x: 2327880, lower_left_diagonal_x: -906880, upper_right_diagonal_x: -887870 }))
+U2 3 center=[50000.0, -40412.5] class=2 rule-to-trace=2000
+shape=Some(Octagon(IntOctagon { left_x: 496994, bottom_y: -411506, right_x: 503006, top_y: -396744, upper_left_diagonal_x: 894620, lower_right_diagonal_x: 913630, lower_left_diagonal_x: 86370, upper_right_diagonal_x: 105380 }))
+U2 2 center=[50950.0, -42287.5] class=2 rule-to-trace=2000
+shape=Some(Octagon(IntOctagon { left_x: 506494, bottom_y: -430256, right_x: 512506, top_y: -415494, upper_left_diagonal_x: 922870, lower_right_diagonal_x: 941880, lower_left_diagonal_x: 77120, upper_right_diagonal_x: 96130 }))
+U2 1 center=[49050.0, -42287.5] class=2 rule-to-trace=2000
+shape=Some(Octagon(IntOctagon { left_x: 487494, bottom_y: -430256, right_x: 493506, top_y: -415494, upper_left_diagonal_x: 903870, lower_right_diagonal_x: 922880, lower_left_diagonal_x: 58120, upper_right_diagonal_x: 77130 }))

@@ -124,6 +124,8 @@ pub struct ComponentJson {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct PadJson {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copperClearance: Option<f64>,
     #[serde(default)]
     pub allowSolderMaskBridges: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -275,6 +277,7 @@ impl Default for ComponentJson {
 impl Default for PadJson {
     fn default() -> PadJson {
         PadJson {
+            copperClearance: None,
             solderMaskExpansion: None,
             allowSolderMaskBridges: false,
             name: None,

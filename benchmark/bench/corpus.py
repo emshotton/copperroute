@@ -31,7 +31,7 @@ class Board:
     id: str
     source: str                         # relative to CORPUS
     origin: str                         # "freerouting-fixtures" | "pcbench"
-    referee: str                        # "java-drc" | "kicad"
+    referee: str                        # "kicad" | "none"; historical manifests may use "java-drc"
     tiers: list[str] = field(default_factory=list)
     nets: int = 0
     layers: int = 0
@@ -149,7 +149,7 @@ def init_from_fixtures(fixtures_dir: Path) -> list[Board]:
             tiers.append("canary")
         prev = existing.get(bid)
         boards.append(Board(id=bid, source=f"dsn/{src.name}", origin="freerouting-fixtures",
-                            referee="java-drc", tiers=tiers, nets=nets, layers=layers,
+                            referee="none", tiers=tiers, nets=nets, layers=layers,
                             expected_duration_s=prev.expected_duration_s if prev else None))
     save_manifest(boards)
     return [b for b in boards if b.origin == "freerouting-fixtures"]

@@ -360,3 +360,37 @@ fn an_empty_part_library_writes_nothing() {
     let out = write_with(&text, write_part_library_scope);
     assert_eq!(out, "");
 }
+
+#[test]
+fn numbered_images_keep_their_names_and_pin_geometry() {
+    let text = synthetic(
+        r#"  (library
+          (image IMG (pin PS 1 0 0))
+          (image IMG::7 (pin PS 1 0 0))
+          (image IMG::25 (pin PS 2@1 937.5 950))
+          (padstack PS (shape (rect F.Cu -100 -100 100 100)))
+        )"#,
+    );
+    read_pcb(&text, |ok, p| {
+        assert!(ok);
+        let packages = &p.board.as_ref().expect("board").library.packages;
+        assert_eq!(
+            packages.count(),
+            3,
+            "explicit names must survive deduplication"
+        );
+        for front in [true, false] {
+            assert_eq!(
+                packages.get_by_name("IMG::7", front).unwrap().name,
+                "IMG::7"
+            );
+            let variant = packages.get_by_name("IMG::25", front).unwrap();
+            assert_eq!(variant.name, "IMG::25");
+            assert_eq!(variant.get_pin(0).unwrap().name, "2@1");
+            assert_ne!(
+                variant.get_pin(0).unwrap().relative_location,
+                packages.get(1).get_pin(0).unwrap().relative_location
+            );
+        }
+    });
+}

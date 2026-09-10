@@ -1,0 +1,804 @@
+## Benchmark: corridor vs main
+
+**worse** — the regression gate **fails**:
+
+- corridor: 107 routing-quality losses
+
+| metric | result |
+|---|---|
+| Boards compared | 751 of 751 shared |
+| Wins / losses / ties | 270 / 451 / 30 |
+| Quality losses | 107 |
+| Performance losses | 0 (advisory) |
+| Clean-pass rate | 0.74 → 0.76 |
+| Median Δscore | 0.0 |
+| Median time ratio | 1.01 |
+
+<details><summary>721 boards changed</summary>
+
+| board | verdict | Δunrouted | Δviol | Δscore | Δcpu s |
+|---|---|---|---|---|---|
+| pcbench-cnlohr_wiflier_B | loss (unrouted) | +3 | 0 | -75.0 | -3.8 |
+| pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield | loss (unrouted) | +2 | +24 | -48.6 | +27.0 |
+| kicad-issue184-motorizedopener--motorizedopener | loss (unrouted) | +3 | +1 | -41.0 | +15.0 |
+| pcbench-epaper-102_epaper-102 | loss (unrouted) | +1 | 0 | -34.5 | +2.0 |
+| pcbench-TB6600StepperDriver_DEW_TB6600-V1 | loss (unrouted) | +2 | 0 | -34.5 | -12.4 |
+| pcbench-azalea_azalea | loss (unrouted) | +4 | 0 | -29.6 | -27.3 |
+| pcbench-kitspace_dropbot-front-panel | loss (unrouted) | +2 | 0 | -14.0 | +1.8 |
+| pcbench-GameTiger_GameTiger | loss (unrouted) | +1 | 0 | -13.5 | -10.6 |
+| pcbench-rp2040-dmxsun_baseboard_2slots | loss (violations) | 0 | +3 | -12.5 | +8.2 |
+| pcbench-Teensy-3.5-Breakout-Boaard_TeensyMegaIoShield | loss (unrouted) | +1 | 0 | -11.9 | -14.1 |
+| pcbench-pwm-2420-lus_pwm-2420-lus | loss (unrouted) | +1 | 0 | -11.5 | -30.2 |
+| pcbench-pmw3360-pcb_pmw3360_pcb_jst | loss (violations) | 0 | +1 | -11.1 | +1.6 |
+| pcbench-gb-hardware_GB-MBCTEST | loss (unrouted) | +1 | 0 | -10.8 | -42.7 |
+| pcbench-BLDC-controller_BLDC_controller | loss (unrouted) | +1 | -2 | -9.4 | -37.0 |
+| pcbench-ESP07-Breakout_ESP07-Breakout | loss (violations) | 0 | +1 | -8.7 | -1.2 |
+| pcbench-Own-Mailbox-Hardware_eth | loss (clean_pass_rate) | +1 | 0 | -6.4 | +24.2 |
+| pcbench-Patternflow_patternflow | loss (violations) | 0 | +1 | -4.9 | -1.8 |
+| kicad-issue269-nowiresonpowerlayers--proba | loss (clean_pass_rate) | +1 | 0 | -4.4 | +0.3 |
+| pcbench-amalthea_amalthea_rev0 | loss (unrouted) | +1 | 0 | -3.3 | +1.2 |
+| pcbench-96boards-sensors_Sensors | loss (score) | 0 | 0 | -0.0 | +22.5 |
+| … | and 701 more | | | | |
+
+</details>
+
+Baseline first: main `7d33cef+main` · corridor `7d33cef+corridor`
+
+threads=1 jobs=192 max_passes=10 timeout=300s seeds=1, deciding on cpu s. Runs quality-epyc-corridor-current-main-01.
+
+**Caveats**
+
+- seeds=1 (<3), so the noise floor is unmeasured and timing differences here are not evidence.
+- kicad-issue180-test--test: baseline has 1 judged repetition(s); noise is unmeasured
+- kicad-issue184-motorizedopener--motorizedopener: baseline has 1 judged repetition(s); noise is unmeasured
+- kicad-issue269-min_fr_test--min_fr_test: baseline has 1 judged repetition(s); noise is unmeasured
+- kicad-issue269-noviasonpowerplanes--issue269-noviasonpowerplanes: baseline has 1 judged repetition(s); noise is unmeasured
+- kicad-issue269-nowiresonpowerlayers--proba: baseline has 1 judged repetition(s); noise is unmeasured
+- kicad-issue283-unconnectedtracesunderpads--natural_tone_preamp: baseline has 1 judged repetition(s); noise is unmeasured
+- kicad-issue367-ultraflactyl--ultraflactyl: baseline has 1 judged repetition(s); noise is unmeasured
+- kicad-issue368-corneyislandwireless--corney_island_wireless: baseline has 1 judged repetition(s); noise is unmeasured
+- kicad-issue558-dev-board-autoroute-demo--dev-board: baseline has 1 judged repetition(s); noise is unmeasured
+- kicad-issue632-miniautopilot--mini auto pilot: baseline has 1 judged repetition(s); noise is unmeasured
+- kicad-issue742-tastexx-pcb--tastexx-pcb: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-1-Wire-Wing-pcb_1-Wire_Wing: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-12v-automatic-ups_ups-12v: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-16x12-bits-I2C_I2C_Servo: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-1Bitsy_1bitsy: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-2d_conduction_sk9822-matrix: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-4N35-TTL-Serial-Optoisolator_4N35-TTL-Serial-Optoisolator: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-655_testboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-6N137-TTL-Serial-Optoisolator_6N137-TTL-Serial-Optoisolator: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-6volt-5W-solar-cc_6vleadacidsolar: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-74Logic_SA_ADC_SA-ADC: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-8bit-cpu_arduino_eeprom_programmer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-8bit-cpu_programming_interface: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-96boards-sensors_Sensors: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ABOVISP_ABOVISP: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ADC-PCM4202-SE_ADC-PCM4202-SE: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-AIOsense_AIOsense: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-APC_AtariPunkConsole: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-APM-RPi-Shield_APM-RPi-Shield: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-AS5043-Encoder_sensor-board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ATmega32_ExploreUltraAvrDevKit_40pin_AVRMCU: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ATtiny461Breakout_ATTiny461DevBoard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-AVR-ISP_level-shifter_AVR-ISP_level-shifter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-AVR-ISP_pogo-plug_1.27mm_AVR-ISP_pogo-plug_1.27mm: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-AVR-Playground_hello_world: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-AVR-ZIF-Programmer_AVR-ZIF-Prog: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Amiga-2000-EATX_TICK_OSC_KiCAD_TICK: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Amiga-A1012-PCB_Amiga-A1012: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-AmpOne_dev-AmpOne: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-AnalogThermometer_AnalogThermometer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Apple-M0110-BT_Apple M0110: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Arduino-Theremin_arduino-theremin-v1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Arduino_Lipo_Storage_Discharger_Lipo_Storage_Discharger: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Atmel-ICE-Header-Adapter_ice header adapter pcb: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Avem_Hardware_Avem_demo: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-AzizLight_AzizLight: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-BB-PWR-3608_BB-PWR-3608_revA: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-BB-PWR-8009_BB-PWR-8009_revA: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-BLDC-controller_BLDC_controller: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-BML-Badges_BML-Badges: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-BML-Badges_BML_01: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Baofeng-Interface_BaofengInterfaceIsolated: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-BirdAttractor_BirdAttractor_RevA: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-BirdAttractor_BirdAttractor_RevC: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-BirthdayCakeKeyboard_10Key: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Biscay_Blueeye_mcu: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Biscay_Blueeye_sipm-fpga: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Blink-Eras_AVR_ISP_Pogo: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Blitz_.C68: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Blitz_Rev.K_C68: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Blitz_copy: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Box0-hv-analog-breakoutboard_breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Brushless_ESC_Brushless_ESC: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-C-BISCUIT_crowbar: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CAL430FR_CAL430F: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CAL430FR_CAL430F_watch: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_4CH_Mixer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_APC_Eurorack_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Abakus_Control: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Abakus_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Arduino_VCO_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Baby_8: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Buffered_Multiple_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Buffered_Multiple_SMD_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_CGS_Analog_Switch_Matrix_Control: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_CGS_Analog_Switch_Matrix_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Classic_ADSR_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Clock_Divider_Control: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Clock_Divider_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Dual_VCA_2_Control: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Dual_VCA_2_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Envelope_Follower_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_HAGIWO_6Ch_Gate_Sequencer_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_HAGIWO_MultiOut_Control: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_HAGIWO_MultiOut_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_HAGIWO_Ring_Modulator_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_LFO_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_MFOS_Eight_Stage_Phase_Shifter_-_Control: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_MFOS_Eight_Stage_Phase_Shifter_-_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Control: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Main_1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Main_2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Main_Rectifier_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Manual_Gate_Control: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Manual_Gate_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Power_Modul_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_S_H_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Single_Attenuator: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Slim_Precision_Adder_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Slimline_VCA_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Slimline_Voltage_Controlled_Switch_-_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_Vactrol_VCF_-_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_YuSynth_Dual_Balanced_Modulator_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CATs-Eurosynth_YuSynth_Improved_Steiner_VCF_Main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CapPCB_CapPcb: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Cherry-Mx-Bitboard_Cherry Mx Bitboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ChirpHardware_chirp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CompactFlashBreakout_CompactFlashBreakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CoreOne-xCORE200-Original_CoreOne: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CubeSAT-Reaction-Wheel_Edison_Motor_Servo: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-CubeSAT-Reaction-Wheel__autosave-GPIO to motor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Curryboard_Curryboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DAC-ADAU1966_DAC-ADAU1966: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DC25_DC25: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DIYDAC_DIYDAC: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DPS-1200FB_Adapter_Adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DaWeather---Project__autosave-CarteDaWeather: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DasBlinkinput_Das Blinkinput: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Dekada_dekada: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Dekada_dekada_TopoR_curves: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DerKnopf_digi-pot: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DerKnopf_led-ring: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DerKnopf_power-supply: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DiscoDanceFloorV1_DiscoDongle: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DonCon2040_DonConPad: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Doorman_doorman_slot: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DoroidOscillo-Board_Android_Oscilloscope: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DualLM317BenchSupply_DualLM317BenchSupply: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-DustSensorShield_DustSensorShield: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-E202VAR-Natural-Radio-Receiver_e202var-vlf-radio-receiver: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-EEGFrontier_EEGFrontier: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ESP-12-breakout_ESP12E-breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ESP-Breakout_ESP-Breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ESP07-Breakout_ESP07-Breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ESP32-Module-Breakout_ESP32S-breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ESP8266-MQTT-battery-monitor-hw_battery-monitor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ESPLux_Board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ESP_BaPoTeSta_ESP_BaPoTeSta: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ESP_WiFiSwitch_WifiSwitch: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Eggbot-Spherebot-polargraph-Controller_eggbot-spherebot-polargraph-controller: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Electronics-MainBoard_MainBoard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-EncoderBoard_Enc_Pan_Led: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-EnvOpenPico_EliteMicro2040: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-EuroPi_europi-surface-mount: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-FRM16_Relay_Module_I2C_Controller_relay_controller: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-FT231X_breakout_FTDI_FT231XS-U_Breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Feather-ICE40-PCB_feather_ice40: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-FlashProgrammer_flash_programmer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-FogDrive_attiny45_slim: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-GameTiger_GameTiger: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-HES-V2__autosave-hes: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-HES-V2_hes: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-HW-AC-Emeter_ac-power-monitor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hangul-Clock_Hangul: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware-done-with-kicad_AVRlearn: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_BL_PCB_latest: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_Touch_Switch_1ch_PCB: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_buck_led_driver: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_esp8266_uno_relay: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_hy_adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_minimal_node_rfm69w: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_nrf52832_uno: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_orange_pi_zero_node: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_pro_mini: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_rpi_zero: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_serial_gw_ATMEGA328P: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_serial_gw_maple_mini: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_usb_shield: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hardware_Playground_wifi_lights: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-HaveSome_PCB_HaveSomePCB: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-HellScribe_HellScribe: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-HillhacksLantern_LEDLantern: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hubble_12_bit_analog_out: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hubble_16_bit_analog_out: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hubble_jacks: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hubble_leds: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hubble_mux: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Hypfer-RGB-W-LED-Controller_led_strip_controller: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-I2CTempsensor_sensors: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ID-FIX_scanConnect: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-IR-Transponder-ATTiny85-v2_Transponder_v2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ISO-port_ch340-usb-serial-isolated: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Inhibition_amplifier: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Inkjet_InkjetBreakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Inkjet_InkjetDriver: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Inkjet_PiezoDriver: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Inkjet__autosave-InkjetDriver: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-JLink-SWD_JLink-SWD: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Kefersender_UKW TX: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Keyboard_PCB_Keyboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-KiCad-LTC6802-2_main: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-KosselHotendBoard_KosselHotendPCB: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-L6235-PCB_L6235: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LAUNCHXL-F28027-isolation-PCB_project1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LED-Square_PT4115_LED-Square_PT4115: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LPC2148_Stick_LPC2148_stick: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LPC2148_Stick__autosave-LPC2148_stick: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LT3652EvalBoard_LT3652EvalBoard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LVDS2TMDS_LVDS2TMDS: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LadyBugShield_LBS-TEST1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LadybugLiteBlue_HW_LadybugBlueLite: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LiFePO4-Charge-Controller_LiFePO4-Charge-Controller: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Librecalc-Hardware__autosave-calculator: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LimitSwitchesPlugin_LimitSwitchesPlugin: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LittleArduinoProjects_LEDx16_board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LittleArduinoProjects_sevensegment_led_display_module: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LoRaCatTrack_GPSLoRa: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LoRaPP_loramod: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-LongPixel_AnalogDriverMini: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-MAGFest-2017-Swadges_magfest_badges: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-MAVRIC_Hardware_ArduinoPracticeBoard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-MAVRIC_Hardware_Motherboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-MAVRIC_Hardware_SoilBoard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-MAVRIC_Hardware__autosave-Motherboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-MSGEQ7-Breakout-Board_MSGEQ7_Breakout_Board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Mechaduino-DR_Mechaduino DR 1.01: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Minitel_bbb-adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Minitel_driver_board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-MixSID_mixsid: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Mouse_Mouse: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-MySRaspiGW_MySRaspiGW: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-MySRaspiGW_MySRaspiGW_PA_LNA: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-MySRaspiGW_MySRaspiGW_PA_LNA_Pimoroni: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-MySRaspiGW_MySRaspiGW_Pimoroni: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-NRC2016_banked_ram: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-NRC2016_usb_sio: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-NRC2016_z80: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-NavigationThing_NavigationThing: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-NeoWall_NeoWall: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Neptune-Hardware_DataAcquisitionBoard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-NiMH-Charger_NiMH Charger: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-OLD-Stepper-motor-board-design-project_Stepper motor driver: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-OSHW-reCamera-Series_reCamera_Basically_Board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Omega2-Berrydock_berrydock-mini: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Omega2-mini-dock_Omega2 mini-dock: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-OpAmpPassXsistorBenchSupply_OpAmpPassXsistorBenchSupply: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Open-Source-Power-Supply_PowerSupply_PCB: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Open-Source-Power-Supply_PowerSupply_PCB_backup: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-OpenHardwareExG_ActiveElectrode_OpenHardwareExG_ActiveElectrode: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield_Test_Board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield_Test_Board_all_panelled: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-OpenVNAVI_driver unit: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-OpenVNAVI_motor unit: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Own-Mailbox-Hardware_eth: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Own-Mailbox-Hardware_mailbox: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-PCB_constant_current_ac_hv: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-PCB_serie_led_strip: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-PCB_small_halogen_replacement: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-PGA2311_pga2311: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-POV_POV: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-PWRmeter_PWMeter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Paperino_HW_Paperino_shield: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Paperino_HW_paperino_breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Patternflow_patternflow: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Phased-Array-Microphone-using-FPGA_SateliteMicrophone: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Pi1541io_Pi1541io: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Pi5_PCIe_Pi5_PCIe: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-PixyWirelessShield_Shield PIXY: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-PmodHDMIIn_PmodHDMIIn: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-PocketBone_pocketbone-kicad: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Practicas-Curso-Kicad_Ejercicio_2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Practicas-Curso-Kicad_Salguero_Federico2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Prototyping_Workshop_Prototyping_PCB: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-PsuFanController_FanController: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-QRPCard_QRPCard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-R1002_R1002: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RC2014_RC2014 IDE: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RC2014_RC2014 RAM: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RC2014_RC2014 Tandy Sound Card: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RC6502-Apple-1-Replica_RC6502_Apple_1_SBC: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RC6502-Apple-1-Replica_RC6502_Terminal: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RC6502-Apple-1-Replica_RC6502_VDU: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RFM69HCW_ATSHA204A_Breakout_RFM69HCW_ATSHA204A_Breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RGBMatrixPanelCPLD-PhotonBackpack_RGBMatrixPanel_CPLD_negative: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RGBMatrixPanelCPLD-PhotonBackpack_RGBMatrixPanel_CPLD_positive: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RPi-PWM-Fan-interface_RPi PWM Fan interface: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RX5808_diversityModule: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RX5808_rx5808_4button: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Raspberry-Pi-Soft-Power-Controller_Switching Supply TPS563208 MCI: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Raspberry-Pi-Soft-Power-Controller_Zero Current Soft Power: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ReSDMAC_ReSDMAC: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ReST32_ReST RRD-FGC-Adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ReST32_ReST SD-Module: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Retro1DecodingModules_AddressDecoderModule: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RetroWiFiModem_RetroWiFiModem: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RoBoC_CameraAdaptor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-RoBoC_RoboticsMKII: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-S1G-Mod_JST_Adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-S4A-Mini-board_s4a-mini-board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-SMDBreakouts_smd_breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-SMDBreakouts_smd_breakout_quad: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-SNAP-Badge_SNAP_badge: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-SOICbite_SOICbite_SWD: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-STM32F303_LQFP48_STM32_LQFP48: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-STM32F373_LQFP48_STM32_LQFP48: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Shift-in-32-HC165_shift-in: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Shift-out-32-HC595_Shift-out: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-SimpleCPLD_SimpleCPLD: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-SmartLaserCO2-PCB_LaserPointer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-SmartLaserCO2-PCB_OptAdjust: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-SmartLaserCO2-PCB_WaterCool: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Solare-BQ24210_Solare-BQ24210: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-SparkSwitch_SparkProtectionSwitch: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Starburst-One_alpha: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Starling_Starling_V1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Starling__autosave-Starling WiPSU ver_0.1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-SynthDrumTrigger_Synth Drum Trigger: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-TB6600StepperDriver_DEW_TB6600-V1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-TK44_TK44: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-TLPHnodeV2_TLPHnodeV2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-TMC261-stepstick_TMC261-stepstick-v1.1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-TX5823_TX5823: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Teensy-3.5-Breakout-Boaard_PropShield_Uno: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Teensy-3.5-Breakout-Boaard_TeensyMegaIoShield: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Teensy-3.5-Breakout-Boaard_Test: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Teensy-Hats_Teensy-7-Segment-Hat: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Teensy-Hats_Teensy-LCD-LiDAR-Hat: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-TeensyProtoboard_TeensyProtoboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ThinkerShield_ThinkerShield: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-TinyTracker_ub-minimal: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ToslinkCNC_Toslink PlanetCNC ECO shield: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ToslinkCNC__autosave-ToslinkCNC_OneAxis: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ToslinkCNC_toslink_arduino_shield: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-TripleDelay2399_TripleDelay2399: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ULPI-Pmod_ULPI-Pmod: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-UProgrammer-Hardware_Programmer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-UltraPIF_Hardware_led: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-UltraPIF_Hardware_pif_adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-UltrasonicSystem_Schematic: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-UniversalBoard4Nucleo_Nucleo_Universal_Board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Usb-Serial-Breakout-Cp2102_cp2102: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-VC4000MultiROM_MultiRomCard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-VM-sensor-PT1000_vm-sensor-pt100: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Ventilator_indicator-board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Ventilator_pressure_XGZP6897A: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Ventilator_pressure_mpx5700ap_gp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Ventilator_pressure_mpxv5004_10dp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Ventilator_pressure_mpxv5004dp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Ventilator_pressure_mpxv5010dp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Ventilator_pressure_ms4525do: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-WHCS-Base-Station_base-station: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-WS2811LEDMatrix_matrixcontrol: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-WeatherSpot_vreg_pressure: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-WordClock_v2.0_WordClock_v2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-Youyue-858D-plus-MCU-adapter_youyue-858d-plus-mcu-adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-abus-cfa1000-display-grabber_acs-display-grabber: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-aciduino_aciduino_pcb: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-airqualitystation_hardware: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-akuhei_akuhei: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-alu_gate_xnor_2in: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-amalthea_amalthea_rev0: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-analog_esr_meter_esr_meter_rev_a: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-anima_MotorDrive: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-antdroid-board_antdroid-board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-apa102lantern_apa102-lantern-side: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-arduino-led-driver_arduino-led-driver: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-arduino_arduino leds: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-atmegax8-protoboard_atmegax8-protoboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-atmel-programmer_atmel_programmer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-audio_relay_input_switch_relay_switch: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-audprog_audprog_v2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-autohat-board_inverted-usd-adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-autohat-board_usd-adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-avr-fuser-32_adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-avr_ledprojector_avr_ledprojection: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-avr_ledprojector_avr_ledprojection-0402: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-azalea_azalea: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-badge2016_Badge_init: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-balena-rover-wide-hat_resin-rover: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-basic_esp_board_basic_esp_board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-beast-phat_beast-phat: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-bee-light-measurement-matrix_bee-light-measurement-matrix: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-beer-gauge_sensorboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-beryl_rain_beryl_rain: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-beyblock20_beyblock20: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-bikedar_bikedar: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-blackmagic-isolated_mmp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-bldc-gimbal-1d_gimbal-board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-blinky-badge_blinky: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-bms-8s50-ic_bms-8s50-ic: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-bmw-ibus-bluetooth_bmw_bt_cdcemu_analog: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-bmw-ibus-bluetooth_bmw_bt_cdcemu_digital: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-board_armjtag_pmod_compatible_armjtag-pmod: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-boards_shift-register-demo-v2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-boatcontrol_CommonCathode60A: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-boatcontrol_NonLatchingNO30A: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-bobc_LCD-panel-adapter-lvc: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-bobc_MS-F100: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-bobc_led_clock: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-bobc_matrix_clock: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-bpnode-bb_BPnode-BB: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-breakout-boards_50-to-100: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-breakout-boards_avr-isp-x2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-breakout-boards_esp8266-jtag: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-breakout-boards_swd-and-uart: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-breakout-boards_swd-to-wires: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-bristle_bot_light_follow_bristle_bot: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-busblaster-to-swd_busblaster-to-swd: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-bypass_crossmix_bypass_crossmix: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-can_firewall_hardware_CAN_Firewall: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-cdm324_backpack_cdm324: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ciurlys_ciurlys: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-clock_lcdb4: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-cnlohr_wiflier: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-cnlohr_wiflier_B: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-continuity-tester_continuity-tester: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-cookiecutter-xsproduct_{{cookiecutter.product_name}}: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-crossover-schiit-stack_xover4schiit: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-custom_cpu--ALU_custom_cpu--ALU: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-custom_cpu--register_custom_cpu--register: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-data-manager_data-manager: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-decelerator4030_decelerator4030: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-denbit_basic: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-deskbot_breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-devttys0_IRis: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-digital_clock_led_clock_3_and_4_digit: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-digital_clock_led_clock_v1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-disco-dongle_DiscoDongle: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-divergence_meter_dm_control: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-domotics_base-board-arranged: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-dorkyboard_keyboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-drawduino_drawduino: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-dust_sensor_dust_sensor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-dustbox_Dustbox: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-eBUS-Adapter_Groeger: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-eeg_brainboard_batteryv0: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-eink-adapter_eink: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-epaper-102_epaper-102: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-epapercard_epapercard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ergo-snm-keyboard_receiver: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp-leipa_esp-12: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp-serial-terminal_esp-com: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp12-appliance_mod_esp12-appliance-mod: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp12-breakout_ESP12Breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp32-4-channel-relays_esp32-4-channel-relays: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp32-ethernet_esp32-ethernet: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp32stack_esp32stack: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp8266-for-uppatvind_Air-Purifier-Uppatvind: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp8266_32x32panel_esp_12_f_595: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp8266_32x32panel_esp_12_f_595_ORDERED: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp8266_envmonitor_environment-monitor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp8266_envmonitor_environment-monitor-1.2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp8266_envmonitor_environment-monitor-1.4: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp8266_link_test_esp_micro85-only: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp8266_network_speaker_esp_network_speaker: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esp8266_wi07_3_adapter_esp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-espalarm_alarm: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esper_EsperDNS: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-esper_programmer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-espeverywhere__autosave-espeverywhere_breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-espionage_esplight: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-everled_everled: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ezusb-logicanalyzer_cypress_logic_analyzer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-f.60_keyboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-fan_controller_fan_controller: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-fifogfx_c64cart: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-filament_extruder_sensor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-fingerprint-with-esp32_quet van tay: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-firefly-jar_solar_lamp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-fp2_extension_sample_fp2_usb_breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-free-of-charge_BMS: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-freeDSP-CLASSIC-SMD-BALANCED_FreeDSP_BAL: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-freeUSBi_USBi_Programmer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ftdi-jtag-programmer_JTAGProgrammer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-gb-hardware_GB-BRK-M-XS: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-gb-hardware_GB-BRK-TR-A: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-gb-hardware_GB-CART256K-A: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-gb-hardware_GB-CART32K-A: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-gb-hardware_GB-CARTPP-XC: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-gb-hardware_GB-LIVE32: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-gb-hardware_GB-MBCTEST: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-gdrom_adapter_board_adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-gepetto_circuito: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-guitar_fret: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-gwurrbus_pwm: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hackaday_esp-14_power_meter__autosave-esp-14: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hackpad_orpheuspad_pcb: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hackyflasher_Flasher: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hardware-designs_c-trigger: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hardware-designs_m-trigger: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hardware-designs_nixie-combo: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hardware-designs_nixie-power: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hardware-designs_soil-moisture-sensor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hardware-designs_solar-harvester: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hardware-designs_spsgrf-board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hbr-mk2_hbr-mk2-bpfs: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hbr-mk2_hbr-mk2-digital: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hbr-mk2_hbr-mk2-lpfs: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-headstage-adapter_headstage adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-helmholtz-servo_CurrentServo: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hm-mod-rpi-rtc_hm-mod-rpi-rtc: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hw_trials_demo: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-hwstar_ac-power-monitor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-icehat_icehat: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-imfr-schematics_Telescopio: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-induction-hob_temperature-sender: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-jadonk_PocketBone: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-jdy-08-board_jdy-08: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-juno-chorus-clone_juno-chorus-clone: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-karabas-nano_karabas-nano-revA: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-karabas-nano_karabas-nano-revB: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-karabas-nano_karabas-nano-revC: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-karabas-nano_karabas-nano-revG: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-karabas-nano_wifi_revA: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kassenautomat.mdb-interface_mdb-interface: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-keyboards_Djinn: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kicad-guitar-preamp_Preamp-Instructables: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kicad-projects_BatCharge: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kicad-projects_ili9341-breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kicad_bbb-melzi: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kika-in-space_DS8500: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kika-in-space_analog-test-board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kinetoscope_ethernet: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kinetoscope_microcontroller: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kinetoscope_sram-bank: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kit2-led-cube_led_cube: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_12V5A_breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_12_24_boost_converter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_40-channel-hv-switching-board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_4_switch_array: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_8_switch_array: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_BQ25570_Harvester: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_CH330: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_CO2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_DIY_detector: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_Lcr_addon: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_Minisumo_V2.1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_OSO-BOOK-C1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_OtterScreen: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_PSLab: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_Potentiometer_mount_4LED: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_Potentiometer_mount_8LED: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_RPi_shield: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_T32_ref: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_USB-C-Screen-Adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_USB-C-Screen-Adapter-LDR6023SS: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace__autosave-nunchuk_breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_aquarius: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_ardfpga: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_beehive: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_dropbot-front-panel: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_dropbot_control_board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_dynamixel_shield: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_esp8266: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_flypi: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_flypi_v2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_gas_sensor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_grove_adaptor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_hbridge_driver: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_hp_led_switch: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_hum_temp_sensor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_ideal_diode: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_ir_sensor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_led_driver: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_level_shifter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_minisumo_v3: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_nunchuk_breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_peltier: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_piezo_amplifier: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_pmt_combiner: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_power_supply: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_sensor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_solenoid_driver: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_spike_n_hold: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_sympetrum-v2%20NFF1.1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_teensy-fx: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_temp_breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_threeboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_training_board_v02: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_trans_switch_volt_amp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_tt_nano_HAT_b1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_tt_nano_HAT_b2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-kitspace_tt_opt101_module_b1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-klangorium_logic_noise_playground: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-komputer-klavier_KomputerKlavier: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-led-wordclock_wordclock: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-led_array_atmega8_led_array: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-lfi-rig_lfi-driver: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-light-painting-wand_light-wand: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-linklayer_contact: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-low-power-counter_lpcounter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-m2-electronics_m2fc: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-m2-electronics_m2pogo: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-m2-electronics_m2r: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-m2-electronics_m2rl: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-mac-pro-conversion_front-panel-power-adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-magic-table_etch-a-sketch_cyclone: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-makerspace-emonth_resistor_board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-marlin-neopixel-bridge_ATtiny85_Marneo: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-mavbridge_mavbridge: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-maytal_Maytal: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-mdbwerk_mdbwerk: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-mearm-base-pcb_ServoPCB: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-mechkeys_lfk78-jtag: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-medusa_medusa_rs422_rx: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-memory-display_memory-display: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-memsarray_mems_array: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-microphone_preamp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-mightyduino_mightyduino: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-mikoto_mikoto-flashbed: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-mini_ice40_mini_ice40: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-miniboard-opamp_miniboard-opamp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-miniboard-stm32f0_miniboard-stm32f0: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-mobile-sensor-pcb_mobile-sensor-pcb: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-mojo-nes_mojo-nes: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-motor-3xdrv8833-hw_ver1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-mppt-2420-hc_mppt-2420-hc: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-mppt-2420-hpx_mppt-2420-hpx: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-nRF24breakoutBoard_nRF24-breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-nand_programmer_adapter_tsop48: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-nanoSwinSidC_nanoSwinSidC: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-navelino-leaf_navelino-leaf: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-nextbusclock_NextBusClockV1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-nfl-led-scoreboard_passive-rpi-hub75-adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-nfl-led-scoreboard_passive3-rpi-hub75-adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-nikon_gps_nikon_gps: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-nixie-clock_ab18x5-breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-nodemcu-backstage_NodeMCU Backstage: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-nodemcu-basecamp_NodeMCU Basecamp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-nonSNES_SNSP-CPU-1CHIP: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-nrf2rfm69_nrf2rfm69: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-nunchuk_rf_hw_NunchukRF_V3: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-oasis_ledboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-oled-bmp280-touch_oled-bmp280-touch: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-one-shift-register_one-shift-register: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-onion2-breakout_onion2 breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-opentilt_opentilt2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-oshtimer_transponder: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ottawa-badges-2016_ottawa-badge-tagger-2016: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ozinverter_ozinverterkicad: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-pcb-covox-amp-v2_pcb-covox-amp-v2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-pcb-covox-amp_pcb-covox-amp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-pcb-ks0108-128x64-glcd_circuit: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-pcb-usb-ft245r-parallel-adapter_pcb-usb-ft245r-parallel-adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-pesho_pesho: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-phone_rtty_interface_phone_rtty_rev_a: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-phone_rtty_interface_phone_rtty_rev_b: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-photon_Sprinkler_sprinkler: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-pi-zero-stepper-board_pi-zero-stepper-board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-pi_plant_MCP3002: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-pico-pi-rel_pico-pi: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-pmw3360-pcb_pmw3360_pcb_jst: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-pocketbone-kicad_pocketbone-kicad: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-polypoint_pinpoint_timebase: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ponyser-pcb_Ponyser: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-preamp-two_input-selector: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-preamp-two_mcu-board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-preamp-two_mdac-attenuator: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-prog-cc-100mA_prog-cc-100mA: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-project-hydra-meshtastic-pcb_meshtastic-diy: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-pulse_v1_pulse: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-pusheenz40_sadcatz40: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-pwm-2420-lus_pwm-2420-lus: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-radio_antenna-iridium: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-raspberry_pi_pullup_button_pullup_shutdown_button: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-raspberry_pi_pullup_button_pullup_shutdown_button(revB): baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rc2014_bank_switcher_z80_cpm_mmu: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-real-time-chess_kfchess: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-recalbox-gpio-board__autosave-board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-recalbox-gpio-board_board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-retrocon_bbb-adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-retrocon_driver_board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-retroreflectors_TANGOFLOCK: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rfcx-sentinel-pcb_Mainboard: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rfidBoard_rfid: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rgb-led_rgb-led-v2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rgb-strip-controller__autosave-rgb-strip: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rgb2ypbpr_rgb2ypbpr: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rjw57_cpu-board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-roomba-ESP12E_roomba-esp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rotary-encoder-breakout_rotary-encoder-breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-royer_royer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rp2040-dmxsun_baseboard_2slots: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rp2040-dmxsun_baseboard_4slots: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rs485-moist-sensor_adapter-por: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rs485-moist-sensor_interconnect: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rs485-moist-sensor_rs485-moist-sensor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rufs__autosave-simple_kicad_schema_and_pcb_v1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rufs_aprs_tracker: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rufs_dra818v_breakout_board: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rufs_simple_kicad_schema_and_pcb_v1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rufs_smart_psu: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rufs_spv1040_power_controller: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-rxadc_14_rxadc_14: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-saiboard_3x8: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-saiboard_8x3: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-scimpy_amp: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-scimpy_crossover: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-scimpy_powersupply: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-scimpy_volumebuffer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-sensorboard_DiffIR: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-sensorboard_DiffIR.kicad_pcb_narrow: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-shutter_Shutter V4: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-shutter_speed_tester_shutter_speed_tester: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-simplebus2-intercom_repeater_v2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-sms-cart-32k_cart: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-smt-zvs-driver_IH10-sl: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-snappi-zero_snappi-zero: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-soil-moisture-sensor-analog_analog-moist-sensor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-solar-lanterns_proto1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-sonic3_feram_adapter_sonic3_feram_adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-spisolator_spisolator: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-split-pcb-throughole_splanck throughhole: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-srambo_1_srambo_1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-ssr-wifi_adapter: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-starfish_starfish: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-starsynctrackers_reset_switch: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-stlinkv2_breakout_stlink_breakout: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-stm32_ccd_camera_ccd: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-stubby_hex: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-sv650sds_sds_tool: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-taira-keyboard_tairakb: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-tbd_tbd: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-tdstat_TDstatv2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-technoshield-ui-hw_technoshield: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-teensy-touch_teensy-touch: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-teensy-weather-badge_teensyi2c: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-teensy-wifi-weather-logger_teensyi2c: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-temperature-alarm_controller: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-tepmachcha_tepmachcha: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-tessel-ice40__autosave-project: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-thatmicpre_thatmicpre_v1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-thatmicpre_thatmicpre_v2: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-thegrid_thegrid: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-thingBot-LoRa_thingBot-LoRa_v1P0: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-thingBot-LoRa_thingBot-LoRa_v1P1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-timecircuits-hardware_BTTF-TimeCircuits: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-tiny-8088_Computer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-tinyFISH_tinyBRUSH: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-tinyisp-micro_tinyispmicro: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-tinymuseum_museum: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-type5_type5: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-uC3Moy_uC3Moy: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-uSKY_uSKY: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-uext-esp32_UEXT_ESP32: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-usb_rs232c_usb_rs232c_rev_a: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-vatx_vatx: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-vdcmon_vdcmon: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-wavegen_rev3: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-wavegen_waveform-generator: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-wavegen_waveform-generator-rev1: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-wavegen_wavegen: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-wifiLCD_wifilcd: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-xmasOrn_xmasOrn: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-xwhatits-capsense-controller_model-f-3178-adaptor: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-z2amiller_sensorboard_programmer: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-zx-sizif-128_sizif128: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-zx-sizif-512-ext_sizif512ext: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-zx-sizif-512-wifi_sizif512-wifi: baseline has 1 judged repetition(s); noise is unmeasured
+- pcbench-zx-sizif-xxs_sizif-xxs: baseline has 1 judged repetition(s); noise is unmeasured
+
+<sub>Generated by `uv run bench pr-summary --compare quality-epyc-corridor-current-main` from `reports/quality-epyc-corridor-current-main.json`.</sub>

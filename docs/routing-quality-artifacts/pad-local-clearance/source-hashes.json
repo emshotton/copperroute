@@ -1,0 +1,5 @@
+{
+  "crates/copper-dsn/src/kicad/dto.rs": "3ca25d908831b4aa68b86c905b6513cfc1908282656c64877b0597ec54950d5a",
+  "crates/copper-dsn/src/kicad/reader.rs": "2a0a6b6b89b53c7f10a2122cce30b20c568101e122c7a9f191590dd845a6e919",
+  "crates/copperroute/src/ops/load.rs": "8123dc2a1c4ac21a701b8030a8daee362d85446a619070868959248f8e6875a5"
+}

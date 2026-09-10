@@ -1,0 +1,2 @@
+net=103 signals=6 global_capacity=42192 trace_capacity=21336 original_terminal_span=210099.5065219151
+band=Some(Corridor { axis: FloatPoint { x: -0.3940932562909159, y: 0.9190704572262252 }, along: [-1485154.276665531, -1198073.5291544981], across: [-1055337.762388981, -845238.2558670659] })

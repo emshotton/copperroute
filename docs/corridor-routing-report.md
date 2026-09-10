@@ -1,8 +1,36 @@
 # Shared corridor guidance
 
-Related signals often share a middle route and fan out at their endpoints. This opt-in experiment adds a soft geometric preference for that pattern. The current candidate includes the KiCad project copper minimum from PR28, fixing the earlier Snappi regression while retaining broad corridor gains. Ordinary-board regressions remain; default activation is not ready.
+This opt-in routing experiment encourages related signals to travel through a shared band and fan out at their endpoints. The latest comparison retains a connectivity benefit but adds copper violations, concentrated on OpenHardwareExG Shield. Keep the PR as a draft; this is not ready for default activation or merge as a quality improvement.
 
-## Current full comparison with project minimums
+## Current main 7d33cef comparison
+
+`quality-epyc-corridor-current-main-01`: 751 KiCad boards each for main, same-binary guidance-disabled control, and guidance-enabled candidate. All 2,253 referees succeeded after retrying failed checks on unchanged SES. Ten passes, 300-second cap, one routing thread, 192 jobs; identical project-minimum and pad/reference metadata for every candidate. Results are saved on laptop and workbench.
+
+| Comparison / population | Δ unrouted (better/worse) | Δ copper (gainers) | Δ mask (gainers) | CPU ratio |
+|---|---:|---:|---:|---:|
+| Control→guidance, 740 PCBench | −340 (46/15) | +18 (10) | −66 (13) | 0.9385 |
+| Control→guidance, 11 local | +4 (0/2) | +1 (1) | 0 (0) | 1.0119 |
+| Main→guidance, 740 PCBench | −375 (46/14) | +20 (10) | −86 (12) | 0.9416 |
+| Main→guidance, 11 local | +4 (0/2) | +1 (1) | 0 (0) | 1.0184 |
+
+On 720 completed control/candidate pairs: **−45 unrouted / +22 copper**. PCBench contributes −48 U (30 improved, 10 regressed) and +21 copper (eight gainers); local contributes +3 U/+1 copper on motorizedopener. Main/candidate has the same completed U/copper delta on 719 pairs. The large raw unrouted deltas contain deadline effects and are not claimed as recovered connections. Single-run CPU ratios do not establish speed.
+
+Of completed control/candidate pairs, 498 SES outputs are byte-identical (0U/0Cu/−11mask), and 222 differ (−45U/+22Cu/−66mask). All 719 completed main/control pairs are byte-identical, with 0U/0Cu/−17mask, confirming the switch-disabled control. Retain mask counts without attributing identical-output changes to routing.
+
+| Control→guidance population | Completed boards | Fully connected | Median peak RSS MiB | Maximum peak RSS MiB |
+|---|---:|---:|---:|---:|
+| PCBench | 710→718 | 590→601 | 12.1→12.1 | 373.9→368.7 |
+| Local | 10→10 | 8→7 | 13.6→13.5 | 72.2→121.4 |
+
+The largest copper regression is **OpenHardwareExG Shield: 1→3 unrouted, 30→54 copper**. Control has 30 track-width violations; guidance has 34 width, 12 shorting-item and eight clearance violations. Short reports include AGND versus Net-(C30-Pad1) near C30. Its original is fully connected and has zero routing DRC, with 147 vias/2280.31mm. This is an ordinary failure, not an outlier exemption. Outside this board the completed total would be −47U/−2Cu, but it remains in all headline figures. The next investigation is the source of these new shorts; changing routing costs must not allow illegal copper.
+
+Azalea remains a connectivity regression, 41→45U, but now has zero copper violations in both candidates after the merged pad/reference fixes. Motorizedopener remains 58→61U/53→54Cu. These are retained ordinary regressions.
+
+Fresh clean workspace verification on the actual updated PR branch: **2,592 passed, 77 ignored, zero failed**, including doctests. All 600 crate/source/data/manifests match the measured frozen snapshot. Original JVM recordings are unchanged. The generated benchmark gate fails **107 quality losses**; [full summary](routing-quality-artifacts/corridor-current-main/pr-summary.md), [main comparison](routing-quality-artifacts/corridor-current-main/vs-main.json), [same-binary comparison](routing-quality-artifacts/corridor-current-main/vs-control.json), [output identities](routing-quality-artifacts/corridor-current-main/identities.json), and [source hashes](routing-quality-artifacts/corridor-current-main/source-hashes.json) are retained. Equivalent grouping/quality on the native web import path has not been validated.
+
+The terminal-envelope extension is excluded: its seven-board completed pilot was +3U/−3Cu, held after four connectivity regressions and two improvements. The separate capacity audit found old/new metadata produce the same azalea /RESET band; endpoint span dominates, so no capacity patch was justified.
+
+## Historical full comparison with project minimums
 
 `quality-epyc-corridor-minimum-full-01`: main e9d10c2 and the combined candidate, guidance disabled/enabled in the same executable. Each has751 boards and successful KiCad referees (2,253 total); failed checks were repaired on unchanged SES. Both control and enabled candidate receive identical minimal project files containing original min_clearance and original PR25 pad-mask sidecars. Ten passes,300-second cap,one routing thread,192jobs. Results copied locally and to workbench.
 

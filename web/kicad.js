@@ -361,6 +361,14 @@ export function importBoard(text, name, rules, options = {}) {
           ) ?? [];
       padLayers.forEach(layerIndex);
       if (!padLayers.length) continue; // Paste-only apertures are not copper obstacles.
+      const localClearance = (node) => {
+        const field = child(node, "clearance");
+        if (!field) return undefined;
+        const value = number(field.values[1]);
+        // KiCad changed explicit zero from inheritance to an override after this format version.
+        return value === 0 && Number(val(root, "version", 0)) <= 20240201 ? undefined : value;
+      };
+      const copperClearance = localClearance(pad) ?? localClearance(fp);
       const maskMargin = number(val(pad, "solder_mask_margin", val(fp, "solder_mask_margin", boardMaskMargin)));
       const rawLayers = child(pad, "layers")?.values.slice(1) ?? [];
       const solderMaskExpansion = Object.fromEntries(
@@ -391,6 +399,7 @@ export function importBoard(text, name, rules, options = {}) {
             drillEstimated: slotted,
             layers: padLayers,
             solderMaskExpansion,
+            ...(copperClearance !== undefined ? { copperClearance } : {}),
             allowSolderMaskBridges: child(fp, "attr")?.values.includes("allow_soldermask_bridges") ?? false,
           },
         ],

@@ -1,7 +1,6 @@
 """`bench` command-line entry point."""
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 import subprocess
@@ -12,50 +11,19 @@ import click
 
 from bench import compare as compare_mod
 from bench import corpus, export as export_mod, metrics, paths, pool, referee, runner
-from bench.candidates import load_candidates, load_referee_java
+from bench.candidates import load_candidates
 from bench.report import html as html_report
 from bench.report import markdown as md_report
 from bench.report import plots as plots_report
 from bench.report import pr as pr_report
 
 
-def _java_exec(candidates_file: Path | None = None) -> list[str]:
-    file = candidates_file or paths.ROOT / "candidates.toml"
-    custom = load_referee_java(file) if file.exists() else None
-    return custom or [paths.java_exe(), "-Xmx4g", "-jar", str(paths.java_jar())]
-
-
-def _java_identity(command: list[str]) -> dict:
-    identity = {"exec": command, "jar_sha256": None}
-    if "-jar" in command:
-        index = command.index("-jar") + 1
-        if index == len(command) or not command[index] or command[index].startswith("-"):
-            raise ValueError("-jar requires a following jar path")
-        jar = Path(command[index])
-        with jar.open("rb") as stream:
-            identity["jar_sha256"] = hashlib.file_digest(stream, "sha256").hexdigest()
-    return identity
-
-
-def _referee_config(boards: list[corpus.Board], candidates_file: Path | None = None,
-                    recorded: dict | None = None, verify_recorded: bool = True) -> dict | None:
-    if all(b.referee == "kicad" for b in boards):
-        return None
-    try:
-        config = _java_identity(recorded["exec"] if recorded else _java_exec(candidates_file))
-        if recorded and verify_recorded and referee.identity_key(config) != referee.identity_key(recorded):
-            raise click.ClickException("recorded referee jar has changed; rescore the full run without --only-missing")
-        return config
-    except (OSError, paths.ToolMissing, ValueError) as e:
-        raise click.ClickException(f"Java referee unavailable: {e}") from e
-
-
-def _score_cell(board: corpus.Board, cell: Path, java_config: dict | None):
-    result = referee.score_cell(board, cell, java_config["exec"] if java_config else [])
-    if result is not None and board.referee != "kicad":
-        result["referee_identity"] = java_config
-        (cell / "metrics.json").write_text(json.dumps(result, indent=2) + "\n")
-    return result
+def _require_kicad(boards: list[corpus.Board]) -> None:
+    unsupported = sorted({b.id for b in boards if b.referee != "kicad"})
+    if unsupported:
+        raise click.ClickException(
+            "KiCad reference unavailable for: " + ", ".join(unsupported)
+            + "; DSN-only boards can be routed with --no-referee but cannot be scored")
 
 
 @click.group()
@@ -192,29 +160,6 @@ def corpus_revalidate_cmd(origin: str, regenerate_projects: bool, rerun_drc: boo
             click.echo(f"  {bid}")
 
 
-@corpus_cmd.command("connections")
-@click.option("--tier", default=None)
-@click.option("--boards", "board_ids", default=None, help="comma-separated board ids")
-def corpus_connections_cmd(tier: str | None, board_ids: str | None) -> None:
-    """Measure each board's Java connection count (board_statistics.connections.maximum_count)
-    and store it in the manifest as `connections`, the N used by metrics.score when a
-    candidate's own self-report is unavailable."""
-    from bench.referee import java_drc
-    all_boards = corpus.load_manifest()
-    try:
-        selected = corpus.select(all_boards, tier=tier, ids=board_ids.split(",") if board_ids else None)
-    except KeyError as e:
-        raise click.ClickException(e.args[0]) from e
-    by_id = {b.id: b for b in all_boards}
-    java_exec = _java_exec()
-    for b in selected:
-        n = java_drc.measure_connections(b, java_exec)
-        by_id[b.id].connections = n
-        click.echo(f"{b.id}: connections={n}" if n is not None else f"{b.id}: FAILED to measure connections")
-        # save after every board so a long run's progress survives an interruption
-        corpus.save_manifest(list(by_id.values()))
-
-
 @main.command("run")
 @click.option("--candidates", "cand_names", required=True, help="comma-separated names from candidates.toml")
 @click.option("--candidates-file", "candidates_file", envvar="BENCH_CANDIDATES",
@@ -255,8 +200,17 @@ def run_cmd(cand_names, candidates_file, tier, board_ids, seeds, max_passes, tim
                                ids=board_ids.split(",") if board_ids else None)
     except KeyError as e:
         raise click.ClickException(e.args[0]) from e
+    if not no_referee:
+        if board_ids:
+            _require_kicad(boards)
+        else:
+            skipped = len(boards)
+            boards = [b for b in boards if b.referee == "kicad"]
+            skipped -= len(boards)
+            if skipped:
+                click.echo(f"skipping {skipped} boards without a KiCad reference")
     if not boards:
-        raise click.ClickException("no boards selected")
+        raise click.ClickException("no boards selected" + (" with a KiCad reference" if not no_referee else ""))
     missing = [b.id for b in boards if not b.path.exists()]
     if missing:
         raise click.ClickException(
@@ -268,8 +222,7 @@ def run_cmd(cand_names, candidates_file, tier, board_ids, seeds, max_passes, tim
                            candidates_file=str(candidates_file.resolve()))
     hook = None
     if not no_referee:
-        cfg.referee_java = _referee_config(boards, candidates_file)
-        hook = lambda board, cell: _score_cell(board, cell, cfg.referee_java)
+        hook = referee.score_cell
     try:
         run_dir = runner.run(cfg, referee=hook, progress=click.echo)
     except FileExistsError as e:
@@ -280,12 +233,10 @@ def run_cmd(cand_names, candidates_file, tier, board_ids, seeds, max_passes, tim
 @main.command("referee")
 @click.option("--run", "run_id", required=True)
 @click.option("--only-missing", is_flag=True, help="skip cells that already have metrics.json")
-@click.option("--candidates-file", type=click.Path(exists=True, path_type=Path), default=None,
-              help="referee configuration override; changing the referee requires rescoring the full run")
 @click.option("--jobs", default=1, show_default=True,
              help="number of cells to re-score concurrently. Needs only the run's manifest and "
                   "results -- no candidates.toml.")
-def referee_cmd(run_id: str, only_missing: bool, jobs: int, candidates_file: Path | None) -> None:
+def referee_cmd(run_id: str, only_missing: bool, jobs: int) -> None:
     """(Re)score every cell of a run."""
     if jobs < 1:
         raise click.ClickException("--jobs must be >= 1")
@@ -305,23 +256,16 @@ def referee_cmd(run_id: str, only_missing: bool, jobs: int, candidates_file: Pat
         click.echo("scored 0 cells: nothing left to score")
         return
 
-    selected_boards = [boards[c["board"]] for c, _ in todo]
-    recorded = meta.get("referee_java")
-    source = candidates_file or (Path(meta["candidates_file"]) if meta.get("candidates_file") else None)
-    java_config = _referee_config(selected_boards, source, recorded if not candidates_file else None,
-                                  verify_recorded=only_missing)
-    if java_config is not None and only_missing and recorded and (
-            referee.identity_key(java_config) != referee.identity_key(recorded)):
-        raise click.ClickException("cannot change the referee with --only-missing; rescore the full run")
+    _require_kicad([boards[c["board"]] for c, _ in todo])
     if not only_missing:
-        meta["referee_rescore"] = {"status": "incomplete", "referee_java": java_config}
+        meta["referee_rescore"] = {"status": "incomplete", "referee": "kicad"}
         runner._save_meta(run_dir, meta)
 
     def _score(item: tuple[dict, Path]) -> tuple[dict, dict, str | None]:
         c, cell = item
         board = boards[c["board"]]
         try:
-            return c, _score_cell(board, cell, java_config), None
+            return c, referee.score_cell(board, cell), None
         except Exception as e:
             # One bad cell must not abort the rest of the pass -- especially under jobs > 1,
             # where other cells may already be scoring concurrently in other worker threads.
@@ -345,8 +289,6 @@ def referee_cmd(run_id: str, only_missing: bool, jobs: int, candidates_file: Pat
     # pattern as `run` uses for meta.json -- regardless of which worker finishes first.
     results = pool.run_cells(todo, _score, jobs, on_done=_print)
 
-    if java_config is not None:
-        meta["referee_java"] = java_config
     if not only_missing:
         meta["referee_rescore"]["status"] = "complete"
     runner._save_meta(run_dir, meta)
