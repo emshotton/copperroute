@@ -1,0 +1,62 @@
+[
+  {
+    "candidate": "main",
+    "board": "nano",
+    "unrouted": 0,
+    "violations": 4,
+    "violations_all": 4,
+    "violations_by_type": {
+      "hole_clearance": 4
+    },
+    "warnings": 34,
+    "cpu_s": 10.64,
+    "rss_mb": 14.85546875,
+    "final_state": "COMPLETED"
+  },
+  {
+    "candidate": "main",
+    "board": "feather",
+    "unrouted": 7,
+    "violations": 35,
+    "violations_all": 43,
+    "violations_by_type": {
+      "courtyards_overlap": 8,
+      "copper_edge_clearance": 32,
+      "starved_thermal": 3
+    },
+    "warnings": 99,
+    "cpu_s": 245.51000000000002,
+    "rss_mb": 76.8515625,
+    "final_state": "COMPLETED"
+  },
+  {
+    "candidate": "effective",
+    "board": "nano",
+    "unrouted": 0,
+    "violations": 4,
+    "violations_all": 4,
+    "violations_by_type": {
+      "hole_clearance": 4
+    },
+    "warnings": 34,
+    "cpu_s": 10.68,
+    "rss_mb": 15.1484375,
+    "final_state": "COMPLETED"
+  },
+  {
+    "candidate": "effective",
+    "board": "feather",
+    "unrouted": 7,
+    "violations": 35,
+    "violations_all": 43,
+    "violations_by_type": {
+      "courtyards_overlap": 8,
+      "copper_edge_clearance": 32,
+      "starved_thermal": 3
+    },
+    "warnings": 99,
+    "cpu_s": 246.36,
+    "rss_mb": 78.48046875,
+    "final_state": "COMPLETED"
+  }
+]

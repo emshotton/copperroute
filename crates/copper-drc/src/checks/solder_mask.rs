@@ -7,6 +7,33 @@ use crate::checks::geometry::{candidates, gap_below, has_copper, item_shapes};
 use crate::constraints::severity;
 use crate::{DrcViolation, DrcViolationKind};
 
+fn mask_base_shape(board: &Board, id: ItemId, layer: usize) -> Option<Shape> {
+    let Item::Pin(pin) = board.get_item(id)? else {
+        return None;
+    };
+    let ctx = board.ctx();
+    pin.get_shape_on_layer(layer, &ctx).or_else(|| {
+        (pin.solder_mask_expansion.contains_key(&layer)
+            && pin.first_layer(&ctx) == pin.last_layer(&ctx))
+        .then(|| pin.get_shape_on_layer(pin.first_layer(&ctx), &ctx))
+        .flatten()
+    })
+}
+
+fn mask_item_shapes(board: &mut Board, id: ItemId) -> Vec<(usize, TileShape)> {
+    let mut shapes = item_shapes(board, id);
+    if let Some(Item::Pin(pin)) = board.get_item(id) {
+        for &layer in pin.solder_mask_expansion.keys() {
+            if !shapes.iter().any(|(existing, _)| *existing == layer)
+                && let Some(shape) = mask_base_shape(board, id, layer)
+            {
+                shapes.push((layer, shape.bounding_tile()));
+            }
+        }
+    }
+    shapes
+}
+
 fn segment_gap(tile: &TileShape, segment: &FloatLine) -> f64 {
     if tile.contains_float(&segment.a) || tile.contains_float(&segment.b) {
         return 0.0;
@@ -35,7 +62,7 @@ fn pad_routing_gap(board: &Board, pad: ItemId, other: ItemId, layer: usize) -> O
         return None;
     };
     let ctx = board.ctx();
-    let shape = pin.get_shape_on_layer(layer, &ctx)?;
+    let shape = mask_base_shape(board, pad, layer)?;
     let (segments, half_width) = match board.get_item(other)? {
         Item::Trace(trace) => (
             trace
@@ -81,7 +108,7 @@ fn pad_pair_gap(board: &Board, a: ItemId, b: ItemId, layer: usize) -> Option<f64
         let Item::Pin(pin) = board.get_item(id)? else {
             return None;
         };
-        let shape = pin.get_shape_on_layer(layer, &ctx)?;
+        let shape = mask_base_shape(board, id, layer)?;
         if let Shape::Circle(circle) = shape {
             return Some((
                 TileShape::Box(copper_geometry::IntBox::from_coords(
@@ -119,11 +146,21 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
     let web_width = constraints.solder_mask_min_width.unwrap_or(0).max(0);
     let mut seen = BTreeSet::new();
     let mut largest_margin: BTreeMap<usize, i32> = BTreeMap::new();
+    let mut mask_only_pins: BTreeMap<usize, Vec<ItemId>> = BTreeMap::new();
     for id in board.get_pins() {
         if let Some(Item::Pin(pin)) = board.get_item(id) {
+            for (&layer, &margin) in &pin.effective_solder_mask_expansion {
+                let largest = largest_margin.entry(layer).or_default();
+                *largest = (*largest).max(margin);
+            }
             for (&layer, &margin) in &pin.solder_mask_expansion {
                 let largest = largest_margin.entry(layer).or_default();
                 *largest = (*largest).max(margin);
+                if pin.get_shape_on_layer(layer, &board.ctx()).is_none()
+                    && mask_base_shape(board, id, layer).is_some()
+                {
+                    mask_only_pins.entry(layer).or_default().push(id);
+                }
             }
         }
     }
@@ -142,12 +179,12 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
             continue;
         }
         let expansion = pin.solder_mask_expansion.clone();
-        for (layer, copper) in item_shapes(board, pin_id) {
+        for (layer, copper) in mask_item_shapes(board, pin_id) {
             let Some(margin) = expansion.get(&layer) else {
                 continue;
             };
             let aperture = copper.enlarge(f64::from(*margin));
-            for other_id in candidates(
+            let mut nearby = candidates(
                 board,
                 &aperture,
                 Some(layer),
@@ -158,7 +195,9 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
                         .unwrap_or(0)
                         .saturating_add(web_width),
                 ),
-            ) {
+            );
+            nearby.extend(mask_only_pins.get(&layer).into_iter().flatten().copied());
+            for other_id in nearby {
                 let Some(other) = board.get_item(other_id) else {
                     continue;
                 };
@@ -168,9 +207,11 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
                 {
                     continue;
                 }
-                if !has_copper(board, other_id) {
+                let hole_only_source = !has_copper(board, other_id);
+                if hole_only_source && !matches!(other, Item::Pin(_)) {
                     continue;
                 }
+                let mut other_has_aperture = false;
                 let other_margin = if let Item::Pin(other_pin) = other {
                     if other_pin.allow_solder_mask_bridges {
                         continue;
@@ -196,11 +237,23 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
                     {
                         continue;
                     }
-                    other_pin.solder_mask_expansion.get(&layer).copied()
+                    let aperture_margin = other_pin.solder_mask_expansion.get(&layer);
+                    other_has_aperture = aperture_margin.is_some() && !hole_only_source;
+                    if other_has_aperture {
+                        aperture_margin.copied()
+                    } else {
+                        other_pin
+                            .effective_solder_mask_expansion
+                            .get(&layer)
+                            .or(aperture_margin)
+                            .copied()
+                    }
                 } else {
                     None
                 };
-                let required = if other_margin.is_some() {
+                // KiCad excludes hole-only pads as apertures, but checks their
+                // copper-layer shape against other pads' apertures.
+                let required = if other_has_aperture {
                     web_width
                 } else {
                     clearance
@@ -215,15 +268,28 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
                 } else {
                     pad_routing_gap(board, pin_id, other_id, layer)
                 };
-                if exact_gap.is_some_and(|gap| gap >= expected) {
+                if exact_gap.is_some_and(|gap| gap >= expected && !(gap == 0.0 && expected == 0.0))
+                {
                     continue;
                 }
-                for (other_layer, shape) in item_shapes(board, other_id) {
+                for (other_layer, shape) in mask_item_shapes(board, other_id) {
                     if other_layer != layer {
                         continue;
                     }
                     let other_aperture = shape.enlarge(f64::from(other_margin.unwrap_or(0)));
                     let Some((_, position)) = gap_below(&aperture, &other_aperture, required)
+                        .or_else(|| {
+                            if required != 0 || expected != 0.0 || exact_gap != Some(0.0) {
+                                return None;
+                            }
+                            let overlap = aperture.intersection(&other_aperture);
+                            (overlap.dimension() >= 0).then(|| {
+                                (
+                                    0.0,
+                                    TileShape::Box(overlap.bounding_box()).centre_of_gravity(),
+                                )
+                            })
+                        })
                     else {
                         continue;
                     };

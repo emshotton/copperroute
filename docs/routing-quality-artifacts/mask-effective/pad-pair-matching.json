@@ -1,0 +1,4234 @@
+[
+  {
+    "board": "kicad-issue269-min_fr_test--min_fr_test",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "kicad-issue269-noviasonpowerplanes--issue269-noviasonpowerplanes",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "kicad-issue269-nowiresonpowerlayers--proba",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "kicad-issue283-unconnectedtracesunderpads--natural_tone_preamp",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "kicad-issue367-ultraflactyl--ultraflactyl",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "kicad-issue368-corneyislandwireless--corney_island_wireless",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "kicad-issue632-miniautopilot--mini auto pilot",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-1-Wire-Wing-pcb_1-Wire_Wing",
+    "kicad_pairs": 11,
+    "main_matches": 11,
+    "candidate_matches": 11,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-12v-automatic-ups_ups-12v",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-16x12-bits-I2C_I2C_Servo",
+    "kicad_pairs": 26,
+    "main_matches": 26,
+    "candidate_matches": 26,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-1Bitsy_1bitsy",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-2d_conduction_sk9822-matrix",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-4N35-TTL-Serial-Optoisolator_4N35-TTL-Serial-Optoisolator",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-6N137-TTL-Serial-Optoisolator_6N137-TTL-Serial-Optoisolator",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-6volt-5W-solar-cc_6vleadacidsolar",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-74Logic_SA_ADC_SA-ADC",
+    "kicad_pairs": 96,
+    "main_matches": 96,
+    "candidate_matches": 96,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-96boards-sensors_Sensors",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ABOVISP_ABOVISP",
+    "kicad_pairs": 4,
+    "main_matches": 4,
+    "candidate_matches": 4,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ADC-PCM4202-SE_ADC-PCM4202-SE",
+    "kicad_pairs": 26,
+    "main_matches": 26,
+    "candidate_matches": 26,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-APC_AtariPunkConsole",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-AS5043-Encoder_sensor-board",
+    "kicad_pairs": 14,
+    "main_matches": 14,
+    "candidate_matches": 14,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ATmega32_ExploreUltraAvrDevKit_40pin_AVRMCU",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ATtiny461Breakout_ATTiny461DevBoard",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-AVR-ISP_level-shifter_AVR-ISP_level-shifter",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-AVR-ISP_pogo-plug_1.27mm_AVR-ISP_pogo-plug_1.27mm",
+    "kicad_pairs": 12,
+    "main_matches": 0,
+    "candidate_matches": 12,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-AVR-Playground_hello_world",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-AVR-ZIF-Programmer_AVR-ZIF-Prog",
+    "kicad_pairs": 3,
+    "main_matches": 3,
+    "candidate_matches": 3,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Amiga-2000-EATX_TICK_OSC_KiCAD_TICK",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Amiga-A1012-PCB_Amiga-A1012",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-AmpOne_dev-AmpOne",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-AnalogThermometer_AnalogThermometer",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Apple-M0110-BT_Apple M0110",
+    "kicad_pairs": 10,
+    "main_matches": 2,
+    "candidate_matches": 10,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Arduino-Theremin_arduino-theremin-v1",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Arduino_Lipo_Storage_Discharger_Lipo_Storage_Discharger",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Atmel-ICE-Header-Adapter_ice header adapter pcb",
+    "kicad_pairs": 50,
+    "main_matches": 50,
+    "candidate_matches": 50,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Avem_Hardware_Avem_demo",
+    "kicad_pairs": 60,
+    "main_matches": 60,
+    "candidate_matches": 60,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-AzizLight_AzizLight",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-BB-PWR-8009_BB-PWR-8009_revA",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-BML-Badges_BML-Badges",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-BML-Badges_BML_01",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Baofeng-Interface_BaofengInterfaceIsolated",
+    "kicad_pairs": 4,
+    "main_matches": 0,
+    "candidate_matches": 4,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-BirdAttractor_BirdAttractor_RevA",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-BirdAttractor_BirdAttractor_RevC",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Biscay_Blueeye_mcu",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Biscay_Blueeye_sipm-fpga",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Blink-Eras_AVR_ISP_Pogo",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Blitz_.C68",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Blitz_Rev.K_C68",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Blitz_copy",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Brushless_ESC_Brushless_ESC",
+    "kicad_pairs": 28,
+    "main_matches": 28,
+    "candidate_matches": 28,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-C-BISCUIT_crowbar",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Abakus_Control",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Abakus_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Buffered_Multiple_SMD_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_CGS_Analog_Switch_Matrix_Control",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_CGS_Analog_Switch_Matrix_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Classic_ADSR_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Clock_Divider_Control",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Dual_VCA_2_Control",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Dual_VCA_2_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Envelope_Follower_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_HAGIWO_6Ch_Gate_Sequencer_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_HAGIWO_MultiOut_Control",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_HAGIWO_MultiOut_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_LFO_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_MFOS_Eight_Stage_Phase_Shifter_-_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Control",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Main_1",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Main_2",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Main_Rectifier_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Manual_Gate_Control",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Manual_Gate_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Power_Modul_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_S_H_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Single_Attenuator",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Slim_Precision_Adder_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Slimline_VCA_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Slimline_Voltage_Controlled_Switch_-_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Vactrol_VCF_-_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_YuSynth_Dual_Balanced_Modulator_Main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CapPCB_CapPcb",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Cherry-Mx-Bitboard_Cherry Mx Bitboard",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ChirpHardware_chirp",
+    "kicad_pairs": 29,
+    "main_matches": 29,
+    "candidate_matches": 29,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CompactFlashBreakout_CompactFlashBreakout",
+    "kicad_pairs": 50,
+    "main_matches": 50,
+    "candidate_matches": 50,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CoreOne-xCORE200-Original_CoreOne",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CubeSAT-Reaction-Wheel_Edison_Motor_Servo",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-CubeSAT-Reaction-Wheel__autosave-GPIO to motor",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-DAC-ADAU1966_DAC-ADAU1966",
+    "kicad_pairs": 75,
+    "main_matches": 75,
+    "candidate_matches": 75,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-DPS-1200FB_Adapter_Adapter",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Dekada_dekada",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Dekada_dekada_TopoR_curves",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-DerKnopf_digi-pot",
+    "kicad_pairs": 108,
+    "main_matches": 108,
+    "candidate_matches": 108,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-DiscoDanceFloorV1_DiscoDongle",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-DualLM317BenchSupply_DualLM317BenchSupply",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-DustSensorShield_DustSensorShield",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-E202VAR-Natural-Radio-Receiver_e202var-vlf-radio-receiver",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ESP-12-breakout_ESP12E-breakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ESP-Breakout_ESP-Breakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ESP07-Breakout_ESP07-Breakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ESP32-Module-Breakout_ESP32S-breakout",
+    "kicad_pairs": 34,
+    "main_matches": 34,
+    "candidate_matches": 34,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ESP8266-MQTT-battery-monitor-hw_battery-monitor",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ESPLux_Board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ESP_BaPoTeSta_ESP_BaPoTeSta",
+    "kicad_pairs": 37,
+    "main_matches": 37,
+    "candidate_matches": 37,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Eggbot-Spherebot-polargraph-Controller_eggbot-spherebot-polargraph-controller",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-EncoderBoard_Enc_Pan_Led",
+    "kicad_pairs": 39,
+    "main_matches": 39,
+    "candidate_matches": 39,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-EnvOpenPico_EliteMicro2040",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-FRM16_Relay_Module_I2C_Controller_relay_controller",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-FT231X_breakout_FTDI_FT231XS-U_Breakout",
+    "kicad_pairs": 22,
+    "main_matches": 22,
+    "candidate_matches": 22,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Feather-ICE40-PCB_feather_ice40",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-FlashProgrammer_flash_programmer",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-FogDrive_attiny45_slim",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-HES-V2__autosave-hes",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-HES-V2_hes",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hardware-done-with-kicad_AVRlearn",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hardware_Playground_BL_PCB_latest",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hardware_Playground_Touch_Switch_1ch_PCB",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hardware_Playground_esp8266_uno_relay",
+    "kicad_pairs": 9,
+    "main_matches": 9,
+    "candidate_matches": 9,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hardware_Playground_hy_adapter",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hardware_Playground_nrf52832_uno",
+    "kicad_pairs": 37,
+    "main_matches": 37,
+    "candidate_matches": 37,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hardware_Playground_orange_pi_zero_node",
+    "kicad_pairs": 4,
+    "main_matches": 4,
+    "candidate_matches": 4,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hardware_Playground_rpi_zero",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hardware_Playground_usb_shield",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-HaveSome_PCB_HaveSomePCB",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-HellScribe_HellScribe",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hubble_12_bit_analog_out",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hubble_16_bit_analog_out",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hubble_jacks",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hubble_leds",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hubble_mux",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Hypfer-RGB-W-LED-Controller_led_strip_controller",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-I2CTempsensor_sensors",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ID-FIX_scanConnect",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-IR-Transponder-ATTiny85-v2_Transponder_v2",
+    "kicad_pairs": 2,
+    "main_matches": 2,
+    "candidate_matches": 2,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Inkjet_InkjetBreakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Inkjet_InkjetDriver",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Inkjet_PiezoDriver",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Inkjet__autosave-InkjetDriver",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-JLink-SWD_JLink-SWD",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Keyboard_PCB_Keyboard",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-KiCad-LTC6802-2_main",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-LED-Square_PT4115_LED-Square_PT4115",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-LPC2148_Stick_LPC2148_stick",
+    "kicad_pairs": 68,
+    "main_matches": 68,
+    "candidate_matches": 68,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-LPC2148_Stick__autosave-LPC2148_stick",
+    "kicad_pairs": 68,
+    "main_matches": 68,
+    "candidate_matches": 68,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-LT3652EvalBoard_LT3652EvalBoard",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-LVDS2TMDS_LVDS2TMDS",
+    "kicad_pairs": 18,
+    "main_matches": 18,
+    "candidate_matches": 18,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-LiFePO4-Charge-Controller_LiFePO4-Charge-Controller",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-LimitSwitchesPlugin_LimitSwitchesPlugin",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-LittleArduinoProjects_LEDx16_board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-LittleArduinoProjects_sevensegment_led_display_module",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-LoRaCatTrack_GPSLoRa",
+    "kicad_pairs": 6,
+    "main_matches": 6,
+    "candidate_matches": 6,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-LoRaPP_loramod",
+    "kicad_pairs": 99,
+    "main_matches": 99,
+    "candidate_matches": 99,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-LongPixel_AnalogDriverMini",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-MAGFest-2017-Swadges_magfest_badges",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-MAVRIC_Hardware_ArduinoPracticeBoard",
+    "kicad_pairs": 28,
+    "main_matches": 28,
+    "candidate_matches": 28,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-MAVRIC_Hardware_Motherboard",
+    "kicad_pairs": 112,
+    "main_matches": 112,
+    "candidate_matches": 112,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-MAVRIC_Hardware_SoilBoard",
+    "kicad_pairs": 16,
+    "main_matches": 16,
+    "candidate_matches": 16,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-MAVRIC_Hardware__autosave-Motherboard",
+    "kicad_pairs": 112,
+    "main_matches": 112,
+    "candidate_matches": 112,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Minitel_bbb-adapter",
+    "kicad_pairs": 2,
+    "main_matches": 2,
+    "candidate_matches": 2,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Minitel_driver_board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Mouse_Mouse",
+    "kicad_pairs": 44,
+    "main_matches": 44,
+    "candidate_matches": 44,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-MySRaspiGW_MySRaspiGW",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-MySRaspiGW_MySRaspiGW_PA_LNA",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-MySRaspiGW_MySRaspiGW_PA_LNA_Pimoroni",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-MySRaspiGW_MySRaspiGW_Pimoroni",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-NRC2016_usb_sio",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-NRC2016_z80",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-NeoWall_NeoWall",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Neptune-Hardware_DataAcquisitionBoard",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-NiMH-Charger_NiMH Charger",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-OLD-Stepper-motor-board-design-project_Stepper motor driver",
+    "kicad_pairs": 14,
+    "main_matches": 14,
+    "candidate_matches": 14,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Omega2-Berrydock_berrydock-mini",
+    "kicad_pairs": 90,
+    "main_matches": 90,
+    "candidate_matches": 90,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Omega2-mini-dock_Omega2 mini-dock",
+    "kicad_pairs": 5,
+    "main_matches": 5,
+    "candidate_matches": 5,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-OpAmpPassXsistorBenchSupply_OpAmpPassXsistorBenchSupply",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Open-Source-Power-Supply_PowerSupply_PCB",
+    "kicad_pairs": 12,
+    "main_matches": 12,
+    "candidate_matches": 12,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Open-Source-Power-Supply_PowerSupply_PCB_backup",
+    "kicad_pairs": 12,
+    "main_matches": 12,
+    "candidate_matches": 12,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-OpenHardwareExG_ActiveElectrode_OpenHardwareExG_ActiveElectrode",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-OpenVNAVI_motor unit",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-PCB_serie_led_strip",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-PCB_small_halogen_replacement",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-PGA2311_pga2311",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-POV_POV",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-PWRmeter_PWMeter",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Patternflow_patternflow",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Phased-Array-Microphone-using-FPGA_SateliteMicrophone",
+    "kicad_pairs": 12,
+    "main_matches": 12,
+    "candidate_matches": 12,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-PixyWirelessShield_Shield PIXY",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-PmodHDMIIn_PmodHDMIIn",
+    "kicad_pairs": 57,
+    "main_matches": 57,
+    "candidate_matches": 57,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-PocketBone_pocketbone-kicad",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Practicas-Curso-Kicad_Ejercicio_2",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Practicas-Curso-Kicad_Salguero_Federico2",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Prototyping_Workshop_Prototyping_PCB",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-PsuFanController_FanController",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-QRPCard_QRPCard",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-R1002_R1002",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-RC2014_RC2014 IDE",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-RC2014_RC2014 RAM",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-RC2014_RC2014 Tandy Sound Card",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-RC6502-Apple-1-Replica_RC6502_Apple_1_SBC",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-RC6502-Apple-1-Replica_RC6502_Terminal",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-RC6502-Apple-1-Replica_RC6502_VDU",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-RFM69HCW_ATSHA204A_Breakout_RFM69HCW_ATSHA204A_Breakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-RGBMatrixPanelCPLD-PhotonBackpack_RGBMatrixPanel_CPLD_negative",
+    "kicad_pairs": 40,
+    "main_matches": 40,
+    "candidate_matches": 40,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-RGBMatrixPanelCPLD-PhotonBackpack_RGBMatrixPanel_CPLD_positive",
+    "kicad_pairs": 40,
+    "main_matches": 40,
+    "candidate_matches": 40,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-RPi-PWM-Fan-interface_RPi PWM Fan interface",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Raspberry-Pi-Soft-Power-Controller_Switching Supply TPS563208 MCI",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ReSDMAC_ReSDMAC",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ReST32_ReST RRD-FGC-Adapter",
+    "kicad_pairs": 2,
+    "main_matches": 2,
+    "candidate_matches": 2,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ReST32_ReST SD-Module",
+    "kicad_pairs": 2,
+    "main_matches": 2,
+    "candidate_matches": 2,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Retro1DecodingModules_AddressDecoderModule",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-RetroWiFiModem_RetroWiFiModem",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-RoBoC_CameraAdaptor",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-RoBoC_RoboticsMKII",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-S1G-Mod_JST_Adapter",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-SOICbite_SOICbite_SWD",
+    "kicad_pairs": 24,
+    "main_matches": 24,
+    "candidate_matches": 24,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-STM32F303_LQFP48_STM32_LQFP48",
+    "kicad_pairs": 45,
+    "main_matches": 45,
+    "candidate_matches": 45,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-STM32F373_LQFP48_STM32_LQFP48",
+    "kicad_pairs": 46,
+    "main_matches": 46,
+    "candidate_matches": 46,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Shift-in-32-HC165_shift-in",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Shift-out-32-HC595_Shift-out",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-SmartLaserCO2-PCB_OptAdjust",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Solare-BQ24210_Solare-BQ24210",
+    "kicad_pairs": 7,
+    "main_matches": 7,
+    "candidate_matches": 7,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-SparkSwitch_SparkProtectionSwitch",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Starburst-One_alpha",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Starling_Starling_V1",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-SynthDrumTrigger_Synth Drum Trigger",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-TMC261-stepstick_TMC261-stepstick-v1.1",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Teensy-3.5-Breakout-Boaard_PropShield_Uno",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Teensy-3.5-Breakout-Boaard_TeensyMegaIoShield",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Teensy-Hats_Teensy-7-Segment-Hat",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Teensy-Hats_Teensy-LCD-LiDAR-Hat",
+    "kicad_pairs": 3,
+    "main_matches": 3,
+    "candidate_matches": 3,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-TeensyProtoboard_TeensyProtoboard",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ThinkerShield_ThinkerShield",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ToslinkCNC_Toslink PlanetCNC ECO shield",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ToslinkCNC__autosave-ToslinkCNC_OneAxis",
+    "kicad_pairs": 70,
+    "main_matches": 70,
+    "candidate_matches": 70,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ToslinkCNC_toslink_arduino_shield",
+    "kicad_pairs": 9,
+    "main_matches": 9,
+    "candidate_matches": 9,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-TripleDelay2399_TripleDelay2399",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-UltraPIF_Hardware_led",
+    "kicad_pairs": 8,
+    "main_matches": 8,
+    "candidate_matches": 8,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-UltraPIF_Hardware_pif_adapter",
+    "kicad_pairs": 86,
+    "main_matches": 86,
+    "candidate_matches": 86,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-UniversalBoard4Nucleo_Nucleo_Universal_Board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Usb-Serial-Breakout-Cp2102_cp2102",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-VM-sensor-PT1000_vm-sensor-pt100",
+    "kicad_pairs": 2,
+    "main_matches": 2,
+    "candidate_matches": 2,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Ventilator_indicator-board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Ventilator_pressure_XGZP6897A",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Ventilator_pressure_mpx5700ap_gp",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Ventilator_pressure_mpxv5004_10dp",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Ventilator_pressure_mpxv5004dp",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Ventilator_pressure_mpxv5010dp",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Ventilator_pressure_ms4525do",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-WHCS-Base-Station_base-station",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-WS2811LEDMatrix_matrixcontrol",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-WordClock_v2.0_WordClock_v2",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-Youyue-858D-plus-MCU-adapter_youyue-858d-plus-mcu-adapter",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-abus-cfa1000-display-grabber_acs-display-grabber",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-airqualitystation_hardware",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-akuhei_akuhei",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-alu_gate_xnor_2in",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-anima_MotorDrive",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-antdroid-board_antdroid-board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-apa102lantern_apa102-lantern-side",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-arduino-led-driver_arduino-led-driver",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-arduino_arduino leds",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-atmegax8-protoboard_atmegax8-protoboard",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-atmel-programmer_atmel_programmer",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-audprog_audprog_v2",
+    "kicad_pairs": 31,
+    "main_matches": 31,
+    "candidate_matches": 31,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-avr_ledprojector_avr_ledprojection",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-avr_ledprojector_avr_ledprojection-0402",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-basic_esp_board_basic_esp_board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-beast-phat_beast-phat",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-bee-light-measurement-matrix_bee-light-measurement-matrix",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-beer-gauge_sensorboard",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-beryl_rain_beryl_rain",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-beyblock20_beyblock20",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-blackmagic-isolated_mmp",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-bldc-gimbal-1d_gimbal-board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-blinky-badge_blinky",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-bms-8s50-ic_bms-8s50-ic",
+    "kicad_pairs": 88,
+    "main_matches": 88,
+    "candidate_matches": 88,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-bmw-ibus-bluetooth_bmw_bt_cdcemu_analog",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-bmw-ibus-bluetooth_bmw_bt_cdcemu_digital",
+    "kicad_pairs": 36,
+    "main_matches": 36,
+    "candidate_matches": 36,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-boards_shift-register-demo-v2",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-boatcontrol_CommonCathode60A",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-boatcontrol_NonLatchingNO30A",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-bobc_LCD-panel-adapter-lvc",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-bobc_MS-F100",
+    "kicad_pairs": 56,
+    "main_matches": 56,
+    "candidate_matches": 56,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-bobc_led_clock",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-bobc_matrix_clock",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-breakout-boards_50-to-100",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-breakout-boards_avr-isp-x2",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-breakout-boards_esp8266-jtag",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-breakout-boards_swd-and-uart",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-breakout-boards_swd-to-wires",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-bristle_bot_light_follow_bristle_bot",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-bypass_crossmix_bypass_crossmix",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-can_firewall_hardware_CAN_Firewall",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-cdm324_backpack_cdm324",
+    "kicad_pairs": 2,
+    "main_matches": 2,
+    "candidate_matches": 2,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ciurlys_ciurlys",
+    "kicad_pairs": 4,
+    "main_matches": 4,
+    "candidate_matches": 4,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-clock_lcdb4",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-cnlohr_wiflier",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-cnlohr_wiflier_B",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-continuity-tester_continuity-tester",
+    "kicad_pairs": 4,
+    "main_matches": 4,
+    "candidate_matches": 4,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-crossover-schiit-stack_xover4schiit",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-custom_cpu--ALU_custom_cpu--ALU",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-custom_cpu--register_custom_cpu--register",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-data-manager_data-manager",
+    "kicad_pairs": 20,
+    "main_matches": 20,
+    "candidate_matches": 20,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-denbit_basic",
+    "kicad_pairs": 6,
+    "main_matches": 6,
+    "candidate_matches": 6,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-deskbot_breakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-devttys0_IRis",
+    "kicad_pairs": 4,
+    "main_matches": 4,
+    "candidate_matches": 4,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-digital_clock_led_clock_3_and_4_digit",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-digital_clock_led_clock_v1",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-drawduino_drawduino",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-dust_sensor_dust_sensor",
+    "kicad_pairs": 6,
+    "main_matches": 6,
+    "candidate_matches": 6,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-dustbox_Dustbox",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-eBUS-Adapter_Groeger",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-eeg_brainboard_batteryv0",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-epaper-102_epaper-102",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-esp-leipa_esp-12",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-esp-serial-terminal_esp-com",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-esp12-appliance_mod_esp12-appliance-mod",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-esp12-breakout_ESP12Breakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-esp8266_32x32panel_esp_12_f_595",
+    "kicad_pairs": 5,
+    "main_matches": 5,
+    "candidate_matches": 5,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-esp8266_32x32panel_esp_12_f_595_ORDERED",
+    "kicad_pairs": 5,
+    "main_matches": 5,
+    "candidate_matches": 5,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-esp8266_envmonitor_environment-monitor",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-esp8266_envmonitor_environment-monitor-1.2",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-esp8266_envmonitor_environment-monitor-1.4",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-esp8266_link_test_esp_micro85-only",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-esp8266_network_speaker_esp_network_speaker",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-esp8266_wi07_3_adapter_esp",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-esper_programmer",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-espeverywhere__autosave-espeverywhere_breakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-everled_everled",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ezusb-logicanalyzer_cypress_logic_analyzer",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-f.60_keyboard",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-fan_controller_fan_controller",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-fifogfx_c64cart",
+    "kicad_pairs": 40,
+    "main_matches": 0,
+    "candidate_matches": 40,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-firefly-jar_solar_lamp",
+    "kicad_pairs": 4,
+    "main_matches": 4,
+    "candidate_matches": 4,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-free-of-charge_BMS",
+    "kicad_pairs": 140,
+    "main_matches": 140,
+    "candidate_matches": 140,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-freeDSP-CLASSIC-SMD-BALANCED_FreeDSP_BAL",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-freeUSBi_USBi_Programmer",
+    "kicad_pairs": 8,
+    "main_matches": 8,
+    "candidate_matches": 8,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-gb-hardware_GB-BRK-M-XS",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-gb-hardware_GB-BRK-TR-A",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-gb-hardware_GB-CART32K-A",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-gdrom_adapter_board_adapter",
+    "kicad_pairs": 48,
+    "main_matches": 48,
+    "candidate_matches": 48,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-gepetto_circuito",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-guitar_fret",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-hackpad_orpheuspad_pcb",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-hackyflasher_Flasher",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-hardware-designs_c-trigger",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-hardware-designs_m-trigger",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-hardware-designs_nixie-combo",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-hardware-designs_nixie-power",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-hardware-designs_soil-moisture-sensor",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-hardware-designs_solar-harvester",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-hardware-designs_spsgrf-board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-hbr-mk2_hbr-mk2-bpfs",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-hbr-mk2_hbr-mk2-digital",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-hbr-mk2_hbr-mk2-lpfs",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-hw_trials_demo",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-imfr-schematics_Telescopio",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-induction-hob_temperature-sender",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-jadonk_PocketBone",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-juno-chorus-clone_juno-chorus-clone",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-karabas-nano_karabas-nano-revA",
+    "kicad_pairs": 198,
+    "main_matches": 198,
+    "candidate_matches": 198,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-karabas-nano_wifi_revA",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kicad-guitar-preamp_Preamp-Instructables",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kicad-projects_ili9341-breakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kicad_bbb-melzi",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kika-in-space_DS8500",
+    "kicad_pairs": 14,
+    "main_matches": 14,
+    "candidate_matches": 14,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kika-in-space_analog-test-board",
+    "kicad_pairs": 8,
+    "main_matches": 8,
+    "candidate_matches": 8,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kinetoscope_ethernet",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kit2-led-cube_led_cube",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_12V5A_breakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_BQ25570_Harvester",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_CH330",
+    "kicad_pairs": 5,
+    "main_matches": 5,
+    "candidate_matches": 5,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_DIY_detector",
+    "kicad_pairs": 8,
+    "main_matches": 8,
+    "candidate_matches": 8,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_Minisumo_V2.1",
+    "kicad_pairs": 22,
+    "main_matches": 22,
+    "candidate_matches": 22,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_OtterScreen",
+    "kicad_pairs": 79,
+    "main_matches": 79,
+    "candidate_matches": 79,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_Potentiometer_mount_4LED",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_Potentiometer_mount_8LED",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_T32_ref",
+    "kicad_pairs": 70,
+    "main_matches": 70,
+    "candidate_matches": 70,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_USB-C-Screen-Adapter-LDR6023SS",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_aquarius",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_dynamixel_shield",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_esp8266",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_flypi_v2",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_grove_adaptor",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_ideal_diode",
+    "kicad_pairs": 6,
+    "main_matches": 6,
+    "candidate_matches": 6,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_ir_sensor",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_peltier",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_sensor",
+    "kicad_pairs": 163,
+    "main_matches": 141,
+    "candidate_matches": 141,
+    "candidate_unmatched": 22,
+    "kicad_unmatched": 22
+  },
+  {
+    "board": "pcbench-kitspace_sympetrum-v2%20NFF1.1",
+    "kicad_pairs": 122,
+    "main_matches": 122,
+    "candidate_matches": 122,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_teensy-fx",
+    "kicad_pairs": 109,
+    "main_matches": 109,
+    "candidate_matches": 109,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_temp_breakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_threeboard",
+    "kicad_pairs": 44,
+    "main_matches": 44,
+    "candidate_matches": 44,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_tt_nano_HAT_b1",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_tt_nano_HAT_b2",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-kitspace_tt_opt101_module_b1",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-klangorium_logic_noise_playground",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-led-wordclock_wordclock",
+    "kicad_pairs": 76,
+    "main_matches": 76,
+    "candidate_matches": 76,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-led_array_atmega8_led_array",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-light-painting-wand_light-wand",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-linklayer_contact",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-low-power-counter_lpcounter",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-m2-electronics_m2rl",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-mac-pro-conversion_front-panel-power-adapter",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-magic-table_etch-a-sketch_cyclone",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-makerspace-emonth_resistor_board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-marlin-neopixel-bridge_ATtiny85_Marneo",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-mavbridge_mavbridge",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-maytal_Maytal",
+    "kicad_pairs": 4,
+    "main_matches": 4,
+    "candidate_matches": 4,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-mearm-base-pcb_ServoPCB",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-mechkeys_lfk78-jtag",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-medusa_medusa_rs422_rx",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-microphone_preamp",
+    "kicad_pairs": 2,
+    "main_matches": 2,
+    "candidate_matches": 2,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-mikoto_mikoto-flashbed",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-mini_ice40_mini_ice40",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-miniboard-stm32f0_miniboard-stm32f0",
+    "kicad_pairs": 3,
+    "main_matches": 0,
+    "candidate_matches": 3,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-mojo-nes_mojo-nes",
+    "kicad_pairs": 69,
+    "main_matches": 69,
+    "candidate_matches": 69,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-motor-3xdrv8833-hw_ver1",
+    "kicad_pairs": 4,
+    "main_matches": 4,
+    "candidate_matches": 4,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-mppt-2420-hc_mppt-2420-hc",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-mppt-2420-hpx_mppt-2420-hpx",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-nRF24breakoutBoard_nRF24-breakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-nand_programmer_adapter_tsop48",
+    "kicad_pairs": 84,
+    "main_matches": 84,
+    "candidate_matches": 84,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-nanoSwinSidC_nanoSwinSidC",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-navelino-leaf_navelino-leaf",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-nextbusclock_NextBusClockV1",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-nfl-led-scoreboard_passive-rpi-hub75-adapter",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-nfl-led-scoreboard_passive3-rpi-hub75-adapter",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-nikon_gps_nikon_gps",
+    "kicad_pairs": 7,
+    "main_matches": 7,
+    "candidate_matches": 7,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-nixie-clock_ab18x5-breakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-nodemcu-backstage_NodeMCU Backstage",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-nodemcu-basecamp_NodeMCU Basecamp",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-nonSNES_SNSP-CPU-1CHIP",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-nrf2rfm69_nrf2rfm69",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-nunchuk_rf_hw_NunchukRF_V3",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-one-shift-register_one-shift-register",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-onion2-breakout_onion2 breakout",
+    "kicad_pairs": 4,
+    "main_matches": 4,
+    "candidate_matches": 4,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-oshtimer_transponder",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ottawa-badges-2016_ottawa-badge-tagger-2016",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ozinverter_ozinverterkicad",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-pcb-covox-amp-v2_pcb-covox-amp-v2",
+    "kicad_pairs": 31,
+    "main_matches": 31,
+    "candidate_matches": 31,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-pcb-covox-amp_pcb-covox-amp",
+    "kicad_pairs": 6,
+    "main_matches": 6,
+    "candidate_matches": 6,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-pcb-ks0108-128x64-glcd_circuit",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-pcb-usb-ft245r-parallel-adapter_pcb-usb-ft245r-parallel-adapter",
+    "kicad_pairs": 25,
+    "main_matches": 25,
+    "candidate_matches": 25,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-pesho_pesho",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-phone_rtty_interface_phone_rtty_rev_a",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-phone_rtty_interface_phone_rtty_rev_b",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-photon_Sprinkler_sprinkler",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-pi-zero-stepper-board_pi-zero-stepper-board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-pi_plant_MCP3002",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-pocketbone-kicad_pocketbone-kicad",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-polypoint_pinpoint_timebase",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-ponyser-pcb_Ponyser",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-preamp-two_input-selector",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-preamp-two_mcu-board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-preamp-two_mdac-attenuator",
+    "kicad_pairs": 12,
+    "main_matches": 12,
+    "candidate_matches": 12,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-prog-cc-100mA_prog-cc-100mA",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-pulse_v1_pulse",
+    "kicad_pairs": 5,
+    "main_matches": 5,
+    "candidate_matches": 5,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-pwm-2420-lus_pwm-2420-lus",
+    "kicad_pairs": 44,
+    "main_matches": 44,
+    "candidate_matches": 44,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-radio_antenna-iridium",
+    "kicad_pairs": 12,
+    "main_matches": 12,
+    "candidate_matches": 12,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-raspberry_pi_pullup_button_pullup_shutdown_button",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-raspberry_pi_pullup_button_pullup_shutdown_button(revB)",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rc2014_bank_switcher_z80_cpm_mmu",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-real-time-chess_kfchess",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-recalbox-gpio-board__autosave-board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-recalbox-gpio-board_board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-retrocon_bbb-adapter",
+    "kicad_pairs": 2,
+    "main_matches": 2,
+    "candidate_matches": 2,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-retrocon_driver_board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-retroreflectors_TANGOFLOCK",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rfcx-sentinel-pcb_Mainboard",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rfidBoard_rfid",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rgb-led_rgb-led-v2",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rgb-strip-controller__autosave-rgb-strip",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rjw57_cpu-board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-roomba-ESP12E_roomba-esp",
+    "kicad_pairs": 6,
+    "main_matches": 6,
+    "candidate_matches": 6,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-royer_royer",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rs485-moist-sensor_adapter-por",
+    "kicad_pairs": 8,
+    "main_matches": 4,
+    "candidate_matches": 4,
+    "candidate_unmatched": 4,
+    "kicad_unmatched": 4
+  },
+  {
+    "board": "pcbench-rs485-moist-sensor_interconnect",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rufs__autosave-simple_kicad_schema_and_pcb_v1",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rufs_aprs_tracker",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rufs_dra818v_breakout_board",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rufs_simple_kicad_schema_and_pcb_v1",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rufs_smart_psu",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rufs_spv1040_power_controller",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-rxadc_14_rxadc_14",
+    "kicad_pairs": 95,
+    "main_matches": 95,
+    "candidate_matches": 95,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-saiboard_3x8",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-saiboard_8x3",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-scimpy_amp",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-scimpy_crossover",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-scimpy_powersupply",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-scimpy_volumebuffer",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-sensorboard_DiffIR",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-sensorboard_DiffIR.kicad_pcb_narrow",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-shutter_Shutter V4",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-shutter_speed_tester_shutter_speed_tester",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-simplebus2-intercom_repeater_v2",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-sms-cart-32k_cart",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-smt-zvs-driver_IH10-sl",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-snappi-zero_snappi-zero",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-soil-moisture-sensor-analog_analog-moist-sensor",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-solar-lanterns_proto1",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-sonic3_feram_adapter_sonic3_feram_adapter",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-spisolator_spisolator",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-srambo_1_srambo_1",
+    "kicad_pairs": 96,
+    "main_matches": 96,
+    "candidate_matches": 96,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-starfish_starfish",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-starsynctrackers_reset_switch",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-stlinkv2_breakout_stlink_breakout",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-stm32_ccd_camera_ccd",
+    "kicad_pairs": 71,
+    "main_matches": 71,
+    "candidate_matches": 71,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-stubby_hex",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-sv650sds_sds_tool",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-taira-keyboard_tairakb",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-tbd_tbd",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-tdstat_TDstatv2",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-tessel-ice40__autosave-project",
+    "kicad_pairs": 96,
+    "main_matches": 96,
+    "candidate_matches": 96,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-thegrid_thegrid",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-tiny-8088_Computer",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-tinyFISH_tinyBRUSH",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-tinyisp-micro_tinyispmicro",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-tinymuseum_museum",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-type5_type5",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-uext-esp32_UEXT_ESP32",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-usb_rs232c_usb_rs232c_rev_a",
+    "kicad_pairs": 4,
+    "main_matches": 2,
+    "candidate_matches": 4,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-vatx_vatx",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-vdcmon_vdcmon",
+    "kicad_pairs": 16,
+    "main_matches": 16,
+    "candidate_matches": 16,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-wavegen_waveform-generator",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-xmasOrn_xmasOrn",
+    "kicad_pairs": 63,
+    "main_matches": 62,
+    "candidate_matches": 63,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-xwhatits-capsense-controller_model-f-3178-adaptor",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-z2amiller_sensorboard_programmer",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-zx-sizif-128_sizif128",
+    "kicad_pairs": 12,
+    "main_matches": 12,
+    "candidate_matches": 12,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-zx-sizif-512-ext_sizif512ext",
+    "kicad_pairs": 183,
+    "main_matches": 183,
+    "candidate_matches": 183,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-zx-sizif-512-wifi_sizif512-wifi",
+    "kicad_pairs": 0,
+    "main_matches": 0,
+    "candidate_matches": 0,
+    "candidate_unmatched": 0,
+    "kicad_unmatched": 0
+  },
+  {
+    "board": "pcbench-zx-sizif-xxs_sizif-xxs",
+    "kicad_pairs": 165,
+    "main_matches": 165,
+    "candidate_matches": 165,
+    "candidate_unmatched": 10,
+    "kicad_unmatched": 0
+  }
+]

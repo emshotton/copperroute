@@ -401,6 +401,7 @@ export function importBoard(text, name, rules, options = {}) {
             drillEstimated: slotted,
             layers: padLayers,
             solderMaskExpansion,
+            effectiveSolderMaskExpansion: { "F.Mask": maskMargin, "B.Mask": maskMargin },
             ...(copperClearance !== undefined ? { copperClearance } : {}),
             allowSolderMaskBridges: child(fp, "attr")?.values.includes("allow_soldermask_bridges") ?? false,
           },

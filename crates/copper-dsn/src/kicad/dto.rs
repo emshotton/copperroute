@@ -139,6 +139,8 @@ pub struct PadJson {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub solderMaskExpansion: Option<std::collections::BTreeMap<String, f64>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effectiveSolderMaskExpansion: Option<std::collections::BTreeMap<String, f64>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub netName: Option<String>,
@@ -291,6 +293,7 @@ impl Default for PadJson {
             sourcePadNumber: None,
             copperClearance: None,
             solderMaskExpansion: None,
+            effectiveSolderMaskExpansion: None,
             allowSolderMaskBridges: false,
             name: None,
             netName: None,

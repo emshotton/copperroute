@@ -3,6 +3,122 @@ mod common;
 use common::synthetic::{PadSpec, SyntheticBoard};
 use copper_board::prelude::*;
 use copper_drc::DesignRulesChecker;
+
+#[test]
+fn copper_pad_without_mask_opening_retains_effective_expansion() {
+    for (margin, web, expected, oracle) in [
+        (
+            0.2,
+            0.0,
+            1,
+            include_str!("data/solder-mask-effective-expansion/expanded-drc.json"),
+        ),
+        (
+            0.0,
+            0.0,
+            0,
+            include_str!("data/solder-mask-effective-expansion/control-drc.json"),
+        ),
+        (
+            0.0,
+            0.4,
+            0,
+            include_str!("data/solder-mask-effective-expansion/wide-web-control-drc.json"),
+        ),
+    ] {
+        let oracle: serde_json::Value = serde_json::from_str(oracle).unwrap();
+        assert_eq!(
+            oracle["violations"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|v| v["type"] == "solder_mask_bridge")
+                .count(),
+            expected
+        );
+        let input = serde_json::json!({
+            "solderMaskMinWidth": web,
+            "layers": [{"name":"F.Cu"},{"name":"B.Cu"}],
+            "nets": [{"name":"N2"}],
+            "components": [{"reference":"U1","position":{"x":10,"y":10},"pads":[
+                {"name":"1","shape":"circle","size":{"x":0.8,"y":0.8},"drill":0,
+                 "layers":["F.Cu"],"solderMaskExpansion":{},
+                 "effectiveSolderMaskExpansion":{"F.Mask":margin,"B.Mask":margin}},
+                {"name":"2","netName":"N2","shape":"circle","size":{"x":0.8,"y":0.8},
+                 "offset":{"x":1.1,"y":0},"drill":0,"layers":["F.Cu"],
+                 "solderMaskExpansion":{"F.Mask":0.2}}
+            ]}]
+        });
+        let copper_dsn::error::BoardReadResult::Success {
+            board: Some(mut board),
+            ..
+        } = copper_dsn::kicad::read_board(&input.to_string(), None)
+        else {
+            panic!("fixture must import");
+        };
+        let violations = DesignRulesChecker::new(&mut board).get_all_violations();
+        assert_eq!(
+            violations
+                .iter()
+                .filter(|v| v.kind.kicad_type() == "solder_mask_bridge")
+                .count(),
+            expected,
+            "margin={margin}: {violations:?}"
+        );
+    }
+}
+
+#[test]
+fn hole_only_pad_can_bridge_another_pads_mask_aperture() {
+    for (name, input, oracle, expected) in [
+        (
+            "overlap",
+            include_str!("data/solder-mask-npth-source/native-0.8.json"),
+            include_str!("data/solder-mask-npth-source/gap-0.8.json"),
+            1,
+        ),
+        (
+            "margin",
+            include_str!("data/solder-mask-npth-source/native-1.0.json"),
+            include_str!("data/solder-mask-npth-source/gap-1.0.json"),
+            1,
+        ),
+        (
+            "separate",
+            include_str!("data/solder-mask-npth-source/native-1.2.json"),
+            include_str!("data/solder-mask-npth-source/gap-1.2.json"),
+            0,
+        ),
+    ] {
+        let oracle: serde_json::Value = serde_json::from_str(oracle).unwrap();
+        assert_eq!(
+            oracle["violations"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|v| v["type"] == "solder_mask_bridge")
+                .count(),
+            expected,
+            "{name}: KiCad oracle"
+        );
+        let copper_dsn::error::BoardReadResult::Success {
+            board: Some(mut board),
+            ..
+        } = copper_dsn::kicad::read_board(input, None)
+        else {
+            panic!("{name}: fixture must import");
+        };
+        let violations = DesignRulesChecker::new(&mut board).get_all_violations();
+        assert_eq!(
+            violations
+                .iter()
+                .filter(|v| v.kind.kicad_type() == "solder_mask_bridge")
+                .count(),
+            expected,
+            "{name}: {violations:?}"
+        );
+    }
+}
 use copper_geometry::IntVector;
 
 #[test]
@@ -626,6 +742,136 @@ fn flattened_pads_retain_their_logical_identity_for_mask_checks() {
         assert_eq!(
             count, expected,
             "footprint={footprint}, number={number}, allow={allow}"
+        );
+    }
+}
+
+#[test]
+fn mask_apertures_are_checked_even_without_copper_on_that_side() {
+    let control: serde_json::Value = serde_json::from_str(include_str!(
+        "data/solder-mask-opposite-layers/control-drc.json"
+    ))
+    .unwrap();
+    assert!(
+        control["violations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|v| v["type"] != "solder_mask_bridge")
+    );
+    let oracle: serde_json::Value =
+        serde_json::from_str(include_str!("data/solder-mask-opposite-layers/drc.json")).unwrap();
+    assert_eq!(
+        oracle["violations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|v| v["type"] == "solder_mask_bridge")
+            .count(),
+        2
+    );
+    for both_sides in [false, true] {
+        let pads = ["F.Cu", "B.Cu"]
+            .iter()
+            .enumerate()
+            .map(|(i, layer)| {
+                serde_json::json!({
+                    "name":(i+1).to_string(),"netName":format!("N{}",i+1),
+                    "shape":"rect","size":{"x":1,"y":1},"drill":0,
+                    "layers":[layer],
+                    "solderMaskExpansion": if both_sides {
+                        serde_json::json!({"F.Mask":0.2,"B.Mask":0.2})
+                    } else if i == 0 {
+                        serde_json::json!({"F.Mask":0.2})
+                    } else {
+                        serde_json::json!({"B.Mask":0.2})
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
+        let input = serde_json::json!({
+            "layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+            "nets":[{"name":"N1"},{"name":"N2"}],
+            "components":[{"reference":"U1","position":{"x":10,"y":10},"pads":pads}]
+        });
+        let copper_dsn::error::BoardReadResult::Success {
+            board: Some(mut board),
+            ..
+        } = copper_dsn::kicad::read_board(&input.to_string(), None)
+        else {
+            panic!("fixture must import");
+        };
+        let violations = DesignRulesChecker::new(&mut board).get_all_violations();
+        let mask_layers = violations
+            .iter()
+            .filter(|v| v.kind.kicad_type() == "solder_mask_bridge")
+            .map(|v| v.layer.unwrap())
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(
+            violations
+                .iter()
+                .filter(|v| v.kind.kicad_type() == "solder_mask_bridge")
+                .count(),
+            mask_layers.len()
+        );
+        let expected = if both_sides {
+            std::collections::BTreeSet::from([0, 1])
+        } else {
+            std::collections::BTreeSet::new()
+        };
+        assert_eq!(
+            mask_layers, expected,
+            "both_sides={both_sides}: {violations:?}"
+        );
+    }
+}
+
+#[test]
+fn rectangular_mask_openings_overlap_or_touch_with_zero_expansion() {
+    for source in [
+        include_str!("data/solder-mask-zero-expansion/drc.json"),
+        include_str!("data/solder-mask-zero-expansion/touch-drc.json"),
+    ] {
+        let oracle: serde_json::Value = serde_json::from_str(source).unwrap();
+        assert_eq!(
+            oracle["violations"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|v| v["type"] == "solder_mask_bridge")
+                .count(),
+            1
+        );
+    }
+    for (separation, expected) in [(0.0, 1), (1.0, 1), (1.1, 0)] {
+        let components = [0.0, separation]
+            .iter()
+            .enumerate()
+            .map(|(i, x)| {
+                serde_json::json!({"reference":format!("U{}",i+1),
+                "position":{"x":10.0+x,"y":10},
+                "pads":[{"name":"1","netName":format!("N{}",i+1),
+                    "shape":"rect","size":{"x":1,"y":1},"drill":0,
+                    "layers":["F.Cu"],"solderMaskExpansion":{"F.Mask":0}}]})
+            })
+            .collect::<Vec<_>>();
+        let input = serde_json::json!({"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+            "nets":[{"name":"N1"},{"name":"N2"}],"components":components});
+        let copper_dsn::error::BoardReadResult::Success {
+            board: Some(mut board),
+            ..
+        } = copper_dsn::kicad::read_board(&input.to_string(), None)
+        else {
+            panic!("fixture must import")
+        };
+        let violations = DesignRulesChecker::new(&mut board).get_all_violations();
+        assert_eq!(
+            violations
+                .iter()
+                .filter(|v| v.kind.kicad_type() == "solder_mask_bridge")
+                .count(),
+            expected,
+            "separation={separation}: {violations:?}"
         );
     }
 }
