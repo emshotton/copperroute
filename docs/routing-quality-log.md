@@ -3766,3 +3766,6 @@ Isolated pad-fix Feather deadline control undrilled-native-02 completed both sid
 
 
 Fixed-pass control setup: `undrilled-deadline-control-01` was stopped because max-passes=1 still permitted default optimization. `control-02` failed at argument validation because optimizer.enabled lacked the required router prefix; no outputs from this run are accepted as quality evidence. `control-03` uses the tested CLI spelling `--set router.optimizer.enabled=false`. All earlier logs are retained. Final formatted-source workspace test rerun exited 0 with 2618 checks passed, zero failed and 77 ignored (one child harness summary is interleaved in the log).
+
+
+Final isolated control `undrilled-deadline-control-03` completed 14/14 cells without deadlines. All seven pairs have byte-identical SES and identical KiCad unrouted, copper and violation-type counts, including nonSNES. Latest main is still f91d8496. The full gate remains explicitly disclosed; native input/output and first-pass compatibility evidence support landing the one-line reader correction separately in PR #35. No algorithm experiment is enabled by it.
