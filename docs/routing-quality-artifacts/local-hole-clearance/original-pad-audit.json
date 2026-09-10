@@ -1,0 +1,806 @@
+{
+  "balena-rover-wide-hat_resin-rover": [
+    {
+      "reference": "REF**_8",
+      "pad": "",
+      "x_mm": 95.5,
+      "y_mm": 97.0,
+      "size_mm": [
+        2.2,
+        2.2
+      ],
+      "drill_mm": [
+        2.2,
+        2.2
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_7",
+      "pad": "",
+      "x_mm": 77.5,
+      "y_mm": 97.0,
+      "size_mm": [
+        2.2,
+        2.2
+      ],
+      "drill_mm": [
+        2.2,
+        2.2
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_6",
+      "pad": "",
+      "x_mm": 95.5,
+      "y_mm": 67.0,
+      "size_mm": [
+        2.2,
+        2.2
+      ],
+      "drill_mm": [
+        2.2,
+        2.2
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_5",
+      "pad": "",
+      "x_mm": 77.5,
+      "y_mm": 67.0,
+      "size_mm": [
+        2.2,
+        2.2
+      ],
+      "drill_mm": [
+        2.2,
+        2.2
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_4",
+      "pad": "",
+      "x_mm": 153.5,
+      "y_mm": 97.0,
+      "size_mm": [
+        2.2,
+        2.2
+      ],
+      "drill_mm": [
+        2.2,
+        2.2
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_3",
+      "pad": "",
+      "x_mm": 135.5,
+      "y_mm": 97.0,
+      "size_mm": [
+        2.2,
+        2.2
+      ],
+      "drill_mm": [
+        2.2,
+        2.2
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_2",
+      "pad": "",
+      "x_mm": 153.5,
+      "y_mm": 67.0,
+      "size_mm": [
+        2.2,
+        2.2
+      ],
+      "drill_mm": [
+        2.2,
+        2.2
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "Noname_4",
+      "pad": "",
+      "x_mm": 76.5,
+      "y_mm": 58.5,
+      "size_mm": [
+        2.75,
+        2.75
+      ],
+      "drill_mm": [
+        2.75,
+        2.75
+      ],
+      "local_clearance_mm": 1.725,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "Noname_3",
+      "pad": "",
+      "x_mm": 76.5,
+      "y_mm": 107.5,
+      "size_mm": [
+        2.75,
+        2.75
+      ],
+      "drill_mm": [
+        2.75,
+        2.75
+      ],
+      "local_clearance_mm": 1.725,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "Noname_2",
+      "pad": "",
+      "x_mm": 134.5,
+      "y_mm": 107.5,
+      "size_mm": [
+        2.75,
+        2.75
+      ],
+      "drill_mm": [
+        2.75,
+        2.75
+      ],
+      "local_clearance_mm": 1.725,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "Noname_1",
+      "pad": "",
+      "x_mm": 134.5,
+      "y_mm": 58.5,
+      "size_mm": [
+        2.75,
+        2.75
+      ],
+      "drill_mm": [
+        2.75,
+        2.75
+      ],
+      "local_clearance_mm": 1.725,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**",
+      "pad": "",
+      "x_mm": 135.5,
+      "y_mm": 67.0,
+      "size_mm": [
+        2.2,
+        2.2
+      ],
+      "drill_mm": [
+        2.2,
+        2.2
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    }
+  ],
+  "esp32-ethernet_esp32-ethernet": [
+    {
+      "reference": "REF**_4",
+      "pad": "",
+      "x_mm": 161.8,
+      "y_mm": 55.6,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_4",
+      "pad": "",
+      "x_mm": 158.2,
+      "y_mm": 55.6,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_4",
+      "pad": "",
+      "x_mm": 161.8,
+      "y_mm": 52.0,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_4",
+      "pad": "",
+      "x_mm": 158.2,
+      "y_mm": 52.0,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_4",
+      "pad": "",
+      "x_mm": 157.5,
+      "y_mm": 53.8,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_4",
+      "pad": "",
+      "x_mm": 160.0,
+      "y_mm": 56.3,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_4",
+      "pad": "",
+      "x_mm": 162.5,
+      "y_mm": 53.8,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_4",
+      "pad": "",
+      "x_mm": 160.0,
+      "y_mm": 51.3,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_4",
+      "pad": "",
+      "x_mm": 160.0,
+      "y_mm": 53.8,
+      "size_mm": [
+        3.3,
+        3.3
+      ],
+      "drill_mm": [
+        3.3,
+        3.3
+      ],
+      "local_clearance_mm": 1.65,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_3",
+      "pad": "",
+      "x_mm": 161.8,
+      "y_mm": 87.6,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_3",
+      "pad": "",
+      "x_mm": 158.2,
+      "y_mm": 87.6,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_3",
+      "pad": "",
+      "x_mm": 161.8,
+      "y_mm": 84.0,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_3",
+      "pad": "",
+      "x_mm": 158.2,
+      "y_mm": 84.0,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_3",
+      "pad": "",
+      "x_mm": 157.5,
+      "y_mm": 85.8,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_3",
+      "pad": "",
+      "x_mm": 160.0,
+      "y_mm": 88.3,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_3",
+      "pad": "",
+      "x_mm": 162.5,
+      "y_mm": 85.8,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_3",
+      "pad": "",
+      "x_mm": 160.0,
+      "y_mm": 83.3,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_3",
+      "pad": "",
+      "x_mm": 160.0,
+      "y_mm": 85.8,
+      "size_mm": [
+        3.3,
+        3.3
+      ],
+      "drill_mm": [
+        3.3,
+        3.3
+      ],
+      "local_clearance_mm": 1.65,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_2",
+      "pad": "",
+      "x_mm": 115.8,
+      "y_mm": 87.6,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_2",
+      "pad": "",
+      "x_mm": 112.2,
+      "y_mm": 87.6,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_2",
+      "pad": "",
+      "x_mm": 115.8,
+      "y_mm": 84.0,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_2",
+      "pad": "",
+      "x_mm": 112.2,
+      "y_mm": 84.0,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_2",
+      "pad": "",
+      "x_mm": 111.5,
+      "y_mm": 85.8,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_2",
+      "pad": "",
+      "x_mm": 114.0,
+      "y_mm": 88.3,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_2",
+      "pad": "",
+      "x_mm": 116.5,
+      "y_mm": 85.8,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_2",
+      "pad": "",
+      "x_mm": 114.0,
+      "y_mm": 83.3,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**_2",
+      "pad": "",
+      "x_mm": 114.0,
+      "y_mm": 85.8,
+      "size_mm": [
+        3.3,
+        3.3
+      ],
+      "drill_mm": [
+        3.3,
+        3.3
+      ],
+      "local_clearance_mm": 1.65,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**",
+      "pad": "",
+      "x_mm": 115.8,
+      "y_mm": 55.6,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**",
+      "pad": "",
+      "x_mm": 112.2,
+      "y_mm": 55.6,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**",
+      "pad": "",
+      "x_mm": 115.8,
+      "y_mm": 52.0,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**",
+      "pad": "",
+      "x_mm": 112.2,
+      "y_mm": 52.0,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**",
+      "pad": "",
+      "x_mm": 111.5,
+      "y_mm": 53.8,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**",
+      "pad": "",
+      "x_mm": 114.0,
+      "y_mm": 56.3,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**",
+      "pad": "",
+      "x_mm": 116.5,
+      "y_mm": 53.8,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**",
+      "pad": "",
+      "x_mm": 114.0,
+      "y_mm": 51.3,
+      "size_mm": [
+        0.6,
+        0.6
+      ],
+      "drill_mm": [
+        0.6,
+        0.6
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "REF**",
+      "pad": "",
+      "x_mm": 114.0,
+      "y_mm": 53.8,
+      "size_mm": [
+        3.3,
+        3.3
+      ],
+      "drill_mm": [
+        3.3,
+        3.3
+      ],
+      "local_clearance_mm": 1.65,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "IC5",
+      "pad": "",
+      "x_mm": 156.93,
+      "y_mm": 75.715,
+      "size_mm": [
+        3.25,
+        3.25
+      ],
+      "drill_mm": [
+        3.25,
+        3.25
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    },
+    {
+      "reference": "IC5",
+      "pad": "",
+      "x_mm": 156.93,
+      "y_mm": 63.015,
+      "size_mm": [
+        3.25,
+        3.25
+      ],
+      "drill_mm": [
+        3.25,
+        3.25
+      ],
+      "local_clearance_mm": null,
+      "footprint_clearance_mm": null
+    }
+  ]
+}

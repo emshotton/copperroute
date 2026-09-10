@@ -1,0 +1,699 @@
+{
+  "original": {
+    "led14_tracks": [
+      {
+        "layer": "F.Cu",
+        "start": [
+          128.468762,
+          86.350031
+        ],
+        "end": [
+          128.755026,
+          86.350031
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          123.900051,
+          83.550055
+        ],
+        "end": [
+          127.300055,
+          83.550055
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          123.45,
+          83.100004
+        ],
+        "end": [
+          123.900051,
+          83.550055
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          127.300055,
+          83.550055
+        ],
+        "end": [
+          127.49968,
+          83.74968
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          127.49968,
+          85.380949
+        ],
+        "end": [
+          128.468762,
+          86.350031
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          128.755026,
+          86.350031
+        ],
+        "end": [
+          129.25,
+          86.350031
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          127.49968,
+          83.74968
+        ],
+        "end": [
+          127.49968,
+          85.380949
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          123.45,
+          83.100004
+        ],
+        "end": [
+          123.45,
+          83.100004
+        ],
+        "width": 0.7,
+        "via": true
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          129.25,
+          86.350031
+        ],
+        "end": [
+          129.25,
+          86.350031
+        ],
+        "width": 0.7,
+        "via": true
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          122.600001,
+          78.151625
+        ],
+        "end": [
+          122.600001,
+          82.250005
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          127.051626,
+          73.7
+        ],
+        "end": [
+          122.600001,
+          78.151625
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          129.3523,
+          75.15012
+        ],
+        "end": [
+          129.3523,
+          74.42561
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          129.324983,
+          86.275048
+        ],
+        "end": [
+          130.340748,
+          86.275048
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          130.340748,
+          86.275048
+        ],
+        "end": [
+          131.065701,
+          87.0
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          123.100001,
+          82.750005
+        ],
+        "end": [
+          123.45,
+          83.100004
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          131.065701,
+          87.0
+        ],
+        "end": [
+          132.231671,
+          87.0
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          132.231671,
+          87.0
+        ],
+        "end": [
+          133.25,
+          88.018329
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          133.25,
+          88.018329
+        ],
+        "end": [
+          133.25,
+          89.1023
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          129.3523,
+          74.42561
+        ],
+        "end": [
+          128.62669,
+          73.7
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          122.600001,
+          82.250005
+        ],
+        "end": [
+          123.100001,
+          82.750005
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          128.62669,
+          73.7
+        ],
+        "end": [
+          127.051626,
+          73.7
+        ],
+        "width": 0.2,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          129.25,
+          86.350031
+        ],
+        "end": [
+          129.324983,
+          86.275048
+        ],
+        "width": 0.2,
+        "via": false
+      }
+    ],
+    "holes": [
+      {
+        "component": "ENC1",
+        "position": [
+          130.0,
+          84.0
+        ],
+        "drill": 1.85,
+        "clearance": 0.0
+      },
+      {
+        "component": "MP1",
+        "position": [
+          113.0,
+          71.0
+        ],
+        "drill": 3.2,
+        "clearance": 0.6
+      },
+      {
+        "component": "MP2",
+        "position": [
+          147.0,
+          71.0
+        ],
+        "drill": 3.2,
+        "clearance": 0.6
+      },
+      {
+        "component": "MP3",
+        "position": [
+          113.0,
+          97.0
+        ],
+        "drill": 3.2,
+        "clearance": 0.6
+      },
+      {
+        "component": "MP4",
+        "position": [
+          147.0,
+          97.0
+        ],
+        "drill": 3.2,
+        "clearance": 0.6
+      }
+    ],
+    "minimum_led14_edge_to_hole_mm": 1.1918088091623569,
+    "minimum_led14_edge_to_annotated_hole_mm": [
+      10.271038356827116,
+      "MP1"
+    ]
+  },
+  "control": {
+    "led14_tracks": [
+      {
+        "layer": "F.Cu",
+        "start": [
+          125.2473,
+          85.5122
+        ],
+        "end": [
+          131.3335,
+          85.5122
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          131.3335,
+          85.5122
+        ],
+        "end": [
+          132.2855,
+          84.5602
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          124.595,
+          84.8599
+        ],
+        "end": [
+          125.2473,
+          85.5122
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          121.8455,
+          81.3801
+        ],
+        "end": [
+          121.8455,
+          79.4798
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          124.003,
+          83.5376
+        ],
+        "end": [
+          121.8455,
+          81.3801
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          132.2855,
+          84.5602
+        ],
+        "end": [
+          133.25,
+          84.5602
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          124.595,
+          84.8599
+        ],
+        "end": [
+          124.595,
+          84.8599
+        ],
+        "width": 0.7,
+        "via": true
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          133.25,
+          84.5602
+        ],
+        "end": [
+          133.25,
+          84.5602
+        ],
+        "width": 0.7,
+        "via": true
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          121.8455,
+          79.4798
+        ],
+        "end": [
+          121.8455,
+          79.4798
+        ],
+        "width": 0.7,
+        "via": true
+      },
+      {
+        "layer": "F.Cu",
+        "start": [
+          124.003,
+          83.5376
+        ],
+        "end": [
+          124.003,
+          83.5376
+        ],
+        "width": 0.7,
+        "via": true
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          133.25,
+          89.1023
+        ],
+        "end": [
+          133.25,
+          84.5602
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          127.3659,
+          73.3719
+        ],
+        "end": [
+          128.6003,
+          73.3719
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          123.9052,
+          77.4201
+        ],
+        "end": [
+          123.9052,
+          76.8326
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          124.003,
+          83.5376
+        ],
+        "end": [
+          124.003,
+          84.2679
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          121.8455,
+          79.4798
+        ],
+        "end": [
+          123.9052,
+          77.4201
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          128.6003,
+          73.3719
+        ],
+        "end": [
+          129.3523,
+          74.1239
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          124.003,
+          84.2679
+        ],
+        "end": [
+          124.595,
+          84.8599
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          129.3523,
+          74.1239
+        ],
+        "end": [
+          129.3523,
+          75.1501
+        ],
+        "width": 0.25,
+        "via": false
+      },
+      {
+        "layer": "B.Cu",
+        "start": [
+          123.9052,
+          76.8326
+        ],
+        "end": [
+          127.3659,
+          73.3719
+        ],
+        "width": 0.25,
+        "via": false
+      }
+    ],
+    "holes": [
+      {
+        "component": "ENC1",
+        "position": [
+          130.0,
+          84.0
+        ],
+        "drill": 1.85,
+        "clearance": 0.0
+      },
+      {
+        "component": "MP1",
+        "position": [
+          113.0,
+          71.0
+        ],
+        "drill": 3.2,
+        "clearance": 0.6
+      },
+      {
+        "component": "MP2",
+        "position": [
+          147.0,
+          71.0
+        ],
+        "drill": 3.2,
+        "clearance": 0.6
+      },
+      {
+        "component": "MP3",
+        "position": [
+          113.0,
+          97.0
+        ],
+        "drill": 3.2,
+        "clearance": 0.6
+      },
+      {
+        "component": "MP4",
+        "position": [
+          147.0,
+          97.0
+        ],
+        "drill": 3.2,
+        "clearance": 0.6
+      }
+    ],
+    "minimum_led14_edge_to_hole_mm": 0.46220000000000705,
+    "minimum_led14_edge_to_annotated_hole_mm": [
+      10.30356594179833,
+      "MP1"
+    ]
+  },
+  "holes": {
+    "led14_tracks": [],
+    "holes": [
+      {
+        "component": "ENC1",
+        "position": [
+          130.0,
+          84.0
+        ],
+        "drill": 1.85,
+        "clearance": 0.0
+      },
+      {
+        "component": "MP1",
+        "position": [
+          113.0,
+          71.0
+        ],
+        "drill": 3.2,
+        "clearance": 0.6
+      },
+      {
+        "component": "MP2",
+        "position": [
+          147.0,
+          71.0
+        ],
+        "drill": 3.2,
+        "clearance": 0.6
+      },
+      {
+        "component": "MP3",
+        "position": [
+          113.0,
+          97.0
+        ],
+        "drill": 3.2,
+        "clearance": 0.6
+      },
+      {
+        "component": "MP4",
+        "position": [
+          147.0,
+          97.0
+        ],
+        "drill": 3.2,
+        "clearance": 0.6
+      }
+    ],
+    "minimum_led14_edge_to_hole_mm": null,
+    "minimum_led14_edge_to_annotated_hole_mm": null
+  }
+}

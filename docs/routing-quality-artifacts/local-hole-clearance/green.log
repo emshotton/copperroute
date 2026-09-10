@@ -1,0 +1,17 @@
+   Compiling copper-board v0.1.0 (/Users/em/Development/freerouting/copperroute-local-hole-clearance/crates/copper-board)
+   Compiling copper-dsn v0.1.0 (/Users/em/Development/freerouting/copperroute-local-hole-clearance/crates/copper-dsn)
+   Compiling copper-drc v0.1.0 (/Users/em/Development/freerouting/copperroute-local-hole-clearance/crates/copper-drc)
+   Compiling copper-settings v0.1.0 (/Users/em/Development/freerouting/copperroute-local-hole-clearance/crates/copper-settings)
+   Compiling copper-router v0.1.0 (/Users/em/Development/freerouting/copperroute-local-hole-clearance/crates/copper-router)
+   Compiling copper-core v0.1.0 (/Users/em/Development/freerouting/copperroute-local-hole-clearance/crates/copper-core)
+   Compiling copperroute v0.1.0 (/Users/em/Development/freerouting/copperroute-local-hole-clearance/crates/copperroute)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 13.17s
+     Running unittests src/lib.rs (/tmp/quality-local-hole-tests/debug/deps/copperroute-8bafb73b2d1b6c9b)
+
+running 3 tests
+test ops::load::pad_clearance_tests::local_hole_rule_accounts_for_existing_keepout_padding ... ok
+test ops::load::pad_clearance_tests::invalid_copper_metadata_is_rejected_even_without_matching_pads ... ok
+test ops::load::pad_clearance_tests::copper_metadata_is_not_limited_by_the_mask_gap_cap ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.01s
+

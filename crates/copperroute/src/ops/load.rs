@@ -225,6 +225,7 @@ struct PadFloor {
     front_um: f64,
     back_um: f64,
     copper_um: Option<f64>,
+    hole_diameter_um: Option<f64>,
 }
 
 fn apply_pad_clearance_metadata(board: &mut Board, floors: &[PadFloor]) -> Result<(), OpError> {
@@ -244,6 +245,28 @@ fn apply_pad_clearance_metadata(board: &mut Board, floors: &[PadFloor]) -> Resul
                 )));
             }
             Ok(distance.ceil() as i32)
+        })
+        .collect::<Result<Vec<_>, OpError>>()?;
+    let hole_diameters = floors
+        .iter()
+        .map(|floor| {
+            floor
+                .hole_diameter_um
+                .map(|diameter| {
+                    let value = copper_board::Unit::scale(
+                        diameter * f64::from(board.communication.resolution.max(1)),
+                        copper_board::Unit::Um,
+                        board.communication.unit,
+                    );
+                    if !value.is_finite() || value <= 0.0 || value > f64::from(i32::MAX) {
+                        return Err(OpError::Input(format!(
+                            "Invalid hole diameter for {}.{}",
+                            floor.component, floor.pad
+                        )));
+                    }
+                    Ok(value)
+                })
+                .transpose()
         })
         .collect::<Result<Vec<_>, OpError>>()?;
     let mut matched = std::collections::BTreeSet::new();
@@ -281,6 +304,61 @@ fn apply_pad_clearance_metadata(board: &mut Board, floors: &[PadFloor]) -> Resul
             board.raise_pin_clearance(id, &values);
         }
     }
+    let holes: Vec<_> = board
+        .get_items()
+        .filter_map(|item| {
+            let copper_board::Item::ObstacleArea(area) = item else {
+                return None;
+            };
+            if item.component_id() <= 0 {
+                return None;
+            }
+            let copper_geometry::Area::Shape(copper_geometry::Shape::Circle(circle)) =
+                area.get_area(&board.ctx())
+            else {
+                return None;
+            };
+            Some((
+                item.id(),
+                board.components.get(item.component_id()).name.clone(),
+                circle.center,
+                circle.radius,
+                area.get_layer(),
+            ))
+        })
+        .collect();
+    for (id, component, center, radius, layer) in holes {
+        let mut minimum = vec![0; board.get_layer_count()];
+        for (index, floor) in floors.iter().enumerate() {
+            let Some(diameter) = hole_diameters[index] else {
+                continue;
+            };
+            if floor.component != component
+                || (f64::from(center.x)
+                    - f64::from(board.clearance_override_board_units(floor.x_um)))
+                .abs()
+                    > 2.0
+                || (f64::from(center.y)
+                    + f64::from(board.clearance_override_board_units(floor.y_um)))
+                .abs()
+                    > 2.0
+                || diameter > 2.0 * f64::from(radius)
+            {
+                continue;
+            }
+            let extra = (0.5 * diameter + f64::from(copper_floors[index]) - f64::from(radius))
+                .ceil()
+                .max(0.0);
+            if extra > f64::from(i32::MAX) {
+                return Err(OpError::Input(
+                    "Hole clearance exceeds board coordinate range".into(),
+                ));
+            }
+            minimum[layer] = minimum[layer].max(extra as i32);
+            matched.insert(index);
+        }
+        board.raise_obstacle_clearance(id, &minimum);
+    }
     for (index, floor) in floors.iter().enumerate() {
         if !matched.contains(&index) {
             tracing::warn!(
@@ -297,6 +375,170 @@ fn apply_pad_clearance_metadata(board: &mut Board, floors: &[PadFloor]) -> Resul
 mod pad_clearance_tests {
     use super::*;
     use serde_json::json;
+
+    fn hole_board() -> Box<Board> {
+        let input = r#"(pcb hole
+          (resolution um 10) (unit um)
+          (structure (layer F.Cu (type signal)) (layer B.Cu (type signal))
+            (boundary (rect pcb 0 -10000 10000 0))
+            (rule (width 250) (clearance 250)))
+          (placement (component HOLE (place H1 5000 -5000 front 0)))
+          (library (image HOLE
+            (keepout "" (circle F.Cu 3250))
+            (keepout "" (circle B.Cu 3250)))) (network))"#;
+        let copper_dsn::BoardReadResult::Success {
+            board: Some(board), ..
+        } = copper_dsn::read_board(
+            input.as_bytes(),
+            None,
+            None,
+            &copper_dsn::DsnReadOptions::default(),
+        )
+        else {
+            panic!("hole fixture must import")
+        };
+        assert!(
+            board.get_pins().is_empty(),
+            "mechanical holes import as keepouts"
+        );
+        board
+    }
+
+    #[test]
+    fn local_hole_rule_accounts_for_existing_keepout_padding() {
+        let mut board = hole_board();
+        let floors: Vec<PadFloor> = serde_json::from_value(json!([{
+            "component":"H1", "pad":"", "x_um":5000, "y_um":5000,
+            "front_um":0, "back_um":0, "copper_um":1725, "hole_diameter_um":2750
+        }]))
+        .unwrap();
+        let x = board.clearance_override_board_units(8000.0);
+        let y = -board.clearance_override_board_units(5000.0);
+        let probe = copper_geometry::TileShape::Box(copper_geometry::IntBox::from_coords(
+            x - 1,
+            y - 1,
+            x + 1,
+            y + 1,
+        ));
+        for layer in 0..board.get_layer_count() {
+            let hits = board.overlapping_items_with_clearance(&probe, Some(layer), &[1], 1);
+            assert!(!hits.iter().any(|id| matches!(
+                board.get_item(*id),
+                Some(copper_board::Item::ObstacleArea(_))
+            )));
+        }
+        apply_pad_clearance_metadata(&mut board, &floors).unwrap();
+        let expected = board.clearance_override_board_units(1475.0);
+        let obstacles: Vec<_> = board
+            .get_items()
+            .filter_map(|item| {
+                if let copper_board::Item::ObstacleArea(area) = item {
+                    Some((item.id(), item.clearance_class(), area.get_layer()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        assert_eq!(obstacles.len(), 2);
+        for (id, clearance_class, layer) in obstacles {
+            assert!(
+                board
+                    .overlapping_items_with_clearance(&probe, Some(layer), &[1], 1)
+                    .contains(&id),
+                "the expanded requirement must reach obstacle queries"
+            );
+            assert_eq!(
+                board
+                    .rules
+                    .clearance_matrix
+                    .get_value(clearance_class, 1, layer, false),
+                expected,
+                "1.725mm local rule minus 0.250mm padding already in the keepout"
+            );
+        }
+    }
+
+    #[test]
+    fn unrelated_or_unverified_hole_metadata_preserves_keepouts() {
+        for (component, x, diameter) in [
+            ("H1", 5000, None),
+            ("other", 5000, Some(2750.0)),
+            ("H1", 7000, Some(2750.0)),
+            ("H1", 5000, Some(4000.0)),
+        ] {
+            let mut board = hole_board();
+            let before: Vec<_> = board
+                .get_items()
+                .map(|item| (item.id(), item.clearance_class()))
+                .collect();
+            let floors: Vec<PadFloor> = serde_json::from_value(json!([{
+                "component":component, "pad":"", "x_um":x, "y_um":5000,
+                "front_um":0, "back_um":0, "copper_um":1725, "hole_diameter_um":diameter
+            }]))
+            .unwrap();
+            let classes = board.rules.clearance_matrix.get_class_count();
+            apply_pad_clearance_metadata(&mut board, &floors).unwrap();
+            assert_eq!(classes, board.rules.clearance_matrix.get_class_count());
+            assert_eq!(
+                before,
+                board
+                    .get_items()
+                    .map(|item| (item.id(), item.clearance_class()))
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+
+    #[test]
+    fn hole_metadata_preserves_a_higher_existing_requirement() {
+        let mut board = hole_board();
+        let ids: Vec<_> = board
+            .get_items()
+            .filter(|item| matches!(item, copper_board::Item::ObstacleArea(_)))
+            .map(|item| item.id())
+            .collect();
+        assert_eq!(ids.len(), 2);
+        let minimum = board.clearance_override_board_units(2000.0);
+        for id in &ids {
+            board.raise_obstacle_clearance(*id, &vec![minimum; board.get_layer_count()]);
+        }
+        let floors: Vec<PadFloor> = serde_json::from_value(json!([{
+            "component":"H1", "pad":"", "x_um":5000, "y_um":5000,
+            "front_um":0, "back_um":0, "copper_um":1725, "hole_diameter_um":2750
+        }]))
+        .unwrap();
+        apply_pad_clearance_metadata(&mut board, &floors).unwrap();
+        for id in ids {
+            let item = board.get_item(id).unwrap();
+            for layer in 0..board.get_layer_count() {
+                assert_eq!(
+                    board
+                        .rules
+                        .clearance_matrix
+                        .get_value(item.clearance_class(), 1, layer, false),
+                    minimum
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_hole_diameters_are_rejected_before_matching() {
+        for diameter in [-1.0, 0.0, f64::NAN, f64::INFINITY, 1e30] {
+            let mut board = hole_board();
+            let floor = PadFloor {
+                component: "absent".into(),
+                pad: "".into(),
+                x_um: 0.0,
+                y_um: 0.0,
+                front_um: 0.0,
+                back_um: 0.0,
+                copper_um: Some(1725.0),
+                hole_diameter_um: Some(diameter),
+            };
+            assert!(apply_pad_clearance_metadata(&mut board, &[floor]).is_err());
+        }
+    }
 
     #[test]
     fn copper_metadata_is_not_limited_by_the_mask_gap_cap() {
@@ -352,6 +594,7 @@ mod pad_clearance_tests {
                 front_um: 0.0,
                 back_um: 0.0,
                 copper_um: Some(value),
+                hole_diameter_um: None,
             };
             assert!(apply_pad_clearance_metadata(&mut board, &[floor]).is_err());
         }
