@@ -16,9 +16,6 @@ impl fmt::Display for NetClassProjectError {
 
 impl std::error::Error for NetClassProjectError {}
 
-/// Mirrors `web/project.js`'s `applyProject`: resolves the project's net classes onto
-/// `board`'s routing rules, flooring every dimension against the board's own minimums
-/// so a project can only widen a class, never narrow it below what the board requires.
 pub fn apply_net_classes(
     board: &mut KiCadBoardJson,
     project_json: &str,
@@ -175,12 +172,30 @@ pub fn apply_net_classes(
 }
 
 fn floor(class: &Value, key: &str, fallback: f64, minimum: &Value, minimum_key: &str) -> f64 {
-    let base = class.get(key).and_then(Value::as_f64).unwrap_or(fallback);
+    let base = match class.get(key) {
+        None | Some(Value::Null) => fallback,
+        Some(value) => dimension_number(value),
+    };
     let floor = minimum
         .get(minimum_key)
         .and_then(Value::as_f64)
         .unwrap_or(0.0);
-    base.max(floor)
+    if base.is_nan() { base } else { base.max(floor) }
+}
+
+fn dimension_number(value: &Value) -> f64 {
+    match value {
+        Value::Number(n) => n.as_f64().unwrap_or(f64::NAN),
+        Value::String(text) => {
+            let trimmed = text.trim();
+            if trimmed.is_empty() {
+                0.0
+            } else {
+                trimmed.parse::<f64>().unwrap_or(f64::NAN)
+            }
+        }
+        _ => f64::NAN,
+    }
 }
 
 fn pattern_names(

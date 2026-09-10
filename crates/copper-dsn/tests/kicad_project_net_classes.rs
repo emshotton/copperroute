@@ -283,6 +283,33 @@ fn nets_are_assigned_by_wildcard_pattern() {
 }
 
 #[test]
+fn a_numeric_looking_string_dimension_is_parsed_like_the_reference_number_coercion() {
+    let mut b = board();
+    let project = serde_json::json!({
+        "board": {"design_settings": {"rules": {}}},
+        "net_settings": {"classes": [{"name": "Default", "track_width": "0.2"}]},
+    })
+    .to_string();
+    apply_net_classes(&mut b, &project).expect("applies");
+    assert_eq!(net_class(&b, "Default").traceWidth, 0.2);
+}
+
+#[test]
+fn a_non_numeric_string_dimension_is_rejected_instead_of_falling_back_to_the_board_default() {
+    let mut b = board();
+    let project = serde_json::json!({
+        "board": {"design_settings": {"rules": {}}},
+        "net_settings": {"classes": [{"name": "Default", "track_width": "abc"}]},
+    })
+    .to_string();
+    let error = apply_net_classes(&mut b, &project).unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "Invalid dimensions for project net class Default"
+    );
+}
+
+#[test]
 fn an_empty_project_document_is_a_no_op() {
     let mut b = board();
     let before = b.clone();
