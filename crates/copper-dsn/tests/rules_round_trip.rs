@@ -170,46 +170,66 @@ fn rules_state_matches_java_issue593() {
         "Issue593-BBD_Mars-64.rules",
         "Issue593-BBD_Mars-64.dsn",
         "Issue593-BBD_Mars-64-rules.txt",
+        None,
     );
 }
 
 #[test]
-fn rules_state_matches_java_hw48na_valid() {
+fn rules_state_matches_java_except_fractional_via_hw48na_valid() {
     assert_rules_golden(
         "Issue029-hw48na.dsn",
         "Issue029-hw48na_valid.rules",
         "hw48na",
         "Issue029-hw48na_valid-rules.txt",
+        Some(2),
     );
 }
 
 #[test]
-fn rules_state_matches_java_hw48na_invalid() {
+fn rules_state_matches_java_except_fractional_via_hw48na_invalid() {
     assert_rules_golden(
         "Issue029-hw48na.dsn",
         "Issue029-hw48na_invalid.rules",
         "hw48na",
         "Issue029-hw48na_invalid-rules.txt",
+        Some(2),
     );
 }
 
 #[test]
-fn rules_state_matches_java_issue107_bad() {
+fn rules_state_matches_java_except_fractional_via_issue107_bad() {
     assert_rules_golden(
         "Issue029-hw48na.dsn",
         "Issue107-freq_teiler_200kHz_kicad_bad.rules",
         "x",
         "Issue107_bad-rules.txt",
+        Some(1),
     );
 }
 
-fn assert_rules_golden(dsn: &str, rules: &str, design_name: &str, golden_name: &str) {
+fn assert_rules_golden(
+    dsn: &str,
+    rules: &str,
+    design_name: &str,
+    golden_name: &str,
+    restored_via_rule: Option<usize>,
+) {
     let (mut board, ct) = load_board(dsn);
     let rules_bytes = fixture_bytes(rules);
     let ok = rules_reader::read(&rules_bytes[..], design_name, &mut board, &ct, None)
         .expect("no scanner error");
     let actual = dump_rules(&mut board, ok);
-    let expected = common::golden(golden_name);
+    let mut expected = common::golden(golden_name);
+    if let Some(index) = restored_via_rule {
+        // The JVM recording drops this rule because use_via retains fractional names.
+        // Keep the recording intact and assert only the deliberate import correction.
+        let original = format!("viarule {index} 1A_EXTERNAL_1oz []");
+        let line = expected
+            .iter_mut()
+            .find(|line| **line == original)
+            .expect("JVM recording must contain the empty fractional-via rule");
+        *line = format!("viarule {index} 1A_EXTERNAL_1oz [Via[0-1]_685:330_um-1A_EXTERNAL_1oz]");
+    }
     for (i, (a, e)) in actual.iter().zip(expected.iter()).enumerate() {
         assert_eq!(a, e, "{golden_name}: line {} differs", i + 1);
     }

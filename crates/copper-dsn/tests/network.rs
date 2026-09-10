@@ -75,3 +75,31 @@ fn via_at_smd_reaches_the_net_class_use_via_rule() {
         );
     });
 }
+
+#[test]
+fn fractional_via_names_resolve_in_net_class_rules() {
+    for class_name in ["Alpha", "kicad_default"] {
+        let text = board_text("")
+            .replace("(class Alpha N1", &format!("(class {class_name} N1"))
+            .replace("VA", "\"Via[0-1]_685.8:330.2_um\"");
+        read_pcb(&text, |p| {
+            let board = p.board.as_ref().expect("board built");
+            let net = board.rules.nets.get_by_name("N1")[0];
+            let class = board.rules.net_classes.get(net.get_net_class());
+            let rule = class.get_via_rule().expect("declared via rule");
+            assert_eq!(
+                rule.via_count(),
+                1,
+                "{class_name}: the declared fractional-name via must remain available"
+            );
+            let via = rule.get_via(0);
+            assert_eq!(
+                via.get_clearance_class_index(),
+                class
+                    .default_item_clearance_classes
+                    .get(copper_board::rules::ItemClass::Via)
+            );
+            assert!(!via.attach_smd_allowed());
+        });
+    }
+}

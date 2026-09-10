@@ -1346,6 +1346,7 @@ fn create_via_rule(
         .default_item_clearance_classes
         .get(ItemClass::Via);
     for current_via_name in use_via {
+        let cleaned_via_name = strip_dot_digits(current_via_name);
         for i in 0..board.rules.via_infos.count() {
             let info = board.rules.via_infos.get(ViaInfoId(i));
             if info.get_clearance_class_index() != default_via_cl_class {
@@ -1355,7 +1356,9 @@ fn create_via_rule(
                 .library
                 .get_padstack(info.get_padstack())
                 .map(|p| p.name.as_str());
-            if padstack_name == Some(current_via_name.as_str()) {
+            if padstack_name == Some(current_via_name.as_str())
+                || padstack_name == Some(cleaned_via_name.as_str())
+            {
                 let mut via = info.clone();
                 via.set_attach_smd_allowed(attach_allowed && via.attach_smd_allowed());
                 new_via_rule.append_via(via);
