@@ -44,7 +44,7 @@ pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<Impor
     routing::check_zones(&root, &nets, &mut warnings)?;
 
     let paths = outline::outline_paths(&root)?;
-    reject_unsupported_copper_objects(&root)?;
+    reject_unsupported_copper_objects(&root, &layers)?;
     let mut conduction_areas = routing::read_copper_text(&root, &layers, &mut warnings)?;
     if paths.curved {
         warnings.push(
@@ -53,7 +53,7 @@ pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<Impor
                 .to_string(),
         );
     }
-    let outline = outline::assemble_outline(&paths)?;
+    let outline = outline::assemble_outline(&paths, &mut warnings)?;
     if !outline.cutouts.is_empty() {
         warnings.push(format!(
             "{} internal cutouts are reserved on every copper layer.",
@@ -160,13 +160,13 @@ fn validate_defaults(root: &Node, defaults: &NetClassJson) -> Result<(), PcbErro
     Ok(())
 }
 
-fn reject_unsupported_copper_objects(root: &Node) -> Result<(), PcbError> {
+fn reject_unsupported_copper_objects(root: &Node, layers: &Layers) -> Result<(), PcbError> {
     for value in &root.values {
         let Value::Node(node) = value else {
             continue;
         };
         let layer = node.value("layer").unwrap_or("");
-        if !layer.ends_with(".Cu") || node.name() == "gr_text" {
+        if !layers.is_copper(layer) || node.name() == "gr_text" {
             continue;
         }
         if !TOP_LEVEL_COPPER_ALLOWED.contains(&node.name()) {

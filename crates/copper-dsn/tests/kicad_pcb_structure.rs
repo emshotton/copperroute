@@ -25,6 +25,16 @@ fn it_maps_a_power_layer_to_a_plane() {
 }
 
 #[test]
+fn it_accepts_a_renamed_copper_layer_by_its_declared_type() {
+    let text = r#"(kicad_pcb (version 20241229) (layers (0 TOP mixed) (31 BOTTOM mixed)))"#;
+    let root = parse(text).expect("it parses");
+    let layers = Layers::read(&root).expect("layers");
+    assert_eq!(layers.entries.len(), 2);
+    assert_eq!(layers.entries[0].name.as_deref(), Some("TOP"));
+    assert_eq!(layers.entries[1].name.as_deref(), Some("BOTTOM"));
+}
+
+#[test]
 fn it_rejects_an_unknown_copper_layer_type() {
     let text = r#"(kicad_pcb (version 20241229) (layers (0 "F.Cu" jumper)))"#;
     let root = parse(text).expect("it parses");

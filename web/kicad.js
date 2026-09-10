@@ -99,7 +99,7 @@ export function importBoard(text, name, rules, options = {}) {
       "Copper zones and keepouts are not supported yet.",
     );
   const layers = child(root, "layers")
-    ?.values.filter((v) => v?.values && /\.Cu$/.test(v.values[1]))
+    ?.values.filter((v) => v?.values && (/\.Cu$/.test(v.values[1]) || ["signal", "mixed", "power"].includes(v.values[2])))
     .map((v, index) => {
       const kind = v.values[2];
       if (!["signal", "mixed", "power"].includes(kind))
@@ -113,6 +113,7 @@ export function importBoard(text, name, rules, options = {}) {
     if (!layer) throw Error(`Unknown copper layer: ${name}`);
     return layer.index;
   };
+  const isCopperLayer = (name) => layers.some((l) => l.name === name);
   const nets = children(root, "net").map((n) => ({
     id: number(n.values[1]),
     name: n.values[2],
@@ -172,7 +173,7 @@ export function importBoard(text, name, rules, options = {}) {
   );
   for (const n of root.values.filter((v) => v?.values)) {
     const layer = val(n, "layer", "");
-    if (layer.endsWith(".Cu") && n.values[0] === "gr_text") {
+    if (isCopperLayer(layer) && n.values[0] === "gr_text") {
       const effects = child(n, "effects"), font = effects && child(effects, "font");
       if (!font || child(font, "face")) throw Error("Custom copper text fonts are not supported yet.");
       const size = point(font, "size"), at = point(n, "at"), angle = -number(child(n, "at").values[3] ?? 0) * Math.PI / 180;
@@ -192,7 +193,7 @@ export function importBoard(text, name, rules, options = {}) {
       continue;
     }
     if (
-      layer.endsWith(".Cu") &&
+      isCopperLayer(layer) &&
       ![
         "segment",
         "footprint",
@@ -209,19 +210,31 @@ export function importBoard(text, name, rules, options = {}) {
     );
   if (!edges.length) throw Error("A closed Edge.Cuts outline is required.");
   const loops = [];
+  let strayEdges = 0;
   while (edges.length) {
     const [first, last] = edges.shift(), loop = [first];
-    let end = last;
+    let end = last, consumed = 0, closed = true;
     while (!equal(end, first)) {
       loop.push(end);
       const i = edges.findIndex(([a, b]) => equal(a, end) || equal(b, end));
-      if (i < 0) throw Error("The Edge.Cuts outline is not closed.");
+      if (i < 0) {
+        closed = false;
+        break;
+      }
       const [a, b] = edges.splice(i, 1)[0];
+      consumed++;
       end = equal(a, end) ? b : a;
+    }
+    if (!closed) {
+      strayEdges += 1 + consumed;
+      continue;
     }
     if (loop.length < 3) throw Error("Degenerate Edge.Cuts outline.");
     loops.push(loop);
   }
+  if (!loops.length) throw Error("A closed Edge.Cuts outline is required.");
+  if (strayEdges)
+    warnings.push(`${strayEdges} Edge.Cuts edges could not be closed into a loop and were ignored.`);
   const area = ps => Math.abs(ps.reduce((sum, p, i) => {
     const q = ps[(i + 1) % ps.length];
     return sum + p.x * q.y - p.y * q.x;
@@ -252,7 +265,7 @@ export function importBoard(text, name, rules, options = {}) {
       throw Error("Footprint zones are not supported yet.");
     for (const n of fp.values.filter((v) => v?.values)) {
       const layer = val(n, "layer", "");
-      if (layer.endsWith(".Cu") && n.values[0] === "fp_rect") {
+      if (isCopperLayer(layer) && n.values[0] === "fp_rect") {
         const a = point(n, "start"), b = point(n, "end");
         const stroke = child(n, "stroke");
         const margin = number(val(stroke ?? n, "width", 0)) / 2;
@@ -264,7 +277,7 @@ export function importBoard(text, name, rules, options = {}) {
         continue;
       }
       if (
-        layer.endsWith(".Cu") &&
+        isCopperLayer(layer) &&
         n.values[0] !== "pad" &&
         n.values[0] !== "layer"
       )
@@ -355,7 +368,7 @@ export function importBoard(text, name, rules, options = {}) {
           .flatMap((l) =>
             l === "*.Cu" || l === "F&B.Cu"
               ? layers.map((l) => l.name)
-              : l.endsWith(".Cu")
+              : isCopperLayer(l)
                 ? [l]
                 : [],
           ) ?? [];

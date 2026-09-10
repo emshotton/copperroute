@@ -218,3 +218,25 @@ fn it_takes_allow_solder_mask_bridges_from_the_footprints_attr_not_the_pad() {
     let pad = &components[0].pads.as_ref().expect("pads")[0];
     assert!(pad.allowSolderMaskBridges);
 }
+
+#[test]
+fn it_keeps_a_pad_on_a_renamed_copper_layer() {
+    let text = concat!(
+        r#"(kicad_pcb (version 20241229) (layers (0 TOP mixed) (31 BOTTOM mixed))"#,
+        r#" (net 1 "GND")"#,
+        r#" (footprint "R" (layer TOP) (at 0 0)"#,
+        r#" (pad "1" smd rect (at 0 0) (size 0.8 0.9) (layers TOP) (net 1 "GND"))))"#,
+    );
+    let root = parse(text).expect("it parses");
+    let layers = Layers::read(&root).expect("layers");
+    let nets = NetTable::read(&root).expect("nets");
+    let mut warnings = Vec::new();
+    let (components, _) =
+        read_components(&root, &layers, &nets, &mut warnings).expect("components");
+    assert_eq!(components.len(), 1);
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    assert_eq!(
+        pad.layers.as_ref().expect("layers"),
+        &vec![Some("TOP".to_string())]
+    );
+}

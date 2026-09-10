@@ -255,7 +255,7 @@ pub fn read_components(
 
         for node in child_nodes(fp) {
             let layer = node.value("layer").unwrap_or("");
-            if layer.ends_with(".Cu") && node.name() == "fp_rect" {
+            if layers.is_copper(layer) && node.name() == "fp_rect" {
                 conduction_areas.push(copper_rectangle(fp, node, layer, layers)?);
                 warnings.push(
                     "Footprint copper rectangles are reserved as solid routing obstacles and \
@@ -264,7 +264,7 @@ pub fn read_components(
                 );
                 continue;
             }
-            if layer.ends_with(".Cu") && node.name() != "pad" && node.name() != "layer" {
+            if layers.is_copper(layer) && node.name() != "pad" && node.name() != "layer" {
                 return Err(PcbError::new(
                     SECTION,
                     "Footprint copper graphics are not supported yet.",
@@ -373,7 +373,7 @@ pub fn read_components(
                             .iter()
                             .map(|entry| entry.name.clone().unwrap_or_default()),
                     );
-                } else if name.ends_with(".Cu") {
+                } else if layers.is_copper(name) {
                     pad_layers.push(name.clone());
                 }
             }

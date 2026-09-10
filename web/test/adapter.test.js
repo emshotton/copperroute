@@ -430,3 +430,56 @@ test("flattened pads retain their source footprint and pad numbers", () => {
   assert.equal(pads[0].sourcePadNumber, "1");
   assert.equal(pads[1].sourcePadNumber, "2");
 });
+
+const minimalBoard = (outlineBody) => `(kicad_pcb (version 20241229)
+  (layers (0 "F.Cu" signal) (31 "B.Cu" signal))
+  (net 1 "GND")
+  ${outlineBody}
+  (footprint "R" (layer "F.Cu") (at 0 0)
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))))`;
+
+test("ignores an alignment target on the board outline", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(target plus (at 5 5) (size 1) (width 0.1) (layer "Edge.Cuts"))',
+  );
+  const { board } = load(text);
+  assert.equal(board.outline.corners.length, 4);
+});
+
+test("assembles a loop and warns about an orphan outline fragment", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(gr_line (start 100 100) (end 100.07 100) (layer "Edge.Cuts"))',
+  );
+  const { board, warnings } = load(text);
+  assert.equal(board.outline.corners.length, 4);
+  assert.ok(
+    warnings.includes(
+      "1 Edge.Cuts edges could not be closed into a loop and were ignored.",
+    ),
+  );
+});
+
+test("rejects an outline with no closed loop at all", () => {
+  const text = minimalBoard('(gr_line (start 0 0) (end 10 0) (layer "Edge.Cuts"))');
+  assert.throws(
+    () => load(text),
+    /A closed Edge.Cuts outline is required\./,
+  );
+});
+
+test("accepts legacy copper layer names identified by their declared type", () => {
+  const text = `(kicad_pcb (version 20241229)
+    (layers (0 TOP mixed) (31 BOTTOM mixed))
+    (net 1 "GND")
+    (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+    (footprint "R" (layer TOP) (at 0 0)
+      (pad "1" smd rect (at 0 0) (size 1 1) (layers TOP) (net 1 "GND"))))`;
+  const { board } = load(text);
+  assert.deepEqual(
+    board.layers.map((l) => l.name),
+    ["TOP", "BOTTOM"],
+  );
+  assert.deepEqual(board.components[0].pads[0].layers, ["TOP"]);
+});

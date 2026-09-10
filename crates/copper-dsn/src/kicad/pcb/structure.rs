@@ -28,10 +28,12 @@ impl Layers {
                 let Some(name) = entry.atom(1) else {
                     continue;
                 };
-                if !name.ends_with(".Cu") {
+                let declared_type = entry.atom(2).unwrap_or("undefined");
+                if !name.ends_with(".Cu") && !matches!(declared_type, "signal" | "mixed" | "power")
+                {
                     continue;
                 }
-                let r#type = match entry.atom(2).unwrap_or("undefined") {
+                let r#type = match declared_type {
                     "signal" | "mixed" => "signal",
                     "power" => "plane",
                     other => {
@@ -55,6 +57,12 @@ impl Layers {
             ));
         }
         Ok(Layers { entries })
+    }
+
+    pub fn is_copper(&self, name: &str) -> bool {
+        self.entries
+            .iter()
+            .any(|layer| layer.name.as_deref() == Some(name))
     }
 
     pub fn index_of(&self, name: &str) -> Result<i32, PcbError> {

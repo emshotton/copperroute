@@ -161,6 +161,9 @@ fn collect(
         Some(rest) => format!("gr_{rest}"),
         None => name.to_string(),
     };
+    if kind == "target" || kind == "gr_target" {
+        return Ok(());
+    }
     let mut points: Vec<(f64, f64)> = match kind.as_str() {
         "gr_line" => vec![point(node, "start")?, point(node, "end")?],
         "gr_rect" => {
@@ -283,7 +286,10 @@ pub struct Outline {
     pub cutouts: Vec<Vec<(f64, f64)>>,
 }
 
-pub fn assemble_outline(paths: &OutlinePaths) -> Result<Outline, PcbError> {
+pub fn assemble_outline(
+    paths: &OutlinePaths,
+    warnings: &mut Vec<String>,
+) -> Result<Outline, PcbError> {
     let mut edges: Vec<((f64, f64), (f64, f64))> = paths
         .paths
         .iter()
@@ -298,23 +304,47 @@ pub fn assemble_outline(paths: &OutlinePaths) -> Result<Outline, PcbError> {
     }
 
     let mut loops: Vec<Vec<(f64, f64)>> = Vec::new();
+    let mut stray_edges = 0usize;
     while !edges.is_empty() {
         let (first, last) = edges.remove(0);
         let mut loop_points = vec![first];
+        let mut consumed = 0usize;
         let mut end = last;
+        let mut closed = true;
         while !equal(end, first) {
             loop_points.push(end);
-            let index = edges
+            let Some(index) = edges
                 .iter()
                 .position(|(a, b)| equal(*a, end) || equal(*b, end))
-                .ok_or_else(|| PcbError::new("outline", "The Edge.Cuts outline is not closed."))?;
+            else {
+                closed = false;
+                break;
+            };
             let (a, b) = edges.remove(index);
+            consumed += 1;
             end = if equal(a, end) { b } else { a };
+        }
+        if !closed {
+            stray_edges += 1 + consumed;
+            continue;
         }
         if loop_points.len() < 3 {
             return Err(PcbError::new("outline", "Degenerate Edge.Cuts outline."));
         }
         loops.push(loop_points);
+    }
+
+    if loops.is_empty() {
+        return Err(PcbError::new(
+            "outline",
+            "A closed Edge.Cuts outline is required.",
+        ));
+    }
+
+    if stray_edges > 0 {
+        warnings.push(format!(
+            "{stray_edges} Edge.Cuts edges could not be closed into a loop and were ignored."
+        ));
     }
 
     loops.sort_by(|a, b| loop_order(a, b));
