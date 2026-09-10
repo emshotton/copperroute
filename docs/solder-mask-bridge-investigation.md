@@ -10,15 +10,37 @@ A solder mask aperture is the pad opening: the pad copper grown by the board's m
 expansion. KiCad reports `solder_mask_bridge` when copper of a *different* net enters that
 aperture — two nets exposed through one opening will short when the board is soldered.
 
+The gap a foreign net must keep from a pad's copper was measured against `kicad-cli`
+10.0.3 across sixteen configurations, to 0.01 mm:
+
+```
+threshold gap (mm) at which solder_mask_bridge clears
+  expansion \ mask-to-copper    0.00   0.10   0.20   0.30
+                       0.00     0.00   0.10   0.20   0.30
+                       0.10     0.10   0.20   0.20   0.30
+                       0.20     0.20   0.30   0.40   0.40
+                       0.30     0.30   0.40   0.50   0.60
+```
+
+The two mask terms add: `pad_to_mask_clearance + solder_mask_to_copper_clearance` fits
+thirteen of the sixteen cells exactly. The three it misses — `(0.1, 0.2)`, `(0.1, 0.3)` and
+`(0.2, 0.3)`, all where expansion is the smaller of the two nonzero terms — it
+over-estimates by 0.1 mm, so using it as the rule never under-clears.
+
 The keepout a foreign-net track must respect around a pad is therefore
 
 ```
-max(net_class_clearance, pad_to_mask_clearance, solder_mask_to_copper_clearance)
+max(net_class_clearance, pad_to_mask_clearance + solder_mask_to_copper_clearance)
 ```
 
-The router enforces only the first term. Whenever either mask term is the larger, the
-router routes to a gap that is legal under copper clearance and illegal under mask, and
-`kicad-cli` reports a bridge.
+The router enforces only the first term. Whenever the sum of the two mask terms exceeds
+the net class clearance, the router routes to a gap that is legal under copper clearance
+and illegal under mask, and `kicad-cli` reports a bridge.
+
+On the benchmark corpus this rarely matters in practice: `benchmark/vendor/kicad/legacy_rules.py`
+lists `solder_mask_to_copper_clearance` among `_ZEROED_RULE_KEYS`, so every generated
+`.kicad_pro` sets it to zero — the matrix's first column, where the required gap is exactly
+the mask expansion.
 
 ## Evidence
 
@@ -40,7 +62,9 @@ The three rows at 0.20–0.30 mm are the finding: copper clearance is satisfied,
 board is still a DRC failure. The threshold tracks the mask term exactly — sweeping
 `pad_to_mask_clearance` at 0.0 / 0.2 / 0.3 / 0.4 mm moves the first clean gap to 0.2 / 0.2 /
 0.3 / 0.4 mm respectively, and setting `solder_mask_to_copper_clearance` to 0.3 mm with zero
-expansion moves it to 0.3 mm. The two mask terms do not add; the larger wins.
+expansion moves it to 0.3 mm. Each of these sweeps varies one mask term while the other is
+zero, which the sixteen-configuration matrix above confirms is exactly where addition and a
+plain maximum agree; that fuller matrix is what pins the rule down to addition.
 
 The violations are caused by the routing. The same board, same mask settings, at a gap of
 0.25 mm — copper-legal — differs only in whether the track is present:
@@ -87,12 +111,12 @@ surfaces in `violations_by_type` and `violations_all`, which is where it is visi
 2. **Check** — add a mask violation kind and check to `copper-drc`, which also makes the
    oracle able to compare the type.
 3. **Enforce** — widen the pad keepout the maze and shover use from the net class clearance
-   to the maximum of the three terms. This is the half that removes the violations rather
-   than reporting them.
+   to `max(net_class_clearance, pad_to_mask_clearance + solder_mask_to_copper_clearance)`.
+   This is the half that removes the violations rather than reporting them.
 
 Steps 1 and 2 make the failures visible and measurable. Only step 3 changes a board.
-Because the effective keepout only grows where a mask term exceeds the net class clearance,
-boards whose mask expansion is small or zero are unaffected.
+Because the effective keepout only grows where the sum of the mask terms exceeds the net
+class clearance, boards whose mask expansion is small or zero are unaffected.
 
 ## Reproducing
 
