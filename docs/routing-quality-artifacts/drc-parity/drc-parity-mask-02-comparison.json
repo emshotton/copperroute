@@ -1,0 +1,100 @@
+{
+  "run": "drc-parity-mask-02",
+  "kicad": "10.0.6",
+  "rows": {
+    "main": {
+      "boards": 751,
+      "scored": 751,
+      "failed": 0,
+      "job_timed_out": 54,
+      "fully_connected": 600,
+      "unrouted": 5112,
+      "copper_errors": 871,
+      "mask_errors": 13731,
+      "cpu_s": 46992.0,
+      "max_peak_rss_mb": 291.5
+    },
+    "drc": {
+      "boards": 751,
+      "scored": 751,
+      "failed": 0,
+      "job_timed_out": 43,
+      "fully_connected": 601,
+      "unrouted": 4838,
+      "copper_errors": 857,
+      "mask_errors": 13747,
+      "cpu_s": 45106.75,
+      "max_peak_rss_mb": 293.2
+    }
+  },
+  "comparisons": {
+    "drc": {
+      "all-all": {
+        "boards": 751,
+        "unrouted_improved": 17,
+        "unrouted_regressed": 4,
+        "unrouted_delta": -274,
+        "copper_gaining": 1,
+        "copper_delta": -14,
+        "mask_gaining": 2,
+        "mask_delta": 16,
+        "cpu_ratio": 0.9598814691862445
+      },
+      "all-completed": {
+        "boards": 696,
+        "unrouted_improved": 0,
+        "unrouted_regressed": 0,
+        "unrouted_delta": 0,
+        "copper_gaining": 0,
+        "copper_delta": 0,
+        "mask_gaining": 0,
+        "mask_delta": 0,
+        "cpu_ratio": 0.9567971967066415
+      },
+      "pcbench-all": {
+        "boards": 740,
+        "unrouted_improved": 17,
+        "unrouted_regressed": 4,
+        "unrouted_delta": -274,
+        "copper_gaining": 1,
+        "copper_delta": -14,
+        "mask_gaining": 2,
+        "mask_delta": 16,
+        "cpu_ratio": 0.9590038123289015
+      },
+      "pcbench-completed": {
+        "boards": 687,
+        "unrouted_improved": 0,
+        "unrouted_regressed": 0,
+        "unrouted_delta": 0,
+        "copper_gaining": 0,
+        "copper_delta": 0,
+        "mask_gaining": 0,
+        "mask_delta": 0,
+        "cpu_ratio": 0.9562137701509582
+      },
+      "freerouting-kicad-all": {
+        "boards": 11,
+        "unrouted_improved": 0,
+        "unrouted_regressed": 0,
+        "unrouted_delta": 0,
+        "copper_gaining": 0,
+        "copper_delta": 0,
+        "mask_gaining": 0,
+        "mask_delta": 0,
+        "cpu_ratio": 0.9991244880687179
+      },
+      "freerouting-kicad-completed": {
+        "boards": 9,
+        "unrouted_improved": 0,
+        "unrouted_regressed": 0,
+        "unrouted_delta": 0,
+        "copper_gaining": 0,
+        "copper_delta": 0,
+        "mask_gaining": 0,
+        "mask_delta": 0,
+        "cpu_ratio": 0.9976936517181129
+      }
+    }
+  }
+}

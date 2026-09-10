@@ -359,6 +359,18 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
 
     let mut board_rules = BoardRules::new(layer_structure.clone(), clearance_matrix);
     board_rules.strict_smd_via_attachment = true;
+    board_rules.allow_solder_mask_bridges_in_footprints =
+        board_json.allowSolderMaskBridgesInFootprints;
+    if let Some(width) = board_json.solderMaskMinWidth {
+        let scaled = width * scale_factor;
+        if !width.is_finite() || width < 0.0 || scaled > f64::from(i32::MAX) {
+            return parse_error(
+                "solderMaskMinWidth",
+                "Invalid solder mask minimum web width",
+            );
+        }
+        board_rules.solder_mask_min_width = Some(scaled.round() as i32);
+    }
     let library = BoardLibrary::new(Padstacks::new(layer_structure.clone()), Packages::new());
     let mut board = Board::new(
         outline_shapes,
@@ -758,10 +770,17 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                     .shapeOffset
                     .as_ref()
                     .is_none_or(|offset| offset.x == 0.0 && offset.y == 0.0)
-                && pad
-                    .size
-                    .as_ref()
-                    .is_some_and(|size| size.x.max(size.y) <= pad.drill);
+                && pad.size.as_ref().is_some_and(|size| {
+                    let diameter = match shape_name.as_str() {
+                        "circle" => size.x.min(size.y),
+                        "oval" => size.x.max(size.y),
+                        _ => {
+                            let radius = round_rect_radius.unwrap_or(0.0) / scale_factor;
+                            2.0 * ((size.x / 2.0 - radius).hypot(size.y / 2.0 - radius) + radius)
+                        }
+                    };
+                    diameter <= pad.drill
+                });
             let drill_key = (
                 pad.drill,
                 pad.nonPlated,
@@ -932,6 +951,8 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             }
             if let Some(copper_board::Item::Pin(pin)) = board.items.get_mut(&pin_id) {
                 pin.allow_solder_mask_bridges = pad.allowSolderMaskBridges;
+                pin.source_footprint = pad.sourceFootprint.clone();
+                pin.source_pad_number = pad.sourcePadNumber.clone();
             }
             if let Some(mask) = &pad.solderMaskExpansion {
                 for (name, expansion) in mask {
