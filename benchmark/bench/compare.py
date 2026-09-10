@@ -94,8 +94,8 @@ def collect(run_dirs: list[Path], names: list[str], metas: dict | None = None) -
             if mp.exists():
                 m = json.loads(mp.read_text())
                 m["_run"], m["_seed"], m["_candidate"] = meta["run_id"], e["seed"], e["candidate"]
-                if rescoring and m.get("referee", "").startswith("java-drc") and not m.get("referee_identity"):
-                    m["referee_identity"] = {"unverified_during_rescore": True}
+                if rescoring:
+                    m["unjudged"] = True
                 if not m.get("isolated_config", False):
                     unisolated = True
                 cells[e["candidate"]].setdefault(e["board"], []).append(m)

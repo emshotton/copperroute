@@ -131,10 +131,3 @@ def load_candidates(path: Path, names: list[str] | None = None) -> dict[str, Can
         out[name] = Candidate(name=name, kind=c.get("kind", "other"), exec=exec, sha=sha,
                               version=c.get("version", ""), extra_args=list(c.get("extra_args", [])))
     return out
-
-
-def load_referee_java(path: Path) -> list[str] | None:
-    """Optional `[referee.java] exec = [...]` block; None means use paths.java_jar()."""
-    data = tomllib.loads(path.read_text())
-    exec = data.get("referee", {}).get("java", {}).get("exec")
-    return _check_exec(list(exec), path.parent) if exec else None
