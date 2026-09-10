@@ -128,6 +128,108 @@ fn a_kicad_pcb_input_loads_a_real_board() {
     assert_eq!(loaded.board.get_items().count(), 5);
 }
 
+const MASK_KEEPOUT_FIXTURE_PAD_TO_MASK_CLEARANCE_MM: f64 = 0.3;
+const MASK_KEEPOUT_FIXTURE_NET_CLASS_CLEARANCE_MM: f64 = 0.2;
+
+const MASK_KEEPOUT_FIXTURE: &str = concat!(
+    r#"(kicad_pcb (version 20240108) (generator "pcbnew")"#,
+    r#" (general (thickness 1.6)) (paper "A4")"#,
+    r#" (layers (0 "F.Cu" signal) (31 "B.Cu" signal) (44 "Edge.Cuts" user))"#,
+    r#" (setup (pad_to_mask_clearance 0.3))"#,
+    r#" (net 0 "") (net 1 "Signal") (net 2 "Return")"#,
+    r#" (footprint "Browser:Connector" (layer "F.Cu") (at 105 105)"#,
+    r#"  (property "Reference" "J1" (at 0 -3) (layer "F.SilkS") (effects (font (size 1 1) (thickness 0.15))))"#,
+    r#"  (pad "1" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 1 "Signal"))"#,
+    r#"  (pad "2" thru_hole circle (at 0 5) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 2 "Return")))"#,
+    r#" (footprint "Browser:Connector" (layer "F.Cu") (at 125 115)"#,
+    r#"  (property "Reference" "J2" (at 0 -3) (layer "F.SilkS") (effects (font (size 1 1) (thickness 0.15))))"#,
+    r#"  (pad "1" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 1 "Signal"))"#,
+    r#"  (pad "2" thru_hole circle (at 0 5) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 2 "Return")))"#,
+    r#" (gr_rect (start 100 100) (end 130 125) (stroke (width 0.05) (type default)) (fill none) (layer "Edge.Cuts")))"#,
+);
+
+fn mask_keepout_fixture_pin_clearance_classes(board: &Board) -> Vec<usize> {
+    board
+        .get_pins()
+        .into_iter()
+        .map(|id| {
+            board
+                .get_item(id)
+                .expect("get_pins only returns present items")
+                .clearance_class()
+        })
+        .collect()
+}
+
+#[test]
+fn a_kicad_pcb_pads_solder_mask_expansion_raises_a_net_class_clearance_below_it() {
+    let mut job = RoutingJob::new(SessionId::default());
+    job.set_input_bytes(Some(MASK_KEEPOUT_FIXTURE.as_bytes()));
+    assert_eq!(
+        job.get_input().expect("an input").format,
+        FileFormat::KicadPcb,
+        "the fixture text must sniff as a KiCad PCB, or this isn't exercising read_pcb"
+    );
+
+    let parsed = parse_board_if_needed(&job).expect("the fixture parses");
+    let classes_before = mask_keepout_fixture_pin_clearance_classes(&parsed.board);
+    assert_eq!(
+        classes_before.len(),
+        4,
+        "two pads on each of two footprints"
+    );
+    assert_eq!(
+        classes_before
+            .iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len(),
+        1,
+        "before the raise, every pad shares the board's one net class"
+    );
+    let scale_factor = parsed.board.communication.resolution.max(1) as f64;
+    let net_class_clearance =
+        (MASK_KEEPOUT_FIXTURE_NET_CLASS_CLEARANCE_MM * scale_factor).round() as i32;
+    assert_eq!(
+        parsed.board.rules.clearance_matrix.get_value(
+            classes_before[0],
+            classes_before[0],
+            0,
+            false
+        ),
+        net_class_clearance,
+        "the fixture's net class clearance must start below its pad_to_mask_clearance"
+    );
+
+    let loaded = load_board_if_needed(&mut job).expect("the fixture loads");
+    let classes_after = mask_keepout_fixture_pin_clearance_classes(&loaded.board);
+    assert_eq!(
+        classes_after
+            .iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len(),
+        1,
+        "every pad carries the same mask expansion, so they land on the same raised class"
+    );
+    assert_ne!(
+        classes_after[0], classes_before[0],
+        "raise_solder_mask_clearances must move the pads off the original net class"
+    );
+
+    let mask_clearance =
+        (MASK_KEEPOUT_FIXTURE_PAD_TO_MASK_CLEARANCE_MM * scale_factor).round() as i32;
+    assert_eq!(
+        loaded
+            .board
+            .rules
+            .clearance_matrix
+            .get_value(classes_after[0], classes_after[0], 0, false),
+        mask_clearance,
+        "the raised clearance must equal the board's pad_to_mask_clearance, not just exceed \
+         the net class clearance it replaced"
+    );
+    assert!(mask_clearance > net_class_clearance);
+}
+
 #[test]
 fn a_kicad_pcb_inputs_read_pcb_warnings_reach_the_parsed_board() {
     let mut job = RoutingJob::new(SessionId::default());
