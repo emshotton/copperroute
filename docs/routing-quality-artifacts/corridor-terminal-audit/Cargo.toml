@@ -1,0 +1,8 @@
+[package]
+name = "quality-corridor-terminal-audit"
+version = "0.0.0"
+edition = "2024"
+[dependencies]
+copper-dsn = { path = "/Users/em/Development/freerouting/copperroute-image-pad-integration/crates/copper-dsn" }
+copper-board = { path = "/Users/em/Development/freerouting/copperroute-image-pad-integration/crates/copper-board" }
+copper-geometry = { path = "/Users/em/Development/freerouting/copperroute-image-pad-integration/crates/copper-geometry" }

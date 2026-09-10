@@ -1,0 +1,12 @@
+{
+  "pcbench-boatcontrol_NonLatchingNO30A": {
+    "audit-off": "c7161649328a0bf185f6b8d89eb1f9afb0d4056deac02f33607df2a7776f7b39",
+    "audit-on": "c7161649328a0bf185f6b8d89eb1f9afb0d4056deac02f33607df2a7776f7b39",
+    "frozen": "c7161649328a0bf185f6b8d89eb1f9afb0d4056deac02f33607df2a7776f7b39"
+  },
+  "pcbench-uSKY_uSKY": {
+    "audit-off": "5f0a6ef57b90a8fe5e1061d8ab030c0083fd81993b06e39529397ff3a5c38d26",
+    "audit-on": "5f0a6ef57b90a8fe5e1061d8ab030c0083fd81993b06e39529397ff3a5c38d26",
+    "frozen": "5f0a6ef57b90a8fe5e1061d8ab030c0083fd81993b06e39529397ff3a5c38d26"
+  }
+}

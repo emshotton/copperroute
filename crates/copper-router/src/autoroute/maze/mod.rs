@@ -1,4 +1,5 @@
 pub mod control;
+mod corridor;
 pub mod destination_distance;
 pub mod engine;
 pub mod expand;

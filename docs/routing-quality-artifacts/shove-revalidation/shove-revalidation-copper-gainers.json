@@ -1,0 +1,206 @@
+{
+  "kicad-issue184-motorizedopener--motorizedopener": {
+    "main": {
+      "unrouted": 58,
+      "copper": 53,
+      "types": {
+        "hole_clearance": 1,
+        "clearance": 52,
+        "malformed_courtyard": 57,
+        "footprint_type_mismatch": 3
+      }
+    },
+    "combined": {
+      "unrouted": 61,
+      "copper": 54,
+      "types": {
+        "hole_clearance": 2,
+        "clearance": 52,
+        "malformed_courtyard": 57,
+        "footprint_type_mismatch": 3
+      }
+    }
+  },
+  "pcbench-pmw3360-pcb_pmw3360_pcb_jst": {
+    "main": {
+      "unrouted": 5,
+      "copper": 5,
+      "types": {
+        "copper_edge_clearance": 5
+      }
+    },
+    "combined": {
+      "unrouted": 5,
+      "copper": 6,
+      "types": {
+        "copper_edge_clearance": 6
+      }
+    },
+    "original": {
+      "wirelength_mm": 228.5751,
+      "vias": 13,
+      "drv_routing": 0,
+      "drv_all": 0,
+      "unconnected": 0,
+      "reference_complete": true,
+      "project_generated": false,
+      "zones_refilled": 1,
+      "nets": 18,
+      "layers": 2,
+      "kicad_version": "7"
+    }
+  },
+  "pcbench-Patternflow_patternflow": {
+    "main": {
+      "unrouted": 0,
+      "copper": 2,
+      "types": {
+        "hole_clearance": 1,
+        "starved_thermal": 1
+      }
+    },
+    "combined": {
+      "unrouted": 0,
+      "copper": 3,
+      "types": {
+        "hole_clearance": 1,
+        "starved_thermal": 2
+      }
+    },
+    "original": {
+      "wirelength_mm": 1390.7666,
+      "vias": 120,
+      "drv_routing": 0,
+      "drv_all": 0,
+      "unconnected": 0,
+      "reference_complete": true,
+      "project_generated": false,
+      "zones_refilled": 2,
+      "nets": 41,
+      "layers": 2,
+      "kicad_version": "10.0"
+    }
+  },
+  "pcbench-ESP07-Breakout_ESP07-Breakout": {
+    "main": {
+      "unrouted": 0,
+      "copper": 1,
+      "types": {
+        "clearance": 1
+      }
+    },
+    "combined": {
+      "unrouted": 0,
+      "copper": 2,
+      "types": {
+        "clearance": 2
+      }
+    },
+    "original": {
+      "wirelength_mm": 821.5689,
+      "vias": 0,
+      "drv_routing": 0,
+      "drv_all": 0,
+      "project_generated": true,
+      "zones_refilled": 4,
+      "nets": 23,
+      "layers": 2,
+      "kicad_version": null,
+      "unconnected": 0,
+      "reference_complete": true
+    }
+  },
+  "pcbench-rp2040-dmxsun_baseboard_2slots": {
+    "main": {
+      "unrouted": 0,
+      "copper": 7,
+      "types": {
+        "courtyards_overlap": 1,
+        "starved_thermal": 7
+      }
+    },
+    "combined": {
+      "unrouted": 0,
+      "copper": 10,
+      "types": {
+        "courtyards_overlap": 1,
+        "starved_thermal": 10
+      }
+    },
+    "original": {
+      "wirelength_mm": 2775.6221,
+      "vias": 304,
+      "drv_routing": 0,
+      "drv_all": 1,
+      "unconnected": 0,
+      "reference_complete": true,
+      "project_generated": false,
+      "zones_refilled": 4,
+      "nets": 48,
+      "layers": 2,
+      "kicad_version": "8.0"
+    }
+  },
+  "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield": {
+    "main": {
+      "unrouted": 1,
+      "copper": 30,
+      "types": {
+        "track_width": 30
+      }
+    },
+    "combined": {
+      "unrouted": 3,
+      "copper": 34,
+      "types": {
+        "track_width": 34
+      }
+    },
+    "original": {
+      "wirelength_mm": 2280.3099,
+      "vias": 147,
+      "drv_routing": 0,
+      "drv_all": 0,
+      "project_generated": true,
+      "zones_refilled": 10,
+      "nets": 140,
+      "layers": 2,
+      "kicad_version": null,
+      "unconnected": 0,
+      "reference_complete": true
+    }
+  },
+  "pcbench-VC4000MultiROM_MultiRomCard": {
+    "main": {
+      "unrouted": 4,
+      "copper": 11,
+      "types": {
+        "clearance": 4,
+        "shorting_items": 7,
+        "courtyards_overlap": 1
+      }
+    },
+    "combined": {
+      "unrouted": 2,
+      "copper": 13,
+      "types": {
+        "shorting_items": 9,
+        "clearance": 4,
+        "courtyards_overlap": 1
+      }
+    },
+    "original": {
+      "wirelength_mm": 6199.3273,
+      "vias": 132,
+      "drv_routing": 0,
+      "drv_all": 1,
+      "project_generated": true,
+      "zones_refilled": 2,
+      "nets": 131,
+      "layers": 2,
+      "kicad_version": null,
+      "unconnected": 0,
+      "reference_complete": true
+    }
+  }
+}

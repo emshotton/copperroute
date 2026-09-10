@@ -1,0 +1,1342 @@
+{
+  "note": "KiCad only. Raw deadline-limited totals and single-run CPU ratios are observations, not causal performance claims. Completed pairs exclude either timeout/non-COMPLETED state. Mask counts require SES identity analysis.",
+  "comparisons": {
+    "main-vs-control": {
+      "pcbench": {
+        "all": {
+          "boards": 740,
+          "unrouted": {
+            "baseline": 4509,
+            "candidate": 4474,
+            "delta": -35,
+            "improved": 4,
+            "regressed": 3
+          },
+          "violations": {
+            "baseline": 653,
+            "candidate": 655,
+            "delta": 2,
+            "improved": 1,
+            "regressed": 2
+          },
+          "mask": {
+            "baseline": 10977,
+            "candidate": 10970,
+            "delta": -7,
+            "improved": 4,
+            "regressed": 7
+          },
+          "cpu_s": {
+            "baseline": 34435.78999999999,
+            "candidate": 34513.009999999995,
+            "delta": 77.22000000000116,
+            "improved": 206,
+            "regressed": 455
+          },
+          "cpu_ratio": 1.0022424343974685,
+          "completed": [
+            709,
+            710
+          ],
+          "fully_connected": [
+            589,
+            589
+          ],
+          "rss_median_mb": [
+            12.0,
+            12.1
+          ],
+          "rss_max_mb": [
+            370.9,
+            372.4
+          ]
+        },
+        "both_completed": {
+          "boards": 709,
+          "unrouted": {
+            "baseline": 1088,
+            "candidate": 1088,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "violations": {
+            "baseline": 547,
+            "candidate": 547,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "mask": {
+            "baseline": 8482,
+            "candidate": 8455,
+            "delta": -27,
+            "improved": 3,
+            "regressed": 0
+          },
+          "cpu_s": {
+            "baseline": 25162.550000000003,
+            "candidate": 25258.19999999998,
+            "delta": 95.64999999997599,
+            "improved": 183,
+            "regressed": 447
+          },
+          "cpu_ratio": 1.0038012840510988,
+          "completed": [
+            709,
+            709
+          ],
+          "fully_connected": [
+            583,
+            583
+          ],
+          "rss_median_mb": [
+            12.0,
+            12.1
+          ],
+          "rss_max_mb": [
+            370.9,
+            372.4
+          ]
+        },
+        "changed_completed": [
+          {
+            "board": "pcbench-Own-Mailbox-Hardware_eth",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": -11
+          },
+          {
+            "board": "pcbench-Own-Mailbox-Hardware_mailbox",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": -2
+          },
+          {
+            "board": "pcbench-badge2016_Badge_init",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": -14
+          }
+        ]
+      },
+      "local": {
+        "all": {
+          "boards": 11,
+          "unrouted": {
+            "baseline": 226,
+            "candidate": 226,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "violations": {
+            "baseline": 57,
+            "candidate": 57,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "mask": {
+            "baseline": 0,
+            "candidate": 0,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "cpu_s": {
+            "baseline": 778.18,
+            "candidate": 783.06,
+            "delta": 4.8799999999999955,
+            "improved": 0,
+            "regressed": 11
+          },
+          "cpu_ratio": 1.006271042689352,
+          "completed": [
+            10,
+            10
+          ],
+          "fully_connected": [
+            8,
+            8
+          ],
+          "rss_median_mb": [
+            13.5,
+            13.6
+          ],
+          "rss_max_mb": [
+            67.3,
+            83.0
+          ]
+        },
+        "both_completed": {
+          "boards": 10,
+          "unrouted": {
+            "baseline": 226,
+            "candidate": 226,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "violations": {
+            "baseline": 57,
+            "candidate": 57,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "mask": {
+            "baseline": 0,
+            "candidate": 0,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "cpu_s": {
+            "baseline": 479.93999999999994,
+            "candidate": 484.68,
+            "delta": 4.740000000000066,
+            "improved": 0,
+            "regressed": 10
+          },
+          "cpu_ratio": 1.0098762345293164,
+          "completed": [
+            10,
+            10
+          ],
+          "fully_connected": [
+            7,
+            7
+          ],
+          "rss_median_mb": [
+            12.75,
+            12.8
+          ],
+          "rss_max_mb": [
+            42.1,
+            45.7
+          ]
+        },
+        "changed_completed": []
+      }
+    },
+    "main-vs-coupled": {
+      "pcbench": {
+        "all": {
+          "boards": 740,
+          "unrouted": {
+            "baseline": 4509,
+            "candidate": 4319,
+            "delta": -190,
+            "improved": 44,
+            "regressed": 16
+          },
+          "violations": {
+            "baseline": 653,
+            "candidate": 652,
+            "delta": -1,
+            "improved": 11,
+            "regressed": 8
+          },
+          "mask": {
+            "baseline": 10977,
+            "candidate": 10870,
+            "delta": -107,
+            "improved": 10,
+            "regressed": 13
+          },
+          "cpu_s": {
+            "baseline": 34435.78999999999,
+            "candidate": 32477.83000000002,
+            "delta": -1957.9599999999737,
+            "improved": 236,
+            "regressed": 439
+          },
+          "cpu_ratio": 0.9431417138970828,
+          "completed": [
+            709,
+            716
+          ],
+          "fully_connected": [
+            589,
+            599
+          ],
+          "rss_median_mb": [
+            12.0,
+            12.1
+          ],
+          "rss_max_mb": [
+            370.9,
+            372.4
+          ]
+        },
+        "both_completed": {
+          "boards": 709,
+          "unrouted": {
+            "baseline": 1088,
+            "candidate": 1049,
+            "delta": -39,
+            "improved": 29,
+            "regressed": 12
+          },
+          "violations": {
+            "baseline": 547,
+            "candidate": 546,
+            "delta": -1,
+            "improved": 7,
+            "regressed": 6
+          },
+          "mask": {
+            "baseline": 8482,
+            "candidate": 8361,
+            "delta": -121,
+            "improved": 8,
+            "regressed": 4
+          },
+          "cpu_s": {
+            "baseline": 25162.550000000003,
+            "candidate": 23696.090000000033,
+            "delta": -1466.45999999997,
+            "improved": 225,
+            "regressed": 419
+          },
+          "cpu_ratio": 0.9417205330938252,
+          "completed": [
+            709,
+            709
+          ],
+          "fully_connected": [
+            583,
+            592
+          ],
+          "rss_median_mb": [
+            12.0,
+            12.1
+          ],
+          "rss_max_mb": [
+            370.9,
+            372.4
+          ]
+        },
+        "changed_completed": [
+          {
+            "board": "pcbench-8bit-cpu_arduino_eeprom_programmer",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-8bit-cpu_programming_interface",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": -31
+          },
+          {
+            "board": "pcbench-APM-RPi-Shield_APM-RPi-Shield",
+            "unrouted_delta": 0,
+            "violations_delta": -2,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-ATtiny461Breakout_ATTiny461DevBoard",
+            "unrouted_delta": 0,
+            "violations_delta": -1,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-CATs-Eurosynth_Abakus_Main",
+            "unrouted_delta": -7,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-Curryboard_Curryboard",
+            "unrouted_delta": 0,
+            "violations_delta": -2,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-ESP07-Breakout_ESP07-Breakout",
+            "unrouted_delta": 0,
+            "violations_delta": 1,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-EnvOpenPico_EliteMicro2040",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-EuroPi_europi-surface-mount",
+            "unrouted_delta": -2,
+            "violations_delta": -3,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-FRM16_Relay_Module_I2C_Controller_relay_controller",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": -41
+          },
+          {
+            "board": "pcbench-Feather-ICE40-PCB_feather_ice40",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-GameTiger_GameTiger",
+            "unrouted_delta": 1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-Hardware_Playground_minimal_node_rfm69w",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-Hubble_12_bit_analog_out",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-Hubble_mux",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-LPC2148_Stick_LPC2148_stick",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-LPC2148_Stick__autosave-LPC2148_stick",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-Mechaduino-DR_Mechaduino DR 1.01",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": 1
+          },
+          {
+            "board": "pcbench-Mouse_Mouse",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield",
+            "unrouted_delta": 2,
+            "violations_delta": 4,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-Own-Mailbox-Hardware_eth",
+            "unrouted_delta": 1,
+            "violations_delta": 0,
+            "mask_delta": -14
+          },
+          {
+            "board": "pcbench-Own-Mailbox-Hardware_mailbox",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": -24
+          },
+          {
+            "board": "pcbench-Patternflow_patternflow",
+            "unrouted_delta": 0,
+            "violations_delta": 1,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-RC6502-Apple-1-Replica_RC6502_Terminal",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-RetroWiFiModem_RetroWiFiModem",
+            "unrouted_delta": 0,
+            "violations_delta": -1,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-SOICbite_SOICbite_SWD",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-TB6600StepperDriver_DEW_TB6600-V1",
+            "unrouted_delta": 2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-TLPHnodeV2_TLPHnodeV2",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": -5
+          },
+          {
+            "board": "pcbench-Teensy-3.5-Breakout-Boaard_TeensyMegaIoShield",
+            "unrouted_delta": 1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-VC4000MultiROM_MultiRomCard",
+            "unrouted_delta": -2,
+            "violations_delta": 2,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-avr_ledprojector_avr_ledprojection-0402",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-azalea_azalea",
+            "unrouted_delta": 4,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-badge2016_Badge_init",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": -5
+          },
+          {
+            "board": "pcbench-boatcontrol_NonLatchingNO30A",
+            "unrouted_delta": 6,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-cnlohr_wiflier",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-cnlohr_wiflier_B",
+            "unrouted_delta": 3,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-epaper-102_epaper-102",
+            "unrouted_delta": 1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-fifogfx_c64cart",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": 1
+          },
+          {
+            "board": "pcbench-free-of-charge_BMS",
+            "unrouted_delta": -4,
+            "violations_delta": 0,
+            "mask_delta": -4
+          },
+          {
+            "board": "pcbench-freeDSP-CLASSIC-SMD-BALANCED_FreeDSP_BAL",
+            "unrouted_delta": -3,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-gb-hardware_GB-BRK-M-XS",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-gb-hardware_GB-CART256K-A",
+            "unrouted_delta": -3,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-gb-hardware_GB-CARTPP-XC",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-gb-hardware_GB-LIVE32",
+            "unrouted_delta": -5,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-gb-hardware_GB-MBCTEST",
+            "unrouted_delta": 1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-headstage-adapter_headstage adapter",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": -9
+          },
+          {
+            "board": "pcbench-kinetoscope_microcontroller",
+            "unrouted_delta": -6,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-mightyduino_mightyduino",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": 8
+          },
+          {
+            "board": "pcbench-nfl-led-scoreboard_passive-rpi-hub75-adapter",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-pmw3360-pcb_pmw3360_pcb_jst",
+            "unrouted_delta": 0,
+            "violations_delta": 1,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-preamp-two_input-selector",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-pwm-2420-lus_pwm-2420-lus",
+            "unrouted_delta": 1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-rp2040-dmxsun_baseboard_2slots",
+            "unrouted_delta": 0,
+            "violations_delta": 3,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-rp2040-dmxsun_baseboard_4slots",
+            "unrouted_delta": 0,
+            "violations_delta": -3,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-rs485-moist-sensor_rs485-moist-sensor",
+            "unrouted_delta": -3,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-rxadc_14_rxadc_14",
+            "unrouted_delta": -3,
+            "violations_delta": 0,
+            "mask_delta": 2
+          },
+          {
+            "board": "pcbench-stm32_ccd_camera_ccd",
+            "unrouted_delta": -2,
+            "violations_delta": -1,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-uSKY_uSKY",
+            "unrouted_delta": 3,
+            "violations_delta": 0,
+            "mask_delta": 0
+          }
+        ]
+      },
+      "local": {
+        "all": {
+          "boards": 11,
+          "unrouted": {
+            "baseline": 226,
+            "candidate": 230,
+            "delta": 4,
+            "improved": 0,
+            "regressed": 2
+          },
+          "violations": {
+            "baseline": 57,
+            "candidate": 58,
+            "delta": 1,
+            "improved": 0,
+            "regressed": 1
+          },
+          "mask": {
+            "baseline": 0,
+            "candidate": 0,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "cpu_s": {
+            "baseline": 778.18,
+            "candidate": 786.55,
+            "delta": 8.370000000000005,
+            "improved": 3,
+            "regressed": 8
+          },
+          "cpu_ratio": 1.010755866252024,
+          "completed": [
+            10,
+            10
+          ],
+          "fully_connected": [
+            8,
+            7
+          ],
+          "rss_median_mb": [
+            13.5,
+            12.1
+          ],
+          "rss_max_mb": [
+            67.3,
+            124.5
+          ]
+        },
+        "both_completed": {
+          "boards": 10,
+          "unrouted": {
+            "baseline": 226,
+            "candidate": 229,
+            "delta": 3,
+            "improved": 0,
+            "regressed": 1
+          },
+          "violations": {
+            "baseline": 57,
+            "candidate": 58,
+            "delta": 1,
+            "improved": 0,
+            "regressed": 1
+          },
+          "mask": {
+            "baseline": 0,
+            "candidate": 0,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "cpu_s": {
+            "baseline": 479.93999999999994,
+            "candidate": 488.54,
+            "delta": 8.60000000000008,
+            "improved": 2,
+            "regressed": 8
+          },
+          "cpu_ratio": 1.0179189065299832,
+          "completed": [
+            10,
+            10
+          ],
+          "fully_connected": [
+            7,
+            7
+          ],
+          "rss_median_mb": [
+            12.75,
+            12.1
+          ],
+          "rss_max_mb": [
+            42.1,
+            42.7
+          ]
+        },
+        "changed_completed": [
+          {
+            "board": "kicad-issue184-motorizedopener--motorizedopener",
+            "unrouted_delta": 3,
+            "violations_delta": 1,
+            "mask_delta": 0
+          }
+        ]
+      }
+    },
+    "control-vs-coupled": {
+      "pcbench": {
+        "all": {
+          "boards": 740,
+          "unrouted": {
+            "baseline": 4474,
+            "candidate": 4319,
+            "delta": -155,
+            "improved": 44,
+            "regressed": 17
+          },
+          "violations": {
+            "baseline": 655,
+            "candidate": 652,
+            "delta": -3,
+            "improved": 10,
+            "regressed": 8
+          },
+          "mask": {
+            "baseline": 10970,
+            "candidate": 10870,
+            "delta": -100,
+            "improved": 11,
+            "regressed": 10
+          },
+          "cpu_s": {
+            "baseline": 34513.009999999995,
+            "candidate": 32477.83000000002,
+            "delta": -2035.1799999999748,
+            "improved": 308,
+            "regressed": 355
+          },
+          "cpu_ratio": 0.9410315124644308,
+          "completed": [
+            710,
+            716
+          ],
+          "fully_connected": [
+            589,
+            599
+          ],
+          "rss_median_mb": [
+            12.1,
+            12.1
+          ],
+          "rss_max_mb": [
+            372.4,
+            372.4
+          ]
+        },
+        "both_completed": {
+          "boards": 710,
+          "unrouted": {
+            "baseline": 1088,
+            "candidate": 1049,
+            "delta": -39,
+            "improved": 29,
+            "regressed": 12
+          },
+          "violations": {
+            "baseline": 547,
+            "candidate": 546,
+            "delta": -1,
+            "improved": 7,
+            "regressed": 6
+          },
+          "mask": {
+            "baseline": 8663,
+            "candidate": 8571,
+            "delta": -92,
+            "improved": 7,
+            "regressed": 6
+          },
+          "cpu_s": {
+            "baseline": 25547.73999999998,
+            "candidate": 23885.970000000034,
+            "delta": -1661.7699999999459,
+            "improved": 298,
+            "regressed": 335
+          },
+          "cpu_ratio": 0.9349543247269643,
+          "completed": [
+            710,
+            710
+          ],
+          "fully_connected": [
+            584,
+            593
+          ],
+          "rss_median_mb": [
+            12.1,
+            12.1
+          ],
+          "rss_max_mb": [
+            372.4,
+            372.4
+          ]
+        },
+        "changed_completed": [
+          {
+            "board": "pcbench-8bit-cpu_arduino_eeprom_programmer",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-8bit-cpu_programming_interface",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": -31
+          },
+          {
+            "board": "pcbench-APM-RPi-Shield_APM-RPi-Shield",
+            "unrouted_delta": 0,
+            "violations_delta": -2,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-ATtiny461Breakout_ATTiny461DevBoard",
+            "unrouted_delta": 0,
+            "violations_delta": -1,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-CATs-Eurosynth_Abakus_Main",
+            "unrouted_delta": -7,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-Curryboard_Curryboard",
+            "unrouted_delta": 0,
+            "violations_delta": -2,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-ESP07-Breakout_ESP07-Breakout",
+            "unrouted_delta": 0,
+            "violations_delta": 1,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-EnvOpenPico_EliteMicro2040",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-EuroPi_europi-surface-mount",
+            "unrouted_delta": -2,
+            "violations_delta": -3,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-FRM16_Relay_Module_I2C_Controller_relay_controller",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": -41
+          },
+          {
+            "board": "pcbench-Feather-ICE40-PCB_feather_ice40",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-GameTiger_GameTiger",
+            "unrouted_delta": 1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-Hardware_Playground_minimal_node_rfm69w",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-Hubble_12_bit_analog_out",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-Hubble_mux",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-LPC2148_Stick_LPC2148_stick",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-LPC2148_Stick__autosave-LPC2148_stick",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-Mechaduino-DR_Mechaduino DR 1.01",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": 1
+          },
+          {
+            "board": "pcbench-Mouse_Mouse",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield",
+            "unrouted_delta": 2,
+            "violations_delta": 4,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-Own-Mailbox-Hardware_eth",
+            "unrouted_delta": 1,
+            "violations_delta": 0,
+            "mask_delta": -3
+          },
+          {
+            "board": "pcbench-Own-Mailbox-Hardware_mailbox",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": -22
+          },
+          {
+            "board": "pcbench-Patternflow_patternflow",
+            "unrouted_delta": 0,
+            "violations_delta": 1,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-RC6502-Apple-1-Replica_RC6502_Terminal",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-RetroWiFiModem_RetroWiFiModem",
+            "unrouted_delta": 0,
+            "violations_delta": -1,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-SOICbite_SOICbite_SWD",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-TB6600StepperDriver_DEW_TB6600-V1",
+            "unrouted_delta": 2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-TLPHnodeV2_TLPHnodeV2",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": -5
+          },
+          {
+            "board": "pcbench-Teensy-3.5-Breakout-Boaard_TeensyMegaIoShield",
+            "unrouted_delta": 1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-VC4000MultiROM_MultiRomCard",
+            "unrouted_delta": -2,
+            "violations_delta": 2,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-avr_ledprojector_avr_ledprojection-0402",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-azalea_azalea",
+            "unrouted_delta": 4,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-badge2016_Badge_init",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": 9
+          },
+          {
+            "board": "pcbench-boatcontrol_NonLatchingNO30A",
+            "unrouted_delta": 6,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-cnlohr_wiflier",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-cnlohr_wiflier_B",
+            "unrouted_delta": 3,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-epaper-102_epaper-102",
+            "unrouted_delta": 1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-fifogfx_c64cart",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": 1
+          },
+          {
+            "board": "pcbench-free-of-charge_BMS",
+            "unrouted_delta": -4,
+            "violations_delta": 0,
+            "mask_delta": -4
+          },
+          {
+            "board": "pcbench-freeDSP-CLASSIC-SMD-BALANCED_FreeDSP_BAL",
+            "unrouted_delta": -3,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-gb-hardware_GB-BRK-M-XS",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-gb-hardware_GB-CART256K-A",
+            "unrouted_delta": -3,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-gb-hardware_GB-CARTPP-XC",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-gb-hardware_GB-LIVE32",
+            "unrouted_delta": -5,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-gb-hardware_GB-MBCTEST",
+            "unrouted_delta": 1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-headstage-adapter_headstage adapter",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": -9
+          },
+          {
+            "board": "pcbench-kinetoscope_microcontroller",
+            "unrouted_delta": -6,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-mightyduino_mightyduino",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": 8
+          },
+          {
+            "board": "pcbench-nfl-led-scoreboard_passive-rpi-hub75-adapter",
+            "unrouted_delta": -2,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-pmw3360-pcb_pmw3360_pcb_jst",
+            "unrouted_delta": 0,
+            "violations_delta": 1,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-preamp-two_input-selector",
+            "unrouted_delta": -1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-pwm-2420-lus_pwm-2420-lus",
+            "unrouted_delta": 1,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-rp2040-dmxsun_baseboard_2slots",
+            "unrouted_delta": 0,
+            "violations_delta": 3,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-rp2040-dmxsun_baseboard_4slots",
+            "unrouted_delta": 0,
+            "violations_delta": -3,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-rs485-moist-sensor_rs485-moist-sensor",
+            "unrouted_delta": -3,
+            "violations_delta": 0,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-rxadc_14_rxadc_14",
+            "unrouted_delta": -3,
+            "violations_delta": 0,
+            "mask_delta": 2
+          },
+          {
+            "board": "pcbench-stm32_ccd_camera_ccd",
+            "unrouted_delta": -2,
+            "violations_delta": -1,
+            "mask_delta": 0
+          },
+          {
+            "board": "pcbench-timecircuits-hardware_BTTF-TimeCircuits",
+            "unrouted_delta": 0,
+            "violations_delta": 0,
+            "mask_delta": 2
+          },
+          {
+            "board": "pcbench-uSKY_uSKY",
+            "unrouted_delta": 3,
+            "violations_delta": 0,
+            "mask_delta": 0
+          }
+        ]
+      },
+      "local": {
+        "all": {
+          "boards": 11,
+          "unrouted": {
+            "baseline": 226,
+            "candidate": 230,
+            "delta": 4,
+            "improved": 0,
+            "regressed": 2
+          },
+          "violations": {
+            "baseline": 57,
+            "candidate": 58,
+            "delta": 1,
+            "improved": 0,
+            "regressed": 1
+          },
+          "mask": {
+            "baseline": 0,
+            "candidate": 0,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "cpu_s": {
+            "baseline": 783.06,
+            "candidate": 786.55,
+            "delta": 3.490000000000009,
+            "improved": 6,
+            "regressed": 3
+          },
+          "cpu_ratio": 1.0044568743135902,
+          "completed": [
+            10,
+            10
+          ],
+          "fully_connected": [
+            8,
+            7
+          ],
+          "rss_median_mb": [
+            13.6,
+            12.1
+          ],
+          "rss_max_mb": [
+            83.0,
+            124.5
+          ]
+        },
+        "both_completed": {
+          "boards": 10,
+          "unrouted": {
+            "baseline": 226,
+            "candidate": 229,
+            "delta": 3,
+            "improved": 0,
+            "regressed": 1
+          },
+          "violations": {
+            "baseline": 57,
+            "candidate": 58,
+            "delta": 1,
+            "improved": 0,
+            "regressed": 1
+          },
+          "mask": {
+            "baseline": 0,
+            "candidate": 0,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "cpu_s": {
+            "baseline": 484.68,
+            "candidate": 488.54,
+            "delta": 3.8600000000000136,
+            "improved": 5,
+            "regressed": 3
+          },
+          "cpu_ratio": 1.00796401749608,
+          "completed": [
+            10,
+            10
+          ],
+          "fully_connected": [
+            7,
+            7
+          ],
+          "rss_median_mb": [
+            12.8,
+            12.1
+          ],
+          "rss_max_mb": [
+            45.7,
+            42.7
+          ]
+        },
+        "changed_completed": [
+          {
+            "board": "kicad-issue184-motorizedopener--motorizedopener",
+            "unrouted_delta": 3,
+            "violations_delta": 1,
+            "mask_delta": 0
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "main": {
+    "unrouted": 1,
+    "copper": 30,
+    "types": {
+      "track_width": 30
+    },
+    "cpu_s": 161.35
+  },
+  "control": {
+    "unrouted": 1,
+    "copper": 30,
+    "types": {
+      "track_width": 30
+    },
+    "cpu_s": 161.88
+  },
+  "guard": {
+    "unrouted": 1,
+    "copper": 30,
+    "types": {
+      "track_width": 30
+    },
+    "cpu_s": 161.96
+  },
+  "corridor": {
+    "unrouted": 3,
+    "copper": 54,
+    "types": {
+      "shorting_items": 12,
+      "clearance": 8,
+      "track_width": 34
+    },
+    "cpu_s": 192.75
+  },
+  "corridor-guard": {
+    "unrouted": 3,
+    "copper": 34,
+    "types": {
+      "track_width": 34
+    },
+    "cpu_s": 177.06
+  }
+}

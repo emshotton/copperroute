@@ -1,0 +1,29 @@
+   Compiling copper-router v0.1.0 (/Users/em/Development/freerouting/copperroute-shove-revalidation/crates/copper-router)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.38s
+     Running tests/shove_revalidation.rs (/Users/em/Development/freerouting/copperroute-congestion-study/target/debug/deps/shove_revalidation-3db121fde1d1f46f)
+
+running 3 tests
+
+running 1 test
+
+running 1 test
+
+running 1 test
+test clear_multisegment_prefix_remains_routable ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 1.63s
+
+test clear_multisegment_prefix_remains_routable ... ok
+test corridor_guidance_also_revalidates_paths ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 1.77s
+
+test captured_forced_polyline_must_not_short_another_net ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 1.77s
+
+test corridor_guidance_also_revalidates_paths ... ok
+test captured_forced_polyline_must_not_short_another_net ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.77s
+
