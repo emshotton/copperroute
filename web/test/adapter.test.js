@@ -19,6 +19,14 @@ const rules = {
   viaDrill: 0.25,
 };
 const load = (text) => importBoard(text, "example", rules);
+test("effective mask expansion survives on copper pads without mask openings", () => {
+  const text = source
+    .replace('(pad "1" thru_hole circle', '(pad "1" thru_hole circle (solder_mask_margin 0.2)')
+    .replace('(layers "*.Cu" "*.Mask")', '(layers "*.Cu")');
+  const pad = load(text).board.components[0].pads[0];
+  assert.deepEqual(pad.solderMaskExpansion, {});
+  assert.deepEqual(pad.effectiveSolderMaskExpansion, { "F.Mask": 0.2, "B.Mask": 0.2 });
+});
 test("mask margins inherit by scope while explicit zero and exposed sides survive", () => {
   const input = source
     .replace("(pad_to_mask_clearance 0)", "(pad_to_mask_clearance 0.2)")

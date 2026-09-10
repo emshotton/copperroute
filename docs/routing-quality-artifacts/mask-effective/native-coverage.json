@@ -1,0 +1,414 @@
+{
+  "source": "native-05 inherited initial native import failures; not a new import attempt",
+  "corpus_boards": 751,
+  "supported": 549,
+  "excluded": 202,
+  "groups": [
+    {
+      "reason": "The Edge.Cuts outline is not closed.",
+      "count": 69,
+      "boards": [
+        "pcbench-655_testboard",
+        "pcbench-APM-RPi-Shield_APM-RPi-Shield",
+        "pcbench-BirthdayCakeKeyboard_10Key",
+        "pcbench-Box0-hv-analog-breakoutboard_breakout",
+        "pcbench-Curryboard_Curryboard",
+        "pcbench-DIYDAC_DIYDAC",
+        "pcbench-DerKnopf_led-ring",
+        "pcbench-ESP_WiFiSwitch_WifiSwitch",
+        "pcbench-GameTiger_GameTiger",
+        "pcbench-Hangul-Clock_Hangul",
+        "pcbench-Hardware_Playground_buck_led_driver",
+        "pcbench-Hardware_Playground_minimal_node_rfm69w",
+        "pcbench-Hardware_Playground_pro_mini",
+        "pcbench-Hardware_Playground_wifi_lights",
+        "pcbench-HillhacksLantern_LEDLantern",
+        "pcbench-KosselHotendBoard_KosselHotendPCB",
+        "pcbench-L6235-PCB_L6235",
+        "pcbench-LadyBugShield_LBS-TEST1",
+        "pcbench-LadybugLiteBlue_HW_LadybugBlueLite",
+        "pcbench-OpenVNAVI_driver unit",
+        "pcbench-Paperino_HW_Paperino_shield",
+        "pcbench-Paperino_HW_paperino_breakout",
+        "pcbench-Pi1541io_Pi1541io",
+        "pcbench-Raspberry-Pi-Soft-Power-Controller_Zero Current Soft Power",
+        "pcbench-SimpleCPLD_SimpleCPLD",
+        "pcbench-SmartLaserCO2-PCB_LaserPointer",
+        "pcbench-Starling__autosave-Starling WiPSU ver_0.1",
+        "pcbench-Teensy-3.5-Breakout-Boaard_Test",
+        "pcbench-VC4000MultiROM_MultiRomCard",
+        "pcbench-WeatherSpot_vreg_pressure",
+        "pcbench-audio_relay_input_switch_relay_switch",
+        "pcbench-autohat-board_inverted-usd-adapter",
+        "pcbench-autohat-board_usd-adapter",
+        "pcbench-board_armjtag_pmod_compatible_armjtag-pmod",
+        "pcbench-cookiecutter-xsproduct_{{cookiecutter.product_name}}",
+        "pcbench-decelerator4030_decelerator4030",
+        "pcbench-esp32stack_esp32stack",
+        "pcbench-espalarm_alarm",
+        "pcbench-espionage_esplight",
+        "pcbench-fp2_extension_sample_fp2_usb_breakout",
+        "pcbench-ftdi-jtag-programmer_JTAGProgrammer",
+        "pcbench-gwurrbus_pwm",
+        "pcbench-icehat_icehat",
+        "pcbench-jdy-08-board_jdy-08",
+        "pcbench-kicad-projects_BatCharge",
+        "pcbench-kitspace_CO2",
+        "pcbench-kitspace_piezo_amplifier",
+        "pcbench-m2-electronics_m2fc",
+        "pcbench-m2-electronics_m2pogo",
+        "pcbench-mdbwerk_mdbwerk",
+        "pcbench-memory-display_memory-display",
+        "pcbench-mobile-sensor-pcb_mobile-sensor-pcb",
+        "pcbench-oled-bmp280-touch_oled-bmp280-touch",
+        "pcbench-opentilt_opentilt2",
+        "pcbench-pico-pi-rel_pico-pi",
+        "pcbench-rotary-encoder-breakout_rotary-encoder-breakout",
+        "pcbench-split-pcb-throughole_splanck throughhole",
+        "pcbench-ssr-wifi_adapter",
+        "pcbench-technoshield-ui-hw_technoshield",
+        "pcbench-teensy-touch_teensy-touch",
+        "pcbench-teensy-weather-badge_teensyi2c",
+        "pcbench-teensy-wifi-weather-logger_teensyi2c",
+        "pcbench-temperature-alarm_controller",
+        "pcbench-tepmachcha_tepmachcha",
+        "pcbench-thingBot-LoRa_thingBot-LoRa_v1P0",
+        "pcbench-thingBot-LoRa_thingBot-LoRa_v1P1",
+        "pcbench-uC3Moy_uC3Moy",
+        "pcbench-uSKY_uSKY",
+        "pcbench-wifiLCD_wifilcd"
+      ]
+    },
+    {
+      "reason": "Unsupported board outline object: target",
+      "count": 25,
+      "boards": [
+        "pcbench-LAUNCHXL-F28027-isolation-PCB_project1",
+        "pcbench-S4A-Mini-board_s4a-mini-board",
+        "pcbench-UProgrammer-Hardware_Programmer",
+        "pcbench-kassenautomat.mdb-interface_mdb-interface",
+        "pcbench-kitspace_12_24_boost_converter",
+        "pcbench-kitspace_4_switch_array",
+        "pcbench-kitspace_8_switch_array",
+        "pcbench-kitspace_Lcr_addon",
+        "pcbench-kitspace_PSLab",
+        "pcbench-kitspace_RPi_shield",
+        "pcbench-kitspace_beehive",
+        "pcbench-kitspace_flypi",
+        "pcbench-kitspace_gas_sensor",
+        "pcbench-kitspace_hbridge_driver",
+        "pcbench-kitspace_hp_led_switch",
+        "pcbench-kitspace_hum_temp_sensor",
+        "pcbench-kitspace_led_driver",
+        "pcbench-kitspace_level_shifter",
+        "pcbench-kitspace_pmt_combiner",
+        "pcbench-kitspace_power_supply",
+        "pcbench-kitspace_solenoid_driver",
+        "pcbench-kitspace_spike_n_hold",
+        "pcbench-kitspace_training_board_v02",
+        "pcbench-kitspace_trans_switch_volt_amp",
+        "pcbench-rs485-moist-sensor_rs485-moist-sensor"
+      ]
+    },
+    {
+      "reason": "Footprint copper graphics are not supported yet.",
+      "count": 15,
+      "boards": [
+        "pcbench-DC25_DC25",
+        "pcbench-MSGEQ7-Breakout-Board_MSGEQ7_Breakout_Board",
+        "pcbench-NavigationThing_NavigationThing",
+        "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield_Test_Board",
+        "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield_Test_Board_all_panelled",
+        "pcbench-PCB_constant_current_ac_hv",
+        "pcbench-SMDBreakouts_smd_breakout",
+        "pcbench-SMDBreakouts_smd_breakout_quad",
+        "pcbench-busblaster-to-swd_busblaster-to-swd",
+        "pcbench-disco-dongle_DiscoDongle",
+        "pcbench-dorkyboard_keyboard",
+        "pcbench-kitspace_ardfpga",
+        "pcbench-komputer-klavier_KomputerKlavier",
+        "pcbench-thatmicpre_thatmicpre_v1",
+        "pcbench-thatmicpre_thatmicpre_v2"
+      ]
+    },
+    {
+      "reason": "Invalid or excessive board coordinate.",
+      "count": 14,
+      "boards": [
+        "kicad-issue742-tastexx-pcb--tastexx-pcb",
+        "pcbench-DasBlinkinput_Das Blinkinput",
+        "pcbench-Inhibition_amplifier",
+        "pcbench-SNAP-Badge_SNAP_badge",
+        "pcbench-TLPHnodeV2_TLPHnodeV2",
+        "pcbench-UltrasonicSystem_Schematic",
+        "pcbench-bpnode-bb_BPnode-BB",
+        "pcbench-divergence_meter_dm_control",
+        "pcbench-esp32-ethernet_esp32-ethernet",
+        "pcbench-fingerprint-with-esp32_quet van tay",
+        "pcbench-kitspace_minisumo_v3",
+        "pcbench-lfi-rig_lfi-driver",
+        "pcbench-m2-electronics_m2r",
+        "pcbench-wavegen_rev3"
+      ]
+    },
+    {
+      "reason": "Zone keepouts that restrict tracks or vias are not supported for routing yet.",
+      "count": 10,
+      "boards": [
+        "kicad-issue180-test--test",
+        "pcbench-8bit-cpu_arduino_eeprom_programmer",
+        "pcbench-8bit-cpu_programming_interface",
+        "pcbench-esp8266-for-uppatvind_Air-Purifier-Uppatvind",
+        "pcbench-esper_EsperDNS",
+        "pcbench-kinetoscope_microcontroller",
+        "pcbench-kinetoscope_sram-bank",
+        "pcbench-project-hydra-meshtastic-pcb_meshtastic-diy",
+        "pcbench-rp2040-dmxsun_baseboard_2slots",
+        "pcbench-rp2040-dmxsun_baseboard_4slots"
+      ]
+    },
+    {
+      "reason": "Footprint zones are not supported yet.",
+      "count": 9,
+      "boards": [
+        "kicad-issue558-dev-board-autoroute-demo--dev-board",
+        "pcbench-AIOsense_AIOsense",
+        "pcbench-Doorman_doorman_slot",
+        "pcbench-EEGFrontier_EEGFrontier",
+        "pcbench-EuroPi_europi-surface-mount",
+        "pcbench-ergo-snm-keyboard_receiver",
+        "pcbench-esp32-4-channel-relays_esp32-4-channel-relays",
+        "pcbench-pmw3360-pcb_pmw3360_pcb_jst",
+        "pcbench-pusheenz40_sadcatz40"
+      ]
+    },
+    {
+      "reason": "Netless copper zones are not supported for routing yet.",
+      "count": 8,
+      "boards": [
+        "pcbench-CATs-Eurosynth_4CH_Mixer",
+        "pcbench-CATs-Eurosynth_APC_Eurorack_Main",
+        "pcbench-CATs-Eurosynth_Baby_8",
+        "pcbench-CATs-Eurosynth_Buffered_Multiple_Main",
+        "pcbench-CATs-Eurosynth_Clock_Divider_Main",
+        "pcbench-CATs-Eurosynth_YuSynth_Improved_Steiner_VCF_Main",
+        "pcbench-TK44_TK44",
+        "pcbench-azalea_azalea"
+      ]
+    },
+    {
+      "reason": "Only plated slots with positive dimensions are supported.",
+      "count": 8,
+      "boards": [
+        "pcbench-CATs-Eurosynth_Arduino_VCO_Main",
+        "pcbench-CATs-Eurosynth_HAGIWO_Ring_Modulator_Main",
+        "pcbench-CATs-Eurosynth_MFOS_Eight_Stage_Phase_Shifter_-_Control",
+        "pcbench-HW-AC-Emeter_ac-power-monitor",
+        "pcbench-ISO-port_ch340-usb-serial-isolated",
+        "pcbench-analog_esr_meter_esr_meter_rev_a",
+        "pcbench-hwstar_ac-power-monitor",
+        "pcbench-rgb2ypbpr_rgb2ypbpr"
+      ]
+    },
+    {
+      "reason": "Degenerate Edge.Cuts outline.",
+      "count": 5,
+      "boards": [
+        "pcbench-Hardware_Playground_serial_gw_maple_mini",
+        "pcbench-ULPI-Pmod_ULPI-Pmod",
+        "pcbench-bikedar_bikedar",
+        "pcbench-domotics_base-board-arranged",
+        "pcbench-mightyduino_mightyduino"
+      ]
+    },
+    {
+      "reason": "Unsupported pad U1.2: smd/trapezoid",
+      "count": 4,
+      "boards": [
+        "pcbench-gb-hardware_GB-LIVE32",
+        "pcbench-kitspace__autosave-nunchuk_breakout",
+        "pcbench-kitspace_nunchuk_breakout",
+        "pcbench-miniboard-opamp_miniboard-opamp"
+      ]
+    },
+    {
+      "reason": "Custom pads require one filled convex polygon.",
+      "count": 3,
+      "boards": [
+        "pcbench-gb-hardware_GB-CART256K-A",
+        "pcbench-gb-hardware_GB-CARTPP-XC",
+        "pcbench-keyboards_Djinn"
+      ]
+    },
+    {
+      "reason": "Custom polygon pads require a circular anchor and nonnegative stroke.",
+      "count": 3,
+      "boards": [
+        "pcbench-DonCon2040_DonConPad",
+        "pcbench-karabas-nano_karabas-nano-revC",
+        "pcbench-karabas-nano_karabas-nano-revG"
+      ]
+    },
+    {
+      "reason": "Unsupported pad JP1.1: smd/trapezoid",
+      "count": 3,
+      "boards": [
+        "pcbench-BB-PWR-3608_BB-PWR-3608_revA",
+        "pcbench-badge2016_Badge_init",
+        "pcbench-hm-mod-rpi-rtc_hm-mod-rpi-rtc"
+      ]
+    },
+    {
+      "reason": "Unsupported pad SMA_E1.1: connect/trapezoid",
+      "count": 3,
+      "boards": [
+        "pcbench-RX5808_diversityModule",
+        "pcbench-RX5808_rx5808_4button",
+        "pcbench-TX5823_TX5823"
+      ]
+    },
+    {
+      "reason": "Net ties are not supported yet.",
+      "count": 2,
+      "boards": [
+        "pcbench-OSHW-reCamera-Series_reCamera_Basically_Board",
+        "pcbench-gb-hardware_GB-MBCTEST"
+      ]
+    },
+    {
+      "reason": "Unsupported board outline object: gr_text",
+      "count": 2,
+      "boards": [
+        "pcbench-TB6600StepperDriver_DEW_TB6600-V1",
+        "pcbench-epapercard_epapercard"
+      ]
+    },
+    {
+      "reason": "Unsupported copper layer type: jumper",
+      "count": 2,
+      "boards": [
+        "kicad-issue184-motorizedopener--motorizedopener",
+        "pcbench-filament_extruder_sensor"
+      ]
+    },
+    {
+      "reason": "Curved tracks are not supported yet.",
+      "count": 1,
+      "boards": [
+        "pcbench-Pi5_PCIe_Pi5_PCIe"
+      ]
+    },
+    {
+      "reason": "Degenerate outline arc.",
+      "count": 1,
+      "boards": [
+        "pcbench-kitspace_OSO-BOOK-C1"
+      ]
+    },
+    {
+      "reason": "Invalid routing rules.",
+      "count": 1,
+      "boards": [
+        "pcbench-hackaday_esp-14_power_meter__autosave-esp-14"
+      ]
+    },
+    {
+      "reason": "Unsupported board outline object: dimension",
+      "count": 1,
+      "boards": [
+        "pcbench-DaWeather---Project__autosave-CarteDaWeather"
+      ]
+    },
+    {
+      "reason": "Unsupported board outline object: gr_curve",
+      "count": 1,
+      "boards": [
+        "pcbench-aciduino_aciduino_pcb"
+      ]
+    },
+    {
+      "reason": "Unsupported copper object: gr_arc",
+      "count": 1,
+      "boards": [
+        "pcbench-oasis_ledboard"
+      ]
+    },
+    {
+      "reason": "Unsupported pad C20.1: smd/trapezoid",
+      "count": 1,
+      "boards": [
+        "pcbench-helmholtz-servo_CurrentServo"
+      ]
+    },
+    {
+      "reason": "Unsupported pad D1.1: smd/trapezoid",
+      "count": 1,
+      "boards": [
+        "pcbench-eink-adapter_eink"
+      ]
+    },
+    {
+      "reason": "Unsupported pad J1.1: thru_hole/trapezoid",
+      "count": 1,
+      "boards": [
+        "pcbench-SmartLaserCO2-PCB_WaterCool"
+      ]
+    },
+    {
+      "reason": "Unsupported pad P1.1: smd/trapezoid",
+      "count": 1,
+      "boards": [
+        "pcbench-CAL430FR_CAL430F_watch"
+      ]
+    },
+    {
+      "reason": "Unsupported pad SMA_E1.1: smd/trapezoid",
+      "count": 1,
+      "boards": [
+        "pcbench-Kefersender_UKW TX"
+      ]
+    },
+    {
+      "reason": "Unsupported pad SW1.1: smd/trapezoid",
+      "count": 1,
+      "boards": [
+        "pcbench-CAL430FR_CAL430F"
+      ]
+    },
+    {
+      "reason": "Unsupported pad U1.EDGE: smd/trapezoid",
+      "count": 1,
+      "boards": [
+        "pcbench-DoroidOscillo-Board_Android_Oscilloscope"
+      ]
+    },
+    {
+      "reason": "Unsupported pad U2.2: smd/trapezoid",
+      "count": 1,
+      "boards": [
+        "pcbench-Hardware_Playground_serial_gw_ATMEGA328P"
+      ]
+    },
+    {
+      "reason": "Unsupported pad U3.2: smd/trapezoid",
+      "count": 1,
+      "boards": [
+        "pcbench-DerKnopf_power-supply"
+      ]
+    },
+    {
+      "reason": "Unsupported pad U4.1: smd/trapezoid",
+      "count": 1,
+      "boards": [
+        "pcbench-TinyTracker_ub-minimal"
+      ]
+    },
+    {
+      "reason": "Unsupported pad U4.2: smd/trapezoid",
+      "count": 1,
+      "boards": [
+        "pcbench-kitspace_USB-C-Screen-Adapter"
+      ]
+    }
+  ]
+}

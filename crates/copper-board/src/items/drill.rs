@@ -437,6 +437,7 @@ pub struct Pin {
     pub drill: DrillItemData,
     pub allow_solder_mask_bridges: bool,
     pub solder_mask_expansion: std::collections::BTreeMap<usize, i32>,
+    pub effective_solder_mask_expansion: std::collections::BTreeMap<usize, i32>,
     pub source_footprint: Option<String>,
     pub source_pad_number: Option<String>,
     pin_index: i32,
@@ -451,6 +452,7 @@ impl PartialEq for Pin {
             && self.pin_index == other.pin_index
             && self.changed_to == other.changed_to
             && self.solder_mask_expansion == other.solder_mask_expansion
+            && self.effective_solder_mask_expansion == other.effective_solder_mask_expansion
             && self.allow_solder_mask_bridges == other.allow_solder_mask_bridges
             && self.source_footprint == other.source_footprint
             && self.source_pad_number == other.source_pad_number
@@ -482,6 +484,7 @@ impl Pin {
             drill: DrillItemData::new(None),
             pin_index,
             solder_mask_expansion: Default::default(),
+            effective_solder_mask_expansion: Default::default(),
             allow_solder_mask_bridges: false,
             source_footprint: None,
             source_pad_number: None,
@@ -493,6 +496,7 @@ impl Pin {
     pub fn copy(&self, new_id: ItemId) -> Pin {
         let mut result = Pin::new(copied_header(&self.hdr, new_id), self.pin_index);
         result.solder_mask_expansion = self.solder_mask_expansion.clone();
+        result.effective_solder_mask_expansion = self.effective_solder_mask_expansion.clone();
         result.allow_solder_mask_bridges = self.allow_solder_mask_bridges;
         result.source_footprint = self.source_footprint.clone();
         result.source_pad_number = self.source_pad_number.clone();

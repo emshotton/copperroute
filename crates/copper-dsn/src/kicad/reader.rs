@@ -954,7 +954,11 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                 pin.source_footprint = pad.sourceFootprint.clone();
                 pin.source_pad_number = pad.sourcePadNumber.clone();
             }
-            if let Some(mask) = &pad.solderMaskExpansion {
+            for (effective, mask) in [
+                (false, &pad.solderMaskExpansion),
+                (true, &pad.effectiveSolderMaskExpansion),
+            ] {
+                let Some(mask) = mask else { continue };
                 for (name, expansion) in mask {
                     let layer = match name.as_str() {
                         "F.Mask" => 0,
@@ -968,8 +972,12 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                     let Some(copper_board::Item::Pin(pin)) = board.items.get_mut(&pin_id) else {
                         unreachable!()
                     };
-                    pin.solder_mask_expansion
-                        .insert(layer, distance.round() as i32);
+                    let expansions = if effective {
+                        &mut pin.effective_solder_mask_expansion
+                    } else {
+                        &mut pin.solder_mask_expansion
+                    };
+                    expansions.insert(layer, distance.round() as i32);
                 }
             }
         }
