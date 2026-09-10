@@ -141,10 +141,24 @@ impl Board {
     }
 
     pub fn raise_pin_clearance(&mut self, id: ItemId, minimum_by_layer: &[i32]) -> bool {
-        let Some(Item::Pin(pin)) = self.items.get(&id) else {
+        if !matches!(self.items.get(&id), Some(Item::Pin(_))) {
+            return false;
+        }
+        self.raise_item_clearance(id, minimum_by_layer)
+    }
+
+    pub fn raise_obstacle_clearance(&mut self, id: ItemId, minimum_by_layer: &[i32]) -> bool {
+        if !matches!(self.items.get(&id), Some(Item::ObstacleArea(_))) {
+            return false;
+        }
+        self.raise_item_clearance(id, minimum_by_layer)
+    }
+
+    fn raise_item_clearance(&mut self, id: ItemId, minimum_by_layer: &[i32]) -> bool {
+        let Some(item) = self.items.get(&id) else {
             return false;
         };
-        let base = pin.hdr.clearance_class();
+        let base = item.clearance_class();
         let matrix = &mut self.rules.clearance_matrix;
         let layers = matrix.get_layer_count();
         if minimum_by_layer.len() != layers || minimum_by_layer.iter().any(|v| *v < 0) {

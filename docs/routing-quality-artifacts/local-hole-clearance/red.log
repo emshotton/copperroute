@@ -1,0 +1,24 @@
+   Compiling copperroute v0.1.0 (/Users/em/Development/freerouting/copperroute-local-hole-clearance/crates/copperroute)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.58s
+     Running unittests src/lib.rs (/tmp/quality-local-hole-tests/debug/deps/copperroute-8bafb73b2d1b6c9b)
+
+running 1 test
+test ops::load::pad_clearance_tests::local_hole_rule_accounts_for_existing_keepout_padding ... FAILED
+
+failures:
+
+---- ops::load::pad_clearance_tests::local_hole_rule_accounts_for_existing_keepout_padding stdout ----
+
+thread 'ops::load::pad_clearance_tests::local_hole_rule_accounts_for_existing_keepout_padding' (4460418) panicked at crates/copperroute/src/ops/load.rs:326:17:
+assertion `left == right` failed: 1.725mm local rule minus 0.250mm padding already in the keepout
+  left: 2500
+ right: 14750
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    ops::load::pad_clearance_tests::local_hole_rule_accounts_for_existing_keepout_padding
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 25 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p copperroute --lib`

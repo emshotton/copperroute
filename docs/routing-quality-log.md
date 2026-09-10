@@ -3588,3 +3588,51 @@ quality-epyc-image-pad-full-01 finished2253KiCadok. Againstpadcontrol (productio
 Details pulledlocally;workbenchbackup underway. SourcePR31postmainworkspacealready2587passed77ignored0failed. Fourboardlocalholepilotdriver2320983 launched afterfullrun; noholequalityclaimyet. Itsinputvalidation andfrozenbinarybuildserialized; sixfocusedtests pass.
 
 PR31 finalmain audit:599baselinefiles matchcurrentmain028f0a5 and600candidatefiles matchfrozencombinedsnapshot,includingcratesource/testdata/manifests. Initialaudit mistakenly usedcandidatefilelistforbaseline and failed on the intentionallynew Rusttreeorderfile; corrected separatefilelists,completeverificationpasses. Generatedreport17qualitylosses retained. Updatedmerge rationale completed−15U/−46Cu; fourordinary+1U boards,twocompleted+1Cugainers explicit. Freshsuite2587passed77ignored0failed verified. Publishing integratedPR31 forauthorizedmerge.
+
+### Local NPTH keepout prototype
+
+Created isolated experiment/local-hole-clearance at main028f0a5. Failing-first DSNloaderfixture initially lacked networkscope (no packagekeepoutsinserted); corrected fixture, then observed the actual defect: circularhole keepout clearance2500boardunits versusrequired14750. Two1.625mm-radius keepouts represent a2.75mm drill with0.25mm geometricpadding. New optional hole_diameter_um metadata supplies actualroundNPTHdrill; requiredextra=max(drillradius+localcopperfloor−keepoutradius,0), ceiltointegerboardunits. Appliesonly matchingcomponent/position circularObstacleAreas withdiametercontainedbykeepout. Existingpins andhigherclearancespreserved via sharedclass-floor routine behind separatepin/obstacle guards.
+
+Threefocusedloadertests pass including actualholepaddingregression andoldpin/invalidcoppertests. Added generator annotation forroundNPTHdrills withpadsize<=drill. No pilot/fullmeasurementyet; furtherguardtests andfrozeninputverificationrequired. Thisprototype is separatefrommergedPR29 andPR31. No committingbeforefullworkspace/corpusvalidation.
+
+### Local-hole guards and pilot preparation
+
+Sixfocusedloadertests pass:existingpaddingaccounting,preservationofhigherclearance,unrelated/absentdiameter/misposition/oversizeddrill no-op,invaliddiameter rejection,existingpinmaskgapandinvalidcopper tests. Fixturehelper corrections:read_board returnsBox<Board>; higher-rule assertion must restricttoObstacleAreas,notBoardOutline. No production changes were needed for these test-fixture corrections.
+
+Laptop hit ENOSPC during archive/build. Removed only task-generated disposablecompileroutputs (corridor diagnostic/test targets and completedsharedimage target) and incompletearchive; freed~2GiB. Source/resultsretained; metadata/serverbenchunaffected. Rebuiltfocusedtests successfully, regeneratedcompletearchive and finalpatch. Sharedtarget is nowempty; no fullworkspaceclaim for localholeprototype.
+
+Holemetadata generator2261394 createsseparate751boarddirectory. Pilotsetup freezesmain028f0a5+prototype, validatesonly optionalhole_diameter_um fields changeversusmetadata05 and targetboardsannotated. Fourboards:balena,esp32,Sensors,OpenHardwareExG; main/control/holes withsamecandidatebinaryforcontrol/holes. Serializedafter imagefull389871;192jobs1thread10passes300s; refereeenvandrepair/exportpresent. Noqualityclaimyet.
+
+### PR31 merged; local-hole pilot measured
+
+PR31 merged7d33cef2784b7eac2c6c341d2138b44b1b11a28a at2026-09-10T01:39:37Z, reviewedHEAD7bd10d22cefe035658009a4343fb1164a3fb16a8. Baseline028f0a5 recheckedunchanged beforemerge; source/tests/tooling equality verifiedaftermerge. Freshsuite2587passed77ignored0failed;generatedfullreport17qualitylossesretained. Completedagainstnewpadmain−15U/−46Cu; againstpre29maind84combined−14U/−186Cu. Allordinaryregressionsexplicit;originalJVMrecordingsunchanged.
+
+Localholepilot2320983 completed12KiCadok,allCOMPLETED, base028f0a5 beforeimagefix:esp32 0U1Cu→1U0Cu;balena0U2Cu→0U0Cu;Sensors0U0Cuboth;OpenHardwareExG1U30Cuboth. Thus+1U/−3Cu,supportingphysicalrulecorrectionbutnotaconnectiongainclaim. Samebinarycontrol matchesmainqualityallfour. Backedup locally/workbench.
+
+Fast-forwarded localholeworktree to newlymergedmain7d33cef without losinguncommittedprototype; preserved/reappendedownlogtail. Startedfullworkspace46860 in existingdedicatedlocalhole target (sameworktree,normalnewmainrecompile). Frozennewmainarchive+holeoverlay sentserver; fullquality-epyc-local-hole-full-01 setup launched,751eachmain/control/holes,192jobs1thread10passes300s. Baseline uses previouslyverifiedcombinedbinary equal7d33cef;control/holes same newcandidatebinary withmetadata05/holemetadata01. Inputvalidation andrefereerescore/details included. Nofullholequalityclaimyet.
+
+### Corridor clearance-capacity audit prepared
+
+Current PR27 computes lane capacity using the maximum clearance across every item class, including newlyimportedlocalpadfloors. Prepared standalone read-only audit reusing exact corridor selection and public CLIloadpipeline (projectplusold/newsidecar), reporting globalmatrixcapacity versus selectedsignal trace-class pair capacity on azalea /RESET. Unlike earlier geometric-only audit, this loads the same metadata as routing. Compilation waits for active localholeworkspacesuite to finish because it will reuse thatsame dedicatedtarget; no concurrentbuilds intoone target. No algorithmchangeorcapacityresult yet.
+
+Full localhole driver2334419 nowrouting. Inputvalidation:all751files differonlybyoptionalholediameter;22boards/183recordsannotated. No currentresultclaim. Disklow again duringfullsuite growth; removedonly four already-transferred reproducible gitarchives,keepingpatches,commitsandallmeasurementresults.
+
+### Corridor capacity hypothesis tested on azalea
+
+Public CLIload with identicalprojectfile andoldmaskmetadata versusnewlocalcoppermetadata gives exactlyequal /RESET bands. Sixsignals:globalcapacity42192boardunits,trace-paircapacity21336,terminalspan210099.5065. The projectedterminalspan dominatesacrosswidth; newmetadata doesnotchangeglobalcapacityhere. Thus the proposedpost-pad inflation doesnot explainazalea'sregression. No capacitypatchmade. Instrumentedstandalonecopy only,productionroutingunchanged; logs/source retained.
+
+Currentlocalholeworkspacesuite46860 completed2591passed77ignored0failed includingdoctests. Afterthiscompletion anddiagnosticcompletion, cleanedonlyitsdisposabletarget toavoidENOSPC. Createdexperiment/corridor-current-main at7d33cef andappliedonlythefiveoriginalPR27routerfiles (aa92bf1→98f827a). This excludes rejectedterminal-envelopeextension. Sincecorrectimage/padinput fixes have landed, remeasuretheexistingstructuralalgorithm againstcurrentmain before deciding whetheritsold ordinaryregressions persist. No currentmaincorridor resultsyet.
+
+### Hole obstacle-index review and corridor suite completed
+
+Reviewed change_clearance_class_index: clearsderiveddata and reinsertscompensatedobstacleentries; raw-shape queries readthematrix withoutcompensation. Addedactualoverlapping_items_with_clearance assertions to the originalhole regression:probeoutsideoldclearance mustbe returned afterraisingthehole rule,onbothcopperlayers. Onlytestchanged; frozenproductionunchanged. Freshfullworkspace3272running. Firstholefullsuite2591passed remains recorded; newassertionnotclaimedpassingyet. Addedmechanism/pilot/inputvalidation report with pendingfullresults.
+
+Corridor-current-main workspace3577 exits0,2592passed77ignored0failed includingdoctests. Cleareditscompletedsharedtargetbefore switchingbacktolocalholeworktree forqueryvalidation; no concurrentbuildsinsametarget. Fullhole2334419live,corridor3610920queued.
+
+### Local hole full run completed; corridor transfer repaired
+
+Full local-hole run scored all 2,253 KiCad cases and is backed up on laptop/workbench. Completed same-binary pairs: 722 boards, 0 unrouted / −9 copper; ESP32 −1U/−2Cu, balena −3Cu, bikedar −4Cu, EncoderBoard +1U. No completed copper gainers. Raw PC −433U/−8Cu/+639mask, CPU .9481; local quality unchanged, CPU .9975. All +612 completed mask differences occur on 712 byte-identical SES outputs; ten changed outputs have zero mask delta. Main/control completed outputs all identical. See local-hole report for full main comparisons. Investigate EncoderBoard before acceptance; do not claim raw timeout improvements.
+
+Current-main corridor upload omitted untracked corridor.rs, so the serialized driver stopped at compilation before routing any boards. Copied the missing file and verified all 600 crate/manifests/data hashes against the locally tested worktree; relaunched as driver 57343. No algorithm change. Local-hole query regression assertion initially failed Rust borrowing rules; fixed by collecting obstacle identifiers/classes/layers before mutable queries. Fresh workspace verification running.
+
+Local-hole final query workspace verification: 2,591 passed, 77 ignored, zero failed, including doctests. Encoder original audit: /LED14 is 28.86mm/two vias vs control 32.10mm/four vias, both >10mm from annotated mounting holes. Candidate leaves net wholly unrouted; indirect routing interaction, no outlier exemption. Generated benchmark gate fails seven quality losses and is retained.
