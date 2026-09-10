@@ -725,10 +725,13 @@ pub(crate) fn acute_add_line(
             translate_line.side_of(current_prev_end_corner),
         );
     }
-    if translate_dist < 0.99 {
+    // A one-unit move also needs the one-unit reserve below. Forcing a move
+    // when only one unit is available makes adjacent junctions chase each
+    // other through repeated smoothing and normalization.
+    if translate_dist < 2.0 {
         return None;
     }
-    translate_dist = (translate_dist - 1.0).max(1.0);
+    translate_dist -= 1.0;
     if translate_line.side_of(current_prev_end_corner) == Side::OnTheLeft {
         translate_dist = -translate_dist;
     }
@@ -748,5 +751,39 @@ pub(crate) fn trace_polyline_of(board: &Board, trace: ItemId) -> Option<Polyline
     match board.items.get(&trace) {
         Some(Item::Trace(t)) => Some(t.polyline().clone()),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod quality_tests {
+    use super::*;
+
+    #[test]
+    fn acute_smoothing_keeps_room_for_its_one_unit_reserve() {
+        let end = Point::new(0, 0);
+        let previous = Point::new(100, 100);
+        let direction = IntDirection::new(0, 1);
+        for available in [1.0, 1.5] {
+            assert!(
+                acute_add_line(
+                    1500,
+                    &end,
+                    &previous,
+                    &direction,
+                    &FloatPoint::new(available, 0.0)
+                )
+                .is_none(),
+                "a one-unit move needs another unit of reserve; available={available}"
+            );
+        }
+        let line = acute_add_line(
+            1500,
+            &end,
+            &previous,
+            &direction,
+            &FloatPoint::new(2.0, 0.0),
+        )
+        .expect("two units allow a one-unit move");
+        assert_eq!(line.signed_distance(&FloatPoint::new(0.0, 0.0)).abs(), 1.0);
     }
 }

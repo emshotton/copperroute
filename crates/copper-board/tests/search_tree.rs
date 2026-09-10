@@ -1387,3 +1387,42 @@ fn the_45_degree_override_regularises_the_outline_line_bands_too() {
         );
     }
 }
+
+#[test]
+fn a_maze_legal_gap_is_not_rejected_by_an_extra_insertion_margin() {
+    let mut f = BoardFixture::new();
+    f.items.retain(|id, _| *id == ItemId(2));
+    f.insert_all();
+    let tree = f.manager.get_default_tree();
+    let ctx = f.ctx();
+    let mut counter = 0;
+    // Pin 2 spans x=-550..-450. The maze leaves two units beyond the 200-unit
+    // rule; the uncompensated insertion query must accept the same gap.
+    let legal = tree.overlapping_tree_entries_with_clearance(
+        &bx(-248, -20, -200, 20),
+        Some(0),
+        &[],
+        1,
+        &f.items,
+        &ctx,
+        &mut counter,
+    );
+    assert!(
+        legal.is_empty(),
+        "202 units satisfies the 200-unit clearance"
+    );
+    let illegal = tree.overlapping_tree_entries_with_clearance(
+        &bx(-252, -20, -200, 20),
+        Some(0),
+        &[],
+        1,
+        &f.items,
+        &ctx,
+        &mut counter,
+    );
+    assert_eq!(
+        pairs(&illegal),
+        vec![(2, 0)],
+        "198 units still violates the rule"
+    );
+}

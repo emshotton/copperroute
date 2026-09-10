@@ -412,10 +412,14 @@ fn offering_trace_costs_does_not_change_the_trace_arms() {
 const TRANSCRIPT: &str = include_str!("data/p7t3-opt-changed-area.txt");
 
 fn transcript_mode(mode: i32) -> Vec<&'static str> {
+    recording_mode(TRANSCRIPT, mode)
+}
+
+fn recording_mode(recording: &'static str, mode: i32) -> Vec<&'static str> {
     let header = format!("######## mode {mode}");
     let mut rows = Vec::new();
     let mut inside = false;
-    for line in TRANSCRIPT.lines() {
+    for line in recording.lines() {
         if line.starts_with("######## ") {
             inside = line == header;
             continue;
@@ -527,13 +531,6 @@ fn p7t3_rows(mode: i32) -> Vec<String> {
 
 const KNOWN_ID_OFFSET: i32 = 2;
 
-const KNOWN_DIVERGENT_ROWS: [(i32, usize); 5] = [(0, 4), (1, 9), (2, 9), (3, 6), (4, 12)];
-
-const CORRECTED_PROJECTION_ROW: (&str, &str) = (
-    "item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727900,1884700)->(727901,1884700),(727900,1884700)->(727900,1789557),(727900,1789557)->(765863,1751594),(765863,1751594)->(765862,1751593)] corners=[(727900,1884700),(727900,1789557),(765863,1751594)]",
-    "item id=92 type=PolylineTrace nets=[5] cl=1 fix=UNFIXED layer=0 hw=20320 n=4 lines=[(727900,1884700)->(727901,1884700),(727900,1861335)->(727900,1861334),(692011,1825446)->(765863,1751594),(765863,1751594)->(765862,1751593)] corners=[(727900,1884700),(727900,1789557),(765863,1751594)]",
-);
-
 fn shift_ids(line: &str) -> String {
     let mut out = String::with_capacity(line.len() + 8);
     let mut rest = line;
@@ -559,71 +556,28 @@ fn shift_ids(line: &str) -> String {
     out
 }
 
-fn transcript_hash(rows: &[String]) -> u64 {
-    rows.iter()
-        .flat_map(|row| row.bytes().chain(std::iter::once(b'\n')))
-        .fold(0xcbf29ce484222325, |hash, byte| {
-            (hash ^ u64::from(byte)).wrapping_mul(0x100000001b3)
-        })
-}
-
 fn assert_mode_matches(mode: i32) {
     let actual = p7t3_rows(mode);
-    if mode == 4 {
-        assert_eq!(actual.len(), 67);
-        assert_eq!(transcript_hash(&actual), 5_281_303_262_455_261_319);
-        return;
-    }
-    let expected = transcript_mode(mode);
-    let mut diffs = Vec::new();
-    let mut accounted = 0usize;
-    let mut corrected_projection_rows = 0usize;
-    for i in 0..expected.len().max(actual.len()) {
-        let want = expected.get(i).copied().unwrap_or("<missing>");
-        let got = actual
-            .get(i)
-            .map(|row| row.trim_end())
-            .unwrap_or("<missing>");
-        if want == got {
-            continue;
-        }
-        if shift_ids(want) == got {
-            accounted += 1;
-            continue;
-        }
-        if (want, got) == CORRECTED_PROJECTION_ROW {
-            corrected_projection_rows += 1;
-            continue;
-        }
-        diffs.push(format!("row {i}\n  jvm:  {want}\n  rust: {got}"));
-    }
-    assert!(
-        diffs.is_empty(),
-        "p7t3 mode {mode}: {} of {} rows differ by more than the declared id offset\n{}",
-        diffs.len(),
-        expected.len().max(actual.len()),
-        diffs
-            .iter()
-            .take(12)
-            .cloned()
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
-    let declared = KNOWN_DIVERGENT_ROWS
-        .iter()
-        .find(|(m, _)| *m == mode)
-        .expect("every mode declares its row count")
-        .1;
-    assert_eq!(
-        accounted, declared,
-        "p7t3 mode {mode} declares {declared} row(s) carrying the +{KNOWN_ID_OFFSET} id offset \
-         but {accounted} still do — a divergence that has healed must be deleted from \
-         KNOWN_DIVERGENT_ROWS, not left to rot"
+    let expected = recording_mode(
+        include_str!("data/nominal-clearance-opt-changed-area.txt"),
+        mode,
     );
     assert_eq!(
-        corrected_projection_rows,
-        usize::from(mode <= 1),
-        "p7t3 mode {mode} corrected projection rows"
+        actual, expected,
+        "nominal-clearance optimization mode {mode}"
+    );
+    // Routing now completes connections 3 and 8 before optimization. The old
+    // +2 id allowance and one projection-row exception cannot describe this
+    // different board; retain the old transcript as evidence of that change.
+    let legacy = transcript_mode(mode);
+    assert!(legacy[2].contains("state=FAILED"));
+    assert!(actual[2].contains("state=ROUTED"));
+    assert!(legacy[7].contains("state=FAILED"));
+    assert!(actual[7].contains("state=ROUTED"));
+    assert_ne!(
+        actual,
+        legacy.iter().map(|row| shift_ids(row)).collect::<Vec<_>>(),
+        "the nominal change must remain more than a generated-id offset"
     );
 }
 

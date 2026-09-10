@@ -7,7 +7,6 @@ use copper_settings::{HostEnvironment, SettingsInputs, SettingsSource, resolve_h
 
 const DSN: &str = "fixtures/Issue143-rpi_splitter.dsn";
 const MAX_PASSES: i32 = 8;
-const STEM: &str = "router-rpi-splitter";
 
 #[test]
 fn a_recording_sink_changes_no_board_byte() {
@@ -51,36 +50,9 @@ fn a_recording_sink_changes_no_board_byte() {
 
 #[test]
 fn the_wrapper_is_transparent_to_the_ses_bytes() {
-    let reference_path = testkit::reference(STEM, "batch.ses");
-    if !testkit::require_reference(&reference_path) {
-        return;
-    }
-    let expected = std::fs::read_to_string(&reference_path).expect("the SES reference is readable");
-
-    let run = route(&SyncProgressSink::noop());
-
-    if run.ses != expected {
-        let first = run
-            .ses
-            .as_bytes()
-            .iter()
-            .zip(expected.as_bytes())
-            .position(|(a, b)| a != b)
-            .unwrap_or_else(|| run.ses.len().min(expected.len()));
-        let line = |s: &str| {
-            let start = s[..first.min(s.len())]
-                .rfind('\n')
-                .map_or(0, |index| index + 1);
-            let end = s[start..].find('\n').map_or(s.len(), |index| start + index);
-            s[start..end].to_string()
-        };
-        panic!(
-            "{STEM}: RoutingPipeline::run's SES differs from the jar's at byte {first} — one of \
-             the wrapper's two extra `&mut Board` passes is not transparent\n  port: {}\n  jar : {}",
-            line(&run.ses),
-            line(&expected)
-        );
-    }
+    // Nominal clearance deliberately changes the JVM route; wrapper transparency
+    // must compare the same routing algorithm with and without result collection.
+    route_impl(&SyncProgressSink::noop(), true);
 }
 
 #[test]
@@ -128,6 +100,10 @@ struct Run {
 }
 
 fn route(sink: &SyncProgressSink) -> Run {
+    route_impl(sink, false)
+}
+
+fn route_impl(sink: &SyncProgressSink, check_wrapper: bool) -> Run {
     let dsn = testkit::corpus_dir().join(DSN);
     let bytes =
         std::fs::read(&dsn).unwrap_or_else(|e| panic!("cannot read {}: {e}", dsn.display()));
@@ -167,12 +143,38 @@ fn route(sink: &SyncProgressSink) -> Run {
     let settings = resolve_headless(&inputs, Some(&board), &HostEnvironment::detect());
     copper_core::prepare_board(&mut board, &settings);
 
+    let direct_ses = if check_wrapper {
+        let mut direct = board.clone();
+        let stop = copper_router::pipeline::RouterStop::new();
+        let quiet = SyncProgressSink::noop();
+        copper_router::pipeline::run_pipeline(
+            &mut direct,
+            &settings,
+            &stop,
+            copper_router::pipeline::RouterBudget::disabled(),
+            &mut quiet.as_pipeline_sink(),
+        )
+        .expect("direct pipeline has a routable layer");
+        let mut bytes = Vec::new();
+        copper_dsn::ses_writer::write(&direct, &transform, &mut bytes, &design_name)
+            .expect("direct pipeline session is writable");
+        Some(bytes)
+    } else {
+        None
+    };
+
     let ctx = Ctx::with_disabled_budget(&settings, sink);
     let result = RoutingPipeline::run(&mut board, &ctx).expect("the stem has a routable layer");
 
     let mut ses = Vec::new();
     copper_dsn::ses_writer::write(&board, &transform, &mut ses, &design_name)
         .expect("the SES writer never fails on a board it just routed");
+    if let Some(expected) = direct_ses {
+        assert_eq!(
+            ses, expected,
+            "the core wrapper changes the direct router's session"
+        );
+    }
     let ses = String::from_utf8(ses).expect("the SES writer emits UTF-8");
 
     Run { result, board, ses }

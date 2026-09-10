@@ -127,6 +127,63 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
         }
     }
     apply_kicad_project(request.kicad_project.as_deref(), &mut board, &transform);
+    if let Some(path) = std::env::var_os("COPPERROUTE_PAD_CLEARANCE_JSON") {
+        #[derive(serde::Deserialize)]
+        struct PadFloor {
+            component: String,
+            pad: String,
+            x_um: f64,
+            y_um: f64,
+            front_um: f64,
+            back_um: f64,
+        }
+        let floors: Vec<PadFloor> = serde_json::from_slice(&std::fs::read(&path)?)
+            .map_err(|error| OpError::Input(format!("Invalid pad clearance metadata: {error}")))?;
+        let mut matched = std::collections::BTreeSet::new();
+        for id in board.get_pins() {
+            let Some(copper_board::items::Item::Pin(pin)) = board.get_item(id) else {
+                continue;
+            };
+            let component = &board.components.get(pin.hdr.get_component_id()).name;
+            let ctx = board.ctx();
+            let center = pin.get_center(&ctx).to_float();
+            let Some(name) = pin.name(&ctx) else { continue };
+            if let Some((index, floor)) = floors.iter().enumerate().find(|(_, f)| {
+                f.component == *component
+                    && (((center.x - f64::from(board.clearance_override_board_units(f.x_um)))
+                        .abs()
+                        <= 2.0
+                        && (center.y + f64::from(board.clearance_override_board_units(f.y_um)))
+                            .abs()
+                            <= 2.0)
+                        || (f.pad == name
+                            && floors
+                                .iter()
+                                .filter(|other| other.component == *component && other.pad == name)
+                                .count()
+                                == 1))
+            }) {
+                matched.insert(index);
+                let mut values = vec![0; board.get_layer_count()];
+                values[0] = board.clearance_override_board_units(floor.front_um);
+                let last = values.len() - 1;
+                values[last] = board.clearance_override_board_units(floor.back_um);
+                for (layer, value) in values.iter_mut().enumerate() {
+                    *value = board.solder_mask_clearance_limit(id, layer, *value);
+                }
+                board.raise_pin_clearance(id, &values);
+            }
+        }
+        for (index, floor) in floors.iter().enumerate() {
+            if !matched.contains(&index) {
+                tracing::warn!(
+                    "Pad clearance metadata did not match {}.{}",
+                    floor.component,
+                    floor.pad
+                );
+            }
+        }
+    }
     import_session(request.session.as_deref(), &mut board, &transform);
 
     job.router_settings = settings.clone();

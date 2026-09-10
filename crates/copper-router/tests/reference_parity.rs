@@ -60,7 +60,14 @@ fn row(stem: &str) -> Row {
 }
 
 fn reference_path(stem: &str) -> std::path::PathBuf {
-    testkit::reference(stem, "router.jsonl")
+    if stem == "router-rpi-splitter" {
+        // Connections 3 and 8 now insert at nominal clearance. Retain the JVM
+        // reference and compare the complete new geometry separately.
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/data/router-rpi-splitter-nominal.jsonl")
+    } else {
+        testkit::reference(stem, "router.jsonl")
+    }
 }
 
 fn read_reference(stem: &str) -> Vec<RouterConnectionDoc> {
@@ -469,6 +476,16 @@ fn router_rpi_splitter() {
         return;
     };
     assert_eq!(ladder.connections, 8);
+    let legacy = testkit::parse_router_jsonl(
+        &std::fs::read_to_string(testkit::reference("router-rpi-splitter", "router.jsonl"))
+            .unwrap(),
+    )
+    .unwrap();
+    let nominal = read_reference("router-rpi-splitter");
+    for row in [2, 7] {
+        assert_eq!(legacy[row].state, "FAILED");
+        assert_eq!(nominal[row].state, "ROUTED");
+    }
 }
 
 #[test]

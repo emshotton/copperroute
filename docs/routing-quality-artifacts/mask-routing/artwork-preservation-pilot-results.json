@@ -1,0 +1,73 @@
+[
+  {
+    "case": "stripped-control",
+    "ses_sha256": "ad5f567ace0eb837634fd85a9e236f85c1f102134510e5a86336cfe101adec30",
+    "referee": {
+      "status": "ok",
+      "referee": "kicad",
+      "reason": "",
+      "unrouted": 7,
+      "violations": 0,
+      "violations_all": 68,
+      "violations_by_type": {
+        "courtyards_overlap": 2,
+        "pth_inside_courtyard": 34,
+        "solder_mask_bridge": 32
+      },
+      "kicad_warnings": 17,
+      "vias": 14,
+      "wirelength_mm": 1519.3298,
+      "bends": null,
+      "project_used": true,
+      "zones_refilled": 3,
+      "import_skipped": []
+    }
+  },
+  {
+    "case": "preserved-referee-only",
+    "ses_sha256": "ad5f567ace0eb837634fd85a9e236f85c1f102134510e5a86336cfe101adec30",
+    "referee": {
+      "status": "ok",
+      "referee": "kicad",
+      "reason": "",
+      "unrouted": 7,
+      "violations": 26,
+      "violations_all": 62,
+      "violations_by_type": {
+        "clearance": 26,
+        "courtyards_overlap": 2,
+        "pth_inside_courtyard": 34
+      },
+      "kicad_warnings": 46,
+      "vias": 14,
+      "wirelength_mm": 1574.8252,
+      "bends": null,
+      "project_used": true,
+      "zones_refilled": null,
+      "import_skipped": []
+    }
+  },
+  {
+    "case": "copper-aware",
+    "ses_sha256": "468f50fb61eb4e87be57bf9d0383a6a8b2337d91e782165f10f56e7e9c9c4708",
+    "referee": {
+      "status": "ok",
+      "referee": "kicad",
+      "reason": "",
+      "unrouted": 3,
+      "violations": 0,
+      "violations_all": 36,
+      "violations_by_type": {
+        "courtyards_overlap": 2,
+        "pth_inside_courtyard": 34
+      },
+      "kicad_warnings": 63,
+      "vias": 19,
+      "wirelength_mm": 1505.9095,
+      "bends": null,
+      "project_used": true,
+      "zones_refilled": null,
+      "import_skipped": []
+    }
+  }
+]

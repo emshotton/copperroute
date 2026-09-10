@@ -17,13 +17,14 @@ pub fn prepare_board(board: &mut Board, settings: &RouterSettings) -> bool {
 /// Resolved settings always carry a hole clearance (zero by default), so a project
 /// minimum has to raise the applied value rather than fill in a missing one.
 pub fn raise_to_project_minimums(board: &mut Board) -> bool {
+    let mask_raised = board.raise_solder_mask_clearances();
     let Some(constraints) = board.rules.drc_constraints.as_ref() else {
-        return false;
+        return mask_raised;
     };
     let copper_edge_minimum = constraints.copper_edge_clearance;
     let hole_minimum = constraints.hole_clearance;
     let copper_raised =
         copper_edge_minimum.is_some_and(|minimum| board.raise_copper_to_edge_clearance_to(minimum));
     let hole_raised = hole_minimum.is_some_and(|minimum| board.raise_hole_clearance_to(minimum));
-    copper_raised || hole_raised
+    copper_raised || hole_raised || mask_raised
 }

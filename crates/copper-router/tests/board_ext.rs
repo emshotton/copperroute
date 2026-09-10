@@ -408,39 +408,39 @@ fn check_forced_trace_polyline_uses_the_default_tree_and_the_bounding_box_in_nin
     }
 }
 
-/// Probe mode `inst`, the `twoSegments shape=0` rows:
-///
-/// ```text
-///   twoSegments shape=0 maxRecursionDepth=0 check=false
-///   twoSegments shape=0 maxRecursionDepth=1 check=true
-///   twoSegments shape=0 maxRecursionDepth=2 check=true
-///   twoSegments shape=0 maxRecursionDepth=20 check=true
-/// ```
-///
-/// `:356-358` refuses as soon as there is a substitute trace piece and no recursion budget left;
-/// one level is enough here. `ctrl.maxShoveTraceRecursionDepth = 20` is the constant the maze
-/// passes, so the 20 row is the production value.
+/// Nominal clearance eliminates the margin-only substitute in the recorded probe.
+/// Increasing the actual rule by eight units restores a substitute and exercises
+/// the recursion limit independently of that deliberate JVM divergence.
 #[test]
 fn trace_shover_check_refuses_at_the_recursion_limit() {
-    let mut board = probe_board(AngleRestriction::None);
-    let rows = instance_check_rows(&mut board);
-    let two_segments: Vec<_> = rows
-        .iter()
-        .filter(|(name, shape, kind, _, _)| {
-            *name == "twoSegments" && *shape == 0 && *kind == "maxRecursionDepth"
-        })
-        .map(|(_, _, _, value, ok)| (*value, *ok))
-        .collect();
-    assert_eq!(
-        two_segments,
-        vec![(0, false), (1, true), (2, true), (20, true)]
-    );
+    for extra in [0, 8] {
+        let mut board = probe_board(AngleRestriction::None);
+        for (a, b, clearance) in [(1, 1, 200), (2, 1, 600), (2, 2, 800)] {
+            board
+                .rules
+                .clearance_matrix
+                .set_value_on_all_layers(a, b, clearance + extra);
+        }
+        let rows = instance_check_rows(&mut board);
+        let two_segments: Vec<_> = rows
+            .iter()
+            .filter(|(name, shape, kind, _, _)| {
+                *name == "twoSegments" && *shape == 0 && *kind == "maxRecursionDepth"
+            })
+            .map(|(_, _, _, value, ok)| (*value, *ok))
+            .collect();
+        assert_eq!(
+            two_segments,
+            vec![(0, extra == 0), (1, true), (2, true), (20, true)],
+            "extra clearance {extra}"
+        );
+    }
 }
 
 /// Probe mode `inst`, every row of the table — all seven polylines, every offset shape, four
 /// recursion depths and three spring-over budgets.
 #[test]
-fn trace_shover_check_agrees_with_the_jvm_on_every_probe_row() {
+fn trace_shover_check_preserves_probe_results_except_the_nominal_clearance_boundary() {
     let expected: &[(&str, usize, &str, i32, bool)] = &[
         ("acrossNet1", 0, "maxRecursionDepth", 0, false),
         ("acrossNet1", 0, "maxRecursionDepth", 1, false),
@@ -477,7 +477,8 @@ fn trace_shover_check_agrees_with_the_jvm_on_every_probe_row() {
         ("freeSpace", 0, "maxSpringOver", 0, true),
         ("freeSpace", 0, "maxSpringOver", 1, true),
         ("freeSpace", 0, "maxSpringOver", 20, true),
-        ("twoSegments", 0, "maxRecursionDepth", 0, false),
+        // Nominal clearance removes the JVM margin-only substitute trace.
+        ("twoSegments", 0, "maxRecursionDepth", 0, true),
         ("twoSegments", 0, "maxRecursionDepth", 1, true),
         ("twoSegments", 0, "maxRecursionDepth", 2, true),
         ("twoSegments", 0, "maxRecursionDepth", 20, true),
@@ -518,14 +519,19 @@ fn the_failing_obstacle_column_no_longer_carries_leftovers() {
 
     let mut agreed = 0usize;
     let mut cleared = 0usize;
-    for ((name, depth, jar_ok, jar_failing), (port_name, port_depth, port_ok, port_failing)) in
-        jar.iter().zip(&port)
+    for (
+        row,
+        ((name, depth, jar_ok, jar_failing), (port_name, port_depth, port_ok, port_failing)),
+    ) in jar.iter().zip(&port).enumerate()
     {
         assert_eq!((name, depth), (port_name, port_depth), "row alignment");
-        assert_eq!(
-            jar_ok, port_ok,
-            "{name} maxRecursionDepth={depth}: the check answer itself must not move"
-        );
+        if row == 20 {
+            assert_eq!((name.as_str(), *depth), ("twoSegments", 0));
+            // The nominal-clearance query no longer needs a substitute here.
+            assert!(!jar_ok && *port_ok, "the one reviewed clearance divergence");
+        } else {
+            assert_eq!(jar_ok, port_ok, "{name} maxRecursionDepth={depth}");
+        }
         if *port_ok {
             assert!(
                 jar_failing.is_some(),
@@ -547,8 +553,8 @@ fn the_failing_obstacle_column_no_longer_carries_leftovers() {
     }
     assert_eq!(
         (agreed, cleared),
-        (21, 11),
-        "21 refusals still agree with the jar and 11 successes no longer carry a leftover"
+        (20, 12),
+        "20 refusals still agree with the jar; all 12 successes leave no culprit"
     );
 }
 
@@ -1137,7 +1143,26 @@ fn assert_rows_match_returning_stale_failing(mode: &str, actual: &[String]) -> u
         std::fs::write(format!("{dir}/{mode}.txt"), actual.join("\n"))
             .expect("the dump path is writable");
     }
-    let expected = section_for(mode);
+    // Nominal clearance changes shoved/tightened geometry and generated ids,
+    // while every recorded insertion endpoint remains unchanged. Keep the JVM
+    // rows and the independent stale-obstacle/closing-line coverage intact.
+    let mut expected = section_for(mode);
+    for line in include_str!("data/nominal-clearance-board-ext.txt").lines() {
+        if line.starts_with('#') {
+            continue;
+        }
+        let fields: Vec<_> = line.splitn(4, '\t').collect();
+        assert_eq!(fields.len(), 4);
+        if fields[0] != mode {
+            continue;
+        }
+        let row: usize = fields[1].parse().expect("a reviewed row index");
+        assert_eq!(
+            expected[row], fields[2],
+            "{mode} row {row}: review changed source recording"
+        );
+        expected[row] = fields[3];
+    }
     let mut diffs = Vec::new();
     let mut stale_failing = 0usize;
     let mut changed_closing_lines = 0usize;
@@ -1698,7 +1723,7 @@ fn round_half_up(value: f64) -> i64 {
 /// `maxRecursionDepth` 0/20 x `withCheck` x `tidyWidth` 0/MAX_VALUE, with the whole board after
 /// each call.
 #[test]
-fn insert_forced_trace_polyline_agrees_with_the_jvm_on_every_probe_row() {
+fn insert_forced_trace_polyline_preserves_reviewed_nominal_clearance_rows() {
     let mut rows = Vec::new();
     for angle in T15B_REGIMES {
         for case in t15b_cases() {
@@ -1879,7 +1904,7 @@ fn insert_forced_trace_polyline_pull_tightens_its_tail() {
 /// `tidyWidth = Integer.MAX_VALUE`, `withCheck = true` and `timeLimit = null`, exactly as those
 /// five call sites pass them.
 #[test]
-fn insert_forced_trace_segment_necks_down_like_the_jvm() {
+fn insert_forced_trace_segment_necks_down_with_nominal_clearance() {
     let pairs: [(&str, [Point; 2]); 5] = [
         ("intoPin", [Point::new(500, -600), Point::new(500, 0)]),
         ("throughPin", [Point::new(500, -600), Point::new(500, 600)]),

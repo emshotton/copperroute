@@ -703,7 +703,9 @@ impl ShapeSearchTree {
                     clearance_class_index,
                     item.header().clearance_class(),
                     layer,
-                    true,
+                    // Match the nominal clearance used by the compensated maze tree.
+                    // Adding a margin here rejects paths the locator legally placed.
+                    false,
                 ),
                 None => 0,
             };
