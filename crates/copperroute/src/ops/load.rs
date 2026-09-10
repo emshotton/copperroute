@@ -218,7 +218,13 @@ fn parse_kicad_pcb_with_net_class_project(
             .map_err(|error| OpError::Input(error.to_string()))?;
     match copper_dsn::kicad::apply_net_classes(&mut imported.board, project_text) {
         Ok(()) => tracing::info!("KiCad project net classes applied"),
-        Err(error) => tracing::error!("Failed to apply KiCad project net classes: {error}"),
+        Err(error) => {
+            tracing::error!("Failed to apply KiCad project net classes: {error}");
+            imported.warnings.push(format!(
+                "KiCad project net classes could not be applied, so the board routed with \
+                 default net-class rules: {error}"
+            ));
+        }
     }
     let mut parsed =
         copper_core::parse_board_result(copper_dsn::kicad::read_board_json(imported.board, None))?;

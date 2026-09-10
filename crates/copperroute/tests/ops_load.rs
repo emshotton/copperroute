@@ -238,3 +238,39 @@ fn a_kicad_project_s_net_classes_reach_the_router_s_rules() {
         "Power's via_drill (0.2 mm) must be floored to min_through_hole_diameter (0.35 mm), got {drill_diameter}"
     );
 }
+
+#[test]
+fn a_project_net_class_failure_is_surfaced_as_a_warning_instead_of_silently_dropped() {
+    let board = netclass_project_dir().join("board.kicad_pcb");
+    let dir = scratch("broken-netclass-project");
+    let project = dir.join("project.kicad_pro");
+    std::fs::write(
+        &project,
+        r#"{"board": {"design_settings": {"rules": {}}}, "net_settings": {"classes": [{"name": "Default", "clearance": 0.2, "track_width": 0.2, "via_diameter": 0.6, "via_drill": 0.3}], "netclass_patterns": [{"pattern": "V[0-9]", "netclass": "Default"}]}}"#,
+    )
+    .expect("a broken project file");
+
+    let mut request = LoadRequest::for_board(BoardSource::Path(board));
+    request.kicad_project = Some(project);
+    let loaded = load(&request).expect("the board still loads despite the project failure");
+
+    assert!(
+        loaded
+            .warnings
+            .iter()
+            .any(|w| w.contains("Unsupported project net pattern: V[0-9]")),
+        "the apply_net_classes error must reach Loaded.warnings, got {:?}",
+        loaded.warnings
+    );
+    let default_class = loaded
+        .board
+        .rules
+        .net_classes
+        .get_by_name("default")
+        .unwrap();
+    assert_eq!(
+        default_class.get_trace_half_width(0),
+        1250,
+        "net classes fall back to the router's own defaults when the project fails to apply"
+    );
+}
