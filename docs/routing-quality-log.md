@@ -3618,3 +3618,125 @@ Merged main 7d33cef into the PR27 branch without committing; resolved running-lo
 The terminal-envelope extension was tested separately on seven completed pilot boards: +3U/−3Cu, four U regressions vs two improvements, zero copper gainers, CPU ratio1.0468. It worsened azalea42→44U and kinetoscope49→54U, while motorized61→59U and GB-LIVE32 5→1U improved. Held after negative pilot; no full run or merge of this extension. The capacity diagnostic also refuted a separate explanation for azalea: old/new pad metadata give the same /RESET band, where endpoint span210099.5065 dominates global-rule capacity42192 and trace-pair capacity21336. No capacity patch made. Source and observations retained.
 
 Current-main corridor full complete: 2253 successful KiCad referees, backups on laptop/workbench. Completed control pairs720: −45U/+22Cu; 498 identical SES account −11mask, 222 changed −66mask. OpenHardwareExG accounts +2U/+24Cu (12 shorts, eight clearance, four extra width); original 0U0Cu, no outlier exemption. Azalea41→45U/0Cu both. Keep PR27 draft. Fresh clean updated PR workspace2592passed77ignored0failed. Detailed current-main report replaces stale PR comparison.
+### Local NPTH keepout prototype
+
+Created isolated experiment/local-hole-clearance at main028f0a5. Failing-first DSNloaderfixture initially lacked networkscope (no packagekeepoutsinserted); corrected fixture, then observed the actual defect: circularhole keepout clearance2500boardunits versusrequired14750. Two1.625mm-radius keepouts represent a2.75mm drill with0.25mm geometricpadding. New optional hole_diameter_um metadata supplies actualroundNPTHdrill; requiredextra=max(drillradius+localcopperfloor−keepoutradius,0), ceiltointegerboardunits. Appliesonly matchingcomponent/position circularObstacleAreas withdiametercontainedbykeepout. Existingpins andhigherclearancespreserved via sharedclass-floor routine behind separatepin/obstacle guards.
+
+Threefocusedloadertests pass including actualholepaddingregression andoldpin/invalidcoppertests. Added generator annotation forroundNPTHdrills withpadsize<=drill. No pilot/fullmeasurementyet; furtherguardtests andfrozeninputverificationrequired. Thisprototype is separatefrommergedPR29 andPR31. No committingbeforefullworkspace/corpusvalidation.
+
+### Local-hole guards and pilot preparation
+
+Sixfocusedloadertests pass:existingpaddingaccounting,preservationofhigherclearance,unrelated/absentdiameter/misposition/oversizeddrill no-op,invaliddiameter rejection,existingpinmaskgapandinvalidcopper tests. Fixturehelper corrections:read_board returnsBox<Board>; higher-rule assertion must restricttoObstacleAreas,notBoardOutline. No production changes were needed for these test-fixture corrections.
+
+Laptop hit ENOSPC during archive/build. Removed only task-generated disposablecompileroutputs (corridor diagnostic/test targets and completedsharedimage target) and incompletearchive; freed~2GiB. Source/resultsretained; metadata/serverbenchunaffected. Rebuiltfocusedtests successfully, regeneratedcompletearchive and finalpatch. Sharedtarget is nowempty; no fullworkspaceclaim for localholeprototype.
+
+Holemetadata generator2261394 createsseparate751boarddirectory. Pilotsetup freezesmain028f0a5+prototype, validatesonly optionalhole_diameter_um fields changeversusmetadata05 and targetboardsannotated. Fourboards:balena,esp32,Sensors,OpenHardwareExG; main/control/holes withsamecandidatebinaryforcontrol/holes. Serializedafter imagefull389871;192jobs1thread10passes300s; refereeenvandrepair/exportpresent. Noqualityclaimyet.
+
+### PR31 merged; local-hole pilot measured
+
+PR31 merged7d33cef2784b7eac2c6c341d2138b44b1b11a28a at2026-09-10T01:39:37Z, reviewedHEAD7bd10d22cefe035658009a4343fb1164a3fb16a8. Baseline028f0a5 recheckedunchanged beforemerge; source/tests/tooling equality verifiedaftermerge. Freshsuite2587passed77ignored0failed;generatedfullreport17qualitylossesretained. Completedagainstnewpadmain−15U/−46Cu; againstpre29maind84combined−14U/−186Cu. Allordinaryregressionsexplicit;originalJVMrecordingsunchanged.
+
+Localholepilot2320983 completed12KiCadok,allCOMPLETED, base028f0a5 beforeimagefix:esp32 0U1Cu→1U0Cu;balena0U2Cu→0U0Cu;Sensors0U0Cuboth;OpenHardwareExG1U30Cuboth. Thus+1U/−3Cu,supportingphysicalrulecorrectionbutnotaconnectiongainclaim. Samebinarycontrol matchesmainqualityallfour. Backedup locally/workbench.
+
+Fast-forwarded localholeworktree to newlymergedmain7d33cef without losinguncommittedprototype; preserved/reappendedownlogtail. Startedfullworkspace46860 in existingdedicatedlocalhole target (sameworktree,normalnewmainrecompile). Frozennewmainarchive+holeoverlay sentserver; fullquality-epyc-local-hole-full-01 setup launched,751eachmain/control/holes,192jobs1thread10passes300s. Baseline uses previouslyverifiedcombinedbinary equal7d33cef;control/holes same newcandidatebinary withmetadata05/holemetadata01. Inputvalidation andrefereerescore/details included. Nofullholequalityclaimyet.
+
+### Corridor clearance-capacity audit prepared
+
+Current PR27 computes lane capacity using the maximum clearance across every item class, including newlyimportedlocalpadfloors. Prepared standalone read-only audit reusing exact corridor selection and public CLIloadpipeline (projectplusold/newsidecar), reporting globalmatrixcapacity versus selectedsignal trace-class pair capacity on azalea /RESET. Unlike earlier geometric-only audit, this loads the same metadata as routing. Compilation waits for active localholeworkspacesuite to finish because it will reuse thatsame dedicatedtarget; no concurrentbuilds intoone target. No algorithmchangeorcapacityresult yet.
+
+Full localhole driver2334419 nowrouting. Inputvalidation:all751files differonlybyoptionalholediameter;22boards/183recordsannotated. No currentresultclaim. Disklow again duringfullsuite growth; removedonly four already-transferred reproducible gitarchives,keepingpatches,commitsandallmeasurementresults.
+
+### Corridor capacity hypothesis tested on azalea
+
+Public CLIload with identicalprojectfile andoldmaskmetadata versusnewlocalcoppermetadata gives exactlyequal /RESET bands. Sixsignals:globalcapacity42192boardunits,trace-paircapacity21336,terminalspan210099.5065. The projectedterminalspan dominatesacrosswidth; newmetadata doesnotchangeglobalcapacityhere. Thus the proposedpost-pad inflation doesnot explainazalea'sregression. No capacitypatchmade. Instrumentedstandalonecopy only,productionroutingunchanged; logs/source retained.
+
+Currentlocalholeworkspacesuite46860 completed2591passed77ignored0failed includingdoctests. Afterthiscompletion anddiagnosticcompletion, cleanedonlyitsdisposabletarget toavoidENOSPC. Createdexperiment/corridor-current-main at7d33cef andappliedonlythefiveoriginalPR27routerfiles (aa92bf1→98f827a). This excludes rejectedterminal-envelopeextension. Sincecorrectimage/padinput fixes have landed, remeasuretheexistingstructuralalgorithm againstcurrentmain before deciding whetheritsold ordinaryregressions persist. No currentmaincorridor resultsyet.
+
+### Hole obstacle-index review and corridor suite completed
+
+Reviewed change_clearance_class_index: clearsderiveddata and reinsertscompensatedobstacleentries; raw-shape queries readthematrix withoutcompensation. Addedactualoverlapping_items_with_clearance assertions to the originalhole regression:probeoutsideoldclearance mustbe returned afterraisingthehole rule,onbothcopperlayers. Onlytestchanged; frozenproductionunchanged. Freshfullworkspace3272running. Firstholefullsuite2591passed remains recorded; newassertionnotclaimedpassingyet. Addedmechanism/pilot/inputvalidation report with pendingfullresults.
+
+Corridor-current-main workspace3577 exits0,2592passed77ignored0failed includingdoctests. Cleareditscompletedsharedtargetbefore switchingbacktolocalholeworktree forqueryvalidation; no concurrentbuildsinsametarget. Fullhole2334419live,corridor3610920queued.
+
+### Local hole full run completed; corridor transfer repaired
+
+Full local-hole run scored all 2,253 KiCad cases and is backed up on laptop/workbench. Completed same-binary pairs: 722 boards, 0 unrouted / −9 copper; ESP32 −1U/−2Cu, balena −3Cu, bikedar −4Cu, EncoderBoard +1U. No completed copper gainers. Raw PC −433U/−8Cu/+639mask, CPU .9481; local quality unchanged, CPU .9975. All +612 completed mask differences occur on 712 byte-identical SES outputs; ten changed outputs have zero mask delta. Main/control completed outputs all identical. See local-hole report for full main comparisons. Investigate EncoderBoard before acceptance; do not claim raw timeout improvements.
+
+Current-main corridor upload omitted untracked corridor.rs, so the serialized driver stopped at compilation before routing any boards. Copied the missing file and verified all 600 crate/manifests/data hashes against the locally tested worktree; relaunched as driver 57343. No algorithm change. Local-hole query regression assertion initially failed Rust borrowing rules; fixed by collecting obstacle identifiers/classes/layers before mutable queries. Fresh workspace verification running.
+
+Local-hole final query workspace verification: 2,591 passed, 77 ignored, zero failed, including doctests. Encoder original audit: /LED14 is 28.86mm/two vias vs control 32.10mm/four vias, both >10mm from annotated mounting holes. Candidate leaves net wholly unrouted; indirect routing interaction, no outlier exemption. Generated benchmark gate fails seven quality losses and is retained.
+
+## EncoderBoard pass-budget diagnostic
+
+`quality-epyc-local-hole-encoder-20pass-01` reroutes only EncoderBoard with the same frozen control/holes executables and metadata, 20 passes, a 600-second diagnostic cap, and two single-thread jobs. Both complete, with successful KiCad referees, **0 unrouted and 0 copper violations**. Control/candidate CPU is 108.76/100.71 seconds, vias34/39 and wire1046.24/1058.25mm. This shows the missing connection can be recovered with further routing; it does not replace the 10-pass acceptance comparison or justify a general runtime claim or global budget increase. The 10-pass +1U regression remains reported.
+
+### Shove revalidation prototype
+
+Root cause in the captured replay: protected-prefix probes are clear through shove steps0–8; step9 moves AGND back across previously checked segments1–3. Those segments remain obstructed through step13. No speculative fix was applied before this observation. A final same-rules check of the post-shove multi-segment path, with all shove/spring recursion disabled, rejects this path before raw insertion and makes the failing test pass (returns original corner, zero new short). The check extends existing guards; no existing shove check is replaced. It is experimental under COPPERROUTE_RECHECK_SHOVED_PATH.
+
+The cropped replay still fails after reducing board items to51 (outside component pins explicitly unassigned/unfixed for diagnostic removal). The committed-style regression currently uses the full captured DSN for faithful context and reexecutes only itself with the experimental switch enabled. No JVM recordings changed. Temporary logs/copper-dsn production dependency/capture code are excluded from new worktree experiment/shove-revalidation at currentmain54d4e80.
+
+Full EPYC driver1986066 starts quality-epyc-shove-revalidation-full-01: main, same-binary control, guard, corridor, corridor+guard;751KiCadboards each,10passes300seconds1thread192jobs. All candidates use merged local-hole metadata01 and the same project floors; main executable is the production snapshot verified for PR32.600 source/data hashes verified for new frozen build. Builds/tests/results pending. Clean local workspace suite runs in the new worktree, shared target cleaned after prior diagnostic finished. No quality acceptance or speed claim yet.
+
+Shove-revalidation first clean workspace passed2597top-level tests plus one child guard replay,77ignored0failed. Raw log sums2598because it includes that child result twice across parent/child harnesses. Added complementary clear-prefix test: same fixture, three-point unobstructed path still reaches endpoint with guard enabled. Both scoped subprocess tests pass. Final workspace rerun includes added positive case; production source remains identical to frozen benchmark. Source review confirms recursion0 exits before substitute trace generation and before via movement; no item IDs are consumed by that branch. Full result postprocess driver2811620 waits on1986066, verifies751successfulKiCad rows per candidate, checks completed SES identities, and generates main comparison for guard/corridor/combined.
+
+Final shove-revalidation workspace suite completed: 2,598 top-level passed plus two isolated child checks, 77 ignored, zero failures (raw harness sum 2,600). Both invalid-path rejection and clear-prefix completion are covered. Full corpus driver1986066 and postprocess2811620 remain live; workbench backup522266 verified live. No corpus acceptance claim before all five candidates are scored.
+
+During full-run validation, OpenHardwareExG Shield main/control/guard completed with successful KiCad scores of 1U/30 copper (all track-width). Corridor reproduces 3U/54 copper: 12 shorts, 8 clearance, 34 track-width. Combined result remains pending at observation; these selected results are diagnostic, not corpus acceptance. Prepared six-pair summary script with 751-board and all-referees-ok assertions, separate PCBench/local and completed-pair views, CPU/RSS and per-board quality deltas. Preserved it alongside local test evidence. Driver remains live; its failed-referee rescoring stage precedes exports.
+
+Full-board targeted result from the ongoing full run: all five OpenHardwareExG Shield cases completed with successful KiCad referees. Main/control/guard: 1U, 30 copper violations (track width). Corridor: 3U, 54 copper (12 shorts, 8 clearance, 34 width). Corridor+guard: 3U, 34 copper (all width). Thus the final path guard removes all 20 new shorts/clearance violations without changing the corridor result's unrouted count. Relative to main, +2U/+4 width violations remain counted on this ordinary board. Full corpus acceptance remains pending. Raw SES/metrics/KiCad reports for all five cases are preserved locally in shove-revalidation-shield-diagnostic.tar.gz and mirrored through the server reports backup.
+
+Shield residual width audit: all 30 main and all 34 corridor/combined track-width errors report actual0.2488mm against project minimum0.2540mm. Corridor and combined have identical width counts by net: AGND16, AVDD7, 3.3V_ISO3, ADS129x_GPIO4_ISO2, C19 signal2, C42 signal2, AVDD1 one, 3.3VADC one. This is a width-floor issue distinct from the proven shove-overlap defect; the +4 remains counted, and no width-policy patch was made during the frozen run.
+
+## Full KiCad result against main 54d4e80
+
+quality-epyc-shove-revalidation-full-01 completed all 3,755 cases: five variants × 751 boards, 10 passes, 300-second cap, 192 single-thread workers. Every referee status is ok after rescoring failed referees on unchanged SES outputs. Results are preserved on the laptop and mirrored to workbench.
+
+| Comparison | Group | Raw delta U | U better/worse | Raw delta copper | Copper gainers | CPU ratio | Completed pairs | Paired U / copper |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| main-vs-guard | pcbench | -1 | 6/2 | +1 | 1 | 1.0013 | 709 | +6 / +0 |
+| main-vs-guard | local | +0 | 0/0 | +0 | 0 | 1.0062 | 10 | +0 / +0 |
+| main-vs-corridor | pcbench | -47 | 39/18 | +17 | 8 | 1.0006 | 709 | -47 / +20 |
+| main-vs-corridor | local | +4 | 0/2 | +1 | 1 | 1.0142 | 10 | +3 / +1 |
+| main-vs-corridor-guard | pcbench | -282 | 45/16 | -1 | 8 | 0.9432 | 709 | -39 / -1 |
+| main-vs-corridor-guard | local | +4 | 0/2 | +1 | 1 | 1.0194 | 10 | +3 / +1 |
+| corridor-vs-corridor-guard | pcbench | -235 | 14/4 | -18 | 3 | 0.9426 | 713 | +8 / -21 |
+| corridor-vs-corridor-guard | local | +0 | 0/0 | +0 | 0 | 1.0051 | 10 | +0 / +0 |
+
+Combined versus main on 719 completed pairs: **−36 unrouted / 0 net copper**, with U improving on 29 boards and worsening on 13; copper improves on seven and worsens on seven. PCBench contributes −39U/−1 copper; local KiCad fixtures +3U/+1 copper. No board is excluded as an outlier. Main/control completed SES files are all byte-identical and have 0U/0 copper delta.
+
+The guard versus corridor removes 21 copper violations on completed pairs but adds eight unrouted connections: Shield −20 copper, GB-CART256K-A −1U/−1 copper, boatcontrol_NonLatchingNO30A +6U and uSKY +3U. The latter two regressions need investigation. Guard alone gives +6U/0 copper on completed pairs, so there is no demonstrated standalone aggregate gain on main.
+
+For combined versus main, 492 completed SES outputs are identical (0U/0 copper/−7 mask), while 227 differ (−36U/0 copper/−91 mask). Raw mask counts are retained; identical-output differences cannot be attributed to the routing algorithm. Raw timeout totals and single-run CPU ratios are observations, not causal speed claims.
+
+PCBench main/combined completed counts are 709/717, fully connected 589/599, median RSS12.1/12.1MiB, max372.4/375.4MiB. Local completed10/10, fully connected8/7, medianRSS12.0/13.5MiB, max75.8/105.1MiB. The completed-pair view excludes either deadline/non-COMPLETED outcome.
+
+The generated benchmark gate fails: guard six quality losses, corridor112, combined112. The full generated report is retained in routing-quality-artifacts/shove-revalidation/pr-summary.md; this is not a clean gate. Candidate remains uncommitted pending regression review.
+
+Regressor investigation: original boatcontrol is fully connected with zero copper DRC, 0 vias and 5675.348mm routing. Current control21U/0Cu/12vias/2382.4893mm; guard27U/0Cu/21vias/2768.5775mm. Original uSKY is fully connected with zero copper DRC, 23vias and174.589mm; it has an invalid-outline warning among original non-routing findings. Control21U/0Cu/6vias/74.8513mm; guard24U/0Cu/3vias/70.2005mm. Original-versus-control-versus-guard routing overviews inspected (simplified pad outlines, zones omitted). Boatcontrol shows orderly mostly single-layer routing; no outlier exemption established.
+
+Temporary logging lives only in separate worktree experiment/shove-revalidation-audit. EPYC diagnostic driver980172 built successfully (1m10s) and runs audit-on/audit-off on both boards,10passes300s,4jobs. Early uSKY rejection reports same-net trace (net10) as obstacle, expired=false; this motivates capturing and checking actual clearance before relaxing anything. Same-net reported obstacle alone is not proof of a clear path. First boatcontrol rejection is net27 against net1, layer2,width20000. Diagnostic still live; output identity verification pending.
+
+First regressor observer run completed: all four selected cases COMPLETED and KiCad ok. Audit-on/off SES hashes match each other and the frozen full guard output exactly for both boards. Logs and sessions archived locally; identity/count artifacts retained. New capture-only driver984845 builds the diagnostic source with first-rejection DSN/shape capture and a direct check_trace_shape probe on a deep copy. No production change; capture observer identity verification pending.
+
+Capture probe evidence: first rejected segment on both uSKY and boatcontrol also fails Board::check_trace_shape on a deep copy (direct_clear=false). Therefore the same-net reported obstacle is not sufficient to justify relaxing the guard; the proposed same-net-only explanation is unproven. uSKY shape is octagon[213766,-223494,218343,-221970,436182,441391,-9282,-4073], layer1,class1,net10,width762. Boatcontrol shape is octagon[1550000,-1016922,1636983,-929939,2491655,2642189,591777,648345],layer2,class3,net27,width20000. First-rejection DSNs captured. Diagnostic driver984845 remains live; its source build passed1m11s. No algorithm relaxation made.
+
+Capture replay completed successfully; captures import with no warnings. uSKY route net10=GND: same-net trace185 is not an obstacle, but trace184 on net11 is an obstacle. Boatcontrol route net27=Net-(J102-Pad10): trace914 on net1 is an obstacle; same-net trace915 and pin87 are not. Both direct shape checks reject. This refutes treating the reported same-net obstacle as permission to bypass clearance; no relaxation implemented. Capture observer-on/off/frozen guard SES hashes are identical for both boards; all four KiCad scores are successful and completed.
+
+Combined copper-gainer audit (all retained): Shield +4 track-width; VC4000 +2 shorts against B.Cu text; rp2040-dmxsun baseboard2slots +3 starved thermals; Patternflow +1 starved thermal; ESP07 +1 clearance; pmw3360_jst +1 copper-edge clearance; motorizedopener +1 hole clearance. VC4000 original has0U/0routingDRC; KiCad names text VC4000 MultiROM v0.4 / Keller/Maibaum in every reported short. DSN has no text string, keepout or wire; all13polygon declarations are footprint outlines. This is a confirmed copper-text input omission, analogous to AVR-fuser, not an excuse to drop its +2Cu/−2U contribution.
+
+## Coupled guidance safety validation
+
+Prepared guidance so COPPERROUTE_CORRIDOR_GUIDANCE automatically enables the final path guard. The standalone experimental recheck switch remains available; the guidance switch stays opt-in. This prevents enabling the structural routing experiment without its required safety check. New regression corridor_guidance_also_revalidates_paths failed first: expected original corner but reached804926/−701946 with guidance alone. After sharing the guidance-enabled predicate with the final guard, all three guard tests pass. No JVM recordings changed.
+
+Final workspace suite35303 running against this source. EPYC driver991239 starts quality-epyc-shove-coupled-full-01, main/control/coupled,751KiCadboards each,10passes300s1thread192jobs.602source/data/test/fixture hashes match local before launch. Uses the same merged local-hole metadata01 and project floors. Failed referees rescore without rerouting before exports. New-source acceptance and final workspace completion pending; prior five-way result remains an experiment result, not a claim that this new source has completed qualification.
+
+Final coupled-source workspace verification completed (session35303 terminal0): 2,599 top-level tests plus three isolated guard checks passed,77ignored0failed. Raw harness sum2602 includes children. Evidence: coupled-workspace-summary.txt and preserved full local log. Corpus991239/postprocess1312504 remain live; no final quality acceptance claim.
+
+PR27 final-source preparation: merged main54d4e80 into existing head43d9a18 with --no-commit. Only running-log conflict occurred; both histories retained. Applied the coupled guard and all its regression/report artifacts. All602source/data/test/fixture hashes match the active frozen EPYC candidate. Fresh workspace12447 runs on the actual PR branch after cleaning the completed prior shared build target. No merge commit or publication until this suite and final corpus comparison are complete.
+
+Exact geometry audit strengthens uSKY rejection: captured proposed GND path and existing net11 share 4 complete centerline segments (undirected endpoints matched exactly). Both halfwidths762. This is true intermediate copper overlap, not just an overly wide clearance bound or same-net restriction. Keep guard; final main/control0Cu does not imply every intermediate insertion was safe. Artifact usky-shared-segments.json.
+
+Fresh actual PR27-branch workspace suite12447 completed terminal0:2599top-level passed plus3childchecks,77ignored0failed. All602source/data files reverified against frozen coupled source after the suite. Full log preserved locally; pr27-workspace-summary.txt retained. Merge remains uncommitted pending corpus991239 and postprocess1312504, both verified live after final board submissions.
+
+Final coupled full run completed and backed up:2253KiCadok. Main719completedpairs−36U/0copper;control720pairs same.726previous-combined/current completed SES outputs identical. Fresh actualPR27workspace2599top-level+3childchecks passed,77ignored0failed;602source/datahashesmatch. Report rewritten around final automatic guard; generated112-loss gate included. Raw main PC−190U/−1copper/−107mask,CPU.9431;local+4U/+1copper/0mask,CPU1.0108. CompletedPC−39U/−1copper,local+3U/+1copper. Ordinary regressions and VC4000 copper-text input omission remain counted. Preparing authorized opt-in PR update, not default activation.

@@ -486,6 +486,43 @@ impl RoutingBoardExt for Board {
             };
             self.join_changed_area(&corner, layer);
         }
+        static RECHECK: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
+            std::env::var_os("COPPERROUTE_RECHECK_SHOVED_PATH").is_some()
+        });
+        if (*RECHECK || crate::autoroute::maze::control::corridor_guidance_enabled())
+            && with_check
+            && new_polyline.corner_count() > 2
+        {
+            // Later shoves can move copper back into an earlier segment.
+            let final_shapes = new_polyline.offset_shapes_between(
+                compensated_half_width,
+                0,
+                new_polyline.lines().len() - 1,
+            );
+            for (i, shape) in final_shapes.iter().enumerate() {
+                let shape = if orthogonal_mode {
+                    TileShape::Box(shape.bounding_box())
+                } else {
+                    shape.clone()
+                };
+                let from_side = entry_side(&new_polyline, final_shapes.len(), i, &shape);
+                if !TraceShover::check(
+                    self,
+                    &shape,
+                    Some(&from_side),
+                    None,
+                    layer,
+                    net_numbers,
+                    clearance_class_index,
+                    0,
+                    0,
+                    0,
+                    time_limit,
+                ) {
+                    return Ok(Some(from_corner));
+                }
+            }
+        }
         let mut new_trace = self.insert_trace_without_cleaning(
             new_polyline.clone(),
             layer,

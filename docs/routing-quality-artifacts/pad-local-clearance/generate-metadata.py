@@ -43,6 +43,12 @@ for source in sorted(args.mask_metadata.glob('*.json')):
                 continue
             for record in matches:
                 record['copper_um'] = max(record.get('copper_um', 0), value / 1000)
+                drill = pad.GetDrillSize()
+                size = pad.GetSize()
+                if (pad.GetAttribute() == pcbnew.PAD_ATTRIB_NPTH
+                        and drill.x > 0 and drill.x == drill.y
+                        and max(size.x, size.y) <= drill.x):
+                    record['hole_diameter_um'] = drill.x / 1000
             detail['coincident_records'] = len(matches)
             changes.append(detail)
     stripped = pcbnew.LoadBoard(str(args.corpus / entry['kicad']['stripped']))

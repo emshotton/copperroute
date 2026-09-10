@@ -1,0 +1,56 @@
+   Compiling copper-router v0.1.0 (/Users/em/Development/freerouting/copperroute-corridor-shorts/crates/copper-router)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.51s
+     Running tests/short_capture.rs (/Users/em/Development/freerouting/copperroute-congestion-study/target/debug/deps/short_capture-4142240755bdd684)
+
+running 1 test
+capture warnings []
+PREFIX_AUDIT step=0 pairs=Some([])
+PREFIX_AUDIT step=1 pairs=Some([])
+PREFIX_AUDIT step=2 pairs=Some([])
+PREFIX_AUDIT step=3 pairs=Some([])
+PREFIX_AUDIT step=4 pairs=Some([])
+PREFIX_AUDIT step=5 pairs=Some([])
+PREFIX_AUDIT step=6 pairs=Some([])
+PREFIX_AUDIT step=7 pairs=Some([])
+PREFIX_AUDIT step=8 pairs=Some([])
+PREFIX_AUDIT step=9 pairs=Some([(ItemId(2206), ItemId(2207))])
+PREFIX_HIT step=9 segment=1
+PREFIX_HIT step=9 segment=2
+PREFIX_HIT step=9 segment=3
+PREFIX_AUDIT step=10 pairs=Some([(ItemId(2214), ItemId(2217))])
+PREFIX_HIT step=10 segment=1
+PREFIX_HIT step=10 segment=2
+PREFIX_HIT step=10 segment=3
+PREFIX_AUDIT step=11 pairs=Some([(ItemId(2214), ItemId(2221))])
+PREFIX_HIT step=11 segment=1
+PREFIX_HIT step=11 segment=2
+PREFIX_HIT step=11 segment=3
+PREFIX_AUDIT step=12 pairs=Some([(ItemId(2214), ItemId(2225))])
+PREFIX_HIT step=12 segment=1
+PREFIX_HIT step=12 segment=2
+PREFIX_HIT step=12 segment=3
+PREFIX_AUDIT step=13 pairs=Some([(ItemId(2214), ItemId(2229))])
+PREFIX_HIT step=13 segment=1
+PREFIX_HIT step=13 segment=2
+PREFIX_HIT step=13 segment=3
+SHORT_PHASE after-raw-insert net=88 pairs=[(ItemId(2214), ItemId(2229))]
+SHORT_PHASE after-combine net=88 pairs=[(ItemId(2214), ItemId(2229))]
+SHORT_PHASE after-normalize net=88 pairs=[(ItemId(2214), ItemId(2234))]
+SHORT_PHASE after-pull-tight net=88 pairs=[(ItemId(2214), ItemId(2234))]
+forced result Some(Int(IntPoint { x: 804926, y: -701946 }))
+
+thread 'captured_forced_polyline_must_not_short_another_net' (4635045) panicked at crates/copper-router/tests/short_capture.rs:38:5:
+assertion `left == right` failed: a successful insertion must not short AGND and the signal
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test captured_forced_polyline_must_not_short_another_net ... FAILED
+
+failures:
+
+failures:
+    captured_forced_polyline_must_not_short_another_net
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.02s
+
+error: test failed, to rerun pass `-p copper-router --test short_capture`

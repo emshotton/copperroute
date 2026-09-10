@@ -1,0 +1,23 @@
+   Compiling copper-router v0.1.0 (/Users/em/Development/freerouting/copperroute-corridor-shorts/crates/copper-router)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.64s
+     Running tests/short_capture.rs (/Users/em/Development/freerouting/copperroute-congestion-study/target/debug/deps/short_capture-4142240755bdd684)
+
+running 1 test
+capture warnings []
+forced result Some(Int(IntPoint { x: 804926, y: -701946 }))
+
+thread 'captured_forced_polyline_must_not_short_another_net' (4630551) panicked at crates/copper-router/tests/short_capture.rs:32:5:
+assertion `left == right` failed: a successful insertion must not short AGND and the signal
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test captured_forced_polyline_must_not_short_another_net ... FAILED
+
+failures:
+
+failures:
+    captured_forced_polyline_must_not_short_another_net
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.74s
+
+error: test failed, to rerun pass `-p copper-router --test short_capture`

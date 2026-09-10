@@ -1,0 +1,35 @@
+ Downloading crates ...
+  Downloaded similar v2.7.0
+   Compiling similar v2.7.0
+   Compiling syn v3.0.4
+   Compiling thiserror-impl v2.0.20
+   Compiling serde_derive v1.0.229
+   Compiling thiserror v2.0.20
+   Compiling copper-board v0.1.0 (/root/copperroute-shove-revalidation-audit-54d4e80/crates/copper-board)
+   Compiling serde v1.0.229
+   Compiling testkit v0.1.0 (/root/copperroute-shove-revalidation-audit-54d4e80/tests/testkit)
+   Compiling copper-dsn v0.1.0 (/root/copperroute-shove-revalidation-audit-54d4e80/crates/copper-dsn)
+   Compiling copper-settings v0.1.0 (/root/copperroute-shove-revalidation-audit-54d4e80/crates/copper-settings)
+   Compiling copper-drc v0.1.0 (/root/copperroute-shove-revalidation-audit-54d4e80/crates/copper-drc)
+   Compiling copper-router v0.1.0 (/root/copperroute-shove-revalidation-audit-54d4e80/crates/copper-router)
+    Finished `release` profile [optimized + debuginfo] target(s) in 40.53s
+     Running tests/recheck_capture.rs (copperroute-shove-revalidation-audit-54d4e80/target/release/deps/recheck_capture-ef5ca15bbb90fd38)
+
+running 1 test
+CAPTURE pcbench-uSKY_uSKY warnings=[] net=Some(Net { name: "GND", subnet_number: 1, net_number: 10, contains_plane: false, net_class: NetClassId(0) })
+DIRECT false
+ITEM ItemId(185) nets=[10] obstacle=false class=1
+TRACE width=762 corners=[FloatPoint { x: 236220.0, y: -217170.0 }, FloatPoint { x: 230658.0, y: -222732.0 }, FloatPoint { x: 217581.0, y: -222732.0 }]
+ITEM ItemId(184) nets=[11] obstacle=true class=1
+TRACE width=762 corners=[FloatPoint { x: 206220.0, y: -237170.0 }, FloatPoint { x: 205727.0, y: -237663.0 }, FloatPoint { x: 201267.0, y: -237663.0 }, FloatPoint { x: 200977.0, y: -237373.0 }, FloatPoint { x: 200977.0, y: -236967.0 }, FloatPoint { x: 202004.0, y: -235940.0 }, FloatPoint { x: 202004.0, y: -235728.0 }, FloatPoint { x: 212443.0, y: -235728.0 }, FloatPoint { x: 214528.0, y: -233643.0 }, FloatPoint { x: 214528.0, y: -230697.0 }, FloatPoint { x: 213501.0, y: -229670.0 }, FloatPoint { x: 214528.0, y: -228643.0 }, FloatPoint { x: 214528.0, y: -225697.0 }, FloatPoint { x: 212443.0, y: -223612.0 }, FloatPoint { x: 200153.0, y: -223612.0 }, FloatPoint { x: 199182.0, y: -222641.0 }, FloatPoint { x: 196642.0, y: -222641.0 }, FloatPoint { x: 194742.0, y: -224541.0 }, FloatPoint { x: 194742.0, y: -227081.0 }, FloatPoint { x: 194847.0, y: -227186.0 }, FloatPoint { x: 194847.0, y: -239913.0 }, FloatPoint { x: 198727.0, y: -243793.0 }, FloatPoint { x: 199597.0, y: -243793.0 }, FloatPoint { x: 198530.0, y: -244860.0 }, FloatPoint { x: 198530.0, y: -244861.0 }, FloatPoint { x: 201198.0, y: -247529.0 }]
+CAPTURE pcbench-boatcontrol_NonLatchingNO30A warnings=[] net=Some(Net { name: "Net-(J102-Pad10)", subnet_number: 1, net_number: 27, contains_plane: false, net_class: NetClassId(1) })
+DIRECT false
+ITEM ItemId(915) nets=[27] obstacle=false class=1
+TRACE width=20000 corners=[FloatPoint { x: 1570000.0, y: -940000.0 }, FloatPoint { x: 1570000.0, y: -949939.0 }]
+ITEM ItemId(914) nets=[1] obstacle=true class=1
+TRACE width=5000 corners=[FloatPoint { x: 1663000.0, y: -985000.0 }, FloatPoint { x: 1663000.0, y: -976500.0 }, FloatPoint { x: 1666521.0, y: -976500.0 }, FloatPoint { x: 1671500.0, y: -981479.0 }, FloatPoint { x: 1671500.0, y: -988521.0 }, FloatPoint { x: 1666521.0, y: -993500.0 }, FloatPoint { x: 1642677.0, y: -993500.0 }, FloatPoint { x: 1620700.0, y: -1015477.0 }, FloatPoint { x: 1620700.0, y: -1032483.0 }, FloatPoint { x: 1611531.0, y: -1032483.0 }, FloatPoint { x: 1592483.0, y: -1051531.0 }, FloatPoint { x: 1592483.0, y: -1078469.0 }, FloatPoint { x: 1611531.0, y: -1097517.0 }, FloatPoint { x: 1634683.0, y: -1097517.0 }, FloatPoint { x: 1634683.0, y: -1100540.0 }, FloatPoint { x: 1656660.0, y: -1122517.0 }, FloatPoint { x: 1689790.0, y: -1122517.0 }, FloatPoint { x: 1711767.0, y: -1100540.0 }, FloatPoint { x: 1711767.0, y: -1069460.0 }, FloatPoint { x: 1710034.0, y: -1067727.0 }, FloatPoint { x: 1710034.0, y: -1056101.0 }, FloatPoint { x: 1746534.0, y: -1019601.0 }, FloatPoint { x: 1746534.0, y: -950399.0 }, FloatPoint { x: 1697601.0, y: -901466.0 }, FloatPoint { x: 1663000.0, y: -901466.0 }, FloatPoint { x: 1663000.0, y: -705000.0 }, FloatPoint { x: 1643000.0, y: -685000.0 }]
+ITEM ItemId(87) nets=[27] obstacle=false class=1
+test inspect_rejected_shapes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

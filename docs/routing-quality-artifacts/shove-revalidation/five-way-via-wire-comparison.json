@@ -1,0 +1,62 @@
+{
+  "pcbench-completed_pairs": {
+    "boards": 709,
+    "vias": {
+      "main": 11372,
+      "combined": 11316,
+      "delta": -56,
+      "ratio": 0.9950756243404854
+    },
+    "wirelength_mm": {
+      "main": 771830.9596999995,
+      "combined": 769926.8012,
+      "delta": -1904.158499999554,
+      "ratio": 0.9975329332464978
+    }
+  },
+  "pcbench-fully_connected_both": {
+    "boards": 582,
+    "vias": {
+      "main": 6611,
+      "combined": 6702,
+      "delta": 91,
+      "ratio": 1.0137649372258357
+    },
+    "wirelength_mm": {
+      "main": 588157.7834999999,
+      "combined": 586822.6582000004,
+      "delta": -1335.1252999994904,
+      "ratio": 0.9977299878749297
+    }
+  },
+  "local-completed_pairs": {
+    "boards": 10,
+    "vias": {
+      "main": 187,
+      "combined": 184,
+      "delta": -3,
+      "ratio": 0.983957219251337
+    },
+    "wirelength_mm": {
+      "main": 8751.062600000001,
+      "combined": 8698.033000000001,
+      "delta": -53.029599999999846,
+      "ratio": 0.9939402101865893
+    }
+  },
+  "local-fully_connected_both": {
+    "boards": 7,
+    "vias": {
+      "main": 138,
+      "combined": 140,
+      "delta": 2,
+      "ratio": 1.0144927536231885
+    },
+    "wirelength_mm": {
+      "main": 5252.256200000001,
+      "combined": 5259.094,
+      "delta": 6.8377999999993335,
+      "ratio": 1.0013018786098058
+    }
+  }
+}

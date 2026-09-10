@@ -1,0 +1,50 @@
+{
+  "board": "pcbench-uSKY_uSKY",
+  "incoming_net": 10,
+  "obstacle_net": 11,
+  "incoming_half_width": 762,
+  "obstacle_half_width": 762,
+  "exact_shared_centerline_segments": [
+    [
+      [
+        213501.0,
+        -229670.0
+      ],
+      [
+        214528.0,
+        -230697.0
+      ]
+    ],
+    [
+      [
+        213501.0,
+        -229670.0
+      ],
+      [
+        214528.0,
+        -228643.0
+      ]
+    ],
+    [
+      [
+        214528.0,
+        -233643.0
+      ],
+      [
+        214528.0,
+        -230697.0
+      ]
+    ],
+    [
+      [
+        214528.0,
+        -228643.0
+      ],
+      [
+        214528.0,
+        -225697.0
+      ]
+    ]
+  ],
+  "note": "Post-shove captured geometry. This establishes intermediate copper overlap; it does not assert a new final KiCad violation in the main/control output."
+}

@@ -1,0 +1,35 @@
+   Compiling unicode-ident v1.0.24
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling syn v3.0.4
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.20
+   Compiling thiserror v2.0.20
+   Compiling serde v1.0.229
+   Compiling copper-board v0.1.0 (/Users/em/Development/freerouting/copperroute-shove-revalidation/crates/copper-board)
+   Compiling testkit v0.1.0 (/Users/em/Development/freerouting/copperroute-shove-revalidation/tests/testkit)
+   Compiling copper-dsn v0.1.0 (/Users/em/Development/freerouting/copperroute-shove-revalidation/crates/copper-dsn)
+   Compiling copper-settings v0.1.0 (/Users/em/Development/freerouting/copperroute-shove-revalidation/crates/copper-settings)
+   Compiling copper-drc v0.1.0 (/Users/em/Development/freerouting/copperroute-shove-revalidation/crates/copper-drc)
+   Compiling copper-router v0.1.0 (/Users/em/Development/freerouting/copperroute-shove-revalidation/crates/copper-router)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.31s
+     Running tests/shove_revalidation.rs (/Users/em/Development/freerouting/copperroute-congestion-study/target/debug/deps/shove_revalidation-3db121fde1d1f46f)
+
+running 2 tests
+
+running 1 test
+
+running 1 test
+test clear_multisegment_prefix_remains_routable ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 1.61s
+
+test clear_multisegment_prefix_remains_routable ... ok
+test captured_forced_polyline_must_not_short_another_net ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 1.77s
+
+test captured_forced_polyline_must_not_short_another_net ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.77s
+

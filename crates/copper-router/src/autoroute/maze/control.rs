@@ -115,10 +115,7 @@ impl AutorouteControl {
         let mut control = AutorouteControl::private(board, settings, trace_costs);
         control.via_pricing = via_pricing;
         control.init_net(net_no, board, via_costs);
-        static GUIDANCE: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
-            std::env::var_os("COPPERROUTE_CORRIDOR_GUIDANCE").is_some()
-        });
-        if *GUIDANCE {
+        if corridor_guidance_enabled() {
             control.corridor = Corridor::for_net(board, net_no);
         }
         control
@@ -343,4 +340,10 @@ impl AutorouteControl {
         self.min_normal_via_cost = f64::from(via_costs) * via_cost_factor;
         self.min_cheap_via_cost = 0.8 * self.min_normal_via_cost;
     }
+}
+
+pub(crate) fn corridor_guidance_enabled() -> bool {
+    static GUIDANCE: std::sync::LazyLock<bool> =
+        std::sync::LazyLock::new(|| std::env::var_os("COPPERROUTE_CORRIDOR_GUIDANCE").is_some());
+    *GUIDANCE
 }

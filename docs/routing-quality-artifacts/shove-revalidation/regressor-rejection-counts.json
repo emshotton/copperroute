@@ -1,0 +1,24 @@
+{
+  "pcbench-boatcontrol_NonLatchingNO30A": [
+    {
+      "route_nets": "[27]",
+      "reported_obstacle_nets": "[1]",
+      "expired": false,
+      "count": 3
+    },
+    {
+      "route_nets": "[27]",
+      "reported_obstacle_nets": "[16]",
+      "expired": false,
+      "count": 11
+    }
+  ],
+  "pcbench-uSKY_uSKY": [
+    {
+      "route_nets": "[10]",
+      "reported_obstacle_nets": "[10]",
+      "expired": false,
+      "count": 12
+    }
+  ]
+}
