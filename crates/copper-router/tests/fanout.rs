@@ -669,3 +669,28 @@ fn the_fanout_recovery_body_strips_tails_and_sets_the_one_shot_flag() {
         "Task 10's loud fanout stub is gone, which is what makes the arm reachable"
     );
 }
+
+const SMD_DEMO: &str = "fixtures/Issue508-SMD-routing-issue-demo.dsn";
+
+#[test]
+fn micro_neckdown_escapes_pads_narrower_than_the_trace() {
+    let mut board = load_board(SMD_DEMO);
+    let settings = build_settings(&board);
+    let stop = RouterStop::new();
+    let mut sink = NoopProgressSink;
+
+    let summary = BatchFanout::fanout_board(
+        &mut board,
+        &settings,
+        &stop,
+        RouterBudget::disabled(),
+        &mut sink,
+    )
+    .expect("fanout runs");
+
+    assert_eq!(
+        summary.escape_statistics.escaped_count, summary.escape_statistics.total_smd_pins,
+        "every SMD pin escapes; the pads are narrower than the trace, so the escape only \
+         fits once micro-neckdown narrows it below the board's nominal trace width"
+    );
+}

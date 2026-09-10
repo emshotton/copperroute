@@ -1,0 +1,464 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-10T06:36:38",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "key": "pth_inside_courtyard"
+        },
+        {
+            "description": "NPTH inside courtyard",
+            "key": "npth_inside_courtyard"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning"
+    ],
+    "kicad_version": "10.0.4",
+    "schematic_parity": [],
+    "source": "routed.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [Net-(D1-K)] of D1 on F.Cu",
+                    "pos": {
+                        "x": 71.41051,
+                        "y": 50.091762
+                    },
+                    "uuid": "4e846ae6-85be-4ee9-981e-9613c066a75b"
+                },
+                {
+                    "description": "Arc [Net-(D1-K)] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "0605da7f-91d9-4b1e-8d4b-fd7d586cf3e3"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Arc [Net-(D1-K)] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "0605da7f-91d9-4b1e-8d4b-fd7d586cf3e3"
+                },
+                {
+                    "description": "Pad 2 [Net-(D1-K)] of D2 on F.Cu",
+                    "pos": {
+                        "x": 136.512207,
+                        "y": 55.558211
+                    },
+                    "uuid": "2debb08f-1708-4266-8e3f-7ac0b14d6ac9"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/led_P] of J1 on F.Cu",
+                    "pos": {
+                        "x": 54.879626,
+                        "y": 67.620941
+                    },
+                    "uuid": "2fcbfc46-d729-45ed-bd4e-4d42c774c306"
+                },
+                {
+                    "description": "Pad 2 [/led_P] of D1 on F.Cu",
+                    "pos": {
+                        "x": 69.01549,
+                        "y": 51.542238
+                    },
+                    "uuid": "81e00939-2934-48e1-bbe6-ccfb3e3dd4de"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [/led_N] of D5 on F.Cu",
+                    "pos": {
+                        "x": 43.699309,
+                        "y": 111.766991
+                    },
+                    "uuid": "069654e7-2ca0-44c5-83c2-696fc5114954"
+                },
+                {
+                    "description": "Arc [/led_N] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "39f5a7f9-012a-4651-a69a-65ae5b588496"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Arc [/led_N] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "39f5a7f9-012a-4651-a69a-65ae5b588496"
+                },
+                {
+                    "description": "Pad 2 [/led_N] of J1 on F.Cu",
+                    "pos": {
+                        "x": 52.666059,
+                        "y": 70.952626
+                    },
+                    "uuid": "cc1e3f64-ebfd-488f-b5ac-848c61d0dd99"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Arc [Net-(D4-K)] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "44d58a20-45a8-464e-b847-75a9350db79e"
+                },
+                {
+                    "description": "Pad 2 [Net-(D4-K)] of D5 on F.Cu",
+                    "pos": {
+                        "x": 44.338691,
+                        "y": 114.493009
+                    },
+                    "uuid": "bf9a983b-4965-4bb3-a8fd-e094f9c9c6d9"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [Net-(D4-K)] of D4 on F.Cu",
+                    "pos": {
+                        "x": 93.79391,
+                        "y": 157.180851
+                    },
+                    "uuid": "f4019a70-6fbb-46d9-9381-246e6a38cbc6"
+                },
+                {
+                    "description": "Arc [Net-(D4-K)] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "44d58a20-45a8-464e-b847-75a9350db79e"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [Net-(D3-K)] of D4 on F.Cu",
+                    "pos": {
+                        "x": 96.58409,
+                        "y": 157.415149
+                    },
+                    "uuid": "53f52e04-fda9-44a8-b421-e9fe285abaa4"
+                },
+                {
+                    "description": "Arc [Net-(D3-K)] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "4ed4fdb9-0247-4996-b3dc-32ba7123c6d7"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [Net-(D3-K)] of D3 on F.Cu",
+                    "pos": {
+                        "x": 152.464478,
+                        "y": 123.572608
+                    },
+                    "uuid": "22b142c8-b534-4fc4-80c7-79c35dc47b66"
+                },
+                {
+                    "description": "Arc [Net-(D3-K)] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "4ed4fdb9-0247-4996-b3dc-32ba7123c6d7"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [Net-(D2-K)] of D2 on F.Cu",
+                    "pos": {
+                        "x": 138.631793,
+                        "y": 57.387789
+                    },
+                    "uuid": "1b16959e-6267-455f-acdf-459c75670609"
+                },
+                {
+                    "description": "Arc [Net-(D2-K)] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "f02e0bd1-9fd1-4066-98af-bc64666a0252"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Arc [Net-(D2-K)] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "f02e0bd1-9fd1-4066-98af-bc64666a0252"
+                },
+                {
+                    "description": "Pad 2 [Net-(D2-K)] of D3 on F.Cu",
+                    "pos": {
+                        "x": 153.549522,
+                        "y": 120.991392
+                    },
+                    "uuid": "47c8bfab-1b00-491b-a9f8-9c6ce4bbbef6"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "The current configuration does not include the footprint library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint D1",
+                    "pos": {
+                        "x": 70.213,
+                        "y": 50.817
+                    },
+                    "uuid": "0e79ab29-5d8b-4a42-b4f0-1327eb02b221"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'MountingHole'",
+            "items": [
+                {
+                    "description": "Footprint H5",
+                    "pos": {
+                        "x": 43.117,
+                        "y": 91.6
+                    },
+                    "uuid": "1eaceb12-2274-4dc1-a9c1-09c8cb5b848d"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint D5",
+                    "pos": {
+                        "x": 44.019,
+                        "y": 113.13
+                    },
+                    "uuid": "3e461d53-f96b-4789-99e7-acc31965e5e0"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'MountingHole'",
+            "items": [
+                {
+                    "description": "Footprint H2",
+                    "pos": {
+                        "x": 150.957,
+                        "y": 73.36
+                    },
+                    "uuid": "3e6baece-7fa9-4e96-a64d-867f2e801b24"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'MountingHole'",
+            "items": [
+                {
+                    "description": "Footprint H3",
+                    "pos": {
+                        "x": 141.082,
+                        "y": 140.231
+                    },
+                    "uuid": "502f2ffa-bf00-4295-a152-dd7e7251843a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint D4",
+                    "pos": {
+                        "x": 95.189,
+                        "y": 157.298
+                    },
+                    "uuid": "525ea9b3-c9bc-4c9e-93ca-39feb238984a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint D2",
+                    "pos": {
+                        "x": 137.572,
+                        "y": 56.473
+                    },
+                    "uuid": "5a85b65f-2a1d-454e-9519-b1210b6f8918"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'MountingHole'",
+            "items": [
+                {
+                    "description": "Footprint H4",
+                    "pos": {
+                        "x": 74.433,
+                        "y": 151.503
+                    },
+                    "uuid": "85338e6c-03ef-4084-833e-1d0d9a20dc6a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint J1",
+                    "pos": {
+                        "x": 52.107,
+                        "y": 68.18
+                    },
+                    "uuid": "d286deca-68ab-46d7-bf53-dfcfde4bdf9a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint D3",
+                    "pos": {
+                        "x": 153.007,
+                        "y": 122.282
+                    },
+                    "uuid": "f31be4f1-b809-41f1-a17a-038bee12d244"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'MountingHole'",
+            "items": [
+                {
+                    "description": "Footprint H1",
+                    "pos": {
+                        "x": 90.411,
+                        "y": 43.305
+                    },
+                    "uuid": "f7dc33ec-e656-4acc-8f97-028cbd6a92f2"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        }
+    ]
+}

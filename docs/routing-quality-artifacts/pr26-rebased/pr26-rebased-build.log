@@ -1,0 +1,58 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.24
+   Compiling autocfg v1.5.1
+   Compiling serde_core v1.0.229
+   Compiling zmij v1.0.23
+   Compiling thiserror v2.0.20
+   Compiling serde_json v1.0.151
+   Compiling serde v1.0.229
+   Compiling web-time v1.1.0
+   Compiling memchr v2.8.3
+   Compiling itoa v1.0.18
+   Compiling utf8parse v0.2.2
+   Compiling once_cell v1.21.4
+   Compiling anstyle-query v1.1.5
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling anstyle v1.0.14
+   Compiling regex-syntax v0.8.11
+   Compiling colorchoice v1.0.5
+   Compiling pin-project-lite v0.2.17
+   Compiling log v0.4.34
+   Compiling heck v0.5.0
+   Compiling lazy_static v1.5.0
+   Compiling cfg-if v1.0.4
+   Compiling clap_lex v1.1.0
+   Compiling anstyle-parse v1.0.0
+   Compiling strsim v0.11.1
+   Compiling thread_local v1.1.10
+   Compiling nu-ansi-term v0.50.3
+   Compiling smallvec v1.15.2
+   Compiling sharded-slab v0.1.7
+   Compiling anstream v1.0.0
+   Compiling tracing-core v0.1.36
+   Compiling num-traits v0.2.19
+   Compiling clap_builder v4.6.6
+   Compiling tracing-log v0.2.0
+   Compiling syn v3.0.4
+   Compiling syn v2.0.119
+   Compiling num-integer v0.1.47
+   Compiling regex-automata v0.4.18
+   Compiling num-bigint v0.4.8
+   Compiling copper-geometry v0.1.0 (/root/copperroute-pr26-rebased-736d02d/crates/copper-geometry)
+   Compiling thiserror-impl v2.0.20
+   Compiling serde_derive v1.0.229
+   Compiling clap_derive v4.6.4
+   Compiling matchers v0.2.0
+   Compiling tracing-attributes v0.1.31
+   Compiling copper-board v0.1.0 (/root/copperroute-pr26-rebased-736d02d/crates/copper-board)
+   Compiling clap v4.6.6
+   Compiling tracing v0.1.44
+   Compiling tracing-subscriber v0.3.23
+   Compiling copper-dsn v0.1.0 (/root/copperroute-pr26-rebased-736d02d/crates/copper-dsn)
+   Compiling copper-settings v0.1.0 (/root/copperroute-pr26-rebased-736d02d/crates/copper-settings)
+   Compiling copper-drc v0.1.0 (/root/copperroute-pr26-rebased-736d02d/crates/copper-drc)
+   Compiling copper-router v0.1.0 (/root/copperroute-pr26-rebased-736d02d/crates/copper-router)
+   Compiling copper-core v0.1.0 (/root/copperroute-pr26-rebased-736d02d/crates/copper-core)
+   Compiling copperroute v0.1.0 (/root/copperroute-pr26-rebased-736d02d/crates/copperroute)
+    Finished `release` profile [optimized + debuginfo] target(s) in 1m 17s

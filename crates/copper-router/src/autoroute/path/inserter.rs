@@ -350,6 +350,19 @@ impl FoundConnectionInserter {
         );
         add(1.max(base_half_width / 2), &mut candidate_half_widths);
 
+        // A pad narrower than the trace cannot take full width, so the escape only fits once
+        // the trace is narrowed — however far below the board's narrowest class that goes.
+        // Whether the result is fabricable is the DRC checker's call, not this loop's.
+        let pad_demands_neckdown = start_pin
+            .into_iter()
+            .chain(end_pin)
+            .filter_map(|id| match board.get_item(id) {
+                Some(Item::Pin(pin)) if pin.is_on_layer(layer, &board.ctx()) => {
+                    Some(pin.get_trace_neckdown_halfwidth(layer, &board.ctx()))
+                }
+                _ => None,
+            })
+            .any(|width| width < base_half_width);
         let min_half_width = board.rules.get_min_trace_half_width();
 
         // :473-509.
@@ -358,7 +371,7 @@ impl FoundConnectionInserter {
             if candidate_half_width <= 0 || candidate_half_width >= base_half_width {
                 continue;
             }
-            if candidate_half_width < min_half_width {
+            if candidate_half_width < min_half_width && !pad_demands_neckdown {
                 continue;
             }
             // :477-491.
