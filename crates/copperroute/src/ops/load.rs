@@ -71,14 +71,15 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
     }
 
     let input = job.get_input().expect("the input was just set");
+    let format = input.format;
     if !matches!(
-        input.format,
+        format,
         FileFormat::Dsn | FileFormat::KicadDesignJson | FileFormat::KicadPcb
     ) {
         return Err(OpError::Input(format!(
             "'{}' is not a board: only Specctra DSN, KiCad board JSON and KiCad boards are accepted, got {}",
             input.get_filename(),
-            input.format.name()
+            format.name()
         )));
     }
     let dsn_source = DsnFileSettings::new(input.get_data(), input.get_filename());
@@ -101,7 +102,14 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
         explicit_rules.clone()
     };
 
-    let parsed = copper_core::parse_board_if_needed(&job)?;
+    let kicad_project_text = read_kicad_project(request.kicad_project.as_deref());
+
+    let parsed = match (format, kicad_project_text.as_deref()) {
+        (FileFormat::KicadPcb, Some(project_text)) => {
+            parse_kicad_pcb_with_net_class_project(&job, project_text)?
+        }
+        _ => copper_core::parse_board_if_needed(&job)?,
+    };
     let mut board = parsed.board;
     let transform = parsed.transform;
 
@@ -129,7 +137,7 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
             Err(error) => tracing::error!("Failed to apply rules from rules file: {error}"),
         }
     }
-    apply_kicad_project(request.kicad_project.as_deref(), &mut board, &transform);
+    apply_kicad_project_constraints(kicad_project_text.as_deref(), &mut board, &transform);
     if let Some(path) = std::env::var_os("COPPERROUTE_PAD_CLEARANCE_JSON") {
         let floors: Vec<PadFloor> = serde_json::from_slice(&std::fs::read(&path)?)
             .map_err(|error| OpError::Input(format!("Invalid pad clearance metadata: {error}")))?;
@@ -169,24 +177,53 @@ fn read_scheduler_rules(job: &RoutingJob, explicit: Option<&Path>) -> Option<Vec
     }
 }
 
-fn apply_kicad_project(project: Option<&Path>, board: &mut Board, transform: &CoordinateTransform) {
-    let Some(project) = project else {
-        return;
-    };
-    let text = match std::fs::read_to_string(project) {
-        Ok(text) => text,
+fn read_kicad_project(project: Option<&Path>) -> Option<String> {
+    let project = project?;
+    match std::fs::read_to_string(project) {
+        Ok(text) => Some(text),
         Err(error) => {
             tracing::warn!("KiCad project file {} not read: {error}", project.display());
-            return;
+            None
         }
+    }
+}
+
+fn apply_kicad_project_constraints(
+    project_text: Option<&str>,
+    board: &mut Board,
+    transform: &CoordinateTransform,
+) {
+    let Some(text) = project_text else {
+        return;
     };
-    match copper_drc::apply_kicad_project(&text, board, transform) {
-        Ok(()) => tracing::info!(
-            "KiCad project design rules loaded from {}",
-            project.display()
-        ),
+    match copper_drc::apply_kicad_project(text, board, transform) {
+        Ok(()) => tracing::info!("KiCad project design rules applied"),
         Err(error) => tracing::error!("Failed to apply KiCad project design rules: {error}"),
     }
+}
+
+/// Net classes live in the `.kicad_pro`, not the `.kicad_pcb` (KiCad 6+), so they must be
+/// resolved onto the board's routing rules before the native reader converts the parsed board
+/// into a `Board` and falls back to `copper_dsn::kicad::pcb::default_net_class()`.
+fn parse_kicad_pcb_with_net_class_project(
+    job: &RoutingJob,
+    project_text: &str,
+) -> Result<copper_core::ParsedBoard, OpError> {
+    let input = job.get_input().expect("caller has already set the input");
+    let data = input.get_data().to_vec();
+    let name = input.get_filename_without_extension();
+    let text = String::from_utf8_lossy(&data).into_owned();
+    let mut imported =
+        copper_dsn::kicad::read_pcb(&text, &name, &copper_dsn::kicad::pcb::default_net_class())
+            .map_err(|error| OpError::Input(error.to_string()))?;
+    match copper_dsn::kicad::apply_net_classes(&mut imported.board, project_text) {
+        Ok(()) => tracing::info!("KiCad project net classes applied"),
+        Err(error) => tracing::error!("Failed to apply KiCad project net classes: {error}"),
+    }
+    let mut parsed =
+        copper_core::parse_board_result(copper_dsn::kicad::read_board_json(imported.board, None))?;
+    parsed.warnings.extend(imported.warnings);
+    Ok(parsed)
 }
 
 fn import_session(session: Option<&Path>, board: &mut Board, transform: &CoordinateTransform) {

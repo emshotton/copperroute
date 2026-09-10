@@ -150,3 +150,91 @@ fn a_session_is_imported_and_a_project_sets_constraints() {
         Some(2500)
     );
 }
+
+fn netclass_project_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/netclass-project")
+}
+
+#[test]
+fn a_kicad_project_s_net_classes_reach_the_router_s_rules() {
+    let board = netclass_project_dir().join("board.kicad_pcb");
+
+    let bare = load(&LoadRequest::for_board(BoardSource::Path(board.clone()))).unwrap();
+    let bare_default = bare.board.rules.net_classes.get_by_name("default").unwrap();
+    assert_eq!(
+        bare_default.get_trace_half_width(0),
+        1250,
+        "0.25 mm default trace width"
+    );
+
+    let mut request = LoadRequest::for_board(BoardSource::Path(board));
+    request.kicad_project = Some(netclass_project_dir().join("project.kicad_pro"));
+    let with_project = load(&request).unwrap();
+
+    let default_class = with_project
+        .board
+        .rules
+        .net_classes
+        .get_by_name("default")
+        .unwrap();
+    assert_eq!(
+        default_class.get_trace_half_width(0),
+        1000,
+        "0.2 mm project default trace width"
+    );
+
+    let power_class = with_project
+        .board
+        .rules
+        .net_classes
+        .get_by_name("Power")
+        .unwrap();
+    assert_eq!(
+        power_class.get_trace_half_width(0),
+        2500,
+        "0.5 mm project Power trace width"
+    );
+
+    let vcc = with_project.board.rules.nets.get_by_name("VCC");
+    assert_eq!(vcc.len(), 1, "the VCC net should exist");
+    assert_eq!(
+        with_project
+            .board
+            .rules
+            .net_classes
+            .get(vcc[0].get_net_class())
+            .get_name(),
+        "Power",
+        "VCC is assigned to Power by the project's V* wildcard pattern"
+    );
+
+    let sig = with_project.board.rules.nets.get_by_name("SIG");
+    assert_eq!(
+        with_project
+            .board
+            .rules
+            .net_classes
+            .get(sig[0].get_net_class())
+            .get_name(),
+        "default",
+        "SIG keeps the Default class"
+    );
+
+    let padstack_id = power_class
+        .get_via_rule()
+        .expect("Power has a via rule")
+        .get_via(0)
+        .get_padstack();
+    let drill_diameter = 2.0
+        * with_project
+            .board
+            .library
+            .padstacks
+            .get(padstack_id)
+            .unwrap()
+            .drill_radius();
+    assert!(
+        (drill_diameter - 3500.0).abs() < 1.0,
+        "Power's via_drill (0.2 mm) must be floored to min_through_hole_diameter (0.35 mm), got {drill_diameter}"
+    );
+}
