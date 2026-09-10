@@ -1,0 +1,1 @@
+KiCad 10.0.3 reference: the pad-to-track geometry from `solder-mask-pad-track`, with `(attr allow_soldermask_bridges)` on the footprint. KiCad reports no solder-mask bridge. Other setup and unconnected-item diagnostics are retained in the report.

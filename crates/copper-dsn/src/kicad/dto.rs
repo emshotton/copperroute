@@ -124,6 +124,10 @@ pub struct ComponentJson {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct PadJson {
+    #[serde(default)]
+    pub allowSolderMaskBridges: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub solderMaskExpansion: Option<std::collections::BTreeMap<String, f64>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -271,6 +275,8 @@ impl Default for ComponentJson {
 impl Default for PadJson {
     fn default() -> PadJson {
         PadJson {
+            solderMaskExpansion: None,
+            allowSolderMaskBridges: false,
             name: None,
             netName: None,
             shape: None,

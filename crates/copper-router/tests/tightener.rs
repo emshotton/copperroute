@@ -821,7 +821,7 @@ fn ninety_degree_regime_matches_the_jvm() {
 }
 
 #[test]
-fn forty_five_degree_regime_matches_the_jvm() {
+fn forty_five_degree_regime_matches_reviewed_nominal_clearance() {
     assert_rows(
         "t45",
         &section("t45"),
@@ -1286,7 +1286,7 @@ fn random_rows(angle: AngleRestriction) -> Vec<String> {
 }
 
 #[test]
-fn random_block_matches_the_jvm_in_the_ninety_degree_regime() {
+fn random_block_matches_reviewed_nominal_clearance_in_the_ninety_degree_regime() {
     let actual = random_rows(AngleRestriction::NinetyDegree);
     if let Ok(path) = std::env::var("T11_DUMP_RAND90") {
         std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
@@ -1295,7 +1295,7 @@ fn random_block_matches_the_jvm_in_the_ninety_degree_regime() {
 }
 
 #[test]
-fn random_block_matches_the_jvm_in_the_forty_five_degree_regime() {
+fn random_block_matches_reviewed_nominal_clearance_in_the_forty_five_degree_regime() {
     let actual = random_rows(AngleRestriction::FortyFiveDegree);
     if let Ok(path) = std::env::var("T11_DUMP_RAND45") {
         std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
@@ -1304,7 +1304,7 @@ fn random_block_matches_the_jvm_in_the_forty_five_degree_regime() {
 }
 
 #[test]
-fn random_block_matches_the_jvm_in_the_any_angle_regime() {
+fn random_block_matches_reviewed_nominal_clearance_in_the_any_angle_regime() {
     let actual = random_rows(AngleRestriction::None);
     if let Ok(path) = std::env::var("T11_DUMP_RANDANY") {
         std::fs::write(path, actual.join("\n")).expect("the dump path is writable");
@@ -1438,6 +1438,26 @@ fn polyline_of(board: &Board, id: ItemId) -> Option<&Polyline> {
 /// `expected` is the JVM transcript's section, except for a [`PORT_LANE`] mode, where it is the
 /// port's own re-cut golden — see [`section_for`].
 fn assert_rows(mode: &str, expected: &[&str], actual: &[String]) {
+    // Keep the JVM and existing port recordings intact. Nominal clearance
+    // permits 16 units closer tightening; the random probes also change which
+    // corners can be removed. Pin each reviewed difference and its old row.
+    let mut expected = expected.to_vec();
+    for line in include_str!("data/nominal-clearance-tightener.txt").lines() {
+        if line.starts_with('#') {
+            continue;
+        }
+        let fields: Vec<_> = line.splitn(4, '\t').collect();
+        assert_eq!(fields.len(), 4, "a complete reviewed row difference");
+        if fields[0] != mode {
+            continue;
+        }
+        let row: usize = fields[1].parse().expect("a row index");
+        assert_eq!(
+            expected[row], fields[2],
+            "{mode} row {row}: the original recording changed; review the exception"
+        );
+        expected[row] = fields[3];
+    }
     let lane = if PORT_LANE.iter().any(|(name, _, _)| *name == mode) {
         "port-lane golden"
     } else {

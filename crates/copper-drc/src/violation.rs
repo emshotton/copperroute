@@ -3,6 +3,7 @@ use copper_geometry::FloatPoint;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DrcViolationKind {
+    SolderMaskBridge,
     Clearance,
     ShortingItems,
     TracksCrossing,
@@ -17,7 +18,8 @@ pub enum DrcViolationKind {
 }
 
 impl DrcViolationKind {
-    pub const ALL: [DrcViolationKind; 11] = [
+    pub const ALL: [DrcViolationKind; 12] = [
+        DrcViolationKind::SolderMaskBridge,
         DrcViolationKind::Clearance,
         DrcViolationKind::ShortingItems,
         DrcViolationKind::TracksCrossing,
@@ -34,6 +36,7 @@ impl DrcViolationKind {
     #[must_use]
     pub fn kicad_type(self) -> &'static str {
         match self {
+            DrcViolationKind::SolderMaskBridge => "solder_mask_bridge",
             DrcViolationKind::Clearance => "clearance",
             DrcViolationKind::ShortingItems => "shorting_items",
             DrcViolationKind::TracksCrossing => "tracks_crossing",
@@ -59,7 +62,8 @@ impl DrcViolationKind {
     pub fn is_pair(self) -> bool {
         matches!(
             self,
-            DrcViolationKind::Clearance
+            DrcViolationKind::SolderMaskBridge
+                | DrcViolationKind::Clearance
                 | DrcViolationKind::ShortingItems
                 | DrcViolationKind::TracksCrossing
                 | DrcViolationKind::HoleClearance

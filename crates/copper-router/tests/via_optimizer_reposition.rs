@@ -1,3 +1,6 @@
+#[path = "support/fanout_via.rs"]
+mod fanout_via;
+
 use copper_board::items::Item;
 use copper_board::prelude::*;
 use copper_dsn::{BoardReadResult, DsnReadOptions};
@@ -14,6 +17,7 @@ fn never() -> bool {
 
 const TRANSCRIPT: &str = include_str!("data/p7t4-via-optimizer.txt");
 const TASK_16_GOLDEN: &str = include_str!("data/p9t16-via-optimizer.txt");
+const NOMINAL_GOLDEN: &str = include_str!("data/nominal-clearance-via-optimizer.txt");
 
 fn section<'a>(transcript: &'a str, name: &str) -> Vec<&'a str> {
     let header = format!("######## {name}");
@@ -163,7 +167,9 @@ fn rows_c(out: &mut Vec<String>, board: &mut Board, via_id: ItemId) {
 }
 
 fn transcript_overload_rows(tag: &str, mode: i32, prefix: &str) -> Vec<String> {
-    let transcript = if mode == 3 {
+    let transcript = if tag == "rpi" {
+        NOMINAL_GOLDEN
+    } else if mode == 3 {
         TRANSCRIPT
     } else {
         TASK_16_GOLDEN
@@ -271,35 +277,26 @@ fn assert_overload_rows(tag: &str, mode: i32, prefix: &str) {
 }
 
 #[test]
-fn overload_a_matches_the_jvm_on_every_scripted_target() {
+fn overload_a_matches_nominal_routing_on_every_scripted_target() {
     assert_overload_rows("rpi", 3, "repA ");
 }
 
 #[test]
-fn overload_b_matches_the_task_16_golden_on_every_scripted_candidate() {
+fn overload_b_matches_nominal_routing_on_every_scripted_candidate() {
     assert_overload_rows("rpi", 4, "repB ");
 }
 
 #[test]
-fn overload_c_matches_the_task_16_golden_on_every_cost_pair() {
+fn overload_c_matches_nominal_routing_on_every_cost_pair() {
     assert_overload_rows("rpi", 5, "repC ");
 }
 
 #[test]
 fn a_one_contact_via_takes_overload_a() {
-    let board = routed("Issue143-rpi_splitter.dsn");
-    for (via_id, overload_a_answer, final_center) in [
-        (
-            ItemId(189),
-            IntPoint::new(932_812, 1_011_224),
-            IntPoint::new(932_812, 1_011_224),
-        ),
-        (
-            ItemId(84),
-            IntPoint::new(1_016_000, 3_007_058),
-            IntPoint::new(1_016_000, 3_119_161),
-        ),
-    ] {
+    for reverse in [false, true] {
+        let (board, via_id) = fanout_via::board(reverse);
+        let overload_a_answer = IntPoint::new(1000, 0);
+        let final_center = IntPoint::new(1000, 1000);
         assert_eq!(
             board.normal_contacts(via_id).len(),
             1,

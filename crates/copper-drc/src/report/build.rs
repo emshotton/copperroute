@@ -126,6 +126,7 @@ fn convert_violation(
         None => format!("{lead}: {first_desc} {values}"),
     };
     let mut description = match violation.kind {
+        DrcViolationKind::SolderMaskBridge => pair("Solder mask bridge"),
         DrcViolationKind::Clearance => pair("Clearance violation"),
         DrcViolationKind::ShortingItems => match &second_desc {
             Some(second) => format!("Items shorting two nets: {first_desc} and {second}"),

@@ -19,6 +19,23 @@ const rules = {
   viaDrill: 0.25,
 };
 const load = (text) => importBoard(text, "example", rules);
+test("mask margins inherit by scope while explicit zero and exposed sides survive", () => {
+  const input = source
+    .replace("(pad_to_mask_clearance 0)", "(pad_to_mask_clearance 0.2)")
+    .replace("(at 105 105)", "(at 105 105) (solder_mask_margin 0.15)")
+    .replace('(pad "1" thru_hole circle', '(pad "1" thru_hole circle (solder_mask_margin 0)')
+    .replace('(layers "*.Cu" "*.Mask")', '(layers "*.Cu" "F.Mask")');
+  const pads = load(input).board.components.map((c) => c.pads[0]);
+  assert.deepEqual(pads[0].solderMaskExpansion, { "F.Mask": 0 });
+  assert.deepEqual(pads[1].solderMaskExpansion, { "F.Mask": 0.15, "B.Mask": 0.15 });
+  assert.deepEqual(pads[2].solderMaskExpansion, { "F.Mask": 0.2, "B.Mask": 0.2 });
+});
+test("negative mask margins on the back remain negative and on the back", () => {
+  const input = source
+    .replace('(pad "1" thru_hole circle', '(pad "1" thru_hole circle (solder_mask_margin -0.05)')
+    .replace('(layers "*.Cu" "*.Mask")', '(layers "*.Cu" "B.Mask")');
+  assert.deepEqual(load(input).board.components[0].pads[0].solderMaskExpansion, { "B.Mask": -0.05 });
+});
 test("imports net identities, ordered copper layers, pads, and outline", () => {
   const { board } = load(source);
   assert.equal(board.components.length, 4);
@@ -358,4 +375,13 @@ test("accepts a curved track on a net that is being ripped up", () => {
     ripUpNets: new Set(["Signal"]),
   });
   assert.deepEqual(board.traces, []);
+});
+
+ test("footprint solder-mask bridge permission survives import without losing apertures", () => {
+  const text = source.replace("(at 105 105)", "(at 105 105) (attr allow_soldermask_bridges)");
+  const pads = load(text).board.components.map(c => c.pads[0]);
+  assert.equal(pads[0].allowSolderMaskBridges, true);
+  assert.equal(pads[1].allowSolderMaskBridges, true);
+  assert.equal(pads[2].allowSolderMaskBridges, false);
+  assert.deepEqual(pads[0].solderMaskExpansion, {"F.Mask": 0, "B.Mask": 0});
 });

@@ -179,7 +179,9 @@ fn do_out_json_writes_the_routed_board() {
 
     let wires = session.matches("(wire").count();
     let vias = session.matches("(via ").count();
-    assert_eq!(wires, 13, "the routed board the CLI reference records");
+    // Nominal clearance changes segmentation; the independently routed JSON
+    // and SES outputs must still describe exactly the same trace count.
+    assert_eq!(wires, 14, "the routed board with nominal clearance");
     assert_eq!(vias, 2);
 
     let traces = json_array_len(&written, "traces");

@@ -1,0 +1,3762 @@
+{
+  "both_completed": 720,
+  "both_completed_identical": 720,
+  "all_identical": 727,
+  "rows": [
+    {
+      "board": "kicad-issue180-test--test",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "kicad-issue184-motorizedopener--motorizedopener",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "kicad-issue269-min_fr_test--min_fr_test",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "kicad-issue269-noviasonpowerplanes--issue269-noviasonpowerplanes",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "kicad-issue269-nowiresonpowerlayers--proba",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "kicad-issue283-unconnectedtracesunderpads--natural_tone_preamp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "kicad-issue367-ultraflactyl--ultraflactyl",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "kicad-issue368-corneyislandwireless--corney_island_wireless",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "kicad-issue558-dev-board-autoroute-demo--dev-board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "kicad-issue632-miniautopilot--mini auto pilot",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "kicad-issue742-tastexx-pcb--tastexx-pcb",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-1-Wire-Wing-pcb_1-Wire_Wing",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-12v-automatic-ups_ups-12v",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-16x12-bits-I2C_I2C_Servo",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-1Bitsy_1bitsy",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-2d_conduction_sk9822-matrix",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-4N35-TTL-Serial-Optoisolator_4N35-TTL-Serial-Optoisolator",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-655_testboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-6N137-TTL-Serial-Optoisolator_6N137-TTL-Serial-Optoisolator",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-6volt-5W-solar-cc_6vleadacidsolar",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-74Logic_SA_ADC_SA-ADC",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-8bit-cpu_arduino_eeprom_programmer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-8bit-cpu_programming_interface",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-96boards-sensors_Sensors",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ABOVISP_ABOVISP",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ADC-PCM4202-SE_ADC-PCM4202-SE",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-AIOsense_AIOsense",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-APC_AtariPunkConsole",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-APM-RPi-Shield_APM-RPi-Shield",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-AS5043-Encoder_sensor-board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ATmega32_ExploreUltraAvrDevKit_40pin_AVRMCU",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ATtiny461Breakout_ATTiny461DevBoard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-AVR-ISP_level-shifter_AVR-ISP_level-shifter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-AVR-ISP_pogo-plug_1.27mm_AVR-ISP_pogo-plug_1.27mm",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-AVR-Playground_hello_world",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-AVR-ZIF-Programmer_AVR-ZIF-Prog",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Amiga-2000-EATX_TICK_OSC_KiCAD_TICK",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Amiga-A1012-PCB_Amiga-A1012",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-AmpOne_dev-AmpOne",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-AnalogThermometer_AnalogThermometer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Apple-M0110-BT_Apple M0110",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Arduino-Theremin_arduino-theremin-v1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Arduino_Lipo_Storage_Discharger_Lipo_Storage_Discharger",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Atmel-ICE-Header-Adapter_ice header adapter pcb",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Avem_Hardware_Avem_demo",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-AzizLight_AzizLight",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-BB-PWR-3608_BB-PWR-3608_revA",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-BB-PWR-8009_BB-PWR-8009_revA",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-BLDC-controller_BLDC_controller",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-BML-Badges_BML-Badges",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-BML-Badges_BML_01",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Baofeng-Interface_BaofengInterfaceIsolated",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-BirdAttractor_BirdAttractor_RevA",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-BirdAttractor_BirdAttractor_RevC",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-BirthdayCakeKeyboard_10Key",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Biscay_Blueeye_mcu",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Biscay_Blueeye_sipm-fpga",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Blink-Eras_AVR_ISP_Pogo",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Blitz_.C68",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-Blitz_Rev.K_C68",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-Blitz_copy",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-Box0-hv-analog-breakoutboard_breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Brushless_ESC_Brushless_ESC",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-C-BISCUIT_crowbar",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CAL430FR_CAL430F",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CAL430FR_CAL430F_watch",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_4CH_Mixer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_APC_Eurorack_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Abakus_Control",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Abakus_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Arduino_VCO_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Baby_8",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Buffered_Multiple_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Buffered_Multiple_SMD_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_CGS_Analog_Switch_Matrix_Control",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_CGS_Analog_Switch_Matrix_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Classic_ADSR_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Clock_Divider_Control",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Clock_Divider_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Dual_VCA_2_Control",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Dual_VCA_2_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Envelope_Follower_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_HAGIWO_6Ch_Gate_Sequencer_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_HAGIWO_MultiOut_Control",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_HAGIWO_MultiOut_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_HAGIWO_Ring_Modulator_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_LFO_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_MFOS_Eight_Stage_Phase_Shifter_-_Control",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_MFOS_Eight_Stage_Phase_Shifter_-_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Control",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Main_1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Main_2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Main_Rectifier_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Manual_Gate_Control",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Manual_Gate_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Power_Modul_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_S_H_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Single_Attenuator",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Slim_Precision_Adder_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Slimline_VCA_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Slimline_Voltage_Controlled_Switch_-_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Vactrol_VCF_-_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_YuSynth_Dual_Balanced_Modulator_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_YuSynth_Improved_Steiner_VCF_Main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CapPCB_CapPcb",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Cherry-Mx-Bitboard_Cherry Mx Bitboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ChirpHardware_chirp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CompactFlashBreakout_CompactFlashBreakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CoreOne-xCORE200-Original_CoreOne",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-CubeSAT-Reaction-Wheel_Edison_Motor_Servo",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-CubeSAT-Reaction-Wheel__autosave-GPIO to motor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Curryboard_Curryboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DAC-ADAU1966_DAC-ADAU1966",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DC25_DC25",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DIYDAC_DIYDAC",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DPS-1200FB_Adapter_Adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DaWeather---Project__autosave-CarteDaWeather",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DasBlinkinput_Das Blinkinput",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Dekada_dekada",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Dekada_dekada_TopoR_curves",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DerKnopf_digi-pot",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DerKnopf_led-ring",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DerKnopf_power-supply",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DiscoDanceFloorV1_DiscoDongle",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DonCon2040_DonConPad",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Doorman_doorman_slot",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DoroidOscillo-Board_Android_Oscilloscope",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DualLM317BenchSupply_DualLM317BenchSupply",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-DustSensorShield_DustSensorShield",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-E202VAR-Natural-Radio-Receiver_e202var-vlf-radio-receiver",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-EEGFrontier_EEGFrontier",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ESP-12-breakout_ESP12E-breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ESP-Breakout_ESP-Breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ESP07-Breakout_ESP07-Breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ESP32-Module-Breakout_ESP32S-breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ESP8266-MQTT-battery-monitor-hw_battery-monitor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ESPLux_Board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ESP_BaPoTeSta_ESP_BaPoTeSta",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ESP_WiFiSwitch_WifiSwitch",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Eggbot-Spherebot-polargraph-Controller_eggbot-spherebot-polargraph-controller",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Electronics-MainBoard_MainBoard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-EncoderBoard_Enc_Pan_Led",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-EnvOpenPico_EliteMicro2040",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-EuroPi_europi-surface-mount",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-FRM16_Relay_Module_I2C_Controller_relay_controller",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-FT231X_breakout_FTDI_FT231XS-U_Breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Feather-ICE40-PCB_feather_ice40",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-FlashProgrammer_flash_programmer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-FogDrive_attiny45_slim",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-GameTiger_GameTiger",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-HES-V2__autosave-hes",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-HES-V2_hes",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-HW-AC-Emeter_ac-power-monitor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hangul-Clock_Hangul",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware-done-with-kicad_AVRlearn",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_BL_PCB_latest",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_Touch_Switch_1ch_PCB",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_buck_led_driver",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_esp8266_uno_relay",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_hy_adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_minimal_node_rfm69w",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_nrf52832_uno",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_orange_pi_zero_node",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_pro_mini",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_rpi_zero",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_serial_gw_ATMEGA328P",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_serial_gw_maple_mini",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_usb_shield",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hardware_Playground_wifi_lights",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-HaveSome_PCB_HaveSomePCB",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-HellScribe_HellScribe",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-HillhacksLantern_LEDLantern",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hubble_12_bit_analog_out",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hubble_16_bit_analog_out",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hubble_jacks",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hubble_leds",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hubble_mux",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Hypfer-RGB-W-LED-Controller_led_strip_controller",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-I2CTempsensor_sensors",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ID-FIX_scanConnect",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-IR-Transponder-ATTiny85-v2_Transponder_v2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ISO-port_ch340-usb-serial-isolated",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Inhibition_amplifier",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Inkjet_InkjetBreakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Inkjet_InkjetDriver",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Inkjet_PiezoDriver",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Inkjet__autosave-InkjetDriver",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-JLink-SWD_JLink-SWD",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Kefersender_UKW TX",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Keyboard_PCB_Keyboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-KiCad-LTC6802-2_main",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-KosselHotendBoard_KosselHotendPCB",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-L6235-PCB_L6235",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LAUNCHXL-F28027-isolation-PCB_project1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LED-Square_PT4115_LED-Square_PT4115",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LPC2148_Stick_LPC2148_stick",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LPC2148_Stick__autosave-LPC2148_stick",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LT3652EvalBoard_LT3652EvalBoard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LVDS2TMDS_LVDS2TMDS",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LadyBugShield_LBS-TEST1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LadybugLiteBlue_HW_LadybugBlueLite",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LiFePO4-Charge-Controller_LiFePO4-Charge-Controller",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Librecalc-Hardware__autosave-calculator",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-LimitSwitchesPlugin_LimitSwitchesPlugin",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LittleArduinoProjects_LEDx16_board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LittleArduinoProjects_sevensegment_led_display_module",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LoRaCatTrack_GPSLoRa",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LoRaPP_loramod",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-LongPixel_AnalogDriverMini",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-MAGFest-2017-Swadges_magfest_badges",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-MAVRIC_Hardware_ArduinoPracticeBoard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-MAVRIC_Hardware_Motherboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-MAVRIC_Hardware_SoilBoard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-MAVRIC_Hardware__autosave-Motherboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-MSGEQ7-Breakout-Board_MSGEQ7_Breakout_Board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Mechaduino-DR_Mechaduino DR 1.01",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Minitel_bbb-adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Minitel_driver_board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-MixSID_mixsid",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Mouse_Mouse",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-MySRaspiGW_MySRaspiGW",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-MySRaspiGW_MySRaspiGW_PA_LNA",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-MySRaspiGW_MySRaspiGW_PA_LNA_Pimoroni",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-MySRaspiGW_MySRaspiGW_Pimoroni",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-NRC2016_banked_ram",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-NRC2016_usb_sio",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-NRC2016_z80",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-NavigationThing_NavigationThing",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-NeoWall_NeoWall",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Neptune-Hardware_DataAcquisitionBoard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-NiMH-Charger_NiMH Charger",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-OLD-Stepper-motor-board-design-project_Stepper motor driver",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-OSHW-reCamera-Series_reCamera_Basically_Board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Omega2-Berrydock_berrydock-mini",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Omega2-mini-dock_Omega2 mini-dock",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-OpAmpPassXsistorBenchSupply_OpAmpPassXsistorBenchSupply",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Open-Source-Power-Supply_PowerSupply_PCB",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Open-Source-Power-Supply_PowerSupply_PCB_backup",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-OpenHardwareExG_ActiveElectrode_OpenHardwareExG_ActiveElectrode",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield_Test_Board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield_Test_Board_all_panelled",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-OpenVNAVI_driver unit",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-OpenVNAVI_motor unit",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Own-Mailbox-Hardware_eth",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Own-Mailbox-Hardware_mailbox",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-PCB_constant_current_ac_hv",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-PCB_serie_led_strip",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-PCB_small_halogen_replacement",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-PGA2311_pga2311",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-POV_POV",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-PWRmeter_PWMeter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Paperino_HW_Paperino_shield",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Paperino_HW_paperino_breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Patternflow_patternflow",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Phased-Array-Microphone-using-FPGA_SateliteMicrophone",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Pi1541io_Pi1541io",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Pi5_PCIe_Pi5_PCIe",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-PixyWirelessShield_Shield PIXY",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-PmodHDMIIn_PmodHDMIIn",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-PocketBone_pocketbone-kicad",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Practicas-Curso-Kicad_Ejercicio_2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Practicas-Curso-Kicad_Salguero_Federico2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Prototyping_Workshop_Prototyping_PCB",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-PsuFanController_FanController",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-QRPCard_QRPCard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-R1002_R1002",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RC2014_RC2014 IDE",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RC2014_RC2014 RAM",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RC2014_RC2014 Tandy Sound Card",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RC6502-Apple-1-Replica_RC6502_Apple_1_SBC",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-RC6502-Apple-1-Replica_RC6502_Terminal",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RC6502-Apple-1-Replica_RC6502_VDU",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RFM69HCW_ATSHA204A_Breakout_RFM69HCW_ATSHA204A_Breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RGBMatrixPanelCPLD-PhotonBackpack_RGBMatrixPanel_CPLD_negative",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RGBMatrixPanelCPLD-PhotonBackpack_RGBMatrixPanel_CPLD_positive",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RPi-PWM-Fan-interface_RPi PWM Fan interface",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RX5808_diversityModule",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RX5808_rx5808_4button",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Raspberry-Pi-Soft-Power-Controller_Switching Supply TPS563208 MCI",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Raspberry-Pi-Soft-Power-Controller_Zero Current Soft Power",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ReSDMAC_ReSDMAC",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-ReST32_ReST RRD-FGC-Adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ReST32_ReST SD-Module",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Retro1DecodingModules_AddressDecoderModule",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RetroWiFiModem_RetroWiFiModem",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RoBoC_CameraAdaptor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-RoBoC_RoboticsMKII",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-S1G-Mod_JST_Adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-S4A-Mini-board_s4a-mini-board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-SMDBreakouts_smd_breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-SMDBreakouts_smd_breakout_quad",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-SNAP-Badge_SNAP_badge",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-SOICbite_SOICbite_SWD",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-STM32F303_LQFP48_STM32_LQFP48",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-STM32F373_LQFP48_STM32_LQFP48",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Shift-in-32-HC165_shift-in",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Shift-out-32-HC595_Shift-out",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-SimpleCPLD_SimpleCPLD",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-SmartLaserCO2-PCB_LaserPointer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-SmartLaserCO2-PCB_OptAdjust",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-SmartLaserCO2-PCB_WaterCool",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Solare-BQ24210_Solare-BQ24210",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-SparkSwitch_SparkProtectionSwitch",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Starburst-One_alpha",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Starling_Starling_V1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Starling__autosave-Starling WiPSU ver_0.1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-SynthDrumTrigger_Synth Drum Trigger",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-TB6600StepperDriver_DEW_TB6600-V1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-TK44_TK44",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-TLPHnodeV2_TLPHnodeV2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-TMC261-stepstick_TMC261-stepstick-v1.1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-TX5823_TX5823",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Teensy-3.5-Breakout-Boaard_PropShield_Uno",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Teensy-3.5-Breakout-Boaard_TeensyMegaIoShield",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Teensy-3.5-Breakout-Boaard_Test",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Teensy-Hats_Teensy-7-Segment-Hat",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Teensy-Hats_Teensy-LCD-LiDAR-Hat",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-TeensyProtoboard_TeensyProtoboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ThinkerShield_ThinkerShield",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-TinyTracker_ub-minimal",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ToslinkCNC_Toslink PlanetCNC ECO shield",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ToslinkCNC__autosave-ToslinkCNC_OneAxis",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ToslinkCNC_toslink_arduino_shield",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-TripleDelay2399_TripleDelay2399",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ULPI-Pmod_ULPI-Pmod",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-UProgrammer-Hardware_Programmer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-UltraPIF_Hardware_led",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-UltraPIF_Hardware_pif_adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-UltrasonicSystem_Schematic",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-UniversalBoard4Nucleo_Nucleo_Universal_Board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Usb-Serial-Breakout-Cp2102_cp2102",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-VC4000MultiROM_MultiRomCard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-VM-sensor-PT1000_vm-sensor-pt100",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Ventilator_indicator-board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Ventilator_pressure_XGZP6897A",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Ventilator_pressure_mpx5700ap_gp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Ventilator_pressure_mpxv5004_10dp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Ventilator_pressure_mpxv5004dp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Ventilator_pressure_mpxv5010dp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Ventilator_pressure_ms4525do",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-WHCS-Base-Station_base-station",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-WS2811LEDMatrix_matrixcontrol",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-WeatherSpot_vreg_pressure",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-WordClock_v2.0_WordClock_v2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-Youyue-858D-plus-MCU-adapter_youyue-858d-plus-mcu-adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-abus-cfa1000-display-grabber_acs-display-grabber",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-aciduino_aciduino_pcb",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-airqualitystation_hardware",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-akuhei_akuhei",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-alu_gate_xnor_2in",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-amalthea_amalthea_rev0",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-analog_esr_meter_esr_meter_rev_a",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-anima_MotorDrive",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-antdroid-board_antdroid-board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-apa102lantern_apa102-lantern-side",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-arduino-led-driver_arduino-led-driver",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-arduino_arduino leds",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-atmegax8-protoboard_atmegax8-protoboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-atmel-programmer_atmel_programmer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-audio_relay_input_switch_relay_switch",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-audprog_audprog_v2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-autohat-board_inverted-usd-adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-autohat-board_usd-adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-avr-fuser-32_adapter",
+      "identical": true,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-avr_ledprojector_avr_ledprojection",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-avr_ledprojector_avr_ledprojection-0402",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-azalea_azalea",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-badge2016_Badge_init",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-balena-rover-wide-hat_resin-rover",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-basic_esp_board_basic_esp_board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-beast-phat_beast-phat",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-bee-light-measurement-matrix_bee-light-measurement-matrix",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-beer-gauge_sensorboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-beryl_rain_beryl_rain",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-beyblock20_beyblock20",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-bikedar_bikedar",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-blackmagic-isolated_mmp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-bldc-gimbal-1d_gimbal-board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-blinky-badge_blinky",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-bms-8s50-ic_bms-8s50-ic",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-bmw-ibus-bluetooth_bmw_bt_cdcemu_analog",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-bmw-ibus-bluetooth_bmw_bt_cdcemu_digital",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-board_armjtag_pmod_compatible_armjtag-pmod",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-boards_shift-register-demo-v2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-boatcontrol_CommonCathode60A",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-boatcontrol_NonLatchingNO30A",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-bobc_LCD-panel-adapter-lvc",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-bobc_MS-F100",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-bobc_led_clock",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-bobc_matrix_clock",
+      "identical": true,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-bpnode-bb_BPnode-BB",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-breakout-boards_50-to-100",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-breakout-boards_avr-isp-x2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-breakout-boards_esp8266-jtag",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-breakout-boards_swd-and-uart",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-breakout-boards_swd-to-wires",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-bristle_bot_light_follow_bristle_bot",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-busblaster-to-swd_busblaster-to-swd",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-bypass_crossmix_bypass_crossmix",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-can_firewall_hardware_CAN_Firewall",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-cdm324_backpack_cdm324",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ciurlys_ciurlys",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-clock_lcdb4",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-cnlohr_wiflier",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-cnlohr_wiflier_B",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-continuity-tester_continuity-tester",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-cookiecutter-xsproduct_{{cookiecutter.product_name}}",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-crossover-schiit-stack_xover4schiit",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-custom_cpu--ALU_custom_cpu--ALU",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-custom_cpu--register_custom_cpu--register",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-data-manager_data-manager",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-decelerator4030_decelerator4030",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-denbit_basic",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-deskbot_breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-devttys0_IRis",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-digital_clock_led_clock_3_and_4_digit",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-digital_clock_led_clock_v1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-disco-dongle_DiscoDongle",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-divergence_meter_dm_control",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-domotics_base-board-arranged",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-dorkyboard_keyboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-drawduino_drawduino",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-dust_sensor_dust_sensor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-dustbox_Dustbox",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-eBUS-Adapter_Groeger",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-eeg_brainboard_batteryv0",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-eink-adapter_eink",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-epaper-102_epaper-102",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-epapercard_epapercard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ergo-snm-keyboard_receiver",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp-leipa_esp-12",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp-serial-terminal_esp-com",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp12-appliance_mod_esp12-appliance-mod",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp12-breakout_ESP12Breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp32-4-channel-relays_esp32-4-channel-relays",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp32-ethernet_esp32-ethernet",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp32stack_esp32stack",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp8266-for-uppatvind_Air-Purifier-Uppatvind",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp8266_32x32panel_esp_12_f_595",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp8266_32x32panel_esp_12_f_595_ORDERED",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp8266_envmonitor_environment-monitor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp8266_envmonitor_environment-monitor-1.2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp8266_envmonitor_environment-monitor-1.4",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp8266_link_test_esp_micro85-only",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp8266_network_speaker_esp_network_speaker",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esp8266_wi07_3_adapter_esp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-espalarm_alarm",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esper_EsperDNS",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-esper_programmer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-espeverywhere__autosave-espeverywhere_breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-espionage_esplight",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-everled_everled",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ezusb-logicanalyzer_cypress_logic_analyzer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-f.60_keyboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-fan_controller_fan_controller",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-fifogfx_c64cart",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-filament_extruder_sensor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-fingerprint-with-esp32_quet van tay",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-firefly-jar_solar_lamp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-fp2_extension_sample_fp2_usb_breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-free-of-charge_BMS",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-freeDSP-CLASSIC-SMD-BALANCED_FreeDSP_BAL",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-freeUSBi_USBi_Programmer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ftdi-jtag-programmer_JTAGProgrammer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-BRK-M-XS",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-BRK-TR-A",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-CART256K-A",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-CART32K-A",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-CARTPP-XC",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-LIVE32",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-MBCTEST",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-gdrom_adapter_board_adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-gepetto_circuito",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-guitar_fret",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-gwurrbus_pwm",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hackaday_esp-14_power_meter__autosave-esp-14",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hackpad_orpheuspad_pcb",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hackyflasher_Flasher",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hardware-designs_c-trigger",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hardware-designs_m-trigger",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hardware-designs_nixie-combo",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hardware-designs_nixie-power",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hardware-designs_soil-moisture-sensor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hardware-designs_solar-harvester",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hardware-designs_spsgrf-board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hbr-mk2_hbr-mk2-bpfs",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hbr-mk2_hbr-mk2-digital",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hbr-mk2_hbr-mk2-lpfs",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-headstage-adapter_headstage adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-helmholtz-servo_CurrentServo",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hm-mod-rpi-rtc_hm-mod-rpi-rtc",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hw_trials_demo",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-hwstar_ac-power-monitor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-icehat_icehat",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-imfr-schematics_Telescopio",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-induction-hob_temperature-sender",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-jadonk_PocketBone",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-jdy-08-board_jdy-08",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-juno-chorus-clone_juno-chorus-clone",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-karabas-nano_karabas-nano-revA",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-karabas-nano_karabas-nano-revB",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-karabas-nano_karabas-nano-revC",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-karabas-nano_karabas-nano-revG",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-karabas-nano_wifi_revA",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kassenautomat.mdb-interface_mdb-interface",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-keyboards_Djinn",
+      "identical": true,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-kicad-guitar-preamp_Preamp-Instructables",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kicad-projects_BatCharge",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kicad-projects_ili9341-breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kicad_bbb-melzi",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kika-in-space_DS8500",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kika-in-space_analog-test-board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kinetoscope_ethernet",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kinetoscope_microcontroller",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kinetoscope_sram-bank",
+      "identical": true,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-kit2-led-cube_led_cube",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_12V5A_breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_12_24_boost_converter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_40-channel-hv-switching-board",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-kitspace_4_switch_array",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_8_switch_array",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_BQ25570_Harvester",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_CH330",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_CO2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_DIY_detector",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_Lcr_addon",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_Minisumo_V2.1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_OSO-BOOK-C1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_OtterScreen",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_PSLab",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_Potentiometer_mount_4LED",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_Potentiometer_mount_8LED",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_RPi_shield",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_T32_ref",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-kitspace_USB-C-Screen-Adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_USB-C-Screen-Adapter-LDR6023SS",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace__autosave-nunchuk_breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_aquarius",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_ardfpga",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_beehive",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_dropbot-front-panel",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-kitspace_dropbot_control_board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_dynamixel_shield",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_esp8266",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_flypi",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_flypi_v2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_gas_sensor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_grove_adaptor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_hbridge_driver",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_hp_led_switch",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_hum_temp_sensor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_ideal_diode",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_ir_sensor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_led_driver",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_level_shifter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_minisumo_v3",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_nunchuk_breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_peltier",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_piezo_amplifier",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_pmt_combiner",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_power_supply",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_sensor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_solenoid_driver",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_spike_n_hold",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_sympetrum-v2%20NFF1.1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_teensy-fx",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_temp_breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_threeboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_training_board_v02",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_trans_switch_volt_amp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_tt_nano_HAT_b1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_tt_nano_HAT_b2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-kitspace_tt_opt101_module_b1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-klangorium_logic_noise_playground",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-komputer-klavier_KomputerKlavier",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-led-wordclock_wordclock",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-led_array_atmega8_led_array",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-lfi-rig_lfi-driver",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-light-painting-wand_light-wand",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-linklayer_contact",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-low-power-counter_lpcounter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-m2-electronics_m2fc",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-m2-electronics_m2pogo",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-m2-electronics_m2r",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-m2-electronics_m2rl",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-mac-pro-conversion_front-panel-power-adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-magic-table_etch-a-sketch_cyclone",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-makerspace-emonth_resistor_board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-marlin-neopixel-bridge_ATtiny85_Marneo",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-mavbridge_mavbridge",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-maytal_Maytal",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-mdbwerk_mdbwerk",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-mearm-base-pcb_ServoPCB",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-mechkeys_lfk78-jtag",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-medusa_medusa_rs422_rx",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-memory-display_memory-display",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-memsarray_mems_array",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-microphone_preamp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-mightyduino_mightyduino",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-mikoto_mikoto-flashbed",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-mini_ice40_mini_ice40",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-miniboard-opamp_miniboard-opamp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-miniboard-stm32f0_miniboard-stm32f0",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-mobile-sensor-pcb_mobile-sensor-pcb",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-mojo-nes_mojo-nes",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-motor-3xdrv8833-hw_ver1",
+      "identical": true,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-mppt-2420-hc_mppt-2420-hc",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-mppt-2420-hpx_mppt-2420-hpx",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-nRF24breakoutBoard_nRF24-breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-nand_programmer_adapter_tsop48",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-nanoSwinSidC_nanoSwinSidC",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-navelino-leaf_navelino-leaf",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-nextbusclock_NextBusClockV1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-nfl-led-scoreboard_passive-rpi-hub75-adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-nfl-led-scoreboard_passive3-rpi-hub75-adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-nikon_gps_nikon_gps",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-nixie-clock_ab18x5-breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-nodemcu-backstage_NodeMCU Backstage",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-nodemcu-basecamp_NodeMCU Basecamp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-nonSNES_SNSP-CPU-1CHIP",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-nrf2rfm69_nrf2rfm69",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-nunchuk_rf_hw_NunchukRF_V3",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-oasis_ledboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-oled-bmp280-touch_oled-bmp280-touch",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-one-shift-register_one-shift-register",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-onion2-breakout_onion2 breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-opentilt_opentilt2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-oshtimer_transponder",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ottawa-badges-2016_ottawa-badge-tagger-2016",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ozinverter_ozinverterkicad",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-pcb-covox-amp-v2_pcb-covox-amp-v2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-pcb-covox-amp_pcb-covox-amp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-pcb-ks0108-128x64-glcd_circuit",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-pcb-usb-ft245r-parallel-adapter_pcb-usb-ft245r-parallel-adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-pesho_pesho",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-phone_rtty_interface_phone_rtty_rev_a",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-phone_rtty_interface_phone_rtty_rev_b",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-photon_Sprinkler_sprinkler",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-pi-zero-stepper-board_pi-zero-stepper-board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-pi_plant_MCP3002",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-pico-pi-rel_pico-pi",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-pmw3360-pcb_pmw3360_pcb_jst",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-pocketbone-kicad_pocketbone-kicad",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-polypoint_pinpoint_timebase",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ponyser-pcb_Ponyser",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-preamp-two_input-selector",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-preamp-two_mcu-board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-preamp-two_mdac-attenuator",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-prog-cc-100mA_prog-cc-100mA",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-project-hydra-meshtastic-pcb_meshtastic-diy",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-pulse_v1_pulse",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-pusheenz40_sadcatz40",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-pwm-2420-lus_pwm-2420-lus",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-radio_antenna-iridium",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-raspberry_pi_pullup_button_pullup_shutdown_button",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-raspberry_pi_pullup_button_pullup_shutdown_button(revB)",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rc2014_bank_switcher_z80_cpm_mmu",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-real-time-chess_kfchess",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-recalbox-gpio-board__autosave-board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-recalbox-gpio-board_board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-retrocon_bbb-adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-retrocon_driver_board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-retroreflectors_TANGOFLOCK",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rfcx-sentinel-pcb_Mainboard",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rfidBoard_rfid",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rgb-led_rgb-led-v2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rgb-strip-controller__autosave-rgb-strip",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rgb2ypbpr_rgb2ypbpr",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rjw57_cpu-board",
+      "identical": true,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-roomba-ESP12E_roomba-esp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rotary-encoder-breakout_rotary-encoder-breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-royer_royer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rp2040-dmxsun_baseboard_2slots",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rp2040-dmxsun_baseboard_4slots",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rs485-moist-sensor_adapter-por",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rs485-moist-sensor_interconnect",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rs485-moist-sensor_rs485-moist-sensor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rufs__autosave-simple_kicad_schema_and_pcb_v1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rufs_aprs_tracker",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rufs_dra818v_breakout_board",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rufs_simple_kicad_schema_and_pcb_v1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rufs_smart_psu",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rufs_spv1040_power_controller",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-rxadc_14_rxadc_14",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-saiboard_3x8",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-saiboard_8x3",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-scimpy_amp",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-scimpy_crossover",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-scimpy_powersupply",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-scimpy_volumebuffer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-sensorboard_DiffIR",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-sensorboard_DiffIR.kicad_pcb_narrow",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-shutter_Shutter V4",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-shutter_speed_tester_shutter_speed_tester",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-simplebus2-intercom_repeater_v2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-sms-cart-32k_cart",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-smt-zvs-driver_IH10-sl",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-snappi-zero_snappi-zero",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-soil-moisture-sensor-analog_analog-moist-sensor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-solar-lanterns_proto1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-sonic3_feram_adapter_sonic3_feram_adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-spisolator_spisolator",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-split-pcb-throughole_splanck throughhole",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-srambo_1_srambo_1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-ssr-wifi_adapter",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-starfish_starfish",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-starsynctrackers_reset_switch",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-stlinkv2_breakout_stlink_breakout",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-stm32_ccd_camera_ccd",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-stubby_hex",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-sv650sds_sds_tool",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-taira-keyboard_tairakb",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-tbd_tbd",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-tdstat_TDstatv2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-technoshield-ui-hw_technoshield",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-teensy-touch_teensy-touch",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-teensy-weather-badge_teensyi2c",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-teensy-wifi-weather-logger_teensyi2c",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-temperature-alarm_controller",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-tepmachcha_tepmachcha",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-tessel-ice40__autosave-project",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-thatmicpre_thatmicpre_v1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-thatmicpre_thatmicpre_v2",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-thegrid_thegrid",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-thingBot-LoRa_thingBot-LoRa_v1P0",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-thingBot-LoRa_thingBot-LoRa_v1P1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-timecircuits-hardware_BTTF-TimeCircuits",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-tiny-8088_Computer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-tinyFISH_tinyBRUSH",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-tinyisp-micro_tinyispmicro",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-tinymuseum_museum",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-type5_type5",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-uC3Moy_uC3Moy",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-uSKY_uSKY",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-uext-esp32_UEXT_ESP32",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-usb_rs232c_usb_rs232c_rev_a",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-vatx_vatx",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-vdcmon_vdcmon",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-wavegen_rev3",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-wavegen_waveform-generator",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-wavegen_waveform-generator-rev1",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-wavegen_wavegen",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-wifiLCD_wifilcd",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-xmasOrn_xmasOrn",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-xwhatits-capsense-controller_model-f-3178-adaptor",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-z2amiller_sensorboard_programmer",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-zx-sizif-128_sizif128",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-zx-sizif-512-ext_sizif512ext",
+      "identical": false,
+      "both_completed": false
+    },
+    {
+      "board": "pcbench-zx-sizif-512-wifi_sizif512-wifi",
+      "identical": true,
+      "both_completed": true
+    },
+    {
+      "board": "pcbench-zx-sizif-xxs_sizif-xxs",
+      "identical": true,
+      "both_completed": false
+    }
+  ]
+}

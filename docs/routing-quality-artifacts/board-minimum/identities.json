@@ -1,0 +1,5762 @@
+[
+  {
+    "board": "pcbench-ABOVISP_ABOVISP",
+    "hashes": [
+      "8e46b0a2e355a478b1d9a7d2044dc244385f2fc00cd5cb96afe672c4341d000a",
+      "8e46b0a2e355a478b1d9a7d2044dc244385f2fc00cd5cb96afe672c4341d000a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ergo-snm-keyboard_receiver",
+    "hashes": [
+      "8a63067b0f9b48390d26bdcc29dc2ee860799d68d9e275e1347877decb8e910d",
+      "8a63067b0f9b48390d26bdcc29dc2ee860799d68d9e275e1347877decb8e910d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Baofeng-Interface_BaofengInterfaceIsolated",
+    "hashes": [
+      "60f81c115ef67305da7d28ba201403519bb82d543829cb86bf3477f88b1d33a0",
+      "60f81c115ef67305da7d28ba201403519bb82d543829cb86bf3477f88b1d33a0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_CGS_Analog_Switch_Matrix_Control",
+    "hashes": [
+      "9d6c8aed10a86ff8c4b48e8908c99a601664248620685292282ee726091316a2",
+      "9d6c8aed10a86ff8c4b48e8908c99a601664248620685292282ee726091316a2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Practicas-Curso-Kicad_Ejercicio_2",
+    "hashes": [
+      "2289beeb4e583c5196a1eae6c60d9b4bd22ab681ddcef07e5612344f9520e807",
+      "2289beeb4e583c5196a1eae6c60d9b4bd22ab681ddcef07e5612344f9520e807"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-bmw-ibus-bluetooth_bmw_bt_cdcemu_analog",
+    "hashes": [
+      "02e20d52a6a2199ec415c3b968e1ff7e5d2e2d595e1628f608d6e818a32167ba",
+      "02e20d52a6a2199ec415c3b968e1ff7e5d2e2d595e1628f608d6e818a32167ba"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Paperino_HW_Paperino_shield",
+    "hashes": [
+      "42aa429597e2fd1cd3602baad2f4cfbd31d674adf1d38dc0bdf53c7b0568fef0",
+      "42aa429597e2fd1cd3602baad2f4cfbd31d674adf1d38dc0bdf53c7b0568fef0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Arduino_Lipo_Storage_Discharger_Lipo_Storage_Discharger",
+    "hashes": [
+      "cb961b5160ce0fd9e45bded2564b6b7b115e2e522e113734109d5bf0ca169078",
+      "cb961b5160ce0fd9e45bded2564b6b7b115e2e522e113734109d5bf0ca169078"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-boards_shift-register-demo-v2",
+    "hashes": [
+      "421e25f6ab896d81051d9f2e4aa2817394923fd0b62088f2dbdcb87d15c423c8",
+      "421e25f6ab896d81051d9f2e4aa2817394923fd0b62088f2dbdcb87d15c423c8"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-HillhacksLantern_LEDLantern",
+    "hashes": [
+      "d6e9c8816b6fd5a8e8198ca15656c6ccc7a6811758f09810a66f20be38215ed9",
+      "d6e9c8816b6fd5a8e8198ca15656c6ccc7a6811758f09810a66f20be38215ed9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "kicad-issue368-corneyislandwireless--corney_island_wireless",
+    "hashes": [
+      "bb9e730b1a17423d5cfb1e66ed040387c8ff4e0d5eb13b8256290c2547fe6112",
+      "bb9e730b1a17423d5cfb1e66ed040387c8ff4e0d5eb13b8256290c2547fe6112"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-AS5043-Encoder_sensor-board",
+    "hashes": [
+      "fa5b87c5aac377ad1e8a922f4a5394b605ee079ddb4022de90b0dbf1ebf6fb37",
+      "fa5b87c5aac377ad1e8a922f4a5394b605ee079ddb4022de90b0dbf1ebf6fb37"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LPC2148_Stick__autosave-LPC2148_stick",
+    "hashes": [
+      "4673f47db9b3b6a24986c85e647735cc19a6e4abdd3dd215b219fea9dc80b6c1",
+      "4673f47db9b3b6a24986c85e647735cc19a6e4abdd3dd215b219fea9dc80b6c1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "kicad-issue632-miniautopilot--mini auto pilot",
+    "hashes": [
+      "7a07ca2e13e552dfa96a8f6f137f5c9e4ad3c2d8ef4899ffc56e78aa2f3c9855",
+      "7a07ca2e13e552dfa96a8f6f137f5c9e4ad3c2d8ef4899ffc56e78aa2f3c9855"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DerKnopf_digi-pot",
+    "hashes": [
+      "03d35773ff18e528723c5220dfde20bb7451034ab3597444f3d369efc0734094",
+      "03d35773ff18e528723c5220dfde20bb7451034ab3597444f3d369efc0734094"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ReST32_ReST SD-Module",
+    "hashes": [
+      "8f9b451546b6f55421fecdbd2681433a92c66777ed59f8cb2dafcc5f6486973b",
+      "8f9b451546b6f55421fecdbd2681433a92c66777ed59f8cb2dafcc5f6486973b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RGBMatrixPanelCPLD-PhotonBackpack_RGBMatrixPanel_CPLD_positive",
+    "hashes": [
+      "96f29e4914841ecefbad568ebd60a8e9847821189a7a13b59a3bf7800701dad8",
+      "96f29e4914841ecefbad568ebd60a8e9847821189a7a13b59a3bf7800701dad8"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ssr-wifi_adapter",
+    "hashes": [
+      "eb728897f0bdce2be630f4f11d89c6d0401a59b871cd5b7a54451dca54cbe1a7",
+      "eb728897f0bdce2be630f4f11d89c6d0401a59b871cd5b7a54451dca54cbe1a7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Blink-Eras_AVR_ISP_Pogo",
+    "hashes": [
+      "f23beb61a2117b33299fb25a7a3a2c393471838afe06999956489192b9d6d50b",
+      "f23beb61a2117b33299fb25a7a3a2c393471838afe06999956489192b9d6d50b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-IR-Transponder-ATTiny85-v2_Transponder_v2",
+    "hashes": [
+      "b3d5a452ace9985c6c2d73342209cff52b5ff25903f1c10268b9fa3887b23032",
+      "b3d5a452ace9985c6c2d73342209cff52b5ff25903f1c10268b9fa3887b23032"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rufs_spv1040_power_controller",
+    "hashes": [
+      "99e6274089561503a1d9bc214deaeffc5f4906068efa4a66f01a1396c3cfb086",
+      "99e6274089561503a1d9bc214deaeffc5f4906068efa4a66f01a1396c3cfb086"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Biscay_Blueeye_sipm-fpga",
+    "hashes": [
+      "678c98d1ae86f83b8d109482414251ba833049da9466fdd4e61d1923d75ff0d2",
+      "678c98d1ae86f83b8d109482414251ba833049da9466fdd4e61d1923d75ff0d2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-STM32F373_LQFP48_STM32_LQFP48",
+    "hashes": [
+      "809eb6657bc26ee46b93d0d48d58bd031bbafa99052acbdb58de71968fe7927d",
+      "809eb6657bc26ee46b93d0d48d58bd031bbafa99052acbdb58de71968fe7927d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield_Test_Board",
+    "hashes": [
+      "97c0aafa7d4dd42bf7237120ad0e96f0921113006893b5d4a801b8d1e2c8266a",
+      "97c0aafa7d4dd42bf7237120ad0e96f0921113006893b5d4a801b8d1e2c8266a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Slimline_VCA_Main",
+    "hashes": [
+      "c9ffcbeb2cd5ca065e9ee4b2b7885623d224153bb2dfbd9fe075ca74f6a72c35",
+      "c9ffcbeb2cd5ca065e9ee4b2b7885623d224153bb2dfbd9fe075ca74f6a72c35"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-airqualitystation_hardware",
+    "hashes": [
+      "f4a53bf3637b555f03bf8d5e76676437a9b84cd2b5d11b3eaa131b964af54583",
+      "f4a53bf3637b555f03bf8d5e76676437a9b84cd2b5d11b3eaa131b964af54583"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-teensy-touch_teensy-touch",
+    "hashes": [
+      "a3e54744693bd7533f6e3829f0bab44fc7987cf206646470c2866061f49cd146",
+      "a3e54744693bd7533f6e3829f0bab44fc7987cf206646470c2866061f49cd146"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-SNAP-Badge_SNAP_badge",
+    "hashes": [
+      "6dc432d7a154d1b2749d57abbd4c5c47b823cd621754c327186b18da59f58102",
+      "6dc432d7a154d1b2749d57abbd4c5c47b823cd621754c327186b18da59f58102"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-mechkeys_lfk78-jtag",
+    "hashes": [
+      "8ac0832ebd9e11d73104c66771cfbd90eb4b28f97ac89ea49725f9198fd0adf9",
+      "8ac0832ebd9e11d73104c66771cfbd90eb4b28f97ac89ea49725f9198fd0adf9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-royer_royer",
+    "hashes": [
+      "3987ec9a7f8a292134bcfc7856d926f63c55f807bd301221c8f257c06a3b115d",
+      "3987ec9a7f8a292134bcfc7856d926f63c55f807bd301221c8f257c06a3b115d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_spike_n_hold",
+    "hashes": [
+      "6db0203caeaf1e38aceae6225085020af35c38da238334ad5b62677926abe10b",
+      "6db0203caeaf1e38aceae6225085020af35c38da238334ad5b62677926abe10b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-retrocon_driver_board",
+    "hashes": [
+      "fa6addc53f6f69bd89efbda743fd1cb29672c89905ae5551491ab1035e3d56f6",
+      "fa6addc53f6f69bd89efbda743fd1cb29672c89905ae5551491ab1035e3d56f6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ToslinkCNC_Toslink PlanetCNC ECO shield",
+    "hashes": [
+      "7ec67de68c8e509ac2fdd795a6ed54ff0995ca8ec5f176425fdf219520966b8a",
+      "7ec67de68c8e509ac2fdd795a6ed54ff0995ca8ec5f176425fdf219520966b8a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-phone_rtty_interface_phone_rtty_rev_a",
+    "hashes": [
+      "230e115d58cabc93d8f3f4672c1c98a0e9f7cc31a12df98902946ba68351b9af",
+      "230e115d58cabc93d8f3f4672c1c98a0e9f7cc31a12df98902946ba68351b9af"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hardware-designs_nixie-combo",
+    "hashes": [
+      "41132f2bc86b115893581db5f616a1c9bdb7ea99296055811490fd430dc575b9",
+      "41132f2bc86b115893581db5f616a1c9bdb7ea99296055811490fd430dc575b9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Ventilator_indicator-board",
+    "hashes": [
+      "d6c7af18679a59add1abd641aaf8fdc2c35fb3bde23c67591e247ba051898b08",
+      "d6c7af18679a59add1abd641aaf8fdc2c35fb3bde23c67591e247ba051898b08"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-NavigationThing_NavigationThing",
+    "hashes": [
+      "5aeb5774e480011a397dfe0fc98923d28f6d5607dd375f1212408d96e6c07598",
+      "5aeb5774e480011a397dfe0fc98923d28f6d5607dd375f1212408d96e6c07598"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-gb-hardware_GB-CARTPP-XC",
+    "hashes": [
+      "dbddc0810f845efc17d9a92d3799b5881aefcb9d252e3397649c583b97b43f22",
+      "dbddc0810f845efc17d9a92d3799b5881aefcb9d252e3397649c583b97b43f22"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-espeverywhere__autosave-espeverywhere_breakout",
+    "hashes": [
+      "958ca6517cd2c03122b55400f01f3abd4afff924204f5ffa4fbe4885f92d70f8",
+      "958ca6517cd2c03122b55400f01f3abd4afff924204f5ffa4fbe4885f92d70f8"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-nRF24breakoutBoard_nRF24-breakout",
+    "hashes": [
+      "550d69bf9870e4ba907eb6f30857aa012f42cf1d86ae63ebdbcc57a588d4850b",
+      "550d69bf9870e4ba907eb6f30857aa012f42cf1d86ae63ebdbcc57a588d4850b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-pesho_pesho",
+    "hashes": [
+      "969e10dcf0ce924d8f21806c86dd90915642e421b6cf57ff91ed86169c72f5c5",
+      "969e10dcf0ce924d8f21806c86dd90915642e421b6cf57ff91ed86169c72f5c5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-arduino_arduino leds",
+    "hashes": [
+      "1bda642a6a64d80623bd7daa2a7eed56d6c52e9ef926cb870436d14306dbc32b",
+      "1bda642a6a64d80623bd7daa2a7eed56d6c52e9ef926cb870436d14306dbc32b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hubble_mux",
+    "hashes": [
+      "b856b6ea7ef7d90b06ffb83b2669c0e3ece62c301a2f6e141c05b2d0355f8814",
+      "b856b6ea7ef7d90b06ffb83b2669c0e3ece62c301a2f6e141c05b2d0355f8814"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-WS2811LEDMatrix_matrixcontrol",
+    "hashes": [
+      "7c5e54beb115b6d7bc46a5d7192c47da3a66c2928ca2b694d23371a085586ae2",
+      "7c5e54beb115b6d7bc46a5d7192c47da3a66c2928ca2b694d23371a085586ae2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-oshtimer_transponder",
+    "hashes": [
+      "84db72f62d69e41936a56c193fcf626490dc15c6d9aac1a49f9534fb5811b2e0",
+      "84db72f62d69e41936a56c193fcf626490dc15c6d9aac1a49f9534fb5811b2e0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Teensy-3.5-Breakout-Boaard_PropShield_Uno",
+    "hashes": [
+      "ee59921003d3e7929af8c41cde1610946ee1c147c3ff9515dc8bf19645174ef2",
+      "ee59921003d3e7929af8c41cde1610946ee1c147c3ff9515dc8bf19645174ef2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-PCB_small_halogen_replacement",
+    "hashes": [
+      "004e98ccbbfd6df6fa27a9e262c7a200ebbc1f8c34bef8ee7559f1cb1ef04078",
+      "004e98ccbbfd6df6fa27a9e262c7a200ebbc1f8c34bef8ee7559f1cb1ef04078"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-analog_esr_meter_esr_meter_rev_a",
+    "hashes": [
+      "ee67a763c07cb3e4d21173ace7bcb6b7032d808d41305c8949c25a791effeef1",
+      "ee67a763c07cb3e4d21173ace7bcb6b7032d808d41305c8949c25a791effeef1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-bmw-ibus-bluetooth_bmw_bt_cdcemu_digital",
+    "hashes": [
+      "9639174173439e626850ff0c3618126e5bb790f9daffed5b89e83dd5da739181",
+      "9639174173439e626850ff0c3618126e5bb790f9daffed5b89e83dd5da739181"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Eggbot-Spherebot-polargraph-Controller_eggbot-spherebot-polargraph-controller",
+    "hashes": [
+      "23cdf031b444b60ceb6ba51af9cf2e135b6be8677e49790de8ecd27e50d68e98",
+      "23cdf031b444b60ceb6ba51af9cf2e135b6be8677e49790de8ecd27e50d68e98"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Usb-Serial-Breakout-Cp2102_cp2102",
+    "hashes": [
+      "3d7cdfb61fd25aa677d7cab0e28719f4e68654ff13a3fcbcd55223583ccf8e1d",
+      "3d7cdfb61fd25aa677d7cab0e28719f4e68654ff13a3fcbcd55223583ccf8e1d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-S4A-Mini-board_s4a-mini-board",
+    "hashes": [
+      "acbacb85ee0b0abb34b2cbe2178a991991a8b4fbf6d49c00f6cbc46544237253",
+      "acbacb85ee0b0abb34b2cbe2178a991991a8b4fbf6d49c00f6cbc46544237253"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-snappi-zero_snappi-zero",
+    "hashes": [
+      "9420bccc17008684b2733874282293ab2fa79c461aaa385a611a9fb3257b0a31",
+      "e81b6829f3a261b36a391f988b9dc4890e7258b286956ad1cc7628b31c3223b8"
+    ],
+    "identical": false
+  },
+  {
+    "board": "pcbench-Inkjet_InkjetBreakout",
+    "hashes": [
+      "468525691d2e5e8fc84cdb336c92669d7c608aef0d27838fefcc29a6364345c5",
+      "468525691d2e5e8fc84cdb336c92669d7c608aef0d27838fefcc29a6364345c5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp8266_envmonitor_environment-monitor",
+    "hashes": [
+      "7e0e257a2f4b8b52410412677c86185159bf11bfa8368d9eade76ba14e8c0d98",
+      "7e0e257a2f4b8b52410412677c86185159bf11bfa8368d9eade76ba14e8c0d98"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-xmasOrn_xmasOrn",
+    "hashes": [
+      "fef0ff96eafd5ff78c28f3b408dc2ed06701a738356ae069a966e61f00cb2744",
+      "fef0ff96eafd5ff78c28f3b408dc2ed06701a738356ae069a966e61f00cb2744"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-APC_AtariPunkConsole",
+    "hashes": [
+      "5fb2795f716b612375d51217352bd725bea32f8a638a39a520e025dbc02ed7eb",
+      "5fb2795f716b612375d51217352bd725bea32f8a638a39a520e025dbc02ed7eb"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_DIY_detector",
+    "hashes": [
+      "6cc516d6b39f041af2a9f1208a3517587f34edb9aa0208e95220bf686d289d13",
+      "6cc516d6b39f041af2a9f1208a3517587f34edb9aa0208e95220bf686d289d13"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Baby_8",
+    "hashes": [
+      "e0a7b8718ee5d843419ced7ee16a24c7a7c87646b07a8cb2c21acba8cf11af28",
+      "e0a7b8718ee5d843419ced7ee16a24c7a7c87646b07a8cb2c21acba8cf11af28"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-badge2016_Badge_init",
+    "hashes": [
+      "e856f7a2cc141212a4069adae53f0de1fa13604deb1c6e56ddce264f7378c33c",
+      "e856f7a2cc141212a4069adae53f0de1fa13604deb1c6e56ddce264f7378c33c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ChirpHardware_chirp",
+    "hashes": [
+      "6a48c13edacedfacd9f25fa9469c57b0830ba5ac550998c029fe2de4eb8d192d",
+      "6a48c13edacedfacd9f25fa9469c57b0830ba5ac550998c029fe2de4eb8d192d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Abakus_Control",
+    "hashes": [
+      "7fdc19c3a20f1f245b8daa56253a091925c207fed378a457f0488f11bb4f8ee2",
+      "7fdc19c3a20f1f245b8daa56253a091925c207fed378a457f0488f11bb4f8ee2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kicad-guitar-preamp_Preamp-Instructables",
+    "hashes": [
+      "4dc4eef9ee46430dc60848528374ba6215885937225b39cce3ec1b50a1a2a71e",
+      "4dc4eef9ee46430dc60848528374ba6215885937225b39cce3ec1b50a1a2a71e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-pocketbone-kicad_pocketbone-kicad",
+    "hashes": [
+      "75485daacc3b549cf2e3a8359627f4777c2af779d248d1397244361c4ec494bc",
+      "75485daacc3b549cf2e3a8359627f4777c2af779d248d1397244361c4ec494bc"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_YuSynth_Improved_Steiner_VCF_Main",
+    "hashes": [
+      "ca3ee1ceecd8374b5d88fb2517001e1bffdaa1fb6e2217b3e189e5ba7ca85d65",
+      "ca3ee1ceecd8374b5d88fb2517001e1bffdaa1fb6e2217b3e189e5ba7ca85d65"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_tt_nano_HAT_b1",
+    "hashes": [
+      "fa5461caac4131deee694581bf1d5ef73777c21329fa88aa7370bbb7298ddc0e",
+      "fa5461caac4131deee694581bf1d5ef73777c21329fa88aa7370bbb7298ddc0e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-mavbridge_mavbridge",
+    "hashes": [
+      "46c37a13430f18f3d99e569a52304416e581c6f07d487d1dbaadb84811ca81b2",
+      "46c37a13430f18f3d99e569a52304416e581c6f07d487d1dbaadb84811ca81b2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-FT231X_breakout_FTDI_FT231XS-U_Breakout",
+    "hashes": [
+      "482c189be18b7fc6715d365dfae9a85b3dcc609e944e05bf866996dce400949c",
+      "482c189be18b7fc6715d365dfae9a85b3dcc609e944e05bf866996dce400949c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_Minisumo_V2.1",
+    "hashes": [
+      "257b316bed4d13f70a75ad0e0d6c90dcbeab189288e400d7408381ddebf8379c",
+      "257b316bed4d13f70a75ad0e0d6c90dcbeab189288e400d7408381ddebf8379c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Ventilator_pressure_XGZP6897A",
+    "hashes": [
+      "1c874d624717c450f933ca638562a21d444c4e34a75b61d829e55f7f8d64ce35",
+      "1c874d624717c450f933ca638562a21d444c4e34a75b61d829e55f7f8d64ce35"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-tessel-ice40__autosave-project",
+    "hashes": [
+      "95b5f740539401393b0234f554ea0d58594ca26c399eb1447fdd967aaff6061e",
+      "95b5f740539401393b0234f554ea0d58594ca26c399eb1447fdd967aaff6061e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ISO-port_ch340-usb-serial-isolated",
+    "hashes": [
+      "c9023f3bc0ae926b5ee4e93e51864f5680530894b0d5f6ca02b208b424df354a",
+      "c9023f3bc0ae926b5ee4e93e51864f5680530894b0d5f6ca02b208b424df354a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hardware-designs_solar-harvester",
+    "hashes": [
+      "a10bdc1c3ebdea68a40df3da0a6c0c7f4ae68eaf8140303ee74cd9ae73a4de23",
+      "a10bdc1c3ebdea68a40df3da0a6c0c7f4ae68eaf8140303ee74cd9ae73a4de23"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Amiga-2000-EATX_TICK_OSC_KiCAD_TICK",
+    "hashes": [
+      "546b019a68c975e25404e1e87b9b13115335e4270241f8fb94774bc091f881cb",
+      "546b019a68c975e25404e1e87b9b13115335e4270241f8fb94774bc091f881cb"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Starling__autosave-Starling WiPSU ver_0.1",
+    "hashes": [
+      "c66ce29d7500e47cea3df00ebef3430e7f96fceb9a88c7255cdf23ceb25cea25",
+      "c66ce29d7500e47cea3df00ebef3430e7f96fceb9a88c7255cdf23ceb25cea25"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Brushless_ESC_Brushless_ESC",
+    "hashes": [
+      "1e3e8b1c057124df14eb117fa668c7cc4374fcfe1ec5a538b8cad9af5d8ed206",
+      "1e3e8b1c057124df14eb117fa668c7cc4374fcfe1ec5a538b8cad9af5d8ed206"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-shutter_speed_tester_shutter_speed_tester",
+    "hashes": [
+      "b8f5c57b377f7670d2d695d963a153e5636ffc1b6f43e9a2ab095275578edd3e",
+      "b8f5c57b377f7670d2d695d963a153e5636ffc1b6f43e9a2ab095275578edd3e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Slimline_Voltage_Controlled_Switch_-_Main",
+    "hashes": [
+      "98418373a795f096b7a3e5412a7e401dac7b676dff97d8f3e640bd73c09e406c",
+      "98418373a795f096b7a3e5412a7e401dac7b676dff97d8f3e640bd73c09e406c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield_Test_Board_all_panelled",
+    "hashes": [
+      "97c0aafa7d4dd42bf7237120ad0e96f0921113006893b5d4a801b8d1e2c8266a",
+      "97c0aafa7d4dd42bf7237120ad0e96f0921113006893b5d4a801b8d1e2c8266a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ThinkerShield_ThinkerShield",
+    "hashes": [
+      "f6a4bbc7ff2a8b3ebcab0b4460e0c465eb2579262e27ab1c95a5cf10ee5b1159",
+      "f6a4bbc7ff2a8b3ebcab0b4460e0c465eb2579262e27ab1c95a5cf10ee5b1159"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_HAGIWO_6Ch_Gate_Sequencer_Main",
+    "hashes": [
+      "f47642dd7a8a72917cdd2826fea2fcba28578053fcc10f6ba4de6217287eb60a",
+      "f47642dd7a8a72917cdd2826fea2fcba28578053fcc10f6ba4de6217287eb60a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-split-pcb-throughole_splanck throughhole",
+    "hashes": [
+      "dd0554359caa5aebf96702a11f4c57ffcc9525bf407abb3be25660a51b1c3898",
+      "dd0554359caa5aebf96702a11f4c57ffcc9525bf407abb3be25660a51b1c3898"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-scimpy_volumebuffer",
+    "hashes": [
+      "b7ffd2a85b5e1303d6b8b2c74e15d64cc7e1ead07c706188ab4426af81891119",
+      "b7ffd2a85b5e1303d6b8b2c74e15d64cc7e1ead07c706188ab4426af81891119"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-scimpy_amp",
+    "hashes": [
+      "0661cb8263b228c53e08c733ca09d93fe7da5f990f681dba4a2b8435eda36cca",
+      "0661cb8263b228c53e08c733ca09d93fe7da5f990f681dba4a2b8435eda36cca"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Power_Modul_Main",
+    "hashes": [
+      "1ada75489155feea20783121de6a24e6ae728c1d99a1634b73d3f28dc22ba3b2",
+      "1ada75489155feea20783121de6a24e6ae728c1d99a1634b73d3f28dc22ba3b2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-basic_esp_board_basic_esp_board",
+    "hashes": [
+      "087bbb0b0a8b20422086db310a2ae92d62e3223b66dae1464ba2bb3bcf2b36a4",
+      "087bbb0b0a8b20422086db310a2ae92d62e3223b66dae1464ba2bb3bcf2b36a4"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-induction-hob_temperature-sender",
+    "hashes": [
+      "2473dadec5ff3e9b06d0b58406f456a3936cf6336f2e919937a08cf030f479b1",
+      "2473dadec5ff3e9b06d0b58406f456a3936cf6336f2e919937a08cf030f479b1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Main_2",
+    "hashes": [
+      "f4534fea443896c5e0e66b18335bcca6ebb0ac07ca9ef57504f833cdc7913628",
+      "f4534fea443896c5e0e66b18335bcca6ebb0ac07ca9ef57504f833cdc7913628"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-retrocon_bbb-adapter",
+    "hashes": [
+      "f3d5782d108f5de3c8a29b7464708a7c8c1c398a3a253261799ff846a7fbe2d3",
+      "f3d5782d108f5de3c8a29b7464708a7c8c1c398a3a253261799ff846a7fbe2d3"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rfidBoard_rfid",
+    "hashes": [
+      "b65a06cb776d5697651025ae3588527e56763ce97d754d58ca269ae75e3ef95c",
+      "b65a06cb776d5697651025ae3588527e56763ce97d754d58ca269ae75e3ef95c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-MAVRIC_Hardware_Motherboard",
+    "hashes": [
+      "0b025544425b3f08a813ab525e3d5356d5cf8dfc91452354945d31c254c7efb1",
+      "0b025544425b3f08a813ab525e3d5356d5cf8dfc91452354945d31c254c7efb1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-drawduino_drawduino",
+    "hashes": [
+      "62bf435f8440b885d362672adc27da283bd31ec9826e22a046b40e5223b82503",
+      "62bf435f8440b885d362672adc27da283bd31ec9826e22a046b40e5223b82503"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp12-breakout_ESP12Breakout",
+    "hashes": [
+      "9a1a2e50c26148a7f38bfd7770af4cfbedf723893c82a64a1eb00e4c67ca4b04",
+      "9a1a2e50c26148a7f38bfd7770af4cfbedf723893c82a64a1eb00e4c67ca4b04"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RetroWiFiModem_RetroWiFiModem",
+    "hashes": [
+      "88206a45865465b220b69e534f59ef2f359ee998e1de53b0e3730c1d5b9cb5c5",
+      "88206a45865465b220b69e534f59ef2f359ee998e1de53b0e3730c1d5b9cb5c5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_tt_opt101_module_b1",
+    "hashes": [
+      "3601dcd262ddadeef915ef0e5c4974beaaabf9fab046ffd984f7debcc99f9ad7",
+      "3601dcd262ddadeef915ef0e5c4974beaaabf9fab046ffd984f7debcc99f9ad7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-MySRaspiGW_MySRaspiGW_PA_LNA_Pimoroni",
+    "hashes": [
+      "dee0e38358cc68ab64c2db4f91f46c34f7c198da50297df3acf6e80ea8717460",
+      "dee0e38358cc68ab64c2db4f91f46c34f7c198da50297df3acf6e80ea8717460"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-tdstat_TDstatv2",
+    "hashes": [
+      "4ac2d132fd773d8d38f5a1c9c5734f1dd9eddf6f9a3229de1f763542b651fdec",
+      "4ac2d132fd773d8d38f5a1c9c5734f1dd9eddf6f9a3229de1f763542b651fdec"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-sensorboard_DiffIR",
+    "hashes": [
+      "499832c159b10516bf5ef8259f83ab81b84a4d87fa94a1db5fb4ed9a90888baf",
+      "499832c159b10516bf5ef8259f83ab81b84a4d87fa94a1db5fb4ed9a90888baf"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-C-BISCUIT_crowbar",
+    "hashes": [
+      "0162d6f6fa8921ed9b4c7596b3f52776f3e5d4583dea2c838a058cd42d87aa2f",
+      "0162d6f6fa8921ed9b4c7596b3f52776f3e5d4583dea2c838a058cd42d87aa2f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-R1002_R1002",
+    "hashes": [
+      "9595f6f6e9ab0b9aa54a9f888c3b402abdc029db8b82ada4ee26036b5f834855",
+      "9595f6f6e9ab0b9aa54a9f888c3b402abdc029db8b82ada4ee26036b5f834855"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-QRPCard_QRPCard",
+    "hashes": [
+      "7a9060dab370b81fa83b12ffab5dc1e3dfe4a8b583798165e856bffcee1520e9",
+      "7a9060dab370b81fa83b12ffab5dc1e3dfe4a8b583798165e856bffcee1520e9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-BirthdayCakeKeyboard_10Key",
+    "hashes": [
+      "92fe9d0d91ec8f5f0801914cc7e57154a0016f7869ffb33d48556847138c3e56",
+      "92fe9d0d91ec8f5f0801914cc7e57154a0016f7869ffb33d48556847138c3e56"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_hbridge_driver",
+    "hashes": [
+      "dab73e2dae39d381d375aab099b3795190642b6f8edaf93c9fb2b9f4de98a4c1",
+      "dab73e2dae39d381d375aab099b3795190642b6f8edaf93c9fb2b9f4de98a4c1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-vatx_vatx",
+    "hashes": [
+      "4312703da8f283feb271f94cdc4537b460de0c10e7990438381de9a2d3c87966",
+      "4312703da8f283feb271f94cdc4537b460de0c10e7990438381de9a2d3c87966"
+    ],
+    "identical": true
+  },
+  {
+    "board": "kicad-issue184-motorizedopener--motorizedopener",
+    "hashes": [
+      "54407084e6fd9eb4bf4f038533bf362a17cbf0b37b4984ff310a8e7e846d3943",
+      "54407084e6fd9eb4bf4f038533bf362a17cbf0b37b4984ff310a8e7e846d3943"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Cherry-Mx-Bitboard_Cherry Mx Bitboard",
+    "hashes": [
+      "06fbcccf18313826324d0f02acdb6b87f899523c591cfe5e3d89b5adb3e34b84",
+      "06fbcccf18313826324d0f02acdb6b87f899523c591cfe5e3d89b5adb3e34b84"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-memory-display_memory-display",
+    "hashes": [
+      "accf3bf06e4fb36399d40c0a0dbf955fad29501f8482ffc93a97b6cd0bf06cfc",
+      "accf3bf06e4fb36399d40c0a0dbf955fad29501f8482ffc93a97b6cd0bf06cfc"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-nand_programmer_adapter_tsop48",
+    "hashes": [
+      "b3a1a329b49a0458147bf0eff28214bcde37a5149fd182d2ce3a9e7746e9fa70",
+      "b3a1a329b49a0458147bf0eff28214bcde37a5149fd182d2ce3a9e7746e9fa70"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hangul-Clock_Hangul",
+    "hashes": [
+      "fac311adba12a1bcc47b2317e2c99552a371df1db67ab380118a47610d737355",
+      "fac311adba12a1bcc47b2317e2c99552a371df1db67ab380118a47610d737355"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-firefly-jar_solar_lamp",
+    "hashes": [
+      "9aa71fb70710842c954cbb026b16a47d9f6d410e925f3edec144e8a8296b51c4",
+      "9aa71fb70710842c954cbb026b16a47d9f6d410e925f3edec144e8a8296b51c4"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-icehat_icehat",
+    "hashes": [
+      "86704969eed38944c907ae1180b45b9b1c090ec8a556bc29b70c50b9877dc244",
+      "86704969eed38944c907ae1180b45b9b1c090ec8a556bc29b70c50b9877dc244"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-breakout-boards_swd-and-uart",
+    "hashes": [
+      "638984e523352d04275aef8b81a3ab6157851fda4f23258b9de58de9e04caac5",
+      "638984e523352d04275aef8b81a3ab6157851fda4f23258b9de58de9e04caac5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_dynamixel_shield",
+    "hashes": [
+      "d9df1af4f5c6c6a76ce922297e50487244f06a1b1f02a10de8298c0fad46d6ea",
+      "d9df1af4f5c6c6a76ce922297e50487244f06a1b1f02a10de8298c0fad46d6ea"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Ventilator_pressure_mpxv5010dp",
+    "hashes": [
+      "16fccc4aed8949303b1f75d216d047dadbf59a600f90b7e1d6a87ca644d6ead7",
+      "16fccc4aed8949303b1f75d216d047dadbf59a600f90b7e1d6a87ca644d6ead7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_minisumo_v3",
+    "hashes": [
+      "f6a8690a9831b17898f0c0fb0383aefc19661abff8ac894fbb7fc675c1ed632f",
+      "f6a8690a9831b17898f0c0fb0383aefc19661abff8ac894fbb7fc675c1ed632f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hardware-designs_c-trigger",
+    "hashes": [
+      "959b6ed6ece409eec13b3bfb6e6f42b9483a8213ed40d0bc42b673b656534d10",
+      "959b6ed6ece409eec13b3bfb6e6f42b9483a8213ed40d0bc42b673b656534d10"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-preamp-two_mdac-attenuator",
+    "hashes": [
+      "28d55d8f1ada36121ef312d1ddf3bd98c50e3e2ece5a11f76511f7f5c4e1a5e7",
+      "28d55d8f1ada36121ef312d1ddf3bd98c50e3e2ece5a11f76511f7f5c4e1a5e7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ciurlys_ciurlys",
+    "hashes": [
+      "9896ed93fbdc55a9a5a133330c6bfbb89f211db8d97a110a7b89bc76ddad50e0",
+      "9896ed93fbdc55a9a5a133330c6bfbb89f211db8d97a110a7b89bc76ddad50e0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-nikon_gps_nikon_gps",
+    "hashes": [
+      "b63d8ba054d5f06026bebe794c6373160fc0f5de28ca32713780df19664a8b4f",
+      "b63d8ba054d5f06026bebe794c6373160fc0f5de28ca32713780df19664a8b4f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-eeg_brainboard_batteryv0",
+    "hashes": [
+      "eecbc9022c9f1dfda5f985bc7deea4d2a6ac7a32c9f3a799b927dd8a4bee967e",
+      "eecbc9022c9f1dfda5f985bc7deea4d2a6ac7a32c9f3a799b927dd8a4bee967e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-epaper-102_epaper-102",
+    "hashes": [
+      "023dbae6fefeb0fb84ca51d5073294ad791ce814996b6f51ad99fa8e2e119a2a",
+      "023dbae6fefeb0fb84ca51d5073294ad791ce814996b6f51ad99fa8e2e119a2a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Dual_VCA_2_Main",
+    "hashes": [
+      "d06ab4c03dfc5687c04e2e36344d8c7fb8fcde26e4baf35262c13d93712b9d06",
+      "d06ab4c03dfc5687c04e2e36344d8c7fb8fcde26e4baf35262c13d93712b9d06"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Envelope_Follower_Main",
+    "hashes": [
+      "c620518da19de4b6a184b1b55a62c4a94a68d70b0fe8a92a253c3c663209b08d",
+      "c620518da19de4b6a184b1b55a62c4a94a68d70b0fe8a92a253c3c663209b08d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hubble_leds",
+    "hashes": [
+      "ede52df4f48e2e809f7ab3e341e878872e7ddda385017c2950184f6cdc45f3ad",
+      "ede52df4f48e2e809f7ab3e341e878872e7ddda385017c2950184f6cdc45f3ad"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-atmegax8-protoboard_atmegax8-protoboard",
+    "hashes": [
+      "eb7d6914b70676bed866af9f3e26d146277e700dd70ef2c427f407c6fcd995af",
+      "eb7d6914b70676bed866af9f3e26d146277e700dd70ef2c427f407c6fcd995af"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-tiny-8088_Computer",
+    "hashes": [
+      "cf9b6ad14bcbd60e8018e51f612e00d2e8fa462780507bfe45f734fb19ec43d4",
+      "cf9b6ad14bcbd60e8018e51f612e00d2e8fa462780507bfe45f734fb19ec43d4"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-pmw3360-pcb_pmw3360_pcb_jst",
+    "hashes": [
+      "749c0263381410aed31c6a3b74ef5aad16551090050b51a5d85bc7e55a26084d",
+      "749c0263381410aed31c6a3b74ef5aad16551090050b51a5d85bc7e55a26084d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LPC2148_Stick_LPC2148_stick",
+    "hashes": [
+      "4673f47db9b3b6a24986c85e647735cc19a6e4abdd3dd215b219fea9dc80b6c1",
+      "4673f47db9b3b6a24986c85e647735cc19a6e4abdd3dd215b219fea9dc80b6c1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rufs_dra818v_breakout_board",
+    "hashes": [
+      "ab986d29e9ba0ce176f622319c9d1ab09338718fb9b551ed39cd56e116bad75b",
+      "ab986d29e9ba0ce176f622319c9d1ab09338718fb9b551ed39cd56e116bad75b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-AVR-Playground_hello_world",
+    "hashes": [
+      "6417c2b2e6f37f0f8d2e8e4a50b0702b28cdea7751711452355dd8f089caa5f0",
+      "6417c2b2e6f37f0f8d2e8e4a50b0702b28cdea7751711452355dd8f089caa5f0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-FRM16_Relay_Module_I2C_Controller_relay_controller",
+    "hashes": [
+      "79d4477307e656237bf164283c1622b667e515e6ec2e8508df16df9b7f3c0eba",
+      "79d4477307e656237bf164283c1622b667e515e6ec2e8508df16df9b7f3c0eba"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Curryboard_Curryboard",
+    "hashes": [
+      "d04604c5dbd8116c7be464e2020e1a56ca5314ac3c6ffd542668a9856ae1a0f0",
+      "d04604c5dbd8116c7be464e2020e1a56ca5314ac3c6ffd542668a9856ae1a0f0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp8266_envmonitor_environment-monitor-1.2",
+    "hashes": [
+      "7d2df74324e4fd1c89c4d23e8b1a11c94c4eb54df7f7396c7bb9a1198173181b",
+      "7d2df74324e4fd1c89c4d23e8b1a11c94c4eb54df7f7396c7bb9a1198173181b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-KiCad-LTC6802-2_main",
+    "hashes": [
+      "7470b56d5dc6c5d350427aad924c12d147e1f9935cf7bbfbb6daf4526a680aec",
+      "7470b56d5dc6c5d350427aad924c12d147e1f9935cf7bbfbb6daf4526a680aec"
+    ],
+    "identical": true
+  },
+  {
+    "board": "kicad-issue558-dev-board-autoroute-demo--dev-board",
+    "hashes": [
+      "9a2bf34d56dd19e58edc6d179e5db957f11ef445bd313976ad8e44a50249c6d9",
+      "9a2bf34d56dd19e58edc6d179e5db957f11ef445bd313976ad8e44a50249c6d9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ID-FIX_scanConnect",
+    "hashes": [
+      "319df9251c456bbed4aaec385187cf1283d0f2a050563415875a1c84d09bbacd",
+      "319df9251c456bbed4aaec385187cf1283d0f2a050563415875a1c84d09bbacd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-bee-light-measurement-matrix_bee-light-measurement-matrix",
+    "hashes": [
+      "e3cbed7d039b532813559c97d74a4771163676bea060f507a7e07bf0731479fe",
+      "e3cbed7d039b532813559c97d74a4771163676bea060f507a7e07bf0731479fe"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ESP-12-breakout_ESP12E-breakout",
+    "hashes": [
+      "984b6805cce12df70a326cebd7492bb4d7cb435fd4a63c5f84446f85fdd168fd",
+      "984b6805cce12df70a326cebd7492bb4d7cb435fd4a63c5f84446f85fdd168fd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Electronics-MainBoard_MainBoard",
+    "hashes": [
+      "ed723498bf08890bc03f03f91ffab53977e829cbcfb04da2e9c6324b9876a096",
+      "ed723498bf08890bc03f03f91ffab53977e829cbcfb04da2e9c6324b9876a096"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-guitar_fret",
+    "hashes": [
+      "c20b5b62552c4b0c695603d8b6cd1e3255ea116efcd3fa9fa569d03919a76f85",
+      "c20b5b62552c4b0c695603d8b6cd1e3255ea116efcd3fa9fa569d03919a76f85"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hbr-mk2_hbr-mk2-lpfs",
+    "hashes": [
+      "e7e91c2d89baa746aabfb48c34eee451c54aa376d52903d388b18ec1e8d085f2",
+      "e7e91c2d89baa746aabfb48c34eee451c54aa376d52903d388b18ec1e8d085f2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware_Playground_nrf52832_uno",
+    "hashes": [
+      "a5a8126be0619d020fa4024214c9861132a4ab7212c1dcf6436ec6303644635e",
+      "a5a8126be0619d020fa4024214c9861132a4ab7212c1dcf6436ec6303644635e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-nfl-led-scoreboard_passive-rpi-hub75-adapter",
+    "hashes": [
+      "18331da9204b078db9db2b926b6fb8b8864242f4458330292a69233868fa6531",
+      "18331da9204b078db9db2b926b6fb8b8864242f4458330292a69233868fa6531"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-S1G-Mod_JST_Adapter",
+    "hashes": [
+      "ff060a8013827f2e3d08a68ccc6e06eaf549c0e3031ee28a75ae016362fa1008",
+      "ff060a8013827f2e3d08a68ccc6e06eaf549c0e3031ee28a75ae016362fa1008"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_USB-C-Screen-Adapter",
+    "hashes": [
+      "dc59cab7cbb9a809c6cfc1882d31fce38d0bb6e4e110783a689078a91f474854",
+      "dc59cab7cbb9a809c6cfc1882d31fce38d0bb6e4e110783a689078a91f474854"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-dorkyboard_keyboard",
+    "hashes": [
+      "2eb43030932a265298ab08a0d3616fa7e412c26278a78e61553baf9989203f84",
+      "2eb43030932a265298ab08a0d3616fa7e412c26278a78e61553baf9989203f84"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp32stack_esp32stack",
+    "hashes": [
+      "ee51e2f946a47162188af72bdd9ea810f8dd16ae8ad42a2300042ae0a59d0fbd",
+      "ee51e2f946a47162188af72bdd9ea810f8dd16ae8ad42a2300042ae0a59d0fbd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-4N35-TTL-Serial-Optoisolator_4N35-TTL-Serial-Optoisolator",
+    "hashes": [
+      "a9483ea9fb1c5e228a79993fc5f0fcde40e53e81e3526f57bafbbcaabd9e7f40",
+      "a9483ea9fb1c5e228a79993fc5f0fcde40e53e81e3526f57bafbbcaabd9e7f40"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DonCon2040_DonConPad",
+    "hashes": [
+      "b7c299ebb75cb92a267a3b7e73a69a062edba16b3df8a0b1dab26a4038753cae",
+      "b7c299ebb75cb92a267a3b7e73a69a062edba16b3df8a0b1dab26a4038753cae"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RC2014_RC2014 RAM",
+    "hashes": [
+      "61159476d8496de18403d2d2779435d15b98cfb115e210cc80c472136f3725f9",
+      "61159476d8496de18403d2d2779435d15b98cfb115e210cc80c472136f3725f9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_sensor",
+    "hashes": [
+      "541fa3fc211e3c7a022b0ae2d45518ecda0c5c06b14185d567c61d40cf5b8ca6",
+      "541fa3fc211e3c7a022b0ae2d45518ecda0c5c06b14185d567c61d40cf5b8ca6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Classic_ADSR_Main",
+    "hashes": [
+      "94b1aaa91bb339304bfa4a609bff9e735e0fa9ed9a6743fde41fc2a688807ab5",
+      "94b1aaa91bb339304bfa4a609bff9e735e0fa9ed9a6743fde41fc2a688807ab5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-AnalogThermometer_AnalogThermometer",
+    "hashes": [
+      "aff65b27954676916bdbdd88cec717e0821a77b2eddee28702664a0b98de6f77",
+      "aff65b27954676916bdbdd88cec717e0821a77b2eddee28702664a0b98de6f77"
+    ],
+    "identical": true
+  },
+  {
+    "board": "kicad-issue269-min_fr_test--min_fr_test",
+    "hashes": [
+      "32a5d38f0dc55b55f65e5d02baf0a0deb419942bec14ecbf2a584d63ede0e253",
+      "32a5d38f0dc55b55f65e5d02baf0a0deb419942bec14ecbf2a584d63ede0e253"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-apa102lantern_apa102-lantern-side",
+    "hashes": [
+      "74f76eb8caab01eb894228798df54da5233b40064eeb7dae9d21fb3b38267f96",
+      "74f76eb8caab01eb894228798df54da5233b40064eeb7dae9d21fb3b38267f96"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-eink-adapter_eink",
+    "hashes": [
+      "e66c52472a13b316fabc0774e4b14b83e6b5990733a26b9b5885fd916d479c5e",
+      "e66c52472a13b316fabc0774e4b14b83e6b5990733a26b9b5885fd916d479c5e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-teensy-wifi-weather-logger_teensyi2c",
+    "hashes": [
+      "198de53e313188b871fac6daccd56b253a956a80f78e1e48f1b34aca2c8e67b4",
+      "198de53e313188b871fac6daccd56b253a956a80f78e1e48f1b34aca2c8e67b4"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LadyBugShield_LBS-TEST1",
+    "hashes": [
+      "9203905ee9da3f6db5aa9c5d08e467b1681e1d20e714d18a752a2b87b8c1ca8e",
+      "9203905ee9da3f6db5aa9c5d08e467b1681e1d20e714d18a752a2b87b8c1ca8e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ATmega32_ExploreUltraAvrDevKit_40pin_AVRMCU",
+    "hashes": [
+      "de6eb3c3192e82709cd384d9267bd43cecaa60f37e2645fa643300554ff98bcd",
+      "de6eb3c3192e82709cd384d9267bd43cecaa60f37e2645fa643300554ff98bcd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RoBoC_RoboticsMKII",
+    "hashes": [
+      "974d38df4e55ad46c12aec4d7655566f9d0e6a5d91580ee4bfe79c7e239f64ac",
+      "974d38df4e55ad46c12aec4d7655566f9d0e6a5d91580ee4bfe79c7e239f64ac"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-SmartLaserCO2-PCB_WaterCool",
+    "hashes": [
+      "44d924e28813f2773cee1a76710f6e92339be6e2c9027e14f12dfdb1671e1824",
+      "44d924e28813f2773cee1a76710f6e92339be6e2c9027e14f12dfdb1671e1824"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-nodemcu-basecamp_NodeMCU Basecamp",
+    "hashes": [
+      "9a082f25af3e590eaa4ce2e05ef539e3df11ccccafc0e84425d8bfbc72d60e43",
+      "9a082f25af3e590eaa4ce2e05ef539e3df11ccccafc0e84425d8bfbc72d60e43"
+    ],
+    "identical": true
+  },
+  {
+    "board": "kicad-issue367-ultraflactyl--ultraflactyl",
+    "hashes": [
+      "524f0efc6a1547bf356abf6ddcc95aca481011c03ed533e44bbcf621a5b12d40",
+      "524f0efc6a1547bf356abf6ddcc95aca481011c03ed533e44bbcf621a5b12d40"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-stm32_ccd_camera_ccd",
+    "hashes": [
+      "12975526b0cb40f5a5d67f2861f308931a4006be538f3fcc186e6e7b0c2e13d9",
+      "12975526b0cb40f5a5d67f2861f308931a4006be538f3fcc186e6e7b0c2e13d9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LED-Square_PT4115_LED-Square_PT4115",
+    "hashes": [
+      "4dbb2500baa9b43721c8aa5ce352682e2a1b7199fc542bf58a9f903b6e99c574",
+      "4dbb2500baa9b43721c8aa5ce352682e2a1b7199fc542bf58a9f903b6e99c574"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kassenautomat.mdb-interface_mdb-interface",
+    "hashes": [
+      "780472ce65c3dd6400b5ae045bdab6efecad164429e3f28db4887ae45ec15a00",
+      "780472ce65c3dd6400b5ae045bdab6efecad164429e3f28db4887ae45ec15a00"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-PsuFanController_FanController",
+    "hashes": [
+      "80c2f8c2d2a5f2baffd074e2959e3cd6912366eb6df2c5cb1129c73735d9384e",
+      "80c2f8c2d2a5f2baffd074e2959e3cd6912366eb6df2c5cb1129c73735d9384e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-saiboard_8x3",
+    "hashes": [
+      "1c7c1ebccfb536c3b3480ad56c48aa1d28969b5a305521c66f9a9b9f77de46bc",
+      "1c7c1ebccfb536c3b3480ad56c48aa1d28969b5a305521c66f9a9b9f77de46bc"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Own-Mailbox-Hardware_eth",
+    "hashes": [
+      "a7adee4916701e058cd558c2fa4d458d26891df7df7e7d9274796338ebdcc9e2",
+      "a7adee4916701e058cd558c2fa4d458d26891df7df7e7d9274796338ebdcc9e2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hwstar_ac-power-monitor",
+    "hashes": [
+      "9ef7eef1bebc4f4acc1d9ecbcd98bfb19b4bfbb86ece4647835279de92f6cff7",
+      "9ef7eef1bebc4f4acc1d9ecbcd98bfb19b4bfbb86ece4647835279de92f6cff7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_YuSynth_Dual_Balanced_Modulator_Main",
+    "hashes": [
+      "90d0a3cd02717b372cd84803f0cdcc9c467ee86e42a399077dcf49682648eb1a",
+      "90d0a3cd02717b372cd84803f0cdcc9c467ee86e42a399077dcf49682648eb1a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rs485-moist-sensor_rs485-moist-sensor",
+    "hashes": [
+      "39a7575cdf1305f3fa804a19fd6de02ae1b20217a25c1311540700b4482d5902",
+      "39a7575cdf1305f3fa804a19fd6de02ae1b20217a25c1311540700b4482d5902"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-L6235-PCB_L6235",
+    "hashes": [
+      "a6806c6e768f1712c94f852995b84c9f22d5935ad34bd202e71b50de2a4d1455",
+      "a6806c6e768f1712c94f852995b84c9f22d5935ad34bd202e71b50de2a4d1455"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Box0-hv-analog-breakoutboard_breakout",
+    "hashes": [
+      "b28c9f2f3c124366b72c46e0684f9c72b0f4308d72026a0801a406df83cbb56d",
+      "b28c9f2f3c124366b72c46e0684f9c72b0f4308d72026a0801a406df83cbb56d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-SMDBreakouts_smd_breakout",
+    "hashes": [
+      "cd13699695fc5932484e7f0ee9e9efae08c6fbb775566399f66f1f28e29eb230",
+      "cd13699695fc5932484e7f0ee9e9efae08c6fbb775566399f66f1f28e29eb230"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Open-Source-Power-Supply_PowerSupply_PCB",
+    "hashes": [
+      "60bdbd554c928e22ecdab51ff5a1184f7a93fa2c070c94f58f4a1c8998036215",
+      "60bdbd554c928e22ecdab51ff5a1184f7a93fa2c070c94f58f4a1c8998036215"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-espionage_esplight",
+    "hashes": [
+      "cc57ee1c80e7300d5bafca3523d8a4e30d4fc17028ad5b936ae91d573a038dda",
+      "cc57ee1c80e7300d5bafca3523d8a4e30d4fc17028ad5b936ae91d573a038dda"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-AmpOne_dev-AmpOne",
+    "hashes": [
+      "64d425e7534a0669859e0c4f3fa4daecb161d86762a0248af45c8f11c0107126",
+      "64d425e7534a0669859e0c4f3fa4daecb161d86762a0248af45c8f11c0107126"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-fan_controller_fan_controller",
+    "hashes": [
+      "a6e73379c25f4eb7f2a7e4ea6254fcaf7487abb659dac6490555d4cfe4f94a30",
+      "a6e73379c25f4eb7f2a7e4ea6254fcaf7487abb659dac6490555d4cfe4f94a30"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Manual_Gate_Main",
+    "hashes": [
+      "90ef06c95052ccee577162e4056c5b0c7f28343b8a3b1d4965910f3426632ec5",
+      "90ef06c95052ccee577162e4056c5b0c7f28343b8a3b1d4965910f3426632ec5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RPi-PWM-Fan-interface_RPi PWM Fan interface",
+    "hashes": [
+      "3d04644a7b089a2467dbdf46a5ab618faf322ec780cf238dea08e724ecb446ab",
+      "3d04644a7b089a2467dbdf46a5ab618faf322ec780cf238dea08e724ecb446ab"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-BLDC-controller_BLDC_controller",
+    "hashes": [
+      "9b96a5b703ec6638df024a86ea18c806d2d22f758553bb3771bbbebfd96d595c",
+      "9b96a5b703ec6638df024a86ea18c806d2d22f758553bb3771bbbebfd96d595c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-mightyduino_mightyduino",
+    "hashes": [
+      "31396253eb98e91ef36f5c089b95ade28705e6ada1280aaa04950060cc48be32",
+      "31396253eb98e91ef36f5c089b95ade28705e6ada1280aaa04950060cc48be32"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kicad-projects_ili9341-breakout",
+    "hashes": [
+      "9d5dad3852b01f1646385d702eec32afb32a794912c57dd8ef6ff8cfe2218004",
+      "9d5dad3852b01f1646385d702eec32afb32a794912c57dd8ef6ff8cfe2218004"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-linklayer_contact",
+    "hashes": [
+      "cb5cd126058f46da44ff64508e770b41e10c3d37d2381f0cb0e03a2d5c0ddf92",
+      "cb5cd126058f46da44ff64508e770b41e10c3d37d2381f0cb0e03a2d5c0ddf92"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-photon_Sprinkler_sprinkler",
+    "hashes": [
+      "89e53f695c0364b12d8e5d97db404bc7cb6e9057c671a829412b8d2cc8f839a7",
+      "89e53f695c0364b12d8e5d97db404bc7cb6e9057c671a829412b8d2cc8f839a7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hardware-designs_m-trigger",
+    "hashes": [
+      "04a81c969700ac0bd0df836efa6a57e15414782759939a6ebf19aae5952be6d0",
+      "04a81c969700ac0bd0df836efa6a57e15414782759939a6ebf19aae5952be6d0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-OpenVNAVI_driver unit",
+    "hashes": [
+      "704c58a21fb4f7cd356370dfbbe6c219ae1c34cf8d2bba0528a5c784b1d321dd",
+      "704c58a21fb4f7cd356370dfbbe6c219ae1c34cf8d2bba0528a5c784b1d321dd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-gwurrbus_pwm",
+    "hashes": [
+      "9a922356d3c9b8e5863f41516a234928631822d74926a7373ae9b0e629abf035",
+      "9a922356d3c9b8e5863f41516a234928631822d74926a7373ae9b0e629abf035"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ottawa-badges-2016_ottawa-badge-tagger-2016",
+    "hashes": [
+      "e5bb8d6170047e4eb493bd0e6d07e145c8110415f113d4baf7e96ed304a1370f",
+      "e5bb8d6170047e4eb493bd0e6d07e145c8110415f113d4baf7e96ed304a1370f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware_Playground_serial_gw_maple_mini",
+    "hashes": [
+      "d9e59f1e90d248420addf84b228e5d51586d0744e02bc52d62a3c77157f8dc9f",
+      "d9e59f1e90d248420addf84b228e5d51586d0744e02bc52d62a3c77157f8dc9f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-AIOsense_AIOsense",
+    "hashes": [
+      "d6dc3d5d827197bfc2a127bd3145022a31b5e99a0d18cbfe684bfbec0c3aa435",
+      "d6dc3d5d827197bfc2a127bd3145022a31b5e99a0d18cbfe684bfbec0c3aa435"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-z2amiller_sensorboard_programmer",
+    "hashes": [
+      "1b2c7d940bb54b804a368c8fc2526d1ce876f4aaa8b37c2abc2dec776c913bb9",
+      "1b2c7d940bb54b804a368c8fc2526d1ce876f4aaa8b37c2abc2dec776c913bb9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Prototyping_Workshop_Prototyping_PCB",
+    "hashes": [
+      "b6858b3b0831ccf2237b4f1b6904767892745b28f7c179197089881e21141d5e",
+      "b6858b3b0831ccf2237b4f1b6904767892745b28f7c179197089881e21141d5e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace__autosave-nunchuk_breakout",
+    "hashes": [
+      "20bf85998da307f2fa2785a74320111fd3ab17c8bb2b9761c298e73707ab809e",
+      "20bf85998da307f2fa2785a74320111fd3ab17c8bb2b9761c298e73707ab809e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_OSO-BOOK-C1",
+    "hashes": [
+      "45c8652e317d599f3dc52393a361bc1a4fd5ce81d6dd6076113fd34dd3a0628f",
+      "45c8652e317d599f3dc52393a361bc1a4fd5ce81d6dd6076113fd34dd3a0628f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DaWeather---Project__autosave-CarteDaWeather",
+    "hashes": [
+      "fea280a579027eabe9fade46960c4a426862243136d1a83576dbadfd93213593",
+      "fea280a579027eabe9fade46960c4a426862243136d1a83576dbadfd93213593"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-gdrom_adapter_board_adapter",
+    "hashes": [
+      "4e8b96937e4189b6367aca9b82c872677ba4fbf10e1af6817b995078996e9f6d",
+      "4e8b96937e4189b6367aca9b82c872677ba4fbf10e1af6817b995078996e9f6d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_temp_breakout",
+    "hashes": [
+      "812620b71ec8737bc421b1a80c719def9860a04f9b96a32f55ac1eea01f0627a",
+      "812620b71ec8737bc421b1a80c719def9860a04f9b96a32f55ac1eea01f0627a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_Lcr_addon",
+    "hashes": [
+      "d06107c69cb56374a834fe9f2ea1567b1fd7ef37a6148fab9459d98e0b6f4a4d",
+      "d06107c69cb56374a834fe9f2ea1567b1fd7ef37a6148fab9459d98e0b6f4a4d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-nanoSwinSidC_nanoSwinSidC",
+    "hashes": [
+      "5200a68df7d0711bd0e47a877f6c04c88085c275d6029e5724cace6ccb048b66",
+      "5200a68df7d0711bd0e47a877f6c04c88085c275d6029e5724cace6ccb048b66"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-busblaster-to-swd_busblaster-to-swd",
+    "hashes": [
+      "d943368606cc6bb26a12451bbf92f46655ea12cc19b9a93b6dba7393c74ebf9e",
+      "d943368606cc6bb26a12451bbf92f46655ea12cc19b9a93b6dba7393c74ebf9e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-dustbox_Dustbox",
+    "hashes": [
+      "22f447159a3ff627d2b49efc7bf81208cb934ab219a3be96564fc4e75d132c77",
+      "22f447159a3ff627d2b49efc7bf81208cb934ab219a3be96564fc4e75d132c77"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-komputer-klavier_KomputerKlavier",
+    "hashes": [
+      "4221f2d91c2e1ec8dce4394efacf5d4caa23a18bcc35ffd79767ee76e8ea7967",
+      "4221f2d91c2e1ec8dce4394efacf5d4caa23a18bcc35ffd79767ee76e8ea7967"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-polypoint_pinpoint_timebase",
+    "hashes": [
+      "e2dbc043775421f98db9b09fe20866ce3ff050e5dc17ae768f12f845805ed8dd",
+      "e2dbc043775421f98db9b09fe20866ce3ff050e5dc17ae768f12f845805ed8dd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-shutter_Shutter V4",
+    "hashes": [
+      "8c2fd37bd1b6d157ad3ae4aabd9613994bca6c947df2f6bd33e92bca11cebde0",
+      "8c2fd37bd1b6d157ad3ae4aabd9613994bca6c947df2f6bd33e92bca11cebde0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-m2-electronics_m2r",
+    "hashes": [
+      "3ab819215f8a770408e2caf5461c147c03fe7876acaab8fa595909f21cc0c02d",
+      "3ab819215f8a770408e2caf5461c147c03fe7876acaab8fa595909f21cc0c02d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ATtiny461Breakout_ATTiny461DevBoard",
+    "hashes": [
+      "8d6e05f59b8e0d3cfda40ce7e05607f3cd488bf28d53297a05496e413a8a94b5",
+      "8d6e05f59b8e0d3cfda40ce7e05607f3cd488bf28d53297a05496e413a8a94b5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-preamp-two_input-selector",
+    "hashes": [
+      "13b0733d32af90df3d97f3b58fd767516a25d13d163801629f53ddc1041d0c32",
+      "13b0733d32af90df3d97f3b58fd767516a25d13d163801629f53ddc1041d0c32"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-pcb-ks0108-128x64-glcd_circuit",
+    "hashes": [
+      "e547a1925d0a49fcd648ba8a2f97b33672980855d3815446b7fc8c4e7fb6b0aa",
+      "e547a1925d0a49fcd648ba8a2f97b33672980855d3815446b7fc8c4e7fb6b0aa"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_aquarius",
+    "hashes": [
+      "9a07548242d8f5855a5bf89158d79ba65eab979af4f97ef61bfbec8b33d9c078",
+      "9a07548242d8f5855a5bf89158d79ba65eab979af4f97ef61bfbec8b33d9c078"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-beer-gauge_sensorboard",
+    "hashes": [
+      "eb44311eeb2eeae2e1ea95e0b1ef44988243705915f22eea8fe826f8587c9619",
+      "eb44311eeb2eeae2e1ea95e0b1ef44988243705915f22eea8fe826f8587c9619"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-mppt-2420-hpx_mppt-2420-hpx",
+    "hashes": [
+      "cb8fabdc5a188852d3dc5f4b150a0e469f83c062a114aa66f1cd0852b81c03dd",
+      "cb8fabdc5a188852d3dc5f4b150a0e469f83c062a114aa66f1cd0852b81c03dd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_HAGIWO_MultiOut_Control",
+    "hashes": [
+      "8010be13db038234e313d53d3d71217dd9010278c189255da0126f5edb92402e",
+      "8010be13db038234e313d53d3d71217dd9010278c189255da0126f5edb92402e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Minitel_driver_board",
+    "hashes": [
+      "fa6addc53f6f69bd89efbda743fd1cb29672c89905ae5551491ab1035e3d56f6",
+      "fa6addc53f6f69bd89efbda743fd1cb29672c89905ae5551491ab1035e3d56f6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-lfi-rig_lfi-driver",
+    "hashes": [
+      "0bbcfe42ad522d051c65030b14d9db09f9d32af7860263b2cdc6a10dd64c9790",
+      "0bbcfe42ad522d051c65030b14d9db09f9d32af7860263b2cdc6a10dd64c9790"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-nfl-led-scoreboard_passive3-rpi-hub75-adapter",
+    "hashes": [
+      "0df25e230b58a160e4cd9745e5e62ffcf0fede3c675e6f86cafb7ac69ad70ac1",
+      "0df25e230b58a160e4cd9745e5e62ffcf0fede3c675e6f86cafb7ac69ad70ac1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_APC_Eurorack_Main",
+    "hashes": [
+      "a5499f35c825e6f048db2991e59fb89f6ec2d155b75d45a2369512e50d768964",
+      "a5499f35c825e6f048db2991e59fb89f6ec2d155b75d45a2369512e50d768964"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-sms-cart-32k_cart",
+    "hashes": [
+      "66256049df12371ff62af5aa58031f99fe8b087c422bb6a4ee56d37b8942f5be",
+      "66256049df12371ff62af5aa58031f99fe8b087c422bb6a4ee56d37b8942f5be"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-tepmachcha_tepmachcha",
+    "hashes": [
+      "5f5e3e3c7cccb9886f8eb64a9504d7467cf76f02a4e232c9d1d2dbb3b2585ce2",
+      "5f5e3e3c7cccb9886f8eb64a9504d7467cf76f02a4e232c9d1d2dbb3b2585ce2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-everled_everled",
+    "hashes": [
+      "dbcc64a9cac37335a236b9f2dd8291eed9bb4ef9bda8b10fa7e4f76c128fe4a5",
+      "dbcc64a9cac37335a236b9f2dd8291eed9bb4ef9bda8b10fa7e4f76c128fe4a5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp8266_wi07_3_adapter_esp",
+    "hashes": [
+      "99481efc1e738eaf59f47a378a073c0db6ce1cf7f02941e727997270774707b6",
+      "99481efc1e738eaf59f47a378a073c0db6ce1cf7f02941e727997270774707b6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_PSLab",
+    "hashes": [
+      "30d89bf29a51aa91905c1040168362060bf022d61af13cfbbdaf89fb310cdd71",
+      "30d89bf29a51aa91905c1040168362060bf022d61af13cfbbdaf89fb310cdd71"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-UltrasonicSystem_Schematic",
+    "hashes": [
+      "c51efcddc45ae0c6d1895cbfa98fb214dc6eacf0dd4b4c887469712478d7aeb2",
+      "c51efcddc45ae0c6d1895cbfa98fb214dc6eacf0dd4b4c887469712478d7aeb2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-custom_cpu--ALU_custom_cpu--ALU",
+    "hashes": [
+      "73f72e6242cce6c1a62a27cc89798aeef244b907d4ec39b397783f247b6ffa0e",
+      "73f72e6242cce6c1a62a27cc89798aeef244b907d4ec39b397783f247b6ffa0e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp32-4-channel-relays_esp32-4-channel-relays",
+    "hashes": [
+      "48f51bfc4fbbe3682773cbd002f74e45ffb799b041ae100c76bcec1528ded438",
+      "48f51bfc4fbbe3682773cbd002f74e45ffb799b041ae100c76bcec1528ded438"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_4_switch_array",
+    "hashes": [
+      "b8339e96c0583aba4b5bb8b96c9dd7b5e5e2ae6ef25fd19f1462c86d51380aab",
+      "b8339e96c0583aba4b5bb8b96c9dd7b5e5e2ae6ef25fd19f1462c86d51380aab"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_CO2",
+    "hashes": [
+      "c549e3731549ac3af72cc243538d08a18f42e61b73817c18f79804c6d2997969",
+      "c549e3731549ac3af72cc243538d08a18f42e61b73817c18f79804c6d2997969"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RC6502-Apple-1-Replica_RC6502_Terminal",
+    "hashes": [
+      "97664be1addfd6a9d63c134202a5aacc6c8f8a25cff8fad24a00df6a448aff0a",
+      "97664be1addfd6a9d63c134202a5aacc6c8f8a25cff8fad24a00df6a448aff0a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Phased-Array-Microphone-using-FPGA_SateliteMicrophone",
+    "hashes": [
+      "eaf8da6b4df3986b533a649d9026465f4577e0cb97c02d0d5cc93e936b9c49b7",
+      "eaf8da6b4df3986b533a649d9026465f4577e0cb97c02d0d5cc93e936b9c49b7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hw_trials_demo",
+    "hashes": [
+      "c6c08efa058d0746171533c87632bdc9ddad3fb50bb951bb224dd7462f833083",
+      "c6c08efa058d0746171533c87632bdc9ddad3fb50bb951bb224dd7462f833083"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware_Playground_usb_shield",
+    "hashes": [
+      "1307a9b530fc41906679af2d0e8c3098386a95fb7c38692ac44043573c808948",
+      "1307a9b530fc41906679af2d0e8c3098386a95fb7c38692ac44043573c808948"
+    ],
+    "identical": true
+  },
+  {
+    "board": "kicad-issue283-unconnectedtracesunderpads--natural_tone_preamp",
+    "hashes": [
+      "5ac6457f5dafa45800082c0b591d074fc7de73aa9bbea8818135c5d7b9d05df2",
+      "5ac6457f5dafa45800082c0b591d074fc7de73aa9bbea8818135c5d7b9d05df2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware_Playground_serial_gw_ATMEGA328P",
+    "hashes": [
+      "e94e685ceff0027bebc19eba3639e13232fd93ef6e3b569caf7fe179383d39c7",
+      "e94e685ceff0027bebc19eba3639e13232fd93ef6e3b569caf7fe179383d39c7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RGBMatrixPanelCPLD-PhotonBackpack_RGBMatrixPanel_CPLD_negative",
+    "hashes": [
+      "354c00f0f6af327dc03b5f8368f21588d29c185a49a7cacfb6d61f26442ffd62",
+      "354c00f0f6af327dc03b5f8368f21588d29c185a49a7cacfb6d61f26442ffd62"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_LFO_Main",
+    "hashes": [
+      "4d774bd95d434a063a42b92adcd9fb2a25c9e014e9acf1f48ee71fc7f897a510",
+      "6aedda9dd460e671ef531432b2771a7fafeb5a14fdedf205ceeb239f4adc9808"
+    ],
+    "identical": false
+  },
+  {
+    "board": "pcbench-OpenHardwareExG_ActiveElectrode_OpenHardwareExG_ActiveElectrode",
+    "hashes": [
+      "472b0377153dc6442d5e93a26bbfe921081a2b158d20392dafefdbf81f8a64b1",
+      "472b0377153dc6442d5e93a26bbfe921081a2b158d20392dafefdbf81f8a64b1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_grove_adaptor",
+    "hashes": [
+      "566022ff368fe6da971ecdebab939ade621f6f60a28bb8b17823ff47a7ed48f7",
+      "566022ff368fe6da971ecdebab939ade621f6f60a28bb8b17823ff47a7ed48f7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-gb-hardware_GB-MBCTEST",
+    "hashes": [
+      "82f2cfdea684f65b3a78e64e0f096add306c517bffd7b8b4e3810f122fd79287",
+      "82f2cfdea684f65b3a78e64e0f096add306c517bffd7b8b4e3810f122fd79287"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-mac-pro-conversion_front-panel-power-adapter",
+    "hashes": [
+      "e9946315955d43013be4c2bb89b920930397e7853a59d4630335532842c44d03",
+      "e9946315955d43013be4c2bb89b920930397e7853a59d4630335532842c44d03"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-srambo_1_srambo_1",
+    "hashes": [
+      "a9eae741c14be31c4a5bf921ac5ec6a614bc3f3c4be671785e3e11fe91d54146",
+      "a9eae741c14be31c4a5bf921ac5ec6a614bc3f3c4be671785e3e11fe91d54146"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hardware-designs_nixie-power",
+    "hashes": [
+      "23f075eb875b79bf58faf0855f4ec6483df8e76ea14451f84eb8779fd1e08f59",
+      "23f075eb875b79bf58faf0855f4ec6483df8e76ea14451f84eb8779fd1e08f59"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Patternflow_patternflow",
+    "hashes": [
+      "8b42f8e6564d271ae280ceedfe07153bf3600fd221a1f0c36df15e524688e0bf",
+      "8b42f8e6564d271ae280ceedfe07153bf3600fd221a1f0c36df15e524688e0bf"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-teensy-weather-badge_teensyi2c",
+    "hashes": [
+      "198de53e313188b871fac6daccd56b253a956a80f78e1e48f1b34aca2c8e67b4",
+      "198de53e313188b871fac6daccd56b253a956a80f78e1e48f1b34aca2c8e67b4"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-vdcmon_vdcmon",
+    "hashes": [
+      "4102568d4ee5940c108df4e7e5cc7ae06fc2c6c52b202fc9c0c217ab03b81ddf",
+      "4102568d4ee5940c108df4e7e5cc7ae06fc2c6c52b202fc9c0c217ab03b81ddf"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-8bit-cpu_programming_interface",
+    "hashes": [
+      "ad5f567ace0eb837634fd85a9e236f85c1f102134510e5a86336cfe101adec30",
+      "ad5f567ace0eb837634fd85a9e236f85c1f102134510e5a86336cfe101adec30"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-MAVRIC_Hardware_SoilBoard",
+    "hashes": [
+      "053bb8aacd6bed33eb8c724d7569a3e347a2d1d984b5978b73e171fc90053102",
+      "053bb8aacd6bed33eb8c724d7569a3e347a2d1d984b5978b73e171fc90053102"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-MAGFest-2017-Swadges_magfest_badges",
+    "hashes": [
+      "601df9971c13b71b143266ab988df7c64790c61b51273bc05eee8e2c846f303c",
+      "601df9971c13b71b143266ab988df7c64790c61b51273bc05eee8e2c846f303c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-PmodHDMIIn_PmodHDMIIn",
+    "hashes": [
+      "6b91e284d108d206ea051fd08a0fe165c1cdb2b75fb5e6925f305b889b095364",
+      "6b91e284d108d206ea051fd08a0fe165c1cdb2b75fb5e6925f305b889b095364"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-MySRaspiGW_MySRaspiGW_Pimoroni",
+    "hashes": [
+      "b779e3d41005de858e1b189b26c804a2f9a86f724b30f099e1877b806b388239",
+      "b779e3d41005de858e1b189b26c804a2f9a86f724b30f099e1877b806b388239"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_CH330",
+    "hashes": [
+      "d4c4aca3f1ccece72eb9d49a085dc8aef1938369f370041b99e62bdf17b72144",
+      "d4c4aca3f1ccece72eb9d49a085dc8aef1938369f370041b99e62bdf17b72144"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-scimpy_crossover",
+    "hashes": [
+      "0a0f18b1680c34a600b60b9749e3cc480d3337c631b5635b89d5ab780231354f",
+      "0a0f18b1680c34a600b60b9749e3cc480d3337c631b5635b89d5ab780231354f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_flypi_v2",
+    "hashes": [
+      "caa079a5ace9ff0e263e60e63d33cc632ff6fd140b9ddb6ddbd5bd511888d861",
+      "caa079a5ace9ff0e263e60e63d33cc632ff6fd140b9ddb6ddbd5bd511888d861"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-HW-AC-Emeter_ac-power-monitor",
+    "hashes": [
+      "9ef7eef1bebc4f4acc1d9ecbcd98bfb19b4bfbb86ece4647835279de92f6cff7",
+      "9ef7eef1bebc4f4acc1d9ecbcd98bfb19b4bfbb86ece4647835279de92f6cff7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware_Playground_rpi_zero",
+    "hashes": [
+      "77397b9b447aa9da20022ca179c02b36fd46eae7f8bd93bdcfa1ae427a8d1aa5",
+      "77397b9b447aa9da20022ca179c02b36fd46eae7f8bd93bdcfa1ae427a8d1aa5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kit2-led-cube_led_cube",
+    "hashes": [
+      "6e19fb7b91bdd5bb286653319b0642988e557ac14d9ec6629124f9741967a057",
+      "6e19fb7b91bdd5bb286653319b0642988e557ac14d9ec6629124f9741967a057"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-thatmicpre_thatmicpre_v1",
+    "hashes": [
+      "c7af138391ef50f83a08a21c70bdf760e2efb8abcd073372be4edf831b051d85",
+      "c7af138391ef50f83a08a21c70bdf760e2efb8abcd073372be4edf831b051d85"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-breakout-boards_esp8266-jtag",
+    "hashes": [
+      "cbc1ae6f521bf8efd5f46c3de25a572390cafbc97ee532a527eef58aa2375ec6",
+      "cbc1ae6f521bf8efd5f46c3de25a572390cafbc97ee532a527eef58aa2375ec6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-JLink-SWD_JLink-SWD",
+    "hashes": [
+      "6f591e9021d64ad14586e91be370940b6a746ebf0a3d944809da7e76eb1445a7",
+      "6f591e9021d64ad14586e91be370940b6a746ebf0a3d944809da7e76eb1445a7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-m2-electronics_m2rl",
+    "hashes": [
+      "ad0d9df1c1731318a29afd2761545cf017c3027a63b8b695176796476517613b",
+      "ad0d9df1c1731318a29afd2761545cf017c3027a63b8b695176796476517613b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rxadc_14_rxadc_14",
+    "hashes": [
+      "917721aab60be4041dbd911511367b39ba08e8a68243b833a8dd9527406a906c",
+      "917721aab60be4041dbd911511367b39ba08e8a68243b833a8dd9527406a906c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware_Playground_BL_PCB_latest",
+    "hashes": [
+      "df67b3a9e6ec4421e89976c994da26b159e6a4790647f127c23d523aeff9dd13",
+      "df67b3a9e6ec4421e89976c994da26b159e6a4790647f127c23d523aeff9dd13"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-WordClock_v2.0_WordClock_v2",
+    "hashes": [
+      "d1af0d7c55aac777bf5c4dc76db78d1f58e6e1292dc618a06194ccff770391e3",
+      "d1af0d7c55aac777bf5c4dc76db78d1f58e6e1292dc618a06194ccff770391e3"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-FogDrive_attiny45_slim",
+    "hashes": [
+      "61c38dd91a804d39c573273461c1d2a70a3b132bf01d6c9bf5d7281c21657519",
+      "61c38dd91a804d39c573273461c1d2a70a3b132bf01d6c9bf5d7281c21657519"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Main_Rectifier_Main",
+    "hashes": [
+      "989b2f453d6b401dfdfb3dbaf82a58ecc1e807dff47f06c44794e8317e73fb70",
+      "989b2f453d6b401dfdfb3dbaf82a58ecc1e807dff47f06c44794e8317e73fb70"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-SOICbite_SOICbite_SWD",
+    "hashes": [
+      "31c5c20facec819c85bfed87505ff854186c0d531888933406ca6a7f7a13d341",
+      "31c5c20facec819c85bfed87505ff854186c0d531888933406ca6a7f7a13d341"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rgb-strip-controller__autosave-rgb-strip",
+    "hashes": [
+      "086fe687c855773b606ba46de16df13bcf1faa74afa141b24b728c0bdfa33339",
+      "086fe687c855773b606ba46de16df13bcf1faa74afa141b24b728c0bdfa33339"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-cookiecutter-xsproduct_{{cookiecutter.product_name}}",
+    "hashes": [
+      "607c21d4686c35a3e6022bead45fa5245826c90d4c684684f740f124f7dba836",
+      "607c21d4686c35a3e6022bead45fa5245826c90d4c684684f740f124f7dba836"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CAL430FR_CAL430F",
+    "hashes": [
+      "be9550b3c4b55c886a59e23d2c18e48f0cff152baef086fc7772b5dff0560a5c",
+      "be9550b3c4b55c886a59e23d2c18e48f0cff152baef086fc7772b5dff0560a5c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-nixie-clock_ab18x5-breakout",
+    "hashes": [
+      "624062cbeacb19067cc017a64d1e4ca29ba976259138e9ba3b50dcec2af804ab",
+      "624062cbeacb19067cc017a64d1e4ca29ba976259138e9ba3b50dcec2af804ab"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-oled-bmp280-touch_oled-bmp280-touch",
+    "hashes": [
+      "1ee4e9bdc6df08b633450e979842aee3199bd00ebe6b6b71550bb77203713baa",
+      "1ee4e9bdc6df08b633450e979842aee3199bd00ebe6b6b71550bb77203713baa"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Retro1DecodingModules_AddressDecoderModule",
+    "hashes": [
+      "3f369d50cb1d34e9e5bc29dbf889790fbea2e09cb22979c5eabf01ef295cf75f",
+      "3f369d50cb1d34e9e5bc29dbf889790fbea2e09cb22979c5eabf01ef295cf75f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-mearm-base-pcb_ServoPCB",
+    "hashes": [
+      "8a077513edd982c5643664272707cd08821c3a63ada81a8e342ec4f141dc0533",
+      "8a077513edd982c5643664272707cd08821c3a63ada81a8e342ec4f141dc0533"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DerKnopf_led-ring",
+    "hashes": [
+      "6631e4b931f903cd0b4b1a346416bec72cd96f47f80c6555d35dd6a0c4821e2a",
+      "6631e4b931f903cd0b4b1a346416bec72cd96f47f80c6555d35dd6a0c4821e2a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-denbit_basic",
+    "hashes": [
+      "b3efa15b5ec65d3367b4665d6df67052c7963c979ad89c51f9bcb50e8fe00448",
+      "b3efa15b5ec65d3367b4665d6df67052c7963c979ad89c51f9bcb50e8fe00448"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Main_1",
+    "hashes": [
+      "684d9d1ffb0a4cad4177fc2ccab3f574c02c456e99970fb1b504bce14ef0d9c2",
+      "684d9d1ffb0a4cad4177fc2ccab3f574c02c456e99970fb1b504bce14ef0d9c2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-oasis_ledboard",
+    "hashes": [
+      "23bb170860db8c38a3d3f85ddf2d7d8876547315fd3b54f120e959de9ba44f86",
+      "23bb170860db8c38a3d3f85ddf2d7d8876547315fd3b54f120e959de9ba44f86"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Raspberry-Pi-Soft-Power-Controller_Zero Current Soft Power",
+    "hashes": [
+      "95f75174243e320d610dd90242783a2910eb28079f6da4dda0c1104f377f3b9d",
+      "95f75174243e320d610dd90242783a2910eb28079f6da4dda0c1104f377f3b9d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-mini_ice40_mini_ice40",
+    "hashes": [
+      "2b8546a1e5c818081568f87567ea897cace078a6f1781e745cad917671b47d8f",
+      "38bd52cadc9b1be4a10149879c83c330292e3009e016288152743d8e28350c85"
+    ],
+    "identical": false
+  },
+  {
+    "board": "pcbench-Hardware_Playground_hy_adapter",
+    "hashes": [
+      "c8fca99b8b6a85da2a96fada309790ecc53bba48bebfa2d294fa186037d9a296",
+      "c8fca99b8b6a85da2a96fada309790ecc53bba48bebfa2d294fa186037d9a296"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Dual_VCA_2_Control",
+    "hashes": [
+      "bc164b9bb26dcdbe1b93b7164c0b021f67e0acba65113fd3dd3762a03400fcac",
+      "bc164b9bb26dcdbe1b93b7164c0b021f67e0acba65113fd3dd3762a03400fcac"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Clock_Divider_Main",
+    "hashes": [
+      "0cfab7b3c43628f422c9d7db4f64eaab01873fd3a1f2c823042426b437fa8a0f",
+      "0cfab7b3c43628f422c9d7db4f64eaab01873fd3a1f2c823042426b437fa8a0f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-digital_clock_led_clock_3_and_4_digit",
+    "hashes": [
+      "2ea73683ae0dfc11cb70187ce43995a93f83e3dc2422739a385f45b95aa95a14",
+      "2ea73683ae0dfc11cb70187ce43995a93f83e3dc2422739a385f45b95aa95a14"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-imfr-schematics_Telescopio",
+    "hashes": [
+      "0db64b043c9ccc154cf5765238667e055557b04f54a54e674a3c9368d9f2e665",
+      "0db64b043c9ccc154cf5765238667e055557b04f54a54e674a3c9368d9f2e665"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-radio_antenna-iridium",
+    "hashes": [
+      "c23de1e369b1f22229dd0cd37fa4eb0481983cca77ff589377e1d404aa013eb3",
+      "c23de1e369b1f22229dd0cd37fa4eb0481983cca77ff589377e1d404aa013eb3"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ULPI-Pmod_ULPI-Pmod",
+    "hashes": [
+      "997b91ef8db1abd1c5dedd6ec40f0325312ab6d16cc71b41a55e761a2703db51",
+      "997b91ef8db1abd1c5dedd6ec40f0325312ab6d16cc71b41a55e761a2703db51"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-NiMH-Charger_NiMH Charger",
+    "hashes": [
+      "e9f0e3bd0469568c9f0579faa048c8b114fc37ed7b87c49f2a0e111bae1919b7",
+      "e9f0e3bd0469568c9f0579faa048c8b114fc37ed7b87c49f2a0e111bae1919b7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RoBoC_CameraAdaptor",
+    "hashes": [
+      "c71ef726bf59f138a1f9a6f1f7a0afadb6c1eb531d6a37ba651e46f4a13c9af5",
+      "c71ef726bf59f138a1f9a6f1f7a0afadb6c1eb531d6a37ba651e46f4a13c9af5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Buffered_Multiple_Main",
+    "hashes": [
+      "d213ffce8c14b6a236598f6d389c079b1a147625ce5c8ebfb4fe1b5e87a1d924",
+      "d213ffce8c14b6a236598f6d389c079b1a147625ce5c8ebfb4fe1b5e87a1d924"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware_Playground_minimal_node_rfm69w",
+    "hashes": [
+      "d771a213f46294f63a213a781ccc51ce91afeefa85826afc3b4ffaf71d35d0e6",
+      "d771a213f46294f63a213a781ccc51ce91afeefa85826afc3b4ffaf71d35d0e6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-helmholtz-servo_CurrentServo",
+    "hashes": [
+      "9acb54b477445c70a912245490506e60ad837253cef705603230e55d92d0b91f",
+      "9acb54b477445c70a912245490506e60ad837253cef705603230e55d92d0b91f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kinetoscope_microcontroller",
+    "hashes": [
+      "c3563c60ca96f20d286ad81631f5cda60daa7905e7a2a7d056322b622ec5675e",
+      "c3563c60ca96f20d286ad81631f5cda60daa7905e7a2a7d056322b622ec5675e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-tinymuseum_museum",
+    "hashes": [
+      "1f409b4d53723237b80e6752e1ebee7a211a6dd0dd970bfa8e1e10a21ed8ee9a",
+      "1f409b4d53723237b80e6752e1ebee7a211a6dd0dd970bfa8e1e10a21ed8ee9a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-uSKY_uSKY",
+    "hashes": [
+      "b1beda755cba5782cc1c8a3dd0b7eec419ac873ce6995b12296b33dc056361d3",
+      "b1beda755cba5782cc1c8a3dd0b7eec419ac873ce6995b12296b33dc056361d3"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-UltraPIF_Hardware_pif_adapter",
+    "hashes": [
+      "b3193df0596ea3aae7eff4c3d014233346ce19a7bf7757279ca7c863b4b0fff5",
+      "b3193df0596ea3aae7eff4c3d014233346ce19a7bf7757279ca7c863b4b0fff5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-boatcontrol_CommonCathode60A",
+    "hashes": [
+      "d885031774160ab6ec9497545613fc04addc3b0b31e6e4107ea6f94b1a360337",
+      "d885031774160ab6ec9497545613fc04addc3b0b31e6e4107ea6f94b1a360337"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp8266_32x32panel_esp_12_f_595_ORDERED",
+    "hashes": [
+      "34b42c3cfc7069be9a072a1e876cfbb5d04b2742e0af9e91155e622982cd5477",
+      "34b42c3cfc7069be9a072a1e876cfbb5d04b2742e0af9e91155e622982cd5477"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Arduino_VCO_Main",
+    "hashes": [
+      "b07c77e7325d7fe0c96bd0276f7e57648c046672f91844528327ac5be70fabdb",
+      "b07c77e7325d7fe0c96bd0276f7e57648c046672f91844528327ac5be70fabdb"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-devttys0_IRis",
+    "hashes": [
+      "2b5ce3faf7dc9e3b948a6e0e1f95f38cf490e268cf972016d817f7a3d9263c3a",
+      "2b5ce3faf7dc9e3b948a6e0e1f95f38cf490e268cf972016d817f7a3d9263c3a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-alu_gate_xnor_2in",
+    "hashes": [
+      "f8d31045810fc9860105c04d3aee7706740e42bb69bdc956abde32aa192499ee",
+      "f8d31045810fc9860105c04d3aee7706740e42bb69bdc956abde32aa192499ee"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-gb-hardware_GB-BRK-M-XS",
+    "hashes": [
+      "ccd7babc50aac1547b6879dfc6bbb571e05ffafd67b59145980c340869d000c9",
+      "ccd7babc50aac1547b6879dfc6bbb571e05ffafd67b59145980c340869d000c9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-TK44_TK44",
+    "hashes": [
+      "798e7defba603b698004c108800549e42593bcb7e5ed8923e173bebd054973fd",
+      "798e7defba603b698004c108800549e42593bcb7e5ed8923e173bebd054973fd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-PWRmeter_PWMeter",
+    "hashes": [
+      "20a0d4102dd341297f3767b03122a2f3b3985b2491084f3c1e7969464da29556",
+      "20a0d4102dd341297f3767b03122a2f3b3985b2491084f3c1e7969464da29556"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-custom_cpu--register_custom_cpu--register",
+    "hashes": [
+      "ce05ec79eb082bf185462b5a3e5fe10be58887616646d76c628315c09eaf491c",
+      "ce05ec79eb082bf185462b5a3e5fe10be58887616646d76c628315c09eaf491c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-nunchuk_rf_hw_NunchukRF_V3",
+    "hashes": [
+      "49e4ab10ce0c1a30debf3086fdda487a0923a5d5c75e44ae68dedb98d56da8ee",
+      "49e4ab10ce0c1a30debf3086fdda487a0923a5d5c75e44ae68dedb98d56da8ee"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-gb-hardware_GB-CART256K-A",
+    "hashes": [
+      "07944efbcd6dce6c40236e95735dc88192fe52b999a216b137864da3b282b7a3",
+      "07944efbcd6dce6c40236e95735dc88192fe52b999a216b137864da3b282b7a3"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-PixyWirelessShield_Shield PIXY",
+    "hashes": [
+      "b3552462601df9e6093fba10745dc98f4702fe68411b94ebbb1875aabbdd731b",
+      "b3552462601df9e6093fba10745dc98f4702fe68411b94ebbb1875aabbdd731b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Open-Source-Power-Supply_PowerSupply_PCB_backup",
+    "hashes": [
+      "8b9c322d8111e4fcf1460d66454d01bb220adbfb31b6a04c5135e46d4d2412e1",
+      "8b9c322d8111e4fcf1460d66454d01bb220adbfb31b6a04c5135e46d4d2412e1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-wavegen_waveform-generator",
+    "hashes": [
+      "c4e66d4e0bb8adf872459725cc7b7cbc6d330b7a86fe5d4d8ab4dddb17e81670",
+      "c4e66d4e0bb8adf872459725cc7b7cbc6d330b7a86fe5d4d8ab4dddb17e81670"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_4CH_Mixer",
+    "hashes": [
+      "5a4cb91416e5d9dc1b18608fc5e9c7210f857cb2c0e14eb8fcf8dc3c7bb8942d",
+      "5a4cb91416e5d9dc1b18608fc5e9c7210f857cb2c0e14eb8fcf8dc3c7bb8942d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-thingBot-LoRa_thingBot-LoRa_v1P0",
+    "hashes": [
+      "60b1869758576c65b0ca41add245b8ac253136d2bca3a0a2af70c2526fedff64",
+      "60b1869758576c65b0ca41add245b8ac253136d2bca3a0a2af70c2526fedff64"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_trans_switch_volt_amp",
+    "hashes": [
+      "42f2bcb6a280d8ea89a465178446e1e37c9d39f37fd4aecde3e37a357bad4ad6",
+      "42f2bcb6a280d8ea89a465178446e1e37c9d39f37fd4aecde3e37a357bad4ad6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-EnvOpenPico_EliteMicro2040",
+    "hashes": [
+      "de7ce151e46078b3f32ee6b9bf318f95cde67bb5a29673b2c6b22c3d25dd4c5f",
+      "de7ce151e46078b3f32ee6b9bf318f95cde67bb5a29673b2c6b22c3d25dd4c5f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-fp2_extension_sample_fp2_usb_breakout",
+    "hashes": [
+      "45005bc5e2ca3eab4efa92a594423bc5e762df9d71c186a59b7166ce14e1da82",
+      "45005bc5e2ca3eab4efa92a594423bc5e762df9d71c186a59b7166ce14e1da82"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-nrf2rfm69_nrf2rfm69",
+    "hashes": [
+      "fca180f0fce57df03f5e34950f8ef5f5d8ccddb5da44012187182301efd8c246",
+      "fca180f0fce57df03f5e34950f8ef5f5d8ccddb5da44012187182301efd8c246"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-6N137-TTL-Serial-Optoisolator_6N137-TTL-Serial-Optoisolator",
+    "hashes": [
+      "df5c6a56a978df695f4a7990277809a0de2f7b299fe8fe3f6d10ebf1a96619f9",
+      "df5c6a56a978df695f4a7990277809a0de2f7b299fe8fe3f6d10ebf1a96619f9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-bristle_bot_light_follow_bristle_bot",
+    "hashes": [
+      "3c415967176d36befc9a73dcb0094641727eeb448a708a9818ac028eb32d46ac",
+      "3c415967176d36befc9a73dcb0094641727eeb448a708a9818ac028eb32d46ac"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-SmartLaserCO2-PCB_OptAdjust",
+    "hashes": [
+      "4636f6717b27c2d41881343e47b8e2269430177acd5eeb5c8402fb0fe34abd9a",
+      "4636f6717b27c2d41881343e47b8e2269430177acd5eeb5c8402fb0fe34abd9a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-roomba-ESP12E_roomba-esp",
+    "hashes": [
+      "cc6bd129241a4647469a3b22ee3b0bc9b8345c968e51635a0ac32e797c3ca06b",
+      "cc6bd129241a4647469a3b22ee3b0bc9b8345c968e51635a0ac32e797c3ca06b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_USB-C-Screen-Adapter-LDR6023SS",
+    "hashes": [
+      "dc6d3a37eef20dceca661ad2b3074954184beea235fd9ca93fcc6e18c62753e6",
+      "dc6d3a37eef20dceca661ad2b3074954184beea235fd9ca93fcc6e18c62753e6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-1Bitsy_1bitsy",
+    "hashes": [
+      "40b37daf56369846c79ed4e51fb2e89db9d4b97535f69f666a959f0f57429cd2",
+      "40b37daf56369846c79ed4e51fb2e89db9d4b97535f69f666a959f0f57429cd2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Starling_Starling_V1",
+    "hashes": [
+      "4f193a6030b837d1a7ad525b9d3ae3f87e77f1322dc5c6748a322cf9ee42ae0b",
+      "4f193a6030b837d1a7ad525b9d3ae3f87e77f1322dc5c6748a322cf9ee42ae0b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_S_H_Main",
+    "hashes": [
+      "ccdde6a113f333fca1a573a44bc8780d94d52938669b6f7d1dbb9cbbc1f1aada",
+      "ccdde6a113f333fca1a573a44bc8780d94d52938669b6f7d1dbb9cbbc1f1aada"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-filament_extruder_sensor",
+    "hashes": [
+      "c38940906f7b30735594f4edd3c1a5e7769cf639d9ebc047209107337971ba2d",
+      "c38940906f7b30735594f4edd3c1a5e7769cf639d9ebc047209107337971ba2d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-BML-Badges_BML-Badges",
+    "hashes": [
+      "0c30fea89a89301f2c6c151b8190826943e40fdda897f56a5ccc10cb7ccd74ae",
+      "0c30fea89a89301f2c6c151b8190826943e40fdda897f56a5ccc10cb7ccd74ae"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-mikoto_mikoto-flashbed",
+    "hashes": [
+      "1441af96c19373fe49e1de750b197f4f21a61683d890f16f22bc91734cce97d6",
+      "1441af96c19373fe49e1de750b197f4f21a61683d890f16f22bc91734cce97d6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_led_driver",
+    "hashes": [
+      "8fe865276d5bd780ec5de9f3b5845b2c0331759ad7930f3896d6c47b651af35c",
+      "8fe865276d5bd780ec5de9f3b5845b2c0331759ad7930f3896d6c47b651af35c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Mouse_Mouse",
+    "hashes": [
+      "75f5c4ddb4c1dad1c66d9461513c742ba1b9bba5dfa5cc52d4b321055d19277d",
+      "75f5c4ddb4c1dad1c66d9461513c742ba1b9bba5dfa5cc52d4b321055d19277d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kicad_bbb-melzi",
+    "hashes": [
+      "c873803a8757c7801d1f177658ab634cc5cf8ed2c99ba07cb011f7e124e07b3e",
+      "c873803a8757c7801d1f177658ab634cc5cf8ed2c99ba07cb011f7e124e07b3e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esper_programmer",
+    "hashes": [
+      "576b18586189a28a47d3826bcc31413ee849365338b5b3bee400482031389d11",
+      "576b18586189a28a47d3826bcc31413ee849365338b5b3bee400482031389d11"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-mppt-2420-hc_mppt-2420-hc",
+    "hashes": [
+      "b64ff39b9c42a71c87c56a3bb361348d68ca80d29d1af212094ad580f392c441",
+      "b64ff39b9c42a71c87c56a3bb361348d68ca80d29d1af212094ad580f392c441"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-aciduino_aciduino_pcb",
+    "hashes": [
+      "d54d469341a263f4d1bb500b42ca039ecc31628b76d46547d2117400bb028eec",
+      "d54d469341a263f4d1bb500b42ca039ecc31628b76d46547d2117400bb028eec"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-FlashProgrammer_flash_programmer",
+    "hashes": [
+      "57a09933c1b715a684e25c560118d876cd75806df80d36cae815e99b2a4a2a04",
+      "57a09933c1b715a684e25c560118d876cd75806df80d36cae815e99b2a4a2a04"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rgb-led_rgb-led-v2",
+    "hashes": [
+      "632b2c83d7408cdd91b1a836258289b397bafcc1124079ff2958922863ce725a",
+      "632b2c83d7408cdd91b1a836258289b397bafcc1124079ff2958922863ce725a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-zx-sizif-128_sizif128",
+    "hashes": [
+      "a544aa2371e384ae1f263c26c0c78b221ec90ca87ec0c58ee298f897064cca01",
+      "a544aa2371e384ae1f263c26c0c78b221ec90ca87ec0c58ee298f897064cca01"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hardware-designs_spsgrf-board",
+    "hashes": [
+      "654fbb7034b83934756e44fc9d0cd410be76ee2a2291b6e886c6f72962c5db73",
+      "654fbb7034b83934756e44fc9d0cd410be76ee2a2291b6e886c6f72962c5db73"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-MixSID_mixsid",
+    "hashes": [
+      "f277e7a6b11d0acb2a65f7904915d471a1c9c28ce9b2756426fc2280144dca3b",
+      "f277e7a6b11d0acb2a65f7904915d471a1c9c28ce9b2756426fc2280144dca3b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DC25_DC25",
+    "hashes": [
+      "c8c744d22416b0e7c6333016ab9590c7aa0ff05bf9d712047811ec5a108a8d75",
+      "c8c744d22416b0e7c6333016ab9590c7aa0ff05bf9d712047811ec5a108a8d75"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-cdm324_backpack_cdm324",
+    "hashes": [
+      "a82c25d3388719a2ccb1014e96cc2984fa098c5149db9e00c48562c89302e15c",
+      "a82c25d3388719a2ccb1014e96cc2984fa098c5149db9e00c48562c89302e15c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-audio_relay_input_switch_relay_switch",
+    "hashes": [
+      "1ad1a9fdb0ede2412dae6f1c381baef37cdf63458054581ba72f4b0131c526f1",
+      "1ad1a9fdb0ede2412dae6f1c381baef37cdf63458054581ba72f4b0131c526f1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-boatcontrol_NonLatchingNO30A",
+    "hashes": [
+      "a99794b977a2d402e52a700d1d8b107db18ec482ad43c61bf90a1c421545dcbf",
+      "a99794b977a2d402e52a700d1d8b107db18ec482ad43c61bf90a1c421545dcbf"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LiFePO4-Charge-Controller_LiFePO4-Charge-Controller",
+    "hashes": [
+      "73479a7c8f1f3e441127c837ba12228a291da6f7492dc144d68dc0f0f00992da",
+      "73479a7c8f1f3e441127c837ba12228a291da6f7492dc144d68dc0f0f00992da"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rgb2ypbpr_rgb2ypbpr",
+    "hashes": [
+      "2f450dd0c3cf52b15ea695f9c3326c349901b3f168fbe921425ea1272c6bf4aa",
+      "2f450dd0c3cf52b15ea695f9c3326c349901b3f168fbe921425ea1272c6bf4aa"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_power_supply",
+    "hashes": [
+      "d3c07b4faef3b08a35f36dcc74ba661590f9cfbbf2a7ddc00e9e737b4fa5ffbd",
+      "d3c07b4faef3b08a35f36dcc74ba661590f9cfbbf2a7ddc00e9e737b4fa5ffbd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Pi1541io_Pi1541io",
+    "hashes": [
+      "ce7759a11a6bd9d6622155b2746be37a43ab0286a386cf0e88fdc7fb05e22f51",
+      "ce7759a11a6bd9d6622155b2746be37a43ab0286a386cf0e88fdc7fb05e22f51"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_ardfpga",
+    "hashes": [
+      "ff61e32644ec3b52b8106cf7a7e2c0b5415c30f1440f9aeb23bc7fb9de5bdee9",
+      "ff61e32644ec3b52b8106cf7a7e2c0b5415c30f1440f9aeb23bc7fb9de5bdee9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-starfish_starfish",
+    "hashes": [
+      "352c041059e9ba254760905667cd65f6a1eb6c50952cb3a31b2d4ac1fa07f786",
+      "352c041059e9ba254760905667cd65f6a1eb6c50952cb3a31b2d4ac1fa07f786"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hardware-designs_soil-moisture-sensor",
+    "hashes": [
+      "bd63764a37934467652df182a0f0436507e18999a53cbe8495994231d149d4b5",
+      "bd63764a37934467652df182a0f0436507e18999a53cbe8495994231d149d4b5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-jadonk_PocketBone",
+    "hashes": [
+      "8dac57b25322b3d3c58f97fb7fd75f7b591fbcb1ab9126f4e9073c7470d06e8b",
+      "8dac57b25322b3d3c58f97fb7fd75f7b591fbcb1ab9126f4e9073c7470d06e8b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Practicas-Curso-Kicad_Salguero_Federico2",
+    "hashes": [
+      "2687f1c00ee7018bd472220bdf6e64e6b6ba29dc36334ef37fb9de8c3b4f8911",
+      "2687f1c00ee7018bd472220bdf6e64e6b6ba29dc36334ef37fb9de8c3b4f8911"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hypfer-RGB-W-LED-Controller_led_strip_controller",
+    "hashes": [
+      "7e33eb4a855799bbfded61a1328534917527ece0c34520ee948055505c472825",
+      "7e33eb4a855799bbfded61a1328534917527ece0c34520ee948055505c472825"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Inkjet__autosave-InkjetDriver",
+    "hashes": [
+      "da0223806368a2b0826233edc9f1561b3ec35bedfebb22344060e33118132fe0",
+      "da0223806368a2b0826233edc9f1561b3ec35bedfebb22344060e33118132fe0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ESP8266-MQTT-battery-monitor-hw_battery-monitor",
+    "hashes": [
+      "d6fa2fef7be53aef4604184c8b8753531ba6a83ec99254ac9cf90ca6043ce141",
+      "d6fa2fef7be53aef4604184c8b8753531ba6a83ec99254ac9cf90ca6043ce141"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rfcx-sentinel-pcb_Mainboard",
+    "hashes": [
+      "6f79b4832abbbcc63a88e623de66791530b19cc92c267d53ee400f59d510cd3a",
+      "6f79b4832abbbcc63a88e623de66791530b19cc92c267d53ee400f59d510cd3a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-avr_ledprojector_avr_ledprojection",
+    "hashes": [
+      "7d2df1e02091863392382cfd5c314173cf843e551de197c11a029dccb2ced9ce",
+      "7d2df1e02091863392382cfd5c314173cf843e551de197c11a029dccb2ced9ce"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rc2014_bank_switcher_z80_cpm_mmu",
+    "hashes": [
+      "e1cc8fa34769e6877aa706396d3e4a79af8d3d33683602d98a046e633b1cce29",
+      "e1cc8fa34769e6877aa706396d3e4a79af8d3d33683602d98a046e633b1cce29"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-OpAmpPassXsistorBenchSupply_OpAmpPassXsistorBenchSupply",
+    "hashes": [
+      "e9731aae7c8dea061199ab0f29e32a817415cccdcd390a146a888de2c42e016e",
+      "e9731aae7c8dea061199ab0f29e32a817415cccdcd390a146a888de2c42e016e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-OSHW-reCamera-Series_reCamera_Basically_Board",
+    "hashes": [
+      "f08ae0deb951a8a6c49ed932bbe6d0eff57db7d14b09d69b82b46dfe0c8bd4cb",
+      "f08ae0deb951a8a6c49ed932bbe6d0eff57db7d14b09d69b82b46dfe0c8bd4cb"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-SynthDrumTrigger_Synth Drum Trigger",
+    "hashes": [
+      "1c1be583868266772654f54521a3b7e795a0857e5bd5f0baaed7057a23b8b0f7",
+      "1c1be583868266772654f54521a3b7e795a0857e5bd5f0baaed7057a23b8b0f7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-wifiLCD_wifilcd",
+    "hashes": [
+      "c885849fe9b73e9f2333e7475aa2e0bdc4e14d4d44a65904b62ff5fa07d2a79b",
+      "c885849fe9b73e9f2333e7475aa2e0bdc4e14d4d44a65904b62ff5fa07d2a79b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-azalea_azalea",
+    "hashes": [
+      "489f438252e058bd814ca582cbc7c38764abd460964eb4b8fe0030747c54dc63",
+      "489f438252e058bd814ca582cbc7c38764abd460964eb4b8fe0030747c54dc63"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ESP-Breakout_ESP-Breakout",
+    "hashes": [
+      "278ee3dd7379891dac74e0d4570d800fbe2bbace356c9e84e71132c315c94d10",
+      "278ee3dd7379891dac74e0d4570d800fbe2bbace356c9e84e71132c315c94d10"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-HES-V2__autosave-hes",
+    "hashes": [
+      "5550989c6e9b064b1dae2d5446d0942bac97b49d0ad60b767d387616908e6274",
+      "5550989c6e9b064b1dae2d5446d0942bac97b49d0ad60b767d387616908e6274"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-gb-hardware_GB-BRK-TR-A",
+    "hashes": [
+      "fad99b2940a546da8401a51d1f42ee18bbcac4d93c194cb4fcadb50baf592ba8",
+      "fad99b2940a546da8401a51d1f42ee18bbcac4d93c194cb4fcadb50baf592ba8"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-recalbox-gpio-board__autosave-board",
+    "hashes": [
+      "64a2b0804dd17e733fa96140a69f7a75f32f9a659813dad432302ed1c0e4d5ee",
+      "64a2b0804dd17e733fa96140a69f7a75f32f9a659813dad432302ed1c0e4d5ee"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-bobc_LCD-panel-adapter-lvc",
+    "hashes": [
+      "f62fbd2d6dc0b07cac729464c41f55a0f90ca6d58134d5cd313a4c7078e4f94c",
+      "f62fbd2d6dc0b07cac729464c41f55a0f90ca6d58134d5cd313a4c7078e4f94c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-6volt-5W-solar-cc_6vleadacidsolar",
+    "hashes": [
+      "95be85a00d7a10a36a41321906365c630409544ead5afa074a7def93c0758702",
+      "95be85a00d7a10a36a41321906365c630409544ead5afa074a7def93c0758702"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware_Playground_esp8266_uno_relay",
+    "hashes": [
+      "c33c08927f3cef0056b7914a7f1e6ffa0940d1f784f88a406745ac60ce8d6f39",
+      "c33c08927f3cef0056b7914a7f1e6ffa0940d1f784f88a406745ac60ce8d6f39"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-sv650sds_sds_tool",
+    "hashes": [
+      "7dd8ba0ff434f01e0559df3d2174b67b01b68c724657bd628dbeba5bc9cdde85",
+      "7dd8ba0ff434f01e0559df3d2174b67b01b68c724657bd628dbeba5bc9cdde85"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DualLM317BenchSupply_DualLM317BenchSupply",
+    "hashes": [
+      "482ba827a270028aff460908a4bb01dd326341d97e39aab788f52906a16badc2",
+      "482ba827a270028aff460908a4bb01dd326341d97e39aab788f52906a16badc2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Omega2-mini-dock_Omega2 mini-dock",
+    "hashes": [
+      "4687c51bd8a802028cd5ad0040553b327edfaa8a05943d86a49b81294c3f675c",
+      "4687c51bd8a802028cd5ad0040553b327edfaa8a05943d86a49b81294c3f675c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-headstage-adapter_headstage adapter",
+    "hashes": [
+      "596a1fbb5a4ae8dbcad4dc1cd6764240650af862ab42c979019351fb2a7048cd",
+      "596a1fbb5a4ae8dbcad4dc1cd6764240650af862ab42c979019351fb2a7048cd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-phone_rtty_interface_phone_rtty_rev_b",
+    "hashes": [
+      "c31f998eca8a8d7588355a0e7da3f130be9436f30643b1a1b0144dabe52d6c66",
+      "c31f998eca8a8d7588355a0e7da3f130be9436f30643b1a1b0144dabe52d6c66"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-starsynctrackers_reset_switch",
+    "hashes": [
+      "56f1b2052bdb0ef309cf5180ab1c3c64d85556854719fb386b468d31a46c5f1b",
+      "56f1b2052bdb0ef309cf5180ab1c3c64d85556854719fb386b468d31a46c5f1b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hm-mod-rpi-rtc_hm-mod-rpi-rtc",
+    "hashes": [
+      "2b130dc2d1025f088078469c63fba789ff8364399dfad09302c714f21ca15e10",
+      "2b130dc2d1025f088078469c63fba789ff8364399dfad09302c714f21ca15e10"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-board_armjtag_pmod_compatible_armjtag-pmod",
+    "hashes": [
+      "79d5d4fc1b30b8289126541423dd1864bdec7ff4acd17fe650f527e79eb4d01f",
+      "79d5d4fc1b30b8289126541423dd1864bdec7ff4acd17fe650f527e79eb4d01f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-HellScribe_HellScribe",
+    "hashes": [
+      "d5585819360894d4e5efede44c6d4398bdf32adfd736e6179add2d4249f78263",
+      "d5585819360894d4e5efede44c6d4398bdf32adfd736e6179add2d4249f78263"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-opentilt_opentilt2",
+    "hashes": [
+      "2ea61b62da2e1ce98b7e736bd27e30d45d3925b85bddff038cbdfa97498ca505",
+      "2ea61b62da2e1ce98b7e736bd27e30d45d3925b85bddff038cbdfa97498ca505"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-led_array_atmega8_led_array",
+    "hashes": [
+      "12a31944423506a8a6b25fad1ffcc03f72158065d907928a270861be88564c91",
+      "12a31944423506a8a6b25fad1ffcc03f72158065d907928a270861be88564c91"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-MySRaspiGW_MySRaspiGW",
+    "hashes": [
+      "b5e3918a01426e8aa5590d49764358ba8c5a8c72692a81c5e87e6262988c0000",
+      "b5e3918a01426e8aa5590d49764358ba8c5a8c72692a81c5e87e6262988c0000"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_teensy-fx",
+    "hashes": [
+      "f3e20d3134aae69bef0703db4456581f0cd0950d0403d9a8f1c4daf69b3d5409",
+      "f3e20d3134aae69bef0703db4456581f0cd0950d0403d9a8f1c4daf69b3d5409"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-BB-PWR-8009_BB-PWR-8009_revA",
+    "hashes": [
+      "2e2473fbe3ef0eaa9c757869261f521c00752bcc0a5db8a9ecee79d0ed6312cd",
+      "2e2473fbe3ef0eaa9c757869261f521c00752bcc0a5db8a9ecee79d0ed6312cd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_training_board_v02",
+    "hashes": [
+      "f930446aa34169f5ae299d91b0613f366c06192d7461293c55192f55c551f5b6",
+      "f930446aa34169f5ae299d91b0613f366c06192d7461293c55192f55c551f5b6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp8266_network_speaker_esp_network_speaker",
+    "hashes": [
+      "248b3a4a92c979e9e993b31c67cfb71e7507c9c2377a16c52881fc074bc5b418",
+      "248b3a4a92c979e9e993b31c67cfb71e7507c9c2377a16c52881fc074bc5b418"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Slim_Precision_Adder_Main",
+    "hashes": [
+      "cd1f5d0afdfd998b5a0196ac1cad041255d4ae5211f2015e6e34254ef6bc1028",
+      "cd1f5d0afdfd998b5a0196ac1cad041255d4ae5211f2015e6e34254ef6bc1028"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-autohat-board_inverted-usd-adapter",
+    "hashes": [
+      "283bceb352a1b46c25f07960c212f5cfe4e3825d038e96cefa3e97fbc65a550d",
+      "283bceb352a1b46c25f07960c212f5cfe4e3825d038e96cefa3e97fbc65a550d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "kicad-issue742-tastexx-pcb--tastexx-pcb",
+    "hashes": [
+      "9ac0684b147e49bfb1a22c2ddc7ec629fe08933ea8e82259aa51c67857c13451",
+      "9ac0684b147e49bfb1a22c2ddc7ec629fe08933ea8e82259aa51c67857c13451"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-atmel-programmer_atmel_programmer",
+    "hashes": [
+      "391218d91492b5f4d73a45b6f3cbcf06d1db3414e3708f109dce297cb84c05ee",
+      "391218d91492b5f4d73a45b6f3cbcf06d1db3414e3708f109dce297cb84c05ee"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-project-hydra-meshtastic-pcb_meshtastic-diy",
+    "hashes": [
+      "c3720d717757742aed43f680274601a9919b2f2f6eb1bf2aa3190d958ca22b3c",
+      "c3720d717757742aed43f680274601a9919b2f2f6eb1bf2aa3190d958ca22b3c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-fingerprint-with-esp32_quet van tay",
+    "hashes": [
+      "b416b25939498fbf1d07c1caad99d5cc84d747808c56453d0cc8a9e0f079b96c",
+      "b416b25939498fbf1d07c1caad99d5cc84d747808c56453d0cc8a9e0f079b96c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-breakout-boards_avr-isp-x2",
+    "hashes": [
+      "302182eac67f8be30a926dc16db2caf959e22362b474fc4dd53892d886c50c83",
+      "302182eac67f8be30a926dc16db2caf959e22362b474fc4dd53892d886c50c83"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Neptune-Hardware_DataAcquisitionBoard",
+    "hashes": [
+      "ef953c74cfacc63ab329942498a71d67a30055c7e55ebd4fd4a279ebe558720f",
+      "ef953c74cfacc63ab329942498a71d67a30055c7e55ebd4fd4a279ebe558720f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-pi-zero-stepper-board_pi-zero-stepper-board",
+    "hashes": [
+      "d179cfb58ca6db9bf9625b10e8172be03ed0bab811b78cff6f8b31e232699ac9",
+      "d179cfb58ca6db9bf9625b10e8172be03ed0bab811b78cff6f8b31e232699ac9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-microphone_preamp",
+    "hashes": [
+      "9672d53842a153ef253322491c774036fe269a301b9ac5f2674ad90049693241",
+      "9672d53842a153ef253322491c774036fe269a301b9ac5f2674ad90049693241"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-PCB_constant_current_ac_hv",
+    "hashes": [
+      "ca7ed5a2b847dc2d0a21a94a34ada64fd56e3ea1ef9642a87f144ee7d6ded741",
+      "ca7ed5a2b847dc2d0a21a94a34ada64fd56e3ea1ef9642a87f144ee7d6ded741"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LadybugLiteBlue_HW_LadybugBlueLite",
+    "hashes": [
+      "cd46f3b2f62cdcbac59da5ef8f78fffb3a8e71543e5c0f0cbbc601cdebd1923f",
+      "cd46f3b2f62cdcbac59da5ef8f78fffb3a8e71543e5c0f0cbbc601cdebd1923f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-E202VAR-Natural-Radio-Receiver_e202var-vlf-radio-receiver",
+    "hashes": [
+      "3c5f218707b5de1decf0f6236a077084d5e9b09477793cb29712ec14a168f2b1",
+      "3c5f218707b5de1decf0f6236a077084d5e9b09477793cb29712ec14a168f2b1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp32-ethernet_esp32-ethernet",
+    "hashes": [
+      "6a8af2e5d12d008f58d5f7fc18c9a2208b31b38e061e79f2a6c24b555e83c0d8",
+      "6a8af2e5d12d008f58d5f7fc18c9a2208b31b38e061e79f2a6c24b555e83c0d8"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-pwm-2420-lus_pwm-2420-lus",
+    "hashes": [
+      "8930aa91165a767417c09aec20eab3bcb5bf9478bde540240049194a415089da",
+      "8930aa91165a767417c09aec20eab3bcb5bf9478bde540240049194a415089da"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-EncoderBoard_Enc_Pan_Led",
+    "hashes": [
+      "ac85ffcb4b69f6b28d857d59bac7997f9d2e9368dc7a959313b949423639ac02",
+      "ac85ffcb4b69f6b28d857d59bac7997f9d2e9368dc7a959313b949423639ac02"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-continuity-tester_continuity-tester",
+    "hashes": [
+      "649a08c37e3760473f8491ea796c1995999d58fab62f95fa85ea5483c0bb7814",
+      "649a08c37e3760473f8491ea796c1995999d58fab62f95fa85ea5483c0bb7814"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-AVR-ZIF-Programmer_AVR-ZIF-Prog",
+    "hashes": [
+      "397959b420a4a8d45560e929f8f92bb49bf020c58496021ef07f88ff00b5040e",
+      "397959b420a4a8d45560e929f8f92bb49bf020c58496021ef07f88ff00b5040e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-OLD-Stepper-motor-board-design-project_Stepper motor driver",
+    "hashes": [
+      "bf3939038dba52bb439464320a37adfa05da13e70422829c62c855ea751d8efe",
+      "bf3939038dba52bb439464320a37adfa05da13e70422829c62c855ea751d8efe"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ESP32-Module-Breakout_ESP32S-breakout",
+    "hashes": [
+      "d5a64345f0458be6538514484c00fb35eed59e77f7bd3fd31867786925aee954",
+      "d5a64345f0458be6538514484c00fb35eed59e77f7bd3fd31867786925aee954"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-mobile-sensor-pcb_mobile-sensor-pcb",
+    "hashes": [
+      "1235192ca48b34ee7009f835766a94bb2da5b692360ef191512b85de0b7db4f6",
+      "1235192ca48b34ee7009f835766a94bb2da5b692360ef191512b85de0b7db4f6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-blackmagic-isolated_mmp",
+    "hashes": [
+      "1a85ff1f30d78d260605a46683366c09a34a361469d3e84b8234a34e7b74aa4d",
+      "1a85ff1f30d78d260605a46683366c09a34a361469d3e84b8234a34e7b74aa4d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp8266-for-uppatvind_Air-Purifier-Uppatvind",
+    "hashes": [
+      "09853faf7a904ca0668814731c017730f9b6fb4c0b0aa1b0747a112d88da2443",
+      "09853faf7a904ca0668814731c017730f9b6fb4c0b0aa1b0747a112d88da2443"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-fifogfx_c64cart",
+    "hashes": [
+      "728d819cfdf3ddbadb2c14f1df9375288c9827664b4282ca2086e99f6e9b3ddc",
+      "728d819cfdf3ddbadb2c14f1df9375288c9827664b4282ca2086e99f6e9b3ddc"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-blinky-badge_blinky",
+    "hashes": [
+      "e7833169b310f59764201fa9e02de15ba9d07634afde66d8ca34b914e19dae7f",
+      "e7833169b310f59764201fa9e02de15ba9d07634afde66d8ca34b914e19dae7f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_gas_sensor",
+    "hashes": [
+      "047ae35a38f3115ab2bd5f44a002090ac608559ac85492de1e453e48bec23ed3",
+      "047ae35a38f3115ab2bd5f44a002090ac608559ac85492de1e453e48bec23ed3"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-f.60_keyboard",
+    "hashes": [
+      "92ed9d3815a1c88709991771dd85bdafd94ac7fc79c07c891626dadf44555d5f",
+      "92ed9d3815a1c88709991771dd85bdafd94ac7fc79c07c891626dadf44555d5f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Mechaduino-DR_Mechaduino DR 1.01",
+    "hashes": [
+      "63e771797ae4ff1d3437a53f3d8b6a59c5413ed447a1b006d10f7b2b75e5e415",
+      "63e771797ae4ff1d3437a53f3d8b6a59c5413ed447a1b006d10f7b2b75e5e415"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-magic-table_etch-a-sketch_cyclone",
+    "hashes": [
+      "e118276757bb9a05a0563c562843041f458efc3fa5627dcd7b006ac781c94c10",
+      "e118276757bb9a05a0563c562843041f458efc3fa5627dcd7b006ac781c94c10"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-pcb-usb-ft245r-parallel-adapter_pcb-usb-ft245r-parallel-adapter",
+    "hashes": [
+      "08885dc8d622210acbe76f2936b6abae3b053ff15342d4153edc55513cbb7486",
+      "08885dc8d622210acbe76f2936b6abae3b053ff15342d4153edc55513cbb7486"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ESP07-Breakout_ESP07-Breakout",
+    "hashes": [
+      "bce2a69925de08c4240fd53bf6fc890abd16772f0abba7898685467b1987e111",
+      "bce2a69925de08c4240fd53bf6fc890abd16772f0abba7898685467b1987e111"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-AzizLight_AzizLight",
+    "hashes": [
+      "11241210d569aece3850cea3b2880662fd6d5592680f57db60e58b0e565a461b",
+      "11241210d569aece3850cea3b2880662fd6d5592680f57db60e58b0e565a461b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-APM-RPi-Shield_APM-RPi-Shield",
+    "hashes": [
+      "5455e403b02cc1b23d198baebf97b95faeae469140160ae314b9f7d8a2fe6620",
+      "5455e403b02cc1b23d198baebf97b95faeae469140160ae314b9f7d8a2fe6620"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_flypi",
+    "hashes": [
+      "f8ef04261e5e46c44a01813034470844b434c7b9f8b0646bb5daebb85221937d",
+      "f8ef04261e5e46c44a01813034470844b434c7b9f8b0646bb5daebb85221937d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-audprog_audprog_v2",
+    "hashes": [
+      "0a94d571d320ab752619934ecd1bc985d6b1852625c4473584120d6cfd5acc45",
+      "0a94d571d320ab752619934ecd1bc985d6b1852625c4473584120d6cfd5acc45"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-breakout-boards_50-to-100",
+    "hashes": [
+      "3975f619e32572dccb1a29f45963f3e5667d3be70281e04942cef2033dc3b00d",
+      "3975f619e32572dccb1a29f45963f3e5667d3be70281e04942cef2033dc3b00d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-thegrid_thegrid",
+    "hashes": [
+      "65780e8885d8faf2546baacaa06f83eafd9bb4913862a711e186feaa38e542cc",
+      "65780e8885d8faf2546baacaa06f83eafd9bb4913862a711e186feaa38e542cc"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-retroreflectors_TANGOFLOCK",
+    "hashes": [
+      "975c9d989fd11467158c1f7751d425c35145d8535c4f1ef28227f45eddda28dd",
+      "975c9d989fd11467158c1f7751d425c35145d8535c4f1ef28227f45eddda28dd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-tinyFISH_tinyBRUSH",
+    "hashes": [
+      "c22fbcf180eb98e4816f765063b23ec517a9dfe08d1397644c3e6f7575efc8ac",
+      "c22fbcf180eb98e4816f765063b23ec517a9dfe08d1397644c3e6f7575efc8ac"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Arduino-Theremin_arduino-theremin-v1",
+    "hashes": [
+      "21de42f43185047236ffb80d399da8c310de354e02138b645c277dd32447ec59",
+      "21de42f43185047236ffb80d399da8c310de354e02138b645c277dd32447ec59"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rotary-encoder-breakout_rotary-encoder-breakout",
+    "hashes": [
+      "3eba0d326d1d4013fd61adf22b6f0d21e0808d110c2218968fbca6de792b74a8",
+      "3eba0d326d1d4013fd61adf22b6f0d21e0808d110c2218968fbca6de792b74a8"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-thingBot-LoRa_thingBot-LoRa_v1P1",
+    "hashes": [
+      "b431714cf72be4604c3058ff84ce4856ded649a5214456edcd3fda2eeff7d41a",
+      "b431714cf72be4604c3058ff84ce4856ded649a5214456edcd3fda2eeff7d41a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-cnlohr_wiflier",
+    "hashes": [
+      "0a118efb6689f9d3818fab6204a849290fb23275f55f2ce438b1e2c113fd4545",
+      "0a118efb6689f9d3818fab6204a849290fb23275f55f2ce438b1e2c113fd4545"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LittleArduinoProjects_LEDx16_board",
+    "hashes": [
+      "715c9e4408f18a84d07fa9dc8d9bad9a722ba63df85bdf910c81497a1b575a1a",
+      "715c9e4408f18a84d07fa9dc8d9bad9a722ba63df85bdf910c81497a1b575a1a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LimitSwitchesPlugin_LimitSwitchesPlugin",
+    "hashes": [
+      "2c56c12e35dba8a77dae611676a8d740974426bb32e7db1cd113a9eb434b0fce",
+      "2c56c12e35dba8a77dae611676a8d740974426bb32e7db1cd113a9eb434b0fce"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-TLPHnodeV2_TLPHnodeV2",
+    "hashes": [
+      "e0d1ffe59b0c1f14f5c8cd9b776081ea7300372b4bbb58c113cc2a29bcb22837",
+      "e0d1ffe59b0c1f14f5c8cd9b776081ea7300372b4bbb58c113cc2a29bcb22837"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-freeDSP-CLASSIC-SMD-BALANCED_FreeDSP_BAL",
+    "hashes": [
+      "5006a5a2b4ce10b4fba7a824f9d5b2f1550b247233fd0743d98da49b62d82ce3",
+      "5006a5a2b4ce10b4fba7a824f9d5b2f1550b247233fd0743d98da49b62d82ce3"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ToslinkCNC_toslink_arduino_shield",
+    "hashes": [
+      "e668f04425c0ab69da37c8a10d655ac3e9e250ebbd06aea319828ad6f89cff10",
+      "e668f04425c0ab69da37c8a10d655ac3e9e250ebbd06aea319828ad6f89cff10"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_BQ25570_Harvester",
+    "hashes": [
+      "d677b01690cdff9b172d5060d3c9b1e79b13f345a46ab6f3dc4248e775e8c83d",
+      "d677b01690cdff9b172d5060d3c9b1e79b13f345a46ab6f3dc4248e775e8c83d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Own-Mailbox-Hardware_mailbox",
+    "hashes": [
+      "5b02bbaa12f56874e6b306e31e6efb10ea18e3a3a1e9419642faf133413ea93a",
+      "5b02bbaa12f56874e6b306e31e6efb10ea18e3a3a1e9419642faf133413ea93a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-one-shift-register_one-shift-register",
+    "hashes": [
+      "5b52becae2f2aac8e11acbcddbdba3e88da93f819c73589a9cc6de104d4c8c75",
+      "5b52becae2f2aac8e11acbcddbdba3e88da93f819c73589a9cc6de104d4c8c75"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Ventilator_pressure_mpxv5004_10dp",
+    "hashes": [
+      "7552a26d17de8d069fb9f066e3d944de765d87228190771671ab72377ba7514d",
+      "7552a26d17de8d069fb9f066e3d944de765d87228190771671ab72377ba7514d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp-serial-terminal_esp-com",
+    "hashes": [
+      "83a144f7482f745d4674f3a018083beae2aeb3c34920d0378ebded882b654832",
+      "83a144f7482f745d4674f3a018083beae2aeb3c34920d0378ebded882b654832"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-NeoWall_NeoWall",
+    "hashes": [
+      "3954017e2c639c682eef7522799e1f465ffb0ee169f34bfa1f04f7df2249c476",
+      "3954017e2c639c682eef7522799e1f465ffb0ee169f34bfa1f04f7df2249c476"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_ideal_diode",
+    "hashes": [
+      "bd55c2f6a5c3a2c8224309d0f3f3dcec8e753af656e8d99a2e96209e0897ca2d",
+      "bd55c2f6a5c3a2c8224309d0f3f3dcec8e753af656e8d99a2e96209e0897ca2d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-divergence_meter_dm_control",
+    "hashes": [
+      "02b5b17c504252f6ea053574c20f8249a70908f45e13c18864c78f73a21cda31",
+      "02b5b17c504252f6ea053574c20f8249a70908f45e13c18864c78f73a21cda31"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-STM32F303_LQFP48_STM32_LQFP48",
+    "hashes": [
+      "8f8b3fbd7c88f815e9ca07cc2a5cb2dd3eb0aad32a6e17781af8c9a03b321137",
+      "8f8b3fbd7c88f815e9ca07cc2a5cb2dd3eb0aad32a6e17781af8c9a03b321137"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-arduino-led-driver_arduino-led-driver",
+    "hashes": [
+      "1b1d78687ab7cd9e4734bd01397c96d79243b9f5de4836c7e5e887d9996ab71c",
+      "1b1d78687ab7cd9e4734bd01397c96d79243b9f5de4836c7e5e887d9996ab71c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-m2-electronics_m2pogo",
+    "hashes": [
+      "f5baac31e393ce28f79ac68c791553fbd3e01b4f98eeba195654b35b32b73512",
+      "f5baac31e393ce28f79ac68c791553fbd3e01b4f98eeba195654b35b32b73512"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-deskbot_breakout",
+    "hashes": [
+      "dea335281b49e4fdc14e7d6af936af08e6e90e594abd24a4c105effa4c408c68",
+      "dea335281b49e4fdc14e7d6af936af08e6e90e594abd24a4c105effa4c408c68"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-karabas-nano_wifi_revA",
+    "hashes": [
+      "4242df69e6682dce8cbf8547ac1aa6072e19e51a8ab874d74f32df7e49ca4750",
+      "4242df69e6682dce8cbf8547ac1aa6072e19e51a8ab874d74f32df7e49ca4750"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-recalbox-gpio-board_board",
+    "hashes": [
+      "64a2b0804dd17e733fa96140a69f7a75f32f9a659813dad432302ed1c0e4d5ee",
+      "64a2b0804dd17e733fa96140a69f7a75f32f9a659813dad432302ed1c0e4d5ee"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-BirdAttractor_BirdAttractor_RevC",
+    "hashes": [
+      "63a6f199b3048652ba8514a9b5ec4750a265805eeb865cbcac43272af4d3811b",
+      "63a6f199b3048652ba8514a9b5ec4750a265805eeb865cbcac43272af4d3811b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-UltraPIF_Hardware_led",
+    "hashes": [
+      "eb9a105c5ab4a3998c194622af7ef0a5bc72597d141c69232480d469a48abe7f",
+      "eb9a105c5ab4a3998c194622af7ef0a5bc72597d141c69232480d469a48abe7f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LittleArduinoProjects_sevensegment_led_display_module",
+    "hashes": [
+      "9295b572dc16b818895795a01a608ab1aff8d9c2b0b63bb704bc65e44f525032",
+      "9295b572dc16b818895795a01a608ab1aff8d9c2b0b63bb704bc65e44f525032"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RC6502-Apple-1-Replica_RC6502_VDU",
+    "hashes": [
+      "0998ba197010928963dd76e75f1a9da36e03291d941484db30d168aa69e4ef8f",
+      "0998ba197010928963dd76e75f1a9da36e03291d941484db30d168aa69e4ef8f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-TripleDelay2399_TripleDelay2399",
+    "hashes": [
+      "95be31a5767e78412ea1f74352796ee1dc4c93a62e115dfd9189490c898619c6",
+      "95be31a5767e78412ea1f74352796ee1dc4c93a62e115dfd9189490c898619c6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-EEGFrontier_EEGFrontier",
+    "hashes": [
+      "247f0fc84b224c030fd2f58268029f51d6c54f4899dd0432390dbf347ce77ed8",
+      "247f0fc84b224c030fd2f58268029f51d6c54f4899dd0432390dbf347ce77ed8"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_12_24_boost_converter",
+    "hashes": [
+      "8d28e2a4634ff01253243c57751de318c1223c9601628b1cef0f0623ffb638dc",
+      "8d28e2a4634ff01253243c57751de318c1223c9601628b1cef0f0623ffb638dc"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-SparkSwitch_SparkProtectionSwitch",
+    "hashes": [
+      "378add0884c54a04926379ebedaba035bc959c970bc2f847a61f6d693f630773",
+      "378add0884c54a04926379ebedaba035bc959c970bc2f847a61f6d693f630773"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-WHCS-Base-Station_base-station",
+    "hashes": [
+      "ba11abf1131348baaf1a80f1fa9d931f5867c292fa4e8f2aedd307af845282eb",
+      "ba11abf1131348baaf1a80f1fa9d931f5867c292fa4e8f2aedd307af845282eb"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-bobc_led_clock",
+    "hashes": [
+      "07db0b6d8efe4b4560006b28f967ae59611276e2ed6e3f0477e5b4c70527c314",
+      "07db0b6d8efe4b4560006b28f967ae59611276e2ed6e3f0477e5b4c70527c314"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Starburst-One_alpha",
+    "hashes": [
+      "bde589ab12db163b46bb0ab9c82a0e1c482778eebd7292c90d8e012aed47b023",
+      "bde589ab12db163b46bb0ab9c82a0e1c482778eebd7292c90d8e012aed47b023"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-HaveSome_PCB_HaveSomePCB",
+    "hashes": [
+      "d5e64ea5cdee8dd5cd3b3ee129e28a1f3f96a31d1aa0e575f0b52297c99c0e0f",
+      "d5e64ea5cdee8dd5cd3b3ee129e28a1f3f96a31d1aa0e575f0b52297c99c0e0f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-NRC2016_z80",
+    "hashes": [
+      "1eeeee3023f2f337ad613652b1e8d290c2792fed09e381ffb4210f46bf1f7f6a",
+      "1eeeee3023f2f337ad613652b1e8d290c2792fed09e381ffb4210f46bf1f7f6a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Ventilator_pressure_ms4525do",
+    "hashes": [
+      "1903b7999b303cb5ae35f1351630f8c38a1f55ce8178278e5a37ff1b1bc97abe",
+      "1903b7999b303cb5ae35f1351630f8c38a1f55ce8178278e5a37ff1b1bc97abe"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hubble_jacks",
+    "hashes": [
+      "acdcb1d2dceefab62ed49792f61296aac8e62ecce9cfd86d8af8db3c22ac403d",
+      "acdcb1d2dceefab62ed49792f61296aac8e62ecce9cfd86d8af8db3c22ac403d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DiscoDanceFloorV1_DiscoDongle",
+    "hashes": [
+      "40b31206f8aa4ee57cebfda2f06d29b8b8dd7fa51336acb3525988ca57b3d3fc",
+      "40b31206f8aa4ee57cebfda2f06d29b8b8dd7fa51336acb3525988ca57b3d3fc"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-scimpy_powersupply",
+    "hashes": [
+      "a5c1509b9569b16d6d29c3bbdeb303646a4dea314fd15a0d1e50c5b9572b238a",
+      "a5c1509b9569b16d6d29c3bbdeb303646a4dea314fd15a0d1e50c5b9572b238a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-navelino-leaf_navelino-leaf",
+    "hashes": [
+      "9ffc638ba3af999be5e1101a9cf275d62876298e838d5a770f334f87497fbf86",
+      "9ffc638ba3af999be5e1101a9cf275d62876298e838d5a770f334f87497fbf86"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-raspberry_pi_pullup_button_pullup_shutdown_button(revB)",
+    "hashes": [
+      "c383899c125f0f629425709b6f9bd4ae5b7f8e474f7cad61a61246ae40333ea5",
+      "c383899c125f0f629425709b6f9bd4ae5b7f8e474f7cad61a61246ae40333ea5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-TeensyProtoboard_TeensyProtoboard",
+    "hashes": [
+      "876e34724b7295dc2c247f28569a397bf887ef0b39cd1278b1fde7fdf318e2de",
+      "876e34724b7295dc2c247f28569a397bf887ef0b39cd1278b1fde7fdf318e2de"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-beyblock20_beyblock20",
+    "hashes": [
+      "7563583630dc0fc473606c035b26797e7227e593c590d2832474c4e53696dd87",
+      "7563583630dc0fc473606c035b26797e7227e593c590d2832474c4e53696dd87"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Inkjet_PiezoDriver",
+    "hashes": [
+      "7bde6ea5d6f7ac038e435e4757fa8c8f11661130cea1cddc81957c216ed0b34c",
+      "7bde6ea5d6f7ac038e435e4757fa8c8f11661130cea1cddc81957c216ed0b34c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-simplebus2-intercom_repeater_v2",
+    "hashes": [
+      "fd178935a13b74baef740625488b0f07e3575a2ab50f6995e172c33680fe2e12",
+      "fd178935a13b74baef740625488b0f07e3575a2ab50f6995e172c33680fe2e12"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_esp8266",
+    "hashes": [
+      "c3c097a9acca55a4d8b6dceb5067cccecdf2c22457334ed4c4459b974be870b0",
+      "c3c097a9acca55a4d8b6dceb5067cccecdf2c22457334ed4c4459b974be870b0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-EuroPi_europi-surface-mount",
+    "hashes": [
+      "619107fb4e9d99a248c891e75846ac5b8b2b892318d597dbd01f8c65d068f1a1",
+      "619107fb4e9d99a248c891e75846ac5b8b2b892318d597dbd01f8c65d068f1a1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-uC3Moy_uC3Moy",
+    "hashes": [
+      "e17912d6b2f6c9ebf02c582741f7a19507596b9878a4e116c1ca47acfcdb3499",
+      "e17912d6b2f6c9ebf02c582741f7a19507596b9878a4e116c1ca47acfcdb3499"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware-done-with-kicad_AVRlearn",
+    "hashes": [
+      "6614849fc7d377caa08e2f2da0fc869c0e6bfcdc7e2f555c2de10653dad2d812",
+      "6614849fc7d377caa08e2f2da0fc869c0e6bfcdc7e2f555c2de10653dad2d812"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CAL430FR_CAL430F_watch",
+    "hashes": [
+      "928e3565a70b3ee74c2c8593d9d7346c1fb468b373912b427a6387d30cc4e2c1",
+      "928e3565a70b3ee74c2c8593d9d7346c1fb468b373912b427a6387d30cc4e2c1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hackyflasher_Flasher",
+    "hashes": [
+      "778c15684215db4597f5e94aabf6d5515cee53624f180862d728af1fd08a2c6b",
+      "778c15684215db4597f5e94aabf6d5515cee53624f180862d728af1fd08a2c6b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LAUNCHXL-F28027-isolation-PCB_project1",
+    "hashes": [
+      "9801297dae6e8df29de573cb3e495924699cb1cb988b690cdc035eedf12ad54c",
+      "9801297dae6e8df29de573cb3e495924699cb1cb988b690cdc035eedf12ad54c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-data-manager_data-manager",
+    "hashes": [
+      "1ee36aebec86b8302636023aaf4652f980145093f8c9b3ce0a6b6fc9b79500b5",
+      "1ee36aebec86b8302636023aaf4652f980145093f8c9b3ce0a6b6fc9b79500b5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-autohat-board_usd-adapter",
+    "hashes": [
+      "841d9219bd18aa3c4e8b3dc154c6f6b9911aadab58bfdac75175558a716af6fd",
+      "841d9219bd18aa3c4e8b3dc154c6f6b9911aadab58bfdac75175558a716af6fd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-nextbusclock_NextBusClockV1",
+    "hashes": [
+      "5d65c53385a789f3e91a8f352e1a048a04210f8b467f3575ae9799804cadaa30",
+      "5d65c53385a789f3e91a8f352e1a048a04210f8b467f3575ae9799804cadaa30"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-avr_ledprojector_avr_ledprojection-0402",
+    "hashes": [
+      "e719cb218f97223e3bcc9c01a848cd991c2e0f6e673181bee57da290bf05c561",
+      "e719cb218f97223e3bcc9c01a848cd991c2e0f6e673181bee57da290bf05c561"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-akuhei_akuhei",
+    "hashes": [
+      "9ca90fb4d3c5f4a7d059001cf20c7d8e04ba982028cf3ff32b67e6e18f775ec2",
+      "9ca90fb4d3c5f4a7d059001cf20c7d8e04ba982028cf3ff32b67e6e18f775ec2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-beryl_rain_beryl_rain",
+    "hashes": [
+      "5a506f3dc74393e3550625c365cbd48240c41bc0aa381c92a1754b71688eecb5",
+      "5a506f3dc74393e3550625c365cbd48240c41bc0aa381c92a1754b71688eecb5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DustSensorShield_DustSensorShield",
+    "hashes": [
+      "b735579d0a7708c711e432731c39f9e193b6bf5a865e2ad3c020fd5bb92bf1d4",
+      "b735579d0a7708c711e432731c39f9e193b6bf5a865e2ad3c020fd5bb92bf1d4"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Dekada_dekada",
+    "hashes": [
+      "241c2f5b23826a95bc3a89a8c346b4ab4b030a79e7fdd70071f34b819d9826f0",
+      "241c2f5b23826a95bc3a89a8c346b4ab4b030a79e7fdd70071f34b819d9826f0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-balena-rover-wide-hat_resin-rover",
+    "hashes": [
+      "1494c2f662c2e48f7077d4a1a25dece42e0c646820613f147a5a070edbf013de",
+      "1494c2f662c2e48f7077d4a1a25dece42e0c646820613f147a5a070edbf013de"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Avem_Hardware_Avem_demo",
+    "hashes": [
+      "cb9931785b61c27af98e4f4f04eb64ed86429e3f93cbc2aba6cb564a1b476fa4",
+      "cb9931785b61c27af98e4f4f04eb64ed86429e3f93cbc2aba6cb564a1b476fa4"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_MFOS_Eight_Stage_Phase_Shifter_-_Control",
+    "hashes": [
+      "c390ce9d6bb9e0e50b7da25ad66f3165dbe919f3a6b245bcdb9bc5c8ba67a337",
+      "c390ce9d6bb9e0e50b7da25ad66f3165dbe919f3a6b245bcdb9bc5c8ba67a337"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_piezo_amplifier",
+    "hashes": [
+      "ff7239b4b27f5134979059c7eade9b8845826e87b5caf64dc99eef8e576dc4b1",
+      "ff7239b4b27f5134979059c7eade9b8845826e87b5caf64dc99eef8e576dc4b1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_hp_led_switch",
+    "hashes": [
+      "74de62a8b26a74e8744eeb591a478261db38f39e48b9424b19e4c59238debf86",
+      "74de62a8b26a74e8744eeb591a478261db38f39e48b9424b19e4c59238debf86"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp8266_envmonitor_environment-monitor-1.4",
+    "hashes": [
+      "7e0e257a2f4b8b52410412677c86185159bf11bfa8368d9eade76ba14e8c0d98",
+      "7e0e257a2f4b8b52410412677c86185159bf11bfa8368d9eade76ba14e8c0d98"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_RPi_shield",
+    "hashes": [
+      "465fad48eacc2b9b24023b1a5452ddcde6db0fe1bfcb7c072b9c2072ce8eb776",
+      "465fad48eacc2b9b24023b1a5452ddcde6db0fe1bfcb7c072b9c2072ce8eb776"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp8266_link_test_esp_micro85-only",
+    "hashes": [
+      "39689f5c2e0c0aa45b0eefe61b10fb71590de90e0fe73e95f3d688eb3e506bbf",
+      "39689f5c2e0c0aa45b0eefe61b10fb71590de90e0fe73e95f3d688eb3e506bbf"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-preamp-two_mcu-board",
+    "hashes": [
+      "3915b1a9217f48013f754fa48f28d1544f200c785b1f95d8cd5b8be5d35e6ef8",
+      "3915b1a9217f48013f754fa48f28d1544f200c785b1f95d8cd5b8be5d35e6ef8"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Vactrol_VCF_-_Main",
+    "hashes": [
+      "80999b1d37a73cd01006adde5f5c65402eb633ea113c3238e9a23162aef124da",
+      "80999b1d37a73cd01006adde5f5c65402eb633ea113c3238e9a23162aef124da"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Ventilator_pressure_mpx5700ap_gp",
+    "hashes": [
+      "acb4eb014d1c985570760fb74c0396dd2c45bc2b884c35eb7567a15b0341810a",
+      "acb4eb014d1c985570760fb74c0396dd2c45bc2b884c35eb7567a15b0341810a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-technoshield-ui-hw_technoshield",
+    "hashes": [
+      "3bb251b1f83468f1a0ffb9f59cbdbece139274d2b7920e1c59cb2dbf45735326",
+      "3bb251b1f83468f1a0ffb9f59cbdbece139274d2b7920e1c59cb2dbf45735326"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_MFOS_Eight_Stage_Phase_Shifter_-_Main",
+    "hashes": [
+      "0ab0780863ed947a2b4dd7252ee2380da9509dee51e77824410fe5388e9eed39",
+      "0ab0780863ed947a2b4dd7252ee2380da9509dee51e77824410fe5388e9eed39"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-BirdAttractor_BirdAttractor_RevA",
+    "hashes": [
+      "795e054d3f700ab04b85122857db0dc9c8399252ee66a1664e633ed3f384ef4e",
+      "795e054d3f700ab04b85122857db0dc9c8399252ee66a1664e633ed3f384ef4e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rufs_simple_kicad_schema_and_pcb_v1",
+    "hashes": [
+      "15120075dddf50ce2840f7ba1960cb44de3ac547895495a9ffecf8ec1073e745",
+      "15120075dddf50ce2840f7ba1960cb44de3ac547895495a9ffecf8ec1073e745"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-low-power-counter_lpcounter",
+    "hashes": [
+      "72087e361cb93bb0d1a83ff13bde4a167534a7db323022f6ca9f226a1ba82d3f",
+      "72087e361cb93bb0d1a83ff13bde4a167534a7db323022f6ca9f226a1ba82d3f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-saiboard_3x8",
+    "hashes": [
+      "a0126db02863c52b0f87d9d097b8ca012ab9ff32f2f7759f1fcf2b5ca2e59dcb",
+      "a0126db02863c52b0f87d9d097b8ca012ab9ff32f2f7759f1fcf2b5ca2e59dcb"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rs485-moist-sensor_adapter-por",
+    "hashes": [
+      "cf2532213c7876770e08d37b2c4af71875fd4af49077a375960518ea2eb8ebe4",
+      "cf2532213c7876770e08d37b2c4af71875fd4af49077a375960518ea2eb8ebe4"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-TMC261-stepstick_TMC261-stepstick-v1.1",
+    "hashes": [
+      "de8b9ecca7a755143b1f95a3dbb24e27bb8f546ed1d07fdb7f7f4726995a65c5",
+      "de8b9ecca7a755143b1f95a3dbb24e27bb8f546ed1d07fdb7f7f4726995a65c5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-wavegen_wavegen",
+    "hashes": [
+      "b77fff57b64e35b657b3958ecc4b38dc89b806a86360b6b0a40c964111dd189e",
+      "b77fff57b64e35b657b3958ecc4b38dc89b806a86360b6b0a40c964111dd189e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rp2040-dmxsun_baseboard_4slots",
+    "hashes": [
+      "ad6526419b4e89ea4a193f388b5703e9ab1fb83d1885886a4b3466d63482358f",
+      "ad6526419b4e89ea4a193f388b5703e9ab1fb83d1885886a4b3466d63482358f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Buffered_Multiple_SMD_Main",
+    "hashes": [
+      "f7de7d11bcb374d24099d8ac8898e5125149b23a70a21100c5feeaccc4b206b9",
+      "f7de7d11bcb374d24099d8ac8898e5125149b23a70a21100c5feeaccc4b206b9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DoroidOscillo-Board_Android_Oscilloscope",
+    "hashes": [
+      "aa230e6ed315249c370c9a15e99ce211c6beee12aa590976b3ab420ed36ca8e0",
+      "aa230e6ed315249c370c9a15e99ce211c6beee12aa590976b3ab420ed36ca8e0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-2d_conduction_sk9822-matrix",
+    "hashes": [
+      "bec7d985cd22705b6b9937098c0aedc0d098df53ed08e2c41683b419953b5f50",
+      "bec7d985cd22705b6b9937098c0aedc0d098df53ed08e2c41683b419953b5f50"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-tinyisp-micro_tinyispmicro",
+    "hashes": [
+      "af81aec05a23d63c339e807122565d3ae7f0d779391aed822358f01d3e33c838",
+      "af81aec05a23d63c339e807122565d3ae7f0d779391aed822358f01d3e33c838"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RFM69HCW_ATSHA204A_Breakout_RFM69HCW_ATSHA204A_Breakout",
+    "hashes": [
+      "080bbe9c9de8375d16af73845312e20d18cf371de144279e4be2f55ae66be819",
+      "080bbe9c9de8375d16af73845312e20d18cf371de144279e4be2f55ae66be819"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-NRC2016_banked_ram",
+    "hashes": [
+      "d9ee33e5413ed6bc53536142d0bcdc707d7d92ec32c715fffca524533ac803e9",
+      "d9ee33e5413ed6bc53536142d0bcdc707d7d92ec32c715fffca524533ac803e9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-MySRaspiGW_MySRaspiGW_PA_LNA",
+    "hashes": [
+      "5e8885bf71e49d777c43bddd5b0e2f57b33ca5f120816c32eeb61219a0afea47",
+      "5e8885bf71e49d777c43bddd5b0e2f57b33ca5f120816c32eeb61219a0afea47"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-beast-phat_beast-phat",
+    "hashes": [
+      "9926f237c57868cd39527a901bb37104bc55f5b92413e2e668a5d36300c77d93",
+      "9926f237c57868cd39527a901bb37104bc55f5b92413e2e668a5d36300c77d93"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-16x12-bits-I2C_I2C_Servo",
+    "hashes": [
+      "6f95f0ddee3c7d2331058687eea5248903d280693bf2e407698ad720e44fb4e9",
+      "6f95f0ddee3c7d2331058687eea5248903d280693bf2e407698ad720e44fb4e9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-TX5823_TX5823",
+    "hashes": [
+      "38d5fa03ace8bebe37189208dc0aa63d44775971d0c30d922350d2b59e059350",
+      "38d5fa03ace8bebe37189208dc0aa63d44775971d0c30d922350d2b59e059350"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Omega2-Berrydock_berrydock-mini",
+    "hashes": [
+      "d62c99a976716744c27b9dcb37f1385c9b6ff7761292a2d79e58b295e5435c0b",
+      "d62c99a976716744c27b9dcb37f1385c9b6ff7761292a2d79e58b295e5435c0b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-wavegen_waveform-generator-rev1",
+    "hashes": [
+      "b77fff57b64e35b657b3958ecc4b38dc89b806a86360b6b0a40c964111dd189e",
+      "b77fff57b64e35b657b3958ecc4b38dc89b806a86360b6b0a40c964111dd189e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-klangorium_logic_noise_playground",
+    "hashes": [
+      "ab2b2bbe4fc923cf8117790f13ac98b0bccd88f4f82e0834878730454242ec95",
+      "ab2b2bbe4fc923cf8117790f13ac98b0bccd88f4f82e0834878730454242ec95"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-can_firewall_hardware_CAN_Firewall",
+    "hashes": [
+      "b7fdbb8245d6879002d8a713423dcf041c649cb38cbda3cf4d4679833eb2b74e",
+      "b7fdbb8245d6879002d8a713423dcf041c649cb38cbda3cf4d4679833eb2b74e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-sonic3_feram_adapter_sonic3_feram_adapter",
+    "hashes": [
+      "3465eac24b7cd0a3d1c2c83d9768939235c6823a8a2568e63e718785675f457c",
+      "3465eac24b7cd0a3d1c2c83d9768939235c6823a8a2568e63e718785675f457c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-KosselHotendBoard_KosselHotendPCB",
+    "hashes": [
+      "979f4bd6376c692a7695ac3676aa03f7728a017a1ec05b85beffb1e0c75bdd77",
+      "979f4bd6376c692a7695ac3676aa03f7728a017a1ec05b85beffb1e0c75bdd77"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RX5808_rx5808_4button",
+    "hashes": [
+      "328587136324e672d3481e5190f5f9e5bd0af701d557d5fed470f94519f71a25",
+      "328587136324e672d3481e5190f5f9e5bd0af701d557d5fed470f94519f71a25"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Teensy-Hats_Teensy-7-Segment-Hat",
+    "hashes": [
+      "96a0e8c5d92234084a7f2439089927b970bc2473c45b78a97ac77b14672dbea6",
+      "96a0e8c5d92234084a7f2439089927b970bc2473c45b78a97ac77b14672dbea6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-marlin-neopixel-bridge_ATtiny85_Marneo",
+    "hashes": [
+      "2bc310ae4e91a8964bc5b9fb71b25caea180abdac1ce0cd2cbfaaef275c9cd64",
+      "2bc310ae4e91a8964bc5b9fb71b25caea180abdac1ce0cd2cbfaaef275c9cd64"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-maytal_Maytal",
+    "hashes": [
+      "b5e861c25c87125e3134be91a95e188b4ea9e13e919b0a40021a4f572bed4208",
+      "b5e861c25c87125e3134be91a95e188b4ea9e13e919b0a40021a4f572bed4208"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-pcb-covox-amp-v2_pcb-covox-amp-v2",
+    "hashes": [
+      "6576bf9db069e53df7048b2437f2c9bb9da276f8d7054e95e36c0cbdb95f6422",
+      "6576bf9db069e53df7048b2437f2c9bb9da276f8d7054e95e36c0cbdb95f6422"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Abakus_Main",
+    "hashes": [
+      "5301ecab60853c4796b87ffaf085a38fac4f860d8ede0c71ea0a565c273e1300",
+      "5301ecab60853c4796b87ffaf085a38fac4f860d8ede0c71ea0a565c273e1300"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Doorman_doorman_slot",
+    "hashes": [
+      "fa4463c0ef5ca4a5dab2d9f66e8eceb41d07653ea29cd7259b6f5155d1bf679d",
+      "fa4463c0ef5ca4a5dab2d9f66e8eceb41d07653ea29cd7259b6f5155d1bf679d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-usb_rs232c_usb_rs232c_rev_a",
+    "hashes": [
+      "d15026a3c646720dc9deaa9253d24346aa7d7e35cace217a2efb34fd0e87b1da",
+      "d15026a3c646720dc9deaa9253d24346aa7d7e35cace217a2efb34fd0e87b1da"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-AVR-ISP_level-shifter_AVR-ISP_level-shifter",
+    "hashes": [
+      "4941a2522b1597f235ef6f385250b29f7adbff8fb8ab650a449ca1944a7b6fe1",
+      "4941a2522b1597f235ef6f385250b29f7adbff8fb8ab650a449ca1944a7b6fe1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-655_testboard",
+    "hashes": [
+      "42859521e41a28a19bedbf17eb3d57b742b4a573d2f129e27077cb7e1d4641e3",
+      "42859521e41a28a19bedbf17eb3d57b742b4a573d2f129e27077cb7e1d4641e3"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DPS-1200FB_Adapter_Adapter",
+    "hashes": [
+      "eca307fdb6cd1186287d612ab47cff2c2f83853a543fc0c5c085248c2fb0d40a",
+      "eca307fdb6cd1186287d612ab47cff2c2f83853a543fc0c5c085248c2fb0d40a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-TB6600StepperDriver_DEW_TB6600-V1",
+    "hashes": [
+      "2a37070a43568186d29b51e65ec3a104b9647eaf8b39dcaa366e51a67e2c8206",
+      "2a37070a43568186d29b51e65ec3a104b9647eaf8b39dcaa366e51a67e2c8206"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_8_switch_array",
+    "hashes": [
+      "6a82de08e647bb2d26522efb5a0baba4e28f86effd6d2eea324b567c72b562a6",
+      "6a82de08e647bb2d26522efb5a0baba4e28f86effd6d2eea324b567c72b562a6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ReST32_ReST RRD-FGC-Adapter",
+    "hashes": [
+      "dde87ac5f23b3f4d85b6b08635056f0abbc33081a5c3fb4be66dc1dc606e1d4f",
+      "dde87ac5f23b3f4d85b6b08635056f0abbc33081a5c3fb4be66dc1dc606e1d4f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Single_Attenuator",
+    "hashes": [
+      "8f03de613df09eadbaec4e10713ad01bdca660875a6306cea6291df4684f6ff8",
+      "8f03de613df09eadbaec4e10713ad01bdca660875a6306cea6291df4684f6ff8"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-OpenVNAVI_motor unit",
+    "hashes": [
+      "4d60d51a06a40c40db4b4bb4fbe03cf0b309817db7587b7cae4ed0f55090a9a7",
+      "4d60d51a06a40c40db4b4bb4fbe03cf0b309817db7587b7cae4ed0f55090a9a7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LoRaPP_loramod",
+    "hashes": [
+      "d374dc5de8452160baf2b410577e1ad7fa4c30d81000501cf65e181d709f8458",
+      "d374dc5de8452160baf2b410577e1ad7fa4c30d81000501cf65e181d709f8458"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Shift-out-32-HC595_Shift-out",
+    "hashes": [
+      "233379837e72d6a8b913414df103af266247b6bf27f1e9f42a350b11c256645c",
+      "233379837e72d6a8b913414df103af266247b6bf27f1e9f42a350b11c256645c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Inhibition_amplifier",
+    "hashes": [
+      "4d894d5365b2149101ff706f291ea5daa99713eb9e25cd210740e5dee12a1dda",
+      "4d894d5365b2149101ff706f291ea5daa99713eb9e25cd210740e5dee12a1dda"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-VM-sensor-PT1000_vm-sensor-pt100",
+    "hashes": [
+      "3d92c53b6ccbfe50285879f03d6708c5b796070a7cf028194ccb46f978eb0fc5",
+      "3d92c53b6ccbfe50285879f03d6708c5b796070a7cf028194ccb46f978eb0fc5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rp2040-dmxsun_baseboard_2slots",
+    "hashes": [
+      "2008dcbb7fb317c4c905c3fa60ba8a6c90fe51627ebba8f677d86b031f2325a7",
+      "2008dcbb7fb317c4c905c3fa60ba8a6c90fe51627ebba8f677d86b031f2325a7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-bypass_crossmix_bypass_crossmix",
+    "hashes": [
+      "16ef209a745225387449e0530c20fbeb7a0c87ea2a4c4dc8255dc43bd4125d29",
+      "16ef209a745225387449e0530c20fbeb7a0c87ea2a4c4dc8255dc43bd4125d29"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-mdbwerk_mdbwerk",
+    "hashes": [
+      "e1cc5499d7a33880996a464be0634a9f8478e0d569ec046dd98c73a59a9f2cc8",
+      "e1cc5499d7a33880996a464be0634a9f8478e0d569ec046dd98c73a59a9f2cc8"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-SmartLaserCO2-PCB_LaserPointer",
+    "hashes": [
+      "111028ec00e565f7ff179341c5f9f7dfde9a2a208e2291fbd15b7f11d790202f",
+      "111028ec00e565f7ff179341c5f9f7dfde9a2a208e2291fbd15b7f11d790202f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-PocketBone_pocketbone-kicad",
+    "hashes": [
+      "f146b7d18a22d3a8f84462e42f2e371fac9bc5a1eca67016928e30a754d8ea44",
+      "f146b7d18a22d3a8f84462e42f2e371fac9bc5a1eca67016928e30a754d8ea44"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ponyser-pcb_Ponyser",
+    "hashes": [
+      "731e4bd8b68709dbde29f341472af30bb56f71583c2dca241068bba2d524cf8c",
+      "731e4bd8b68709dbde29f341472af30bb56f71583c2dca241068bba2d524cf8c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp12-appliance_mod_esp12-appliance-mod",
+    "hashes": [
+      "94207c661b44ccecbeb60444484dbe8fb2f8892fa8dc2657fca55b3265c6bfd5",
+      "94207c661b44ccecbeb60444484dbe8fb2f8892fa8dc2657fca55b3265c6bfd5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_level_shifter",
+    "hashes": [
+      "e292e0f4c0e0f5d7ffd10309f5249f3c582709d43054cdd74fe028c667f0cd67",
+      "e292e0f4c0e0f5d7ffd10309f5249f3c582709d43054cdd74fe028c667f0cd67"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-abus-cfa1000-display-grabber_acs-display-grabber",
+    "hashes": [
+      "68397ef4713bb5c908c33e7bc1059e80024e0e3b4e098ad568915f3873194688",
+      "68397ef4713bb5c908c33e7bc1059e80024e0e3b4e098ad568915f3873194688"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-anima_MotorDrive",
+    "hashes": [
+      "10247c367dde56aa4587945bc3eff64888dad352ccdfd0c15199961ef107f7f9",
+      "10247c367dde56aa4587945bc3eff64888dad352ccdfd0c15199961ef107f7f9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-BB-PWR-3608_BB-PWR-3608_revA",
+    "hashes": [
+      "defb45fe8c8ca7b20a34c24f3ba01b6af0568b00a2e3e1056f2ae4535db9f179",
+      "defb45fe8c8ca7b20a34c24f3ba01b6af0568b00a2e3e1056f2ae4535db9f179"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esper_EsperDNS",
+    "hashes": [
+      "cf56a0f69f55c443994290b18412a15e25040e5a25580d07dd283684561c3a7d",
+      "cf56a0f69f55c443994290b18412a15e25040e5a25580d07dd283684561c3a7d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hbr-mk2_hbr-mk2-bpfs",
+    "hashes": [
+      "10d2bcc328fc46fd16256c3851cd131f5536e3bd24654fab9b2a6ff322a8dc76",
+      "10d2bcc328fc46fd16256c3851cd131f5536e3bd24654fab9b2a6ff322a8dc76"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Keyboard_PCB_Keyboard",
+    "hashes": [
+      "4921169e296f7295ac58d349ab1fd7e47bd6ee3d6e646cf5578ac7ad6c37c01c",
+      "4921169e296f7295ac58d349ab1fd7e47bd6ee3d6e646cf5578ac7ad6c37c01c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CapPCB_CapPcb",
+    "hashes": [
+      "d28f9f48a89f1ac59ba840d73bfbc58fa1e9dbdf370e96e6a715d56e0e589983",
+      "d28f9f48a89f1ac59ba840d73bfbc58fa1e9dbdf370e96e6a715d56e0e589983"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Pi5_PCIe_Pi5_PCIe",
+    "hashes": [
+      "042f51f5a3a60b7ef810f123ef2053e5c65a4f15a78d7cdf55630d58657948fe",
+      "042f51f5a3a60b7ef810f123ef2053e5c65a4f15a78d7cdf55630d58657948fe"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-timecircuits-hardware_BTTF-TimeCircuits",
+    "hashes": [
+      "ce4e4176ed9dc9f7a9ffc52a98b093465d395ef80c4e642944cd635ae6f1c0d9",
+      "ce4e4176ed9dc9f7a9ffc52a98b093465d395ef80c4e642944cd635ae6f1c0d9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Manual_Gate_Control",
+    "hashes": [
+      "d20fb9732c848127f1bce81d8eb4bfbeac5ed8644c14482a2d78bb48372b0180",
+      "d20fb9732c848127f1bce81d8eb4bfbeac5ed8644c14482a2d78bb48372b0180"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-I2CTempsensor_sensors",
+    "hashes": [
+      "fdaa21d51461bfc74f3ec26d007786d16b6702a7e17e613887ab98c59068fcf1",
+      "fdaa21d51461bfc74f3ec26d007786d16b6702a7e17e613887ab98c59068fcf1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-UProgrammer-Hardware_Programmer",
+    "hashes": [
+      "ad9178d3f81581579c016242da8d39fd7996b8b07ef315a73465bfe6c4dc7735",
+      "ad9178d3f81581579c016242da8d39fd7996b8b07ef315a73465bfe6c4dc7735"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-domotics_base-board-arranged",
+    "hashes": [
+      "c19e1ad6e708351762c2ffc0243d570043af8843246650db36221c0712ddd3fe",
+      "c19e1ad6e708351762c2ffc0243d570043af8843246650db36221c0712ddd3fe"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-free-of-charge_BMS",
+    "hashes": [
+      "6fc1d5f502fb3bb4d40fca000298fbd049c4dfc59624f3c92ef847cde080f73d",
+      "6fc1d5f502fb3bb4d40fca000298fbd049c4dfc59624f3c92ef847cde080f73d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hubble_16_bit_analog_out",
+    "hashes": [
+      "935615d09475a3855e781e0b33b0279a8ece41c3a573b5e6903e5c2c9b26c428",
+      "935615d09475a3855e781e0b33b0279a8ece41c3a573b5e6903e5c2c9b26c428"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ToslinkCNC__autosave-ToslinkCNC_OneAxis",
+    "hashes": [
+      "d68ccd728bea9a540d66913665a2ff398fca2ac28a674f4eaa1a64bdfcd70262",
+      "d68ccd728bea9a540d66913665a2ff398fca2ac28a674f4eaa1a64bdfcd70262"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-gepetto_circuito",
+    "hashes": [
+      "3edb01e931f77d647afb0f816d17c6d7839f5f1742f23b0deb231b8f58c4762a",
+      "3edb01e931f77d647afb0f816d17c6d7839f5f1742f23b0deb231b8f58c4762a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-74Logic_SA_ADC_SA-ADC",
+    "hashes": [
+      "4b95f96e43ee61aa729cf9d7fcf8cecac4635286ec577b58b9575ce8828f796d",
+      "4b95f96e43ee61aa729cf9d7fcf8cecac4635286ec577b58b9575ce8828f796d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Inkjet_InkjetDriver",
+    "hashes": [
+      "da0223806368a2b0826233edc9f1561b3ec35bedfebb22344060e33118132fe0",
+      "da0223806368a2b0826233edc9f1561b3ec35bedfebb22344060e33118132fe0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-bikedar_bikedar",
+    "hashes": [
+      "73cf9beb2ad3c5e8472a7326e90361d088672806e4855750248aa6866a226329",
+      "73cf9beb2ad3c5e8472a7326e90361d088672806e4855750248aa6866a226329"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hubble_12_bit_analog_out",
+    "hashes": [
+      "53a44101dfb01d31bd49972119f45b279cc453f97ccde0b44a3f4a665face0fd",
+      "53a44101dfb01d31bd49972119f45b279cc453f97ccde0b44a3f4a665face0fd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_HAGIWO_MultiOut_Main",
+    "hashes": [
+      "322b8b762d41c0a126bc22e87c9cadb226c96562cc5540fae55ab2418bb1db3e",
+      "322b8b762d41c0a126bc22e87c9cadb226c96562cc5540fae55ab2418bb1db3e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ftdi-jtag-programmer_JTAGProgrammer",
+    "hashes": [
+      "45f1907b664f28c1c3881ebe87fe24a8012f037ee304b1e1accae186b59822cc",
+      "45f1907b664f28c1c3881ebe87fe24a8012f037ee304b1e1accae186b59822cc"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-96boards-sensors_Sensors",
+    "hashes": [
+      "0ce1b7d1d7ea40d3d8bf4b3ba75df8603723356535c5efd293389a6f2b48588a",
+      "0ce1b7d1d7ea40d3d8bf4b3ba75df8603723356535c5efd293389a6f2b48588a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RX5808_diversityModule",
+    "hashes": [
+      "897aa24aebd66200a3b6518ebb067d99fe2c4432b06108e9593985f48f25f165",
+      "897aa24aebd66200a3b6518ebb067d99fe2c4432b06108e9593985f48f25f165"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rufs_smart_psu",
+    "hashes": [
+      "4b37c776b9088c1cf0d77dbdf34a3ba376f19b3bc002dfb2db722c9f3eb48823",
+      "4b37c776b9088c1cf0d77dbdf34a3ba376f19b3bc002dfb2db722c9f3eb48823"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Kefersender_UKW TX",
+    "hashes": [
+      "5cda3355bc1311afa1dffedd33503eb970909a6b83fbfc32b0881bae1eefd6a3",
+      "5cda3355bc1311afa1dffedd33503eb970909a6b83fbfc32b0881bae1eefd6a3"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_Clock_Divider_Control",
+    "hashes": [
+      "e3571baa6c0a6dff667445441215061b6845ef285f70be72490011c67b3ccfa6",
+      "e3571baa6c0a6dff667445441215061b6845ef285f70be72490011c67b3ccfa6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hackaday_esp-14_power_meter__autosave-esp-14",
+    "hashes": [
+      "2530dbe26f2e67e6ce2050254dd18e9ac6f335cc15576805ff744d81053d6b15",
+      "2530dbe26f2e67e6ce2050254dd18e9ac6f335cc15576805ff744d81053d6b15"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-MAVRIC_Hardware__autosave-Motherboard",
+    "hashes": [
+      "0b025544425b3f08a813ab525e3d5356d5cf8dfc91452354945d31c254c7efb1",
+      "0b025544425b3f08a813ab525e3d5356d5cf8dfc91452354945d31c254c7efb1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CubeSAT-Reaction-Wheel__autosave-GPIO to motor",
+    "hashes": [
+      "8b3fe899391a4fb90928f506650fcd58b75e97dbd38e9f5a90eb3101f7993ab5",
+      "8b3fe899391a4fb90928f506650fcd58b75e97dbd38e9f5a90eb3101f7993ab5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Minitel_bbb-adapter",
+    "hashes": [
+      "f3d5782d108f5de3c8a29b7464708a7c8c1c398a3a253261799ff846a7fbe2d3",
+      "f3d5782d108f5de3c8a29b7464708a7c8c1c398a3a253261799ff846a7fbe2d3"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_dropbot_control_board",
+    "hashes": [
+      "c231e4899ff0d465c5a4a36334e39f271e887af02c22f451bed863a25e9b64a1",
+      "c231e4899ff0d465c5a4a36334e39f271e887af02c22f451bed863a25e9b64a1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DerKnopf_power-supply",
+    "hashes": [
+      "7fa28f655a7df3f167510b815218a93c0f4b335af2689d29f2287c62ef51cfb6",
+      "7fa28f655a7df3f167510b815218a93c0f4b335af2689d29f2287c62ef51cfb6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-12v-automatic-ups_ups-12v",
+    "hashes": [
+      "258396adbaefe0857c3d165729ac37425a1096749bb9f81528b65f677f000323",
+      "258396adbaefe0857c3d165729ac37425a1096749bb9f81528b65f677f000323"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_nunchuk_breakout",
+    "hashes": [
+      "4e3851c4e0ac58b6c991ac4807ce427e5c76d50cb2217d2cc2276750548f51ca",
+      "4e3851c4e0ac58b6c991ac4807ce427e5c76d50cb2217d2cc2276750548f51ca"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-nodemcu-backstage_NodeMCU Backstage",
+    "hashes": [
+      "58881310978de0b17caff3111fbbd227567e260761d7c19b25d28a8ecdff55e5",
+      "58881310978de0b17caff3111fbbd227567e260761d7c19b25d28a8ecdff55e5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_beehive",
+    "hashes": [
+      "df4835965c421c9a60c021e785e099c9b02f37d97d45b26ad8be9032bc906c99",
+      "df4835965c421c9a60c021e785e099c9b02f37d97d45b26ad8be9032bc906c99"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DAC-ADAU1966_DAC-ADAU1966",
+    "hashes": [
+      "210ec4b07241eb03bc59aaba51e29172e88777fb7ba1f2f806605d19aa64c59a",
+      "210ec4b07241eb03bc59aaba51e29172e88777fb7ba1f2f806605d19aa64c59a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-8bit-cpu_arduino_eeprom_programmer",
+    "hashes": [
+      "ed4cf034f07809379a2749df9e549883563fae1dd8d9398756b5bad5caa538b7",
+      "ed4cf034f07809379a2749df9e549883563fae1dd8d9398756b5bad5caa538b7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ESPLux_Board",
+    "hashes": [
+      "6d2fe98152782773b3671e748353f81c4a133dcd9d413cebda62cece15a48548",
+      "6d2fe98152782773b3671e748353f81c4a133dcd9d413cebda62cece15a48548"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-juno-chorus-clone_juno-chorus-clone",
+    "hashes": [
+      "934518aaaa5c34e33c5cf104314634395d2332360eeafe7e2f73e890804b44f2",
+      "934518aaaa5c34e33c5cf104314634395d2332360eeafe7e2f73e890804b44f2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_solenoid_driver",
+    "hashes": [
+      "0d90781d6d50ce075f32f36f566ca700cc0cbec2fe61de3e4044360317fea715",
+      "0d90781d6d50ce075f32f36f566ca700cc0cbec2fe61de3e4044360317fea715"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware_Playground_Touch_Switch_1ch_PCB",
+    "hashes": [
+      "2d2ecc502739a537444ee5dbf929c17944fb0c3c31d32251edb9ddb083cbd0a9",
+      "2d2ecc502739a537444ee5dbf929c17944fb0c3c31d32251edb9ddb083cbd0a9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-miniboard-stm32f0_miniboard-stm32f0",
+    "hashes": [
+      "54acfe950fbca65cd9729e78989eea4c667b49773cb475c15aec19cc721a9e6e",
+      "54acfe950fbca65cd9729e78989eea4c667b49773cb475c15aec19cc721a9e6e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LoRaCatTrack_GPSLoRa",
+    "hashes": [
+      "634d15bbad9f3346d3cc7057090361ec02b0751f1cb1d37d81e6de62ea9c56b6",
+      "634d15bbad9f3346d3cc7057090361ec02b0751f1cb1d37d81e6de62ea9c56b6"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-espalarm_alarm",
+    "hashes": [
+      "ab9a19c504c282fc25cd0173a728e2ed27160fecd4503da4b0ca19436a4500cc",
+      "ab9a19c504c282fc25cd0173a728e2ed27160fecd4503da4b0ca19436a4500cc"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CubeSAT-Reaction-Wheel_Edison_Motor_Servo",
+    "hashes": [
+      "0358737dc2edf8190cdb4c4a34500a913fc9381f4c0b7026e91434c9d57ab966",
+      "0358737dc2edf8190cdb4c4a34500a913fc9381f4c0b7026e91434c9d57ab966"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-dust_sensor_dust_sensor",
+    "hashes": [
+      "8de47dd3bcb414023e8028994787efa5e2c0ca167f38dfabed9851514dfbfd1f",
+      "8de47dd3bcb414023e8028994787efa5e2c0ca167f38dfabed9851514dfbfd1f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-sensorboard_DiffIR.kicad_pcb_narrow",
+    "hashes": [
+      "6b04dd8851553cabe2ad11e9109a125a96c8935740fc0ab518a137c7b18f1334",
+      "6b04dd8851553cabe2ad11e9109a125a96c8935740fc0ab518a137c7b18f1334"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Solare-BQ24210_Solare-BQ24210",
+    "hashes": [
+      "13598c1b44d83b1c48a98660e6733163f01fa937c3f74c3b1e053dc1919feedf",
+      "13598c1b44d83b1c48a98660e6733163f01fa937c3f74c3b1e053dc1919feedf"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-gb-hardware_GB-LIVE32",
+    "hashes": [
+      "e0fd1a7fce804a8faf8ca9ec6ab6bd47ecb116e87348467689875802b1d19309",
+      "e0fd1a7fce804a8faf8ca9ec6ab6bd47ecb116e87348467689875802b1d19309"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DIYDAC_DIYDAC",
+    "hashes": [
+      "6649e0a645146e3997e635dc6450b958607718e04d893133e92b30dbab8160cf",
+      "6649e0a645146e3997e635dc6450b958607718e04d893133e92b30dbab8160cf"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-GameTiger_GameTiger",
+    "hashes": [
+      "5bd7161af2fd1c0b5d5103eb1f8ad7ad219c95dd8321cd4d04f2a7a247ca3921",
+      "5bd7161af2fd1c0b5d5103eb1f8ad7ad219c95dd8321cd4d04f2a7a247ca3921"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-1-Wire-Wing-pcb_1-Wire_Wing",
+    "hashes": [
+      "055d9e3dc14e21c0c39d5186501e479e5f880bd5a1bc451662b60bf48852d727",
+      "055d9e3dc14e21c0c39d5186501e479e5f880bd5a1bc451662b60bf48852d727"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-SimpleCPLD_SimpleCPLD",
+    "hashes": [
+      "6d14564a63b36908708265f72b6f506ebecfc1e91ebc5e367f24517868cd7c1d",
+      "6d14564a63b36908708265f72b6f506ebecfc1e91ebc5e367f24517868cd7c1d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-bldc-gimbal-1d_gimbal-board",
+    "hashes": [
+      "b40caf4a1175ec9288516406e8e67e062e11f42c94cedf3c1391c5a04fe99789",
+      "b40caf4a1175ec9288516406e8e67e062e11f42c94cedf3c1391c5a04fe99789"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-eBUS-Adapter_Groeger",
+    "hashes": [
+      "ec6dbf8fae6fa45d08668b812eadbc117a0aa2147e8483ae4b46cd826ce7b63d",
+      "ec6dbf8fae6fa45d08668b812eadbc117a0aa2147e8483ae4b46cd826ce7b63d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "kicad-issue269-noviasonpowerplanes--issue269-noviasonpowerplanes",
+    "hashes": [
+      "5cb1e04cc7107f86ffd13351915f7fa2e53d0bfeb2ae5303a3459e387996423c",
+      "5cb1e04cc7107f86ffd13351915f7fa2e53d0bfeb2ae5303a3459e387996423c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_peltier",
+    "hashes": [
+      "3419b3792210722b8434f30cb5c3da58a582387808a7efd6c19566896fe4e462",
+      "3419b3792210722b8434f30cb5c3da58a582387808a7efd6c19566896fe4e462"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-bobc_MS-F100",
+    "hashes": [
+      "4997f047a5dbb77ac07fffe6fdd0c4451c50e696e44e6e48d32e4fb64926ffe1",
+      "4997f047a5dbb77ac07fffe6fdd0c4451c50e696e44e6e48d32e4fb64926ffe1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-thatmicpre_thatmicpre_v2",
+    "hashes": [
+      "36b5f0acafbb0b73c26339710798c760746cf3a471faaaea8b7724403eff8a99",
+      "36b5f0acafbb0b73c26339710798c760746cf3a471faaaea8b7724403eff8a99"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_hum_temp_sensor",
+    "hashes": [
+      "9a38590e2c6e7d2af466e483d23a7cc02fab90c7d706103613a76b5f6adf0e26",
+      "9a38590e2c6e7d2af466e483d23a7cc02fab90c7d706103613a76b5f6adf0e26"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-taira-keyboard_tairakb",
+    "hashes": [
+      "be41ff010c8414321a3fd61633cf8c1dd2ea2fd607895d8d7da30adddec53d53",
+      "be41ff010c8414321a3fd61633cf8c1dd2ea2fd607895d8d7da30adddec53d53"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-stlinkv2_breakout_stlink_breakout",
+    "hashes": [
+      "b966a833a2adfdc54ba9884e24be17d010f6b54146af926fac1b41eec7e0c361",
+      "b966a833a2adfdc54ba9884e24be17d010f6b54146af926fac1b41eec7e0c361"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Shift-in-32-HC165_shift-in",
+    "hashes": [
+      "8933d68077a827f0646aa1a4313a46c36003e7dca4ef8389b22b1c3b7715b758",
+      "8933d68077a827f0646aa1a4313a46c36003e7dca4ef8389b22b1c3b7715b758"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_Potentiometer_mount_8LED",
+    "hashes": [
+      "ba215853f5e16bb2d2fe0463f23f1a608305f9e673bf8d587b36dc70a2839019",
+      "ba215853f5e16bb2d2fe0463f23f1a608305f9e673bf8d587b36dc70a2839019"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kinetoscope_ethernet",
+    "hashes": [
+      "20d0106b881bdf7d4c800dea1f1eb61dc84bcb7df664b3198d981ab91ba7328c",
+      "20d0106b881bdf7d4c800dea1f1eb61dc84bcb7df664b3198d981ab91ba7328c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kika-in-space_DS8500",
+    "hashes": [
+      "d25fd42d69624bb389a7e6d3ad3cea7231261190ad9214278e787325fadc05b3",
+      "d25fd42d69624bb389a7e6d3ad3cea7231261190ad9214278e787325fadc05b3"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-stubby_hex",
+    "hashes": [
+      "188bcd69386eba3dd43af21c81ef3b1cca17ec58b3dac91079a53f840756c2ce",
+      "188bcd69386eba3dd43af21c81ef3b1cca17ec58b3dac91079a53f840756c2ce"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Raspberry-Pi-Soft-Power-Controller_Switching Supply TPS563208 MCI",
+    "hashes": [
+      "c76f11b90091977af105f3dd86f1f007aa184428952983829f797a19121e3ec0",
+      "c76f11b90091977af105f3dd86f1f007aa184428952983829f797a19121e3ec0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-POV_POV",
+    "hashes": [
+      "423a8be4427a7506987681135ff1c0e253e56e6d82e48c6311b3ea29dee1a137",
+      "423a8be4427a7506987681135ff1c0e253e56e6d82e48c6311b3ea29dee1a137"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_threeboard",
+    "hashes": [
+      "41a1146352100addcfdf0af98b43ba96fc83acfc1c7b0fdecd1f9607d6ac1cdd",
+      "41a1146352100addcfdf0af98b43ba96fc83acfc1c7b0fdecd1f9607d6ac1cdd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LT3652EvalBoard_LT3652EvalBoard",
+    "hashes": [
+      "fcfaa408490ec5ff06e3917c522826ddd23fa92ed25cc4d6e78b28391a45b73a",
+      "fcfaa408490ec5ff06e3917c522826ddd23fa92ed25cc4d6e78b28391a45b73a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ESP_BaPoTeSta_ESP_BaPoTeSta",
+    "hashes": [
+      "8034f2f528b5c5c09ead3b061b44132e91e74c8a87c77c45cdbf7b6cdf6416ec",
+      "8034f2f528b5c5c09ead3b061b44132e91e74c8a87c77c45cdbf7b6cdf6416ec"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Ventilator_pressure_mpxv5004dp",
+    "hashes": [
+      "109b2bdd73b628a56861e14ef5695ef9419c57ca8befb7df4256b46c5977c341",
+      "109b2bdd73b628a56861e14ef5695ef9419c57ca8befb7df4256b46c5977c341"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Dekada_dekada_TopoR_curves",
+    "hashes": [
+      "08b8f4230779153fc927f1665a66ea7751ab3d9cbce42168cc6252196769e59e",
+      "08b8f4230779153fc927f1665a66ea7751ab3d9cbce42168cc6252196769e59e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-crossover-schiit-stack_xover4schiit",
+    "hashes": [
+      "15ff147b8426046bd74bcfa98a87a03fe23c8777301a0b34301c9d1c2cd16406",
+      "15ff147b8426046bd74bcfa98a87a03fe23c8777301a0b34301c9d1c2cd16406"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Feather-ICE40-PCB_feather_ice40",
+    "hashes": [
+      "7da75e5d9cb1f0ec5351fa090ad53f50ce23cc4169d34dcd2e43c5153887899d",
+      "7da75e5d9cb1f0ec5351fa090ad53f50ce23cc4169d34dcd2e43c5153887899d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware_Playground_pro_mini",
+    "hashes": [
+      "2ab91f88ca62b2bdf245f144cc0a84c9cf44ef9ca0058df124947a7ecf303d5d",
+      "2ab91f88ca62b2bdf245f144cc0a84c9cf44ef9ca0058df124947a7ecf303d5d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-solar-lanterns_proto1",
+    "hashes": [
+      "0678f92961aa467a97814af92adbfd826659066f49dada81cc7f462052f5dc5f",
+      "0678f92961aa467a97814af92adbfd826659066f49dada81cc7f462052f5dc5f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware_Playground_wifi_lights",
+    "hashes": [
+      "8a6b648d1902cbad1a0afc376d1c2136eca2f6fc8aa34d62f197a5c23ff51429",
+      "8a6b648d1902cbad1a0afc376d1c2136eca2f6fc8aa34d62f197a5c23ff51429"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-DasBlinkinput_Das Blinkinput",
+    "hashes": [
+      "0cf27cd7c04dda807f69aba2ee0bef89f9b3ebe4dd995dc51ef539aa75284c80",
+      "0cf27cd7c04dda807f69aba2ee0bef89f9b3ebe4dd995dc51ef539aa75284c80"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-bpnode-bb_BPnode-BB",
+    "hashes": [
+      "832ea72e2ab822e21dced3646e21d88896bd8307b70f32ab190ad115c5bf981f",
+      "832ea72e2ab822e21dced3646e21d88896bd8307b70f32ab190ad115c5bf981f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_MFOS_Noise_Cornucopia_Control",
+    "hashes": [
+      "5a7f3b1e9752270322208eb6f75965600fed034e9212a1e917859b03e118371d",
+      "5a7f3b1e9752270322208eb6f75965600fed034e9212a1e917859b03e118371d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kicad-projects_BatCharge",
+    "hashes": [
+      "ac0a8ab83d43ab37526f6fd0ef734c7a42b87be3ed319741c80f2545ac1ad94e",
+      "ac0a8ab83d43ab37526f6fd0ef734c7a42b87be3ed319741c80f2545ac1ad94e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-cnlohr_wiflier_B",
+    "hashes": [
+      "cb6d0442cded35b22f40b00feb6497fb069bf2bedaeb68d1491f56379d3ccbc8",
+      "cb6d0442cded35b22f40b00feb6497fb069bf2bedaeb68d1491f56379d3ccbc8"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-clock_lcdb4",
+    "hashes": [
+      "6cf3e842ca4358bad128d665d3eb22903aa1fe3b9df6a917c9519db786c0c978",
+      "6cf3e842ca4358bad128d665d3eb22903aa1fe3b9df6a917c9519db786c0c978"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RC2014_RC2014 IDE",
+    "hashes": [
+      "14b0646c2323dcbabdae1b0429d7f58154e02cdcec955d864869fc31f763cb19",
+      "14b0646c2323dcbabdae1b0429d7f58154e02cdcec955d864869fc31f763cb19"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_tt_nano_HAT_b2",
+    "hashes": [
+      "c4bb8b34704c8a01007e96e0d39d84cea77a0e8c881e83b35eb328e44a770703",
+      "c4bb8b34704c8a01007e96e0d39d84cea77a0e8c881e83b35eb328e44a770703"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-freeUSBi_USBi_Programmer",
+    "hashes": [
+      "5f988df115cf835e29296429c7e6a64fa7a7b38222a398e320a5eb9199dc36f0",
+      "5f988df115cf835e29296429c7e6a64fa7a7b38222a398e320a5eb9199dc36f0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-spisolator_spisolator",
+    "hashes": [
+      "846b0815d13f48effe455d36da4ce4d4627c066ec2d627d21e4198f964acb4e3",
+      "846b0815d13f48effe455d36da4ce4d4627c066ec2d627d21e4198f964acb4e3"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LVDS2TMDS_LVDS2TMDS",
+    "hashes": [
+      "4a7465691ef4e6ffd5cc6958286ba486f1d6d44c34a78a1135024ce710e21d0c",
+      "4a7465691ef4e6ffd5cc6958286ba486f1d6d44c34a78a1135024ce710e21d0c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware_Playground_buck_led_driver",
+    "hashes": [
+      "e0a2d70f494dbc25e28800c69e03ae8b4880f952f504e9b39d93ab2398a260c0",
+      "e0a2d70f494dbc25e28800c69e03ae8b4880f952f504e9b39d93ab2398a260c0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-temperature-alarm_controller",
+    "hashes": [
+      "e6dca1c8752ab349e9e5f0f67e7eac1ea95615cfcc27c6cdcdb915ff56f5a57e",
+      "e6dca1c8752ab349e9e5f0f67e7eac1ea95615cfcc27c6cdcdb915ff56f5a57e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-BML-Badges_BML_01",
+    "hashes": [
+      "0c1e449d66e1d197428b37d517e8bfb5d2c8efe13288360db7977640dd9d1433",
+      "0c1e449d66e1d197428b37d517e8bfb5d2c8efe13288360db7977640dd9d1433"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-NRC2016_usb_sio",
+    "hashes": [
+      "4dbc3c7fa4233ffa49f635765da789a5660d0c316181e40c83f4aedb9fc59e31",
+      "4dbc3c7fa4233ffa49f635765da789a5660d0c316181e40c83f4aedb9fc59e31"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CompactFlashBreakout_CompactFlashBreakout",
+    "hashes": [
+      "1ecb92454f2b34ee771faba228ab932ae5992af249622c483889102e4200c13e",
+      "1ecb92454f2b34ee771faba228ab932ae5992af249622c483889102e4200c13e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-pi_plant_MCP3002",
+    "hashes": [
+      "7ae281046e6c5153b12a7bae34930112fcc69f3cf1416cbb0049d64a459d016c",
+      "7ae281046e6c5153b12a7bae34930112fcc69f3cf1416cbb0049d64a459d016c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ESP_WiFiSwitch_WifiSwitch",
+    "hashes": [
+      "e55981da935738adc06c9f83c445bb2d51d456cdf9f0a01d74471b8ed6929f2f",
+      "e55981da935738adc06c9f83c445bb2d51d456cdf9f0a01d74471b8ed6929f2f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-AVR-ISP_pogo-plug_1.27mm_AVR-ISP_pogo-plug_1.27mm",
+    "hashes": [
+      "0698b78ad90fbfeba11cb7a756836ba2aa2ad522202bcef787f6675fd3c7a12a",
+      "0698b78ad90fbfeba11cb7a756836ba2aa2ad522202bcef787f6675fd3c7a12a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rufs__autosave-simple_kicad_schema_and_pcb_v1",
+    "hashes": [
+      "15120075dddf50ce2840f7ba1960cb44de3ac547895495a9ffecf8ec1073e745",
+      "15120075dddf50ce2840f7ba1960cb44de3ac547895495a9ffecf8ec1073e745"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Hardware_Playground_orange_pi_zero_node",
+    "hashes": [
+      "b8b14a1e011212b3989655ec83a7eaceb5b2008ab6b3852078ceb224ec0ceb76",
+      "b8b14a1e011212b3989655ec83a7eaceb5b2008ab6b3852078ceb224ec0ceb76"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-type5_type5",
+    "hashes": [
+      "6a10fe33f9435ba9b82d8f625948413daa3f5b48489c1012bba40f9c9e6233e4",
+      "6a10fe33f9435ba9b82d8f625948413daa3f5b48489c1012bba40f9c9e6233e4"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-prog-cc-100mA_prog-cc-100mA",
+    "hashes": [
+      "b461197877ec85469890b62b2c2d51a2ec699e17ebe5178ef076e6e15da332d1",
+      "b461197877ec85469890b62b2c2d51a2ec699e17ebe5178ef076e6e15da332d1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield",
+    "hashes": [
+      "5f17661745f0ee5da74ce5f6a8b864dc4da02dcdcde5b111b078d2427c3cc7d0",
+      "5f17661745f0ee5da74ce5f6a8b864dc4da02dcdcde5b111b078d2427c3cc7d0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Apple-M0110-BT_Apple M0110",
+    "hashes": [
+      "221512ca3e3954f15c2587a7bbef98cda98d57ba52f9efecddd091ad544efa62",
+      "221512ca3e3954f15c2587a7bbef98cda98d57ba52f9efecddd091ad544efa62"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-TinyTracker_ub-minimal",
+    "hashes": [
+      "41cce892343c458935e806e1e4282d452bf712c47e7fdc958bebc90c672aa71b",
+      "41cce892343c458935e806e1e4282d452bf712c47e7fdc958bebc90c672aa71b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hbr-mk2_hbr-mk2-digital",
+    "hashes": [
+      "3832edab09c9dcd1182880d96f2bf73ab83a7c30a6cd40267d5974bf6b9a40e7",
+      "3832edab09c9dcd1182880d96f2bf73ab83a7c30a6cd40267d5974bf6b9a40e7"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-onion2-breakout_onion2 breakout",
+    "hashes": [
+      "739628a2c64e94fa3984b63229cf9a651b0863b99fe1c958aa94e80dbcaeb701",
+      "739628a2c64e94fa3984b63229cf9a651b0863b99fe1c958aa94e80dbcaeb701"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-medusa_medusa_rs422_rx",
+    "hashes": [
+      "f49023b73ea62174fdde3e185998c7ed4a2a30d0c8ffa2cb5ca80fcf0db05f3d",
+      "f49023b73ea62174fdde3e185998c7ed4a2a30d0c8ffa2cb5ca80fcf0db05f3d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-MAVRIC_Hardware_ArduinoPracticeBoard",
+    "hashes": [
+      "053e72298f702d09c421a99a99dff0d6f425208b8da66a58ae445a0833d54b35",
+      "053e72298f702d09c421a99a99dff0d6f425208b8da66a58ae445a0833d54b35"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-SMDBreakouts_smd_breakout_quad",
+    "hashes": [
+      "cd13699695fc5932484e7f0ee9e9efae08c6fbb775566399f66f1f28e29eb230",
+      "cd13699695fc5932484e7f0ee9e9efae08c6fbb775566399f66f1f28e29eb230"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-led-wordclock_wordclock",
+    "hashes": [
+      "b9528a3fbf26d6847afcc28dff8642bb4b210429cf67fc90d30c8990b934e981",
+      "b9528a3fbf26d6847afcc28dff8642bb4b210429cf67fc90d30c8990b934e981"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-PGA2311_pga2311",
+    "hashes": [
+      "aae07790f5b8439120ed05bb5cbbbe6f424b14e31056989f4f985340b396ae7f",
+      "aae07790f5b8439120ed05bb5cbbbe6f424b14e31056989f4f985340b396ae7f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-antdroid-board_antdroid-board",
+    "hashes": [
+      "2bd3690a4ed051924bb7b9a029f1f25bcb5ee2d7021940d3583dab6e25084ef4",
+      "2bd3690a4ed051924bb7b9a029f1f25bcb5ee2d7021940d3583dab6e25084ef4"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-epapercard_epapercard",
+    "hashes": [
+      "e159fa02fcdf814bcc75d276a310cb5589cee9bb39900b8057a33cbd112d53fb",
+      "e159fa02fcdf814bcc75d276a310cb5589cee9bb39900b8057a33cbd112d53fb"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Amiga-A1012-PCB_Amiga-A1012",
+    "hashes": [
+      "5a60dc099d0dc44cbc8f733e64c26f16576023fbba8507bcf683961109f72218",
+      "5a60dc099d0dc44cbc8f733e64c26f16576023fbba8507bcf683961109f72218"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-soil-moisture-sensor-analog_analog-moist-sensor",
+    "hashes": [
+      "cc1ebf7920b742d0ca08135f53dbee824abdc24ec8351a0c2e0897098456e5ee",
+      "cc1ebf7920b742d0ca08135f53dbee824abdc24ec8351a0c2e0897098456e5ee"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_pmt_combiner",
+    "hashes": [
+      "d6b1dd49548b0a0f788369dff11e5ec596dc76372d4f5c35494583347b3d57de",
+      "d6b1dd49548b0a0f788369dff11e5ec596dc76372d4f5c35494583347b3d57de"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-gb-hardware_GB-CART32K-A",
+    "hashes": [
+      "da3324b40a1338a8da02123bd03a390d0833b18387730ca78998949bfc679a89",
+      "da3324b40a1338a8da02123bd03a390d0833b18387730ca78998949bfc679a89"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Youyue-858D-plus-MCU-adapter_youyue-858d-plus-mcu-adapter",
+    "hashes": [
+      "0a2f337f454e3cad06e3f377f3135584b08fd77579784ab78d8f924603a5cd12",
+      "0a2f337f454e3cad06e3f377f3135584b08fd77579784ab78d8f924603a5cd12"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-smt-zvs-driver_IH10-sl",
+    "hashes": [
+      "6882c9967f0480b757d6ff7246a7c6338c9fffe6aac170403d89eb935e6a2513",
+      "6882c9967f0480b757d6ff7246a7c6338c9fffe6aac170403d89eb935e6a2513"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_sympetrum-v2%20NFF1.1",
+    "hashes": [
+      "409a58411cfddf46a59b366279d37890227418bfd16fe5800d23c20c474c48b0",
+      "409a58411cfddf46a59b366279d37890227418bfd16fe5800d23c20c474c48b0"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-xwhatits-capsense-controller_model-f-3178-adaptor",
+    "hashes": [
+      "c778180938365103b8cc368e6f7df73e9a34e9dcb417fd7d011b2257060c8321",
+      "c778180938365103b8cc368e6f7df73e9a34e9dcb417fd7d011b2257060c8321"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-digital_clock_led_clock_v1",
+    "hashes": [
+      "b36c1fd7163db8f92e15fabcb8cb4680129fe88e46eee8e7e6eef86c1c3534f2",
+      "b36c1fd7163db8f92e15fabcb8cb4680129fe88e46eee8e7e6eef86c1c3534f2"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-WeatherSpot_vreg_pressure",
+    "hashes": [
+      "5713a88bb1ea0dafd630730be6b7d485309dd2d64aea21782d939f9b7d9d0d7e",
+      "5713a88bb1ea0dafd630730be6b7d485309dd2d64aea21782d939f9b7d9d0d7e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-raspberry_pi_pullup_button_pullup_shutdown_button",
+    "hashes": [
+      "dcadf84245fefe1e84749120f16c61be062b35c2c06f1fe18026fa1e5d359f03",
+      "dcadf84245fefe1e84749120f16c61be062b35c2c06f1fe18026fa1e5d359f03"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_OtterScreen",
+    "hashes": [
+      "a33070c006da0cddde5d1bb755a5df6cbdeec6c416dfc6ae602469f0d8c4650b",
+      "a33070c006da0cddde5d1bb755a5df6cbdeec6c416dfc6ae602469f0d8c4650b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-PCB_serie_led_strip",
+    "hashes": [
+      "268a95bed8fa6be153341dbba19149ec67cfcf13fa62db035425b4ef8620d855",
+      "268a95bed8fa6be153341dbba19149ec67cfcf13fa62db035425b4ef8620d855"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-uext-esp32_UEXT_ESP32",
+    "hashes": [
+      "a07835f483947438f0f65b15edebb2ace155b723173570f563812b84d28e2e9e",
+      "a07835f483947438f0f65b15edebb2ace155b723173570f563812b84d28e2e9e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-LongPixel_AnalogDriverMini",
+    "hashes": [
+      "a1577f34e2d800518ee726637001fd9977a3c214dbf4932f6c8b0de35ef0494d",
+      "a1577f34e2d800518ee726637001fd9977a3c214dbf4932f6c8b0de35ef0494d"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-MSGEQ7-Breakout-Board_MSGEQ7_Breakout_Board",
+    "hashes": [
+      "d8207da5df79f12718e5220704765f08589f6d7b94f0fc4e7865318b8fcf2eeb",
+      "d8207da5df79f12718e5220704765f08589f6d7b94f0fc4e7865318b8fcf2eeb"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-pcb-covox-amp_pcb-covox-amp",
+    "hashes": [
+      "e974bef62327cfa0310b1cffca22320adc1a15c1487e7f2ba656e4bb8900c4bb",
+      "e974bef62327cfa0310b1cffca22320adc1a15c1487e7f2ba656e4bb8900c4bb"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-pico-pi-rel_pico-pi",
+    "hashes": [
+      "a89a27744b80f0dc240403983724267c3cde6d704f7b5bbba4527abfdd9b57fd",
+      "a89a27744b80f0dc240403983724267c3cde6d704f7b5bbba4527abfdd9b57fd"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-VC4000MultiROM_MultiRomCard",
+    "hashes": [
+      "32527f4e1db67b9a8223e5d16f78414396874bdd7c55580491e9968fceeef097",
+      "32527f4e1db67b9a8223e5d16f78414396874bdd7c55580491e9968fceeef097"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Teensy-3.5-Breakout-Boaard_TeensyMegaIoShield",
+    "hashes": [
+      "4837dec6c559bd5d9cea75f803230817c5ea49627a6159da2cc61e07b6470cf5",
+      "4837dec6c559bd5d9cea75f803230817c5ea49627a6159da2cc61e07b6470cf5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_HAGIWO_Ring_Modulator_Main",
+    "hashes": [
+      "ec58f246f13ea501f2ebfef0d2c150a984f6e5ef8a0ad621d28ed1961bcd0c2a",
+      "ec58f246f13ea501f2ebfef0d2c150a984f6e5ef8a0ad621d28ed1961bcd0c2a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-makerspace-emonth_resistor_board",
+    "hashes": [
+      "c8cbe6230d45efc2dceaa476aa4c3a353b4f47dd324775c5e1b896ebf10ef199",
+      "c8cbe6230d45efc2dceaa476aa4c3a353b4f47dd324775c5e1b896ebf10ef199"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-disco-dongle_DiscoDongle",
+    "hashes": [
+      "0c64811cc058c5cc890d32e0cf895ce3bdca9615027ec78da5e6911562f55460",
+      "0c64811cc058c5cc890d32e0cf895ce3bdca9615027ec78da5e6911562f55460"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ozinverter_ozinverterkicad",
+    "hashes": [
+      "1fae72c3fc0d71e13a903cc9ec2e36504425216b887b79cf1093c1ef00a97b71",
+      "1fae72c3fc0d71e13a903cc9ec2e36504425216b887b79cf1093c1ef00a97b71"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_CGS_Analog_Switch_Matrix_Main",
+    "hashes": [
+      "d65358c9f5d37b4256993652c42d539f1673ba81eb27e6f6b78b4403c2a6e9c5",
+      "d65358c9f5d37b4256993652c42d539f1673ba81eb27e6f6b78b4403c2a6e9c5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-jdy-08-board_jdy-08",
+    "hashes": [
+      "2682d375d54f6fe6ce8159fe3c39d39597348ab28fe5949d1c730743014eedc5",
+      "2682d375d54f6fe6ce8159fe3c39d39597348ab28fe5949d1c730743014eedc5"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rs485-moist-sensor_interconnect",
+    "hashes": [
+      "de0c0552eb913cd73446ef3d503a1b69ee29b36e7ff62d51a66a27e190709407",
+      "de0c0552eb913cd73446ef3d503a1b69ee29b36e7ff62d51a66a27e190709407"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp-leipa_esp-12",
+    "hashes": [
+      "e6a003d4d80af26eb37511f49ed6574dead593784d7f0dd76157d6f2ea93f544",
+      "e6a003d4d80af26eb37511f49ed6574dead593784d7f0dd76157d6f2ea93f544"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_ir_sensor",
+    "hashes": [
+      "a017b13e1dc33a39aceebadc07bb7b664bf0f7601b0e480b089f122d662b688f",
+      "a017b13e1dc33a39aceebadc07bb7b664bf0f7601b0e480b089f122d662b688f"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-zx-sizif-512-wifi_sizif512-wifi",
+    "hashes": [
+      "e2a4aed18b210b78e81de3ffad344c8b9f53ffa31669f08dd48c4f386c037144",
+      "e2a4aed18b210b78e81de3ffad344c8b9f53ffa31669f08dd48c4f386c037144"
+    ],
+    "identical": true
+  },
+  {
+    "board": "kicad-issue180-test--test",
+    "hashes": [
+      "0d2ca2a5dc6900e48c8df373f2f7fed627fb5c0698253ea04f0e4c16406ee471",
+      "0d2ca2a5dc6900e48c8df373f2f7fed627fb5c0698253ea04f0e4c16406ee471"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Biscay_Blueeye_mcu",
+    "hashes": [
+      "2d4bb31ec2133a657789195ea8f0c6cd7cce24d0ad3f3ededb80a5bd46263d68",
+      "2d4bb31ec2133a657789195ea8f0c6cd7cce24d0ad3f3ededb80a5bd46263d68"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kika-in-space_analog-test-board",
+    "hashes": [
+      "4d93c26f1acde76301b07ba9d9944ea20e9ebefd7aa9545cbd0497ced4b1133b",
+      "4d93c26f1acde76301b07ba9d9944ea20e9ebefd7aa9545cbd0497ced4b1133b"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-miniboard-opamp_miniboard-opamp",
+    "hashes": [
+      "a72e59f9776ea042107fbb3d712169f6c4aced473d6d860b1150e784f9a24068",
+      "a72e59f9776ea042107fbb3d712169f6c4aced473d6d860b1150e784f9a24068"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-UniversalBoard4Nucleo_Nucleo_Universal_Board",
+    "hashes": [
+      "9e5ca5bfa64add43410b54fec6d33ca5ab9cb91ca5406cbf6bfa6f9ebe3250e9",
+      "9e5ca5bfa64add43410b54fec6d33ca5ab9cb91ca5406cbf6bfa6f9ebe3250e9"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Teensy-Hats_Teensy-LCD-LiDAR-Hat",
+    "hashes": [
+      "0b9c628895072e771be80612b3ecc1795e1425515cf32e02ef153edc13d08194",
+      "0b9c628895072e771be80612b3ecc1795e1425515cf32e02ef153edc13d08194"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_Potentiometer_mount_4LED",
+    "hashes": [
+      "bf6f8e62e0d683eaff79fdbcd40a4897baee716c11ee33f81b3467451ea0049a",
+      "bf6f8e62e0d683eaff79fdbcd40a4897baee716c11ee33f81b3467451ea0049a"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-RC2014_RC2014 Tandy Sound Card",
+    "hashes": [
+      "9e885c1fa747bd6f72817a0f288ef1a09b3605031dd2890af8a81fe9b2d600dc",
+      "9e885c1fa747bd6f72817a0f288ef1a09b3605031dd2890af8a81fe9b2d600dc"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Paperino_HW_paperino_breakout",
+    "hashes": [
+      "a756362d1022447f17c23832e240d578d9be981a1e038cacfad976ce0efac8ed",
+      "a756362d1022447f17c23832e240d578d9be981a1e038cacfad976ce0efac8ed"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-mojo-nes_mojo-nes",
+    "hashes": [
+      "fc9ddbcf619fb092d52888450b9bbebd678dbab4a4e3e75b53accfb8a247bb22",
+      "fc9ddbcf619fb092d52888450b9bbebd678dbab4a4e3e75b53accfb8a247bb22"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-esp8266_32x32panel_esp_12_f_595",
+    "hashes": [
+      "dddd52c731a61cf0347f5f78562db6389d5db3d87a23e1be1142a7a10f281f79",
+      "dddd52c731a61cf0347f5f78562db6389d5db3d87a23e1be1142a7a10f281f79"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-breakout-boards_swd-to-wires",
+    "hashes": [
+      "08fb4b4c466d0213721413d0d07c2634f0afc53ae3417e86d40950f6153de6cb",
+      "08fb4b4c466d0213721413d0d07c2634f0afc53ae3417e86d40950f6153de6cb"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-hackpad_orpheuspad_pcb",
+    "hashes": [
+      "b07609bf4aabdca37b6e47cb1828c5b5cf1df29b67f5e33cf6ae35789465c6ee",
+      "b07609bf4aabdca37b6e47cb1828c5b5cf1df29b67f5e33cf6ae35789465c6ee"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-rufs_aprs_tracker",
+    "hashes": [
+      "5097a5bdb8427987844642771805a4ed0dc273de6ee0260c402d4b66d43da475",
+      "5097a5bdb8427987844642771805a4ed0dc273de6ee0260c402d4b66d43da475"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-memsarray_mems_array",
+    "hashes": [
+      "7d27d3ac8becdadd8686aca566f4d8361bcd0b17e9494c8ef1e10930b705c71e",
+      "7d27d3ac8becdadd8686aca566f4d8361bcd0b17e9494c8ef1e10930b705c71e"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-pulse_v1_pulse",
+    "hashes": [
+      "c9c08b1ec835a64632d7e3abfb23839f856085f398bd5e959cbce793d20ed35c",
+      "c9c08b1ec835a64632d7e3abfb23839f856085f398bd5e959cbce793d20ed35c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-light-painting-wand_light-wand",
+    "hashes": [
+      "dbd5250c0c313a717bc3bb8f0c2a9f80ab959eff93e1f1ba9e861dcb90c10405",
+      "dbd5250c0c313a717bc3bb8f0c2a9f80ab959eff93e1f1ba9e861dcb90c10405"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-HES-V2_hes",
+    "hashes": [
+      "5550989c6e9b064b1dae2d5446d0942bac97b49d0ad60b767d387616908e6274",
+      "5550989c6e9b064b1dae2d5446d0942bac97b49d0ad60b767d387616908e6274"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-tbd_tbd",
+    "hashes": [
+      "1c381b2c5a5662c0555f18c8c0903a223bbec816fc7696721691e53028c6f8c1",
+      "1c381b2c5a5662c0555f18c8c0903a223bbec816fc7696721691e53028c6f8c1"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ADC-PCM4202-SE_ADC-PCM4202-SE",
+    "hashes": [
+      "397a4eab4fc22dc820af02427b9798cb25dc1da7707ad72b4a84765125e944fb",
+      "397a4eab4fc22dc820af02427b9798cb25dc1da7707ad72b4a84765125e944fb"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Teensy-3.5-Breakout-Boaard_Test",
+    "hashes": [
+      "09a3a49fe35803636629a322c6942e86de11916e7eeb42dda39b51697fe15d36",
+      "09a3a49fe35803636629a322c6942e86de11916e7eeb42dda39b51697fe15d36"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-Atmel-ICE-Header-Adapter_ice header adapter pcb",
+    "hashes": [
+      "d09c6067634a98177247d1829941a0f789bea6d2d4d21c0d051c0d524a17197c",
+      "d09c6067634a98177247d1829941a0f789bea6d2d4d21c0d051c0d524a17197c"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-kitspace_12V5A_breakout",
+    "hashes": [
+      "2e60f3af730562bab608be6509c61102c5fe79669dda04d5978c516036fb2d56",
+      "2e60f3af730562bab608be6509c61102c5fe79669dda04d5978c516036fb2d56"
+    ],
+    "identical": true
+  },
+  {
+    "board": "pcbench-ezusb-logicanalyzer_cypress_logic_analyzer",
+    "hashes": [
+      "970952a2f317c50767f015305c28eb82509bf9543f22eb8ddd083859affcd88f",
+      "970952a2f317c50767f015305c28eb82509bf9543f22eb8ddd083859affcd88f"
+    ],
+    "identical": true
+  }
+]

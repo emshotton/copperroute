@@ -2390,3 +2390,1057 @@ actually targets the DRC-producing geometry before proposing a new mechanism.
 Final tooling validation: Rust workspace **2565 passed, zero failed** (`cargo test --workspace`); benchmark **257 passed, one skipped**.
 No router behavior changed in the KiCad-only scoring commit; the running corpus
 baseline is for the subsequent routing experiments.
+
+### LPC2148 pad-mask pilot 01 (held; not a production fix)
+
+A failing-first geometry test proved that a foreign-net copper shape outside the
+old clearance remained accepted on an exposed pad layer. The prototype gives the
+pad a derived clearance class, preserves wider existing pair rules, and changes
+only the supplied layers. It reuses equivalent classes. The test then passed;
+same-net copper and the unexposed layer remain permitted. The smoothing reserve
+test was also replayed against main, failed at a one-unit available move, then
+passed after restoring the held smoothing change.
+
+Temporary env-gated load instrumentation reads pad floors extracted with KiCad
+10.0.3 `pcbnew`. **This ingestion is diagnostic only, with unwraps and incomplete
+metadata matching; it must be removed or replaced before committing.** It matched
+323/331 LPC pads; the eight omitted DSN pads are SW1/SW3/SW4/SW5, pins 1 and 2.
+The resulting board uses seven clearance classes (no per-pad matrix explosion).
+
+Local, one thread, 10 passes, 300-second timeout, same binary with/without the
+pad constraint, KiCad referee, same original stripped/project input:
+
+| Candidate | Unrouted | Routing DRC | Mask DRC | All errors | CPU s | RSS MiB | Vias | Length mm |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Nominal + smoothing + merged main fixes | 0 | 0 | 199 | 199 | 77.94 | 74.9 | 101 | 4887.8459 |
+| Above + pad-mask floors | 1 | 11 | 68 | 79 | 87.48 | 74.5 | 104 | 4903.4953 |
+
+One board regressed connectivity (+1); one gained routing violations (+11);
+mask errors fell by 131, all errors by 120; CPU ratio 1.1224. This is **not yet
+mergeable**. All 11 routing errors are 0.2498 mm neckdown segments below the
+board's 0.254 mm minimum, on four nets near U1. The remaining connection is
+U1.36 `/u_led_1`. The original has 72 mask errors and zero routing errors.
+
+A separate diagnostic copy widened those 11 segments to 0.254 mm and reran
+KiCad DRC: zero routing errors, 72 mask errors. Thus the width repair creates
+four mask errors; indiscriminate widening trades one violation type for another.
+It is evidence for investigating full-width pad escapes, not an accepted fix.
+Artifacts: `/tmp/quality-kicad-mask-pilot/`, including raw per-cell metrics,
+KiCad reports, extracted pad data, prototype patch, and the widened diagnostic.
+
+Workbench baseline routing completed all 751 attempts. Eight GTK SES-import
+failures are being rescored from unchanged sessions with a fresh X display for
+each cell. First rescore script used relative result paths (invalid under the
+referee's cell working directory); corrected to absolute paths before retrying.
+The initial referee reports/logs/metrics are preserved in each cell.
+
+### Exact-main KiCad baseline completed
+
+Run `quality-kicad-main-e9d10c2`: **751/751 referee status `ok`** after rescoring
+eight GTK import failures with fresh displays and unchanged SES files. Export
+and detailed metrics/referee JSON copied to `/tmp/quality-kicad-mask-pilot/`.
+
+| Population | Boards | Unrouted | Routing DRC | CPU seconds | Mean / max RSS MiB | Connected | Routing-clean and connected |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| PCBench, KiCad | 740 | 5321 | 947 | 37427.84 | 23.36 / 453.1 | 520 | 480 |
+| Local KiCad fixtures | 11 | 243 | 59 | 714.45 | 26.91 / 75.2 | 6 | 5 |
+| Total | 751 | 5564 | 1006 | 38142.29 | — | 526 | 485 |
+
+Routing DRC excludes mask/artwork; detailed referee files preserve mask and all
+error counts, which must also be compared for the mask experiment. These totals
+must not be interpreted as a gain against the old mixed Java/KiCad totals.
+
+Next full run launched: `quality-kicad-nominal-01`, nominal + smoothing on exact
+merged main (therefore includes connection-check cache and both via optimizer
+guards). Separate workbench helper `~/copperroute-kicad-nominal`, only the two
+reviewed nominal/smoothing source files changed. Same 751 boards, jobs12,
+threads1, passes10, timeout300. Binary and source-patch SHA256 recorded on
+workbench at `/tmp/quality-kicad-nominal-sha256.txt`. This run does not include
+the temporary pad-mask prototype.
+
+The eight unmatched entries in LPC pilot01 were duplicate physical switch pads:
+KiCad emits names such as `1@1` in DSN. Pilot02 switches to component + physical
+position matching, retaining distinct front/back exposure per pad. It is running
+locally; no quality result claimed yet.
+
+### Follow-up measurements and full-width pad escape
+
+The previous goal turn made progress: completed the KiCad-only tooling commit,
+two full corpus measurements, four local routing pilots and a failing-first
+full-width escape test. No new routing changes have been committed.
+
+Full nominal + smoothing run `quality-kicad-nominal-01` completed with all 751
+KiCad referee statuses `ok` (no rescore needed):
+
+| Population | U improved / regressed boards | Unrouted change | Routing DRC gainers | Routing DRC change | Mask change (gainers) | CPU ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| 740 PCBench | 126 / 50 | -463 | 30 | -33 | +240 (44) | 0.833036 |
+| 11 KiCad fixtures | 3 / 0 | -17 | 1 | -2 | 0 (0) | 0.972496 |
+
+Total unrouted 5564 -> 5084; routing DRC 1006 -> 971; mask DRC 13834 -> 14074;
+all KiCad errors 17978 -> 18183. Fully connected 526 -> 575; routing-clean and
+connected 485 -> 528. CPU 38142.29 -> 31873.55 seconds. Held for the mask regression.
+Detailed metrics and exports are copied locally beside the baseline artifacts.
+
+LPC pilots after pilot01 (all use nominal + smoothing and mask floors):
+
+| Pilot | Pad mapping | Unrouted | Routing DRC | Mask DRC | CPU s | RSS MiB |
+|---|---|---:|---:|---:|---:|---:|
+| 02 | Position, 329/331 | 0 | 5 | 69 | 85.40 | 73.2 |
+| 03 | Unique names or position, 331/331 | 0 | 12 | 68 | 79.58 | 76.4 |
+| 04 | Complete mapping + full-width dogleg | 1 | 0 | 68 | 83.30 | 71.7 |
+
+Two C5 pads (45-degree footprint) were not matched by the position-only tolerance;
+unique names resolve them. Duplicate switch pads use their positions. This remains
+prototype ingestion, not yet a general importer.
+
+The dogleg test uses the actual LPC pad-corner geometry translated to the origin:
+0.254 mm track, 0.2 mm pad clearance, pads 0.25 x 1 mm at 0.5 mm pitch. The direct
+diagonal is blocked but both segments of an L-shaped route are clear. Existing
+insertion produced a 0.2498 mm neck (failing test). Trying the clear full-width
+dogleg first passes, with zero internal clearance errors. Failed proposals stay
+on a cloned board; a successful proposal invalidates the engine's room and drill
+caches. This addition retains the existing neckdown fallback.
+
+Pilot04's remaining connection is **VDDA, U1.7**, not the LED net from pilot01.
+Original inspection: VDDA escapes vertically from (119.368,59.578) to
+(119.368,58.027); GND at the neighboring pad stays vertical to y=57.5415.
+Our GND turns left at y=58.8364, reaching x=119.319 and crossing VDDA's outward
+path. This motivates testing pad-exit planning. A diagnostic sweep of the existing
+pin-edge-to-turn setting at 0.5 and 1 mm is running locally to determine whether
+its correction mechanism can recover that access; it is not a proposed global
+clearance or routing-rule change.
+
+Workbench is extracting per-pad mask metadata for all 751 references with KiCad,
+including project mask-to-copper clearance and each pad's front/back exposure.
+This will permit a full-corpus mask-constraint pilot, independently of the dogleg.
+
+### Mask corpus launch and rejected global exit distances
+
+All 751 pad metadata files were extracted successfully. Full workbench run
+`quality-kicad-mask-01` is active, candidate `nominal-smoothing-mask`, using
+nominal + smoothing + pad-mask floors, without the dogleg. Source patch and
+binary hashes are retained on workbench. The status check found 53 completed
+metrics; no partial-corpus quality conclusion is drawn.
+
+Local pilot05 completed both global pin-edge-to-turn diagnostics:
+
+| Exit distance | Unrouted | Routing DRC | Mask DRC | CPU s | RSS MiB |
+|---|---:|---:|---:|---:|---:|
+| Existing setting + dogleg (pilot04) | 1 | 0 | 68 | 83.30 | 71.7 |
+| 0.5 mm | 3 | 0 | 68 | 85.24 | 73.2 |
+| 1 mm | 102 | 1 | 68 | 294.72 | 14.8 |
+
+The 1 mm experiment exhausted the internal 300 second limit after only one pass
+(`self.final_state=TIMED_OUT`; benchmark `timed_out=false` measures the external
+process limit). Both settings are rejected; simply increasing the global exit
+distance does not recover the blocked VDDA escape. Removed the temporary
+`COPPERROUTE_PIN_EXIT_UM` hook locally after preserving the results. This does
+not alter the frozen workbench candidate, where the variable is unset.
+
+A failing-first pad-clearance test exposed an unnecessary class reassignment
+when a named class already satisfied the requested floor but matched an earlier
+class. Added an early no-op guard preserving its identity and the entire matrix.
+All three tests in `cargo test -p copper-board --test pad_clearance` pass.
+This guard is a newer local revision, not part of the running mask01 candidate.
+
+Local pilot06 is running with two candidates on the same rebuilt binary: the
+mask + dogleg control with the no-op guard, and the same routing with `/VDDA`
+stably promoted ahead of other nets in each pass. A temporary
+`COPPERROUTE_FIRST_NET` diagnostic hook performs that promotion; it is not a
+proposed board-name or net-name special case. This isolates whether ordering
+can preserve access without imposing a larger exit distance on every pad.
+Artifacts and binary SHA are recorded under `lpc-mask-pilot-06`.
+
+Structural investigation: `pass_runner.rs` creates a new `ripped_item_costs`
+map for every connection attempt. The locator fills it from the selected path,
+but the pass runner discards it afterward. Maze obstacle costs instead use the
+pass-wide `start_ripup_costs * pass_no`, widths, detour and fanout factors, plus
+randomization on selected passes. Thus this map is not persistent congestion
+history. A spatial or net-pair history prototype would need to survive removal
+and replacement of trace IDs; merely retaining this item-ID map would not
+implement the congestion-history mechanism described by PathFinder. This is a
+code finding and research lead, not a measured routing improvement.
+
+### Ordering recovers the LPC escape; mapping audit
+
+Pilot06 finished with KiCad status `ok` for both candidates:
+
+| Candidate | Unrouted | Routing DRC | Mask DRC | CPU s | RSS MiB | Vias | Wirelength mm |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Mask + dogleg control, no-op guard | 1 | 0 | 68 | 84.52 | 77.3 | 99 | 4773.1164 |
+| Same, VDDA first | 0 | 0 | 68 | 91.38 | 76.8 | 106 | 5079.4778 |
+
+The updated control exactly reproduces pilot04's connectivity, DRC, vias and
+wirelength. The diagnostic priority recovers the connection, supporting the
+pad-access/order hypothesis, at +8.12% CPU, +7 vias and +306.3614 mm wirelength.
+It is not a mergeable named-net policy. Saved its source patch as
+`/tmp/quality-kicad-mask-pilot/pilot06-source.patch`, then removed the named-net
+hook. Pilot07 will compare the control against stably prioritizing previously
+failed items in later passes (`COPPERROUTE_FAILED_FIRST` diagnostic).
+
+An audit of the in-progress mask corpus found positive unmatched pad constraints
+on 35 boards at that snapshot, including unnamed mounting pads and duplicate pad
+numbers. One concrete mapping issue is export rounding: Electronics MainBoard
+U1 has four pads numbered 9. Its DSN places U1 at x=135736 um, whereas original
+pad coordinates imply x=135735.529 um; y similarly differs by 0.495 um. The
+prototype's two-board-unit position tolerance is only 0.2 um for this DSN.
+Unique pad numbers use the name fallback, but duplicate-number pads miss it.
+This is an ingestion limitation of mask01; the frozen full run is unchanged.
+Audit artifacts: `mapping-audit-partial.json`, `electronics-in.dsn`,
+`electronics-pads.json` under the local pilot directory.
+
+### General failed-first pilot and internal mask DRC
+
+Pilot07 completed, KiCad status `ok` on both candidates:
+
+| Candidate | Unrouted | Routing DRC | Mask DRC | CPU s | RSS MiB | Vias | Wirelength mm |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Mask + dogleg control | 1 | 0 | 68 | 86.24 | 76.8 | 99 | 4773.1164 |
+| Same, previously failed items first | 0 | 0 | 68 | 87.18 | 84.4 | 95 | 4940.6984 |
+
+The general policy recovers the missing connection at +1.09% measured CPU,
+-4 vias and +167.582 mm wirelength. No board-name or net-name special case.
+Full workbench run `quality-kicad-retry-01`, candidate
+`nominal-mask-dogleg-retry`, is queued behind mask01. Helper
+`~/copperroute-kicad-retry` has six explicitly copied files from local pilot07:
+nominal, smoothing, mask floors with the no-op guard, full-width dogleg, failed
+item priority, and the temporary metadata loader. Its driver PID285526 waits
+for mask01 driver PID261550 before building or routing. At the verified queue
+check mask01 had 299 completed metrics. No internal mask-check changes or
+rounding-tolerance change are included in the queued candidate.
+
+The user's internal-DRC suggestion exposed a confirmed omission: the checker
+has no solder-mask violation type, and Pin has no mask expansion metadata.
+Added a first model field and a failing-first test for a pad aperture crossing
+a foreign-net track despite legal copper clearance. Red test returned zero
+violations; the first pad-to-routing checker now returns the expected one and
+does not flag the same-net front trace or foreign-net back trace.
+
+Generated the same geometry in KiCad 10.0.3 and ran its actual DRC: exactly one
+`solder_mask_bridge`, zero `clearance` violations. Committed-fixture inputs and
+reference report are staged as untracked files under
+`crates/copper-drc/tests/data/solder-mask-pad-track/`; no git commit yet.
+This first check does not yet implement mask-to-copper rule distances, aperture
+web checks, arbitrary mask artwork, metadata import, or net-tie exceptions.
+It is an incomplete implementation step, not a claim of KiCad parity.
+
+The full `copper-drc` suite for the first mask check passed 127 tests, with one
+ignored, including the existing KiCad oracle and JVM recordings. Log:
+`/tmp/quality-kicad-mask-drc-suite.log`.
+
+Extended the checker with the project `solder_mask_to_copper_clearance` rule,
+including preserving a specified zero during constraint merging. A second
+failing-first test places a foreign trace outside the aperture but inside its
+required clearance: 0.23 mm copper gap, 0.2 mm expansion, 0.05 mm mask-to-copper
+rule. The checker initially returned zero violations; it now reports one.
+The first test also exposed a zero diagnostic shortfall for an actual overlap;
+reporting combined copper-distance requirement versus measured copper gap
+gives a useful shortfall for these positive-expansion cases.
+
+KiCad 10.0.3 confirms the second geometry has exactly one mask bridge and no
+copper-clearance error. Reference board, project and DRC report are under
+`crates/copper-drc/tests/data/solder-mask-rule/`. The Rust test imports the
+actual reference project, checks the converted rule, and checks the clearance
+shortfall within one board unit, matching the existing integer-shape/bisection
+measurement precision. Both targeted mask tests pass. Negative expansion
+diagnostics, aperture web checks, net ties, importer support and corpus scoring
+with the internal checker remain outstanding; no claim of full mask parity.
+
+### Native KiCad mask metadata import
+
+Added optional per-pad `solderMaskExpansion` data to the native KiCad JSON DTO,
+keyed by absolute `F.Mask` / `B.Mask` and expressed in the input board unit.
+The reader preserves it on each Pin independently of shared copper padstacks,
+converts units, and rejects unknown mask layers and unrepresentable distances.
+The failing-first import test initially read empty maps; it now verifies front
+and back expansions, including -0.05 mm, on a four-layer board. All 15 tests in
+`kicad_padstacks` pass.
+
+The browser KiCad adapter now resolves pad, footprint and board mask margins,
+preserves explicit zero rather than inheriting, expands `*.Mask`, and records
+only exposed mask sides. Verified with the installed KiCad API that a pad's
+explicit zero overrides a 0.15 mm footprint margin; negative margins also
+remain negative. Two failing-first adapter tests cover those semantics; all
+28 adapter tests pass. This native import path feeds the internal checker;
+the frozen workbench DSN candidates still use the earlier sidecar prototype.
+Routing enforcement from the native metadata is not wired yet.
+
+### Routing enforcement and independent checker branch
+
+Added native mask enforcement at the existing pipeline rule-minimum hook.
+The hook runs both during preparation and at routing entry, so a project rule
+attached after initial loading still raises the pad clearance. It uses the
+same per-layer floor mechanism as the measured prototype and preserves higher
+existing copper clearances. A failing-first routing test initially observed
+1500 units instead of the required 5000; it now routes the connection, applies
+5000 on the exposed front and retains 1500 on the back, with no internal DRC
+violations. Log: `/tmp/quality-kicad-mask-routing-{red,green}.log`.
+
+The user explicitly requested landing checker accuracy improvements independently
+of routing outcomes. Created worktree `../copperroute-mask-drc`, branch
+`fix/kicad-mask-drc`, based on KiCad-only tooling commit7243118. It contains
+only the mask model/checker, native JSON/browser metadata import and tests;
+it excludes nominal clearance, smoothing, dogleg, failed-first and routing
+clearance enforcement. Full workspace tests are running there using the shared
+local target directory to avoid another large build tree, log
+`/tmp/quality-kicad-mask-drc-workspace.log`. Further checker edits should be made
+in that worktree and integrated back explicitly, to keep experiment sources
+attributable. No checker commit or PR yet: broader agreement with KiCad still
+needs measurement.
+
+At the latest live workbench check, mask01 had 490 completed metrics; retry01
+driver285526 still waited for mask01 driver261550. Frozen sources and metadata
+for both experiments remain unchanged.
+
+### First finished-route mask comparison
+
+The independent checker worktree passed `cargo test --workspace`: **2568 passed,
+0 failed, 77 ignored**. The additional offline example test was added afterward
+and passes separately; a final complete suite is still required before commit.
+
+Added `copper-drc/examples/check_mask_session.rs` in the checker worktree. It
+reads existing DSN/SES files, imports aperture metadata from the original board,
+and checks the finished route without rerouting. A failing-first example test
+reproduces Electronics MainBoard's duplicate-pad rounding miss with the old
+0.2 um tolerance; 1 um matches the intended physical pad while rejecting another
+component. This is diagnostic import code, not the frozen routing sidecar.
+
+Extracted fresh LPC mask metadata preserving nullable exposure and negative/zero
+expansions (`lpc-apertures.json`). Both finished-route audits matched all 331
+pads with no unmatched router pins:
+
+| Finished LPC route | Internal mask reports | KiCad routing-related mask reports | KiCad total mask reports |
+|---|---:|---:|---:|
+| Nominal + smoothing (pilot01) | 113 | 143 | 199 |
+| Mask + dogleg control (pilot06) | 0 | 0 | 68 |
+
+An initial comparison script missed KiCad's capitalized `Pad ... on F.Cu`
+descriptions. Correcting that parser gives **107/113 internal reports matching
+a KiCad pad/foreign-net/layer key**, with six unmatched reports to investigate.
+This is a coarse pair comparison, not yet a segment-level precision/recall
+claim. Differing segmentation and mask-aperture grouping can affect counts.
+Artifacts: `lpc-{nominal,control}-internal-mask.json`, `lpc-pair-audit.json`
+under the local pilot directory. No checker landing decision yet.
+
+### Isolated KiCad checks resolve the first six disagreements
+
+Created six derivative KiCad boards retaining the questioned pad and the
+foreign-net routing, and ran KiCad 10.0.3 DRC on each. C10.2, C11.1, P3.39 and
+SW1.1 produce mask errors in isolation; U1.1 and U1.39 do not. The four confirmed
+geometric violations remain differences in full-board reporting, not proven
+false positives. Artifacts: `isolated-mask-pairs/summary.json` and its board,
+project and report files. An initial pcbnew-removal script hit a SWIG GetTracks
+binding failure; switched to source-span S-expression filtering, preserving
+the retained geometry exactly.
+
+The two U1 false positives come from the octagonal clearance approximation
+around corners, one involving a track and the other a circular via. A corner
+test at 45 degrees did not reproduce it; the off-axis case with corner offset
+(0.24,0.10) mm did fail, reporting a mask violation despite 0.21 mm actual
+copper clearance against 0.20 mm expansion. KiCad independently confirms this
+simple track case is clear; the reference is in `solder-mask-corner/`.
+
+Added a Euclidean narrow-phase distance refinement for tracks and circular
+vias against pad geometry, including circle and rounded-rectangle pad data
+when present. Broad-phase search remains unchanged. All three mask tests pass,
+including the additional via-corner case. Rechecking the finished LPC route
+removes exactly U1.1 and U1.39: **113 -> 111 internal reports**, consisting of
+107 matching full-board KiCad pad/net/layer keys and the four independently
+confirmed isolated pairs. This still does not claim identical grouping or
+complete mask coverage. Updated artifact: `lpc-nominal-exact-mask.json`.
+
+### Independent checker landing criterion and Encoder control
+
+The user explicitly requested that checker accuracy improvements land independently
+of the routing experiments when they agree better with KiCad. Keep the checker
+on `fix/kicad-mask-drc`; do not make its acceptance depend on nominal clearance.
+External KiCad remains the benchmark referee.
+
+Audited the completed nominal EncoderBoard session without rerouting. Internal
+mask reports: 0; KiCad routing-related mask reports: 0 (39 total mask reports,
+including original-board geometry). Matched 137/150 original pads; eight router
+pins named Via0703_GND_2 through Via0703_GND_9 are synthetic and unmatched.
+This is a useful negative control, with incomplete metadata coverage explicitly
+retained as a limitation. Artifacts: `/tmp/quality-kicad-mask-pilot/encoder-audit/`.
+
+Review of KiCad 10.0.3 solder-mask provider also confirms explicit footprint
+allow-bridge and net-tie exemptions. The current checker does not yet import
+these exemptions; address them before calling the checker ready to land.
+
+### Full mask-floor run completed: quality-kicad-mask-01
+
+All 751 boards finished and all 751 KiCad referees report `ok`. Export and detailed
+referee results copied to `/tmp/quality-kicad-mask-pilot/`; comparison saved as
+`quality-kicad-mask-comparison.json`. Nonzero violations confirmed; no referee
+repair needed. The next frozen dogleg/failure-first candidate started automatically.
+
+| Group | U improved/regressed vs main | Net U | Routing DRC gainers | Net routing DRC | Mask gainers | Net mask reports | CPU ratio |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| PCBench, 740 KiCad | 124/53 | -131 | 28 | -21 | 7 | -3810 | 0.8451 |
+| Local, 11 KiCad | 3/0 | -17 | 1 | -2 | 0 | 0 | 0.9681 |
+
+Absolute totals: 5416 unrouted, 983 routing violations, 10024 mask reports,
+14145 all-error reports, 32321.64 CPU seconds. Fully connected boards: 574,
+against baseline 526 and nominal-only 575. These are KiCad *reported* counts;
+do not infer complete geometry counts from reports that may hit KiCad limits.
+
+Versus nominal+smoothing alone, PCBench loses 332 connections (12 boards improve,
+22 regress), adds 12 routing violations (6 gainers), and removes 4050 mask reports
+(78 improve, 1 regresses). CPU ratio 1.0145. Local results unchanged, CPU ratio
+0.9955. This is not automatically accepted: three boards account for 313 added
+unrouted versus nominal (Librecalc autosave +116, Own-Mailbox mailbox +99 and
+eth +98). Inspect original designer routing and candidate failure state for each.
+
+### Intentional mask bridge permission
+
+The browser importer already rejects net-tie footprints, so that unsupported
+case does not silently reach native DRC through the browser. Footprint
+`allow_soldermask_bridges` did reach import but lost its permission. Added a
+KiCad 10.0.3 oracle derivative: same pad/foreign-track geometry, explicit
+footprint permission, no KiCad mask error. Browser test failed with missing
+metadata; native DRC test failed with 1 report when permission=true (expected 0).
+Preserved permission per pad through browser DTO, native import, copy, equality,
+and checker. All 4 targeted mask tests and 47 web tests pass. The permission
+must not exempt ordinary copper clearance; added that assertion before starting
+full workspace validation (`quality-kicad-mask-drc-workspace-02.log`).
+
+### Checker validation complete; independent corpus candidate queued
+
+Full workspace suite completed successfully: 2570 passed, 0 failed, 77 ignored.
+Log: `/tmp/quality-kicad-mask-drc-workspace-02.log`. Web: 47 passed. This includes
+the allowed-bridge test retaining ordinary copper-clearance diagnostics.
+
+Frozen source transferred to workbench helper `~/copperroute-kicad-drc`, based
+on e9d10c2. All 31 transferred file hashes verified. Source archive and manifest:
+`/tmp/quality-kicad-drc-source.tar.gz`, `quality-kicad-drc-source-files.sha256`.
+An incidental KiCad .prl is present in the frozen transfer but removed from the
+local proposed change; it does not affect compilation. Do not mutate queued source.
+
+Queued driver PID 336231 waits for retry driver 285526, then builds the checker
+and routes the 751 KiCad boards with normal referee environment. Run ID
+`quality-kicad-drc-01`, candidate `mask-drc`; log `/tmp/quality-kicad-drc-full.log`.
+This DSN routing run validates unchanged routing quality and measures checker
+cost on ordinary inputs. DSN lacks pad-mask metadata, so this alone cannot prove
+new mask-check accuracy; finished-session metadata audits and native KiCad
+oracle tests provide separate evidence for that behavior.
+
+### Root-cause experiment: impossible pad mask clearances
+
+The three largest regressions share the iMX233 LQFP128 footprint, including
+identical IC1 placement and nearby power circuitry. IC1 pin pitch is 398.78 um,
+width 203.2 um, leaving 195.58 um copper gap. Original board mask expansion is
+254 um. Thus a neighboring mask aperture already reaches into the fixed pad
+copper; enforcing that margin as new routing clearance can block the escape.
+Original KiCad reports include track/pad mask errors at IC1; all three designer
+boards were fully connected with zero routing-category DRC violations.
+
+Inspected original mailbox tracks at IC1 pads 97-99: all 0.2 mm wide, alternating
+inward/outward (97 right 0.61986 mm, 98 left 0.72892 mm, 99 right 1.22230 mm).
+Geometry extracted in `regression-audit/original-mailbox-escape-tracks.json`.
+Mailbox and eth mask candidates complete all 10 passes with 101 unrouted; only
+Librecalc self-reports TIMED_OUT. This is not simply three timeouts.
+
+Local diagnostic `mailbox-mask-pilot-01` uses the unchanged, hash-verified pilot07
+binary (eabf5850...), dogleg enabled, failure-first disabled. Control repeats
+full masks; experiment caps only IC1's mask floor to measured 195.58 um, changing
+metadata only. This named-component intervention is diagnostic and not a proposed
+production policy. Control result: 101 unrouted, 0 routing DRC, 200 mask reports,
+80.90 CPU s, 89 vias, 1189.6145 mm. It reproduces the full-corpus failure.
+Cap candidate is still running; no effectiveness claim yet.
+
+### Mailbox cap diagnostic completed; KiCad count limit confirmed
+
+Capping IC1 metadata to the existing 195.58 um pad gap recovers 98 connections:
+101 -> 3 unrouted; routing DRC 0 -> 0; reported mask 200 -> 200; CPU
+80.90 -> 110.41 s (1.3648x), vias 89 -> 181, length 1189.6145 -> 2306.9285 mm.
+The latter is 0.9726x designer length and 0.8578x designer vias. Both referees
+are valid and both routers completed 10 passes. Control source binary is
+identical for both candidates; only copied sidecar metadata changes.
+
+However, equal mask counts do NOT prove unchanged mask quality. Inspected
+KiCad 10.0.3 `pcbnew/drc/drc_engine.cpp`: ERROR_LIMIT=199; RunTests uses this
+for mask errors (499 only for clearance and unconnected items). Parallel
+providers can slightly exceed the threshold. The mask provider stops work or
+emission when its error limit is exceeded. CLI --all-track-errors does not
+raise this per-type cap. Primary source:
+https://github.com/KiCad/kicad-source-mirror/blob/10.0.3/pcbnew/drc/drc_engine.cpp
+
+This confirms the escape-blocking hypothesis but leaves mask acceptance open.
+Next: assess mask contacts with local KiCad probes below the report limit,
+and test a geometry-derived cap rather than a named-component override.
+Keep complete-board standard KiCad results as the benchmark, explicitly
+acknowledging saturated violation counts rather than asserting full parity.
+
+### General pad-gap cap prototype and unsaturated KiCad probes
+
+Replaced the named-component diagnostic with a geometry-derived candidate:
+limit each requested mask clearance by the gap to existing foreign-net pad
+copper on that layer. Same-net pads and movable routing are not limiting
+obstacles; the subsequent clearance-class update still takes the maximum with
+all preexisting forward/reverse copper rules. This only relaxes the proposed
+mask floor, not existing copper-clearance guards. Native mask preparation uses
+the helper; DSN-sidecar experiments enable it with temporary
+`COPPERROUTE_MASK_GAP_CAP` for a controlled same-binary comparison.
+
+TDD fixture: two 100-unit-wide pads with a 300-unit gap, requested mask floor
+400. Initial test assertion for the existing asymmetric wide class used the
+wrong direction; corrected it. Then observed the intended failure: foreign-net
+neighbor gave 400, expected 300. Implementation passes all four pad-clearance
+module tests, including same-net (400), other layer (200), and existing stricter
+reverse copper rule (600). Logs: `/tmp/quality-kicad-mask-cap-{red,green}.log`.
+
+A separate KiCad diagnostic retains all copper and exposes one IC1 pad mask
+aperture per copy, using --all-track-errors. All 128 apertures are checked for
+original, main, full-mask and capped-mailbox routes (512 probes). This removes
+full-board aperture grouping, so sums are contact diagnostics, not a replacement
+benchmark. Every probe asserts fewer than 199 mask reports. Original/main
+completed so far: 246/242 routing-involved reports. Full and cap are ongoing.
+Driver `/tmp/quality-kicad-mask-probes.mjs`; log same prefix .log; reports and
+partial results in `regression-audit/mailbox-mask-probes/`.
+
+Previous pilot07 release binary preserved at `/tmp/quality-kicad-mask-pilot/pilot07-router`
+before rebuilding the general cap candidate. Prepared local `mask-gap-pilot-02`
+on the three regression boards, with full-mask control versus geometry cap,
+same binary, failure-first disabled; launch only after release build completes.
+
+### General gap cap pilot completed on all three major regressions
+
+`mask-gap-pilot-02` completed with six valid KiCad referees. Same binary
+(a2cdda6ae55f8c2cb1dc36fb63afd3adba7a29f392dfb4c1a383afca3da28778),
+full-mask control versus geometry-derived cap, failure-first disabled:
+
+| Board | Unrouted control -> cap | Routing DRC | Reported mask control -> cap | CPU s control -> cap |
+|---|---:|---:|---:|---:|
+| Own-Mailbox mailbox | 101 -> 0 | 0 -> 0 | 201 -> 202 | 82.73 -> 90.15 |
+| Own-Mailbox eth | 101 -> 0 | 0 -> 0 | 199 -> 201 | 89.17 -> 76.07 |
+| Librecalc autosave | 117 -> 3 | 0 -> 0 | 199 -> 203 | 115.83 -> 116.63 |
+
+Net -316 unrouted, three boards improve and none regress; no routing DRC
+gainers; +7 reported mask errors, all three counts saturated. CPU ratio
+282.85/287.73 = 0.9830, not a timing claim. Librecalc control self-reports
+TIMED_OUT; cap completes. KiCad probe work ran concurrently on this laptop,
+so this is a local quality pilot, not a performance comparison suitable for PR.
+Cap wirelength is 98.89%, 96.01%, 98.57% of original designer routing;
+vias are 87.20%, 80.19%, 74.43%, respectively. Complete artifact:
+`/tmp/quality-kicad-mask-pilot/gap02-results.json`.
+
+The earlier named-IC1 cap probe audit completed all 512 cases: original/main/
+full-mask/named-cap routing mask contacts at IC1 = 246/242/0/216; total probe
+mask reports = 535/486/244/460. Versus main, 37 pad probes improve and 19 regress.
+These contact results apply to the named cap diagnostic, not automatically to
+the later geometry-derived candidate. No general-cap corpus acceptance yet.
+
+The user requested the solder-mask checker PR be wrapped separately and soon.
+Prioritize its completed accuracy audit and pending corpus run; defer further
+routing-cap experiments until the checker PR is ready. The routing sources and
+results remain preserved for resuming that work.
+
+### Full dogleg/retry run completed: quality-kicad-retry-01
+
+751 boards finished. One PGA2311 KiCad SES import failed with GTK diagnostics;
+rescoring on a fresh display succeeded, with the SES hash unchanged. All 751
+referees now report `ok`. Re-exported and copied results/details locally.
+The independent checker run started automatically when this driver exited.
+
+| Group | U improved/regressed vs main | Net U | Routing DRC gainers | Net routing DRC | Mask gainers | Net mask reports | CPU ratio |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| PCBench, 740 KiCad | 126/55 | -115 | 30 | -30 | 10 | -3809 | 0.8571 |
+| Local, 11 KiCad | 3/0 | -18 | 1 | -2 | 0 | 0 | 1.0177 |
+
+Absolute totals: 5431 unrouted, 974 routing violations, 10025 mask reports,
+14137 all-error reports, 32806.67 CPU seconds, 570 fully connected boards.
+Against the preceding mask-floor run: PCBench 47 improve/39 regress in unrouted,
+net +16 U, -9 routing DRC (20 gainers), +1 mask report (7 gainers), CPU ratio
+1.0142. Local 1 improves/1 regresses, net -1 U, unchanged DRC, CPU ratio 1.0512.
+Combined net +15 U, -9 routing violations versus the mask-floor candidate.
+
+Do not reject automatically from that +15: Blitz_Rev.K_C68 alone contributes
++90 reported U (409 -> 499). All compared Blitz runs time out during pass 1;
+internal incomplete counts are main 712, mask 401, retry 538. KiCad's 499
+unconnected-item report limit caps main/retry figures. Failure-first ordering
+has no prior-pass failures to prioritize here, so this cannot yet be attributed
+to that scheduling change rather than the bundled dogleg or class-preservation
+change. Investigate the ablations after the checker PR. PCBench excluding this
+one board improves by 74 reported U versus the preceding mask run.
+
+One low-priority two-job checker prebuild overlapped the latter portion of this
+run; no timing improvement is claimed from these single-run CPU observations.
+Artifacts: `quality-kicad-retry-{details,comparison}.json` and the exported JSON
+under `/tmp/quality-kicad-mask-pilot/`. No new routing change accepted yet.
+
+### Mask regressions outside pad apertures: artwork
+
+Examined original KiCad boards and exported external DRC reports for two
+nominal/smoothing regressions that the pad-floor prototype does not improve.
+`8bit-cpu_programming_interface` reports 0 mask violations on main, 32 on
+nominal/smoothing, and 32 with pad floors. All 32 prototype reports involve
+segments on F.Mask. The original contains these mask graphics (for example
+UUID 00000000-0000-0000-0000-00005e80d990); its imported raw DRC reports zero
+mask errors. `FRM16_Relay_Module_I2C_Controller_relay_controller` reports
+5 / 41 / 41 respectively. All 41 prototype reports involve B.Mask artwork:
+31 AndrewSowa.com text contacts, nine polygon contacts, and one Made In
+Chicago text contact. The original explicitly places the text on B.Mask;
+its raw DRC likewise reports zero mask errors. Raw reports are historical
+import evidence, not a fresh matched-version original-board comparison.
+
+This identifies a missing input category: raising pad clearance cannot
+protect independent mask graphics. Next experiment should preserve those
+openings and model their interaction with routed copper, validated by
+fresh KiCad original and candidate checks. Do not silently treat all mask
+artwork as forbidden copper: KiCad's bridge semantics need a minimal oracle
+first. No code change yet. Artifacts on laptop:
+`/tmp/quality-kicad-mask-pilot/new-mask-regressions/`.
+
+A minimal KiCad 10.0.3 artwork oracle now confirms the distinction: one
+F.Mask line crossing no tracks, one net, or two tracks on the same net
+produces zero mask reports; crossing two distinct nets produces one.
+Pads anchor track nets, and the generator reloads the saved boards and
+asserts their track-net assignments to prevent an invalid oracle caused
+by automatic net reassignment. Files and reports:
+`/tmp/quality-kicad-mask-artwork-oracle/`; generator beside that directory.
+Therefore a blanket copper keepout for every mask graphic would reject
+legal single-net use. A faithful structural solution needs aperture-level
+net occupancy, including updates during rip-up, rather than pad floors.
+This remains a separate routing follow-up, not part of the frozen checker PR.
+
+Fresh KiCad 10.0.3 checks of both original boards, with their original
+projects and `--all-track-errors`, confirm zero solder-mask reports and
+zero unconnected items. Relay controller has zero total error-severity
+violations; programming interface has 36 other errors. Thus their mask
+artwork can coexist with complete designer routing. Results are saved in
+`new-mask-regressions/original-fresh-summary.json` and per-board
+`raw-drc-fresh.json` beneath the laptop artifact root above.
+
+Programming-interface geometry follow-up: a direct KiCad shape-overlap
+audit of the 223 F.Mask line objects initially found no multi-net
+contacts when considering only tracks, pads and copper graphics. Including
+filled zones identifies 30 apertures touching multiple nets in the pad-floor
+result, versus zero in the original. This reinforces that mask occupancy
+must include copper fills; a track-only ownership model is incomplete.
+The zero-clearance overlap diagnostic is not identical to KiCad DRC (32
+external reports) and is not a replacement score. Script:
+`/tmp/quality-kicad-artwork-occupancy.py`; full contact data in
+`new-mask-regressions/8bit-cpu_programming_interface/artwork-occupancy.json`.
+
+### Solder-mask checker PR ready; full geometry-gap candidate launched
+
+Separate checker PR #22 is ready for review at commit 36283c2, with the
+failed standard gate and all diagnostic limits retained. Four longer
+controls converge exactly; decelerator still times out but has equal
+quality counts. All five 100-item controls have identical SES files.
+No checker code is being merged into main automatically.
+
+Started `quality-kicad-gap-01`, candidate `nominal-mask-gap`, in isolated
+workbench checkout `~/copperroute-kicad-gap` at base e9d10c2. Thirty source
+files match the hashes from the local gap02 pilot exactly. The candidate
+contains nominal clearance, smoothing, dogleg escape, no-op class guard
+and the geometry-derived mask-floor cap. Failed-first scheduling is
+explicitly disabled, as in the successful local gap02 comparison.
+The frozen pilot also includes its older native metadata/checker
+preparation; the benchmark remains DSN plus sidecar, externally scored
+by KiCad. Do not replace these sources with PR #22 mid-run.
+
+Pad metadata is copied into the candidate checkout and hashed; neither
+the common source directory nor a running candidate will be edited.
+Build then run all 751 KiCad boards, ten passes, 300 seconds, one thread,
+twelve jobs. Driver `/tmp/quality-kicad-gap-full.sh`, PID 466990; log
+`/tmp/quality-kicad-gap-full.log`. Previous checker/control jobs were
+verified finished before launch. Compare against main and the nominal,
+mask-floor and retry experiments; do not infer the full effect from the
+three-board local recovery of 316 connections.
+
+KiCad-only scoring tooling is now ready for review separately:
+https://github.com/emshotton/copperroute/pull/23 (existing commit 7243118,
+new branch bench/kicad-only). Fresh benchmark suite: 257 passed, one
+optional integration skip. No Rust source changes; CONTRIBUTING's tooling
+exception applies. The frozen workbench runner is not changed mid-run.
+
+Early mask-gap referee sanity check: 22 scores, all valid, including 14
+PCBench boards; five ordinary violations and 133 mask reports confirm
+that KiCad is actually scoring. Too early for a quality conclusion.
+
+Structural investigation started: the current maze rip-up resolver prices
+obstacles using pass cost, width, detour, fanout protection and seeded
+randomization; the pass runner initializes its ripped-item cost map for
+each connection. Before proposing history-based costs, measure actual
+repeated disruption and distinguish it from intrinsically slow maze
+searches on timeout boards. No algorithm patch or result claim yet.
+
+Structural diagnostic now runs in isolated branch experiment/congestion-history
+at `../copperroute-congestion-study` (base e9d10c2). Temporary env-gated
+logging records connection start/end, elapsed attempt time, state, and the
+nets actually removed before insertion. No cost, ordering, clearance or
+permitted-move behavior is changed. The instrumented release binary was
+built with RUSTC_WRAPPER disabled; its hash and source patch are saved in
+`/tmp/quality-congestion-study/`. Diagnostic inputs: boatcontrol CommonCathode60A,
+uSKY and oasis ledboard, chosen because they complete quickly with remaining
+connections in the full main baseline. Original designer boards and raw DRC
+are copied alongside inputs. Ten passes, one thread, 120-second local cap;
+these timing-limited diagnostics are not quality comparisons.
+
+Relevant primary implementation reference: VTR documents separate present
+and historical congestion factors, growth limits and search bounds:
+https://docs.verilogtorouting.org/en/latest/vpr/command_line_usage/ .
+This motivates testing nonuniform congestion history, but FPGA routing
+resources differ from CopperRoute's gridless PCB geometry. Applicability
+remains a hypothesis until the diagnostic shows recurrent disruption.
+The original PathFinder paper was not retrieved successfully; do not imply
+that its full algorithm has been reviewed or reproduced.
+
+First structural diagnostic results (all logging-on/off pairs produce
+identical finished SES files): boatcontrol has 1,234 main-router failures
+and only two rip-up net events; oasis has 116 main-router failures and no
+rip-ups. uSKY has 437 main-router failures, 36 successful route attempts
+and 34 attributable main-router rip-up net events. Its 704 raw rip-up net
+events must not be called main-router oscillation: 40 occur within
+optimizer pass-runner attempts and 630 are outside the instrumented
+pass-runner scopes. Further scope instrumentation is needed for those.
+The common 10↔11 pair occurs four times in one direction in main routing;
+the larger reciprocal counts come from optimizer/other activity.
+
+All three original designer references are fully connected with zero
+ordinary routing violations. Ground-truth wirelength/vias: boatcontrol
+3,624.34mm/0; uSKY 174.59mm/23; oasis 93.99mm/0. The next step is geometry
+and failure-reason inspection, not assuming that a history cost solves
+all three. Diagnostic summaries, raw logs, references, and observer
+controls are saved in `/tmp/quality-congestion-study/`.
+
+uSKY designer comparison: 23 original vias; 21 use diameter/drill
+0.6858/0.3302mm, exactly the DSN's available Via[0-1] definition; the
+other two are larger (0.889/0.508mm). Every measured Rust variation so
+far uses zero vias on this board (main/nominal/mask/retry unrouted
+26/26/26/25). Missing a smaller via size therefore does not explain the
+zero-via result. The next diagnostic adds effective layer/via settings
+and failure details, to distinguish disabled layer transitions, inability
+to find a route, and inability to insert a found route. No fix yet.
+
+Root cause found for uSKY's missing main-router vias: library import
+normalizes `Via[0-1]_685.8:330.2_um` to `Via[0-1]_685:330_um`, while
+create_via_rule compares the unnormalized use_via reference. The via's
+clearance class is 1 on both sides, so the earlier clearance-mismatch
+hypothesis was rejected (its minimal test passed before any fix).
+Fanout's board-via fallback explains why some diagnostic calls can still
+see a via while main routing cannot.
+
+TDD: minimal fractional-name test fails 0 usable vias versus expected 1.
+The proposed import fix keeps exact matching and adds normalized matching,
+retaining the clearance-class filter and SMD-attachment restriction.
+Both named/default class cases are covered. Twelve relevant network,
+JVM-scope and KiCad-permission tests pass. No JVM expectations rerecorded.
+This is a correctness prerequisite found during structural diagnosis, not
+a substitute for the planned algorithm experiments. Local KiCad pilot
+prepared for uSKY plus boatcontrol and oasis controls, baseline/candidate
+binaries frozen separately with temporary diagnostic logging disabled.
+
+Via-name local KiCad pilot complete: three PCBench boards, both candidates
+finish, all six referees valid. uSKY unrouted 26 → 24, vias 0 → 4;
+boatcontrol remains 95 unrouted and oasis remains 11. One board improved,
+zero regressed, net −2 unrouted. Ordinary violations stay zero on all
+three; no violation gainers; mask reports also unchanged at zero. Total
+all-category errors stay 39. CPU 20.62 → 23.18s, ratio 1.1242, one local
+measurement only. This fixes an actual unavailable-via rule but does not
+by itself route uSKY completely.
+
+Clean fix worktree `../copperroute-via-name`, branch fix/dsn-via-name,
+contains only the importer change and regression test. No diagnostic
+logging. Full workspace tests are running locally. Queued isolated
+workbench run `quality-kicad-via-name-01`, candidate via-name, based on
+e9d10c2 plus those two hashed files. PID 511506 waits for mask-gap
+rescore PID 508912; build and all 751 KiCad boards follow (ten passes,
+300 seconds, one thread, twelve jobs). Frozen source checksum file:
+`/tmp/quality-kicad-via-name-source-files.sha256`. No fix commit or PR
+until corpus results have been assessed.
+
+Mask-gap run has GTK session-import failures; rescore PID 508912 waits
+for routing PID 466990, preserves initial results, uses a fresh display
+per failed cell, verifies unchanged SES hashes, and asserts no failed
+referees remain before exporting again. Do not compare unscored rows.
+
+### New EPYC experiment host (2026-09-09)
+
+User reauthorized the temporary host root@185.189.44.159. Verified AMD EPYC 9654, 96 physical cores / 192 hardware threads, 755 GiB RAM, Ubuntu 24.04. Installed baseline host tools and began a direct workbench-to-server copy of the frozen 751-board KiCad corpus and exact KiCad 10.0.4 / Python Nix dependencies. Existing workbench experiments remain untouched. The runner source is the KiCad-only tooling branch 7243118; the baseline router is the exact workbench e9d10c2 binary. Bootstrap will verify tool imports and score EncoderBoard and LPC2148 before any full run is trusted. No new-server routing results yet.
+
+A laptop-owned backup loop copies results, exports, and reports every minute to `/Users/em/Development/freerouting/copperroute-epyc-results/`, without deleting prior copies; script `/tmp/quality-epyc-backup.sh`, log `/tmp/quality-epyc-backup.log`. Bootstrap script `/root/quality-epyc-bootstrap.sh`, log `benchmark/reports/epyc-bootstrap.log`. Start around 96 concurrent single-threaded boards and measure whether SMT helps before using 192. Any speed/quality comparison needs a same-host baseline because timeout outcomes and CPU timing can differ across CPUs.
+
+EPYC setup complete: exact KiCad 10.0.4 CLI and pcbnew both verified; EncoderBoard matched workbench (1 U, 0 ordinary DRC, 39 mask). LPC2148 completed in 179.62 seconds (1 U, 8 ordinary DRC, 212 capped mask); workbench's same baseline timed out at 300 seconds (8 U, 16 ordinary DRC, 199 capped mask). This is hardware/deadline behavior, not a routing improvement. The full same-host main versus via-name comparison `quality-epyc-via-01` is running with **192 jobs**, per the user's explicit hyperthreading preference. First utilization sample: 98.71% aggregate CPU, 189.52 busy logical CPUs, ~16 GiB system memory used. Main uses the exact workbench baseline binary; via-name uses the same Rust 1.97.1 toolchain and frozen source, compiled on Ubuntu. Runtime/system-linker differences mean workbench's pending same-build-environment comparison remains useful for timing confirmation.
+
+Full results are now backed up to workbench (`~/copperroute-epyc-results`) every minute; laptop backup is limited to exports/reports because only 14 GiB is free locally. Live-copy rsync code 24 from transient KiCad lock files is expected; completed cells are recopied and must be checked after completion. Driver `/root/quality-epyc-full-via.sh`, PID 16791; utilization monitor `/root/quality-epyc-monitor.py`. The two-board smoke run is complete; the 1502-cell comparison is not complete.
+
+Via-name test review: three JVM parity tests failed specifically because their recordings retain an empty fractional-name via rule. Isolated review worktree `copperroute-via-name-review` preserves the recordings and explicitly asserts the sole intentional correction for each fixture; all 19 rules tests now pass. Full workspace suite running, no commit yet. The frozen corpus candidate source is unchanged.
+
+### Failed-insertion restoration pilot and bus-routing lead
+
+On uSKY after fixing fractional via names, diagnostic connection-component counting observed 13 failed main-pass attempts involving rip-up; 12 left more disconnected pin groups, with a total 18 additional groups across those intermediate events. Not a final unrouted delta. Instrumentation preserved byte-identical SES (SHA256 472b8ff1ad03a53ecd843457d21eb84fd6e033bf64c0d8f7bd964060ae6fc9d3). Data: `/tmp/quality-congestion-study/uSKY_uSKY/insert-diagnostic-events.json`.
+
+New isolated `experiment/insert-rollback` prototype, based on e9 plus the via-name fix: snapshot before destructive rip-up, restore on normal insertion failure, only for non-retained autoroute databases. Error/panic handling and retained databases are not covered by this prototype. A small crossing-track fixture with an insertion width exceeding its search envelope fails on the original code because its original track disappears; after restoration all 18 autoroute-connection tests pass. Initial test's equality also compared pre-initialization tree caches; corrected to snapshot after engine initialization, reran red (missing track) then green.
+
+Six-cell local KiCad pilot: uSKY 24→22 unrouted, boatcontrol 95→95, oasis 11→11. All ordinary DRC and mask counts remain zero, all six complete. CPU 23.56→27.51 s, ratio 1.168. This is a pilot, not a corpus-accepted change. Full via-name review suite separately passed 2566 tests, 77 ignored.
+
+User suggested learning from grouped, parallel middle runs with fanout at endpoints. Research notes and a proposed corridor/escape experiment are in `docs/bundle-routing-research.md`; not implemented yet. This remains part of the requested larger structural algorithm work.
+
+### EPYC via-name comparison complete
+
+`quality-epyc-via-01`: 751 boards per candidate, all 1502 referees now valid. Thirty-nine initial failures (SES-import failures and font-warning prefixes before structured statistics) were rescored without rerouting; route SHA256 checked unchanged, initial reports retained. Warning-prefix repair preserves the raw output and log, accepts only one JSON object on the final output line; it does not alter KiCad DRC decisions. Artifacts on workbench, laptop reports/exports backup, plus `/tmp/quality-epyc-bootstrap/{main,via}-details.json`.
+
+pcbench, 740 boards: U 5260→4514, improved/regressed 53/1; ordinary DRC 940→917, 1 boards gaining violations; mask 15183→15221, 26 mask gainers; CPU ratio 0.9599.
+
+kicad, 11 boards: U 240→239, improved/regressed 1/0; ordinary DRC 59→59, 0 boards gaining violations; mask 0→0, 0 mask gainers; CPU ratio 1.0209.
+
+Need inspect regression boards, mask changes, same-SES comparisons and timeout effects before acceptance. No merge claim yet. A fresh same-server main build versus the frozen nominal/smoothing/dogleg/mask-gap candidate is now building/queued in `quality-epyc-gap-01`, 192 jobs; this also makes both sides use the same linker environment. Workbench gap and via-name validation remain in progress/queued.
+
+Rollback prototype full workspace suite completed successfully (log `/tmp/quality-insert-rollback-workspace.log`); no commit yet. Frozen five-file source shipped to EPYC and hash-verified. `quality-epyc-rollback-01` will compare via-name alone with via-name plus failed-insertion restoration at 192 jobs, after the gap run and rescoring. Driver PID1892840, rescore waiter PID2209802. Gap rescore waiter PID1728197; gap utilization monitor PID2209803. All reports/exports and full results retain periodic laptop/workbench backups.
+
+Via-name's sole connection regression is Apple M0110: main 0 U/0 vias/4356.05 mm versus fix 1 U/2 vias/4320.13 mm, both completed. KiCad identifies a missing Col9 connection between back-layer tracks near (164.680,82.375) and (197.940,52.095) mm. Its original human board is fully connected with 14 vias and 4509.26 mm. A local main/via-name/rollback comparison is now running to test whether failed-insertion recovery addresses this particular regression. Do not reject the broad improvement solely because of this one board.
+
+Of the 751 via-name comparisons, 638 SES files are byte-identical. The largest apparent mask increase (BLDC controller +33) is on identical routing. Changed-route mask gainers still need investigation; e.g. kitspace esp8266 +18, bobc MS-F100 +25, teensy-touch +10. The overall ordinary DRC increase on nonSNES is +2, accompanied by 53 fewer unrouted connections, with both candidates timed out. These details qualify the encouraging aggregate result.
+
+Bus-routing original-board comparison is now concrete: NRC2016 shows the human's coordinated horizontal trunks and connector fanout versus CopperRoute's extra lower-edge detours. Selected-net length 1890.8→2210.9 mm, vias 20→22. See the reproducible side-by-side figures and notes in `docs/bundle-routing-research.md`. No grouped-routing implementation yet.
+
+Apple M0110 targeted local KiCad pilot completed: main 0 U / 0 ordinary DRC / 78 mask / 0 vias / 3.54 CPU s; via-name 1 U / 0 DRC / 72 mask / 2 vias / 12.11 s; via-name plus failed-insertion recovery **0 U / 0 DRC / 75 mask / 2 vias / 2.10 s**. All completed. The recovery prototype fixes the only unrouted regression seen in the EPYC via-name run in this local test. Mask counts are below the original main here but +3 versus via-name; corpus acceptance remains pending. Data `/tmp/quality-congestion-study/apple-via-rollback-pilot-results.json`.
+
+### Workbench geometry-gap cap full run complete
+
+`quality-kicad-gap-01`, nominal-mask-gap: all 751 KiCad referees valid after repairing 12 failed imports without changing routes. Details saved locally as `/tmp/quality-kicad-mask-pilot/quality-kicad-gap-details.json`. Main comparison below separates PCBench and local KiCad fixtures; no Java DRC population is included.
+
+pcbench- (740): unrouted 5321→5082, 117 improved / 57 regressed; ordinary DRC 947→903, 28 gainers; mask 13834→10135, 11 gainers; CPU ratio 0.9100.
+
+kicad- (11): unrouted 243→226, 3 improved / 0 regressed; ordinary DRC 59→57, 1 gainers; mask 0→0, 0 gainers; CPU ratio 1.0259.
+
+Totals versus main: **256 fewer unrouted, 46 fewer ordinary DRC, 3699 fewer reported mask violations**. Versus nominal+smoothing, however, there are 224 more unrouted (PCBench), 11 fewer ordinary DRC and 3939 fewer mask reports, with PCBench CPU ratio 1.0924. Thus this fixes much of the solder-mask tradeoff but does not yet retain all of nominal routing's connection gain.
+
+Versus the original mask-floor run, PCBench improves by 108 unrouted / 23 ordinary DRC but adds 111 mask reports and CPU ratio 1.0768. The three related boards recover 314 connections: mailbox 101→1, eth 101→0, Librecalc autosave 117→4. Timeout regressions offset much of this: Blitz RevK +90, Blitz copy +45, ReSDMAC +33, all timed out. Do not attribute all of that to the geometry cap: this bundle also includes dogleg and no-op clearance-class guard.
+
+Largest completed-board regression against main remains avr-fuser-32 adapter: 0→26 unrouted and ordinary DRC 3→25, while mask reports 202→0. Types change from 2 shorts/1 clearance to 13 shorts/12 clearances. It was already bad under the original mask floor (26 unrouted, 25 ordinary DRC). This needs root-cause analysis rather than dismissing the board or simply counting its mask reduction as success.
+
+EPYC gap routing is also now complete; its 35 failed referees are being repaired before comparison. Workbench via-name run has been released from its wait and is building/running. EPYC rollback run remains queued behind gap scoring.
+
+EPYC gap comparison fully scored (751/751 per side), independent same-host main build using same compiler/linker. Detailed comparison saved `/tmp/quality-epyc-bootstrap/gap-comparison.json`; rows:
+
+```json
+[
+  {
+    "group": "pcbench-",
+    "boards": 740,
+    "unrouted": [
+      5249,
+      4690
+    ],
+    "improved": 124,
+    "regressed": 50,
+    "violations": [
+      940,
+      906
+    ],
+    "violation_gainers": 28,
+    "mask": [
+      15245,
+      10958
+    ],
+    "mask_gainers": 9,
+    "cpu_ratio": 0.8583060905683659
+  },
+  {
+    "group": "kicad-",
+    "boards": 11,
+    "unrouted": [
+      241,
+      226
+    ],
+    "improved": 3,
+    "regressed": 0,
+    "violations": [
+      59,
+      57
+    ],
+    "violation_gainers": 1,
+    "mask": [
+      0,
+      0
+    ],
+    "mask_gainers": 0,
+    "cpu_ratio": 0.9178945635429283
+  }
+]
+```
+
+Rollback prototype build has started after gap scoring finished.
+
+### Failed-insertion restoration: full EPYC comparison
+
+`quality-epyc-rollback-01` is complete, all 751/751 KiCad referees valid for via-name control and via-name plus restoration. Exact source frozen in `/root/copperroute-insert-rollback`; five-file hashes `/tmp/quality-insert-rollback-source.sha256`. Full workspace passed 2567 tests, 77 ignored before this result; no commit yet.
+
+```json
+[
+  {
+    "group": "pcbench-",
+    "boards": 740,
+    "unrouted": [
+      4713,
+      4449
+    ],
+    "improved": 64,
+    "regressed": 49,
+    "violations": [
+      915,
+      833
+    ],
+    "violation_gainers": 13,
+    "mask": [
+      15184,
+      15196
+    ],
+    "mask_gainers": 34,
+    "cpu_ratio": 0.9780645484134413
+  },
+  {
+    "group": "kicad-",
+    "boards": 11,
+    "unrouted": [
+      241,
+      240
+    ],
+    "improved": 1,
+    "regressed": 3,
+    "violations": [
+      59,
+      56
+    ],
+    "violation_gainers": 0,
+    "mask": [
+      0,
+      0
+    ],
+    "mask_gainers": 0,
+    "cpu_ratio": 1.1337901529131065
+  }
+]
+```
+
+Totals: 265 fewer unrouted and 85 fewer ordinary DRC; reported mask +12. There are 65 boards with fewer unrouted and 52 with more. Among 723 pairs where both finish, unrouted improves by 52; the other 28 pairs contribute -213 and must be interpreted with the timeout caveat. CPU ratio PCBench 0.9781, local fixtures 1.1338; no speed claim from a single run. Median per-board RSS unchanged at 13.6 MiB; maximum 447.3→246.4 MiB. Do not add this delta to the earlier via-name delta: the control runs differ, especially timeout outcomes.
+
+Largest completed regressions: 96boards-sensors 1→8 unrouted, amalthea 13→19, freeDSP balanced 3→7. Largest gains are mostly timeout-limited boards (nonSNES -61, Karabas revG -34, revC -32); completed examples include BLDC controller 19→11 and boatcontrol NonLatchingNO30A 26→18. The experiment is promising but the lost partial-routing progress on regressed boards needs investigation before acceptance.
+
+### AVR Fuser: model omissions and a combined pilot
+
+The frozen mask-gap source was combined with the independently tested via-name correction in isolated `experiment/mask-via`, without rollback. Thirty-three source files were hash-verified and copied to `/root/copperroute-mask-via`. `quality-epyc-mask-via-01` is running against a same-host main binary at 192 jobs; driver PID3840299, rescore waiter PID609970. All prior frozen experiments remain unchanged.
+
+AVR Fuser local 120-second pilot: gap 26 U / 25 ordinary DRC / 0 mask / 2 vias / 46.57 CPU s, COMPLETED; gap+via-name 0 U / 28 ordinary DRC / 0 mask / 67 vias / 116.42 CPU s, TIMED_OUT. Restoring via access recovers the connections, but does not solve DRC. **All 25 and 28 copper violations involve copper-layer text**, not track-to-track shorts. The DSN contains none of that copper text. The original human board is fully routed, with zero ordinary DRC and 145 vias.
+
+The completed EPYC main copper-text audit finds 25 clearance, 27 shorting and 5 hole-clearance errors involving PCB text across the corpus (57 ordinary DRC). It explains part of the baseline; do not claim it explains all ~921 historical errors. Audit `/tmp/quality-epyc-bootstrap/copper-text-violation-audit.json`. Browser import already has conservative default-font copper-text rectangles; the benchmark's KiCad-generated DSN omits this geometry. Native/benchmark model implications need separate treatment.
+
+Diagnostic DSN augmentation used KiCad 10.0.4 `TransformTextToPolySet` with 1 µm outside approximation, retaining polygon holes, for the 13 actual board copper texts. It adds 73 trace keepouts plus 73 via keepouts (146 total), preserving original DSN other content. This is a diagnostic input change, not a committed router fix. `/tmp/quality-avr-fuser/with-text.dsn`, generator `/tmp/quality-avr-text-dsn.py`, source shape counts `/tmp/quality-avr-fuser/text-shapes.json`.
+
+At a matched 300-second cap with gap+via-name: original DSN 0 U / 28 ordinary DRC / 0 mask / 67 vias / 286.87 CPU s, TIMED_OUT; DSN with copper text 26 U / **0 ordinary DRC and 0 mask** / 38 vias / 46.08 CPU s, COMPLETED. Correct geometry removes DRC but exposes a routability problem. Data `/tmp/quality-avr-fuser/avr-text-pilot-results.json`. Hypothesis that the designer used smaller vias is **refuted**: all 145 original vias are diameter 1.69926 mm, drill 0.8001 mm, exactly the DSN's declared via. Next investigations: why partial-progress rollback hurts 96boards-sensors, and how ordered multi-terminal routing/escape placement can use the available layers on these difficult original-board examples.
+
+## EPYC mask + via-name full comparison, 2026-09-09
+
+`quality-epyc-mask-via-01` finished; all 751 boards on both sides scored successfully by KiCad. Same-host main and frozen 33-file nominal/smoothing/mask-gap + via-name candidate, 192 jobs, one thread, ten passes, 300 seconds. No failed-insertion rollback or copper-text augmentation included. Full raw results backed up on workbench; details also pulled locally.
+
+| Group | Unrouted main → candidate | U improved / regressed | Copper DRC main → candidate | Copper gainers | Mask main → candidate | Mask gainers | CPU ratio |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| PCBench / KiCad (740) | 5250 → 4253 | 139 / 39 | 936 → 881 | 26 | 15322 → 10940 | 8 | 0.8721 |
+| Local / KiCad (11) | 241 → 226 | 3 / 0 | 59 → 57 | 1 | 0 → 0 | 0 | 0.9198 |
+
+Combined improvement: 1012 fewer unrouted, 57 fewer copper DRC, 4382 fewer reported mask violations. Remains experimental: 39 U regressions, 27 copper-DRC gainers. Worst U regression GB-CART256K-A 3 → 11, both completed, followed by dorkyboard 0 → 4, rxadc14 0 → 4, kinetoscope microcontroller 51 → 55, EnvOpenPico 15 → 19. These require original-board and result inspection before claiming mergeability. CPU is a single-run ratio, not a timing claim; capped mask reporting and deadline effects still apply. Raw summary `/tmp/quality-epyc-bootstrap/mask-via-comparison.json`.
+
+### Via-name correction prepared for review
+
+PR24 https://github.com/emshotton/copperroute/pull/24 is open, commit `6a46edb`, with the frozen measured production fix, explicit JVM divergences and full benchmark report. Fresh workspace suite exited zero (2567 passed, 77 ignored). Report preserves the failing automatic quality gate and Apple M0110/mask tradeoffs. No mask or insertion-recovery code is included.
+
+### Isolate nominal clearance and smoothing on current regression boards
+
+The largest completed mask+via U regression, GB-CART256K-A, is 3 → 11 with nominal+smoothing already, and has exactly the same 93 vias / 1921.3062 mm with mask-floor, mask-gap and mask-gap+via. Main and via-name-only each have 3 U, 2 copper DRC, 91 vias / 1831.92 mm. Original human board has 0 U, 0 recorded DRC, 122 vias / 1938.3092 mm. Thus this is not introduced by the mask guard or restored via-name option.
+
+Prepared diagnostic worktree `copperroute-routing-ablation` at via-name PR24 and two environment switches selecting the previously tested nominal and smoothing behavior. No new algorithm fix. Frozen source patch `/tmp/quality-routing-ablation.patch`; source archive and switches copied to a separate EPYC helper. Run `quality-epyc-ablation-01` compares control/nominal/smoothing/both across 73 boards: the union of all U/copper/mask regressions from the combined full run, plus ADC smoothing-churn and two grouping controls. 292 routing cells, 192 jobs, 10 passes/300 seconds, same binary with process-local switches. Driver PID926861 verified live compiling. This is a selected diagnostic sample, not a full-corpus acceptance run or timing comparison. All full-run source/binaries remain untouched.
+
+### GB-CART256K-A nominal/smoothing isolation
+
+All four cells for this board in the selected ablation run completed and were KiCad-scored: control 3 U / 2 V / 161.32 CPU seconds; nominal 11 U / 0 V / 133.28; smoothing 3 U / 2 V / 162.35; both 11 U / 0 V / 110.29. This isolates the 8-connection regression to nominal clearance, not smoothing, on this board. Other selected-board results remain pending. CPU figures are descriptive only. The original comparison plot and extractor are preserved in `routing-quality-artifacts/bundle-study/gb-hardware_GB-CART256K-A.{json,svg}`.
+
+Started unchanged diagnostic-binary routing of 96boards-sensors to investigate the separate recovery prototype's 1 → 8 U regression. Logging pin-component counts before/after failed insertion, with matched single-thread/10-pass/300-second settings. This is observation only, not a recovery-policy modification; do not claim connectivity-improving partial insertions unless observed.
+
+### 96boards-sensors failed-insertion diagnostic completed
+
+Matched diagnostic run completed with 1 internal U and byte-identical SES to the full EPYC via-name control: `173cf8a1db7b1d5a7432680a26cdd2aec8ef10cfb75436e102088814c8dd3a59`. Across 222 logged ripup/insertion events, 44 insertions reported failure: 34 increased the sum of affected pin-component counts, 10 left it unchanged, none reduced it. Thus an immediate connectivity improvement from failed partial insertions does **not** explain this board's recovery regression. Useful geometry changes or later rerouting opportunities remain possible; do not add a count-based guard as if that cause were established. Full observations `/tmp/quality-congestion-study/96boards-sensors_Sensors/insert-events.json`, matched result/SES/log alongside.
+
+### First grouping-order prototype
+
+New isolated worktree `copperroute-bundle-order` at via-name PR24. Hypothesis from original NRC2016 and GB cartridge layouts: globally sorting individual attempts by shortest current distance interleaves related signals, while grouping attempts may leave more consistent space for their neighbours. This tests scheduling only, not a shared-corridor planner. Net/component geometry identifies pairs sharing at least four distinct signals, ignoring plane nets and nets spanning more than six components. Largest groups claim overlapping nets first; each group orders by source endpoint projection perpendicular to the component-to-component direction. No pin reassignment, layer restriction, or clearance change. Remaining attempts retain stable order. Endpoint inversions are not solved by this prototype.
+
+TDD ordering test failed on the unchanged queue for the expected reason, then passed. Two additional tests cover repeated-pad deduplication and input-order/rotation/translation invariance. All three pass. Full default workspace suite is running separately; benchmark enables the prototype with `COPPERROUTE_BUNDLE_ORDER=1`, leaving the control path unchanged. Frozen three-file overlay `/tmp/quality-bundle-order-source.tar.gz` and checksums are being shipped to a separate helper for a full 751-board comparison of main, via-control and bundle-order at 192 jobs. No successful routing claim or commit yet.
+
+### Completed 73-board diagnostic ablation (selected sample)
+
+All 292 referee results are successful. This deliberately selects regression boards plus three controls, so its totals must not be generalized to the corpus. Every variant includes the via-name fix; no mask guard or dogleg changes.
+
+| Candidate | Group | U better / worse | U delta | Copper DRC gainers | Copper delta | Mask gainers | Mask delta | CPU ratio |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| nominal | pcbench- KiCad (72) | 18 / 37 | +110 | 25 | +95 | 15 | +125 | 0.9919 |
+| nominal | kicad- KiCad (1) | 1 / 0 | -8 | 1 | +1 | 0 | +0 | 0.9951 |
+| smoothing | pcbench- KiCad (72) | 5 / 1 | -22 | 0 | -2 | 4 | +37 | 0.9923 |
+| smoothing | kicad- KiCad (1) | 1 / 0 | -4 | 0 | +0 | 0 | +0 | 1.0759 |
+| both | pcbench- KiCad (72) | 19 / 36 | +13 | 26 | +99 | 15 | +161 | 0.9189 |
+| both | kicad- KiCad (1) | 1 / 0 | -7 | 1 | +1 | 0 | +0 | 0.9343 |
+
+Deadline/capped-report variability applies; no timing improvement is claimed. Detailed exports and observations pulled locally and backed up to workbench. This experiment isolates mechanisms and is not an acceptance test for either change.
+
+### Independent workbench via-name full run completed
+
+`quality-kicad-via-name-01` completed all 751 cells with successful KiCad referees, no rescore needed. Compared with the existing e9 main workbench run: PCBench 54 U-improved / 4 regressed, 5321 → 4630 U (−691), 947 → 915 copper DRC (−32; 2 gainers), 13834 → 13961 reported mask (+127; 26 gainers), total CPU ratio 0.9375. Local 11: 1 improved / 0 regressed, 243 → 235 U (−8), 59 copper DRC unchanged, mask zero, CPU ratio 1.1313. Combined −699 U / −32 copper DRC / +127 reported mask.
+
+The only completed connectivity regression remains Apple M0110 0 → 1. Other losses are deadline-limited Karabas G 93 → 94, nonSNES 175 → 182, decelerator 481 → 496. These independently reinforce connectivity benefit but also show why one timed run cannot establish speed or deadline-board quality. Mask differences require unchanged-SES comparison before attributing them to routing. Export details and comparison JSON are under `/tmp/quality-kicad-mask-pilot/quality-kicad-via-name-*`; PR24 report supplementation pending this follow-up audit.
+
+Grouped-order full run `quality-epyc-bundle-order-01` is live, driver PID1184248, comparing main/via-control/bundle-order, 751 each / 2253 cells / 192 jobs. Frozen helper `/root/copperroute-bundle-order`, three-file checksums recorded in reports.
+
+Workbench via-name SES audit: 635 identical pairs have zero U delta and +97 reported mask counts; 116 different pairs account for −699 U and +30 mask counts. The +127 total is not entirely a routing change, but actual mask regressions remain. Added this independent measurement and all four connectivity losses to PR24's body, preserving the original failed regression gate.
+
+### Outlier-board register requested by user
+
+Added `docs/outlier-boards.md` with three evidenced entries: programming-interface exposed copper artwork removed during stripping; AVR Fuser copper text omitted from DSN; relay-controller independent mask artwork. These remain included in all headline benchmarks. Ordinary routing regressions (Apple M0110, GB-CART256K-A) are not classified as outliers without independent evidence. The register separates confirmed input-fidelity issues from unusual but valid design features.
+
+Programming-interface follow-up on KiCad 10.0.4 confirms 223 original unnetted F.Cu tracks and 223 F.Mask line objects. None of those tracks remain in the stripped input. Corrected occupancy audit excludes rule areas and uses filled zone polygons: original has 223 single-net apertures (unnetted copper), stripped has 223 empty apertures, combined candidate has 15 empty / 178 single-net / 30 multi-net. All counts are zero-clearance geometric contacts, not KiCad error counts. The 41-violation relay board has zero original unnetted tracks, so this stripping mechanism does not explain it. The preservation hypothesis still requires a controlled run; no dataset changes or exclusions have been made. Full corrected occupancy copied to the laptop beside prior artwork reports.
+
+Grouped-order prototype default workspace suite completed: 2569 passed, 77 ignored, zero failed. Its three targeted grouping tests pass; full enabled routing behavior is under corpus evaluation, not implied by the default test-suite result.
+
+### User's outlier-aware review policy applied
+
+Audited open PRs and completed candidates against the three-entry register. PR22 changes scoring without routing changes on completed pairs; PR23 changes tooling; PR24's completed U regression is Apple M0110, which has no outlier evidence. None should be described as an outlier-concentrated routing regression. The combined mask+via candidate does have concentrated *mask* losses: programming-interface +34 and relay-controller +36 account for 70/87 positive mask-count changes (80.5%). It still has ordinary losses: 38 U-regressed and 26 copper-DRC-gaining boards outside the register. Full totals −1012 U / −57 copper / −4382 mask; excluding all three registered boards gives −1015 U / −82 copper / −4177 mask. No exclusion applied to headline results.
+
+Preparing `copperroute-mask-routing-review`, branch `experiment/nominal-mask-routing-review`, based on PR22 commit36283c2. Includes via-name correction (PR24), nominal clearance, smoothing reserve, dogleg escape and pad-mask gap cap; excludes obsolete checker copy and failed-first prototype. Removed temporary print instrumentation, added input parse errors, retained unmatched-pad warnings, made sidecar gap-cap unconditional to match the measured enabled candidate. Native checker remains the separate base PR. First full suite exposed legacy geometry expectations; porting the previously reviewed explicit nominal deltas from the older combined experiment, retaining original JVM recordings and independent branch-behavior tests. The core-wrapper test now directly compares wrapped/unwrapped routing, and the fanout no-op fixture was subsequently repaired by extending its target to (20,20), keeping the obstacle inside the nominal query envelope while preserving the same positive sub-grid movement. Raising its clearance to116 was tested and failed (zero movement), so that attempted fixture change was discarded.
+
+An immutable 12-file snapshot of the packaged production code is under `/root/copperroute-mask-review`; full run `quality-epyc-mask-review-01`, driver PID3096545, compares main, original mask-prototype and mask-review, 751 each at192jobs. Local test-only adaptations continue independently; final production equivalence to this snapshot must be checked before committing. New PR not yet open.
+
+Grouped-order full run completed all2253 KiCad cells. Versus via-control: PC740 U4694→4770 (+76), 54better/51worse; copper915→963 (+48),22gainers; mask15190→15113 (−77),34gainers; CPUratio.9693. Local11 U241→231 (−10),2better/2worse; copper59→58 (−1),1gainer; mask0; CPU1.0267. Total+66U/+47copper, so no acceptance claim. KarabasC alone contributes+166U, both timeout; among both-completed pairs totalUdelta is+3. NRC2016RAM improves1→0U with0copper; GBCART stays3U and improves2→0copper. Registered outliers account for only+1U, so the outlier criterion does not explain this result. Keep experimental pending the Karabas regression investigation; do not reject solely on aggregate timeout delta.
+
+### Packaged mask-routing candidate ready for outlier-aware PR review
+
+Full run quality-epyc-mask-review-01:751 boards per candidate, all KiCad referees successful after68 failed-referee cells were repaired on unchanged SES. PC740:140 connectivity improvements/38 regressions,5282→4132 U,933→885 copper DRC (26 gainers),15193→10949 mask (11 gainers),CPUratio0.8730. Local11:3 improvements/0 regressions,241→226 U,59→57 copper (1 gainer),mask0,CPUratio0.9189. Total −1165 U/−50 copper/−4244 mask. Gate fails268 quality losses including other score components. Artwork programming-interface+32 and relay+36 account for68/112 added mask reports; previous70/87 remains recorded as a separate measurement. No outlier exclusions. Prototype/review SES identical on720/720 both-completed pairs,727/751 overall. All differences involve at least one timeout. Production sources match frozen snapshot after rustfmt, excluding only changed test expectations. Workspace2579 passed/77 ignored/zero failures; both repaired independent regression tests pass. Detailed report, source-equivalence proof, raw bench pr-summary and full per-board deltas included in review branch. Full raw results and final details verified backed up on workbench.
+
+Controlled programming-interface preservation pilot completed all3 KiCad referees: stripped7U/0Cu/32mask; identical SES with223 original copper artwork tracks restored7U/26Cu/0mask; supplying223 actual copper-outline obstacles before routing plus preserved referee3U/0Cu/0mask. Confirms this input-loss mechanism can be resolved for this board. No corpus changes or global improvement claim. Results and scripts retained in PR25 artifacts; independent relay mechanism remains open.
+
+### Board-wide copper minimum: controlled input experiment
+
+Snappi-zero's KiCad project minimum is203µm; DSN default203.2µm, smd_smd50.8µm and one net class152.4µm. Controlled run quality-epyc-snappi-minimum-01 uses unchanged frozen corridor binary, with only two DSN values floored to203µm. All three cells completed and KiCad-refereed: mask-control0U/3Cu/5vias/1.91CPU; coherent0U/10Cu/3vias/1.78CPU; corrected-input coherent0U/0Cu/3vias/2.63CPU. All retain22 courtyard reports, separate from copper/mask routing metrics. Evidence supports omitted board minimum, not an outlier; no global quality claim. Details pulled locally, remote input and changes under reports/snappi-board-minimum-study.
+
+Created isolated fix/kicad-board-minimum-clearance at c461555. board_prep::raise_to_project_minimums already applies mask, edge and hole rules, but ignores constraints.min_clearance. Added failing-first test: positive project copper minimum must raise lower matrix classes, preserve higher values/null class and be idempotent. It fails at the raise call as expected (/tmp/quality-board-minimum-red.log, session59835 exited101). No production change yet. Before implementation, distinguish dedicated board-edge/hole/keepout rules from copper-pair clearances and ensure search-tree compensation is rebuilt when matrix values change. DSN benchmark must supply the original project's minimum to exercise the fix; optional CLI project import currently stores constraints for DRC but does not enforce copper minimum in routing.
+
+Implemented copper minimum in board preparation. Collect clearance classes used by existing copper items plus configured future trace/pin/SMD/via/area classes; raise only copper-class pairs, preserving class0 and dedicated classes not used for copper. Existing shared copper/keepout classes can still conservatively tighten their keepouts; this is a matrix-model limitation to quantify, not a claim of exact KiCad override parity. Uses searchtree::clearance_value_changed after matrix updates. Scoped matrix test observed red then green; cached compensated pin shape test passes and fails with the refresh disabled (equal old/new shapes), so cache invalidation has direct coverage. Full workspace3713 running, /tmp/quality-board-minimum-workspace.log; no commit or production-corpus result.
+
+Census across751board projects:694 positive minimums, all694 have some lower DSN value due to SMD-specific rules. Only5boards have lower untyped clearances: CATs-Eurosynth_LFO_Main(.203mm), domotics_base-board-arranged(.33), mini_ice40(.18), snappi-zero(.203), wavegen_rev3(.19). Do not treat694 as694 missing net-class floors. Diagnostic census pulled locally. A separate pilot should feed identical minimal project metadata to control and candidate, isolating copper minimum enforcement from unrelated project rules.
+
+Frozen board-minimum source uploaded from c461555 archive plus diff; both Rust SHA256s match local. Driver518369 built after pad pilot501303 exited and now runs6boards×2candidates (five below-minimum untyped DSN cases plus minimal_node). Both get identical minimal project metadata containing only min_clearance and original mask sidecars, isolating this change from other project rules. quality-epyc-board-minimum-pilot-01 at10passes/300seconds/one thread/192capacity. Full workspace3713 still live; no commit.
+
+Full workspace completed successfully:2,581 passed,77 ignored,zero failures including doctests (/tmp/quality-board-minimum-workspace.log, session3713 exited0). Frozen remote source hashes match. Six-board production-code pilot518369 remains live; full pad run523176 waits for its completion. No commit or corpus-wide board-minimum conclusion yet.
+
+### Board-minimum production pilot completed
+
+quality-epyc-board-minimum-pilot-01 completed12cells with successful KiCad referees. SixPCBench boards:19→18U (−1;1improved/0regressed),36→5Cu (−31;3improved/0gainers),208→207reportedmask (−1;0gainers). CPU458.03→482.53s ratio1.05349;5completedboth/3connectedboth; medianRSS22.4→23.9MB/max99.8→98.4MB. Snappi3→0Cu,mini_ice4027→0Cu,LFO4→3U/1→0Cu. Wavegen remains14U and timed out; other controls unchanged quality. Details and comparison pulled locally.
+
+Queued full quality-epyc-board-minimum-full-01, driver871369, behind currently routing pad-copper-full driver523176.751each main/control/board-minimum,192jobs/10passes/300s/one thread; same minimal project metadata for control/candidate; frozen binaries, integrated referee repairs/export. No source changes after pilot. Corpus-wide conclusion pending.
+
+### Full board-minimum validation and review
+
+quality-epyc-board-minimum-full-01 completed 2,253 successful KiCad-refereed cells, 751 per main/control/candidate. Against control: PCBench −336 U (16 improved/0 regressed), −29 copper DRC (4 improved/1 gainer), −1 reported mask (6 gainers), CPU ratio 0.9444; local 11 unchanged quality, CPU ratio 0.9998. Of 720 both-completed pairs, 717 SES files are identical. Only Snappi, mini_ice40 and LFO change: jointly −1 U/−31 copper with no completed connectivity/copper regressions. Their +10 reported mask difference is entirely on identical SES files. Deadline-affected pairs account for −335 U/+2 copper; no reliable speed or 336-connection causal claim. Main comparison includes PR25 and fails the aggregate gate with 266 quality losses; full generated summary retained. Main rechecked at e9d10c2. Results verified mirrored to workbench and copied locally.
+
+Clean explicit-manifest precommit suite50262 exited0: 2,581 passed/77 ignored/zero failures including doctests. Correct worktree compilation paths and both new tests verified. Report and control/main comparisons included. These are ordinary project rules, not an outlier exemption.

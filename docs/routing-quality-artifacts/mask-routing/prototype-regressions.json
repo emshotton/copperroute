@@ -1,0 +1,969 @@
+[
+  {
+    "board": "pcbench-m2-electronics_m2fc",
+    "U": [
+      2,
+      1
+    ],
+    "V": [
+      5,
+      12
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "copper_edge_clearance": 5,
+      "invalid_outline": 2
+    },
+    "types_change": {
+      "copper_edge_clearance": 12,
+      "invalid_outline": 2
+    }
+  },
+  {
+    "board": "pcbench-snappi-zero_snappi-zero",
+    "U": [
+      0,
+      0
+    ],
+    "V": [
+      1,
+      3
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "clearance": 1,
+      "pth_inside_courtyard": 22
+    },
+    "types_change": {
+      "clearance": 3,
+      "pth_inside_courtyard": 22
+    }
+  },
+  {
+    "board": "pcbench-karabas-nano_karabas-nano-revC",
+    "U": [
+      94,
+      70
+    ],
+    "V": [
+      1,
+      1
+    ],
+    "mask": [
+      203,
+      205
+    ],
+    "state": [
+      "TIMED_OUT",
+      "TIMED_OUT"
+    ],
+    "types_main": {
+      "clearance": 1,
+      "courtyards_overlap": 3,
+      "solder_mask_bridge": 203
+    },
+    "types_change": {
+      "clearance": 1,
+      "courtyards_overlap": 3,
+      "solder_mask_bridge": 205
+    }
+  },
+  {
+    "board": "pcbench-RetroWiFiModem_RetroWiFiModem",
+    "U": [
+      1,
+      0
+    ],
+    "V": [
+      1,
+      2
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "starved_thermal": 1
+    },
+    "types_change": {
+      "starved_thermal": 2
+    }
+  },
+  {
+    "board": "kicad-issue184-motorizedopener--motorizedopener",
+    "U": [
+      65,
+      58
+    ],
+    "V": [
+      52,
+      53
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "clearance": 52,
+      "malformed_courtyard": 57,
+      "footprint_type_mismatch": 3
+    },
+    "types_change": {
+      "hole_clearance": 1,
+      "clearance": 52,
+      "malformed_courtyard": 57,
+      "footprint_type_mismatch": 3
+    }
+  },
+  {
+    "board": "pcbench-epaper-102_epaper-102",
+    "U": [
+      5,
+      5
+    ],
+    "V": [
+      3,
+      9
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "clearance": 3
+    },
+    "types_change": {
+      "clearance": 9
+    }
+  },
+  {
+    "board": "pcbench-pmw3360-pcb_pmw3360_pcb_jst",
+    "U": [
+      3,
+      5
+    ],
+    "V": [
+      3,
+      5
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "copper_edge_clearance": 3
+    },
+    "types_change": {
+      "copper_edge_clearance": 5
+    }
+  },
+  {
+    "board": "pcbench-FRM16_Relay_Module_I2C_Controller_relay_controller",
+    "U": [
+      0,
+      0
+    ],
+    "V": [
+      0,
+      0
+    ],
+    "mask": [
+      5,
+      41
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "solder_mask_bridge": 5
+    },
+    "types_change": {
+      "solder_mask_bridge": 41
+    }
+  },
+  {
+    "board": "pcbench-stm32_ccd_camera_ccd",
+    "U": [
+      3,
+      2
+    ],
+    "V": [
+      0,
+      1
+    ],
+    "mask": [
+      71,
+      71
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "courtyards_overlap": 10,
+      "solder_mask_bridge": 71
+    },
+    "types_change": {
+      "clearance": 1,
+      "courtyards_overlap": 10,
+      "solder_mask_bridge": 71
+    }
+  },
+  {
+    "board": "pcbench-BLDC-controller_BLDC_controller",
+    "U": [
+      19,
+      11
+    ],
+    "V": [
+      2,
+      9
+    ],
+    "mask": [
+      231,
+      202
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "clearance": 1,
+      "courtyards_overlap": 6,
+      "pth_inside_courtyard": 6,
+      "track_width": 1,
+      "solder_mask_bridge": 231
+    },
+    "types_change": {
+      "courtyards_overlap": 6,
+      "pth_inside_courtyard": 6,
+      "track_width": 9,
+      "solder_mask_bridge": 202
+    }
+  },
+  {
+    "board": "pcbench-amalthea_amalthea_rev0",
+    "U": [
+      44,
+      19
+    ],
+    "V": [
+      0,
+      0
+    ],
+    "mask": [
+      200,
+      205
+    ],
+    "state": [
+      "TIMED_OUT",
+      "TIMED_OUT"
+    ],
+    "types_main": {
+      "courtyards_overlap": 1,
+      "solder_mask_bridge": 200
+    },
+    "types_change": {
+      "courtyards_overlap": 1,
+      "solder_mask_bridge": 205
+    }
+  },
+  {
+    "board": "pcbench-nonSNES_SNSP-CPU-1CHIP",
+    "U": [
+      179,
+      129
+    ],
+    "V": [
+      1,
+      2
+    ],
+    "mask": [
+      13,
+      11
+    ],
+    "state": [
+      "TIMED_OUT",
+      "TIMED_OUT"
+    ],
+    "types_main": {
+      "clearance": 1,
+      "solder_mask_bridge": 13
+    },
+    "types_change": {
+      "clearance": 1,
+      "shorting_items": 1,
+      "solder_mask_bridge": 11
+    }
+  },
+  {
+    "board": "pcbench-kitspace_OSO-BOOK-C1",
+    "U": [
+      7,
+      7
+    ],
+    "V": [
+      31,
+      32
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "copper_edge_clearance": 31,
+      "footprint_type_mismatch": 22,
+      "invalid_outline": 12
+    },
+    "types_change": {
+      "copper_edge_clearance": 32,
+      "footprint_type_mismatch": 22,
+      "invalid_outline": 12
+    }
+  },
+  {
+    "board": "pcbench-Hardware_Playground_serial_gw_ATMEGA328P",
+    "U": [
+      1,
+      1
+    ],
+    "V": [
+      6,
+      12
+    ],
+    "mask": [
+      140,
+      140
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "clearance": 3,
+      "hole_clearance": 3,
+      "courtyards_overlap": 13,
+      "pth_inside_courtyard": 5,
+      "solder_mask_bridge": 140
+    },
+    "types_change": {
+      "clearance": 7,
+      "hole_clearance": 5,
+      "courtyards_overlap": 13,
+      "pth_inside_courtyard": 5,
+      "solder_mask_bridge": 140
+    }
+  },
+  {
+    "board": "pcbench-CATs-Eurosynth_LFO_Main",
+    "U": [
+      3,
+      4
+    ],
+    "V": [
+      0,
+      1
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {},
+    "types_change": {
+      "clearance": 1
+    }
+  },
+  {
+    "board": "pcbench-8bit-cpu_programming_interface",
+    "U": [
+      4,
+      7
+    ],
+    "V": [
+      0,
+      0
+    ],
+    "mask": [
+      0,
+      34
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "courtyards_overlap": 2,
+      "pth_inside_courtyard": 34
+    },
+    "types_change": {
+      "courtyards_overlap": 2,
+      "pth_inside_courtyard": 34,
+      "solder_mask_bridge": 34
+    }
+  },
+  {
+    "board": "pcbench-Hardware_Playground_rpi_zero",
+    "U": [
+      0,
+      0
+    ],
+    "V": [
+      18,
+      31
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "clearance": 13,
+      "hole_clearance": 5,
+      "courtyards_overlap": 12,
+      "pth_inside_courtyard": 76
+    },
+    "types_change": {
+      "clearance": 20,
+      "hole_clearance": 11,
+      "courtyards_overlap": 12,
+      "pth_inside_courtyard": 76
+    }
+  },
+  {
+    "board": "pcbench-Hardware_Playground_minimal_node_rfm69w",
+    "U": [
+      3,
+      1
+    ],
+    "V": [
+      1,
+      2
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "clearance": 1,
+      "courtyards_overlap": 2,
+      "pth_inside_courtyard": 9
+    },
+    "types_change": {
+      "clearance": 2,
+      "courtyards_overlap": 2,
+      "pth_inside_courtyard": 9
+    }
+  },
+  {
+    "board": "pcbench-gb-hardware_GB-CART256K-A",
+    "U": [
+      3,
+      11
+    ],
+    "V": [
+      2,
+      0
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "clearance": 2
+    },
+    "types_change": {}
+  },
+  {
+    "board": "pcbench-DC25_DC25",
+    "U": [
+      0,
+      0
+    ],
+    "V": [
+      10,
+      11
+    ],
+    "mask": [
+      29,
+      29
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "clearance": 6,
+      "shorting_items": 4,
+      "courtyards_overlap": 1,
+      "solder_mask_bridge": 29
+    },
+    "types_change": {
+      "clearance": 4,
+      "shorting_items": 7,
+      "courtyards_overlap": 1,
+      "solder_mask_bridge": 29
+    }
+  },
+  {
+    "board": "pcbench-azalea_azalea",
+    "U": [
+      73,
+      37
+    ],
+    "V": [
+      43,
+      45
+    ],
+    "mask": [
+      159,
+      159
+    ],
+    "state": [
+      "TIMED_OUT",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "clearance": 43,
+      "solder_mask_bridge": 159
+    },
+    "types_change": {
+      "clearance": 45,
+      "solder_mask_bridge": 159
+    }
+  },
+  {
+    "board": "pcbench-autohat-board_inverted-usd-adapter",
+    "U": [
+      0,
+      0
+    ],
+    "V": [
+      0,
+      7
+    ],
+    "mask": [
+      16,
+      7
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "invalid_outline": 4,
+      "solder_mask_bridge": 16
+    },
+    "types_change": {
+      "copper_edge_clearance": 7,
+      "invalid_outline": 4,
+      "solder_mask_bridge": 7
+    }
+  },
+  {
+    "board": "pcbench-project-hydra-meshtastic-pcb_meshtastic-diy",
+    "U": [
+      26,
+      24
+    ],
+    "V": [
+      4,
+      5
+    ],
+    "mask": [
+      0,
+      2
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "shorting_items": 3,
+      "clearance": 1,
+      "npth_inside_courtyard": 2
+    },
+    "types_change": {
+      "clearance": 1,
+      "shorting_items": 4,
+      "npth_inside_courtyard": 2,
+      "solder_mask_bridge": 2
+    }
+  },
+  {
+    "board": "pcbench-ESP07-Breakout_ESP07-Breakout",
+    "U": [
+      1,
+      0
+    ],
+    "V": [
+      0,
+      1
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {},
+    "types_change": {
+      "shorting_items": 1
+    }
+  },
+  {
+    "board": "pcbench-APM-RPi-Shield_APM-RPi-Shield",
+    "U": [
+      8,
+      0
+    ],
+    "V": [
+      2,
+      3
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "courtyards_overlap": 9,
+      "copper_edge_clearance": 2,
+      "invalid_outline": 1
+    },
+    "types_change": {
+      "courtyards_overlap": 9,
+      "copper_edge_clearance": 3,
+      "invalid_outline": 1
+    }
+  },
+  {
+    "board": "pcbench-EuroPi_europi-surface-mount",
+    "U": [
+      30,
+      29
+    ],
+    "V": [
+      16,
+      21
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "copper_edge_clearance": 16
+    },
+    "types_change": {
+      "clearance": 1,
+      "copper_edge_clearance": 20
+    }
+  },
+  {
+    "board": "pcbench-uC3Moy_uC3Moy",
+    "U": [
+      0,
+      0
+    ],
+    "V": [
+      20,
+      21
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "clearance": 7,
+      "courtyards_overlap": 2,
+      "copper_edge_clearance": 13,
+      "invalid_outline": 1
+    },
+    "types_change": {
+      "clearance": 9,
+      "courtyards_overlap": 2,
+      "copper_edge_clearance": 12,
+      "invalid_outline": 1
+    }
+  },
+  {
+    "board": "pcbench-abus-cfa1000-display-grabber_acs-display-grabber",
+    "U": [
+      0,
+      0
+    ],
+    "V": [
+      0,
+      0
+    ],
+    "mask": [
+      2,
+      3
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "solder_mask_bridge": 2
+    },
+    "types_change": {
+      "solder_mask_bridge": 3
+    }
+  },
+  {
+    "board": "pcbench-free-of-charge_BMS",
+    "U": [
+      13,
+      4
+    ],
+    "V": [
+      0,
+      0
+    ],
+    "mask": [
+      141,
+      146
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "solder_mask_bridge": 141
+    },
+    "types_change": {
+      "solder_mask_bridge": 146
+    }
+  },
+  {
+    "board": "pcbench-bikedar_bikedar",
+    "U": [
+      0,
+      0
+    ],
+    "V": [
+      4,
+      5
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "hole_clearance": 4,
+      "courtyards_overlap": 4,
+      "invalid_outline": 3
+    },
+    "types_change": {
+      "hole_clearance": 5,
+      "courtyards_overlap": 4,
+      "invalid_outline": 3
+    }
+  },
+  {
+    "board": "pcbench-96boards-sensors_Sensors",
+    "U": [
+      1,
+      0
+    ],
+    "V": [
+      1,
+      17
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "clearance": 1,
+      "malformed_courtyard": 4
+    },
+    "types_change": {
+      "clearance": 10,
+      "hole_clearance": 7,
+      "malformed_courtyard": 4
+    }
+  },
+  {
+    "board": "pcbench-miniboard-stm32f0_miniboard-stm32f0",
+    "U": [
+      0,
+      0
+    ],
+    "V": [
+      0,
+      0
+    ],
+    "mask": [
+      7,
+      9
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "courtyards_overlap": 3,
+      "solder_mask_bridge": 7
+    },
+    "types_change": {
+      "courtyards_overlap": 3,
+      "solder_mask_bridge": 9
+    }
+  },
+  {
+    "board": "pcbench-type5_type5",
+    "U": [
+      0,
+      0
+    ],
+    "V": [
+      9,
+      13
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "clearance": 6,
+      "shorting_items": 3
+    },
+    "types_change": {
+      "clearance": 10,
+      "shorting_items": 3
+    }
+  },
+  {
+    "board": "pcbench-avr-fuser-32_adapter",
+    "U": [
+      0,
+      0
+    ],
+    "V": [
+      3,
+      28
+    ],
+    "mask": [
+      275,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "TIMED_OUT"
+    ],
+    "types_main": {
+      "shorting_items": 2,
+      "clearance": 1,
+      "solder_mask_bridge": 275
+    },
+    "types_change": {
+      "clearance": 9,
+      "shorting_items": 17,
+      "hole_clearance": 2
+    }
+  },
+  {
+    "board": "pcbench-VC4000MultiROM_MultiRomCard",
+    "U": [
+      8,
+      4
+    ],
+    "V": [
+      9,
+      11
+    ],
+    "mask": [
+      0,
+      0
+    ],
+    "state": [
+      "COMPLETED",
+      "COMPLETED"
+    ],
+    "types_main": {
+      "shorting_items": 7,
+      "clearance": 2,
+      "courtyards_overlap": 1
+    },
+    "types_change": {
+      "shorting_items": 11,
+      "courtyards_overlap": 1
+    }
+  }
+]

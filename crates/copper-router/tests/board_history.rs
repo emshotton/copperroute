@@ -299,10 +299,14 @@ fn dump_corners(polyline: &Polyline) -> String {
     format!("[{}]", corners.join(","))
 }
 
-const PORT_GOLDEN: &str = include_str!("data/p10-board-history.txt");
+// Nominal clearance changes the routed board pool: B3/B4/B5 complete more
+// connections, changing their scores and history ranks. Keep the previous
+// p10-board-history.txt recording intact; pin the current pool separately.
+const PORT_GOLDEN: &str = include_str!("data/p10-board-history-nominal.txt");
 
 fn port_golden_path() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/p10-board-history.txt")
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/data/p10-board-history-nominal.txt")
 }
 
 fn assert_lines_match(actual: &[String]) {

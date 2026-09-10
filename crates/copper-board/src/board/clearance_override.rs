@@ -1,4 +1,4 @@
-use copper_geometry::{Area, Shape};
+use copper_geometry::{Area, Shape, ShapeOps};
 
 use crate::Board;
 use crate::board::item_ctx;
@@ -14,6 +14,193 @@ pub const HOLE_EDGE_CLEARANCE_CLASS_NAME: &str = "hole_edge";
 pub const DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM: f64 = 500.0;
 
 impl Board {
+    pub fn raise_copper_clearances_to(&mut self, minimum: i32) -> bool {
+        if minimum <= 0 {
+            return false;
+        }
+        let mut copper_classes = std::collections::BTreeSet::new();
+        for class in self.rules.net_classes.iter() {
+            copper_classes.insert(class.get_trace_clearance_class());
+            for kind in [
+                ItemClass::Trace,
+                ItemClass::Via,
+                ItemClass::Pin,
+                ItemClass::Smd,
+                ItemClass::Area,
+            ] {
+                copper_classes.insert(class.default_item_clearance_classes.get(kind));
+            }
+        }
+        for via in self.rules.via_infos.iter() {
+            copper_classes.insert(via.get_clearance_class_index());
+        }
+        for item in self.items.values() {
+            if matches!(
+                item,
+                Item::Trace(_) | Item::Via(_) | Item::Pin(_) | Item::ConductionArea(_)
+            ) {
+                copper_classes.insert(item.clearance_class());
+            }
+        }
+        copper_classes.remove(&0);
+        let matrix = &mut self.rules.clearance_matrix;
+        let mut changed = false;
+        for &a in &copper_classes {
+            for &b in &copper_classes {
+                for layer in 0..matrix.get_layer_count() {
+                    if matrix.get_value(a, b, layer, false) < minimum {
+                        matrix.set_value(a, b, layer, minimum);
+                        changed = true;
+                    }
+                }
+            }
+        }
+        if changed {
+            let mut items = std::mem::take(&mut self.items);
+            let ctx = item_ctx!(self);
+            let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
+            self.trees.clearance_value_changed(&mut refs, &ctx);
+            drop(refs);
+            self.items = items;
+        }
+        changed
+    }
+
+    pub fn raise_solder_mask_clearances(&mut self) -> bool {
+        let clearance = self
+            .rules
+            .drc_constraints
+            .as_ref()
+            .and_then(|rules| rules.solder_mask_to_copper_clearance)
+            .unwrap_or(0)
+            .max(0);
+        let mut changed = false;
+        for id in self.get_pins() {
+            let Some(Item::Pin(pin)) = self.get_item(id) else {
+                continue;
+            };
+            if pin.solder_mask_expansion.is_empty() {
+                continue;
+            }
+            let mut minimum = vec![0; self.get_layer_count()];
+            for (&layer, &margin) in &pin.solder_mask_expansion {
+                if let Some(value) = minimum.get_mut(layer) {
+                    *value = self.solder_mask_clearance_limit(
+                        id,
+                        layer,
+                        margin.saturating_add(clearance).max(0),
+                    );
+                }
+            }
+            changed |= self.raise_pin_clearance(id, &minimum);
+        }
+        changed
+    }
+
+    pub fn solder_mask_clearance_limit(&self, id: ItemId, layer: usize, requested: i32) -> i32 {
+        let Some(Item::Pin(pin)) = self.get_item(id) else {
+            return requested;
+        };
+        let ctx = self.ctx();
+        let Some(shape) = pin.get_shape_on_layer(layer, &ctx) else {
+            return requested;
+        };
+        let copper = shape.bounding_tile();
+        let search = copper.enlarge(f64::from(requested));
+        let mut limit = requested;
+        for object in self.overlapping_objects(&search, Some(layer)) {
+            let crate::ids::TreeObject::Item(other_id) = object else {
+                continue;
+            };
+            let Some(Item::Pin(other)) = self.get_item(other_id) else {
+                continue;
+            };
+            if other_id == id
+                || other.hdr.net_count() == 0
+                || pin.hdr.shares_net_no(&other.hdr.net_nos)
+            {
+                continue;
+            }
+            let Some(other_shape) = other.get_shape_on_layer(layer, &ctx) else {
+                continue;
+            };
+            let other_copper = other_shape.bounding_tile();
+            if search.intersection(&other_copper).dimension() != 2 {
+                continue;
+            }
+            let gap = Self::calculate_clearance_between_two_shapes(
+                &copper,
+                &other_copper,
+                f64::from(requested),
+                0,
+                0,
+            );
+            limit = limit.min(gap.floor() as i32);
+        }
+        limit.max(0)
+    }
+
+    pub fn raise_pin_clearance(&mut self, id: ItemId, minimum_by_layer: &[i32]) -> bool {
+        let Some(Item::Pin(pin)) = self.items.get(&id) else {
+            return false;
+        };
+        let base = pin.hdr.clearance_class();
+        let matrix = &mut self.rules.clearance_matrix;
+        let layers = matrix.get_layer_count();
+        if minimum_by_layer.len() != layers || minimum_by_layer.iter().any(|v| *v < 0) {
+            return false;
+        }
+        let count = matrix.get_class_count();
+        if (1..count).all(|other| {
+            minimum_by_layer.iter().enumerate().all(|(layer, minimum)| {
+                matrix.get_value(base, other, layer, false) >= *minimum
+                    && matrix.get_value(other, base, layer, false) >= *minimum
+            })
+        }) {
+            return false;
+        }
+        let mut row = Vec::with_capacity(count * layers);
+        let mut column = Vec::with_capacity(count * layers);
+        for other in 0..count {
+            for (layer, minimum) in minimum_by_layer.iter().enumerate() {
+                let floor = if other == 0 { 0 } else { *minimum };
+                row.push(matrix.get_value(base, other, layer, false).max(floor));
+                column.push(matrix.get_value(other, base, layer, false).max(floor));
+            }
+        }
+        let equivalent = (1..count).find(|candidate| {
+            (0..count).all(|other| {
+                (0..layers).all(|layer| {
+                    matrix.get_value(*candidate, other, layer, false) == row[other * layers + layer]
+                        && matrix.get_value(other, *candidate, layer, false)
+                            == column[other * layers + layer]
+                })
+            })
+        });
+        let class = match equivalent {
+            Some(class) if class == base => return false,
+            Some(class) => class,
+            None => {
+                let mut name = format!("pad_clearance_{count}");
+                while matrix.get_no(&name).is_some() {
+                    name.push('_');
+                }
+                matrix.append_class(&name);
+                for other in 0..count {
+                    for layer in 0..layers {
+                        matrix.set_value(count, other, layer, row[other * layers + layer]);
+                        matrix.set_value(other, count, layer, column[other * layers + layer]);
+                    }
+                }
+                for layer in 0..layers {
+                    matrix.set_value(count, count, layer, row[base * layers + layer]);
+                }
+                count
+            }
+        };
+        self.change_clearance_class_index(id, class)
+    }
+
     pub fn clearance_override_board_units(&self, clearance_um: f64) -> i32 {
         let board_resolution = self.communication.resolution.max(1);
         (Unit::scale(

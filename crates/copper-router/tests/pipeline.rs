@@ -612,6 +612,58 @@ fn routing_honors_project_hole_clearance_attached_after_load() {
 }
 
 #[test]
+fn routing_honors_pad_mask_rules_attached_after_load() {
+    let json = r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+      "netClasses":[{"name":"Default","traceWidth":0.2,"clearance":0.15,"viaDiameter":0.5,"viaDrill":0.3}],
+      "nets":[{"id":1,"name":"N","className":"Default"},{"id":2,"name":"Other","className":"Default"}],
+      "outline":{"corners":[{"x":0,"y":0},{"x":30,"y":0},{"x":30,"y":20},{"x":0,"y":20}]},
+      "components":[
+      {"reference":"A","position":{"x":10,"y":10},"pads":[{"name":"1","netName":"N","shape":"rect","size":{"x":1,"y":1},"layers":["F.Cu"]}]},
+      {"reference":"B","position":{"x":20,"y":10},"pads":[{"name":"1","netName":"N","shape":"rect","size":{"x":1,"y":1},"layers":["F.Cu"]}]},
+      {"reference":"H","position":{"x":15,"y":9.2},"pads":[{"name":"1","netName":"Other","shape":"rect","size":{"x":1,"y":1},"layers":["F.Cu","B.Cu"],"solderMaskExpansion":{"F.Mask":0.4}}]}]}"#;
+    let copper_dsn::BoardReadResult::Success {
+        board: Some(mut board),
+        ..
+    } = copper_dsn::kicad::read_board(json, None)
+    else {
+        panic!("fixture import failed")
+    };
+    let mut settings = build_settings(&board, 1);
+    settings.set_layer_active(1, false);
+    copper_router::pipeline::prepare_board(&mut board, &settings);
+    board.rules.drc_constraints = Some(copper_board::DrcConstraints {
+        solder_mask_to_copper_clearance: Some(1000),
+        ..Default::default()
+    });
+    run_pipeline(
+        &mut board,
+        &settings,
+        &RouterStop::new(),
+        RouterBudget::disabled(),
+        &mut NoopProgressSink,
+    )
+    .unwrap();
+    let pin = board
+        .get_pins()
+        .into_iter()
+        .find(|id| board.get_item(*id).unwrap().contains_net(2))
+        .unwrap();
+    let class = board.get_item(pin).unwrap().clearance_class();
+    assert_eq!(
+        board.rules.clearance_matrix.get_value(class, 1, 0, false),
+        5000
+    );
+    assert_eq!(
+        board.rules.clearance_matrix.get_value(class, 1, 1, false),
+        1500
+    );
+    let mut drc = copper_drc::DesignRulesChecker::new(&mut board);
+    assert!(drc.get_all_unconnected_items().is_empty());
+    let violations = drc.get_all_violations();
+    assert!(violations.is_empty(), "{violations:?}");
+}
+
+#[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn a_rules_file_board_edge_clearance_survives_the_project_floor_at_pipeline_entry() {
     let json = r#"{"layers":[{"name":"F.Cu"},{"name":"B.Cu"}],

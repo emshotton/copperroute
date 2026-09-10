@@ -1145,7 +1145,9 @@ fn an_output_path_answers_a_path_and_no_body() {
 #[test]
 fn a_sparse_settings_payload_composes_at_priority_70() {
     let board = dsn("fixtures/Issue143-rpi_splitter.dsn");
-    let slow_board = dsn("fixtures/Issue733-kicad_complex_hierarchy_input_design.json");
+    // Issue733 now routes identically within one pass at nominal clearance.
+    // Issue433 still needs additional passes, so it exercises this setting.
+    let slow_board = dsn("fixtures/Issue433-my-board.dsn");
     let mut pipes = Pipes::start();
     let route = |pipes: &mut Pipes, id: i64, board: &str, settings: Value| -> Value {
         let mut arguments = json!({"dsn_path": board});
@@ -1162,8 +1164,20 @@ fn a_sparse_settings_payload_composes_at_priority_70() {
         &board,
         json!({"enabled": false, "optimizer": {"enabled": false}}),
     );
-    let slow_bare = route(&mut pipes, 3, &slow_board, Value::Null);
-    let one_pass = route(&mut pipes, 4, &slow_board, json!({"max_passes": 1}));
+    // Disable the later optimizer in this pair: its own routing attempts can
+    // otherwise erase the observable effect of the autorouter pass limit.
+    let slow_bare = route(
+        &mut pipes,
+        3,
+        &slow_board,
+        json!({"optimizer": {"enabled": false}}),
+    );
+    let one_pass = route(
+        &mut pipes,
+        4,
+        &slow_board,
+        json!({"max_passes": 1, "optimizer": {"enabled": false}}),
+    );
     let via_costs = route(
         &mut pipes,
         5,

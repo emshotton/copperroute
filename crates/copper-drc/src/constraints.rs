@@ -157,6 +157,12 @@ pub fn from_kicad_project(
     let mut constraints = DrcConstraints {
         min_clearance: positive(rule(&rules, "min_clearance", board, transform)),
         min_track_width: positive(rule(&rules, "min_track_width", board, transform)),
+        solder_mask_to_copper_clearance: rule(
+            &rules,
+            "solder_mask_to_copper_clearance",
+            board,
+            transform,
+        ),
         hole_clearance: rule(&rules, "min_hole_clearance", board, transform),
         hole_to_hole: positive(rule(&rules, "min_hole_to_hole", board, transform)),
         copper_edge_clearance: positive(rule(

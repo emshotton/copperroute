@@ -1,0 +1,186 @@
+{
+  "pcbench": {
+    "unrouted": {
+      "main": 5250,
+      "change": 4253,
+      "delta": -997,
+      "better": 139,
+      "worse": 39
+    },
+    "violations": {
+      "main": 936,
+      "change": 881,
+      "delta": -55,
+      "better": 32,
+      "worse": 26
+    },
+    "mask": {
+      "main": 15322,
+      "change": 10940,
+      "delta": -4382,
+      "better": 80,
+      "worse": 8
+    },
+    "cpu_s": {
+      "main": 37445.94000000002,
+      "change": 32654.760000000035,
+      "delta": -4791.179999999982,
+      "better": 482,
+      "worse": 247
+    },
+    "cpu_ratio": 0.8720507483588347
+  },
+  "local": {
+    "unrouted": {
+      "main": 241,
+      "change": 226,
+      "delta": -15,
+      "better": 3,
+      "worse": 0
+    },
+    "violations": {
+      "main": 59,
+      "change": 57,
+      "delta": -2,
+      "better": 1,
+      "worse": 1
+    },
+    "mask": {
+      "main": 0,
+      "change": 0,
+      "delta": 0,
+      "better": 0,
+      "worse": 0
+    },
+    "cpu_s": {
+      "main": 850.7900000000001,
+      "change": 782.59,
+      "delta": -68.20000000000005,
+      "better": 4,
+      "worse": 7
+    },
+    "cpu_ratio": 0.9198392082652593
+  },
+  "worst_unrouted": [
+    {
+      "board": "pcbench-gb-hardware_GB-CART256K-A",
+      "main": 3,
+      "change": 11,
+      "delta": 8,
+      "main_state": "COMPLETED",
+      "change_state": "COMPLETED"
+    },
+    {
+      "board": "pcbench-dorkyboard_keyboard",
+      "main": 0,
+      "change": 4,
+      "delta": 4,
+      "main_state": "COMPLETED",
+      "change_state": "COMPLETED"
+    },
+    {
+      "board": "pcbench-rxadc_14_rxadc_14",
+      "main": 0,
+      "change": 4,
+      "delta": 4,
+      "main_state": "COMPLETED",
+      "change_state": "COMPLETED"
+    },
+    {
+      "board": "pcbench-kinetoscope_microcontroller",
+      "main": 51,
+      "change": 55,
+      "delta": 4,
+      "main_state": "COMPLETED",
+      "change_state": "COMPLETED"
+    },
+    {
+      "board": "pcbench-EnvOpenPico_EliteMicro2040",
+      "main": 15,
+      "change": 19,
+      "delta": 4,
+      "main_state": "COMPLETED",
+      "change_state": "COMPLETED"
+    },
+    {
+      "board": "pcbench-ReSDMAC_ReSDMAC",
+      "main": 130,
+      "change": 133,
+      "delta": 3,
+      "main_state": "TIMED_OUT",
+      "change_state": "TIMED_OUT"
+    },
+    {
+      "board": "pcbench-8bit-cpu_programming_interface",
+      "main": 4,
+      "change": 7,
+      "delta": 3,
+      "main_state": "COMPLETED",
+      "change_state": "COMPLETED"
+    },
+    {
+      "board": "pcbench-RC6502-Apple-1-Replica_RC6502_VDU",
+      "main": 15,
+      "change": 18,
+      "delta": 3,
+      "main_state": "COMPLETED",
+      "change_state": "COMPLETED"
+    },
+    {
+      "board": "pcbench-avr_ledprojector_avr_ledprojection-0402",
+      "main": 0,
+      "change": 3,
+      "delta": 3,
+      "main_state": "COMPLETED",
+      "change_state": "COMPLETED"
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Abakus_Main",
+      "main": 19,
+      "change": 22,
+      "delta": 3,
+      "main_state": "COMPLETED",
+      "change_state": "COMPLETED"
+    },
+    {
+      "board": "pcbench-Librecalc-Hardware__autosave-calculator",
+      "main": 0,
+      "change": 3,
+      "delta": 3,
+      "main_state": "TIMED_OUT",
+      "change_state": "COMPLETED"
+    },
+    {
+      "board": "pcbench-OpenHardwareExG_Shield_OpenHardwareExG_Shield",
+      "main": 1,
+      "change": 4,
+      "delta": 3,
+      "main_state": "COMPLETED",
+      "change_state": "COMPLETED"
+    },
+    {
+      "board": "pcbench-pico-pi-rel_pico-pi",
+      "main": 1,
+      "change": 4,
+      "delta": 3,
+      "main_state": "COMPLETED",
+      "change_state": "COMPLETED"
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-CARTPP-XC",
+      "main": 9,
+      "change": 11,
+      "delta": 2,
+      "main_state": "COMPLETED",
+      "change_state": "COMPLETED"
+    },
+    {
+      "board": "pcbench-pmw3360-pcb_pmw3360_pcb_jst",
+      "main": 3,
+      "change": 5,
+      "delta": 2,
+      "main_state": "COMPLETED",
+      "change_state": "COMPLETED"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "frozen_base": "36283c2631e884c7a14f8c1bb547562e2ffb762f",
+  "source_manifest": "frozen-source.sha256",
+  "comparison": "rustfmt-normalized; inserter test module excluded",
+  "identical_production_files": [
+    "crates/copper-board/src/board/clearance_override.rs",
+    "crates/copper-board/src/searchtree/shape_search_tree.rs",
+    "crates/copper-dsn/src/parser/network.rs",
+    "crates/copper-router/src/autoroute/path/inserter.rs",
+    "crates/copper-router/src/board_ext/tightener/tightener_45.rs",
+    "crates/copper-router/src/pipeline/board_prep.rs",
+    "crates/copperroute/src/ops/load.rs"
+  ]
+}
