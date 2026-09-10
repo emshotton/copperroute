@@ -1,0 +1,62 @@
+[
+  {
+    "candidate": "main",
+    "board": "nano",
+    "unrouted": 2,
+    "violations": 4,
+    "violations_all": 4,
+    "violations_by_type": {
+      "hole_clearance": 4
+    },
+    "warnings": 34,
+    "cpu_s": 71.05,
+    "rss_mb": 40.62109375,
+    "final_state": "COMPLETED"
+  },
+  {
+    "candidate": "main",
+    "board": "feather",
+    "unrouted": 7,
+    "violations": 35,
+    "violations_all": 43,
+    "violations_by_type": {
+      "starved_thermal": 3,
+      "copper_edge_clearance": 32,
+      "courtyards_overlap": 8
+    },
+    "warnings": 99,
+    "cpu_s": 300.32000000000005,
+    "rss_mb": 73.91796875,
+    "final_state": "TIMED_OUT"
+  },
+  {
+    "candidate": "undrilled",
+    "board": "nano",
+    "unrouted": 0,
+    "violations": 4,
+    "violations_all": 4,
+    "violations_by_type": {
+      "hole_clearance": 4
+    },
+    "warnings": 34,
+    "cpu_s": 14.08,
+    "rss_mb": 13.890625,
+    "final_state": "COMPLETED"
+  },
+  {
+    "candidate": "undrilled",
+    "board": "feather",
+    "unrouted": 7,
+    "violations": 35,
+    "violations_all": 43,
+    "violations_by_type": {
+      "starved_thermal": 3,
+      "copper_edge_clearance": 32,
+      "courtyards_overlap": 8
+    },
+    "warnings": 99,
+    "cpu_s": 300.34,
+    "rss_mb": 75.83203125,
+    "final_state": "TIMED_OUT"
+  }
+]

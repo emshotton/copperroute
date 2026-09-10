@@ -1,0 +1,34 @@
+[
+  {
+    "candidate": "main",
+    "board": "feather",
+    "unrouted": 7,
+    "violations": 35,
+    "violations_all": 43,
+    "violations_by_type": {
+      "starved_thermal": 3,
+      "copper_edge_clearance": 32,
+      "courtyards_overlap": 8
+    },
+    "warnings": 99,
+    "cpu_s": 322.28,
+    "rss_mb": 77.23046875,
+    "final_state": "COMPLETED"
+  },
+  {
+    "candidate": "undrilled",
+    "board": "feather",
+    "unrouted": 7,
+    "violations": 35,
+    "violations_all": 43,
+    "violations_by_type": {
+      "starved_thermal": 3,
+      "copper_edge_clearance": 32,
+      "courtyards_overlap": 8
+    },
+    "warnings": 99,
+    "cpu_s": 319.84999999999997,
+    "rss_mb": 76.36328125,
+    "final_state": "COMPLETED"
+  }
+]
