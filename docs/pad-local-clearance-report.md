@@ -4,7 +4,32 @@ KiCad pad and footprint copper-clearance overrides are absent from exported DSN 
 
 The browser resolves pad then footprint values. KiCad file versions through 20240201 treat zero as inheritance; later formats preserve explicit zero. Finite negative original values are accepted and do not lower existing minima. Derived metadata floors are nonnegative. Sources: [KiCad parser](https://github.com/KiCad/kicad-source-mirror/blob/10.0.4/pcbnew/pcb_io/kicad_sexpr/pcb_io_kicad_sexpr_parser.cpp), [rule engine](https://github.com/KiCad/kicad-source-mirror/blob/10.0.4/pcbnew/drc/drc_engine.cpp), [pad inheritance](https://github.com/KiCad/kicad-source-mirror/blob/10.0.4/pcbnew/pad.cpp).
 
-## Validation against merged main d84ac9e
+## Final reference-mapping validation
+
+The metadata generator now maps raw-board references to the stripped board's references using unique footprint UUIDs and matching footprint position/orientation/layer and pad number/position/size/shape/layers. Ambiguous or unverified records remain unchanged and are reported. The integrated generator reproduced **all 751 measured board JSON files exactly**. This corrects 2,224 records on 142 boards; 17 of those boards have local copper overrides. Five failing-first mapping tests cover ambiguity, missing identities, coincident pads, unmatched records and preserved field values. Fresh pre-commit workspace validation passed **2,586 tests, 77 ignored, zero failures**, including doctests; all five mapping tests pass. Rust/browser production sources are unchanged from the frozen full-run candidate.
+
+`quality-epyc-reference-remap-full-01` compared exact main d84ac9e, PR29 with old reference names, and PR29 with corrected references: all **2,253 KiCad referee results successful**. Same frozen executable for the last two candidates, identical project minima, 192 jobs, one routing thread, ten passes, 300-second cap. No Java scoring.
+
+| Group and baseline | Unrouted delta / improved / regressed boards | Copper delta / improved / gainers | Reported mask delta / gainers | CPU ratio |
+|---|---:|---:|---:|---:|
+| PCBench 740 vs main | −384 / 15 / 4 | −139 / 16 / 5 | −339 / 9 | 0.94485 |
+| Local 11 vs main | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 | 1.00180 |
+| PCBench 740 vs old-reference control | −360 / 15 / 0 | −24 / 5 / 1 | −365 / 9 | 0.93896 |
+| Local 11 vs old-reference control | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 | 0.99406 |
+
+**Against main, 718 pairs completed by both candidates give +1 unrouted / −140 copper violations.** Against the old-reference control, 719 completed pairs give −3 unrouted / −21 copper, with no completed connectivity or copper regressions. Sensors removes 13 copper errors while staying connected; OpenHardwareExG Shield removes three unrouted connections and eight copper errors. The only copper gainer against the old-reference control is deadline-affected chess (+3). Large raw connection differences remain dominated by deadlines; no 384-connection or 5.5% speed improvement is established.
+
+The control/remapped comparison has 708 byte-identical completed outputs, with zero U/copper difference but −404 reported mask. Eleven outputs change, giving −3 U/−21 copper/−7 mask. Against main, 677 completed outputs are identical (−396 reported mask) and 41 change (+1 U/−140 copper/−7 mask). This referee variability prevents claiming the large mask reduction as a routing gain.
+
+PCBench completed boards rise 709→717 and connected boards 588→589 against main; median RSS 12.1MB both, maximum 370.2→370.9MB, total CPU 34711.00→32796.69s. Local completed/connected remain 10/8; median RSS 13.6MB both, maximum 76.2→74.0MB, CPU 777.07→778.47s. All boards remain included; ordinary pad-floor connection regressions discussed below still matter. This remains an accuracy/connectivity trade.
+
+The [generated benchmark summary](routing-quality-artifacts/pad-local-clearance/reference-remap/pr-summary.md) retains the failed regression gate and per-board losses; no no-regression claim is made.
+
+[Main comparison](routing-quality-artifacts/pad-local-clearance/reference-remap/vs-main.json), [old-reference comparison](routing-quality-artifacts/pad-local-clearance/reference-remap/vs-control.json), [output identities](routing-quality-artifacts/pad-local-clearance/reference-remap/identities.json), [physical-match census](routing-quality-artifacts/pad-local-clearance/reference-remap/physical-match-census.json), and [measured metadata hashes](routing-quality-artifacts/pad-local-clearance/reference-remap/measured-input-hashes.json) are retained. Results are backed up locally and on workbench.
+
+A separate eight-board image/pad interaction pilot completed all 32 KiCad checks. It preserves the independent saiboard and Sensors fixes and removes serial_gw's image-only connection regression. It does **not** remove esp32/balena mounting-hole errors: those pads are exported as DSN keepouts and remain unmatched by pin metadata. Combined connectivity also worsens on minimal_node. No combined full-corpus benefit is inferred from the pilot; that measurement is queued separately. The pin-only loader limitation is explicitly retained rather than hidden by the source census.
+
+## Earlier validation against merged main d84ac9e
 
 `quality-epyc-pad-post-main-01` ran main, same-binary control and pad-copper on all 751 boards: all 2,253 KiCad referee results succeeded. Main was verified unchanged at d84ac9e after the run. Every candidate receives the same project minimum-clearance files; only pad-copper receives the new local pad rules. Settings: 192 jobs, one routing thread, ten passes, 300-second timeout. Results are backed up locally and on workbench.
 

@@ -3,6 +3,7 @@ import argparse
 import json
 from pathlib import Path
 import pcbnew
+from reference_mapping import remap_board_references
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--corpus', type=Path, required=True)
@@ -44,8 +45,14 @@ for source in sorted(args.mask_metadata.glob('*.json')):
                 record['copper_um'] = max(record.get('copper_um', 0), value / 1000)
             detail['coincident_records'] = len(matches)
             changes.append(detail)
+    stripped = pcbnew.LoadBoard(str(args.corpus / entry['kicad']['stripped']))
+    records, reference_changes, unresolved_references, rejected_geometry = remap_board_references(
+        records, board, stripped)
     (args.out / source.name).write_text(json.dumps(records, indent=2))
-    summary.append({'board': board_id, 'changed_pads': changes, 'unmatched': unmatched})
+    summary.append({'board': board_id, 'changed_pads': changes, 'unmatched': unmatched,
+                    'reference_changes': reference_changes,
+                    'unresolved_references': unresolved_references,
+                    'rejected_geometry': rejected_geometry})
     print(board_id, len(changes), 'unmatched', len(unmatched), flush=True)
 (args.out / 'census.json').write_text(json.dumps(summary, indent=2))
 assert not any(r['unmatched'] for r in summary), 'Resolve unmatched copper pads before benchmarking'
