@@ -1530,3 +1530,29 @@ fn the_padstack_identity_is_the_layer_span_and_the_drill_not_the_name() {
     assert_eq!(mid.name, "Rect[A]Pad_1000x1000_um#2");
     assert_eq!(drilled.name, "Rect[A]Pad_1000x1000_um#3");
 }
+
+#[test]
+fn explicit_zero_pad_drill_does_not_become_an_estimated_hole() {
+    let json = kicad_board(
+        r#""components":[{"reference":"U1","position":{"x":0,"y":0},"rotation":0,"layer":"F.Cu","pads":[{"name":"1","netName":"N","shape":"rect","size":{"x":0.8,"y":0.25},"offset":{"x":0,"y":0},"drill":0,"layers":["F.Cu"]}]}]"#,
+    );
+    let (mut board, _, _) = board_of(&json);
+    let id = board.get_pins()[0];
+    let Some(Item::Pin(pin)) = board.get_item(id) else {
+        panic!("expected pin")
+    };
+    let padstack = pin.get_padstack(&board.ctx()).unwrap();
+    assert_eq!(
+        padstack.drill_radius(),
+        0.0,
+        "an explicit zero drill is known to be absent"
+    );
+    let tree = board.default_tree_id();
+    let before = board.item_tree_shape(id, tree, 0);
+    board.apply_hole_clearance_override(250.0);
+    assert_eq!(
+        board.item_tree_shape(id, tree, 0),
+        before,
+        "hole rules must not inflate an undrilled pad"
+    );
+}

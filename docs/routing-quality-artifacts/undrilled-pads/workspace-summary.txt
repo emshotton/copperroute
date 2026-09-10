@@ -1,0 +1,8 @@
+cargo test --workspace
+Isolated fix/native-undrilled-pads source based on f91d8496
+Terminal exit 0
+2618 harness checks passed; 0 failed; 77 ignored
+Failing-first test: explicit_zero_pad_drill_does_not_become_an_estimated_hole
+Before: inferred drill radius 56.25 instead of explicit zero
+After: test passes, including unchanged tree shape after hole-clearance override
+Full red/green/workspace logs retained in server/results/undrilled-native-01/provenance on workbench

@@ -826,7 +826,7 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
                         .library
                         .padstacks
                         .set_round_rect_radius(id, round_rect_radius);
-                    if is_drillable {
+                    if is_drillable || start_layer == end_layer {
                         board.library.padstacks.set_drill(
                             id,
                             pad.drill * scale_factor,
