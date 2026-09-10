@@ -129,3 +129,92 @@ fn it_rejects_an_unequal_circular_pad() {
     ));
     assert_eq!(error, "Circular pads must have equal dimensions.");
 }
+
+#[test]
+fn it_prefers_the_pads_own_solder_mask_margin_over_the_footprints() {
+    let (components, _) = read(concat!(
+        r#"(setup (pad_to_mask_clearance 0.3))"#,
+        r#"(footprint "R" (layer "F.Cu") (at 0 0) (solder_mask_margin 0.2)"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (solder_mask_margin 0.05)"#,
+        r#" (layers "F.Cu" "F.Mask") (net 1 "GND")))"#,
+    ));
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    let expansion = pad.solderMaskExpansion.as_ref().expect("an expansion map");
+    assert!(
+        (expansion["F.Mask"] - 0.05).abs() < 1e-9,
+        "got {expansion:?}"
+    );
+}
+
+#[test]
+fn it_prefers_the_footprints_solder_mask_margin_over_the_boards() {
+    let (components, _) = read(concat!(
+        r#"(setup (pad_to_mask_clearance 0.3))"#,
+        r#"(footprint "R" (layer "F.Cu") (at 0 0) (solder_mask_margin 0.15)"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu" "F.Mask") (net 1 "GND")))"#,
+    ));
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    let expansion = pad.solderMaskExpansion.as_ref().expect("an expansion map");
+    assert!(
+        (expansion["F.Mask"] - 0.15).abs() < 1e-9,
+        "got {expansion:?}"
+    );
+}
+
+#[test]
+fn it_falls_back_to_the_boards_pad_to_mask_clearance() {
+    let (components, _) = read(concat!(
+        r#"(setup (pad_to_mask_clearance 0.1))"#,
+        r#"(footprint "R" (layer "F.Cu") (at 0 0)"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu" "F.Mask") (net 1 "GND")))"#,
+    ));
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    let expansion = pad.solderMaskExpansion.as_ref().expect("an expansion map");
+    assert!(
+        (expansion["F.Mask"] - 0.1).abs() < 1e-9,
+        "got {expansion:?}"
+    );
+}
+
+#[test]
+fn it_gives_a_pad_with_no_mask_layer_an_empty_expansion_map() {
+    let (components, _) = read(concat!(
+        r#"(setup (pad_to_mask_clearance 0.2))"#,
+        r#"(footprint "R" (layer "F.Cu") (at 0 0)"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
+    ));
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    let expansion = pad.solderMaskExpansion.as_ref().expect("an expansion map");
+    assert!(expansion.is_empty(), "got {expansion:?}");
+}
+
+#[test]
+fn it_expands_a_wildcard_mask_layer_to_both_sides() {
+    let (components, _) = read(concat!(
+        r#"(setup (pad_to_mask_clearance 0.2))"#,
+        r#"(footprint "J" (layer "F.Cu") (at 0 0)"#,
+        r#" (pad "1" thru_hole circle (at 0 0) (size 1 1) (drill 0.5)"#,
+        r#" (layers "*.Cu" "*.Mask") (net 1 "GND")))"#,
+    ));
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    let expansion = pad.solderMaskExpansion.as_ref().expect("an expansion map");
+    assert_eq!(expansion.len(), 2, "got {expansion:?}");
+    assert!(
+        (expansion["F.Mask"] - 0.2).abs() < 1e-9,
+        "got {expansion:?}"
+    );
+    assert!(
+        (expansion["B.Mask"] - 0.2).abs() < 1e-9,
+        "got {expansion:?}"
+    );
+}
+
+#[test]
+fn it_takes_allow_solder_mask_bridges_from_the_footprints_attr_not_the_pad() {
+    let (components, _) = read(concat!(
+        r#"(footprint "R" (layer "F.Cu") (at 0 0) (attr smd allow_soldermask_bridges)"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
+    ));
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    assert!(pad.allowSolderMaskBridges);
+}

@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::f64::consts::PI;
 
 use super::PcbError;
@@ -202,6 +203,27 @@ fn primitive_anchor(pad: &Node) -> Option<String> {
         .map(str::to_string)
 }
 
+const MASK_LAYERS: [&str; 2] = ["F.Mask", "B.Mask"];
+
+fn has_atom(values: &[Value], atom: &str) -> bool {
+    values
+        .iter()
+        .any(|value| matches!(value, Value::Atom(name) if name == atom))
+}
+
+fn solder_mask_expansion(raw_layers: &[Value], margin: f64) -> BTreeMap<String, f64> {
+    MASK_LAYERS
+        .into_iter()
+        .filter(|&layer| has_atom(raw_layers, layer) || has_atom(raw_layers, "*.Mask"))
+        .map(|layer| (layer.to_string(), margin))
+        .collect()
+}
+
+fn allows_solder_mask_bridges(fp: &Node) -> bool {
+    fp.child("attr")
+        .is_some_and(|attr| has_atom(&attr.values, "allow_soldermask_bridges"))
+}
+
 pub fn read_components(
     root: &Node,
     layers: &Layers,
@@ -210,6 +232,11 @@ pub fn read_components(
 ) -> Result<(Vec<ComponentJson>, Vec<ConductionAreaJson>), PcbError> {
     let mut components = Vec::new();
     let mut conduction_areas = Vec::new();
+
+    let board_mask_margin = match root.child("setup") {
+        Some(setup) => numeric_value(setup, "pad_to_mask_clearance", 0.0)?,
+        None => 0.0,
+    };
 
     for (fi, fp) in root
         .children("footprint")
@@ -252,6 +279,7 @@ pub fn read_components(
         } * PI
             / 180.0;
         let reference = footprint_reference(fp, fi);
+        let allow_solder_mask_bridges = allows_solder_mask_bridges(fp);
 
         for (pi, pad) in fp.children("pad").enumerate() {
             let pad_type = pad.atom(2);
@@ -368,10 +396,15 @@ pub fn read_components(
                 }
                 None => None,
             };
+            let mask_margin = numeric_value(
+                pad,
+                "solder_mask_margin",
+                numeric_value(fp, "solder_mask_margin", board_mask_margin)?,
+            )?;
 
             let pad_json = PadJson {
-                allowSolderMaskBridges: false,
-                solderMaskExpansion: None,
+                allowSolderMaskBridges: allow_solder_mask_bridges,
+                solderMaskExpansion: Some(solder_mask_expansion(raw_layers, mask_margin)),
                 name: Some(pi.to_string()),
                 netName: Some(nets.name_of(pad)?),
                 shape: Some(shape.to_string()),
