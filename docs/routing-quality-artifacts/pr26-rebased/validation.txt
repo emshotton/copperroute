@@ -1,0 +1,4 @@
+cargo test --workspace: exit 0; 2609 passing checks including child harnesses; 77 ignored; 0 failed.
+Original fanout regression passes. All 602 source/data/test hashes match the evaluated source.
+All 1502 KiCad referees ok. 43 initial referee failures retried without rerouting; original referee files retained.
+Full run files backed up to /home/em/copperroute-epyc-results/results/quality-epyc-pr26-rebased-full-01; checksum dry-run found no differences after final sync. Reports also archived on laptop.

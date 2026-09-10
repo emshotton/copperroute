@@ -1,0 +1,566 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-10T06:40:37",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "PTH inside courtyard",
+            "key": "pth_inside_courtyard"
+        },
+        {
+            "description": "NPTH inside courtyard",
+            "key": "npth_inside_courtyard"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning"
+    ],
+    "kicad_version": "10.0.4",
+    "schematic_parity": [],
+    "source": "routed.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Arc [/led_N] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "39f5a7f9-012a-4651-a69a-65ae5b588496"
+                },
+                {
+                    "description": "Track [/led_N] on F.Cu, length 0.4503 mm",
+                    "pos": {
+                        "x": 45.8887,
+                        "y": 111.2533
+                    },
+                    "uuid": "86cafcd1-3f79-484c-87b2-464da132d002"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Via [Net-(D3-K)] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 97.2743,
+                        "y": 155.2098
+                    },
+                    "uuid": "e82b157a-7579-43d0-b5e2-e877acc020c9"
+                },
+                {
+                    "description": "Arc [Net-(D3-K)] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "4ed4fdb9-0247-4996-b3dc-32ba7123c6d7"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [Net-(D3-K)] of D3 on F.Cu",
+                    "pos": {
+                        "x": 152.464478,
+                        "y": 123.572608
+                    },
+                    "uuid": "22b142c8-b534-4fc4-80c7-79c35dc47b66"
+                },
+                {
+                    "description": "Arc [Net-(D3-K)] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "4ed4fdb9-0247-4996-b3dc-32ba7123c6d7"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [Net-(D2-K)] on F.Cu, length 2.2052 mm",
+                    "pos": {
+                        "x": 138.6318,
+                        "y": 57.3878
+                    },
+                    "uuid": "deb8e55a-3163-4922-a28a-5a1b7c1080e2"
+                },
+                {
+                    "description": "Arc [Net-(D2-K)] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "f02e0bd1-9fd1-4066-98af-bc64666a0252"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Arc [Net-(D2-K)] on F.Cu",
+                    "pos": {
+                        "x": 100.0,
+                        "y": 100.0
+                    },
+                    "uuid": "f02e0bd1-9fd1-4066-98af-bc64666a0252"
+                },
+                {
+                    "description": "Pad 2 [Net-(D2-K)] of D3 on F.Cu",
+                    "pos": {
+                        "x": 153.549522,
+                        "y": 120.991392
+                    },
+                    "uuid": "47c8bfab-1b00-491b-a9f8-9c6ce4bbbef6"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Hole size out of range (board setup constraints min hole 0.5080 mm; actual 0.4000 mm)",
+            "items": [
+                {
+                    "description": "Via [Net-(D1-K)] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 134.6725,
+                        "y": 56.8287
+                    },
+                    "uuid": "39b6de95-0a21-4170-bf4b-d829c85a533c"
+                }
+            ],
+            "severity": "error",
+            "type": "drill_out_of_range"
+        },
+        {
+            "description": "Hole size out of range (board setup constraints min hole 0.5080 mm; actual 0.4000 mm)",
+            "items": [
+                {
+                    "description": "Via [Net-(D1-K)] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 73.0691,
+                        "y": 50.4842
+                    },
+                    "uuid": "6e553634-c78d-4038-b8f7-820f03fa0fb6"
+                }
+            ],
+            "severity": "error",
+            "type": "drill_out_of_range"
+        },
+        {
+            "description": "Hole size out of range (board setup constraints min hole 0.5080 mm; actual 0.4000 mm)",
+            "items": [
+                {
+                    "description": "Via [/led_P] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 69.6755,
+                        "y": 53.917
+                    },
+                    "uuid": "262cf440-2598-4155-bce8-16022a3efbdc"
+                }
+            ],
+            "severity": "error",
+            "type": "drill_out_of_range"
+        },
+        {
+            "description": "Hole size out of range (board setup constraints min hole 0.5080 mm; actual 0.4000 mm)",
+            "items": [
+                {
+                    "description": "Via [/led_N] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 50.7425,
+                        "y": 110.9349
+                    },
+                    "uuid": "12405616-6cc5-4377-a7ab-6830084db6fc"
+                }
+            ],
+            "severity": "error",
+            "type": "drill_out_of_range"
+        },
+        {
+            "description": "Hole size out of range (board setup constraints min hole 0.5080 mm; actual 0.4000 mm)",
+            "items": [
+                {
+                    "description": "Via [/led_N] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 50.7425,
+                        "y": 72.8762
+                    },
+                    "uuid": "4c76098e-8a57-4b6e-8f3d-9d58e2a52d0f"
+                }
+            ],
+            "severity": "error",
+            "type": "drill_out_of_range"
+        },
+        {
+            "description": "Hole size out of range (board setup constraints min hole 0.5080 mm; actual 0.4000 mm)",
+            "items": [
+                {
+                    "description": "Via [Net-(D4-K)] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 93.3815,
+                        "y": 154.9755
+                    },
+                    "uuid": "6a2509f8-171f-4598-9148-d55aa95bf842"
+                }
+            ],
+            "severity": "error",
+            "type": "drill_out_of_range"
+        },
+        {
+            "description": "Hole size out of range (board setup constraints min hole 0.5080 mm; actual 0.4000 mm)",
+            "items": [
+                {
+                    "description": "Via [Net-(D4-K)] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 46.5595,
+                        "y": 114.493
+                    },
+                    "uuid": "a9930b41-28d0-47ef-8ace-c6365c7a4b22"
+                }
+            ],
+            "severity": "error",
+            "type": "drill_out_of_range"
+        },
+        {
+            "description": "Hole size out of range (board setup constraints min hole 0.5080 mm; actual 0.4000 mm)",
+            "items": [
+                {
+                    "description": "Via [Net-(D3-K)] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 97.2743,
+                        "y": 155.2098
+                    },
+                    "uuid": "e82b157a-7579-43d0-b5e2-e877acc020c9"
+                }
+            ],
+            "severity": "error",
+            "type": "drill_out_of_range"
+        },
+        {
+            "description": "Hole size out of range (board setup constraints min hole 0.5080 mm; actual 0.4000 mm)",
+            "items": [
+                {
+                    "description": "Via [Net-(D2-K)] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 140.1869,
+                        "y": 55.7185
+                    },
+                    "uuid": "d8197e1e-b0ce-4f51-9629-f87199cf141a"
+                }
+            ],
+            "severity": "error",
+            "type": "drill_out_of_range"
+        },
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [Net-(D1-K)] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 134.6725,
+                        "y": 56.8287
+                    },
+                    "uuid": "39b6de95-0a21-4170-bf4b-d829c85a533c"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        },
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [Net-(D1-K)] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 73.0691,
+                        "y": 50.4842
+                    },
+                    "uuid": "6e553634-c78d-4038-b8f7-820f03fa0fb6"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        },
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [/led_P] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 69.6755,
+                        "y": 53.917
+                    },
+                    "uuid": "262cf440-2598-4155-bce8-16022a3efbdc"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        },
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [Net-(D4-K)] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 93.3815,
+                        "y": 154.9755
+                    },
+                    "uuid": "6a2509f8-171f-4598-9148-d55aa95bf842"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        },
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [Net-(D4-K)] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 46.5595,
+                        "y": 114.493
+                    },
+                    "uuid": "a9930b41-28d0-47ef-8ace-c6365c7a4b22"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        },
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [Net-(D3-K)] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 97.2743,
+                        "y": 155.2098
+                    },
+                    "uuid": "e82b157a-7579-43d0-b5e2-e877acc020c9"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        },
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [Net-(D2-K)] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 140.1869,
+                        "y": 55.7185
+                    },
+                    "uuid": "d8197e1e-b0ce-4f51-9629-f87199cf141a"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint D1",
+                    "pos": {
+                        "x": 70.213,
+                        "y": 50.817
+                    },
+                    "uuid": "0e79ab29-5d8b-4a42-b4f0-1327eb02b221"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'MountingHole'",
+            "items": [
+                {
+                    "description": "Footprint H5",
+                    "pos": {
+                        "x": 43.117,
+                        "y": 91.6
+                    },
+                    "uuid": "1eaceb12-2274-4dc1-a9c1-09c8cb5b848d"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint D5",
+                    "pos": {
+                        "x": 44.019,
+                        "y": 113.13
+                    },
+                    "uuid": "3e461d53-f96b-4789-99e7-acc31965e5e0"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'MountingHole'",
+            "items": [
+                {
+                    "description": "Footprint H2",
+                    "pos": {
+                        "x": 150.957,
+                        "y": 73.36
+                    },
+                    "uuid": "3e6baece-7fa9-4e96-a64d-867f2e801b24"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'MountingHole'",
+            "items": [
+                {
+                    "description": "Footprint H3",
+                    "pos": {
+                        "x": 141.082,
+                        "y": 140.231
+                    },
+                    "uuid": "502f2ffa-bf00-4295-a152-dd7e7251843a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint D4",
+                    "pos": {
+                        "x": 95.189,
+                        "y": 157.298
+                    },
+                    "uuid": "525ea9b3-c9bc-4c9e-93ca-39feb238984a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint D2",
+                    "pos": {
+                        "x": 137.572,
+                        "y": 56.473
+                    },
+                    "uuid": "5a85b65f-2a1d-454e-9519-b1210b6f8918"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'MountingHole'",
+            "items": [
+                {
+                    "description": "Footprint H4",
+                    "pos": {
+                        "x": 74.433,
+                        "y": 151.503
+                    },
+                    "uuid": "85338e6c-03ef-4084-833e-1d0d9a20dc6a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint J1",
+                    "pos": {
+                        "x": 52.107,
+                        "y": 68.18
+                    },
+                    "uuid": "d286deca-68ab-46d7-bf53-dfcfde4bdf9a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'lib'",
+            "items": [
+                {
+                    "description": "Footprint D3",
+                    "pos": {
+                        "x": 153.007,
+                        "y": 122.282
+                    },
+                    "uuid": "f31be4f1-b809-41f1-a17a-038bee12d244"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'MountingHole'",
+            "items": [
+                {
+                    "description": "Footprint H1",
+                    "pos": {
+                        "x": 90.411,
+                        "y": 43.305
+                    },
+                    "uuid": "f7dc33ec-e656-4acc-8f97-028cbd6a92f2"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        }
+    ]
+}
