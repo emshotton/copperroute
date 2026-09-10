@@ -14,6 +14,58 @@ pub const HOLE_EDGE_CLEARANCE_CLASS_NAME: &str = "hole_edge";
 pub const DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM: f64 = 500.0;
 
 impl Board {
+    pub fn raise_copper_clearances_to(&mut self, minimum: i32) -> bool {
+        if minimum <= 0 {
+            return false;
+        }
+        let mut copper_classes = std::collections::BTreeSet::new();
+        for class in self.rules.net_classes.iter() {
+            copper_classes.insert(class.get_trace_clearance_class());
+            for kind in [
+                ItemClass::Trace,
+                ItemClass::Via,
+                ItemClass::Pin,
+                ItemClass::Smd,
+                ItemClass::Area,
+            ] {
+                copper_classes.insert(class.default_item_clearance_classes.get(kind));
+            }
+        }
+        for via in self.rules.via_infos.iter() {
+            copper_classes.insert(via.get_clearance_class_index());
+        }
+        for item in self.items.values() {
+            if matches!(
+                item,
+                Item::Trace(_) | Item::Via(_) | Item::Pin(_) | Item::ConductionArea(_)
+            ) {
+                copper_classes.insert(item.clearance_class());
+            }
+        }
+        copper_classes.remove(&0);
+        let matrix = &mut self.rules.clearance_matrix;
+        let mut changed = false;
+        for &a in &copper_classes {
+            for &b in &copper_classes {
+                for layer in 0..matrix.get_layer_count() {
+                    if matrix.get_value(a, b, layer, false) < minimum {
+                        matrix.set_value(a, b, layer, minimum);
+                        changed = true;
+                    }
+                }
+            }
+        }
+        if changed {
+            let mut items = std::mem::take(&mut self.items);
+            let ctx = item_ctx!(self);
+            let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
+            self.trees.clearance_value_changed(&mut refs, &ctx);
+            drop(refs);
+            self.items = items;
+        }
+        changed
+    }
+
     pub fn raise_solder_mask_clearances(&mut self) -> bool {
         let clearance = self
             .rules

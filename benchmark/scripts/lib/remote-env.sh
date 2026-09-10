@@ -58,14 +58,14 @@ load_dotenv() {
 # `kicad-python` invocation (including ones running concurrently in different worker threads)
 # finds $DISPLAY already set and skips its own fallback entirely, so only one Xvfb server
 # ever exists for the whole `bench corpus`/`bench run` invocation -- no race. Harmless
-# (and unused) for `bench run`, which doesn't need a display.
+# also required for `bench run` when importing routed sessions for KiCad scoring.
 #
 # Deliberately nothing here about HOME/XDG_*/APPDATA: freerouting's persisted
 # freerouting.json settings-leak isolation is done
-# per cell, in bench.runner.run_cell/bench.referee.java_drc -- each candidate/referee
+# per cell, in bench.runner.run_cell -- each candidate
 # invocation gets its own HOME under its own results/ cell dir -- not via a shared override
 # here. A single HOME exported for the whole remote job would defeat the point: every
-# candidate and referee invocation in the job would collide on the same freerouting.json again.
+# candidate invocation in the job would collide on the same freerouting.json again.
 #
 # The nix package set and the two paths below (GNU time, the kicad-python wrapper) are host
 # layout, not code -- callers control them via $BENCH_REMOTE_NIX_PACKAGES/$BENCH_REMOTE_TIME/
