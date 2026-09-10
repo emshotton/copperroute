@@ -224,6 +224,20 @@ fn allows_solder_mask_bridges(fp: &Node) -> bool {
         .is_some_and(|attr| has_atom(&attr.values, "allow_soldermask_bridges"))
 }
 
+const CLEARANCE_ZERO_OVERRIDE_VERSION: f64 = 20_240_201.0;
+
+fn local_clearance(node: &Node, version: f64) -> Result<Option<f64>, PcbError> {
+    let Some(field) = node.child("clearance") else {
+        return Ok(None);
+    };
+    let value = number(field.atom(1).unwrap_or(""))?;
+    if value == 0.0 && version <= CLEARANCE_ZERO_OVERRIDE_VERSION {
+        Ok(None)
+    } else {
+        Ok(Some(value))
+    }
+}
+
 pub fn read_components(
     root: &Node,
     layers: &Layers,
@@ -237,6 +251,7 @@ pub fn read_components(
         Some(setup) => numeric_value(setup, "pad_to_mask_clearance", 0.0)?,
         None => 0.0,
     };
+    let version = root.number("version").unwrap_or(0.0);
 
     for (fi, fp) in root
         .children("footprint")
@@ -407,8 +422,15 @@ pub fn read_components(
                 "solder_mask_margin",
                 numeric_value(fp, "solder_mask_margin", board_mask_margin)?,
             )?;
+            let copper_clearance = match local_clearance(pad, version)? {
+                Some(value) => Some(value),
+                None => local_clearance(fp, version)?,
+            };
 
             let pad_json = PadJson {
+                sourceFootprint: Some(fi.to_string()),
+                sourcePadNumber: Some(pad.atom(1).unwrap_or("undefined").to_string()),
+                copperClearance: copper_clearance,
                 allowSolderMaskBridges: allow_solder_mask_bridges,
                 solderMaskExpansion: Some(solder_mask_expansion(raw_layers, mask_margin)),
                 name: Some(pi.to_string()),
