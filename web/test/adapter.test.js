@@ -385,3 +385,22 @@ test("accepts a curved track on a net that is being ripped up", () => {
   assert.equal(pads[2].allowSolderMaskBridges, false);
   assert.deepEqual(pads[0].solderMaskExpansion, {"F.Mask": 0, "B.Mask": 0});
 });
+
+test("local copper clearance inherits with the file version's zero semantics", () => {
+  const inherited = source.replace("(at 105 105)", "(at 105 105) (clearance 0.3)")
+    .replace('(pad "1" thru_hole circle', '(pad "1" thru_hole circle (clearance 0)');
+  const oldPads = load(inherited).board.components.map(c => c.pads[0]);
+  assert.equal(oldPads[0].copperClearance, 0.3);
+  assert.equal(oldPads[1].copperClearance, 0.3);
+  assert.equal(oldPads[2].copperClearance, undefined);
+  const newPads = load(inherited.replace("20240108", "20241229")).board.components.map(c => c.pads[0]);
+  assert.equal(newPads[0].copperClearance, 0);
+  assert.equal(newPads[1].copperClearance, 0.3);
+  const own = load(inherited.replace("(clearance 0)", "(clearance 0.4)")).board.components[0].pads[0];
+  assert.equal(own.copperClearance, 0.4);
+});
+
+ test("negative local copper clearance remains a finite override", () => {
+  const text = source.replace('(pad "1" thru_hole circle', '(pad "1" thru_hole circle (clearance -0.1)');
+  assert.equal(load(text).board.components[0].pads[0].copperClearance, -0.1);
+});

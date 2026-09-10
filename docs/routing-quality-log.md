@@ -3419,6 +3419,53 @@ Full run quality-epyc-mask-review-01:751 boards per candidate, all KiCad referee
 
 Controlled programming-interface preservation pilot completed all3 KiCad referees: stripped7U/0Cu/32mask; identical SES with223 original copper artwork tracks restored7U/26Cu/0mask; supplying223 actual copper-outline obstacles before routing plus preserved referee3U/0Cu/0mask. Confirms this input-loss mechanism can be resolved for this board. No corpus changes or global improvement claim. Results and scripts retained in PR25 artifacts; independent relay mechanism remains open.
 
+### Pad-local copper floors: native and metadata implementation
+
+Observed named-pad native and DSN metadata tests failing without the change, then passing restored. Copper floors are independent of the mask gap cap and round upward; existing larger clearances remain. Browser pad/footprint inheritance uses KiCad's format-version zero semantics. Initial workspace2585passed/77ignored; corpus census then revealed valid negative local overrides, so withdrew the incorrect rejection assumption, observed replacement tests fail, and fixed native/browser handling. All49 web tests and three native clearance tests pass. Full updated workspace suite is live at /tmp/quality-pad-local-workspace-final.log (session25710); no commit.
+
+Census using KiCad10.0.4 completed751boards,78with overrides,1557annotated source pads,zero unmatched. Three boards use coincident pads: AVR-ISP pogo, soil-moisture-sensor and USB FT245R. Sidecar generation assigns their maximum local clearance to coincident records; conservative scope and possible added routing difficulty are documented. Old metadata remains frozen. New metadata reports/pad-local-copper-metadata-03, census pulled locally.
+
+Frozen source uploaded from c461555 archive plus production diff; all three relevant Rust file hashes match local. Driver501303 queues release build and quality-epyc-pad-copper-pilot-01 after corridor regression driver494648 exits. Five matched boards include USB FT245R to measure duplicate-pad effects. No new-code corpus quality claim yet.
+
+Updated full workspace completed successfully:2,584 passed,77 ignored,zero failures including doctests; session25710 exited0. Log /tmp/quality-pad-local-workspace-final.log. No concurrent shared-target compilation occurred. Frozen remote hashes still match. Pilot driver501303 remains queued behind corridor regression driver494648 (confirmed live); no rerun or restart.
+
+### Uncapped pad copper pilot completed; full corpus queued
+
+quality-epyc-pad-copper-pilot-01,5PCBench boards×2candidates,all completed and KiCadok.49→55U (+6),0improved/2regressed;59→13Cu (−46),2improved/1gainer;412→383reportedmask (−29),1improved/0gainers. CPU428.13→508.01s ratio1.18658; medianRSS26.7→27.1MB/max66.3→375.8MB. APM and USB FT245R unchanged quality. Minimal_node1→3U/2→0Cu; azalea37→41U/45→0Cu; BLDC11Uboth/9→10Cu and228→199reportedmask. Memory and CPU increases are material pilot costs; no claim of speed or merge readiness.
+
+Full quality-epyc-pad-copper-full-01 queued with frozen main,control,pad-copper751each/192jobs/10passes/300s/one thread. Driver523176 waits for board-minimum pilot518369 to finish, preventing build overlap. Integrated unchanged-SES referee repair and detailed export; final pilot details verified on workbench and pulled locally. Local full workspace already passed2584/77ignored/0fail.
+
+### BLDC pad-local cost and width audit
+
+Pilot BLDC RSS56.3→375.8MB and CPU165.06→243.19s. Final item count1818→1793, tracks773→754, segments1233→1196, vias58→52: retaining more final routing does not explain the memory rise. Search/temporary allocation instrumentation is needed; no memory fix inferred. Both candidates emit repeated unmatched thermal-pad metadata warnings (Q2.5/Q4.5), so the source-pad census's zero unmatched records does not prove every DSN pin matched. Census only validates metadata against original pads. The snapshot's matching behavior is unchanged between candidates; do not claim complete DSN rule hydration.
+
+BLDC's9→10 copper violations are entirely track_width; both reports say minimum0.2500mm, actual0.2498mm. Neither pilot candidate has clearance violations on BLDC. Pin::get_trace_neckdown_halfwidth subtracts one board unit from half the pad width, matching a possible two-unit total-width undershoot. This is a lead, not a proven per-trace attribution. Before changing it, instrument/reproduce the affected insertion and consider adding a full-pad-width attempt ahead of the existing margin-shrunk fallback, preserving options and JVM recordings with explicit divergence tests. Frozen corpus candidates unchanged.
+
+### Full uncapped pad-clearance comparison completed
+
+quality-epyc-pad-copper-full-01 all2253cells KiCadok; final details pulled locally and verified on workbench. Versus control PCBench740:4511→4222U (−289),17improved/3regressed;881→766Cu (−115),14improved/5gainers;11019→10984reportedmask (−35),6improved/9gainers;CPUratio0.94991;completed710→716,connected588both;RSSmedian12.1both/max370.9→372.3MB. Local11 unchanged U226/Cu57/mask0,completed10both/connected8both;CPUratio0.99767;RSSmedian13.5→10.6/max76.1→78.3.
+
+Both-completed719 pairs contribute+4U/−119Cu/−48reportedmask;deadline-affected32 contribute−293U/+4Cu/+13mask. Thus overall connectivity gain is deadline-sensitive; no reliable speed or deterministic connection-gain claim. Three ordinary U regressions: minimal_node+2U/−2Cu,azalea+4U/−45Cu,mppt-2420-hpx+2U/0Cu. Five copper gainers:BLDC+1,Brushless_ESC+1,decelerator+2,oled-bmp280-touch+2,real-time-chess+2. Need inspect mppt and Cu gainers, plus same-SES/metadata attribution before deciding merge trade. No outlier-concentration claim.
+
+Started clean explicit-manifest full workspace before review; /tmp/quality-pad-copper-review-clean-workspace.log. Shared target cleaned to avoid known stale cross-worktree artifacts. No concurrent local compile. Board-minimum full871369 now active after this run finished.
+
+Attribution audit: annotated71both-completed+4U/−119Cu/0mask;annotated7deadline−54U/+1Cu/+18mask;unannotated648both-completed0U/0Cu/−48mask;unannotated25deadline−239U/+3Cu/−5mask. All648unannotatedcompletedSES hashes match exactly. Mask−48 is not attributable to routing. First control uses frozen corridor-disabled binary, candidate uses pad-copper binary, so compilation effects and deadline noise cannot be separated. Queued same-binary old/new metadata run quality-epyc-pad-copper-matched-01 driver3678230 after active board-minimum871369. All751×3again,192jobs, no new build.
+
+MPPT regression7→9U/0Cuboth is associated with explicit700µm copper floors on its two fiducials FID1/FID2. Original connected/0routing DRC/3695.0475mm/274vias. No outlier exemption or board-specific bypass inferred.
+
+Clean explicit-manifest full workspace18544 completed:2584passed77ignored0failed including doctests. No shared-target artifact reuse; all crates rebuilt. Same-binary full repeat3678230 still queued behind active board-minimum871369. No pad-clearance PR yet pending the attribution repeat and honest completed-board trade report.
+
+### OLED outline regression attribution
+
+Original oled-bmp280-touch has 15 invalid_outline errors (disconnected Edge.Cuts segments/arcs), zero routing DRC and zero unconnected items; 419mm tracks/21vias. Exported DSN has a single rectangular boundary and zero keepouts, omitting its circular cutouts. Both new pad-local copper_edge_clearance errors hit the same original circle UUID578ea680 at (122.555,105.156)mm with OLED_RST tracks. Registered as confirmed original-outline/input-fidelity outlier; no exclusion or claim of repaired routing. Audit script and original/candidate reports saved locally and on the server. Together with Brushless text, this explains 3 of the first pad-full run's 8 added copper violations across five boards; it is not a majority and ordinary connectivity regressions remain. Same-binary full repeat still active (driver3678230), neckdown pilot89138 waiting.
+
+### Same-binary pad clearance repeat complete
+
+quality-epyc-pad-copper-matched-01: all 2,253 KiCad referee cells successful. Same frozen executable, old/new metadata. PC740: 4503→4044 U (−459;17 improved/3 regressed), 885→767 copper (−118;14 improved/4 gainers), 10967→11006 mask (+39;10 gainers), CPU ratio0.949785; completed710→716, connected588→589, medianRSS12.1both/max367.9→374.3MB. Local11 unchanged U226/Cu57/mask0, completed10/connected8both, CPU0.993785, RSSmedian13.6both/max66→79.1MB.
+
+719both-completed pairs repeat +4 U/−119 copper, reported mask−7. 32deadline-affected contribute−463 U/+1 copper/+46mask. Ordinary regressions repeat minimal_node+2U/−2Cu,azalea+4U/−45Cu,MPPT+2U/0Cu. Copper gainers Brushless+1 and OLED+2 are evidenced input outliers; BLDC+1 and chess+1 are deadline-affected. Outliers account for3/5addedCu this repeat versus3/8first full, but do not explain the ordinary connectivity regressions. No reliable459connection orspeed claim. Details pulled locally; attribution hashes and main report still to prepare before PR.
+
+Review preparation: same-binary completed hash audit719pairs/685identical;34changed+4U/−119Cu/0mask. All−7reportedmask lies on identical outputs. Rechecked frozen production hashes and clean workspace2584passed/77ignored/0failed including five new named tests. Main stille9d10c2. Generated main report and incremental reports retained; preparing draft PR with ordinary connectivity losses and two input outliers explicitly separated.
 ### Board-wide copper minimum: controlled input experiment
 
 Snappi-zero's KiCad project minimum is203µm; DSN default203.2µm, smd_smd50.8µm and one net class152.4µm. Controlled run quality-epyc-snappi-minimum-01 uses unchanged frozen corridor binary, with only two DSN values floored to203µm. All three cells completed and KiCad-refereed: mask-control0U/3Cu/5vias/1.91CPU; coherent0U/10Cu/3vias/1.78CPU; corrected-input coherent0U/0Cu/3vias/2.63CPU. All retain22 courtyard reports, separate from copper/mask routing metrics. Evidence supports omitted board minimum, not an outlier; no global quality claim. Details pulled locally, remote input and changes under reports/snappi-board-minimum-study.
@@ -3444,3 +3491,55 @@ Queued full quality-epyc-board-minimum-full-01, driver871369, behind currently r
 quality-epyc-board-minimum-full-01 completed 2,253 successful KiCad-refereed cells, 751 per main/control/candidate. Against control: PCBench −336 U (16 improved/0 regressed), −29 copper DRC (4 improved/1 gainer), −1 reported mask (6 gainers), CPU ratio 0.9444; local 11 unchanged quality, CPU ratio 0.9998. Of 720 both-completed pairs, 717 SES files are identical. Only Snappi, mini_ice40 and LFO change: jointly −1 U/−31 copper with no completed connectivity/copper regressions. Their +10 reported mask difference is entirely on identical SES files. Deadline-affected pairs account for −335 U/+2 copper; no reliable speed or 336-connection causal claim. Main comparison includes PR25 and fails the aggregate gate with 266 quality losses; full generated summary retained. Main rechecked at e9d10c2. Results verified mirrored to workbench and copied locally.
 
 Clean explicit-manifest precommit suite50262 exited0: 2,581 passed/77 ignored/zero failures including doctests. Correct worktree compilation paths and both new tests verified. Report and control/main comparisons included. These are ordinary project rules, not an outlier exemption.
+
+### PR29 integration with merged main
+
+Previous goal turn completed the authorized merge batch (progress). Rechecked main d84ac9e and merged it into fix/kicad-pad-local-clearance without committing. Only docs/routing-quality-log.md conflicted; both experiment histories retained. Production integration needs no conflict edits. Fresh clean workspace24668 running at /tmp/quality-pad-main-integration-workspace.log; web49passed after correcting an initial npm invocation from the repository root.
+
+Server idle after boundary run, launched driver3631690 /root/quality-epyc-pad-post-main.sh. It builds separate frozen snapshots of exact main d84ac9e and main plus the PR29 code, then runs quality-epyc-pad-post-main-01,751boards each main/control/pad-copper,192jobs10passes300s1thread. Main uses old pad metadata; control/newmetadata use the identical candidate executable. All three use identical minimal project minimum-clearance files, ensuring the newly merged project floor is exercised. New metadata is the already audited pad-local-copper-metadata-03 census. Serialized builds precede routing; integrated unchanged-SES referee repairs and detail exports. No new corpus results or merge claim.
+
+### Duplicate component metadata mismatch reproduced
+
+Fresh merged-main PR29 workspace24668 exits0:2586passed/77ignored/0failed including doctests,web49passed. No commit while new full validation is pending. Main/control/candidate full driver3631690 remains active.
+
+Boundary-regression inspection: RJW CPU board adds4hole-clearance errors against W1 NPTH1.65mm;96boards Sensors adds7Cu errors against1mm mounting pads;saiboard adds9Cu with no local overrides on inspected pads. Originals all0routingDRC/0U, ordinary designs. Groundtruth respectively7912.35mm318vias,3968.10mm140vias,5925.26mm148vias. Pad metadata includes the large rules, but 96boards old pad-local run logs three unmatched REF**.1 records. Raw has four REF** footprints; stripped renames three REF**_2/_3/_4 while preserving UUIDs/positions. Exact component matching prevents those three rules from applying. Earlier source-census zero-unmatched did not prove loader hydration; this is now a concrete counterexample, not an outlier exemption.
+
+Prepared diagnostic metadata changing only the three names via UUID correspondence and exact positions. Queued quality-epyc-duplicate-pad-pilot-01 behind currentfull;same frozen newpadbinary andprojectmetadata,old/fixedpadnames,oneboard10passes300s. No production loader relaxation or change to ongoing full inputs. Audit/script retained locally andserverreports.
+
+### Post-merge pad-clearance validation and duplicate-reference pilot
+
+quality-epyc-pad-post-main-01 completed all2253cells with KiCad statusok. Main rechecked d84ac9e. PCBench versusmain −302U(16better/3worse),−117Cu(4gainers),−14reportedmask(8gainers),CPU0.94990; local qualityunchanged,CPU1.00399. Samebinary PC −278U/−117Cu/−74mask,CPU0.95004; localCPU0.99715. Crucially34changed completedoutputs repeat +4U/−119Cu/0mask;685identical completedcontrolpairs account−98reportedmask. Main/control719completedSESallidentical. No causal302connection or5percent speedclaim. Generated gatefails13qualitylosses. Report and full comparisons refreshed; local/workbench backups verified. Fresh integration suite2586passed77ignored0failed;web49passed.
+
+Duplicate-reference pilot quality-epyc-duplicate-pad-pilot-01 finished bothKiCadok:96boards Sensors0U13Cu→0U0Cu,113→105vias,3747.9467→3834.5618mm,CPU153.67→153.08s,RSS57.6→54.7MB. OnlythreeUUID-mapped componentnameschanged;samebinary/rules. This is an ordinaryboard and a concrete metadata propagation fix, not an outlier exemption. Pilot details copied locally; production generator correction and corpus validation still pending.
+
+### Duplicate-reference correction scope and conservative mapping
+
+Previous goal turn made progress: PR29 integration b857afc pushed and report updated against d84ac9e. The full source-reference census now completes751boards, flags renamed records on166boards;17include copper floors. These are candidate matches, not validated renames:298records have multiple destination names, and legacy missing/duplicate footprint UUIDs require independent physical checks. Raw census retained.
+
+Added pure reference_mapping helper and five failing-first tests. Initial no-op produced four expected failures (duplicate reference remains wrong, ambiguity not rejected, missing UUID not rejected, unmatched not reported); implementation now5passed. No original records are mutated. The corpus adapter requires unique UUIDs on both boards, equal footprint position/orientation/layer and matching pad number/position/size/shape/layers. It preserves and reports unresolved metadata instead of guessing. Diagnostic generator driver2582866 launched to create a separate metadata-04 directory; no active benchmark inputs changed. Review generated diff and known Sensors pilot equality before any routing run. Full Rust suite required again before committing these additions.
+
+The initial geometry adapter incorrectly compared Python SWIG LSET wrappers with ==, which compares wrapper identity rather than layer contents. Sensors consequently produced0changes/387unresolved, failing the known pilot check before any routing. A direct probe showed equal pad position/size/shape and identical [0,1,13] layer lists but wrapper equalityfalse. Corrected comparison uses list(LSET.Seq()). Preserved metadata-04 as a rejected diagnostic, and launched a new separately named metadata-05 generation with verified-census output. No routing result used the rejected metadata.
+
+### Verified reference metadata full run launched
+
+Corrected layer-list geometry audit completed751boards. Validation proves only component names change, all other per-record fields/counts remain, and Sensors metadata exactly equals the successful13→0Cu pilot. Full quality-epyc-reference-remap-full-01 driver2635950 launched after image run completed,751each main/control/remapped,192jobs/1thread/10passes/300s. Main frozen d84ac9e; control/remapped same frozen PR29binary withmetadata03/05, identicalprojectfloorfiles. No concurrent release build. All referee environment set; integrated rescoring/export/details. Inputs hashed before routing.
+
+### Full reference remap result
+
+quality-epyc-reference-remap-full-01 completed2253KiCadok. Against samebinary padcontrol, PC740−360U(15better/0worse),−24Cu(5better/1gainer),−365reportedmask(10better/9gainers),CPU0.938956;local11unchangedquality,CPU0.994062. Completed719pairs:708identical0U0Cu/−404reportedmask;11changed−3U/−21Cu/−7mask. Only two completedboards change U/Cu: Sensors0U/−13Cu;OpenHardwareExG Shield−3U/−8Cu. No completedconnectivity orcopperloss;chess+3Cu isdeadlineaffected. No360connectionor6percent speedclaim.
+
+Againstmain d84ac9e:PC−384U(15better/4worse),−139Cu(16better/5gainers),−339mask(9gainers),CPU0.94485;localqualityunchangedCPU1.001802. Completed718pairs677identical0U0Cu/−396mask and41changed+1U/−140Cu/−7mask. Thus metadata correction improves PR29's repeatable trade from+4U/−119Cu to+1U/−140Cu. Main/control again reproduce+4U/−119Cu on34changed completedoutputs. Results pulledlocally;workbenchcopy underway. Referee variability onidenticaloutput dominates reportedmaskdifferences. Next: integrate verified metadata mapping into reproducible generator, refreshPR29 report, and inspect combinedimagepilot beforemerging.
+
+### Reference mapping integrated into generator
+
+Refactored the exact measured physical-match adapter into remap_board_references in reference_mapping.py and invoked it after source copper annotation in generate-metadata.py. Unresolved names and rejected geometry remain explicitly included in the census. Five mapping tests pass; scripts compile. Launched reviewed generator driver372050 into a separate output directory to compare all751files with the measured metadata05; no rerouting needed if exact equivalence is established. Validation still pending while generator runs; no commit.
+
+Reviewed generator verification completed: all751generated board JSONs equal the measured metadata05 exactly (zero mismatches). This validates the refactor against the actual full-run inputs. Source production Rust remains unchanged from the measured PR29 build.
+
+### Combined pilot and updated pad report
+
+Eight-board quality-epyc-image-pad-pilot-01 completed32KiCadok,allroutesCOMPLETED. Totals main9U63Cu,images18U46Cu,pads11U20Cu,combined15U5Cu. Selectedregressionboards,notrepresentativecorpus. Combined removesserial_gw image-only+2U and retainsSaiboard17→0Cu/Sensors17→0Cu, but minimal_node1→4U andPi1541io6→7U remain. Esp32main0U1Cu→combined1U2Cu andbalena0U2Cu→0U3Cu persist. Their unmatched NPTHmetadata is a distinct representation limitation: DSN mountingholes are keepouts,while metadata loader iteratespins only. Existing floor values therefore were not enough; do not claimlocalrulesfixtheseerrors.
+
+Queued full quality-epyc-image-pad-full-01 driver389871 behindcorridorterminalpilot382532:main,pads,combined751each,samefrozenpilotbinariesandmetadata,192jobs10passes300s1thread. No builds overlapactive measurements. Resultsbackups active. PR29finalreport updatedwithreference-remapfullcomparisons,generatorverified751exactinputs,mechanicalpadlimitation. Fresh padprecommit workspace41293 running before commit; generated report extracted,gatefailure retained.
+
+Fresh pad-remap precommit workspace41293 exited0:2586passed77ignored0failed including doctests. Allfive mappingtests pass. Refactored helper formatting preserves the exact Python AST; all751 generatedinputs already verified identical to measuredmetadata05. Gitdiff confirms no crates/webchanges from measuredb857afc. Ready to publish the incremental reference mapping and updated PR29 report: completed versusmain+1U/−140Cu; remaining NPTHkeepout gap explicit.
