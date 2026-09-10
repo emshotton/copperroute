@@ -26,7 +26,7 @@ accepts input and does nothing is worse than an absent one.
 Routed corpus boards fail `kicad-cli` with `solder_mask_bridge` errors. The
 cause is measured in `docs/solder-mask-bridge-investigation.md`: the keepout a
 foreign net must respect around a pad is
-`max(net_class_clearance, pad_to_mask_clearance, solder_mask_to_copper_clearance)`,
+`max(net_class_clearance, pad_to_mask_clearance + solder_mask_to_copper_clearance)`,
 and the router enforces only the first term. The two mask terms live in the
 `.kicad_pcb` `(setup)` block. Neither a Specctra DSN nor a `.kicad_pro` carries
 them, so no data path reaches the router at all. This stage builds that path,
