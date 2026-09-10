@@ -483,3 +483,29 @@ test("accepts legacy copper layer names identified by their declared type", () =
   );
   assert.deepEqual(board.components[0].pads[0].layers, ["TOP"]);
 });
+
+test("rejects a top-level copper object on a Cu-suffixed layer absent from the copper table", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(gr_circle (center 1 1) (end 2 1) (layer "In1.Cu"))',
+  );
+  assert.throws(() => load(text), /Unsupported copper object: gr_circle/);
+});
+
+test("rejects copper text on a Cu-suffixed layer absent from the copper table", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(gr_text "HI" (at 5 5 0) (layer "In1.Cu") (effects (font (size 1 1) (thickness 0.15))))',
+  );
+  assert.throws(() => load(text), /Unknown copper layer: In1\.Cu/);
+});
+
+test("rejects a pad whose only layer is absent from the copper table", () => {
+  const text = `(kicad_pcb (version 20241229)
+    (layers (0 "F.Cu" signal) (31 "B.Cu" signal))
+    (net 1 "GND")
+    (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+    (footprint "U" (layer "F.Cu") (at 0 0)
+      (pad "1" smd rect (at 0 0) (size 1 1) (layers "In1.Cu") (net 1 "GND"))))`;
+  assert.throws(() => load(text), /Unknown copper layer: In1\.Cu/);
+});

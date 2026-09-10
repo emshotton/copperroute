@@ -114,6 +114,9 @@ export function importBoard(text, name, rules, options = {}) {
     return layer.index;
   };
   const isCopperLayer = (name) => layers.some((l) => l.name === name);
+  // A `.Cu`-suffixed name is copper-shaped even when undeclared, so callers using this to
+  // decide whether to validate an object still reject it instead of silently skipping it.
+  const couldBeCopper = (name) => isCopperLayer(name) || /\.Cu$/.test(name);
   const nets = children(root, "net").map((n) => ({
     id: number(n.values[1]),
     name: n.values[2],
@@ -173,7 +176,7 @@ export function importBoard(text, name, rules, options = {}) {
   );
   for (const n of root.values.filter((v) => v?.values)) {
     const layer = val(n, "layer", "");
-    if (isCopperLayer(layer) && n.values[0] === "gr_text") {
+    if (couldBeCopper(layer) && n.values[0] === "gr_text") {
       const effects = child(n, "effects"), font = effects && child(effects, "font");
       if (!font || child(font, "face")) throw Error("Custom copper text fonts are not supported yet.");
       const size = point(font, "size"), at = point(n, "at"), angle = -number(child(n, "at").values[3] ?? 0) * Math.PI / 180;
@@ -193,7 +196,7 @@ export function importBoard(text, name, rules, options = {}) {
       continue;
     }
     if (
-      isCopperLayer(layer) &&
+      couldBeCopper(layer) &&
       ![
         "segment",
         "footprint",
@@ -265,7 +268,7 @@ export function importBoard(text, name, rules, options = {}) {
       throw Error("Footprint zones are not supported yet.");
     for (const n of fp.values.filter((v) => v?.values)) {
       const layer = val(n, "layer", "");
-      if (isCopperLayer(layer) && n.values[0] === "fp_rect") {
+      if (couldBeCopper(layer) && n.values[0] === "fp_rect") {
         const a = point(n, "start"), b = point(n, "end");
         const stroke = child(n, "stroke");
         const margin = number(val(stroke ?? n, "width", 0)) / 2;
@@ -277,7 +280,7 @@ export function importBoard(text, name, rules, options = {}) {
         continue;
       }
       if (
-        isCopperLayer(layer) &&
+        couldBeCopper(layer) &&
         n.values[0] !== "pad" &&
         n.values[0] !== "layer"
       )
@@ -362,18 +365,22 @@ export function importBoard(text, name, rules, options = {}) {
           local.y * Math.cos(rotation),
       };
       const angle = number(child(pad, "at").values[3] ?? 0);
+      let unknownCopperLayer;
       const padLayers =
         child(pad, "layers")
           ?.values.slice(1)
-          .flatMap((l) =>
-            l === "*.Cu" || l === "F&B.Cu"
-              ? layers.map((l) => l.name)
-              : isCopperLayer(l)
-                ? [l]
-                : [],
-          ) ?? [];
+          .flatMap((l) => {
+            if (l === "*.Cu" || l === "F&B.Cu") return layers.map((l) => l.name);
+            if (isCopperLayer(l)) return [l];
+            if (/\.Cu$/.test(l) && unknownCopperLayer === undefined) unknownCopperLayer = l;
+            return [];
+          }) ?? [];
       padLayers.forEach(layerIndex);
-      if (!padLayers.length) continue; // Paste-only apertures are not copper obstacles.
+      if (!padLayers.length) {
+        if (unknownCopperLayer !== undefined)
+          throw Error(`Unknown copper layer: ${unknownCopperLayer}`);
+        continue; // Paste-only apertures are not copper obstacles.
+      }
       const localClearance = (node) => {
         const field = child(node, "clearance");
         if (!field) return undefined;

@@ -181,7 +181,7 @@ pub fn read_copper_text(
             continue;
         };
         let layer = node.value("layer").unwrap_or("");
-        if !layers.is_copper(layer) || node.name() != "gr_text" {
+        if !layers.could_be_copper(layer) || node.name() != "gr_text" {
             continue;
         }
         let effects = node.child("effects");

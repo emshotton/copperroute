@@ -166,7 +166,7 @@ fn reject_unsupported_copper_objects(root: &Node, layers: &Layers) -> Result<(),
             continue;
         };
         let layer = node.value("layer").unwrap_or("");
-        if !layers.is_copper(layer) || node.name() == "gr_text" {
+        if !layers.could_be_copper(layer) || node.name() == "gr_text" {
             continue;
         }
         if !TOP_LEVEL_COPPER_ALLOWED.contains(&node.name()) {

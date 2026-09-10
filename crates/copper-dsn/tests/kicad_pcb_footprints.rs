@@ -220,6 +220,15 @@ fn it_takes_allow_solder_mask_bridges_from_the_footprints_attr_not_the_pad() {
 }
 
 #[test]
+fn it_rejects_a_pad_whose_only_layer_is_a_cu_suffixed_layer_absent_from_the_table() {
+    let error = read_err(concat!(
+        r#"(footprint "U" (layer "F.Cu") (at 0 0)"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "In1.Cu") (net 1 "GND")))"#,
+    ));
+    assert_eq!(error, "Unknown copper layer: In1.Cu");
+}
+
+#[test]
 fn it_keeps_a_pad_on_a_renamed_copper_layer() {
     let text = concat!(
         r#"(kicad_pcb (version 20241229) (layers (0 TOP mixed) (31 BOTTOM mixed))"#,

@@ -72,6 +72,15 @@ fn it_rejects_curved_tracks() {
     assert_eq!(error.message, "Curved tracks are not supported yet.");
 }
 
+#[test]
+fn it_rejects_a_top_level_copper_object_on_a_cu_suffixed_layer_absent_from_the_table() {
+    let text = r#"(kicad_pcb (version 20241229) (layers (0 "F.Cu" signal) (2 "B.Cu" signal))
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (gr_circle (center 1 1) (end 2 1) (layer "In1.Cu")))"#;
+    let error = read_pcb(text, "t", &default_net_class()).expect_err("it fails");
+    assert_eq!(error.message, "Unsupported copper object: gr_circle");
+}
+
 /// Two footprint copper rectangles each push the identical "Footprint copper rectangles..."
 /// warning from `read_components`; `read_pcb` deduplicates warnings, so the imported board must
 /// carry that text once, not twice.

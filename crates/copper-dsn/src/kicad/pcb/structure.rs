@@ -65,6 +65,13 @@ impl Layers {
             .any(|layer| layer.name.as_deref() == Some(name))
     }
 
+    /// A `.Cu`-suffixed name is copper-shaped even when it is not declared, so callers that use
+    /// this to decide whether to validate an object still reject it (as an unknown layer, or as
+    /// an unsupported object on it) instead of silently skipping it.
+    pub fn could_be_copper(&self, name: &str) -> bool {
+        self.is_copper(name) || name.ends_with(".Cu")
+    }
+
     pub fn index_of(&self, name: &str) -> Result<i32, PcbError> {
         self.entries
             .iter()

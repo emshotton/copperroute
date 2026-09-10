@@ -255,7 +255,7 @@ pub fn read_components(
 
         for node in child_nodes(fp) {
             let layer = node.value("layer").unwrap_or("");
-            if layers.is_copper(layer) && node.name() == "fp_rect" {
+            if layers.could_be_copper(layer) && node.name() == "fp_rect" {
                 conduction_areas.push(copper_rectangle(fp, node, layer, layers)?);
                 warnings.push(
                     "Footprint copper rectangles are reserved as solid routing obstacles and \
@@ -264,7 +264,7 @@ pub fn read_components(
                 );
                 continue;
             }
-            if layers.is_copper(layer) && node.name() != "pad" && node.name() != "layer" {
+            if layers.could_be_copper(layer) && node.name() != "pad" && node.name() != "layer" {
                 return Err(PcbError::new(
                     SECTION,
                     "Footprint copper graphics are not supported yet.",
@@ -362,6 +362,7 @@ pub fn read_components(
                 .map(|node| &node.values[1..])
                 .unwrap_or(&[]);
             let mut pad_layers: Vec<String> = Vec::new();
+            let mut unknown_copper_layer: Option<&str> = None;
             for value in raw_layers {
                 let Value::Atom(name) = value else {
                     continue;
@@ -375,12 +376,17 @@ pub fn read_components(
                     );
                 } else if layers.is_copper(name) {
                     pad_layers.push(name.clone());
+                } else if name.ends_with(".Cu") {
+                    unknown_copper_layer.get_or_insert(name);
                 }
             }
-            for name in &pad_layers {
-                layers.index_of(name)?;
-            }
             if pad_layers.is_empty() {
+                if let Some(name) = unknown_copper_layer {
+                    return Err(PcbError::new(
+                        SECTION,
+                        &format!("Unknown copper layer: {name}"),
+                    ));
+                }
                 continue;
             }
 

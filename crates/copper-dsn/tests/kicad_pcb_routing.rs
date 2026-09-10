@@ -141,6 +141,17 @@ fn it_reserves_copper_text_as_an_obstacle() {
 }
 
 #[test]
+fn it_rejects_copper_text_on_a_cu_suffixed_layer_absent_from_the_table() {
+    let root = root_of(
+        r#"(gr_text "HI" (at 5 5 0) (layer "In1.Cu") (effects (font (size 1 1) (thickness 0.15))))"#,
+    );
+    let layers = Layers::read(&root).expect("layers");
+    let mut warnings = Vec::new();
+    let error = read_copper_text(&root, &layers, &mut warnings).expect_err("it fails");
+    assert_eq!(error.message, "Unknown copper layer: In1.Cu");
+}
+
+#[test]
 fn it_rejects_a_via_whose_layer_span_skips_an_inner_layer() {
     let root = root_of(r#"(via (at 5 6) (size 0.6) (drill 0.3) (layers "F.Cu" "In1.Cu") (net 1))"#);
     let layers = Layers::read(&root).expect("layers");
