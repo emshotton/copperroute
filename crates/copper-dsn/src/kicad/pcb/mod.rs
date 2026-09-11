@@ -32,6 +32,7 @@ pub fn default_net_class() -> NetClassJson {
 pub struct ImportedPcb {
     pub board: KiCadBoardJson,
     pub warnings: Vec<String>,
+    pub embedded_net_classes: usize,
 }
 
 pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<ImportedPcb, PcbError> {
@@ -155,7 +156,11 @@ pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<Impor
     let mut seen = std::collections::HashSet::new();
     warnings.retain(|warning| seen.insert(warning.clone()));
 
-    Ok(ImportedPcb { board, warnings })
+    Ok(ImportedPcb {
+        board,
+        warnings,
+        embedded_net_classes: embedded_classes,
+    })
 }
 
 fn validate_defaults(root: &Node, defaults: &NetClassJson) -> Result<(), PcbError> {

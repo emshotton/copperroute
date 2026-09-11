@@ -81,10 +81,12 @@ worth knowing before touching it:
 ### Reading a `.kicad_pcb` file directly
 
 `kicad::pcb::read_pcb` parses a `.kicad_pcb` file's S-expressions straight into a
-`KiCadBoardJson`, returned as `ImportedPcb { board, warnings }`; pass the result's `board` to
-`kicad::read_board_json` to get a `copper_board::Board`. `kicad::pcb::default_net_class`
-gives the net class values the reader falls back on when the file has no `Default` net
-class.
+`KiCadBoardJson`, returned as `ImportedPcb { board, warnings, embedded_net_classes }`; pass
+the result's `board` to `kicad::read_board_json` to get a `copper_board::Board`.
+`embedded_net_classes` is the number of `(net_class ...)` entries the file carried, so
+callers can tell whether the board defines its own rules or needs a `.kicad_pro`.
+`kicad::pcb::default_net_class` gives the net class values the reader falls back on when the
+file has no `Default` net class.
 
 - **Some constructs are refused outright.** Curved tracks, net ties, footprint zones, locked
   tracks, concave custom pads, zone keepouts that restrict tracks or vias, netless copper

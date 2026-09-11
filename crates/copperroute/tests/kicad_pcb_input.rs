@@ -70,6 +70,32 @@ fn it_prints_the_loaders_warnings_when_inspecting_a_kicad_board() {
 }
 
 #[test]
+fn it_warns_loudly_when_no_kicad_pro_is_found_for_a_kicad_board() {
+    let board = testkit::workspace_root().join("web/example.kicad_pcb");
+    let (_, stderr, code) = run(&["info", &board.to_string_lossy()]);
+    assert_eq!(code, 0, "info failed: {stderr}");
+    assert!(
+        stderr.contains("No KiCad project file found") && stderr.contains("built-in default"),
+        "expected the loud no-project warning on stderr, got:\n{stderr}"
+    );
+}
+
+#[test]
+fn it_discovers_an_adjacent_kicad_pro_without_the_flag() {
+    let board = testkit::workspace_root().join("web/examples/easyduino/nano.kicad_pcb");
+    let (_, stderr, code) = run(&["info", &board.to_string_lossy()]);
+    assert_eq!(code, 0, "info failed: {stderr}");
+    assert!(
+        stderr.contains("Found KiCad project file") && stderr.contains("nano.kicad_pro"),
+        "expected the discovery message on stderr, got:\n{stderr}"
+    );
+    assert!(
+        !stderr.contains("No KiCad project file found"),
+        "an adjacent project was found, so the loud warning must not fire, got:\n{stderr}"
+    );
+}
+
+#[test]
 fn it_routes_a_kicad_board_to_a_session_that_actually_connects_the_nets() {
     let board = testkit::workspace_root().join("web/example.kicad_pcb");
     let dir = scratch("routes-to-session");

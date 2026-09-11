@@ -103,6 +103,9 @@ pub struct DrcArgs {
 pub struct InfoArgs {
     /// A Specctra DSN, a KiCad board JSON, or a KiCad .kicad_pcb board.
     pub input: PathBuf,
+    /// A KiCad .kicad_pro whose design rules are applied before summarising.
+    #[arg(long)]
+    pub kicad_project: Option<PathBuf>,
 }
 
 fn parse_output_path(value: &str) -> Result<PathBuf, String> {

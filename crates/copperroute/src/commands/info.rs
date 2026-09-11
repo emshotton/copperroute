@@ -5,6 +5,7 @@ use crate::ops::load::{BoardSource, LoadRequest};
 
 pub fn run(cli: &Cli, args: &InfoArgs) -> ExitCode {
     let mut load = LoadRequest::for_board(BoardSource::Path(args.input.clone()));
+    load.kicad_project = args.kicad_project.clone();
     load.settings = super::overrides(cli, &[]);
     match info(&InfoRequest { load }) {
         Ok(outcome) => {

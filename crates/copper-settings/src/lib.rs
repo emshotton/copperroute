@@ -26,8 +26,8 @@ pub use layer_settings::LayerSettings;
 pub use merger::{SettingsMerger, SettingsSource, SourceKind, priority};
 pub use optimizer_settings::{BoardUpdateStrategy, ItemSelectionStrategy, OptimizerSettings};
 pub use resolve::{
-    SettingsInputs, resolve_headless, resolve_scheduler_rules_path,
-    resolve_scheduler_rules_path_with,
+    SettingsInputs, resolve_headless, resolve_kicad_project_path, resolve_kicad_project_path_with,
+    resolve_scheduler_rules_path, resolve_scheduler_rules_path_with,
 };
 pub use router_settings::{ExpansionCostFactor, RouterSettings};
 pub use scoring_settings::ScoringSettings;
