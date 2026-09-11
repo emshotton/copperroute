@@ -1,0 +1,818 @@
+{
+  "status": "complete",
+  "attempted": 751,
+  "supported": 549,
+  "uncapped_copper": 549,
+  "closer_counts": 70,
+  "farther_counts": 0,
+  "changed": [
+    {
+      "board": "kicad-issue269-nowiresonpowerlayers--proba",
+      "kicad": {},
+      "source_sha256": "2160cf973b8d142abe2f6079175cd63bef69724c474c2386498e762ee355cf99",
+      "main": {
+        "clearance": 1
+      },
+      "candidate": {}
+    },
+    {
+      "board": "kicad-issue283-unconnectedtracesunderpads--natural_tone_preamp",
+      "kicad": {},
+      "source_sha256": "b8af912bea879f8a8269f1196f3de98d49953e8479498786fe23ac6729de5d21",
+      "main": {
+        "clearance": 125
+      },
+      "candidate": {}
+    },
+    {
+      "board": "kicad-issue367-ultraflactyl--ultraflactyl",
+      "kicad": {},
+      "source_sha256": "6789985596f07669da402295d2ae9e65df8b78b341835bacbadf22ee2511d4f1",
+      "main": {
+        "solder_mask_bridge": 16,
+        "shorting_items": 16,
+        "clearance": 4
+      },
+      "candidate": {
+        "solder_mask_bridge": 16,
+        "shorting_items": 16,
+        "clearance": 1
+      }
+    },
+    {
+      "board": "pcbench-74Logic_SA_ADC_SA-ADC",
+      "kicad": {
+        "solder_mask_bridge": 96
+      },
+      "source_sha256": "c239f124d7810902e4c1e0f1ed00bf05401c65787037fc76dc7e5e0ec50d74cf",
+      "main": {
+        "clearance": 128,
+        "solder_mask_bridge": 96,
+        "hole_clearance": 32
+      },
+      "candidate": {
+        "solder_mask_bridge": 96,
+        "clearance": 32,
+        "hole_clearance": 32
+      }
+    },
+    {
+      "board": "pcbench-Amiga-2000-EATX_TICK_OSC_KiCAD_TICK",
+      "kicad": {},
+      "source_sha256": "eac8881a28155a5b872db5a5de178302626177bb2900b7409ca5d21976c4a373",
+      "main": {
+        "clearance": 8
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-BLDC-controller_BLDC_controller",
+      "kicad": {
+        "solder_mask_bridge": 199,
+        "track_width": 9,
+        "courtyards_overlap": 6,
+        "pth_inside_courtyard": 6
+      },
+      "source_sha256": "b9d88523e47177025ca529072faf04f20d116138b4dfaba51a173e0e5fc30753",
+      "main": {
+        "clearance": 1,
+        "track_width": 9
+      },
+      "candidate": {
+        "track_width": 9
+      }
+    },
+    {
+      "board": "pcbench-Blitz_.C68",
+      "kicad": {},
+      "source_sha256": "257b6da6044b8a024a1b0b5091934d42e16c961a4f9246dc299c5c3f2ab1ccf0",
+      "main": {
+        "clearance": 16
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-Blitz_Rev.K_C68",
+      "kicad": {},
+      "source_sha256": "ef704203a946b39ed28e0f93752f4a461c0a2f2b317d339be068a71dd1f932ed",
+      "main": {
+        "clearance": 16,
+        "shorting_items": 2
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-Blitz_copy",
+      "kicad": {},
+      "source_sha256": "860dcfe1d28089177127fe35e06dafb6d1732ba66e9d175a2a1d3d418e0daa7d",
+      "main": {
+        "clearance": 16,
+        "shorting_items": 2
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Abakus_Main",
+      "kicad": {},
+      "source_sha256": "3e9fae7d7d478389e8e11fb81466729c8f9400b75d49c179cb0e01090cfb9202",
+      "main": {
+        "clearance": 40
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Buffered_Multiple_SMD_Main",
+      "kicad": {
+        "starved_thermal": 6
+      },
+      "source_sha256": "7eecdfaf8cbee02d00197946afc3dd6bb2b8dff334490cfde8c4db09145cd35d",
+      "main": {
+        "clearance": 7
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_CGS_Analog_Switch_Matrix_Main",
+      "kicad": {},
+      "source_sha256": "fee006651f4969b34c0f51d227dc53bb3a86314cd3e9582a4ec258f911851fa5",
+      "main": {
+        "clearance": 38
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Classic_ADSR_Main",
+      "kicad": {},
+      "source_sha256": "3f9b6eebb5d196b82d895374e051ad9c2dd44bbbfe6f73db45a53dfada39796c",
+      "main": {
+        "clearance": 15
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_HAGIWO_6Ch_Gate_Sequencer_Main",
+      "kicad": {
+        "courtyards_overlap": 5,
+        "pth_inside_courtyard": 14
+      },
+      "source_sha256": "c75c0b5298b6941aff7e0153c639a4fc6c5792566d0a8a664595f577ac614f4b",
+      "main": {
+        "clearance": 1
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_HAGIWO_MultiOut_Main",
+      "kicad": {},
+      "source_sha256": "5f40accc8ed8ebabe85930e62045de34477bbe105b59fe46f3d83c62faef83db",
+      "main": {
+        "clearance": 3
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_LFO_Main",
+      "kicad": {},
+      "source_sha256": "9feedfb0000f23e63c70ca15ebb9eebd6d3564bfd6ae7d235dd6f1507f475ba0",
+      "main": {
+        "clearance": 9
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_MFOS_Eight_Stage_Phase_Shifter_-_Main",
+      "kicad": {},
+      "source_sha256": "c5e76cecfb4f19bcc5ca68372296d1cdd351260c6b222bf35b8becf599d41f94",
+      "main": {
+        "clearance": 33
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Main_Rectifier_Main",
+      "kicad": {
+        "starved_thermal": 3
+      },
+      "source_sha256": "522ca78862bd3d2743a9dac0e402de2b36df033a60aadea3354b2e36e6126521",
+      "main": {
+        "clearance": 10
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Slim_Precision_Adder_Main",
+      "kicad": {},
+      "source_sha256": "f5297ecf6704b9144049395e66580c20455849331a863a887a4a96b726b1547d",
+      "main": {
+        "clearance": 19
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_Slimline_Voltage_Controlled_Switch_-_Main",
+      "kicad": {},
+      "source_sha256": "82362f190f2118783fe701577e3665bda1ad7a5e517b5e4879f3b3556a0521be",
+      "main": {
+        "clearance": 17
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-CATs-Eurosynth_YuSynth_Dual_Balanced_Modulator_Main",
+      "kicad": {},
+      "source_sha256": "3d20d515ab292849b91b60cdc4a51d1ca436fa91ebe9b7099f7d15bcf8a3caf3",
+      "main": {
+        "clearance": 5
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-EnvOpenPico_EliteMicro2040",
+      "kicad": {
+        "footprint_type_mismatch": 2
+      },
+      "source_sha256": "2615ffad44280ab70038fe0ef5a5c2ec1db45e52cdb1fecf8801c32c8238ee1f",
+      "main": {
+        "clearance": 11
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-Hubble_12_bit_analog_out",
+      "kicad": {},
+      "source_sha256": "41282e7c98c4cdfefd424c49a57db0f37e2a974db862d3af251ead043a4baba3",
+      "main": {
+        "clearance": 7
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-Hubble_16_bit_analog_out",
+      "kicad": {},
+      "source_sha256": "0f5b73aceef4aa1d29e1aab286773cf9752b2cdc35cbacc401b98280687d5595",
+      "main": {
+        "clearance": 23
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-Hubble_leds",
+      "kicad": {},
+      "source_sha256": "87c774480bc7eff7749c881300eabe2ee7b6d03cd7be9bfb313f8743fc203ea7",
+      "main": {
+        "clearance": 19
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-Hubble_mux",
+      "kicad": {},
+      "source_sha256": "7ac64b0776166e6212e0a0046641e3e10a31f50b6ea2411466a7be4a0953c214",
+      "main": {
+        "clearance": 9
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-ReSDMAC_ReSDMAC",
+      "kicad": {
+        "courtyards_overlap": 36,
+        "pth_inside_courtyard": 88
+      },
+      "source_sha256": "228b4dfe096e051da78f2a9c6a101ba3b4ea038ee6e0703b3a9659971ed5a5f7",
+      "main": {
+        "clearance": 45
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-RetroWiFiModem_RetroWiFiModem",
+      "kicad": {
+        "starved_thermal": 1
+      },
+      "source_sha256": "8882c37a6a228ed33b51eac8c938d5f828905517d41d609c31225a3ae9102139",
+      "main": {
+        "clearance": 8
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-Solare-BQ24210_Solare-BQ24210",
+      "kicad": {
+        "solder_mask_bridge": 14
+      },
+      "source_sha256": "ec56738b22e69ca1ea2a9a1068a142f42e09cc0884dc90220d1343414f56e9c0",
+      "main": {
+        "solder_mask_bridge": 14,
+        "clearance": 2
+      },
+      "candidate": {
+        "solder_mask_bridge": 14
+      }
+    },
+    {
+      "board": "pcbench-UltraPIF_Hardware_pif_adapter",
+      "kicad": {
+        "solder_mask_bridge": 86
+      },
+      "source_sha256": "eec753ff5508f0684aa852847c515dddf4ab335d1cca8f274fa16c951ca94b7d",
+      "main": {
+        "clearance": 10,
+        "solder_mask_bridge": 86
+      },
+      "candidate": {
+        "solder_mask_bridge": 86
+      }
+    },
+    {
+      "board": "pcbench-Ventilator_indicator-board",
+      "kicad": {},
+      "source_sha256": "17a1cccad84da72c8dc18bdd66db425b1cd41f42c55993ce75c2e88a56738cdd",
+      "main": {
+        "clearance": 2
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-amalthea_amalthea_rev0",
+      "kicad": {
+        "solder_mask_bridge": 199,
+        "courtyards_overlap": 1
+      },
+      "source_sha256": "33d291a25f89dd49b4a5884ebc586ed79191a15ec7df234c4545c425bf4cce81",
+      "main": {
+        "solder_mask_bridge": 222,
+        "clearance": 17
+      },
+      "candidate": {
+        "solder_mask_bridge": 222
+      }
+    },
+    {
+      "board": "pcbench-bms-8s50-ic_bms-8s50-ic",
+      "kicad": {
+        "solder_mask_bridge": 88,
+        "courtyards_overlap": 2
+      },
+      "source_sha256": "c6ff36eca67e72ff6056eed89a757134a792d9bd0408b46e7e06474fd48fc7c0",
+      "main": {
+        "clearance": 45,
+        "solder_mask_bridge": 88
+      },
+      "candidate": {
+        "solder_mask_bridge": 88,
+        "clearance": 3
+      }
+    },
+    {
+      "board": "pcbench-data-manager_data-manager",
+      "kicad": {
+        "solder_mask_bridge": 20,
+        "courtyards_overlap": 8,
+        "npth_inside_courtyard": 2
+      },
+      "source_sha256": "9a977d8b627edcfcc01443d854c9092ba5ce637944b11452262c3e161c646943",
+      "main": {
+        "clearance": 18,
+        "solder_mask_bridge": 20
+      },
+      "candidate": {
+        "solder_mask_bridge": 20
+      }
+    },
+    {
+      "board": "pcbench-denbit_basic",
+      "kicad": {
+        "solder_mask_bridge": 6
+      },
+      "source_sha256": "c326083fdf59db9fa685c3befe47db2d04aa7a0ab922cb0149d3ace551fcddce",
+      "main": {
+        "clearance": 4,
+        "solder_mask_bridge": 6
+      },
+      "candidate": {
+        "solder_mask_bridge": 6
+      }
+    },
+    {
+      "board": "pcbench-epaper-102_epaper-102",
+      "kicad": {},
+      "source_sha256": "30cb67e846ba61769ed1fb3be6a7fcfb4e082b6fdebd0567b726406376649608",
+      "main": {
+        "clearance": 5
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-esper_programmer",
+      "kicad": {},
+      "source_sha256": "e649bb3658cf79e4ee876af86b287ae29e11e18cd1db43c79c7e9fbf9aa16b04",
+      "main": {
+        "clearance": 4
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-CART32K-A",
+      "kicad": {},
+      "source_sha256": "683098585e0f25218377388a402a87538479d61a1614d9aa7abcca9cc2702533",
+      "main": {
+        "clearance": 9
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-hbr-mk2_hbr-mk2-bpfs",
+      "kicad": {},
+      "source_sha256": "63c54c6b280f7663a350cac4ba72613f190abdda5d782869556213237cc45ae9",
+      "main": {
+        "clearance": 19
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-hbr-mk2_hbr-mk2-digital",
+      "kicad": {},
+      "source_sha256": "06d5c6b779dde16ec3d62d0ccc25066c49a372716fdcff30b0379918a004135d",
+      "main": {
+        "clearance": 14
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-karabas-nano_karabas-nano-revA",
+      "kicad": {
+        "solder_mask_bridge": 198,
+        "courtyards_overlap": 1
+      },
+      "source_sha256": "81348d1b9f87b927c7a65b14a53a9ae60c0e9407ce80be5c5dd5d710c82f289e",
+      "main": {
+        "solder_mask_bridge": 198,
+        "clearance": 108
+      },
+      "candidate": {
+        "solder_mask_bridge": 198
+      }
+    },
+    {
+      "board": "pcbench-karabas-nano_karabas-nano-revB",
+      "kicad": {
+        "solder_mask_bridge": 199,
+        "courtyards_overlap": 1
+      },
+      "source_sha256": "e04e98ca4eeea540d3fbdddbc65dd39422fead26f40f79a7778f441f016591bf",
+      "main": {
+        "solder_mask_bridge": 265,
+        "clearance": 60
+      },
+      "candidate": {
+        "solder_mask_bridge": 265
+      }
+    },
+    {
+      "board": "pcbench-karabas-nano_wifi_revA",
+      "kicad": {},
+      "source_sha256": "2c7cb69e0375a9b0b414f32fa10785e3c6229beba57c643d83e5b686b0e62c7b",
+      "main": {
+        "clearance": 1
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-kitspace_12V5A_breakout",
+      "kicad": {},
+      "source_sha256": "2471a19be0c7aae64eeffc2b97da0427904664f8c1b2f00286311e6bdb890c09",
+      "main": {
+        "clearance": 3
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-kitspace_CH330",
+      "kicad": {
+        "solder_mask_bridge": 5,
+        "courtyards_overlap": 3
+      },
+      "source_sha256": "5240fca72b9bc61898d4959da51d54872e530fec05f0aef4201a05c33d35e422",
+      "main": {
+        "clearance": 2,
+        "solder_mask_bridge": 5
+      },
+      "candidate": {
+        "solder_mask_bridge": 5
+      }
+    },
+    {
+      "board": "pcbench-kitspace_OtterScreen",
+      "kicad": {
+        "solder_mask_bridge": 79,
+        "courtyards_overlap": 9
+      },
+      "source_sha256": "0e12eb6febf0fa898c6e74f3d3db54290356ad4bb1dc4be0757ef52673e25a5f",
+      "main": {
+        "solder_mask_bridge": 79,
+        "clearance": 4
+      },
+      "candidate": {
+        "solder_mask_bridge": 79
+      }
+    },
+    {
+      "board": "pcbench-kitspace_USB-C-Screen-Adapter-LDR6023SS",
+      "kicad": {
+        "courtyards_overlap": 24
+      },
+      "source_sha256": "53e7e7824f9050143ff61b8e7b7ab86e8b4fa3f1cd9599567dcd1ae24888492d",
+      "main": {
+        "clearance": 16
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-kitspace_aquarius",
+      "kicad": {},
+      "source_sha256": "94ad0e312da2d5d513fb0f679ab44df9926c2bb079824e3bc2663deda27d5cf8",
+      "main": {
+        "clearance": 30
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-kitspace_dropbot_control_board",
+      "kicad": {
+        "solder_mask_bridge": 199,
+        "courtyards_overlap": 41
+      },
+      "source_sha256": "2878b45d4876f2e0ffd95ba0d9172d49f184d7ac66a24eec62422a155f056f84",
+      "main": {
+        "solder_mask_bridge": 332,
+        "clearance": 1
+      },
+      "candidate": {
+        "solder_mask_bridge": 332
+      }
+    },
+    {
+      "board": "pcbench-kitspace_flypi_v2",
+      "kicad": {},
+      "source_sha256": "e97083476f5958ba1f156ddd2cbe994b6e63c97a498a1074c9e09df76bb29e3c",
+      "main": {
+        "shorting_items": 1
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-kitspace_teensy-fx",
+      "kicad": {
+        "solder_mask_bridge": 109,
+        "courtyards_overlap": 2
+      },
+      "source_sha256": "61167eec6b65d113791fb5a23ec6b2012dc6bb54d962a73c16db0fa5b227d88a",
+      "main": {
+        "clearance": 21,
+        "solder_mask_bridge": 109
+      },
+      "candidate": {
+        "solder_mask_bridge": 109
+      }
+    },
+    {
+      "board": "pcbench-kitspace_threeboard",
+      "kicad": {
+        "solder_mask_bridge": 44
+      },
+      "source_sha256": "3509acb0fa762a6d54207a2833f7e46f44eca35e64bd9213bdb54194d587e1b7",
+      "main": {
+        "clearance": 15,
+        "solder_mask_bridge": 44
+      },
+      "candidate": {
+        "solder_mask_bridge": 44
+      }
+    },
+    {
+      "board": "pcbench-mppt-2420-hc_mppt-2420-hc",
+      "kicad": {
+        "solder_mask_bridge": 4,
+        "courtyards_overlap": 8,
+        "pth_inside_courtyard": 4,
+        "npth_inside_courtyard": 1,
+        "clearance": 4
+      },
+      "source_sha256": "0e7a3765d8aae816a7960324fd44dc5604e8f63333af2e21c0e3c6d596f9d236",
+      "main": {
+        "clearance": 38,
+        "solder_mask_bridge": 4
+      },
+      "candidate": {
+        "solder_mask_bridge": 4
+      }
+    },
+    {
+      "board": "pcbench-mppt-2420-hpx_mppt-2420-hpx",
+      "kicad": {
+        "solder_mask_bridge": 2,
+        "courtyards_overlap": 4,
+        "pth_inside_courtyard": 3,
+        "clearance": 2
+      },
+      "source_sha256": "5b944158eab3b8dafa5b185728f0380a38fc589bf3acc9a9c3ce1c47f0dcb9d4",
+      "main": {
+        "clearance": 45,
+        "solder_mask_bridge": 2
+      },
+      "candidate": {
+        "solder_mask_bridge": 2
+      }
+    },
+    {
+      "board": "pcbench-nanoSwinSidC_nanoSwinSidC",
+      "kicad": {
+        "courtyards_overlap": 3,
+        "pth_inside_courtyard": 8
+      },
+      "source_sha256": "d2fd59170fbc64e19fb478601bd4ad736b0653d4af76873badb4ea1b42eec4c4",
+      "main": {
+        "clearance": 3
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-nonSNES_SNSP-CPU-1CHIP",
+      "kicad": {},
+      "source_sha256": "da2dae5e7b7d4abbb801565cc423835887ab45546bf4e63e4ebbdfbb2f103043",
+      "main": {
+        "clearance": 48
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-preamp-two_mcu-board",
+      "kicad": {},
+      "source_sha256": "840b99b705541750a003fe9c3184f5bdcda419c2c4abf5e249ed7e9c45fa03b4",
+      "main": {
+        "clearance": 4
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-preamp-two_mdac-attenuator",
+      "kicad": {
+        "solder_mask_bridge": 12,
+        "courtyards_overlap": 6,
+        "pth_inside_courtyard": 12
+      },
+      "source_sha256": "c80fcdc634a9dada449058e6510ed4037c33d77a736957060f88efe9d47cb299",
+      "main": {
+        "clearance": 1,
+        "solder_mask_bridge": 12
+      },
+      "candidate": {
+        "solder_mask_bridge": 12
+      }
+    },
+    {
+      "board": "pcbench-pwm-2420-lus_pwm-2420-lus",
+      "kicad": {
+        "solder_mask_bridge": 44,
+        "courtyards_overlap": 3
+      },
+      "source_sha256": "b03965150439c98bb7728c4cc03aae0dea3474942b0000afe5fad19fc4022c49",
+      "main": {
+        "clearance": 30,
+        "solder_mask_bridge": 44
+      },
+      "candidate": {
+        "solder_mask_bridge": 44
+      }
+    },
+    {
+      "board": "pcbench-real-time-chess_kfchess",
+      "kicad": {
+        "copper_edge_clearance": 87
+      },
+      "source_sha256": "fdc392861995708bfe9cf57c84756abaac8d22167751d8235a34d338948b95a0",
+      "main": {
+        "clearance": 15
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-rs485-moist-sensor_adapter-por",
+      "kicad": {
+        "solder_mask_bridge": 22
+      },
+      "source_sha256": "712f8894ce4d2846e7e07f8a99cfb892b2782e380fc5719fa48cb370dff04d4e",
+      "main": {
+        "solder_mask_bridge": 22,
+        "clearance": 5
+      },
+      "candidate": {
+        "solder_mask_bridge": 22
+      }
+    },
+    {
+      "board": "pcbench-saiboard_3x8",
+      "kicad": {},
+      "source_sha256": "e594855564f707e638eaee0d0c49d95b043a76cd231aebc61936bbe52d17737b",
+      "main": {
+        "clearance": 5
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-saiboard_8x3",
+      "kicad": {},
+      "source_sha256": "5f28455baebdd913628b665c47b834785ab71172be2aed9e4061652edfcefdfd",
+      "main": {
+        "clearance": 29
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-shutter_Shutter V4",
+      "kicad": {},
+      "source_sha256": "2584ae9edfac18e3b9d964659a88405b511662390dfaf4375810e39ad27e6c83",
+      "main": {
+        "clearance": 2
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-shutter_speed_tester_shutter_speed_tester",
+      "kicad": {
+        "pth_inside_courtyard": 6
+      },
+      "source_sha256": "1172466cefd3cc6cdda3c533ef9afc39e07afd4138017f5bc203bff165af99c5",
+      "main": {
+        "clearance": 1
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-tinyFISH_tinyBRUSH",
+      "kicad": {
+        "pth_inside_courtyard": 2,
+        "courtyards_overlap": 14
+      },
+      "source_sha256": "0e85098e70c57acea4955a3c36aca69e361169d98f19f20d45578924bff9572a",
+      "main": {
+        "clearance": 1
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-uext-esp32_UEXT_ESP32",
+      "kicad": {
+        "courtyards_overlap": 2
+      },
+      "source_sha256": "b6486d24f4657a58692bbb34b666b38d6c2023df7f9f070cc4885bdc1568e86c",
+      "main": {
+        "clearance": 5
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-zx-sizif-512-ext_sizif512ext",
+      "kicad": {
+        "solder_mask_bridge": 183,
+        "courtyards_overlap": 8,
+        "pth_inside_courtyard": 22
+      },
+      "source_sha256": "0ccb95d3d956e11e3c45be9628ddf50f172fe31a5411a91a3082917993ea9416",
+      "main": {
+        "solder_mask_bridge": 183,
+        "clearance": 31
+      },
+      "candidate": {
+        "solder_mask_bridge": 183
+      }
+    },
+    {
+      "board": "pcbench-zx-sizif-512-wifi_sizif512-wifi",
+      "kicad": {
+        "courtyards_overlap": 1
+      },
+      "source_sha256": "9bed55ee0bf3fee80feabe93caec645ca42322278189d2fbbd0ee8bc8576c374",
+      "main": {
+        "clearance": 1
+      },
+      "candidate": {}
+    },
+    {
+      "board": "pcbench-zx-sizif-xxs_sizif-xxs",
+      "kicad": {
+        "solder_mask_bridge": 165,
+        "courtyards_overlap": 23
+      },
+      "source_sha256": "0ff7f3802b9528981ad4ec51c2fd40073b4a5bee9691671e49927eb5a4dd56d5",
+      "main": {
+        "clearance": 70,
+        "solder_mask_bridge": 175
+      },
+      "candidate": {
+        "solder_mask_bridge": 175
+      }
+    }
+  ]
+}

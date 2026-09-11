@@ -1,0 +1,412 @@
+{
+  "decelerator4030_decelerator4030": {
+    "original": {
+      "source": "/home/em/copperroute-mask-main/benchmark/corpus/pcbench/decelerator4030_decelerator4030/raw.kicad_pcb",
+      "segments": 7707,
+      "vias": 865,
+      "vias_near_flash_oe": [
+        {
+          "net": "_FLASH_OE",
+          "position": [
+            160.29432,
+            43.24858
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        }
+      ],
+      "vias_near_a31": []
+    },
+    "main": {
+      "source": "/home/em/copperroute-mask-main/benchmark/results/rounded-copper-full-01/main/pcbench-decelerator4030_decelerator4030/seed-1/routed.kicad_pcb",
+      "segments": 3017,
+      "vias": 606,
+      "vias_near_flash_oe": [
+        {
+          "net": "GND",
+          "position": [
+            160.386,
+            42.7482
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        },
+        {
+          "net": "/DRM8",
+          "position": [
+            160.5533,
+            44.2493
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        },
+        {
+          "net": "/ARM0",
+          "position": [
+            160.5477,
+            41.5159
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        },
+        {
+          "net": "_FLASH_OE",
+          "position": [
+            159.942,
+            43.2486
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        }
+      ],
+      "vias_near_a31": [
+        {
+          "net": "+3.3V",
+          "position": [
+            133.7696,
+            79.9549
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        },
+        {
+          "net": "/A31",
+          "position": [
+            134.4368,
+            79.8518
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        },
+        {
+          "net": "/A30",
+          "position": [
+            135.0879,
+            79.7553
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        }
+      ]
+    },
+    "candidate": {
+      "source": "/home/em/copperroute-mask-main/benchmark/results/rounded-copper-full-01/rounded-copper/pcbench-decelerator4030_decelerator4030/seed-1/routed.kicad_pcb",
+      "segments": 2918,
+      "vias": 597,
+      "vias_near_flash_oe": [
+        {
+          "net": "GND",
+          "position": [
+            160.386,
+            42.7482
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        },
+        {
+          "net": "/DRM8",
+          "position": [
+            160.5533,
+            44.2493
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        },
+        {
+          "net": "/ARM0",
+          "position": [
+            160.5477,
+            41.5159
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        },
+        {
+          "net": "_FLASH_HI_CE",
+          "position": [
+            159.9022,
+            44.0944
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        },
+        {
+          "net": "_FLASH_OE",
+          "position": [
+            159.942,
+            43.2486
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        }
+      ],
+      "vias_near_a31": [
+        {
+          "net": "+3.3V",
+          "position": [
+            133.7696,
+            79.9549
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        },
+        {
+          "net": "/A31",
+          "position": [
+            134.4368,
+            79.8518
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        },
+        {
+          "net": "/A30",
+          "position": [
+            135.0879,
+            79.7553
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        },
+        {
+          "net": "MA25",
+          "position": [
+            132.5374,
+            79.7556
+          ],
+          "size": "0.55",
+          "drill": "0.25"
+        }
+      ]
+    }
+  },
+  "real-time-chess_kfchess": {
+    "original": {
+      "source": "/home/em/copperroute-mask-main/benchmark/corpus/pcbench/real-time-chess_kfchess/raw.kicad_pcb",
+      "segments": 2355,
+      "vias": 301,
+      "circle": {
+        "centre": [
+          215.000022,
+          85
+        ],
+        "radius": 12.599999999999994
+      },
+      "nearby_s14": [
+        {
+          "start": [
+            228.600022,
+            81.14
+          ],
+          "end": [
+            231.630022,
+            78.11
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 1.387170862658483
+        },
+        {
+          "start": [
+            228.600022,
+            92
+          ],
+          "end": [
+            228.600022,
+            81.14
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 0.85
+        },
+        {
+          "start": [
+            198.370022,
+            91.89
+          ],
+          "end": [
+            202.290022,
+            91.89
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 1.7073925726598582
+        },
+        {
+          "start": [
+            221.800022,
+            98.8
+          ],
+          "end": [
+            228.600022,
+            92
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 1.816399692442881
+        },
+        {
+          "start": [
+            209.200022,
+            98.8
+          ],
+          "end": [
+            221.800022,
+            98.8
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 1.050000000000003
+        },
+        {
+          "start": [
+            202.290022,
+            91.89
+          ],
+          "end": [
+            209.200022,
+            98.8
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 1.1092929112563543
+        }
+      ],
+      "minimum_outside_gap": 0.85
+    },
+    "main": {
+      "source": "/home/em/copperroute-mask-main/benchmark/results/rounded-copper-full-01/main/pcbench-real-time-chess_kfchess/seed-1/routed.kicad_pcb",
+      "segments": 2326,
+      "vias": 248,
+      "circle": {
+        "centre": [
+          215.000022,
+          85
+        ],
+        "radius": 12.599999999999994
+      },
+      "nearby_s14": [
+        {
+          "start": [
+            220.3705,
+            97.9599
+          ],
+          "end": [
+            227.998,
+            90.3324
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 0.21153458551270923
+        },
+        {
+          "start": [
+            227.998,
+            90.3324
+          ],
+          "end": [
+            227.998,
+            81.742
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 0.24797799999999484
+        },
+        {
+          "start": [
+            204.4399,
+            97.9599
+          ],
+          "end": [
+            220.3705,
+            97.9599
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 0.20990000000001033
+        },
+        {
+          "start": [
+            227.998,
+            81.742
+          ],
+          "end": [
+            231.63,
+            78.11
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 0.6500744807065842
+        }
+      ],
+      "minimum_outside_gap": 0.20990000000001033
+    },
+    "candidate": {
+      "source": "/home/em/copperroute-mask-main/benchmark/results/rounded-copper-full-01/rounded-copper/pcbench-real-time-chess_kfchess/seed-1/routed.kicad_pcb",
+      "segments": 2290,
+      "vias": 235,
+      "circle": {
+        "centre": [
+          215.000022,
+          85
+        ],
+        "radius": 12.599999999999994
+      },
+      "nearby_s14": [
+        {
+          "start": [
+            204.4399,
+            97.9599
+          ],
+          "end": [
+            220.3705,
+            97.9599
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 0.20990000000001033
+        },
+        {
+          "start": [
+            227.998,
+            90.3324
+          ],
+          "end": [
+            227.998,
+            81.742
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 0.24797799999999484
+        },
+        {
+          "start": [
+            220.3705,
+            97.9599
+          ],
+          "end": [
+            227.998,
+            90.3324
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 0.21153458551270923
+        },
+        {
+          "start": [
+            227.998,
+            81.742
+          ],
+          "end": [
+            231.63,
+            78.11
+          ],
+          "width": 0.3,
+          "layer": "F.Cu",
+          "gap": 0.6500744807065842
+        }
+      ],
+      "minimum_outside_gap": 0.20990000000001033
+    }
+  }
+}

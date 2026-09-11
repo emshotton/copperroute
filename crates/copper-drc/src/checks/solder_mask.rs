@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use copper_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
 use copper_geometry::{FloatLine, Shape, ShapeOps, TileShape};
 
-use crate::checks::geometry::{candidates, gap_below, has_copper, item_shapes};
+use crate::checks::geometry::{candidates, gap_below, has_copper, item_shapes, segment_gap};
 use crate::constraints::severity;
 use crate::{DrcViolation, DrcViolationKind};
 
@@ -32,29 +32,6 @@ fn mask_item_shapes(board: &mut Board, id: ItemId) -> Vec<(usize, TileShape)> {
         }
     }
     shapes
-}
-
-fn segment_gap(tile: &TileShape, segment: &FloatLine) -> f64 {
-    if tile.contains_float(&segment.a) || tile.contains_float(&segment.b) {
-        return 0.0;
-    }
-    let corners = tile.corner_approx_arr();
-    let mut distance = f64::INFINITY;
-    for index in 0..corners.len() {
-        let edge = FloatLine::new(corners[index], corners[(index + 1) % corners.len()]);
-        if let Some(point) = edge.intersection(segment)
-            && edge.segment_distance(&point) < 1e-6
-            && segment.segment_distance(&point) < 1e-6
-        {
-            return 0.0;
-        }
-        distance = distance
-            .min(edge.segment_distance(&segment.a))
-            .min(edge.segment_distance(&segment.b))
-            .min(segment.segment_distance(&edge.a))
-            .min(segment.segment_distance(&edge.b));
-    }
-    distance
 }
 
 fn pad_routing_gap(board: &Board, pad: ItemId, other: ItemId, layer: usize) -> Option<f64> {

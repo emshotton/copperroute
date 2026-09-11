@@ -1,0 +1,113 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-10T17:28:57",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning"
+    ],
+    "kicad_version": "10.0.4",
+    "schematic_parity": [],
+    "source": "closer.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "Clearance violation ( clearance 0.1999 mm; actual 0.1488 mm)",
+            "items": [
+                {
+                    "description": "Track [GND] on F.Cu, length 2.1920 mm",
+                    "pos": {
+                        "x": 157.6675,
+                        "y": 82.3
+                    },
+                    "uuid": "9fd3c864-23f3-4bae-82d9-6574ced6f654"
+                },
+                {
+                    "description": "Pad 2 [+1V5] of C15 on F.Cu",
+                    "pos": {
+                        "x": 157.525,
+                        "y": 80.75
+                    },
+                    "uuid": "b5e472af-c1fd-47e8-9d43-f41f6eefec13"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Front solder mask aperture bridges items with different nets",
+            "items": [
+                {
+                    "description": "Track [GND] on F.Cu, length 2.1920 mm",
+                    "pos": {
+                        "x": 157.6675,
+                        "y": 82.3
+                    },
+                    "uuid": "9fd3c864-23f3-4bae-82d9-6574ced6f654"
+                },
+                {
+                    "description": "Pad 2 [+1V5] of C15 on F.Cu",
+                    "pos": {
+                        "x": 157.525,
+                        "y": 80.75
+                    },
+                    "uuid": "b5e472af-c1fd-47e8-9d43-f41f6eefec13"
+                }
+            ],
+            "severity": "error",
+            "type": "solder_mask_bridge"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "Track [GND] on F.Cu, length 2.1920 mm",
+                    "pos": {
+                        "x": 157.6675,
+                        "y": 82.3
+                    },
+                    "uuid": "9fd3c864-23f3-4bae-82d9-6574ced6f654"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "The current configuration does not include the footprint library 'Capacitor_SMD'",
+            "items": [
+                {
+                    "description": "Footprint C15",
+                    "pos": {
+                        "x": 158.55,
+                        "y": 80.75
+                    },
+                    "uuid": "00000000-0000-0000-0000-00005e715c8f"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        }
+    ]
+}
