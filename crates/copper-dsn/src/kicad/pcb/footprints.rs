@@ -219,6 +219,13 @@ fn solder_mask_expansion(raw_layers: &[Value], margin: f64) -> BTreeMap<String, 
         .collect()
 }
 
+fn effective_solder_mask_expansion(margin: f64) -> BTreeMap<String, f64> {
+    MASK_LAYERS
+        .into_iter()
+        .map(|layer| (layer.to_string(), margin))
+        .collect()
+}
+
 fn allows_solder_mask_bridges(fp: &Node) -> bool {
     fp.child("attr")
         .is_some_and(|attr| has_atom(&attr.values, "allow_soldermask_bridges"))
@@ -433,6 +440,7 @@ pub fn read_components(
                 copperClearance: copper_clearance,
                 allowSolderMaskBridges: allow_solder_mask_bridges,
                 solderMaskExpansion: Some(solder_mask_expansion(raw_layers, mask_margin)),
+                effectiveSolderMaskExpansion: Some(effective_solder_mask_expansion(mask_margin)),
                 name: Some(pi.to_string()),
                 netName: Some(nets.name_of(pad)?),
                 shape: Some(shape.to_string()),
