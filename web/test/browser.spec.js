@@ -691,7 +691,7 @@ test("the drop hint covers the loaded board until the first interaction", async 
 }) => {
   await page.goto("/");
   await expect(page.locator("#drop-hint")).toContainText(
-    "Drag and drop a Specctra DSN or KiCad PCB here to route",
+    "Drag and drop a KiCad PCB or Specctra DSN here to route",
   );
   await expect(page.locator("#preview svg")).toBeVisible();
 
