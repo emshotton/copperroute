@@ -60,7 +60,7 @@
       (host_version v10.0)
     )
     (library_out 
-      (padstack defaultVia
+      (padstack "Via[0-1]_800:400_um"
         (shape
           (circle "top_cu" 8000 0 0)
         )
@@ -74,8 +74,8 @@
         (wire
           (path "top_cu" 3000
             1416050 -996950
-            1407693 -988593
-            1301217 -988593
+            1407708 -988608
+            1301202 -988608
             1282700 -1007110
           )
         )
