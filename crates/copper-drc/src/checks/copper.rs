@@ -4,8 +4,8 @@ use copper_board::{Board, DrcConstraints, DrcSeverity, Item, ItemId};
 use copper_geometry::{FloatLine, FloatPoint, TileShape};
 
 use crate::checks::geometry::{
-    candidates, gap_below, has_copper, hole_copper_gap, hole_of, is_copper, item_shapes,
-    sub_epsilon,
+    candidates, circle_copper_gap, circular_copper, gap_below, has_copper, hole_copper_gap,
+    hole_of, is_copper, item_shapes, rounded_pad_trace_gap, sub_epsilon,
 };
 use crate::constraints::{pair_clearance, search_radius, severity};
 use crate::{DrcViolation, DrcViolationKind};
@@ -186,11 +186,31 @@ fn check_pair(
         && clearance > 0
     {
         for other_shape in &other_shapes {
-            if let Some((actual, position)) = gap_below(
-                shape,
-                other_shape,
-                sub_epsilon(clearance, constraints.epsilon),
-            ) {
+            let required = sub_epsilon(clearance, constraints.epsilon);
+            let circular = circular_copper(board, other, layer)
+                .map(|circle| (id, circle))
+                .or_else(|| circular_copper(board, id, layer).map(|circle| (other, circle)));
+            let gap = if let Some((copper_id, circle)) = circular {
+                circle_copper_gap(
+                    board,
+                    copper_id,
+                    layer,
+                    circle.center.to_float(),
+                    f64::from(circle.radius),
+                    required,
+                )
+            } else {
+                gap_below(shape, other_shape, required)
+            };
+            if let Some((actual, position)) = gap {
+                let actual = if let Some(gap) = rounded_pad_trace_gap(board, id, other, layer) {
+                    if gap >= f64::from(sub_epsilon(clearance, constraints.epsilon)) {
+                        continue;
+                    }
+                    gap.max(0.0)
+                } else {
+                    actual
+                };
                 let both_netted =
                     board.items[&id].net_count() > 0 && board.items[&other].net_count() > 0;
                 let kind = if actual == 0.0 && both_netted {

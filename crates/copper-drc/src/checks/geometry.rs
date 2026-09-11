@@ -1,5 +1,5 @@
 use copper_board::{Board, Item, ItemId, ItemKind, TreeObject};
-use copper_geometry::{Circle, FloatPoint, Shape, ShapeOps, TileShape};
+use copper_geometry::{Circle, FloatLine, FloatPoint, Shape, ShapeOps, TileShape};
 
 pub struct Hole {
     pub shape: TileShape,
@@ -199,9 +199,33 @@ pub fn hole_copper_gap(
     hole: &Hole,
     clearance: i32,
 ) -> Option<(f64, FloatPoint)> {
+    circle_copper_gap(board, copper_id, layer, hole.center, hole.radius, clearance)
+}
+
+pub fn circular_copper(board: &Board, id: ItemId, layer: usize) -> Option<Circle> {
+    let ctx = board.ctx();
+    let shape = match board.get_item(id)? {
+        Item::Pin(pin) => pin.get_shape_on_layer(layer, &ctx)?,
+        Item::Via(via) => via.get_shape_on_layer(layer, &ctx)?,
+        _ => return None,
+    };
+    match shape {
+        Shape::Circle(circle) => Some(circle),
+        _ => None,
+    }
+}
+
+pub fn circle_copper_gap(
+    board: &Board,
+    copper_id: ItemId,
+    layer: usize,
+    center: FloatPoint,
+    radius: f64,
+    clearance: i32,
+) -> Option<(f64, FloatPoint)> {
     let ctx = board.ctx();
     let item = board.get_item(copper_id)?;
-    let p = hole.center;
+    let p = center;
     let (nearest, copper_radius) = match item {
         Item::Trace(trace) => (
             trace.polyline().nearest_point_approx(&p)?,
@@ -228,13 +252,13 @@ pub fn hole_copper_gap(
         }
     };
     let distance = p.distance(&nearest);
-    let signed_gap = distance - copper_radius - hole.radius;
+    let signed_gap = distance - copper_radius - radius;
     let actual = signed_gap.max(0.0);
     if signed_gap >= f64::from(clearance) {
         return None;
     }
     let position = if distance > 0.0 {
-        let along = ((hole.radius + actual / 2.0) / distance).min(1.0);
+        let along = ((radius + actual / 2.0) / distance).min(1.0);
         FloatPoint::new(
             p.x + (nearest.x - p.x) * along,
             p.y + (nearest.y - p.y) * along,
@@ -243,4 +267,55 @@ pub fn hole_copper_gap(
         p
     };
     Some((actual, position))
+}
+
+pub fn segment_gap(tile: &TileShape, segment: &FloatLine) -> f64 {
+    if tile.contains_float(&segment.a) || tile.contains_float(&segment.b) {
+        return 0.0;
+    }
+    let corners = tile.corner_approx_arr();
+    let mut distance = f64::INFINITY;
+    for index in 0..corners.len() {
+        let edge = FloatLine::new(corners[index], corners[(index + 1) % corners.len()]);
+        if let Some(point) = edge.intersection(segment)
+            && edge.segment_distance(&point) < 1e-6
+            && segment.segment_distance(&point) < 1e-6
+        {
+            return 0.0;
+        }
+        distance = distance
+            .min(edge.segment_distance(&segment.a))
+            .min(edge.segment_distance(&segment.b))
+            .min(segment.segment_distance(&edge.a))
+            .min(segment.segment_distance(&edge.b));
+    }
+    distance
+}
+
+pub fn rounded_pad_trace_gap(board: &Board, a: ItemId, b: ItemId, layer: usize) -> Option<f64> {
+    let (pin, trace) = match (board.get_item(a)?, board.get_item(b)?) {
+        (Item::Pin(pin), Item::Trace(trace)) | (Item::Trace(trace), Item::Pin(pin)) => (pin, trace),
+        _ => return None,
+    };
+    let ctx = board.ctx();
+    let radius = pin.get_padstack(&ctx)?.round_rect_radius?;
+    if radius <= 0.0 {
+        return None;
+    }
+    let tile = pin
+        .get_shape_on_layer(layer, &ctx)?
+        .bounding_tile()
+        .offset(-radius);
+    if tile.dimension() < 0 {
+        return None;
+    }
+    let distance = trace
+        .polyline()
+        .corner_approx_arr()
+        .windows(2)
+        .map(|p| segment_gap(&tile, &FloatLine::new(p[0], p[1])))
+        .reduce(f64::min)?;
+    distance
+        .is_finite()
+        .then_some(distance - radius - f64::from(trace.get_half_width()))
 }

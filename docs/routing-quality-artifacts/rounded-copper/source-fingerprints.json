@@ -1,0 +1,27 @@
+{
+  "base_sha": "5c4a5c94f30392e83a6293aaeba9c1b9bc25bdcc",
+  "files": {
+    "crates/copper-drc/src/checks/copper.rs": "fd8bb6f975d686e6257ca3d80e3294505c0bc698aa2be4b4c183d3b75d43f27d",
+    "crates/copper-drc/src/checks/geometry.rs": "ab42ec5176909e41321a2ebb3019b83fc4e74f8f79500f1934f784b94ef0c9ae",
+    "crates/copper-drc/src/checks/solder_mask.rs": "f8d7f74f95243694102d5a165c534192e3cffd1675baf409d4aaedc5b650308a",
+    "crates/copper-drc/tests/circular_clearance.rs": "b1be5e136fd88a1e74771525acf49e77687008fbe1565953bd6a0169d0d8e254",
+    "crates/copper-drc/tests/data/circular-clearance/README.md": "8fcf10e2126a5286c2b51ea6aaca922ba04bb7c6cd7a16941681d47441d19433",
+    "crates/copper-drc/tests/data/circular-clearance/clear-kicad.json": "c7f655fd128c057eff3d973db65e98dab14da23b3f1bb0c9c1e158594dd1dca7",
+    "crates/copper-drc/tests/data/circular-clearance/clear-native.json": "3c25a156830df756670e204bebd2acb3c6dd81e12c91aff4aae39455eeb31ee4",
+    "crates/copper-drc/tests/data/circular-clearance/clear.kicad_pcb": "470f96d421774530687080ef7d77cb7ee97ba74d6f3bdb4026fee68f48dfdf9b",
+    "crates/copper-drc/tests/data/circular-clearance/clear.kicad_pro": "0046b3ce60920f24f39699854edd39d527bec3bf5ad28bc6bf35cac72efd11c9",
+    "crates/copper-drc/tests/data/circular-clearance/violating-kicad.json": "b3a1cd36dbb54fee0890860386d87958de2aa0e760a613170fb93a98f1e99e59",
+    "crates/copper-drc/tests/data/circular-clearance/violating-native.json": "0396e2848d6f17579743f6402b85ec574800e7df3726be3d40ed34f1534cf7e9",
+    "crates/copper-drc/tests/data/circular-clearance/violating.kicad_pcb": "79a0a2985364773d52b83673d2e968eb0cbffceac62f33770188b8b8c17e158a",
+    "crates/copper-drc/tests/data/circular-clearance/violating.kicad_pro": "0046b3ce60920f24f39699854edd39d527bec3bf5ad28bc6bf35cac72efd11c9",
+    "crates/copper-drc/tests/data/rounded-trace-clearance/clear-kicad.json": "3e86c01b9f14779885318594e4556edfde07ef079dc821614bac17aeb49b26f4",
+    "crates/copper-drc/tests/data/rounded-trace-clearance/clear-native.json": "4cd7ef40a9b52450a99637b7fc86a37cf7b8044ece8e34a6cba2c79c3d47ee09",
+    "crates/copper-drc/tests/data/rounded-trace-clearance/clear.kicad_pcb": "7e9dfd7f125f8b373040dc9d46547f2704a2de2c6e15d3744ab44fff617a01fc",
+    "crates/copper-drc/tests/data/rounded-trace-clearance/clear.kicad_pro": "0046b3ce60920f24f39699854edd39d527bec3bf5ad28bc6bf35cac72efd11c9",
+    "crates/copper-drc/tests/data/rounded-trace-clearance/violating-kicad.json": "93196d520f18c28a1e6a1f26c426f39e04b67edc9ed09ec77ed6c6b4e9e4cb29",
+    "crates/copper-drc/tests/data/rounded-trace-clearance/violating-native.json": "42b4336ab6bea72a5d4d58dff91ab02fad2d5c92182b7fdbcf14bd5513f15933",
+    "crates/copper-drc/tests/data/rounded-trace-clearance/violating.kicad_pcb": "453548f65b606162f0bd7a14e2283f847d4bc4bc7b003e52856e3148b00ec64c",
+    "crates/copper-drc/tests/data/rounded-trace-clearance/violating.kicad_pro": "0046b3ce60920f24f39699854edd39d527bec3bf5ad28bc6bf35cac72efd11c9",
+    "crates/copper-drc/tests/rounded_trace_clearance.rs": "b938e867ab8b66bb7520a44f7e1b14bc2e540c56afc3f1146c6d3dce1dabb0ab"
+  }
+}
