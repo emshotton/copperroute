@@ -1,10 +1,11 @@
 use std::collections::BTreeSet;
 use std::io::{self, Write};
 
-use copper_board::{Board, FixedState, Item, ItemId, Padstack};
+use copper_board::{Board, FixedState, Item, ItemId, Padstack, Unit};
 use copper_geometry::{Area, FloatPoint, Shape, ShapeOps};
 
 use crate::coordinate_transform::CoordinateTransform;
+use crate::format::double::format_fixed;
 use crate::format::{IdentifierType, IndentFileWriter, SES_RESERVED, format_placement_rotation};
 use crate::parser::geometry::DsnLayer;
 use crate::parser::header::{write_parser_scope, write_resolution_scope};
@@ -228,16 +229,53 @@ fn write_library<W: Write>(
         else {
             continue;
         };
-        if !written_padstack_names.insert(via_padstack.name.clone()) {
+        let session_name = via_padstack_session_name(via_padstack, board);
+        if !written_padstack_names.insert(session_name.clone()) {
             continue;
         }
-        write_padstack(via_padstack, board, identifier_type, ct, file);
+        write_padstack(
+            via_padstack,
+            &session_name,
+            board,
+            identifier_type,
+            ct,
+            file,
+        );
     }
     file.end_scope();
 }
 
+fn is_kicad_net_class_via_template_name(name: &str) -> bool {
+    name == "defaultVia" || name.starts_with("via_")
+}
+
+fn via_padstack_session_name(padstack: &Padstack, board: &Board) -> String {
+    if !is_kicad_net_class_via_template_name(&padstack.name) {
+        return padstack.name.clone();
+    }
+    let from_layer = padstack.from_layer();
+    let to_layer = padstack.to_layer();
+    let diameter_board = padstack
+        .get_shape(from_layer)
+        .map(|shape| {
+            let bounds = shape.bounding_box();
+            f64::from(bounds.width().min(bounds.height()))
+        })
+        .unwrap_or(0.0);
+    let resolution = f64::from(board.communication.resolution);
+    let to_um = |board_units: f64| {
+        Unit::scale(board_units / resolution, board.communication.unit, Unit::Um)
+    };
+    format!(
+        "Via[{from_layer}-{to_layer}]_{}:{}_um",
+        format_fixed(to_um(diameter_board), 0),
+        format_fixed(to_um(padstack.drill_diameter.unwrap_or(0.0)), 0)
+    )
+}
+
 fn write_padstack<W: Write>(
     padstack: &Padstack,
+    padstack_name: &str,
     board: &Board,
     identifier_type: &IdentifierType,
     ct: &CoordinateTransform,
@@ -266,8 +304,7 @@ fn write_padstack<W: Write>(
 
     file.start_scope_nl();
     file.write("padstack ");
-    let padstack_name = padstack.name.clone();
-    identifier_type.write(&padstack_name, file);
+    identifier_type.write(padstack_name, file);
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     for i in first_layer_no..=(last_layer_no as usize) {
         let Some(current_board_shape) = padstack.get_shape(i32::try_from(i).unwrap_or(i32::MAX))
@@ -471,7 +508,7 @@ fn write_via<W: Write>(
     let Some(via_padstack) = via.get_padstack(&ctx) else {
         return;
     };
-    let via_padstack_name = via_padstack.name.clone();
+    let via_padstack_name = via_padstack_session_name(via_padstack, board);
     let via_location = via.get_center().to_float();
     file.start_scope_nl();
     file.write("via ");

@@ -58,6 +58,18 @@ fn ses_round_trip_preserves_wire_count() {
 }
 
 #[test]
+fn a_dsn_sourced_via_padstack_name_is_unchanged_in_the_session() {
+    let (board, ct) = load_board("Issue593-BBD_Mars-64.dsn");
+    let mut out: Vec<u8> = Vec::new();
+    ses_writer::write(&board, &ct, &mut out, "unchanged.dsn").expect("write into a Vec");
+    let ses = String::from_utf8(out).expect("SES is UTF-8");
+    assert!(
+        ses.contains("Via[0-1]_800:400_um"),
+        "the DSN's own via padstack name must survive the session write unchanged: {ses}"
+    );
+}
+
+#[test]
 fn invalid_ses_is_an_error() {
     let (mut board, ct) = load_board("Issue143-rpi_splitter.dsn");
     let result = ses_reader::read(&b"garbage"[..], &mut board, &ct);
