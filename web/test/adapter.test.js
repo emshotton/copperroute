@@ -461,6 +461,26 @@ test("assembles a loop and warns about an orphan outline fragment", () => {
   );
 });
 
+const squareWithGap = (gap) =>
+  minimalBoard(
+    '(gr_line (start 0 0) (end 10 0) (layer "Edge.Cuts")) ' +
+      '(gr_line (start 10 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(gr_line (start 10 10) (end 0 10) (layer "Edge.Cuts")) ' +
+      `(gr_line (start 0 ${10 + gap}) (end 0 0) (layer "Edge.Cuts"))`,
+  );
+
+test("chains endpoints just under KiCad's chaining tolerance", () => {
+  const { board } = load(squareWithGap(0.0099));
+  assert.equal(board.outline.corners.length, 4);
+});
+
+test("rejects endpoints just over KiCad's chaining tolerance", () => {
+  assert.throws(
+    () => load(squareWithGap(0.0101)),
+    /A closed Edge.Cuts outline is required\./,
+  );
+});
+
 test("rejects an outline with no closed loop at all", () => {
   const text = minimalBoard('(gr_line (start 0 0) (end 10 0) (layer "Edge.Cuts"))');
   assert.throws(

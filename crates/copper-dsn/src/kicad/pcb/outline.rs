@@ -3,7 +3,9 @@ use crate::kicad::sexpr::{Node, Value};
 
 pub const OUTLINE_TOLERANCE: f64 = 0.005;
 
-const POINT_TOLERANCE: f64 = 0.00001;
+/// Matches KiCad's own `DEFAULT_CHAINING_EPSILON_MM` (board.h): the max distance between two
+/// endpoints for KiCad to treat them as connected when chaining a board outline.
+const CHAINING_EPSILON_MM: f64 = 0.01;
 
 fn num(text: &str) -> Result<f64, PcbError> {
     let value: f64 = text.parse().unwrap_or(f64::NAN);
@@ -219,7 +221,7 @@ fn collect(
 }
 
 fn equal(a: (f64, f64), b: (f64, f64)) -> bool {
-    (a.0 - b.0).hypot(a.1 - b.1) < POINT_TOLERANCE
+    (a.0 - b.0).hypot(a.1 - b.1) < CHAINING_EPSILON_MM
 }
 
 fn area(points: &[(f64, f64)]) -> f64 {

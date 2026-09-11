@@ -67,7 +67,10 @@ const xy = (n) => {
   return { x: number(n.values[1]), y: number(n.values[2]) };
 };
 const point = (n, key) => xy(child(n, key));
-const equal = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 0.00001;
+// Matches KiCad's own DEFAULT_CHAINING_EPSILON_MM (board.h): the max distance between two
+// endpoints for KiCad to treat them as connected when chaining a board outline.
+const CHAINING_EPSILON_MM = 0.01;
+const equal = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < CHAINING_EPSILON_MM;
 
 export function embeddedNetClasses(root) {
   return children(root, "net_class").map((node) => ({

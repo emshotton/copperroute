@@ -174,6 +174,36 @@ fn equal_area_cutouts_sort_by_geometry_not_by_declaration_order() {
     assert_eq!(leftmost_x.iter().cloned().fold(f64::MAX, f64::min), 10.0);
 }
 
+fn rounded_square_with_gap(gap: f64) -> String {
+    board(&format!(
+        concat!(
+            r#"(gr_line (start 0 0) (end 10 0) (layer "Edge.Cuts"))"#,
+            r#"(gr_line (start 10 0) (end 10 10) (layer "Edge.Cuts"))"#,
+            r#"(gr_line (start 10 10) (end 0 10) (layer "Edge.Cuts"))"#,
+            r#"(gr_line (start 0 {gap}) (end 0 0) (layer "Edge.Cuts"))"#,
+        ),
+        gap = 10.0 + gap
+    ))
+}
+
+#[test]
+fn it_chains_endpoints_just_under_kicads_chaining_tolerance() {
+    let text = rounded_square_with_gap(0.0099);
+    let root = parse(&text).expect("it parses");
+    let outline = assemble_outline(&outline_paths(&root).expect("paths"), &mut Vec::new())
+        .expect("an outline");
+    assert_eq!(outline.boundary.len(), 4);
+}
+
+#[test]
+fn it_rejects_endpoints_just_over_kicads_chaining_tolerance() {
+    let text = rounded_square_with_gap(0.0101);
+    let root = parse(&text).expect("it parses");
+    let error = assemble_outline(&outline_paths(&root).expect("paths"), &mut Vec::new())
+        .expect_err("it fails");
+    assert_eq!(error.message, "A closed Edge.Cuts outline is required.");
+}
+
 #[test]
 fn it_rejects_separate_outlines() {
     let text = board(concat!(
