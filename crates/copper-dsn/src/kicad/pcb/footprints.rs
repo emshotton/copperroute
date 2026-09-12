@@ -288,6 +288,33 @@ fn custom_pad_polygon(
     Ok(hull.into_iter().map(|(x, y)| Point2D { x, y }).collect())
 }
 
+/// KiCad grows the pad by `rect_delta.x` along Y and by `rect_delta.y` along X, so the two
+/// components cross axes. Corner order matches `convex_hull_half`, which the custom-pad path
+/// already relies on.
+fn trapezoid_polygon(pad: &Node, size: (f64, f64)) -> Result<Vec<Point2D>, PcbError> {
+    let (delta_x, delta_y) = match pad.child("rect_delta") {
+        Some(_) => point(pad, "rect_delta")?,
+        None => (0.0, 0.0),
+    };
+    if delta_x.abs() >= size.1 || delta_y.abs() >= size.0 {
+        return Err(PcbError::new(
+            SECTION,
+            "Trapezoid pads must keep a positive width and height.",
+        ));
+    }
+    let (half_x, half_y) = (size.0 / 2.0, size.1 / 2.0);
+    let (half_delta_x, half_delta_y) = (delta_x / 2.0, delta_y / 2.0);
+    Ok(vec![
+        (-half_x - half_delta_y, half_y + half_delta_x),
+        (-half_x + half_delta_y, -half_y - half_delta_x),
+        (half_x - half_delta_y, -half_y + half_delta_x),
+        (half_x + half_delta_y, half_y - half_delta_x),
+    ]
+    .into_iter()
+    .map(|(x, y)| Point2D { x, y })
+    .collect())
+}
+
 fn primitive_anchor(pad: &Node) -> Option<String> {
     pad.child("options")
         .and_then(|options| options.value("anchor"))
@@ -424,7 +451,7 @@ pub fn read_components(
             );
             let shape_ok = matches!(
                 shape,
-                Some("circle" | "rect" | "oval" | "roundrect" | "custom")
+                Some("circle" | "rect" | "oval" | "roundrect" | "custom" | "trapezoid")
             );
             if !type_ok || !shape_ok {
                 return Err(PcbError::new(
@@ -446,6 +473,9 @@ pub fn read_components(
                 copper_polygon = Some(custom_pad_polygon(pad, size, warnings)?);
             } else if pad.child("primitives").is_some() {
                 return Err(PcbError::new(SECTION, "Unexpected custom pad primitives."));
+            } else if shape == "trapezoid" {
+                let size = point(pad, "size")?;
+                copper_polygon = Some(trapezoid_polygon(pad, size)?);
             }
 
             let drill_node = pad.child("drill");

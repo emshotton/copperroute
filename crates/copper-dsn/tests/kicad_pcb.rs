@@ -434,3 +434,60 @@ fn a_slot_with_a_zero_dimension_is_still_rejected() {
         "Only slots with positive dimensions are supported."
     );
 }
+
+/// Corners cross-checked against `PAD::GetEffectivePolygon` in KiCad 10.0.3 for
+/// size (2, 1) with rect_delta (0.3, -0.4), an asymmetric case that pins both signs.
+#[test]
+fn a_trapezoid_pad_matches_the_corners_kicad_builds() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 1 1)
+          (pad "1" smd trapezoid (at 0 0) (size 2 1) (rect_delta 0.3 -0.4)
+            (layers "F.Cu") (net 1 "GND"))))"#
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    let components = imported.board.components.expect("components");
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    let polygon = pad.copperPolygon.as_ref().expect("a trapezoid carries its polygon");
+    let corners: Vec<(f64, f64)> = polygon.iter().map(|p| (p.x, p.y)).collect();
+    assert_eq!(
+        corners,
+        vec![(-0.8, 0.65), (-1.2, -0.65), (1.2, -0.35), (0.8, 0.35)]
+    );
+}
+
+#[test]
+fn a_trapezoid_without_a_delta_is_the_plain_rectangle() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 1 1)
+          (pad "1" smd trapezoid (at 0 0) (size 2 1) (layers "F.Cu") (net 1 "GND"))))"#
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    let components = imported.board.components.expect("components");
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    let polygon = pad.copperPolygon.as_ref().expect("a trapezoid carries its polygon");
+    let corners: Vec<(f64, f64)> = polygon.iter().map(|p| (p.x, p.y)).collect();
+    assert_eq!(
+        corners,
+        vec![(-1.0, 0.5), (-1.0, -0.5), (1.0, -0.5), (1.0, 0.5)]
+    );
+}
+
+#[test]
+fn a_trapezoid_delta_wider_than_the_pad_is_rejected() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 1 1)
+          (pad "1" smd trapezoid (at 0 0) (size 2 1) (rect_delta 1.4 0)
+            (layers "F.Cu") (net 1 "GND"))))"#
+    );
+    let error = read_pcb(&text, "t", &default_net_class()).expect_err("it fails");
+    assert_eq!(
+        error.message,
+        "Trapezoid pads must keep a positive width and height."
+    );
+}

@@ -650,3 +650,59 @@ test("a slot with a zero dimension is still rejected", () => {
     /Only slots with positive dimensions are supported\./,
   );
 });
+
+// Corners cross-checked against PAD::GetEffectivePolygon in KiCad 10.0.3 for size (2, 1)
+// with rect_delta (0.3, -0.4), an asymmetric case that pins both signs.
+test("a trapezoid pad matches the corners kicad builds", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))',
+  ).replace(
+    '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))',
+    '(pad "1" smd trapezoid (at 0 0) (size 2 1) (rect_delta 0.3 -0.4)' +
+      ' (layers "F.Cu") (net 1 "GND"))',
+  );
+  const { board } = load(text);
+  const pad = board.components[0].pads[0];
+  assert.deepEqual(
+    pad.copperPolygon.map((p) => [p.x, p.y]),
+    [
+      [-0.8, 0.65],
+      [-1.2, -0.65],
+      [1.2, -0.35],
+      [0.8, 0.35],
+    ],
+  );
+});
+
+test("a trapezoid without a delta is the plain rectangle", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))',
+  ).replace(
+    '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))',
+    '(pad "1" smd trapezoid (at 0 0) (size 2 1) (layers "F.Cu") (net 1 "GND"))',
+  );
+  const { board } = load(text);
+  assert.deepEqual(
+    board.components[0].pads[0].copperPolygon.map((p) => [p.x, p.y]),
+    [
+      [-1, 0.5],
+      [-1, -0.5],
+      [1, -0.5],
+      [1, 0.5],
+    ],
+  );
+});
+
+test("a trapezoid delta wider than the pad is rejected", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))',
+  ).replace(
+    '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))',
+    '(pad "1" smd trapezoid (at 0 0) (size 2 1) (rect_delta 1.4 0)' +
+      ' (layers "F.Cu") (net 1 "GND"))',
+  );
+  assert.throws(
+    () => load(text),
+    /Trapezoid pads must keep a positive width and height\./,
+  );
+});

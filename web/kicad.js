@@ -378,7 +378,7 @@ export function importBoard(text, name, rules, options = {}) {
       const type = pad.values[2];
       if (
         !["smd", "connect", "thru_hole", "np_thru_hole"].includes(type) ||
-        !["circle", "rect", "oval", "roundrect", "custom"].includes(shape)
+        !["circle", "rect", "oval", "roundrect", "custom", "trapezoid"].includes(shape)
       )
         throw Error(
           `Unsupported pad ${reference}.${pad.values[1]}: ${type}/${shape}`,
@@ -409,6 +409,26 @@ export function importBoard(text, name, rules, options = {}) {
         copperPolygon = [...half(samples), ...half([...samples].reverse())];
         warnings.push("Convex custom pad outlines include their stroke, approximated within 0.005 mm; original pad definitions are preserved.");
       } else if (children(pad, "primitives").length) throw Error("Unexpected custom pad primitives.");
+      else if (shape === "trapezoid") {
+        // KiCad grows the pad by rect_delta.x along Y and by rect_delta.y along X, so the
+        // two components cross axes.
+        const size = point(pad, "size"),
+          delta = child(pad, "rect_delta")
+            ? point(pad, "rect_delta")
+            : { x: 0, y: 0 };
+        if (Math.abs(delta.x) >= size.y || Math.abs(delta.y) >= size.x)
+          throw Error("Trapezoid pads must keep a positive width and height.");
+        const hx = size.x / 2,
+          hy = size.y / 2,
+          hdx = delta.x / 2,
+          hdy = delta.y / 2;
+        copperPolygon = [
+          { x: -hx - hdy, y: hy + hdx },
+          { x: -hx + hdy, y: -hy - hdx },
+          { x: hx - hdy, y: -hy + hdx },
+          { x: hx + hdy, y: hy - hdx },
+        ];
+      }
       const drillNode = child(pad, "drill"),
         slotted = drillNode?.values[1] === "oval";
       const drill = slotted

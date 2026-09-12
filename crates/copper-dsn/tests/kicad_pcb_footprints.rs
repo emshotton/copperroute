@@ -117,9 +117,9 @@ fn it_rejects_a_footprint_zone() {
 fn it_rejects_an_unsupported_pad_shape() {
     let error = read_err(concat!(
         r#"(footprint "U" (layer "F.Cu") (at 0 0)"#,
-        r#" (pad "1" smd trapezoid (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
+        r#" (pad "1" smd octagon (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
     ));
-    assert_eq!(error, "Unsupported pad FP0.1: smd/trapezoid");
+    assert_eq!(error, "Unsupported pad FP0.1: smd/octagon");
 }
 
 #[test]
