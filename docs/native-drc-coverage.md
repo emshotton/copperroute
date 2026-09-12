@@ -2,6 +2,8 @@
 
 The routing compatibility benchmark covers all751 KiCad boards. The native checker accuracy survey covers549 imported boards and carries forward202 import failures from the initial native survey. Later mask surveys reimported the supported subset; they did not retry these202 failures. Thus “751 attempted” describes the original corpus coverage, not751 fresh native imports for every candidate.
 
+The table below records the initial survey and is not the current capability: trapezoid pads, multi-primitive custom pads, non-plated slots and footprint copper graphics have since been imported, and the tallies for those rows no longer apply.
+
 These are import exclusions, not proof that the boards are unsuitable routing benchmarks. Do not add them to the outlier register solely because the native adapter rejects them. Outline closure failures can reflect actual source geometry, conversion tolerances or unsupported outline objects; this tally does not distinguish those causes.
 
 | Initial native import failure | Boards |
