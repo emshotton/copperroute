@@ -108,7 +108,7 @@ test("rejects unsupported geometry and malformed source", () => {
     "(zone (net 1))",
     "(arc (start 1 2))",
     '(gr_circle (center 1 2) (end 3 4) (layer "Edge.Cuts"))',
-    '(gr_line (start 1 2) (end 3 4) (layer "F.Cu"))',
+    '(gr_curve (layer "F.Cu"))',
   ])
     assert.throws(() => load(source.replace("(setup", item + " (setup")));
   assert.throws(() => load(source.slice(0, -3)));
@@ -311,6 +311,89 @@ test("copper text and footprint rectangles become layer-specific fixed obstacles
   assert.ok(exportBoard(input,input.board).includes('(gr_text "A"'));
 });
 
+test("board-level copper graphics become fixed obstacles", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(gr_line (start 0 0) (end 4 0) (layer "F.Cu") (stroke (width 0.2) (type solid))) ' +
+      '(gr_circle (center 2 0) (end 2.5 0) (layer "F.Cu") (stroke (width 0.1) (type solid)) (fill none)) ' +
+      '(gr_arc (start 0 0) (mid 1 1) (end 2 0) (layer "F.Cu") (stroke (width 0.2) (type solid))) ' +
+      '(gr_poly (pts (xy 0 0) (xy 2 0) (xy 1 2)) (layer "F.Cu") (stroke (width 0.2) (type solid)) (fill yes)) ' +
+      '(gr_rect (start 0 0) (end 4 2) (layer "F.Cu") (stroke (width 0.2) (type solid)) (fill none))',
+  );
+  const { board } = load(text);
+  const areas = board.conductionAreas;
+  assert.equal(areas.length, 5);
+  assert.ok(areas.every((a) => a.isObstacle && a.netName === "" && a.layerIndex === 0));
+  const bbox = (a) => {
+    const xs = a.polygon.map((p) => p.x),
+      ys = a.polygon.map((p) => p.y);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  };
+  assert.deepEqual(bbox(areas[0]), [-0.1, -0.1, 4.1, 0.1]);
+  assert.deepEqual(bbox(areas[1]), [1.45, -0.55, 2.55, 0.55]);
+  assert.deepEqual(bbox(areas[2]), [-0.1, -0.1, 2.1, 1.1]);
+  assert.deepEqual(bbox(areas[3]), [-0.1, -0.1, 2.1, 2.1]);
+  assert.deepEqual(bbox(areas[4]), [-0.1, -0.1, 4.1, 2.1]);
+});
+
+test("still rejects a top-level copper curve", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) (gr_curve (layer "F.Cu"))',
+  );
+  assert.throws(() => load(text), /Unsupported copper object: gr_curve/);
+});
+
+test("footprint-local copper graphics become fixed obstacles", () => {
+  const text = minimalBoard('(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))').replace(
+    '(footprint "R" (layer "F.Cu") (at 0 0)',
+    '(footprint "R" (layer "F.Cu") (at 10 20)' +
+      ' (fp_line (start 0 0) (end 4 0) (layer "F.Cu") (stroke (width 0.2) (type solid)))' +
+      ' (fp_circle (center 2 0) (end 2.5 0) (layer "F.Cu") (stroke (width 0.1) (type solid)) (fill none))' +
+      ' (fp_arc (start 0 0) (mid 1 1) (end 2 0) (layer "F.Cu") (stroke (width 0.2) (type solid)))' +
+      ' (fp_poly (pts (xy 0 0) (xy 2 0) (xy 1 2)) (layer "F.Cu") (stroke (width 0.2) (type solid)) (fill yes))' +
+      ' (fp_text user "HI" (at 5 5 0) (layer "F.Cu") (effects (font (size 1 1) (thickness 0.15))))',
+  );
+  const { board } = load(text);
+  const areas = board.conductionAreas;
+  assert.equal(areas.length, 5);
+  assert.ok(areas.every((a) => a.isObstacle && a.netName === "" && a.layerIndex === 0));
+  const bbox = (a) => {
+    const xs = a.polygon.map((p) => p.x),
+      ys = a.polygon.map((p) => p.y);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  };
+  assert.deepEqual(bbox(areas[0]), [9.9, 19.9, 14.1, 20.1]);
+  assert.deepEqual(bbox(areas[1]), [11.45, 19.45, 12.55, 20.55]);
+  assert.deepEqual(bbox(areas[2]), [9.9, 19.9, 12.1, 21.1]);
+  assert.deepEqual(bbox(areas[3]), [9.9, 19.9, 12.1, 22.1]);
+  assert.deepEqual(bbox(areas[4]), [13, 24, 17, 26]);
+});
+
+test("a footprint copper line pins the rotation transform", () => {
+  const text = minimalBoard('(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))').replace(
+    '(footprint "R" (layer "F.Cu") (at 0 0)',
+    '(footprint "R" (layer "F.Cu") (at 10 20 90)' +
+      ' (fp_line (start 0 0) (end 4 0) (layer "F.Cu") (stroke (width 0.2) (type solid)))',
+  );
+  const { board } = load(text);
+  assert.equal(board.conductionAreas.length, 1);
+  assert.deepEqual(board.conductionAreas[0].polygon, [
+    { x: 9.9, y: 20.1 },
+    { x: 9.9, y: 15.9 },
+    { x: 10.1, y: 15.9 },
+    { x: 10.1, y: 20.1 },
+  ]);
+});
+
+test("still rejects footprint copper curves", () => {
+  const text = minimalBoard('(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))').replace(
+    '(footprint "R" (layer "F.Cu") (at 0 0)',
+    '(footprint "R" (layer "F.Cu") (at 0 0)' +
+      ' (fp_curve (pts (xy 0 0) (xy 1 1) (xy 2 0) (xy 3 1)) (layer "F.Cu"))',
+  );
+  assert.throws(() => load(text), /Footprint copper graphics are not supported yet\./);
+});
+
 test("a stroked convex custom pad includes its copper, while unsupported primitives fail", () => {
   const pad = '(pad "1" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8)';
   const custom = '(pad "1" thru_hole custom (at 0 0) (size 0.8 0.8) (options (anchor circle)) (primitives (gr_poly (pts (xy -0.8 -0.8) (xy 0 -0.8) (xy 0.8 0) (xy 0.8 0.8) (xy -0.8 0.8)) (width 0.2) (fill yes))) (drill 0.3)';
@@ -507,9 +590,9 @@ test("accepts legacy copper layer names identified by their declared type", () =
 test("rejects a top-level copper object on a Cu-suffixed layer absent from the copper table", () => {
   const text = minimalBoard(
     '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) ' +
-      '(gr_circle (center 1 1) (end 2 1) (layer "In1.Cu"))',
+      '(gr_curve (layer "In1.Cu"))',
   );
-  assert.throws(() => load(text), /Unsupported copper object: gr_circle/);
+  assert.throws(() => load(text), /Unsupported copper object: gr_curve/);
 });
 
 test("rejects copper text on a Cu-suffixed layer absent from the copper table", () => {

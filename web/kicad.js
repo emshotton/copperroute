@@ -1,4 +1,10 @@
-import { footprintPoint, outlinePaths, OUTLINE_TOLERANCE } from "./geometry.js";
+import {
+  footprintPoint,
+  outlinePaths,
+  OUTLINE_TOLERANCE,
+  nativeArcPoints,
+  boundingBox,
+} from "./geometry.js";
 // Native KiCad adapter. Source spans let us replace routing while preserving
 // every other byte (footprints, graphics, properties, and unknown metadata).
 export function parse(text) {
@@ -71,6 +77,49 @@ const point = (n, key) => xy(child(n, key));
 // endpoints for KiCad to treat them as connected when chaining a board outline.
 const CHAINING_EPSILON_MM = 0.01;
 const equal = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < CHAINING_EPSILON_MM;
+const strokeMargin = (n) => number(val(child(n, "stroke") ?? n, "width", 0)) / 2;
+const obstacleNoun = (kind) =>
+  ({ rect: "rectangles", line: "lines", circle: "circles", arc: "arcs", poly: "polygons" })[kind];
+const circleBounds = (n, margin) => {
+  const center = point(n, "center"),
+    end = point(n, "end"),
+    radius = Math.hypot(end.x - center.x, end.y - center.y);
+  return boundingBox(
+    [
+      { x: center.x - radius, y: center.y - radius },
+      { x: center.x + radius, y: center.y + radius },
+    ],
+    margin,
+  );
+};
+const polyPoints = (n, emptyMessage) => {
+  const pts = children(child(n, "pts") ?? { values: [] }, "xy").map(xy);
+  if (!pts.length) throw Error(emptyMessage);
+  return pts;
+};
+const textRectangle = (n, text, at, angle) => {
+  const effects = child(n, "effects"),
+    font = effects && child(effects, "font");
+  if (!font || child(font, "face"))
+    throw Error("Custom copper text fonts are not supported yet.");
+  const size = point(font, "size");
+  const lines = String(text).split("\n");
+  const w = Math.max(...lines.map((line) => line.length)) * size.x * 1.5 + size.y;
+  const h = lines.length * size.y * 2;
+  const justify = child(effects, "justify")?.values ?? [];
+  const left = justify.includes("left") ? -size.y / 2 : justify.includes("right") ? -w : -w / 2;
+  const top = justify.includes("top") ? -size.y / 2 : justify.includes("bottom") ? -h : -h / 2;
+  const mirror = justify.includes("mirror") ? -1 : 1;
+  return [
+    [left, top],
+    [left + w, top],
+    [left + w, top + h],
+    [left, top + h],
+  ].map(([x, y]) => ({
+    x: at.x + mirror * x * Math.cos(angle) - y * Math.sin(angle),
+    y: at.y + mirror * x * Math.sin(angle) + y * Math.cos(angle),
+  }));
+};
 
 export function embeddedNetClasses(root) {
   return children(root, "net_class").map((node) => ({
@@ -179,36 +228,42 @@ export function importBoard(text, name, rules, options = {}) {
   );
   for (const n of root.values.filter((v) => v?.values)) {
     const layer = val(n, "layer", "");
-    if (couldBeCopper(layer) && n.values[0] === "gr_text") {
-      const effects = child(n, "effects"), font = effects && child(effects, "font");
-      if (!font || child(font, "face")) throw Error("Custom copper text fonts are not supported yet.");
-      const size = point(font, "size"), at = point(n, "at"), angle = -number(child(n, "at").values[3] ?? 0) * Math.PI / 180;
-      const lines = String(n.values[1]).split("\n");
-      const w = Math.max(...lines.map(line => line.length)) * size.x * 1.5 + size.y;
-      const h = lines.length * size.y * 2;
-      const justify = child(effects, "justify")?.values ?? [];
-      const left = justify.includes("left") ? -size.y / 2 : justify.includes("right") ? -w : -w / 2;
-      const top = justify.includes("top") ? -size.y / 2 : justify.includes("bottom") ? -h : -h / 2;
-      const mirror = justify.includes("mirror") ? -1 : 1;
-      const polygon = [[left, top], [left + w, top], [left + w, top + h], [left, top + h]].map(([x, y]) => ({
-        x: at.x + mirror * x * Math.cos(angle) - y * Math.sin(angle),
-        y: at.y + mirror * x * Math.sin(angle) + y * Math.cos(angle),
-      }));
+    if (!couldBeCopper(layer)) continue;
+    const kind = n.values[0];
+    if (kind === "gr_text") {
+      const at = point(n, "at"),
+        angle = (-number(child(n, "at").values[3] ?? 0) * Math.PI) / 180;
+      const polygon = textRectangle(n, n.values[1], at, angle);
       conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
       warnings.push("Copper text is preserved and reserved as conservative rectangular routing obstacles; check text clearances in KiCad.");
       continue;
     }
-    if (
-      couldBeCopper(layer) &&
-      ![
-        "segment",
-        "footprint",
-        "module",
-        "zone",
-        "arc",
-      ].includes(n.values[0])
-    )
-      throw Error(`Unsupported copper object: ${n.values[0]}`);
+    if (kind === "gr_line" || kind === "gr_rect") {
+      const polygon = boundingBox([point(n, "start"), point(n, "end")], strokeMargin(n));
+      conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+      warnings.push(`Copper ${obstacleNoun(kind === "gr_line" ? "line" : "rect")} are reserved as solid routing obstacles and preserved in downloads.`);
+      continue;
+    }
+    if (kind === "gr_circle") {
+      const polygon = circleBounds(n, strokeMargin(n));
+      conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+      warnings.push(`Copper ${obstacleNoun("circle")} are reserved as solid routing obstacles and preserved in downloads.`);
+      continue;
+    }
+    if (kind === "gr_arc") {
+      const polygon = boundingBox(nativeArcPoints(n), strokeMargin(n));
+      conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+      warnings.push(`Copper ${obstacleNoun("arc")} are reserved as solid routing obstacles and preserved in downloads.`);
+      continue;
+    }
+    if (kind === "gr_poly") {
+      const polygon = boundingBox(polyPoints(n, "Empty board polygon."), strokeMargin(n));
+      conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+      warnings.push(`Copper ${obstacleNoun("poly")} are reserved as solid routing obstacles and preserved in downloads.`);
+      continue;
+    }
+    if (!["segment", "footprint", "module", "zone", "arc"].includes(kind))
+      throw Error(`Unsupported copper object: ${kind}`);
   }
   if (outline.curved)
     warnings.push(
@@ -271,22 +326,41 @@ export function importBoard(text, name, rules, options = {}) {
       throw Error("Footprint zones are not supported yet.");
     for (const n of fp.values.filter((v) => v?.values)) {
       const layer = val(n, "layer", "");
-      if (couldBeCopper(layer) && n.values[0] === "fp_rect") {
-        const a = point(n, "start"), b = point(n, "end");
-        const stroke = child(n, "stroke");
-        const margin = number(val(stroke ?? n, "width", 0)) / 2;
-        const x0 = Math.min(a.x, b.x) - margin, x1 = Math.max(a.x, b.x) + margin;
-        const y0 = Math.min(a.y, b.y) - margin, y1 = Math.max(a.y, b.y) + margin;
-        const polygon = [{x:x0,y:y0},{x:x1,y:y0},{x:x1,y:y1},{x:x0,y:y1}].map(p => footprintPoint(fp, p));
+      if (!couldBeCopper(layer)) continue;
+      const kind = n.values[0];
+      if (kind === "fp_rect" || kind === "fp_line") {
+        const polygon = boundingBox([point(n, "start"), point(n, "end")], strokeMargin(n)).map((p) => footprintPoint(fp, p));
         conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
-        warnings.push("Footprint copper rectangles are reserved as solid routing obstacles and preserved in downloads.");
+        warnings.push(`Footprint copper ${obstacleNoun(kind === "fp_rect" ? "rect" : "line")} are reserved as solid routing obstacles and preserved in downloads.`);
         continue;
       }
-      if (
-        couldBeCopper(layer) &&
-        n.values[0] !== "pad" &&
-        n.values[0] !== "layer"
-      )
+      if (kind === "fp_circle") {
+        const polygon = circleBounds(n, strokeMargin(n)).map((p) => footprintPoint(fp, p));
+        conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+        warnings.push(`Footprint copper ${obstacleNoun("circle")} are reserved as solid routing obstacles and preserved in downloads.`);
+        continue;
+      }
+      if (kind === "fp_arc") {
+        const polygon = boundingBox(nativeArcPoints(n), strokeMargin(n)).map((p) => footprintPoint(fp, p));
+        conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+        warnings.push(`Footprint copper ${obstacleNoun("arc")} are reserved as solid routing obstacles and preserved in downloads.`);
+        continue;
+      }
+      if (kind === "fp_poly") {
+        const polygon = boundingBox(polyPoints(n, "Empty footprint polygon."), strokeMargin(n)).map((p) => footprintPoint(fp, p));
+        conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+        warnings.push(`Footprint copper ${obstacleNoun("poly")} are reserved as solid routing obstacles and preserved in downloads.`);
+        continue;
+      }
+      if (kind === "fp_text") {
+        const origin = footprintPoint(fp, point(n, "at")),
+          angle = (-number(child(n, "at").values[3] ?? 0) * Math.PI) / 180;
+        const polygon = textRectangle(n, n.values[2], origin, angle);
+        conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+        warnings.push("Footprint copper text is preserved and reserved as conservative rectangular routing obstacles; check text clearances in KiCad.");
+        continue;
+      }
+      if (kind !== "pad" && kind !== "layer")
         throw Error("Footprint copper graphics are not supported yet.");
     }
     const origin = point(fp, "at"),
