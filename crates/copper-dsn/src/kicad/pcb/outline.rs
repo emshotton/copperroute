@@ -8,6 +8,12 @@ pub const OUTLINE_TOLERANCE: f64 = 0.005;
 /// in the integer nanometres KiCad stores coordinates in.
 const CHAINING_EPSILON_NM: f64 = 10_000.0;
 
+/// Outlines drawn without endpoint snapping leave gaps this wide, and KiCad calls such a board
+/// malformed rather than routing it. Bridging them is deliberately more permissive than KiCad:
+/// it only ever supplies the router with a boundary, and never alters the Edge.Cuts geometry,
+/// which downloads copy through from the source file untouched.
+const HEALING_TOLERANCE_MM: f64 = 1.0;
+
 fn num(text: &str) -> Result<f64, PcbError> {
     let value: f64 = text.parse().unwrap_or(f64::NAN);
     if !value.is_finite() || value.abs() > 100_000.0 {
@@ -245,10 +251,21 @@ fn collect(
 /// Subtracting millimetre floats instead leaves such a gap outside the limit, because
 /// `92.79 - 92.78` is `0.010000000000005116` in binary floating point.
 fn equal(a: (f64, f64), b: (f64, f64)) -> bool {
-    let nanometres = |value: f64| (value * 1e6).round();
-    let dx = nanometres(a.0) - nanometres(b.0);
-    let dy = nanometres(a.1) - nanometres(b.1);
+    let (dx, dy) = nanometre_delta(a, b);
     dx * dx + dy * dy <= CHAINING_EPSILON_NM * CHAINING_EPSILON_NM
+}
+
+fn nanometre_delta(a: (f64, f64), b: (f64, f64)) -> (f64, f64) {
+    let nanometres = |value: f64| (value * 1e6).round();
+    (
+        nanometres(a.0) - nanometres(b.0),
+        nanometres(a.1) - nanometres(b.1),
+    )
+}
+
+fn gap_mm(a: (f64, f64), b: (f64, f64)) -> f64 {
+    let (dx, dy) = nanometre_delta(a, b);
+    dx.hypot(dy) / 1e6
 }
 
 fn area(points: &[(f64, f64)]) -> f64 {
@@ -334,24 +351,56 @@ pub fn assemble_outline(
 
     let mut loops: Vec<Vec<(f64, f64)>> = Vec::new();
     let mut stray_edges = 0usize;
+    let mut bridged: Vec<(f64, (f64, f64))> = Vec::new();
     while !edges.is_empty() {
         let (first, last) = edges.remove(0);
         let mut loop_points = vec![first];
         let mut consumed = 0usize;
         let mut end = last;
         let mut closed = true;
+        let mut healed: Vec<(f64, (f64, f64))> = Vec::new();
         while !equal(end, first) {
             loop_points.push(end);
-            let Some(index) = edges
+            if let Some(index) = edges
                 .iter()
                 .position(|(a, b)| equal(*a, end) || equal(*b, end))
-            else {
+            {
+                let (a, b) = edges.remove(index);
+                consumed += 1;
+                end = if equal(a, end) { b } else { a };
+                continue;
+            }
+            let nearest = edges
+                .iter()
+                .enumerate()
+                .map(|(index, (a, b))| {
+                    let (to_a, to_b) = (gap_mm(*a, end), gap_mm(*b, end));
+                    if to_a <= to_b {
+                        (to_a, index, *b)
+                    } else {
+                        (to_b, index, *a)
+                    }
+                })
+                .min_by(|x, y| x.0.total_cmp(&y.0));
+            let to_first = gap_mm(end, first);
+            // Closing early would strand the rest of the outline, so a bridge to another edge
+            // wins unless the start is nearer, and the loop needs three corners before it can
+            // close at all.
+            let continues = nearest.filter(|(gap, _, _)| {
+                *gap <= HEALING_TOLERANCE_MM && (*gap <= to_first || loop_points.len() < 3)
+            });
+            if let Some((gap, index, other)) = continues {
+                healed.push((gap, end));
+                edges.remove(index);
+                consumed += 1;
+                end = other;
+            } else if to_first <= HEALING_TOLERANCE_MM && loop_points.len() >= 3 {
+                healed.push((to_first, end));
+                break;
+            } else {
                 closed = false;
                 break;
-            };
-            let (a, b) = edges.remove(index);
-            consumed += 1;
-            end = if equal(a, end) { b } else { a };
+            }
         }
         if !closed {
             stray_edges += 1 + consumed;
@@ -360,6 +409,7 @@ pub fn assemble_outline(
         if loop_points.len() < 3 {
             return Err(PcbError::new("outline", "Degenerate Edge.Cuts outline."));
         }
+        bridged.extend(healed);
         loops.push(loop_points);
     }
 
@@ -373,6 +423,21 @@ pub fn assemble_outline(
     if stray_edges > 0 {
         warnings.push(format!(
             "{stray_edges} Edge.Cuts edges could not be closed into a loop and were ignored."
+        ));
+    }
+
+    if let Some(&(worst, at)) = bridged
+        .iter()
+        .max_by(|a, b| a.0.total_cmp(&b.0))
+    {
+        warnings.push(format!(
+            "{} Edge.Cuts {} bridged to give the router a closed boundary, the widest \
+             {worst:.4} mm at ({:.4}, {:.4}). KiCad reports an outline with gaps like these \
+             as malformed; the Edge.Cuts geometry in downloads is unchanged.",
+            bridged.len(),
+            if bridged.len() == 1 { "gap was" } else { "gaps were" },
+            at.0,
+            at.1,
         ));
     }
 

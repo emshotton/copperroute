@@ -80,11 +80,22 @@ const point = (n, key) => xy(child(n, key));
 // exactly the epsilon closes. Subtracting millimetre floats instead leaves such a gap outside
 // the limit, because 92.79 - 92.78 is 0.010000000000005116 in binary floating point.
 const CHAINING_EPSILON_NM = 10000;
-const equal = (a, b) => {
+// Outlines drawn without endpoint snapping leave gaps this wide, and KiCad calls such a board
+// malformed rather than routing it. Bridging them is deliberately more permissive than KiCad:
+// it only ever supplies the router with a boundary, and never alters the Edge.Cuts geometry,
+// which downloads copy through from the source file untouched.
+const HEALING_TOLERANCE_MM = 1.0;
+const nanometreDelta = (a, b) => {
   const nanometres = (value) => Math.round(value * 1e6);
-  const dx = nanometres(a.x) - nanometres(b.x),
-    dy = nanometres(a.y) - nanometres(b.y);
+  return [nanometres(a.x) - nanometres(b.x), nanometres(a.y) - nanometres(b.y)];
+};
+const equal = (a, b) => {
+  const [dx, dy] = nanometreDelta(a, b);
   return dx * dx + dy * dy <= CHAINING_EPSILON_NM * CHAINING_EPSILON_NM;
+};
+const gapMm = (a, b) => {
+  const [dx, dy] = nanometreDelta(a, b);
+  return Math.hypot(dx, dy) / 1e6;
 };
 const strokeMargin = (n) => number(val(child(n, "stroke") ?? n, "width", 0)) / 2;
 const obstacleNoun = (kind) =>
@@ -283,30 +294,63 @@ export function importBoard(text, name, rules, options = {}) {
   if (!edges.length) throw Error("A closed Edge.Cuts outline is required.");
   const loops = [];
   let strayEdges = 0;
+  const bridged = [];
   while (edges.length) {
     const [first, last] = edges.shift(), loop = [first];
     let end = last, consumed = 0, closed = true;
+    const healed = [];
     while (!equal(end, first)) {
       loop.push(end);
       const i = edges.findIndex(([a, b]) => equal(a, end) || equal(b, end));
-      if (i < 0) {
+      if (i >= 0) {
+        const [a, b] = edges.splice(i, 1)[0];
+        consumed++;
+        end = equal(a, end) ? b : a;
+        continue;
+      }
+      let nearest = null;
+      edges.forEach(([a, b], index) => {
+        const toA = gapMm(a, end), toB = gapMm(b, end);
+        const [gap, other] = toA <= toB ? [toA, b] : [toB, a];
+        if (!nearest || gap < nearest.gap) nearest = { gap, index, other };
+      });
+      const toFirst = gapMm(end, first);
+      // Closing early would strand the rest of the outline, so a bridge to another edge wins
+      // unless the start is nearer, and the loop needs three corners before it can close.
+      if (
+        nearest &&
+        nearest.gap <= HEALING_TOLERANCE_MM &&
+        (nearest.gap <= toFirst || loop.length < 3)
+      ) {
+        healed.push({ gap: nearest.gap, at: end });
+        edges.splice(nearest.index, 1);
+        consumed++;
+        end = nearest.other;
+      } else if (toFirst <= HEALING_TOLERANCE_MM && loop.length >= 3) {
+        healed.push({ gap: toFirst, at: end });
+        break;
+      } else {
         closed = false;
         break;
       }
-      const [a, b] = edges.splice(i, 1)[0];
-      consumed++;
-      end = equal(a, end) ? b : a;
     }
     if (!closed) {
       strayEdges += 1 + consumed;
       continue;
     }
     if (loop.length < 3) throw Error("Degenerate Edge.Cuts outline.");
+    bridged.push(...healed);
     loops.push(loop);
   }
   if (!loops.length) throw Error("A closed Edge.Cuts outline is required.");
   if (strayEdges)
     warnings.push(`${strayEdges} Edge.Cuts edges could not be closed into a loop and were ignored.`);
+  if (bridged.length) {
+    const worst = bridged.reduce((a, b) => (b.gap > a.gap ? b : a));
+    warnings.push(
+      `${bridged.length} Edge.Cuts ${bridged.length === 1 ? "gap was" : "gaps were"} bridged to give the router a closed boundary, the widest ${worst.gap.toFixed(4)} mm at (${worst.at.x.toFixed(4)}, ${worst.at.y.toFixed(4)}). KiCad reports an outline with gaps like these as malformed; the Edge.Cuts geometry in downloads is unchanged.`,
+    );
+  }
   const area = ps => Math.abs(ps.reduce((sum, p, i) => {
     const q = ps[(i + 1) % ps.length];
     return sum + p.x * q.y - p.y * q.x;

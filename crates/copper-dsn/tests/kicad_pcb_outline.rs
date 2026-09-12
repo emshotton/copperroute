@@ -196,8 +196,22 @@ fn it_chains_endpoints_just_under_kicads_chaining_tolerance() {
 }
 
 #[test]
-fn it_rejects_endpoints_just_over_kicads_chaining_tolerance() {
+fn it_bridges_endpoints_just_over_kicads_chaining_tolerance() {
     let text = rounded_square_with_gap(0.0101);
+    let root = parse(&text).expect("it parses");
+    let mut warnings = Vec::new();
+    let outline =
+        assemble_outline(&outline_paths(&root).expect("paths"), &mut warnings).expect("an outline");
+    assert_eq!(outline.boundary.len(), 4);
+    assert!(
+        warnings.iter().any(|warning| warning.contains("bridged")),
+        "the bridge has to be reported: {warnings:?}"
+    );
+}
+
+#[test]
+fn it_rejects_endpoints_past_the_healing_tolerance() {
+    let text = rounded_square_with_gap(1.5);
     let root = parse(&text).expect("it parses");
     let error = assemble_outline(&outline_paths(&root).expect("paths"), &mut Vec::new())
         .expect_err("it fails");

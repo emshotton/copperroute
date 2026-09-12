@@ -567,9 +567,18 @@ test("chains endpoints just under KiCad's chaining tolerance", () => {
   assert.equal(board.outline.corners.length, 4);
 });
 
-test("rejects endpoints just over KiCad's chaining tolerance", () => {
+test("bridges a gap past KiCad's chaining tolerance and says so", () => {
+  const { board, warnings } = load(squareWithGap(0.0101));
+  assert.equal(board.outline.corners.length, 4);
+  assert.match(
+    warnings.find((w) => w.includes("bridged")),
+    /1 Edge\.Cuts gap was bridged .* 0\.0101 mm at \(0\.0000, 10\.0000\)/,
+  );
+});
+
+test("refuses a gap wider than the healing tolerance", () => {
   assert.throws(
-    () => load(squareWithGap(0.0101)),
+    () => load(squareWithGap(1.5)),
     /A closed Edge.Cuts outline is required\./,
   );
 });

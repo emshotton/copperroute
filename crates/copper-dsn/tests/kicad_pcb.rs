@@ -653,17 +653,42 @@ fn an_outline_gap_of_exactly_the_chaining_epsilon_closes() {
     assert!(imported.board.outline.is_some());
 }
 
-#[test]
-fn an_outline_gap_beyond_the_chaining_epsilon_is_still_refused() {
-    let text = format!(
+fn square_with_gap(gap: f64) -> String {
+    let bottom = 92.79 - gap;
+    format!(
         r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
         (gr_line (start 100 92.79) (end 110 92.79) (layer "Edge.Cuts"))
         (gr_line (start 110 92.79) (end 110 102.79) (layer "Edge.Cuts"))
         (gr_line (start 110 102.79) (end 100 102.79) (layer "Edge.Cuts"))
-        (gr_line (start 100 102.79) (end 100 92.77) (layer "Edge.Cuts"))
+        (gr_line (start 100 102.79) (end 100 {bottom}) (layer "Edge.Cuts"))
         (footprint "R" (layer "F.Cu") (at 105 97)
           (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))))"#
+    )
+}
+
+/// KiCad calls a board with a gap this wide malformed. Bridging it only supplies the router
+/// with a boundary, so the warning has to say where the gap was and that nothing was altered.
+#[test]
+fn a_gap_past_the_chaining_epsilon_is_bridged_and_reported() {
+    let imported =
+        read_pcb(&square_with_gap(0.02), "t", &default_net_class()).expect("the board imports");
+    assert!(imported.board.outline.is_some());
+    let bridged = imported
+        .warnings
+        .iter()
+        .find(|warning| warning.contains("bridged"))
+        .expect("the bridge is reported");
+    assert!(
+        bridged.contains("1 Edge.Cuts gap was bridged")
+            && bridged.contains("0.0200 mm at (100.0000, 92.7700)")
+            && bridged.contains("downloads is unchanged"),
+        "got {bridged}"
     );
-    let error = read_pcb(&text, "t", &default_net_class()).expect_err("it fails");
+}
+
+#[test]
+fn a_gap_wider_than_the_healing_tolerance_is_still_refused() {
+    let error =
+        read_pcb(&square_with_gap(1.5), "t", &default_net_class()).expect_err("it fails");
     assert_eq!(error.message, "A closed Edge.Cuts outline is required.");
 }
