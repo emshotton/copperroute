@@ -72,6 +72,7 @@ export const EXAMPLES = {
     name: "Real-time chess (225 nets)",
     base: "./examples/kfchess/kfchess",
     pcbName: "kfchess.kicad_pcb",
+    projectName: "kfchess.kicad_pro",
     credit: {
       project: "real-time-chess",
       author: "misprit7",

@@ -7,9 +7,11 @@
 - License: MIT (MIT License)
 - License text: `LICENSE` in this directory, copied verbatim from `LICENSE` in the source repository
 
-## Modifications
+## Files in this directory
 
-`raw.kicad_pcb` is the board as retrieved from the source. `processed.kicad_pcb` and
-`final.json` are modified versions of it produced on 2026-09-06 by the PCBench cleaning
-scripts under `Scripts/Data_cleaning` and `Scripts/Data_extraction`. The modified files
-are provided under the same license as the source.
+`kfchess.kicad_pcb` is derived from `raw.kicad_pcb` as retrieved from the source, by the
+PCBench cleaning scripts under `Scripts/Data_cleaning` and `Scripts/Data_extraction` on
+2026-09-06. `kfchess.kicad_pro` is an unmodified copy of the project file from the same
+source commit, and supplies the board's own net classes: Default at 0.3 mm track and
+0.2 mm clearance, and Power at 0.6 mm for nets matching `+5V*`. Only the filenames are
+shortened for distribution. Both are provided under the same license as the source.
