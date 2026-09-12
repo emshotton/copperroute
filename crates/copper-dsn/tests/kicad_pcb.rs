@@ -491,3 +491,146 @@ fn a_trapezoid_delta_wider_than_the_pad_is_rejected() {
         "Trapezoid pads must keep a positive width and height."
     );
 }
+
+fn only_pad_polygon(text: &str) -> Vec<(f64, f64)> {
+    let imported = read_pcb(text, "t", &default_net_class()).expect("the board imports");
+    let components = imported.board.components.expect("components");
+    components[0].pads.as_ref().expect("pads")[0]
+        .copperPolygon
+        .as_ref()
+        .expect("a custom pad carries its polygon")
+        .iter()
+        .map(|p| (p.x, p.y))
+        .collect()
+}
+
+fn contains(polygon: &[(f64, f64)], p: (f64, f64)) -> bool {
+    let side = |a: (f64, f64), b: (f64, f64)| (b.0 - a.0) * (p.1 - a.1) - (b.1 - a.1) * (p.0 - a.0);
+    let sides: Vec<f64> = polygon
+        .iter()
+        .enumerate()
+        .map(|(i, &a)| side(a, polygon[(i + 1) % polygon.len()]))
+        .filter(|value| *value != 0.0)
+        .collect();
+    sides.windows(2).all(|pair| pair[0] * pair[1] > 0.0)
+}
+
+fn bounds(polygon: &[(f64, f64)]) -> (f64, f64, f64, f64) {
+    polygon.iter().fold(
+        (f64::MAX, f64::MAX, f64::MIN, f64::MIN),
+        |(x0, y0, x1, y1), &(x, y)| (x0.min(x), y0.min(y), x1.max(x), y1.max(y)),
+    )
+}
+
+/// The shape that dominates the corpus: a rectangular anchor with a polygon and two circles
+/// forming a stadium. The union spans x [-0.5, 0.55] and y [-0.75, 0.75]; circles are sampled
+/// circumscribed, so the hull may exceed that by up to the 0.005 mm outline tolerance.
+#[test]
+fn a_stadium_custom_pad_covers_its_polygon_and_both_circles() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 1 1)
+          (pad "1" smd custom (at 0 0) (size 1 0.5) (layers "F.Cu") (net 1 "GND")
+            (options (clearance outline) (anchor rect))
+            (primitives
+              (gr_poly (pts (xy 0.55 0.75) (xy 0 0.75) (xy 0 -0.75) (xy 0.55 -0.75)) (width 0))
+              (gr_circle (center 0 -0.25) (end 0.5 -0.25) (width 0))
+              (gr_circle (center 0 0.25) (end 0.5 0.25) (width 0))))))"#
+    );
+    let polygon = only_pad_polygon(&text);
+    assert!(
+        contains(&polygon, (-0.45, 0.45)),
+        "only the circles reach the upper left; without them the hull runs straight from the \
+         anchor corner (-0.5, 0.25) to the polygon corner (0, 0.75), which cuts this point off"
+    );
+    let (x0, y0, x1, y1) = bounds(&polygon);
+    assert!((-0.505..=-0.5).contains(&x0), "left edge was {x0}");
+    assert_eq!(x1, 0.55, "the polygon's right edge is exact");
+    assert!((-0.755..=-0.75).contains(&y0), "bottom edge was {y0}");
+    assert!((0.75..=0.755).contains(&y1), "top edge was {y1}");
+}
+
+/// With no primitive reaching it, the circular anchor alone sets the pad copper, and KiCad
+/// takes its diameter from size.x while ignoring size.y.
+#[test]
+fn a_circular_anchor_takes_its_diameter_from_the_x_size_alone() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 1 1)
+          (pad "1" smd custom (at 0 0) (size 1.2 0.4) (layers "F.Cu") (net 1 "GND")
+            (options (clearance outline) (anchor circle))
+            (primitives (gr_line (start -0.1 0) (end 0.1 0) (width 0.1))))))"#
+    );
+    let (x0, y0, x1, y1) = bounds(&only_pad_polygon(&text));
+    for edge in [x0.abs(), y0.abs(), x1, y1] {
+        assert!(
+            (0.6..=0.605).contains(&edge),
+            "every edge should sit at the 0.6 anchor radius, got {edge}"
+        );
+    }
+}
+
+#[test]
+fn a_multi_primitive_pad_warns_that_its_hull_can_overstate_the_copper() {
+    let hull_warning = "Custom pads that are not a single convex outline are reserved as their \
+                        convex hull, which can overstate their copper; original pad definitions \
+                        are preserved.";
+    let board = |primitives: &str| {
+        format!(
+            r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+            (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+            (footprint "R" (layer "F.Cu") (at 1 1)
+              (pad "1" smd custom (at 0 0) (size 0.4 0.4) (layers "F.Cu") (net 1 "GND")
+                (options (clearance outline) (anchor circle))
+                (primitives {primitives}))))"#
+        )
+    };
+    let convex = board(
+        r#"(gr_poly (pts (xy -0.5 -0.5) (xy 0.5 -0.5) (xy 0.5 0.5) (xy -0.5 0.5)) (width 0) (fill yes))"#,
+    );
+    let imported = read_pcb(&convex, "t", &default_net_class()).expect("the board imports");
+    assert!(
+        !imported.warnings.iter().any(|w| w == hull_warning),
+        "a single convex filled outline is reserved exactly"
+    );
+
+    let pair = board(
+        r#"(gr_line (start -1 0) (end 1 0) (width 0.3)) (gr_line (start 0 -1) (end 0 1) (width 0.3))"#,
+    );
+    let imported = read_pcb(&pair, "t", &default_net_class()).expect("the board imports");
+    assert!(
+        imported.warnings.iter().any(|w| w == hull_warning),
+        "a cross of two strokes is not convex, so its hull overstates the copper"
+    );
+}
+
+#[test]
+fn an_unsupported_custom_pad_anchor_and_primitive_are_named_in_the_error() {
+    let board = |anchor: &str, primitive: &str| {
+        format!(
+            r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+            (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+            (footprint "R" (layer "F.Cu") (at 1 1)
+              (pad "1" smd custom (at 0 0) (size 0.4 0.4) (layers "F.Cu") (net 1 "GND")
+                (options (clearance outline) (anchor {anchor}))
+                (primitives {primitive}))))"#
+        )
+    };
+    let error = read_pcb(
+        &board("oval", r#"(gr_line (start 0 0) (end 1 0) (width 0.1))"#),
+        "t",
+        &default_net_class(),
+    )
+    .expect_err("it fails");
+    assert_eq!(error.message, "Unsupported custom pad anchor: oval");
+
+    let error = read_pcb(
+        &board("circle", r#"(gr_curve (width 0.1))"#),
+        "t",
+        &default_net_class(),
+    )
+    .expect_err("it fails");
+    assert_eq!(error.message, "Unsupported custom pad primitive: gr_curve");
+}

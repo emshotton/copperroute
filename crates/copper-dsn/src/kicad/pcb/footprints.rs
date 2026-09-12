@@ -185,93 +185,91 @@ fn obstacle_warning(kind: &str) -> String {
     )
 }
 
-fn custom_pad_polygon(
-    pad: &Node,
-    size: (f64, f64),
-    warnings: &mut Vec<String>,
-) -> Result<Vec<Point2D>, PcbError> {
-    let primitives = pad
-        .child("primitives")
-        .map(|node| &node.values[1..])
-        .unwrap_or(&[]);
-    let primitive = match primitives {
-        [Value::Node(node)] if node.name() == "gr_poly" && node.value("fill") == Some("yes") => {
-            node
+fn sample_count(radius: f64) -> usize {
+    if radius == 0.0 {
+        return 1;
+    }
+    let raw = (PI / (1.0 / (1.0 + outline::OUTLINE_TOLERANCE / radius)).acos()).ceil();
+    (raw as usize).max(24)
+}
+
+/// A pad primitive is a disc of its stroke radius swept along its outline, so each outline
+/// point carries that radius. `fill` does not affect the result: a ring and a filled disc
+/// share a convex hull.
+fn primitive_discs(node: &Node) -> Result<Vec<((f64, f64), f64)>, PcbError> {
+    let stroke = super::numeric::stroke_margin(SECTION, node)?;
+    if stroke < 0.0 {
+        return Err(PcbError::new(
+            SECTION,
+            "Custom pad primitives need a nonnegative stroke.",
+        ));
+    }
+    if node.name() == "gr_circle" {
+        let center = point(node, "center")?;
+        let edge = point(node, "end")?;
+        let radius = (edge.0 - center.0).hypot(edge.1 - center.1);
+        return Ok(vec![(center, radius + stroke)]);
+    }
+    let points = match node.name() {
+        "gr_poly" => match node.child("pts") {
+            Some(pts) => pts
+                .children("xy")
+                .map(|node| xy(Some(node)))
+                .collect::<Result<Vec<_>, _>>()?,
+            None => Vec::new(),
+        },
+        "gr_line" => vec![point(node, "start")?, point(node, "end")?],
+        "gr_rect" => {
+            let a = point(node, "start")?;
+            let b = point(node, "end")?;
+            vec![a, (b.0, a.1), b, (a.0, b.1)]
         }
-        _ => {
+        "gr_arc" => outline::native_arc_points(node)?,
+        other => {
             return Err(PcbError::new(
                 SECTION,
-                "Custom pads require one filled convex polygon.",
+                &format!("Unsupported custom pad primitive: {other}"),
             ));
         }
     };
-    let poly: Vec<(f64, f64)> = match primitive.child("pts") {
-        Some(pts) => pts
-            .children("xy")
-            .map(|node| xy(Some(node)))
-            .collect::<Result<Vec<_>, _>>()?,
-        None => Vec::new(),
-    };
-    let raw_signs: Vec<i32> = poly
+    Ok(points.into_iter().map(|point| (point, stroke)).collect())
+}
+
+/// KiCad takes a circular anchor's diameter from `size.x` alone and ignores `size.y`, and
+/// makes a rectangular anchor the whole size box. Checked against KiCad 10.0.3.
+fn anchor_discs(pad: &Node, size: (f64, f64)) -> Result<Vec<((f64, f64), f64)>, PcbError> {
+    let (half_x, half_y) = (size.0 / 2.0, size.1 / 2.0);
+    match primitive_anchor(pad).as_deref().unwrap_or("circle") {
+        "circle" => Ok(vec![((0.0, 0.0), half_x)]),
+        "rect" => Ok(vec![
+            ((-half_x, half_y), 0.0),
+            ((-half_x, -half_y), 0.0),
+            ((half_x, -half_y), 0.0),
+            ((half_x, half_y), 0.0),
+        ]),
+        other => Err(PcbError::new(
+            SECTION,
+            &format!("Unsupported custom pad anchor: {other}"),
+        )),
+    }
+}
+
+fn hull_of(discs: &[((f64, f64), f64)]) -> Vec<(f64, f64)> {
+    let mut samples: Vec<(f64, f64)> = discs
         .iter()
-        .enumerate()
-        .map(|(i, &p)| {
-            let b = poly[(i + 1) % poly.len()];
-            let c = poly[(i + 2) % poly.len()];
-            let value = cross(p, b, c);
-            if value > 0.0 {
-                1
-            } else if value < 0.0 {
-                -1
+        .flat_map(|&(centre, radius)| {
+            let count = sample_count(radius);
+            let outer = if radius == 0.0 {
+                0.0
             } else {
-                0
-            }
-        })
-        .collect();
-    let signs: Vec<i32> = raw_signs.into_iter().filter(|&s| s != 0).collect();
-    if poly.len() < 3 || (!signs.is_empty() && signs.iter().any(|&s| s != signs[0])) {
-        return Err(PcbError::new(
-            SECTION,
-            "Concave custom pads are not supported yet.",
-        ));
-    }
-    let radius = numeric_value(primitive, "width", 0.0)? / 2.0;
-    let anchor = primitive_anchor(pad);
-    if anchor.as_deref() != Some("circle") || size.0 != size.1 || radius < 0.0 {
-        return Err(PcbError::new(
-            SECTION,
-            "Custom polygon pads require a circular anchor and nonnegative stroke.",
-        ));
-    }
-    let sign0 = f64::from(*signs.first().unwrap_or(&0));
-    let uncovered = poly.iter().enumerate().any(|(i, &a)| {
-        let b = poly[(i + 1) % poly.len()];
-        let span = (b.0 - a.0).hypot(b.1 - a.1);
-        sign0 * cross(a, b, (0.0, 0.0)) / span + radius < size.0 / 2.0
-    });
-    if uncovered {
-        return Err(PcbError::new(
-            SECTION,
-            "Custom pad polygon must cover its circular anchor.",
-        ));
-    }
-    let count: usize = if radius != 0.0 {
-        let raw = (PI / (1.0 / (1.0 + outline::OUTLINE_TOLERANCE / radius)).acos()).ceil();
-        (raw as usize).max(24)
-    } else {
-        1
-    };
-    let mut samples: Vec<(f64, f64)> = poly
-        .iter()
-        .flat_map(|&p| {
+                radius / (PI / count as f64).cos()
+            };
             (0..count).map(move |i| {
-                let r = if radius != 0.0 {
-                    radius / (PI / count as f64).cos()
-                } else {
-                    0.0
-                };
                 let angle = i as f64 * 2.0 * PI / count as f64;
-                (p.0 + r * angle.cos(), p.1 + r * angle.sin())
+                (
+                    centre.0 + outer * angle.cos(),
+                    centre.1 + outer * angle.sin(),
+                )
             })
         })
         .collect();
@@ -280,6 +278,88 @@ fn custom_pad_polygon(
     reversed.reverse();
     let mut hull = convex_hull_half(&samples);
     hull.extend(convex_hull_half(&reversed));
+    hull
+}
+
+fn hull_covers(hull: &[(f64, f64)], discs: &[((f64, f64), f64)]) -> bool {
+    if hull.len() < 3 {
+        return false;
+    }
+    discs.iter().all(|&(centre, radius)| {
+        hull.iter().enumerate().all(|(i, &a)| {
+            let b = hull[(i + 1) % hull.len()];
+            let span = (b.0 - a.0).hypot(b.1 - a.1);
+            span == 0.0 || cross(a, b, centre) / span >= radius
+        })
+    })
+}
+
+fn is_convex(points: &[(f64, f64)]) -> bool {
+    let signs: Vec<f64> = points
+        .iter()
+        .enumerate()
+        .map(|(i, &p)| {
+            let b = points[(i + 1) % points.len()];
+            let c = points[(i + 2) % points.len()];
+            cross(p, b, c)
+        })
+        .filter(|value| *value != 0.0)
+        .collect();
+    signs.windows(2).all(|pair| pair[0] * pair[1] > 0.0)
+}
+
+fn custom_pad_polygon(
+    pad: &Node,
+    size: (f64, f64),
+    warnings: &mut Vec<String>,
+) -> Result<Vec<Point2D>, PcbError> {
+    let primitives: Vec<&Node> = pad
+        .child("primitives")
+        .map(|node| &node.values[1..])
+        .unwrap_or(&[])
+        .iter()
+        .filter_map(|value| match value {
+            Value::Node(node) => Some(node),
+            Value::Atom(_) => None,
+        })
+        .collect();
+
+    let mut discs = Vec::new();
+    for node in &primitives {
+        discs.extend(primitive_discs(node)?);
+    }
+    let anchor = anchor_discs(pad, size)?;
+    let mut hull = hull_of(&discs);
+    let anchor_covered = hull_covers(&hull, &anchor);
+    if !anchor_covered {
+        discs.extend(anchor);
+        hull = hull_of(&discs);
+    }
+    if hull.len() < 3 {
+        return Err(PcbError::new(
+            SECTION,
+            "Custom pads need a copper outline with area.",
+        ));
+    }
+
+    let exact = anchor_covered
+        && match primitives.as_slice() {
+            [node] if node.name() == "gr_poly" && node.value("fill") == Some("yes") => {
+                let points: Vec<(f64, f64)> = primitive_discs(node)?
+                    .into_iter()
+                    .map(|(point, _)| point)
+                    .collect();
+                is_convex(&points)
+            }
+            _ => false,
+        };
+    if !exact {
+        warnings.push(
+            "Custom pads that are not a single convex outline are reserved as their convex \
+             hull, which can overstate their copper; original pad definitions are preserved."
+                .to_string(),
+        );
+    }
     warnings.push(
         "Convex custom pad outlines include their stroke, approximated within 0.005 mm; \
          original pad definitions are preserved."

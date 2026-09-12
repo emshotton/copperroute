@@ -385,28 +385,76 @@ export function importBoard(text, name, rules, options = {}) {
         );
       let copperPolygon;
       if (shape === "custom") {
-        const primitives = child(pad, "primitives")?.values.slice(1) ?? [];
-        if (primitives.length !== 1 || primitives[0]?.values?.[0] !== "gr_poly" || val(primitives[0], "fill") !== "yes")
-          throw Error("Custom pads require one filled convex polygon.");
-        const poly = children(child(primitives[0], "pts") ?? {values: []}, "xy").map(xy);
-        const cross = (a, b, c) => (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
-        const signs = poly.map((p,i) => Math.sign(cross(p,poly[(i+1)%poly.length],poly[(i+2)%poly.length]))).filter(Boolean);
-        if (poly.length < 3 || signs.some(s => s !== signs[0])) throw Error("Concave custom pads are not supported yet.");
-        const radius = number(val(primitives[0], "width", 0)) / 2;
         const size = point(pad, "size");
-        if (val(child(pad, "options") ?? {values: []}, "anchor") !== "circle" || size.x !== size.y || radius < 0)
-          throw Error("Custom polygon pads require a circular anchor and nonnegative stroke.");
-        if (poly.some((a,i) => {
-          const b = poly[(i+1)%poly.length];
-          return signs[0] * cross(a,b,{x:0,y:0}) / Math.hypot(b.x-a.x,b.y-a.y) + radius < size.x/2;
-        })) throw Error("Custom pad polygon must cover its circular anchor.");
-        const count = radius ? Math.max(24, Math.ceil(Math.PI / Math.acos(1 / (1 + OUTLINE_TOLERANCE / radius)))) : 1;
-        const samples = poly.flatMap(p => Array.from({length: count}, (_,i) => {
-          const r = radius ? radius / Math.cos(Math.PI/count) : 0, angle = i * 2*Math.PI/count;
-          return {x:p.x+r*Math.cos(angle),y:p.y+r*Math.sin(angle)};
-        })).sort((a,b) => a.x-b.x || a.y-b.y);
+        const cross = (a, b, c) => (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+        // A primitive is a disc of its stroke radius swept along its outline, so each outline
+        // point carries that radius. fill does not affect the result: a ring and a filled disc
+        // share a convex hull.
+        const discs = (n) => {
+          const stroke = strokeMargin(n);
+          if (stroke < 0) throw Error("Custom pad primitives need a nonnegative stroke.");
+          const kind = n.values[0];
+          if (kind === "gr_circle") {
+            const c = point(n, "center"), e = point(n, "end");
+            return [{p: c, r: Math.hypot(e.x-c.x, e.y-c.y) + stroke}];
+          }
+          let points;
+          if (kind === "gr_poly") points = children(child(n, "pts") ?? {values: []}, "xy").map(xy);
+          else if (kind === "gr_line") points = [point(n, "start"), point(n, "end")];
+          else if (kind === "gr_rect") {
+            const a = point(n, "start"), b = point(n, "end");
+            points = [a, {x:b.x,y:a.y}, b, {x:a.x,y:b.y}];
+          } else if (kind === "gr_arc") points = nativeArcPoints(n);
+          else throw Error(`Unsupported custom pad primitive: ${kind}`);
+          return points.map(p => ({p, r: stroke}));
+        };
+        // KiCad takes a circular anchor's diameter from size.x alone and ignores size.y, and
+        // makes a rectangular anchor the whole size box. Checked against KiCad 10.0.3.
+        const anchorName = val(child(pad, "options") ?? {values: []}, "anchor") ?? "circle";
+        const hx = size.x/2, hy = size.y/2;
+        let anchor;
+        if (anchorName === "circle") anchor = [{p:{x:0,y:0}, r:hx}];
+        else if (anchorName === "rect")
+          anchor = [{x:-hx,y:hy},{x:-hx,y:-hy},{x:hx,y:-hy},{x:hx,y:hy}].map(p => ({p, r:0}));
+        else throw Error(`Unsupported custom pad anchor: ${anchorName}`);
+
         const half = points => {const out=[];for(const p of points){while(out.length>1 && cross(out.at(-2),out.at(-1),p)<=0)out.pop();out.push(p);}return out.slice(0,-1);};
-        copperPolygon = [...half(samples), ...half([...samples].reverse())];
+        const hullOf = (ds) => {
+          const samples = ds.flatMap(({p, r}) => {
+            const count = r ? Math.max(24, Math.ceil(Math.PI / Math.acos(1 / (1 + OUTLINE_TOLERANCE / r)))) : 1;
+            const outer = r ? r / Math.cos(Math.PI/count) : 0;
+            return Array.from({length: count}, (_, i) => {
+              const angle = i * 2*Math.PI/count;
+              return {x: p.x + outer*Math.cos(angle), y: p.y + outer*Math.sin(angle)};
+            });
+          }).sort((a,b) => a.x-b.x || a.y-b.y);
+          return [...half(samples), ...half([...samples].reverse())];
+        };
+        const covers = (hull, ds) => hull.length >= 3 && ds.every(({p, r}) =>
+          hull.every((a, i) => {
+            const b = hull[(i+1)%hull.length], span = Math.hypot(b.x-a.x, b.y-a.y);
+            return span === 0 || cross(a, b, p) / span >= r;
+          }));
+
+        const primitives = (child(pad, "primitives")?.values.slice(1) ?? [])
+          .filter(v => typeof v === "object" && v?.values);
+        let ds = primitives.flatMap(discs);
+        let hull = hullOf(ds);
+        const anchorCovered = covers(hull, anchor);
+        if (!anchorCovered) hull = hullOf(ds.concat(anchor));
+        if (hull.length < 3) throw Error("Custom pads need a copper outline with area.");
+
+        let exact = false;
+        if (anchorCovered && primitives.length === 1 && primitives[0].values[0] === "gr_poly"
+            && val(primitives[0], "fill") === "yes") {
+          const poly = discs(primitives[0]).map(d => d.p);
+          const signs = poly.map((p, i) =>
+            cross(p, poly[(i+1)%poly.length], poly[(i+2)%poly.length])).filter(Boolean);
+          exact = signs.every((s, i) => i === 0 || s * signs[i-1] > 0);
+        }
+        if (!exact)
+          warnings.push("Custom pads that are not a single convex outline are reserved as their convex hull, which can overstate their copper; original pad definitions are preserved.");
+        copperPolygon = hull;
         warnings.push("Convex custom pad outlines include their stroke, approximated within 0.005 mm; original pad definitions are preserved.");
       } else if (children(pad, "primitives").length) throw Error("Unexpected custom pad primitives.");
       else if (shape === "trapezoid") {

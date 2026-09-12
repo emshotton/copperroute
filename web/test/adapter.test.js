@@ -113,7 +113,14 @@ test("rejects unsupported geometry and malformed source", () => {
     assert.throws(() => load(source.replace("(setup", item + " (setup")));
   assert.throws(() => load(source.slice(0, -3)));
   assert.throws(() => load(source + " garbage"));
-  assert.throws(() => load(source.replace("circle (at", "custom (at")));
+  assert.throws(() =>
+    load(
+      source.replace(
+        "circle (at",
+        'custom (primitives (gr_curve (width 0))) (at',
+      ),
+    ),
+  );
 });
 test("does not embed untrusted file metadata in SVG", () => {
   const input = load(source.replace('"Signal"', '"<script>alert(1)</script>"'));
@@ -402,8 +409,11 @@ test("a stroked convex custom pad includes its copper, while unsupported primiti
   assert.ok(polygon.length>5);
   assert.ok(Math.max(...polygon.map(p=>p.y))>=.9);
   assert.ok(Math.max(...polygon.map(p=>p.y))<=.905);
-  assert.throws(()=>load(text.replace('(fill yes)','(fill no)')),/filled convex/);
-  assert.throws(()=>load(text.replace('(anchor circle)','(anchor rect)')),/circular anchor/);
+  // A ring and a filled disc share a convex hull, and this outline already covers the
+  // 0.8 x 0.8 anchor either way, so neither fill nor anchor kind moves the copper.
+  assert.deepEqual(load(text.replace('(fill yes)','(fill no)')).board.components[0].pads[0].copperPolygon, polygon);
+  assert.deepEqual(load(text.replace('(anchor circle)','(anchor rect)')).board.components[0].pads[0].copperPolygon, polygon);
+  assert.throws(()=>load(text.replace('(gr_poly','(gr_curve')),/Unsupported custom pad primitive: gr_curve/);
 });
 
 const routedSource = source.replace(
@@ -704,5 +714,71 @@ test("a trapezoid delta wider than the pad is rejected", () => {
   assert.throws(
     () => load(text),
     /Trapezoid pads must keep a positive width and height\./,
+  );
+});
+
+const onlyPadPolygon = (primitives, size, anchor) =>
+  load(
+    minimalBoard('(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))').replace(
+      '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))',
+      `(pad "1" smd custom (at 0 0) (size ${size}) (layers "F.Cu") (net 1 "GND")` +
+        ` (options (clearance outline) (anchor ${anchor})) (primitives ${primitives}))`,
+    ),
+  ).board.components[0].pads[0].copperPolygon;
+
+const inside = (polygon, p) => {
+  const sides = polygon
+    .map((a, i) => {
+      const b = polygon[(i + 1) % polygon.length];
+      return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+    })
+    .filter(Boolean);
+  return sides.every((s, i) => i === 0 || s * sides[i - 1] > 0);
+};
+
+// The shape that dominates the corpus: a rectangular anchor with a polygon and two circles
+// forming a stadium. Only the circles reach the upper left, so a hull that dropped them would
+// run straight from the anchor corner (-0.5, 0.25) to the polygon corner (0, 0.75).
+test("a stadium custom pad covers its polygon and both circles", () => {
+  const polygon = onlyPadPolygon(
+    '(gr_poly (pts (xy 0.55 0.75) (xy 0 0.75) (xy 0 -0.75) (xy 0.55 -0.75)) (width 0))' +
+      ' (gr_circle (center 0 -0.25) (end 0.5 -0.25) (width 0))' +
+      ' (gr_circle (center 0 0.25) (end 0.5 0.25) (width 0))',
+    "1 0.5",
+    "rect",
+  );
+  assert.ok(inside(polygon, { x: -0.45, y: 0.45 }));
+  const xs = polygon.map((p) => p.x),
+    ys = polygon.map((p) => p.y);
+  assert.ok(Math.min(...xs) >= -0.505 && Math.min(...xs) <= -0.5);
+  assert.equal(Math.max(...xs), 0.55);
+  assert.ok(Math.max(...ys) >= 0.75 && Math.max(...ys) <= 0.755);
+});
+
+test("a circular anchor takes its diameter from the x size alone", () => {
+  const polygon = onlyPadPolygon(
+    '(gr_line (start -0.1 0) (end 0.1 0) (width 0.1))',
+    "1.2 0.4",
+    "circle",
+  );
+  const xs = polygon.map((p) => p.x),
+    ys = polygon.map((p) => p.y);
+  for (const edge of [
+    Math.abs(Math.min(...xs)),
+    Math.abs(Math.min(...ys)),
+    Math.max(...xs),
+    Math.max(...ys),
+  ])
+    assert.ok(edge >= 0.6 && edge <= 0.605, `edge at ${edge}`);
+});
+
+test("an unsupported custom pad anchor and primitive are named in the error", () => {
+  assert.throws(
+    () => onlyPadPolygon('(gr_line (start 0 0) (end 1 0) (width 0.1))', "0.4 0.4", "oval"),
+    /Unsupported custom pad anchor: oval/,
+  );
+  assert.throws(
+    () => onlyPadPolygon('(gr_curve (width 0.1))', "0.4 0.4", "circle"),
+    /Unsupported custom pad primitive: gr_curve/,
   );
 });
