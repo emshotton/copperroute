@@ -30,11 +30,11 @@ fn the_date_is_iso_offset_date_time_not_iso_instant() {
 
 #[test]
 fn info_summarises_the_spike_board() {
-    let summary = info(&InfoRequest {
+    let outcome = info(&InfoRequest {
         load: LoadRequest::for_board(BoardSource::Path(spike_dsn())),
     })
     .unwrap();
-    let text = summary.to_json_pretty();
+    let text = outcome.summary.to_json_pretty();
     assert!(text.contains("\"layers\""));
     assert!(text.contains("\"statistics\""));
 }

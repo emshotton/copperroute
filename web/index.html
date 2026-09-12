@@ -194,7 +194,7 @@
           class="viewer"
           tabindex="0"
           role="button"
-          aria-label="Drop a DSN or KiCad board and optional project here, or click to choose files"
+          aria-label="Drop a KiCad board or DSN and optional project here, or click to choose files"
         >
           <div class="viewer-head">
             <span id="filename">BOARD PREVIEW</span
@@ -235,7 +235,7 @@
                 stroke-linejoin="round"
               />
             </svg>
-            <p>Drag and drop a Specctra DSN or KiCad PCB here to route</p>
+            <p>Drag and drop a KiCad PCB or Specctra DSN here to route</p>
           </div>
           <div class="viewer-foot">
             <span id="layer-legend"></span><span>SVG PREVIEW</span>
@@ -268,7 +268,10 @@
           <pre class="terminal-body"><span class="prompt">$</span> git clone https://github.com/emshotton/copperroute.git
 <span class="prompt">$</span> cd copperroute
 <span class="prompt">$</span> cargo build --release
-<span class="comment"># route a board and write a session file</span>
+<span class="comment"># route a board and write a session file; an adjacent .kicad_pro is found automatically</span>
+<span class="prompt">$</span> ./target/release/copperroute route board.kicad_pcb -o board.ses
+
+<span class="comment"># or route a Specctra DSN the same way</span>
 <span class="prompt">$</span> ./target/release/copperroute route board.dsn -o board.ses
 
 <span class="comment"># or serve the routing tools over MCP (JSON-RPC on stdin/stdout)</span>
@@ -288,17 +291,20 @@
           <p>
             Standard pads, straight tracks, through vias and one closed
             Edge.Cuts outline. Rounded pads keep their corner radius for hole
-            clearance, and routing uses the enclosing rectangle. Keepouts that
-            restrict tracks or vias, cutouts, custom pads and offset holes are
-            rejected.
+            clearance, and routing uses the enclosing rectangle. Internal
+            cutouts become fixed obstacles on every copper layer. Convex
+            custom pads with a covered circular anchor and offset drill holes
+            are supported. Keepouts that restrict tracks or vias and other
+            custom pad shapes are rejected.
           </p>
           <p>
-            Project net classes and supported DRC constraints apply when you
-            supply a .kicad_pro. Custom .kicad_dru files are not supported. DSN
-            files carry their own rules, net classes and layer settings, and
-            their preview shows routing geometry without source-editor artwork.
-            Download the SES session to bring routing back into the source
-            editor.
+            Supply a .kicad_pro alongside a KiCad board to apply its project
+            net classes and supported DRC constraints; manual rules apply
+            otherwise. Custom .kicad_dru files are not supported. DSN files
+            already carry their own rules, net classes and layer settings, and
+            their preview shows routing geometry without source-editor
+            artwork. Download the SES session to bring routing back into the
+            source editor.
           </p>
           <p>
             Zone definitions survive routing but cached fills do not. Press B in

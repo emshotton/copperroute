@@ -63,6 +63,7 @@ pub struct RouteOutcome {
     pub state: RoutingJobState,
     pub result: RoutingResult,
     pub visualization: Option<RoutingVisualizationSummary>,
+    pub warnings: Vec<String>,
 }
 
 pub fn budget_for(settings: &RouterSettings) -> RouterBudget {
@@ -90,6 +91,7 @@ pub fn route(request: RouteRequest) -> Result<RouteOutcome, OpError> {
         mut board,
         transform,
         settings,
+        warnings,
         ..
     } = load(&request.load)?;
 
@@ -151,6 +153,7 @@ pub fn route(request: RouteRequest) -> Result<RouteOutcome, OpError> {
         state,
         result,
         visualization,
+        warnings,
     })
 }
 

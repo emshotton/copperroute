@@ -112,6 +112,7 @@ pub enum FileFormat {
     DrcJson,
     KicadDesignJson,
     KicadSessionJson,
+    KicadPcb,
 }
 
 const SHIFT_LOOP_BOUND: usize = 5;
@@ -128,6 +129,7 @@ impl FileFormat {
             FileFormat::DrcJson => "DRC_JSON",
             FileFormat::KicadDesignJson => "KICAD_DESIGN_JSON",
             FileFormat::KicadSessionJson => "KICAD_SESSION_JSON",
+            FileFormat::KicadPcb => "KICAD_PCB",
         }
     }
 
@@ -142,6 +144,7 @@ impl FileFormat {
             "DRC_JSON" => FileFormat::DrcJson,
             "KICAD_DESIGN_JSON" => FileFormat::KicadDesignJson,
             "KICAD_SESSION_JSON" => FileFormat::KicadSessionJson,
+            "KICAD_PCB" => FileFormat::KicadPcb,
             _ => return None,
         })
     }
@@ -214,6 +217,14 @@ impl FileFormat {
             return (FileFormat::Rules, hangs);
         }
 
+        if buffer[0] == 0x28
+            && (buffer[1] == 0x6B || buffer[1] == 0x4B)
+            && (buffer[2] == 0x69 || buffer[2] == 0x49)
+            && (buffer[3] == 0x63 || buffer[3] == 0x43)
+        {
+            return (FileFormat::KicadPcb, hangs);
+        }
+
         (FileFormat::Unknown, hangs)
     }
 
@@ -229,6 +240,7 @@ impl FileFormat {
                 RULES_FILE_EXTENSION => FileFormat::Rules,
                 "scr" => FileFormat::Scr,
                 "json" => FileFormat::KicadDesignJson,
+                "kicad_pcb" => FileFormat::KicadPcb,
                 _ => FileFormat::Unknown,
             };
         }
@@ -532,7 +544,7 @@ impl RoutingJob {
 
         let derived = match input_format {
             Some(FileFormat::Frb) => Some(BINARY_FILE_EXTENSION),
-            Some(FileFormat::Dsn) => Some(SES_FILE_EXTENSION),
+            Some(FileFormat::Dsn | FileFormat::KicadPcb) => Some(SES_FILE_EXTENSION),
             Some(FileFormat::KicadDesignJson) => Some("json"),
             _ => None,
         };

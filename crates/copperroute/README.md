@@ -20,8 +20,8 @@ the same operations behind a JSON-RPC front end.
 | `info <input>` | print the board summary — layers, nets and components by name, the file's metadata, and the board statistics — as JSON on stdout |
 | `mcp` | serve the four tools below over newline-delimited JSON-RPC on stdin/stdout |
 
-`<input>` is a Specctra DSN or a KiCad board JSON; the format is read from the
-bytes, not the extension.
+`<input>` is a Specctra DSN, a KiCad board JSON, or a KiCad `.kicad_pcb`
+board; the format is read from the bytes, not the extension.
 
 Global flags, accepted before or after the subcommand: `-v`/`-vv`/`--verbose`
 and `--log-level <off|error|warn|info|debug|trace>` set the log level;
@@ -149,6 +149,8 @@ suites:
 * **`mcp_stdio.rs`** drives the server through `initialize`, notifications,
   `ping`, `tools/list`, `tools/call`, cancellation, a panicking tool, a
   malformed line and EOF, over in-process pipes and over the spawned binary.
+* **`kicad_pcb_input.rs`** runs the binary against a `.kicad_pcb` board:
+  `info`'s summary, `route`'s session and its loader warnings on stderr.
 
 The reference and corpus tests read their boards from `tests/corpus`.
 

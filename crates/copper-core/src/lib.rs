@@ -25,7 +25,8 @@ pub use job::{
 pub use load::{
     LoadedBoard, ParsedBoard, apply_immediate_post_load_processing, apply_parsed_board_result,
     apply_router_settings_for_loaded_board, load_board_if_needed, load_from_kicad_json,
-    load_from_specctra_dsn, parse_board_if_needed, parse_board_result, parse_from_specctra_dsn,
+    load_from_kicad_pcb, load_from_specctra_dsn, parse_board_if_needed, parse_board_result,
+    parse_from_specctra_dsn,
 };
 pub use manifest::{
     FixtureInfo, PhaseDetail, PhaseMetrics, RouterJobResourceUsage, RoutingResultManifest,

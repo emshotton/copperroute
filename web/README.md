@@ -126,8 +126,8 @@ subset of the native S-expression format into that existing representation.
 - Rounded pads preserve corner radii for physical hole-clearance DRC, while routing
   and other DRC checks still use enclosing rectangles. The core
   approximates oval pads with its existing polygon representation.
-- Plated oval slots retain their original geometry in downloads. Routing uses
-  the copper pad shape and the smaller drill dimension; slot-specific DRC needs
+- Oval slots, plated or not, retain their original geometry in downloads. Routing
+  uses the copper pad shape and the smaller drill dimension; slot-specific DRC needs
   KiCad. Connector pads are supported.
 - Both legacy numeric net references and KiCad 10 named net references are
   supported. Paste-only pad apertures are excluded from copper routing.
@@ -141,14 +141,16 @@ subset of the native S-expression format into that existing representation.
   rejected. Deselecting the option rejects copper zones but still allows these
   non-routing keepout areas.
 - Offset pad copper is translated in its local coordinate system while the hole
-  stays at the pad anchor. Convex custom pads with one filled polygon and a covered
-  circular anchor include their stroke, approximated within 0.005 mm. Other custom
-  pad constructions remain rejected.
+  stays at the pad anchor. Custom pad copper is the convex hull of every primitive
+  (polygon, line, rectangle, arc and circle) inflated by its stroke, together with
+  the circular or rectangular anchor, approximated within 0.005 mm. A pad that is
+  not a single convex filled outline warns that its hull can overstate its copper.
+  Trapezoid pads are imported as their four corners.
 - Copper text is reserved using conservative rectangles. Footprint copper
   rectangles include their stroke and reserve their entire interior. Original
   graphics remain in the download; the reserved text bounds can reduce routability.
 - Keepouts restricting tracks or vias, separate outer boards, other footprint
-  copper graphics, net ties, and non-plated slots are explicitly rejected. Existing routing is
+  copper graphics, and net ties are explicitly rejected. Existing routing is
   discarded before import, including locked tracks, arcs and all via types. This excludes many production boards.
 - An optional `.kicad_pro` supplies net-class widths, clearances, via diameters,
   drills and class assignments to the existing KiCad JSON loader. The WASM entry

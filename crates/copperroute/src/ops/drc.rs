@@ -19,6 +19,7 @@ pub struct DrcOutcome {
     pub report: KiCadDrcReport,
     pub json: String,
     pub violation_count: usize,
+    pub warnings: Vec<String>,
 }
 
 pub fn drc(request: &DrcRequest) -> Result<DrcOutcome, OpError> {
@@ -26,6 +27,7 @@ pub fn drc(request: &DrcRequest) -> Result<DrcOutcome, OpError> {
         job,
         mut board,
         transform,
+        warnings,
         ..
     } = load(&request.load)?;
     let source = job.get_input().map_or_else(
@@ -55,6 +57,7 @@ pub fn drc(request: &DrcRequest) -> Result<DrcOutcome, OpError> {
         report,
         json,
         violation_count,
+        warnings,
     })
 }
 

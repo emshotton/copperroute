@@ -147,6 +147,33 @@ pub fn resolve_scheduler_rules_path_with(
     exists(&adjacent).then_some(adjacent)
 }
 
+#[must_use]
+pub fn resolve_kicad_project_path(
+    explicit: Option<&Path>,
+    pcb_path: Option<&Path>,
+) -> Option<PathBuf> {
+    resolve_kicad_project_path_with(explicit, pcb_path, |path| path.exists())
+}
+
+#[must_use]
+pub fn resolve_kicad_project_path_with(
+    explicit: Option<&Path>,
+    pcb_path: Option<&Path>,
+    exists: impl Fn(&Path) -> bool,
+) -> Option<PathBuf> {
+    if let Some(explicit) = explicit {
+        return Some(explicit.to_path_buf());
+    }
+    let pcb_path = pcb_path?;
+    let file_name = pcb_path.file_name()?.to_string_lossy().into_owned();
+    let base_name = match file_name.rfind('.') {
+        Some(dot) if dot > 0 => &file_name[..dot],
+        _ => &file_name[..],
+    };
+    let adjacent = pcb_path.with_file_name(format!("{base_name}.kicad_pro"));
+    exists(&adjacent).then_some(adjacent)
+}
+
 #[cfg(test)]
 mod tests {
     use copper_board::prelude::*;
@@ -433,5 +460,25 @@ mod tests {
             resolve_scheduler_rules_path_with(None, None, Some(dsn), none),
             None
         );
+    }
+
+    #[test]
+    fn kicad_project_path_probes_are_injectable() {
+        let explicit = Path::new("/cli/other.kicad_pro");
+        let pcb = Path::new("/boards/board.kicad_pcb");
+        let all = |_: &Path| true;
+        let none = |_: &Path| false;
+
+        assert_eq!(
+            resolve_kicad_project_path_with(Some(explicit), Some(pcb), none),
+            Some(explicit.to_path_buf()),
+            "an explicit path is never probed for existence"
+        );
+        assert_eq!(
+            resolve_kicad_project_path_with(None, Some(pcb), all),
+            Some(PathBuf::from("/boards/board.kicad_pro"))
+        );
+        assert_eq!(resolve_kicad_project_path_with(None, Some(pcb), none), None);
+        assert_eq!(resolve_kicad_project_path_with(None, None, all), None);
     }
 }

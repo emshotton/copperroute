@@ -44,9 +44,11 @@ fn route(
     );
     settings.set_run_optimizer(false);
     settings.set_max_passes(Some(passes as i32));
-    let mut loaded =
-        copper_core::apply_parsed_board_result(copper_dsn::kicad::read_board(json, None), &mut settings)
-            .map_err(|error| error.to_string())?;
+    let mut loaded = copper_core::apply_parsed_board_result(
+        copper_dsn::kicad::read_board(json, None),
+        &mut settings,
+    )
+    .map_err(|error| error.to_string())?;
     // A partial import must never silently become a downloadable board.
     if !loaded.warnings.is_empty() {
         return Err(loaded.warnings.join("\n"));
@@ -155,8 +157,9 @@ impl copper_core::ProgressSink for BrowserProgress {
             return;
         };
         let airlines = airline_details(&self.transform, &copper_drc::all_airlines(board));
-        let board: serde_json::Value = serde_json::from_str(&copper_dsn::kicad::write(board, "live"))
-            .expect("the board writer produces valid JSON");
+        let board: serde_json::Value =
+            serde_json::from_str(&copper_dsn::kicad::write(board, "live"))
+                .expect("the board writer produces valid JSON");
         let frame = serde_json::json!({
             "board": board,
             "airlines": airlines,

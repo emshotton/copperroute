@@ -1,11 +1,23 @@
 use copper_board::{Board, PadstackId};
 use copper_dsn::error::BoardReadResult;
 use copper_dsn::kicad::read_board;
+use copper_dsn::ses_writer;
 
 fn board(json: &str) -> Board {
     match read_board(json, None) {
         BoardReadResult::Success { board: Some(b), .. } => *b,
         other => panic!("expected a loaded board, got {other:?}"),
+    }
+}
+
+fn board_and_ct(json: &str) -> (Board, copper_dsn::CoordinateTransform) {
+    match read_board(json, None) {
+        BoardReadResult::Success {
+            board: Some(b),
+            coordinate_transform: Some(ct),
+            ..
+        } => (*b, ct),
+        other => panic!("expected a loaded board with a coordinate transform, got {other:?}"),
     }
 }
 
@@ -247,6 +259,39 @@ fn via_class_templates_and_existing_vias_preserve_drills_on_export() {
     assert_eq!(output["vias"][0]["drill"], 0.35);
     assert_eq!(output["netClasses"][0]["viaDrill"], 0.3);
     assert_eq!(output["netClasses"][1]["viaDrill"], 0.4);
+}
+
+#[test]
+fn a_native_net_class_via_padstack_is_named_with_its_true_diameter_and_drill_in_the_session() {
+    let (board, ct) = board_and_ct(
+        r#"{
+      "layers":[{"name":"F.Cu"},{"name":"B.Cu"}],
+      "netClasses":[{"name":"Default","viaDiameter":0.6,"viaDrill":0.25}],
+      "nets":[{"id":1,"name":"GND","className":"Default"}]
+    }"#,
+    );
+    assert_eq!(
+        board
+            .library
+            .padstacks
+            .get_by_name("defaultVia")
+            .unwrap()
+            .drill_diameter,
+        Some(2500.0),
+        "0.25 mm at this board's 10000-unit-per-mm resolution"
+    );
+
+    let mut out: Vec<u8> = Vec::new();
+    ses_writer::write(&board, &ct, &mut out, "test.dsn").expect("write into a Vec");
+    let ses = String::from_utf8(out).expect("SES is UTF-8");
+    assert!(
+        ses.contains("Via[0-1]_600:250_um"),
+        "the session must name the via by its true diameter and drill, not `defaultVia`: {ses}"
+    );
+    assert!(
+        !ses.contains("defaultVia"),
+        "the synthetic name must not reach the session: {ses}"
+    );
 }
 
 fn via_padstack_names(board: &Board) -> Vec<String> {

@@ -108,12 +108,19 @@ test("rejects unsupported geometry and malformed source", () => {
     "(zone (net 1))",
     "(arc (start 1 2))",
     '(gr_circle (center 1 2) (end 3 4) (layer "Edge.Cuts"))',
-    '(gr_line (start 1 2) (end 3 4) (layer "F.Cu"))',
+    '(gr_curve (layer "F.Cu"))',
   ])
     assert.throws(() => load(source.replace("(setup", item + " (setup")));
   assert.throws(() => load(source.slice(0, -3)));
   assert.throws(() => load(source + " garbage"));
-  assert.throws(() => load(source.replace("circle (at", "custom (at")));
+  assert.throws(() =>
+    load(
+      source.replace(
+        "circle (at",
+        'custom (primitives (gr_curve (width 0))) (at',
+      ),
+    ),
+  );
 });
 test("does not embed untrusted file metadata in SVG", () => {
   const input = load(source.replace('"Signal"', '"<script>alert(1)</script>"'));
@@ -311,6 +318,89 @@ test("copper text and footprint rectangles become layer-specific fixed obstacles
   assert.ok(exportBoard(input,input.board).includes('(gr_text "A"'));
 });
 
+test("board-level copper graphics become fixed obstacles", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(gr_line (start 0 0) (end 4 0) (layer "F.Cu") (stroke (width 0.2) (type solid))) ' +
+      '(gr_circle (center 2 0) (end 2.5 0) (layer "F.Cu") (stroke (width 0.1) (type solid)) (fill none)) ' +
+      '(gr_arc (start 0 0) (mid 1 1) (end 2 0) (layer "F.Cu") (stroke (width 0.2) (type solid))) ' +
+      '(gr_poly (pts (xy 0 0) (xy 2 0) (xy 1 2)) (layer "F.Cu") (stroke (width 0.2) (type solid)) (fill yes)) ' +
+      '(gr_rect (start 0 0) (end 4 2) (layer "F.Cu") (stroke (width 0.2) (type solid)) (fill none))',
+  );
+  const { board } = load(text);
+  const areas = board.conductionAreas;
+  assert.equal(areas.length, 5);
+  assert.ok(areas.every((a) => a.isObstacle && a.netName === "" && a.layerIndex === 0));
+  const bbox = (a) => {
+    const xs = a.polygon.map((p) => p.x),
+      ys = a.polygon.map((p) => p.y);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  };
+  assert.deepEqual(bbox(areas[0]), [-0.1, -0.1, 4.1, 0.1]);
+  assert.deepEqual(bbox(areas[1]), [1.45, -0.55, 2.55, 0.55]);
+  assert.deepEqual(bbox(areas[2]), [-0.1, -0.1, 2.1, 1.1]);
+  assert.deepEqual(bbox(areas[3]), [-0.1, -0.1, 2.1, 2.1]);
+  assert.deepEqual(bbox(areas[4]), [-0.1, -0.1, 4.1, 2.1]);
+});
+
+test("still rejects a top-level copper curve", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) (gr_curve (layer "F.Cu"))',
+  );
+  assert.throws(() => load(text), /Unsupported copper object: gr_curve/);
+});
+
+test("footprint-local copper graphics become fixed obstacles", () => {
+  const text = minimalBoard('(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))').replace(
+    '(footprint "R" (layer "F.Cu") (at 0 0)',
+    '(footprint "R" (layer "F.Cu") (at 10 20)' +
+      ' (fp_line (start 0 0) (end 4 0) (layer "F.Cu") (stroke (width 0.2) (type solid)))' +
+      ' (fp_circle (center 2 0) (end 2.5 0) (layer "F.Cu") (stroke (width 0.1) (type solid)) (fill none))' +
+      ' (fp_arc (start 0 0) (mid 1 1) (end 2 0) (layer "F.Cu") (stroke (width 0.2) (type solid)))' +
+      ' (fp_poly (pts (xy 0 0) (xy 2 0) (xy 1 2)) (layer "F.Cu") (stroke (width 0.2) (type solid)) (fill yes))' +
+      ' (fp_text user "HI" (at 5 5 0) (layer "F.Cu") (effects (font (size 1 1) (thickness 0.15))))',
+  );
+  const { board } = load(text);
+  const areas = board.conductionAreas;
+  assert.equal(areas.length, 5);
+  assert.ok(areas.every((a) => a.isObstacle && a.netName === "" && a.layerIndex === 0));
+  const bbox = (a) => {
+    const xs = a.polygon.map((p) => p.x),
+      ys = a.polygon.map((p) => p.y);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  };
+  assert.deepEqual(bbox(areas[0]), [9.9, 19.9, 14.1, 20.1]);
+  assert.deepEqual(bbox(areas[1]), [11.45, 19.45, 12.55, 20.55]);
+  assert.deepEqual(bbox(areas[2]), [9.9, 19.9, 12.1, 21.1]);
+  assert.deepEqual(bbox(areas[3]), [9.9, 19.9, 12.1, 22.1]);
+  assert.deepEqual(bbox(areas[4]), [13, 24, 17, 26]);
+});
+
+test("a footprint copper line pins the rotation transform", () => {
+  const text = minimalBoard('(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))').replace(
+    '(footprint "R" (layer "F.Cu") (at 0 0)',
+    '(footprint "R" (layer "F.Cu") (at 10 20 90)' +
+      ' (fp_line (start 0 0) (end 4 0) (layer "F.Cu") (stroke (width 0.2) (type solid)))',
+  );
+  const { board } = load(text);
+  assert.equal(board.conductionAreas.length, 1);
+  assert.deepEqual(board.conductionAreas[0].polygon, [
+    { x: 9.9, y: 20.1 },
+    { x: 9.9, y: 15.9 },
+    { x: 10.1, y: 15.9 },
+    { x: 10.1, y: 20.1 },
+  ]);
+});
+
+test("still rejects footprint copper curves", () => {
+  const text = minimalBoard('(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))').replace(
+    '(footprint "R" (layer "F.Cu") (at 0 0)',
+    '(footprint "R" (layer "F.Cu") (at 0 0)' +
+      ' (fp_curve (pts (xy 0 0) (xy 1 1) (xy 2 0) (xy 3 1)) (layer "F.Cu"))',
+  );
+  assert.throws(() => load(text), /Footprint copper graphics are not supported yet\./);
+});
+
 test("a stroked convex custom pad includes its copper, while unsupported primitives fail", () => {
   const pad = '(pad "1" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8)';
   const custom = '(pad "1" thru_hole custom (at 0 0) (size 0.8 0.8) (options (anchor circle)) (primitives (gr_poly (pts (xy -0.8 -0.8) (xy 0 -0.8) (xy 0.8 0) (xy 0.8 0.8) (xy -0.8 0.8)) (width 0.2) (fill yes))) (drill 0.3)';
@@ -319,8 +409,11 @@ test("a stroked convex custom pad includes its copper, while unsupported primiti
   assert.ok(polygon.length>5);
   assert.ok(Math.max(...polygon.map(p=>p.y))>=.9);
   assert.ok(Math.max(...polygon.map(p=>p.y))<=.905);
-  assert.throws(()=>load(text.replace('(fill yes)','(fill no)')),/filled convex/);
-  assert.throws(()=>load(text.replace('(anchor circle)','(anchor rect)')),/circular anchor/);
+  // A ring and a filled disc share a convex hull, and this outline already covers the
+  // 0.8 x 0.8 anchor either way, so neither fill nor anchor kind moves the copper.
+  assert.deepEqual(load(text.replace('(fill yes)','(fill no)')).board.components[0].pads[0].copperPolygon, polygon);
+  assert.deepEqual(load(text.replace('(anchor circle)','(anchor rect)')).board.components[0].pads[0].copperPolygon, polygon);
+  assert.throws(()=>load(text.replace('(gr_poly','(gr_curve')),/Unsupported custom pad primitive: gr_curve/);
 });
 
 const routedSource = source.replace(
@@ -429,4 +522,272 @@ test("flattened pads retain their source footprint and pad numbers", () => {
   assert.notEqual(pads[0].sourceFootprint, pads[2].sourceFootprint);
   assert.equal(pads[0].sourcePadNumber, "1");
   assert.equal(pads[1].sourcePadNumber, "2");
+});
+
+const minimalBoard = (outlineBody) => `(kicad_pcb (version 20241229)
+  (layers (0 "F.Cu" signal) (31 "B.Cu" signal))
+  (net 1 "GND")
+  ${outlineBody}
+  (footprint "R" (layer "F.Cu") (at 0 0)
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))))`;
+
+test("ignores an alignment target on the board outline", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(target plus (at 5 5) (size 1) (width 0.1) (layer "Edge.Cuts"))',
+  );
+  const { board } = load(text);
+  assert.equal(board.outline.corners.length, 4);
+});
+
+test("assembles a loop and warns about an orphan outline fragment", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(gr_line (start 100 100) (end 100.07 100) (layer "Edge.Cuts"))',
+  );
+  const { board, warnings } = load(text);
+  assert.equal(board.outline.corners.length, 4);
+  assert.ok(
+    warnings.includes(
+      "1 Edge.Cuts edges could not be closed into a loop and were ignored.",
+    ),
+  );
+});
+
+const squareWithGap = (gap) =>
+  minimalBoard(
+    '(gr_line (start 0 0) (end 10 0) (layer "Edge.Cuts")) ' +
+      '(gr_line (start 10 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(gr_line (start 10 10) (end 0 10) (layer "Edge.Cuts")) ' +
+      `(gr_line (start 0 ${10 + gap}) (end 0 0) (layer "Edge.Cuts"))`,
+  );
+
+test("chains endpoints just under KiCad's chaining tolerance", () => {
+  const { board } = load(squareWithGap(0.0099));
+  assert.equal(board.outline.corners.length, 4);
+});
+
+test("bridges a gap past KiCad's chaining tolerance and says so", () => {
+  const { board, warnings } = load(squareWithGap(0.0101));
+  assert.equal(board.outline.corners.length, 4);
+  assert.match(
+    warnings.find((w) => w.includes("bridged")),
+    /1 Edge\.Cuts gap was bridged .* 0\.0101 mm at \(0\.0000, 10\.0000\)/,
+  );
+});
+
+test("refuses a gap wider than the healing tolerance", () => {
+  assert.throws(
+    () => load(squareWithGap(1.5)),
+    /A closed Edge.Cuts outline is required\./,
+  );
+});
+
+test("rejects an outline with no closed loop at all", () => {
+  const text = minimalBoard('(gr_line (start 0 0) (end 10 0) (layer "Edge.Cuts"))');
+  assert.throws(
+    () => load(text),
+    /A closed Edge.Cuts outline is required\./,
+  );
+});
+
+test("accepts legacy copper layer names identified by their declared type", () => {
+  const text = `(kicad_pcb (version 20241229)
+    (layers (0 TOP mixed) (31 BOTTOM mixed))
+    (net 1 "GND")
+    (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+    (footprint "R" (layer TOP) (at 0 0)
+      (pad "1" smd rect (at 0 0) (size 1 1) (layers TOP) (net 1 "GND"))))`;
+  const { board } = load(text);
+  assert.deepEqual(
+    board.layers.map((l) => l.name),
+    ["TOP", "BOTTOM"],
+  );
+  assert.deepEqual(board.components[0].pads[0].layers, ["TOP"]);
+});
+
+test("rejects a top-level copper object on a Cu-suffixed layer absent from the copper table", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(gr_curve (layer "In1.Cu"))',
+  );
+  assert.throws(() => load(text), /Unsupported copper object: gr_curve/);
+});
+
+test("rejects copper text on a Cu-suffixed layer absent from the copper table", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(gr_text "HI" (at 5 5 0) (layer "In1.Cu") (effects (font (size 1 1) (thickness 0.15))))',
+  );
+  assert.throws(() => load(text), /Unknown copper layer: In1\.Cu/);
+});
+
+test("rejects a pad whose only layer is absent from the copper table", () => {
+  const text = `(kicad_pcb (version 20241229)
+    (layers (0 "F.Cu" signal) (31 "B.Cu" signal))
+    (net 1 "GND")
+    (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+    (footprint "U" (layer "F.Cu") (at 0 0)
+      (pad "1" smd rect (at 0 0) (size 1 1) (layers "In1.Cu") (net 1 "GND"))))`;
+  assert.throws(() => load(text), /Unknown copper layer: In1\.Cu/);
+});
+
+test("a length-tuning generator on copper contributes no obstacle", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(generated (uuid "u") (type tuning_pattern) (layer "F.Cu") ' +
+      '(base_line (pts (xy 2 2) (xy 8 2))) (members "a" "b"))',
+  );
+  const { board } = load(text);
+  assert.equal(board.conductionAreas.length, 0);
+});
+
+test("a non-plated slot imports with the narrow slot dimension as its drill", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))',
+  ).replace(
+    '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))',
+    '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))' +
+      ' (pad "" np_thru_hole oval (at 3 3) (size 1.6 1.9) (drill oval 0.8 1.5)' +
+      ' (layers "F.Cu" "B.Cu"))',
+  );
+  const { board } = load(text);
+  const slot = board.components.flatMap((c) => c.pads).find((p) => p.nonPlated);
+  assert.equal(slot.drill, 0.8);
+});
+
+test("a slot with a zero dimension is still rejected", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))',
+  ).replace(
+    '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))',
+    '(pad "" np_thru_hole oval (at 3 3) (size 1.6 1.9) (drill oval 0 1.5)' +
+      ' (layers "F.Cu" "B.Cu"))',
+  );
+  assert.throws(
+    () => load(text),
+    /Only slots with positive dimensions are supported\./,
+  );
+});
+
+// Corners cross-checked against PAD::GetEffectivePolygon in KiCad 10.0.3 for size (2, 1)
+// with rect_delta (0.3, -0.4), an asymmetric case that pins both signs.
+test("a trapezoid pad matches the corners kicad builds", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))',
+  ).replace(
+    '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))',
+    '(pad "1" smd trapezoid (at 0 0) (size 2 1) (rect_delta 0.3 -0.4)' +
+      ' (layers "F.Cu") (net 1 "GND"))',
+  );
+  const { board } = load(text);
+  const pad = board.components[0].pads[0];
+  assert.deepEqual(
+    pad.copperPolygon.map((p) => [p.x, p.y]),
+    [
+      [-0.8, 0.65],
+      [-1.2, -0.65],
+      [1.2, -0.35],
+      [0.8, 0.35],
+    ],
+  );
+});
+
+test("a trapezoid without a delta is the plain rectangle", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))',
+  ).replace(
+    '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))',
+    '(pad "1" smd trapezoid (at 0 0) (size 2 1) (layers "F.Cu") (net 1 "GND"))',
+  );
+  const { board } = load(text);
+  assert.deepEqual(
+    board.components[0].pads[0].copperPolygon.map((p) => [p.x, p.y]),
+    [
+      [-1, 0.5],
+      [-1, -0.5],
+      [1, -0.5],
+      [1, 0.5],
+    ],
+  );
+});
+
+test("a trapezoid delta wider than the pad is rejected", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))',
+  ).replace(
+    '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))',
+    '(pad "1" smd trapezoid (at 0 0) (size 2 1) (rect_delta 1.4 0)' +
+      ' (layers "F.Cu") (net 1 "GND"))',
+  );
+  assert.throws(
+    () => load(text),
+    /Trapezoid pads must keep a positive width and height\./,
+  );
+});
+
+const onlyPadPolygon = (primitives, size, anchor) =>
+  load(
+    minimalBoard('(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))').replace(
+      '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))',
+      `(pad "1" smd custom (at 0 0) (size ${size}) (layers "F.Cu") (net 1 "GND")` +
+        ` (options (clearance outline) (anchor ${anchor})) (primitives ${primitives}))`,
+    ),
+  ).board.components[0].pads[0].copperPolygon;
+
+const inside = (polygon, p) => {
+  const sides = polygon
+    .map((a, i) => {
+      const b = polygon[(i + 1) % polygon.length];
+      return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+    })
+    .filter(Boolean);
+  return sides.every((s, i) => i === 0 || s * sides[i - 1] > 0);
+};
+
+// The shape that dominates the corpus: a rectangular anchor with a polygon and two circles
+// forming a stadium. Only the circles reach the upper left, so a hull that dropped them would
+// run straight from the anchor corner (-0.5, 0.25) to the polygon corner (0, 0.75).
+test("a stadium custom pad covers its polygon and both circles", () => {
+  const polygon = onlyPadPolygon(
+    '(gr_poly (pts (xy 0.55 0.75) (xy 0 0.75) (xy 0 -0.75) (xy 0.55 -0.75)) (width 0))' +
+      ' (gr_circle (center 0 -0.25) (end 0.5 -0.25) (width 0))' +
+      ' (gr_circle (center 0 0.25) (end 0.5 0.25) (width 0))',
+    "1 0.5",
+    "rect",
+  );
+  assert.ok(inside(polygon, { x: -0.45, y: 0.45 }));
+  const xs = polygon.map((p) => p.x),
+    ys = polygon.map((p) => p.y);
+  assert.ok(Math.min(...xs) >= -0.505 && Math.min(...xs) <= -0.5);
+  assert.equal(Math.max(...xs), 0.55);
+  assert.ok(Math.max(...ys) >= 0.75 && Math.max(...ys) <= 0.755);
+});
+
+test("a circular anchor takes its diameter from the x size alone", () => {
+  const polygon = onlyPadPolygon(
+    '(gr_line (start -0.1 0) (end 0.1 0) (width 0.1))',
+    "1.2 0.4",
+    "circle",
+  );
+  const xs = polygon.map((p) => p.x),
+    ys = polygon.map((p) => p.y);
+  for (const edge of [
+    Math.abs(Math.min(...xs)),
+    Math.abs(Math.min(...ys)),
+    Math.max(...xs),
+    Math.max(...ys),
+  ])
+    assert.ok(edge >= 0.6 && edge <= 0.605, `edge at ${edge}`);
+});
+
+test("an unsupported custom pad anchor and primitive are named in the error", () => {
+  assert.throws(
+    () => onlyPadPolygon('(gr_line (start 0 0) (end 1 0) (width 0.1))', "0.4 0.4", "oval"),
+    /Unsupported custom pad anchor: oval/,
+  );
+  assert.throws(
+    () => onlyPadPolygon('(gr_curve (width 0.1))', "0.4 0.4", "circle"),
+    /Unsupported custom pad primitive: gr_curve/,
+  );
 });

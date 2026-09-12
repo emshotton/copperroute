@@ -23,6 +23,10 @@ pub fn run(cli: &Cli, args: &DrcArgs) -> ExitCode {
         }
     };
 
+    for warning in &outcome.warnings {
+        tracing::warn!("{warning}");
+    }
+
     match args.output.as_deref() {
         None => println!("{}", outcome.json),
         Some(path) => {

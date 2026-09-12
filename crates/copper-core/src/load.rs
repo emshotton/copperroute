@@ -64,6 +64,37 @@ fn kicad_read_board(text: &str) -> BoardReadResult {
     copper_dsn::kicad::read_board(text, None)
 }
 
+pub fn load_from_kicad_pcb(
+    text: &str,
+    name: &str,
+    settings: &mut RouterSettings,
+) -> Result<LoadedBoard, Error> {
+    let ParsedBoard {
+        mut board,
+        transform,
+        metadata,
+        warnings,
+    } = parse_from_kicad_pcb(text, name)?;
+    apply_router_settings_for_loaded_board(&mut board, settings);
+    apply_immediate_post_load_processing(&mut board);
+    Ok(LoadedBoard {
+        board,
+        transform,
+        metadata,
+        settings: settings.clone(),
+        warnings,
+    })
+}
+
+fn parse_from_kicad_pcb(text: &str, name: &str) -> Result<ParsedBoard, Error> {
+    let imported =
+        copper_dsn::kicad::read_pcb(text, name, &copper_dsn::kicad::pcb::default_net_class())
+            .map_err(|error| Error::Load(error.to_string()))?;
+    let mut parsed = parse_board_result(copper_dsn::kicad::read_board_json(imported.board, None))?;
+    parsed.warnings.extend(imported.warnings);
+    Ok(parsed)
+}
+
 pub fn apply_parsed_board_result(
     result: BoardReadResult,
     settings: &mut RouterSettings,
@@ -175,17 +206,24 @@ pub fn load_board_if_needed(job: &mut RoutingJob) -> Result<LoadedBoard, Error> 
         ));
     };
     let format = input.format;
-    if format != FileFormat::Dsn && format != FileFormat::KicadDesignJson {
+    if format != FileFormat::Dsn
+        && format != FileFormat::KicadDesignJson
+        && format != FileFormat::KicadPcb
+    {
         return Err(Error::Load(format!(
-            "Cannot load board: only DSN and JSON formats are supported, got {}",
+            "Cannot load board: only DSN, KiCad JSON and KiCad PCB formats are supported, got {}",
             format.name()
         )));
     }
     let data = input.get_data().to_vec();
+    let name = input.get_filename_without_extension();
     let mut settings = job.router_settings.clone();
     let loaded = if format == FileFormat::KicadDesignJson {
         let text = String::from_utf8_lossy(&data).into_owned();
         load_from_kicad_json(&text, job, &mut settings)
+    } else if format == FileFormat::KicadPcb {
+        let text = String::from_utf8_lossy(&data).into_owned();
+        load_from_kicad_pcb(&text, &name, &mut settings)
     } else {
         load_from_specctra_dsn(&data, job, &mut settings)
     };
@@ -201,15 +239,21 @@ pub fn parse_board_if_needed(job: &RoutingJob) -> Result<ParsedBoard, Error> {
         ));
     };
     let format = input.format;
-    if format != FileFormat::Dsn && format != FileFormat::KicadDesignJson {
+    if format != FileFormat::Dsn
+        && format != FileFormat::KicadDesignJson
+        && format != FileFormat::KicadPcb
+    {
         return Err(Error::Load(format!(
-            "Cannot load board: only DSN and JSON formats are supported, got {}",
+            "Cannot load board: only DSN, KiCad JSON and KiCad PCB formats are supported, got {}",
             format.name()
         )));
     }
     let data = input.get_data().to_vec();
+    let name = input.get_filename_without_extension();
     let parsed = if format == FileFormat::KicadDesignJson {
         parse_board_result(kicad_read_board(&String::from_utf8_lossy(&data)))
+    } else if format == FileFormat::KicadPcb {
+        parse_from_kicad_pcb(&String::from_utf8_lossy(&data), &name)
     } else {
         parse_from_specctra_dsn(&data, job)
     };

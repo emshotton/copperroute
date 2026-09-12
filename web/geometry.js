@@ -57,6 +57,20 @@ export function arcPoints(a, m, b) {
   points[points.length - 1] = b;
   return points;
 }
+export function boundingBox(points, margin) {
+  const xs = points.map((p) => p.x),
+    ys = points.map((p) => p.y);
+  const x0 = Math.min(...xs) - margin,
+    x1 = Math.max(...xs) + margin;
+  const y0 = Math.min(...ys) - margin,
+    y1 = Math.max(...ys) + margin;
+  return [
+    { x: x0, y: y0 },
+    { x: x1, y: y0 },
+    { x: x1, y: y1 },
+    { x: x0, y: y1 },
+  ];
+}
 export function nativeArcPoints(node) {
   if (child(node, "mid")) return arcPoints(point(node, "start"), point(node, "mid"), point(node, "end"));
   const center = point(node, "start"), start = point(node, "end");
@@ -71,6 +85,7 @@ export function outlinePaths(root) {
   const collect = (node, transform = (p) => p) => {
     if (val(node, "layer", "") !== "Edge.Cuts") return;
     const kind = node.values[0].replace(/^fp_/, "gr_");
+    if (kind === "target" || kind === "gr_target") return;
     let points;
     if (kind === "gr_line") points = [point(node, "start"), point(node, "end")];
     else if (kind === "gr_rect") {

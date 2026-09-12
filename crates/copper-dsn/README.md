@@ -23,6 +23,7 @@ diagnostics go onto `ReadScopeParameter::warnings`.
 | apply a session to a board | `ses_reader::read(input, &mut board, …) -> SesImportSummary` |
 | write / read a `.rules` file | `rules_writer::write`, `rules_reader::read`, `rules_reader::read_router_settings` |
 | a KiCad board JSON | `kicad::read_board`, `kicad::import_session`, `kicad::write` |
+| a `.kicad_pcb` file | `kicad::pcb::read_pcb(text, name, &defaults) -> Result<ImportedPcb, PcbError>` |
 
 `BoardReadResult` is `Success { board, metadata, coordinate_transform, warnings }`,
 `OutlineMissing` (the same, for a design with no outline), `Partial` (the
@@ -77,6 +78,27 @@ worth knowing before touching it:
   writes one entry per class pair, and `ClearanceMatrix` readers ask for the
   `(a, b, layer)` triple they mean.
 
+### Reading a `.kicad_pcb` file directly
+
+`kicad::pcb::read_pcb` parses a `.kicad_pcb` file's S-expressions straight into a
+`KiCadBoardJson`, returned as `ImportedPcb { board, warnings, embedded_net_classes }`; pass
+the result's `board` to `kicad::read_board_json` to get a `copper_board::Board`.
+`embedded_net_classes` is the number of `(net_class ...)` entries the file carried, so
+callers can tell whether the board defines its own rules or needs a `.kicad_pro`.
+`kicad::pcb::default_net_class` gives the net class values the reader falls back on when the
+file has no `Default` net class.
+
+- **Some constructs are refused outright.** Curved tracks, net ties, footprint zones, locked
+  tracks, concave custom pads, zone keepouts that restrict tracks or vias, netless copper
+  zones, locked/blind/micro vias, and through vias with no net all fail the read rather than
+  being approximated.
+- **Copper zones that carry a net are kept, not routed.** They come through with their fill
+  cache removed and a warning attached: the reader works in tracks only, and expects KiCad to
+  refill zones once the board comes back.
+- **A curved board edge is approximated for routing, not discarded.** The outline is
+  flattened to straight segments within 0.005 mm and a warning records it; the original
+  curved outline is preserved wherever the board is written back out.
+
 ## Invariants
 
 - **`normalize_all_traces` runs under a stop check.** Every `.dsn` read ends
@@ -120,6 +142,11 @@ sibling checks that the golden still parses and still names every fixture.
 The boards live in `tests/corpus` and the expected outputs in
 `tests/reference/`; both travel with the repository. `parity_ses` re-cuts its
 references under `COPPERROUTE_REGOLDEN=<label>`.
+
+`tests/kicad_pcb_corpus.rs` runs `read_pcb` against a further set of real `.kicad_pcb`
+boards that does not travel with the repository. It skips unless `COPPERROUTE_PCBENCH` names
+the corpus root; run it with `COPPERROUTE_PCBENCH=<corpus root> cargo test -p copper-dsn
+--test kicad_pcb_corpus -- --nocapture`.
 
 ## Conventions this crate shares with the workspace
 

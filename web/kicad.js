@@ -1,4 +1,10 @@
-import { footprintPoint, outlinePaths, OUTLINE_TOLERANCE } from "./geometry.js";
+import {
+  footprintPoint,
+  outlinePaths,
+  OUTLINE_TOLERANCE,
+  nativeArcPoints,
+  boundingBox,
+} from "./geometry.js";
 // Native KiCad adapter. Source spans let us replace routing while preserving
 // every other byte (footprints, graphics, properties, and unknown metadata).
 export function parse(text) {
@@ -67,7 +73,73 @@ const xy = (n) => {
   return { x: number(n.values[1]), y: number(n.values[2]) };
 };
 const point = (n, key) => xy(child(n, key));
-const equal = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 0.00001;
+// Matches KiCad's own DEFAULT_CHAINING_EPSILON_MM (board.h): the max distance between two
+// endpoints for KiCad to treat them as connected when chaining a board outline, expressed in
+// the integer nanometres KiCad stores coordinates in. KiCad rounds every coordinate to a
+// nanometre and then chains with SquaredEuclideanNorm() <= Square(epsilon), so a gap of
+// exactly the epsilon closes. Subtracting millimetre floats instead leaves such a gap outside
+// the limit, because 92.79 - 92.78 is 0.010000000000005116 in binary floating point.
+const CHAINING_EPSILON_NM = 10000;
+// Outlines drawn without endpoint snapping leave gaps this wide, and KiCad calls such a board
+// malformed rather than routing it. Bridging them is deliberately more permissive than KiCad:
+// it only ever supplies the router with a boundary, and never alters the Edge.Cuts geometry,
+// which downloads copy through from the source file untouched.
+const HEALING_TOLERANCE_MM = 1.0;
+const nanometreDelta = (a, b) => {
+  const nanometres = (value) => Math.round(value * 1e6);
+  return [nanometres(a.x) - nanometres(b.x), nanometres(a.y) - nanometres(b.y)];
+};
+const equal = (a, b) => {
+  const [dx, dy] = nanometreDelta(a, b);
+  return dx * dx + dy * dy <= CHAINING_EPSILON_NM * CHAINING_EPSILON_NM;
+};
+const gapMm = (a, b) => {
+  const [dx, dy] = nanometreDelta(a, b);
+  return Math.hypot(dx, dy) / 1e6;
+};
+const strokeMargin = (n) => number(val(child(n, "stroke") ?? n, "width", 0)) / 2;
+const obstacleNoun = (kind) =>
+  ({ rect: "rectangles", line: "lines", circle: "circles", arc: "arcs", poly: "polygons" })[kind];
+const circleBounds = (n, margin) => {
+  const center = point(n, "center"),
+    end = point(n, "end"),
+    radius = Math.hypot(end.x - center.x, end.y - center.y);
+  return boundingBox(
+    [
+      { x: center.x - radius, y: center.y - radius },
+      { x: center.x + radius, y: center.y + radius },
+    ],
+    margin,
+  );
+};
+const polyPoints = (n, emptyMessage) => {
+  const pts = children(child(n, "pts") ?? { values: [] }, "xy").map(xy);
+  if (!pts.length) throw Error(emptyMessage);
+  return pts;
+};
+const textRectangle = (n, text, at, angle) => {
+  const effects = child(n, "effects"),
+    font = effects && child(effects, "font");
+  if (!font || child(font, "face"))
+    throw Error("Custom copper text fonts are not supported yet.");
+  const size = point(font, "size");
+  const lines = String(text).split("\n");
+  const w = Math.max(...lines.map((line) => line.length)) * size.x * 1.5 + size.y;
+  const h = lines.length * size.y * 2;
+  const justify = child(effects, "justify")?.values ?? [];
+  const left = justify.includes("left") ? -size.y / 2 : justify.includes("right") ? -w : -w / 2;
+  const top = justify.includes("top") ? -size.y / 2 : justify.includes("bottom") ? -h : -h / 2;
+  const mirror = justify.includes("mirror") ? -1 : 1;
+  return [
+    [left, top],
+    [left + w, top],
+    [left + w, top + h],
+    [left, top + h],
+  ].map(([x, y]) => ({
+    x: at.x + mirror * x * Math.cos(angle) - y * Math.sin(angle),
+    y: at.y + mirror * x * Math.sin(angle) + y * Math.cos(angle),
+  }));
+};
 
 export function embeddedNetClasses(root) {
   return children(root, "net_class").map((node) => ({
@@ -99,7 +171,7 @@ export function importBoard(text, name, rules, options = {}) {
       "Copper zones and keepouts are not supported yet.",
     );
   const layers = child(root, "layers")
-    ?.values.filter((v) => v?.values && /\.Cu$/.test(v.values[1]))
+    ?.values.filter((v) => v?.values && (/\.Cu$/.test(v.values[1]) || ["signal", "mixed", "power"].includes(v.values[2])))
     .map((v, index) => {
       const kind = v.values[2];
       if (!["signal", "mixed", "power"].includes(kind))
@@ -113,6 +185,10 @@ export function importBoard(text, name, rules, options = {}) {
     if (!layer) throw Error(`Unknown copper layer: ${name}`);
     return layer.index;
   };
+  const isCopperLayer = (name) => layers.some((l) => l.name === name);
+  // A `.Cu`-suffixed name is copper-shaped even when undeclared, so callers using this to
+  // decide whether to validate an object still reject it instead of silently skipping it.
+  const couldBeCopper = (name) => isCopperLayer(name) || /\.Cu$/.test(name);
   const nets = children(root, "net").map((n) => ({
     id: number(n.values[1]),
     name: n.values[2],
@@ -172,55 +248,124 @@ export function importBoard(text, name, rules, options = {}) {
   );
   for (const n of root.values.filter((v) => v?.values)) {
     const layer = val(n, "layer", "");
-    if (layer.endsWith(".Cu") && n.values[0] === "gr_text") {
-      const effects = child(n, "effects"), font = effects && child(effects, "font");
-      if (!font || child(font, "face")) throw Error("Custom copper text fonts are not supported yet.");
-      const size = point(font, "size"), at = point(n, "at"), angle = -number(child(n, "at").values[3] ?? 0) * Math.PI / 180;
-      const lines = String(n.values[1]).split("\n");
-      const w = Math.max(...lines.map(line => line.length)) * size.x * 1.5 + size.y;
-      const h = lines.length * size.y * 2;
-      const justify = child(effects, "justify")?.values ?? [];
-      const left = justify.includes("left") ? -size.y / 2 : justify.includes("right") ? -w : -w / 2;
-      const top = justify.includes("top") ? -size.y / 2 : justify.includes("bottom") ? -h : -h / 2;
-      const mirror = justify.includes("mirror") ? -1 : 1;
-      const polygon = [[left, top], [left + w, top], [left + w, top + h], [left, top + h]].map(([x, y]) => ({
-        x: at.x + mirror * x * Math.cos(angle) - y * Math.sin(angle),
-        y: at.y + mirror * x * Math.sin(angle) + y * Math.cos(angle),
-      }));
+    if (!couldBeCopper(layer)) continue;
+    const kind = n.values[0];
+    if (kind === "gr_text") {
+      const at = point(n, "at"),
+        angle = (-number(child(n, "at").values[3] ?? 0) * Math.PI) / 180;
+      const polygon = textRectangle(n, n.values[1], at, angle);
       conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
       warnings.push("Copper text is preserved and reserved as conservative rectangular routing obstacles; check text clearances in KiCad.");
       continue;
     }
-    if (
-      layer.endsWith(".Cu") &&
-      ![
-        "segment",
-        "footprint",
-        "module",
-        "zone",
-        "arc",
-      ].includes(n.values[0])
-    )
-      throw Error(`Unsupported copper object: ${n.values[0]}`);
+    if (kind === "gr_line" || kind === "gr_rect") {
+      const polygon = boundingBox([point(n, "start"), point(n, "end")], strokeMargin(n));
+      conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+      warnings.push(`Copper ${obstacleNoun(kind === "gr_line" ? "line" : "rect")} are reserved as solid routing obstacles and preserved in downloads.`);
+      continue;
+    }
+    if (kind === "gr_circle") {
+      const polygon = circleBounds(n, strokeMargin(n));
+      conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+      warnings.push(`Copper ${obstacleNoun("circle")} are reserved as solid routing obstacles and preserved in downloads.`);
+      continue;
+    }
+    if (kind === "gr_arc") {
+      const polygon = boundingBox(nativeArcPoints(n), strokeMargin(n));
+      conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+      warnings.push(`Copper ${obstacleNoun("arc")} are reserved as solid routing obstacles and preserved in downloads.`);
+      continue;
+    }
+    if (kind === "gr_poly") {
+      const polygon = boundingBox(polyPoints(n, "Empty board polygon."), strokeMargin(n));
+      conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+      warnings.push(`Copper ${obstacleNoun("poly")} are reserved as solid routing obstacles and preserved in downloads.`);
+      continue;
+    }
+    // A `generated` node is a length-tuning recipe whose `members` are segments and arcs
+    // that already appear in the file, so it carries no copper of its own.
+    if (!["segment", "footprint", "module", "zone", "arc", "generated"].includes(kind))
+      throw Error(`Unsupported copper object: ${kind}`);
   }
   if (outline.curved)
     warnings.push(
       "Curved board edges are approximated within 0.005 mm for routing; the original outline is preserved in downloads.",
     );
   if (!edges.length) throw Error("A closed Edge.Cuts outline is required.");
-  const loops = [];
-  while (edges.length) {
-    const [first, last] = edges.shift(), loop = [first];
-    let end = last;
-    while (!equal(end, first)) {
-      loop.push(end);
-      const i = edges.findIndex(([a, b]) => equal(a, end) || equal(b, end));
-      if (i < 0) throw Error("The Edge.Cuts outline is not closed.");
-      const [a, b] = edges.splice(i, 1)[0];
-      end = equal(a, end) ? b : a;
+  // Walks edges into closed loops. Without heal this is exact chaining, which is what KiCad
+  // does; with it, a chain out of exact continuations bridges to the nearest endpoint within
+  // HEALING_TOLERANCE_MM. Edges of a chain that never closes come back as leftovers rather
+  // than being dropped, so the caller can retry them.
+  const chainLoops = (edges, heal) => {
+    const loops = [], leftovers = [], bridged = [];
+    while (edges.length) {
+      const edge = edges.shift(), [first, last] = edge;
+      const used = [edge], loop = [first], healed = [];
+      let end = last, closed = true;
+      while (!equal(end, first)) {
+        loop.push(end);
+        const i = edges.findIndex(([a, b]) => equal(a, end) || equal(b, end));
+        if (i >= 0) {
+          const [a, b] = edges.splice(i, 1)[0];
+          used.push([a, b]);
+          end = equal(a, end) ? b : a;
+          continue;
+        }
+        if (!heal) {
+          closed = false;
+          break;
+        }
+        let nearest = null;
+        edges.forEach(([a, b], index) => {
+          const toA = gapMm(a, end), toB = gapMm(b, end);
+          const [gap, other] = toA <= toB ? [toA, b] : [toB, a];
+          if (!nearest || gap < nearest.gap) nearest = { gap, index, other };
+        });
+        const toFirst = gapMm(end, first);
+        // Closing early would strand the rest of the outline, so a bridge to another edge
+        // wins unless the start is nearer, and the loop needs three corners to close.
+        if (
+          nearest &&
+          nearest.gap <= HEALING_TOLERANCE_MM &&
+          (nearest.gap <= toFirst || loop.length < 3)
+        ) {
+          healed.push({ gap: nearest.gap, at: end });
+          used.push(edges.splice(nearest.index, 1)[0]);
+          end = nearest.other;
+        } else if (toFirst <= HEALING_TOLERANCE_MM && loop.length >= 3) {
+          healed.push({ gap: toFirst, at: end });
+          break;
+        } else {
+          closed = false;
+          break;
+        }
+      }
+      if (!closed) {
+        leftovers.push(...used);
+        continue;
+      }
+      if (loop.length < 3) throw Error("Degenerate Edge.Cuts outline.");
+      bridged.push(...healed);
+      loops.push(loop);
     }
-    if (loop.length < 3) throw Error("Degenerate Edge.Cuts outline.");
-    loops.push(loop);
+    return { loops, leftovers, bridged };
+  };
+
+  // Exact chaining first, so every loop that already closed keeps the edges it had; only what
+  // exact chaining would have thrown away is offered to the bridging pass.
+  const exact = chainLoops(edges, false);
+  const healedPass = chainLoops(exact.leftovers, true);
+  const loops = [...exact.loops, ...healedPass.loops];
+  const strayEdges = healedPass.leftovers.length;
+  const bridged = healedPass.bridged;
+  if (!loops.length) throw Error("A closed Edge.Cuts outline is required.");
+  if (strayEdges)
+    warnings.push(`${strayEdges} Edge.Cuts edges could not be closed into a loop and were ignored.`);
+  if (bridged.length) {
+    const worst = bridged.reduce((a, b) => (b.gap > a.gap ? b : a));
+    warnings.push(
+      `${bridged.length} Edge.Cuts ${bridged.length === 1 ? "gap was" : "gaps were"} bridged to give the router a closed boundary, the widest ${worst.gap.toFixed(4)} mm at (${worst.at.x.toFixed(4)}, ${worst.at.y.toFixed(4)}). KiCad reports an outline with gaps like these as malformed; the Edge.Cuts geometry in downloads is unchanged.`,
+    );
   }
   const area = ps => Math.abs(ps.reduce((sum, p, i) => {
     const q = ps[(i + 1) % ps.length];
@@ -252,22 +397,41 @@ export function importBoard(text, name, rules, options = {}) {
       throw Error("Footprint zones are not supported yet.");
     for (const n of fp.values.filter((v) => v?.values)) {
       const layer = val(n, "layer", "");
-      if (layer.endsWith(".Cu") && n.values[0] === "fp_rect") {
-        const a = point(n, "start"), b = point(n, "end");
-        const stroke = child(n, "stroke");
-        const margin = number(val(stroke ?? n, "width", 0)) / 2;
-        const x0 = Math.min(a.x, b.x) - margin, x1 = Math.max(a.x, b.x) + margin;
-        const y0 = Math.min(a.y, b.y) - margin, y1 = Math.max(a.y, b.y) + margin;
-        const polygon = [{x:x0,y:y0},{x:x1,y:y0},{x:x1,y:y1},{x:x0,y:y1}].map(p => footprintPoint(fp, p));
+      if (!couldBeCopper(layer)) continue;
+      const kind = n.values[0];
+      if (kind === "fp_rect" || kind === "fp_line") {
+        const polygon = boundingBox([point(n, "start"), point(n, "end")], strokeMargin(n)).map((p) => footprintPoint(fp, p));
         conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
-        warnings.push("Footprint copper rectangles are reserved as solid routing obstacles and preserved in downloads.");
+        warnings.push(`Footprint copper ${obstacleNoun(kind === "fp_rect" ? "rect" : "line")} are reserved as solid routing obstacles and preserved in downloads.`);
         continue;
       }
-      if (
-        layer.endsWith(".Cu") &&
-        n.values[0] !== "pad" &&
-        n.values[0] !== "layer"
-      )
+      if (kind === "fp_circle") {
+        const polygon = circleBounds(n, strokeMargin(n)).map((p) => footprintPoint(fp, p));
+        conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+        warnings.push(`Footprint copper ${obstacleNoun("circle")} are reserved as solid routing obstacles and preserved in downloads.`);
+        continue;
+      }
+      if (kind === "fp_arc") {
+        const polygon = boundingBox(nativeArcPoints(n), strokeMargin(n)).map((p) => footprintPoint(fp, p));
+        conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+        warnings.push(`Footprint copper ${obstacleNoun("arc")} are reserved as solid routing obstacles and preserved in downloads.`);
+        continue;
+      }
+      if (kind === "fp_poly") {
+        const polygon = boundingBox(polyPoints(n, "Empty footprint polygon."), strokeMargin(n)).map((p) => footprintPoint(fp, p));
+        conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+        warnings.push(`Footprint copper ${obstacleNoun("poly")} are reserved as solid routing obstacles and preserved in downloads.`);
+        continue;
+      }
+      if (kind === "fp_text") {
+        const origin = footprintPoint(fp, point(n, "at")),
+          angle = (-number(child(n, "at").values[3] ?? 0) * Math.PI) / 180;
+        const polygon = textRectangle(n, n.values[2], origin, angle);
+        conductionAreas.push({netName: "", layerIndex: layerIndex(layer), isObstacle: true, polygon});
+        warnings.push("Footprint copper text is preserved and reserved as conservative rectangular routing obstacles; check text clearances in KiCad.");
+        continue;
+      }
+      if (kind !== "pad" && kind !== "layer")
         throw Error("Footprint copper graphics are not supported yet.");
     }
     const origin = point(fp, "at"),
@@ -283,37 +447,105 @@ export function importBoard(text, name, rules, options = {}) {
       const type = pad.values[2];
       if (
         !["smd", "connect", "thru_hole", "np_thru_hole"].includes(type) ||
-        !["circle", "rect", "oval", "roundrect", "custom"].includes(shape)
+        !["circle", "rect", "oval", "roundrect", "custom", "trapezoid"].includes(shape)
       )
         throw Error(
           `Unsupported pad ${reference}.${pad.values[1]}: ${type}/${shape}`,
         );
       let copperPolygon;
       if (shape === "custom") {
-        const primitives = child(pad, "primitives")?.values.slice(1) ?? [];
-        if (primitives.length !== 1 || primitives[0]?.values?.[0] !== "gr_poly" || val(primitives[0], "fill") !== "yes")
-          throw Error("Custom pads require one filled convex polygon.");
-        const poly = children(child(primitives[0], "pts") ?? {values: []}, "xy").map(xy);
-        const cross = (a, b, c) => (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
-        const signs = poly.map((p,i) => Math.sign(cross(p,poly[(i+1)%poly.length],poly[(i+2)%poly.length]))).filter(Boolean);
-        if (poly.length < 3 || signs.some(s => s !== signs[0])) throw Error("Concave custom pads are not supported yet.");
-        const radius = number(val(primitives[0], "width", 0)) / 2;
         const size = point(pad, "size");
-        if (val(child(pad, "options") ?? {values: []}, "anchor") !== "circle" || size.x !== size.y || radius < 0)
-          throw Error("Custom polygon pads require a circular anchor and nonnegative stroke.");
-        if (poly.some((a,i) => {
-          const b = poly[(i+1)%poly.length];
-          return signs[0] * cross(a,b,{x:0,y:0}) / Math.hypot(b.x-a.x,b.y-a.y) + radius < size.x/2;
-        })) throw Error("Custom pad polygon must cover its circular anchor.");
-        const count = radius ? Math.max(24, Math.ceil(Math.PI / Math.acos(1 / (1 + OUTLINE_TOLERANCE / radius)))) : 1;
-        const samples = poly.flatMap(p => Array.from({length: count}, (_,i) => {
-          const r = radius ? radius / Math.cos(Math.PI/count) : 0, angle = i * 2*Math.PI/count;
-          return {x:p.x+r*Math.cos(angle),y:p.y+r*Math.sin(angle)};
-        })).sort((a,b) => a.x-b.x || a.y-b.y);
+        const cross = (a, b, c) => (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+        // A primitive is a disc of its stroke radius swept along its outline, so each outline
+        // point carries that radius. fill does not affect the result: a ring and a filled disc
+        // share a convex hull.
+        const discs = (n) => {
+          const stroke = strokeMargin(n);
+          if (stroke < 0) throw Error("Custom pad primitives need a nonnegative stroke.");
+          const kind = n.values[0];
+          if (kind === "gr_circle") {
+            const c = point(n, "center"), e = point(n, "end");
+            return [{p: c, r: Math.hypot(e.x-c.x, e.y-c.y) + stroke}];
+          }
+          let points;
+          if (kind === "gr_poly") points = children(child(n, "pts") ?? {values: []}, "xy").map(xy);
+          else if (kind === "gr_line") points = [point(n, "start"), point(n, "end")];
+          else if (kind === "gr_rect") {
+            const a = point(n, "start"), b = point(n, "end");
+            points = [a, {x:b.x,y:a.y}, b, {x:a.x,y:b.y}];
+          } else if (kind === "gr_arc") points = nativeArcPoints(n);
+          else throw Error(`Unsupported custom pad primitive: ${kind}`);
+          return points.map(p => ({p, r: stroke}));
+        };
+        // KiCad takes a circular anchor's diameter from size.x alone and ignores size.y, and
+        // makes a rectangular anchor the whole size box. Checked against KiCad 10.0.3.
+        const anchorName = val(child(pad, "options") ?? {values: []}, "anchor") ?? "circle";
+        const hx = size.x/2, hy = size.y/2;
+        let anchor;
+        if (anchorName === "circle") anchor = [{p:{x:0,y:0}, r:hx}];
+        else if (anchorName === "rect")
+          anchor = [{x:-hx,y:hy},{x:-hx,y:-hy},{x:hx,y:-hy},{x:hx,y:hy}].map(p => ({p, r:0}));
+        else throw Error(`Unsupported custom pad anchor: ${anchorName}`);
+
         const half = points => {const out=[];for(const p of points){while(out.length>1 && cross(out.at(-2),out.at(-1),p)<=0)out.pop();out.push(p);}return out.slice(0,-1);};
-        copperPolygon = [...half(samples), ...half([...samples].reverse())];
+        const hullOf = (ds) => {
+          const samples = ds.flatMap(({p, r}) => {
+            const count = r ? Math.max(24, Math.ceil(Math.PI / Math.acos(1 / (1 + OUTLINE_TOLERANCE / r)))) : 1;
+            const outer = r ? r / Math.cos(Math.PI/count) : 0;
+            return Array.from({length: count}, (_, i) => {
+              const angle = i * 2*Math.PI/count;
+              return {x: p.x + outer*Math.cos(angle), y: p.y + outer*Math.sin(angle)};
+            });
+          }).sort((a,b) => a.x-b.x || a.y-b.y);
+          return [...half(samples), ...half([...samples].reverse())];
+        };
+        const covers = (hull, ds) => hull.length >= 3 && ds.every(({p, r}) =>
+          hull.every((a, i) => {
+            const b = hull[(i+1)%hull.length], span = Math.hypot(b.x-a.x, b.y-a.y);
+            return span === 0 || cross(a, b, p) / span >= r;
+          }));
+
+        const primitives = (child(pad, "primitives")?.values.slice(1) ?? [])
+          .filter(v => typeof v === "object" && v?.values);
+        let ds = primitives.flatMap(discs);
+        let hull = hullOf(ds);
+        const anchorCovered = covers(hull, anchor);
+        if (!anchorCovered) hull = hullOf(ds.concat(anchor));
+        if (hull.length < 3) throw Error("Custom pads need a copper outline with area.");
+
+        let exact = false;
+        if (anchorCovered && primitives.length === 1 && primitives[0].values[0] === "gr_poly"
+            && val(primitives[0], "fill") === "yes") {
+          const poly = discs(primitives[0]).map(d => d.p);
+          const signs = poly.map((p, i) =>
+            cross(p, poly[(i+1)%poly.length], poly[(i+2)%poly.length])).filter(Boolean);
+          exact = signs.every((s, i) => i === 0 || s * signs[i-1] > 0);
+        }
+        if (!exact)
+          warnings.push("Custom pads that are not a single convex outline are reserved as their convex hull, which can overstate their copper; original pad definitions are preserved.");
+        copperPolygon = hull;
         warnings.push("Convex custom pad outlines include their stroke, approximated within 0.005 mm; original pad definitions are preserved.");
       } else if (children(pad, "primitives").length) throw Error("Unexpected custom pad primitives.");
+      else if (shape === "trapezoid") {
+        // KiCad grows the pad by rect_delta.x along Y and by rect_delta.y along X, so the
+        // two components cross axes.
+        const size = point(pad, "size"),
+          delta = child(pad, "rect_delta")
+            ? point(pad, "rect_delta")
+            : { x: 0, y: 0 };
+        if (Math.abs(delta.x) >= size.y || Math.abs(delta.y) >= size.x)
+          throw Error("Trapezoid pads must keep a positive width and height.");
+        const hx = size.x / 2,
+          hy = size.y / 2,
+          hdx = delta.x / 2,
+          hdy = delta.y / 2;
+        copperPolygon = [
+          { x: -hx - hdy, y: hy + hdx },
+          { x: -hx + hdy, y: -hy - hdx },
+          { x: hx - hdy, y: -hy + hdx },
+          { x: hx + hdy, y: hy - hdx },
+        ];
+      }
       const drillNode = child(pad, "drill"),
         slotted = drillNode?.values[1] === "oval";
       const drill = slotted
@@ -321,15 +553,12 @@ export function importBoard(text, name, rules, options = {}) {
         : number(val(pad, "drill", 0));
       if (slotted) {
         if (
-          type !== "thru_hole" ||
           number(drillNode.values[2]) <= 0 ||
           number(drillNode.values[3]) <= 0
         )
-          throw Error(
-            "Only plated slots with positive dimensions are supported.",
-          );
+          throw Error("Only slots with positive dimensions are supported.");
         warnings.push(
-          "Plated slots retain their copper pad geometry; slot-specific drill checks require KiCad DRC. Original slots are preserved in downloads.",
+          "Slots retain their copper pad geometry; slot-specific drill checks require KiCad DRC. Original slots are preserved in downloads.",
         );
       }
       const local = point(pad, "at"),
@@ -349,18 +578,22 @@ export function importBoard(text, name, rules, options = {}) {
           local.y * Math.cos(rotation),
       };
       const angle = number(child(pad, "at").values[3] ?? 0);
+      let unknownCopperLayer;
       const padLayers =
         child(pad, "layers")
           ?.values.slice(1)
-          .flatMap((l) =>
-            l === "*.Cu" || l === "F&B.Cu"
-              ? layers.map((l) => l.name)
-              : l.endsWith(".Cu")
-                ? [l]
-                : [],
-          ) ?? [];
+          .flatMap((l) => {
+            if (l === "*.Cu" || l === "F&B.Cu") return layers.map((l) => l.name);
+            if (isCopperLayer(l)) return [l];
+            if (/\.Cu$/.test(l) && unknownCopperLayer === undefined) unknownCopperLayer = l;
+            return [];
+          }) ?? [];
       padLayers.forEach(layerIndex);
-      if (!padLayers.length) continue; // Paste-only apertures are not copper obstacles.
+      if (!padLayers.length) {
+        if (unknownCopperLayer !== undefined)
+          throw Error(`Unknown copper layer: ${unknownCopperLayer}`);
+        continue; // Paste-only apertures are not copper obstacles.
+      }
       const localClearance = (node) => {
         const field = child(node, "clearance");
         if (!field) return undefined;

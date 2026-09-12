@@ -14,11 +14,8 @@ use crate::format::double::format_fixed;
 use crate::kicad::dto::{KiCadBoardJson, NetClassJson, PadJson, Point2D, UnitJson};
 use crate::parser::network::is_kicad_default_net_class_name;
 
-#[allow(clippy::too_many_lines)]
 #[must_use]
 pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardReadResult {
-    let id_generator = id_generator.unwrap_or_default();
-
     let board_json: KiCadBoardJson = if json.trim().is_empty() {
         return parse_error("json_root", "JSON payload is empty or invalid");
     } else {
@@ -30,6 +27,16 @@ pub fn read_board(json: &str, id_generator: Option<ItemIdGenerator>) -> BoardRea
             }
         }
     };
+    read_board_json(board_json, id_generator)
+}
+
+#[allow(clippy::too_many_lines)]
+#[must_use]
+pub fn read_board_json(
+    board_json: KiCadBoardJson,
+    id_generator: Option<ItemIdGenerator>,
+) -> BoardReadResult {
+    let id_generator = id_generator.unwrap_or_default();
 
     if let Err(malformed) = board_json.validate() {
         return parse_error(
