@@ -1,6 +1,7 @@
 use std::f64::consts::PI;
 
 use super::PcbError;
+use super::outline;
 use super::structure::{Layers, NetTable};
 use crate::kicad::sexpr::{Node, Value};
 use crate::kicad::{ConductionAreaJson, Point2D, TraceJson, ViaJson};
@@ -170,7 +171,131 @@ pub fn check_zones(
     Ok(())
 }
 
-pub fn read_copper_text(
+const TOP_LEVEL_COPPER_ALLOWED: &[&str] = &["segment", "footprint", "module", "zone", "arc"];
+
+pub(crate) fn text_rectangle(
+    node: &Node,
+    text: &str,
+    at: (f64, f64),
+    angle: f64,
+) -> Result<Vec<Point2D>, PcbError> {
+    let effects = node.child("effects");
+    let font = effects.and_then(|effects| effects.child("font"));
+    let font = match font {
+        Some(font) if font.child("face").is_none() => font,
+        _ => {
+            return Err(PcbError::new(
+                SECTION,
+                "Custom copper text fonts are not supported yet.",
+            ));
+        }
+    };
+    let size = point(font, "size")?;
+    let lines: Vec<&str> = text.split('\n').collect();
+    let longest = lines
+        .iter()
+        .map(|line| line.encode_utf16().count())
+        .max()
+        .unwrap_or(0) as f64;
+    let width = longest * size.0 * 1.5 + size.1;
+    let height = lines.len() as f64 * size.1 * 2.0;
+    let justify: Vec<&str> = effects
+        .and_then(|effects| effects.child("justify"))
+        .map(|justify| {
+            justify
+                .values
+                .iter()
+                .filter_map(|value| match value {
+                    Value::Atom(text) => Some(text.as_str()),
+                    Value::Node(_) => None,
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let left = if justify.contains(&"left") {
+        -size.1 / 2.0
+    } else if justify.contains(&"right") {
+        -width
+    } else {
+        -width / 2.0
+    };
+    let top = if justify.contains(&"top") {
+        -size.1 / 2.0
+    } else if justify.contains(&"bottom") {
+        -height
+    } else {
+        -height / 2.0
+    };
+    let mirror = if justify.contains(&"mirror") {
+        -1.0
+    } else {
+        1.0
+    };
+    let corners = [
+        (left, top),
+        (left + width, top),
+        (left + width, top + height),
+        (left, top + height),
+    ];
+    Ok(corners
+        .into_iter()
+        .map(|(x, y)| Point2D {
+            x: at.0 + mirror * x * angle.cos() - y * angle.sin(),
+            y: at.1 + mirror * x * angle.sin() + y * angle.cos(),
+        })
+        .collect())
+}
+
+fn text_angle(node: &Node) -> Result<f64, PcbError> {
+    let angle_text = node.child("at").and_then(|at| at.atom(3)).unwrap_or("0");
+    Ok(-number(angle_text)? * PI / 180.0)
+}
+
+fn poly_points(node: &Node) -> Result<Vec<(f64, f64)>, PcbError> {
+    let points: Vec<(f64, f64)> = match node.child("pts") {
+        Some(pts) => pts
+            .children("xy")
+            .map(|xy_node| super::numeric::xy(SECTION, Some(xy_node)))
+            .collect::<Result<_, _>>()?,
+        None => Vec::new(),
+    };
+    if points.is_empty() {
+        return Err(PcbError::new(SECTION, "Empty board polygon."));
+    }
+    Ok(points)
+}
+
+fn obstacle_noun(kind: &str) -> &'static str {
+    match kind {
+        "gr_line" => "lines",
+        "gr_rect" => "rectangles",
+        "gr_circle" => "circles",
+        "gr_arc" => "arcs",
+        "gr_poly" => "polygons",
+        _ => unreachable!("obstacle_noun is only called for the kinds handled above"),
+    }
+}
+
+fn bbox_area(
+    points: &[(f64, f64)],
+    margin: f64,
+    layer: &str,
+    layers: &Layers,
+) -> Result<ConductionAreaJson, PcbError> {
+    let polygon = outline::bounding_box(points, margin)
+        .into_iter()
+        .map(|(x, y)| Point2D { x, y })
+        .collect();
+    Ok(ConductionAreaJson {
+        id: 0,
+        netName: Some(String::new()),
+        layerIndex: layers.index_of(layer)?,
+        isObstacle: true,
+        polygon: Some(polygon),
+    })
+}
+
+pub fn read_copper_graphics(
     root: &Node,
     layers: &Layers,
     warnings: &mut Vec<String>,
@@ -181,90 +306,83 @@ pub fn read_copper_text(
             continue;
         };
         let layer = node.value("layer").unwrap_or("");
-        if !layers.could_be_copper(layer) || node.name() != "gr_text" {
+        if !layers.could_be_copper(layer) {
             continue;
         }
-        let effects = node.child("effects");
-        let font = effects.and_then(|effects| effects.child("font"));
-        let font = match font {
-            Some(font) if font.child("face").is_none() => font,
-            _ => {
-                return Err(PcbError::new(
-                    SECTION,
-                    "Custom copper text fonts are not supported yet.",
+        match node.name() {
+            "gr_text" => {
+                let at = point(node, "at")?;
+                let angle = text_angle(node)?;
+                let text = node.atom(1).unwrap_or("");
+                let polygon = text_rectangle(node, text, at, angle)?;
+                areas.push(ConductionAreaJson {
+                    id: 0,
+                    netName: Some(String::new()),
+                    layerIndex: layers.index_of(layer)?,
+                    isObstacle: true,
+                    polygon: Some(polygon),
+                });
+                warnings.push(
+                    "Copper text is preserved and reserved as conservative rectangular routing \
+                     obstacles; check text clearances in KiCad."
+                        .to_string(),
+                );
+            }
+            kind @ ("gr_line" | "gr_rect") => {
+                let a = point(node, "start")?;
+                let b = point(node, "end")?;
+                let margin = super::numeric::stroke_margin(SECTION, node)?;
+                areas.push(bbox_area(&[a, b], margin, layer, layers)?);
+                warnings.push(format!(
+                    "Copper {} are reserved as solid routing obstacles and preserved in \
+                     downloads.",
+                    obstacle_noun(kind)
                 ));
             }
-        };
-        let size = point(font, "size")?;
-        let at = point(node, "at")?;
-        let angle_text = node.child("at").and_then(|at| at.atom(3)).unwrap_or("0");
-        let angle = -number(angle_text)? * PI / 180.0;
-        let text = node.atom(1).unwrap_or("");
-        let lines: Vec<&str> = text.split('\n').collect();
-        let longest = lines
-            .iter()
-            .map(|line| line.encode_utf16().count())
-            .max()
-            .unwrap_or(0) as f64;
-        let width = longest * size.0 * 1.5 + size.1;
-        let height = lines.len() as f64 * size.1 * 2.0;
-        let justify: Vec<&str> = effects
-            .and_then(|effects| effects.child("justify"))
-            .map(|justify| {
-                justify
-                    .values
-                    .iter()
-                    .filter_map(|value| match value {
-                        Value::Atom(text) => Some(text.as_str()),
-                        Value::Node(_) => None,
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-        let left = if justify.contains(&"left") {
-            -size.1 / 2.0
-        } else if justify.contains(&"right") {
-            -width
-        } else {
-            -width / 2.0
-        };
-        let top = if justify.contains(&"top") {
-            -size.1 / 2.0
-        } else if justify.contains(&"bottom") {
-            -height
-        } else {
-            -height / 2.0
-        };
-        let mirror = if justify.contains(&"mirror") {
-            -1.0
-        } else {
-            1.0
-        };
-        let corners = [
-            (left, top),
-            (left + width, top),
-            (left + width, top + height),
-            (left, top + height),
-        ];
-        let polygon = corners
-            .into_iter()
-            .map(|(x, y)| Point2D {
-                x: at.0 + mirror * x * angle.cos() - y * angle.sin(),
-                y: at.1 + mirror * x * angle.sin() + y * angle.cos(),
-            })
-            .collect();
-        areas.push(ConductionAreaJson {
-            id: 0,
-            netName: Some(String::new()),
-            layerIndex: layers.index_of(layer)?,
-            isObstacle: true,
-            polygon: Some(polygon),
-        });
-        warnings.push(
-            "Copper text is preserved and reserved as conservative rectangular routing \
-             obstacles; check text clearances in KiCad."
-                .to_string(),
-        );
+            "gr_circle" => {
+                let center = point(node, "center")?;
+                let end = point(node, "end")?;
+                let radius = (end.0 - center.0).hypot(end.1 - center.1);
+                let margin = super::numeric::stroke_margin(SECTION, node)?;
+                let pseudo = [
+                    (center.0 - radius, center.1 - radius),
+                    (center.0 + radius, center.1 + radius),
+                ];
+                areas.push(bbox_area(&pseudo, margin, layer, layers)?);
+                warnings.push(
+                    "Copper circles are reserved as solid routing obstacles and preserved in \
+                     downloads."
+                        .to_string(),
+                );
+            }
+            "gr_arc" => {
+                let points = outline::native_arc_points(node)?;
+                let margin = super::numeric::stroke_margin(SECTION, node)?;
+                areas.push(bbox_area(&points, margin, layer, layers)?);
+                warnings.push(
+                    "Copper arcs are reserved as solid routing obstacles and preserved in \
+                     downloads."
+                        .to_string(),
+                );
+            }
+            "gr_poly" => {
+                let points = poly_points(node)?;
+                let margin = super::numeric::stroke_margin(SECTION, node)?;
+                areas.push(bbox_area(&points, margin, layer, layers)?);
+                warnings.push(
+                    "Copper polygons are reserved as solid routing obstacles and preserved in \
+                     downloads."
+                        .to_string(),
+                );
+            }
+            other if !TOP_LEVEL_COPPER_ALLOWED.contains(&other) => {
+                return Err(PcbError::new(
+                    SECTION,
+                    &format!("Unsupported copper object: {other}"),
+                ));
+            }
+            _ => {}
+        }
     }
     Ok(areas)
 }

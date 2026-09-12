@@ -4,13 +4,11 @@ pub mod outline;
 pub mod routing;
 pub mod structure;
 
-use crate::kicad::sexpr::{self, Node, Value};
+use crate::kicad::sexpr::{self, Node};
 use crate::kicad::{KiCadBoardJson, NetClassJson, OutlineJson, Point2D, UnitJson};
 use structure::{Layers, NetTable};
 
 const SECTION: &str = "pcb";
-
-const TOP_LEVEL_COPPER_ALLOWED: &[&str] = &["segment", "footprint", "module", "zone", "arc"];
 
 fn number(text: &str) -> Result<f64, PcbError> {
     numeric::number(SECTION, text)
@@ -49,8 +47,7 @@ pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<Impor
     routing::check_zones(&root, &nets, &mut warnings)?;
 
     let paths = outline::outline_paths(&root)?;
-    reject_unsupported_copper_objects(&root, &layers)?;
-    let mut conduction_areas = routing::read_copper_text(&root, &layers, &mut warnings)?;
+    let mut conduction_areas = routing::read_copper_graphics(&root, &layers, &mut warnings)?;
     if paths.curved {
         warnings.push(
             "Curved board edges are approximated within 0.005 mm for routing; the original \
@@ -183,25 +180,6 @@ fn validate_defaults(root: &Node, defaults: &NetClassJson) -> Result<(), PcbErro
             SECTION,
             "Via drill must be smaller than diameter.",
         ));
-    }
-    Ok(())
-}
-
-fn reject_unsupported_copper_objects(root: &Node, layers: &Layers) -> Result<(), PcbError> {
-    for value in &root.values {
-        let Value::Node(node) = value else {
-            continue;
-        };
-        let layer = node.value("layer").unwrap_or("");
-        if !layers.could_be_copper(layer) || node.name() == "gr_text" {
-            continue;
-        }
-        if !TOP_LEVEL_COPPER_ALLOWED.contains(&node.name()) {
-            return Err(PcbError::new(
-                SECTION,
-                &format!("Unsupported copper object: {}", node.name()),
-            ));
-        }
     }
     Ok(())
 }

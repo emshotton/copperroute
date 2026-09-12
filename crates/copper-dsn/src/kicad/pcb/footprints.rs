@@ -64,23 +64,15 @@ fn footprint_reference(fp: &Node, index: usize) -> String {
         .unwrap_or_else(|| format!("FP{index}"))
 }
 
-fn copper_rectangle(
+fn copper_area(
     fp: &Node,
-    node: &Node,
+    corners: &[(f64, f64)],
     layer: &str,
     layers: &Layers,
 ) -> Result<ConductionAreaJson, PcbError> {
-    let a = point(node, "start")?;
-    let b = point(node, "end")?;
-    let width_source = node.child("stroke").unwrap_or(node);
-    let margin = numeric_value(width_source, "width", 0.0)? / 2.0;
-    let x0 = a.0.min(b.0) - margin;
-    let x1 = a.0.max(b.0) + margin;
-    let y0 = a.1.min(b.1) - margin;
-    let y1 = a.1.max(b.1) + margin;
-    let polygon = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
-        .into_iter()
-        .map(|(x, y)| outline::footprint_point(fp, x, y))
+    let polygon = corners
+        .iter()
+        .map(|&(x, y)| outline::footprint_point(fp, x, y))
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
         .map(|(x, y)| Point2D { x, y })
@@ -92,6 +84,105 @@ fn copper_rectangle(
         isObstacle: true,
         polygon: Some(polygon),
     })
+}
+
+fn copper_rectangle(
+    fp: &Node,
+    node: &Node,
+    layer: &str,
+    layers: &Layers,
+) -> Result<ConductionAreaJson, PcbError> {
+    let a = point(node, "start")?;
+    let b = point(node, "end")?;
+    let margin = super::numeric::stroke_margin(SECTION, node)?;
+    copper_area(fp, &outline::bounding_box(&[a, b], margin), layer, layers)
+}
+
+fn copper_circle(
+    fp: &Node,
+    node: &Node,
+    layer: &str,
+    layers: &Layers,
+) -> Result<ConductionAreaJson, PcbError> {
+    let center = point(node, "center")?;
+    let end = point(node, "end")?;
+    let radius = (end.0 - center.0).hypot(end.1 - center.1);
+    let margin = super::numeric::stroke_margin(SECTION, node)?;
+    let pseudo = [
+        (center.0 - radius, center.1 - radius),
+        (center.0 + radius, center.1 + radius),
+    ];
+    copper_area(fp, &outline::bounding_box(&pseudo, margin), layer, layers)
+}
+
+fn copper_arc(
+    fp: &Node,
+    node: &Node,
+    layer: &str,
+    layers: &Layers,
+) -> Result<ConductionAreaJson, PcbError> {
+    let points = outline::native_arc_points(node)?;
+    let margin = super::numeric::stroke_margin(SECTION, node)?;
+    copper_area(fp, &outline::bounding_box(&points, margin), layer, layers)
+}
+
+fn copper_poly(
+    fp: &Node,
+    node: &Node,
+    layer: &str,
+    layers: &Layers,
+) -> Result<ConductionAreaJson, PcbError> {
+    let points: Vec<(f64, f64)> = match node.child("pts") {
+        Some(pts) => pts
+            .children("xy")
+            .map(|xy_node| xy(Some(xy_node)))
+            .collect::<Result<_, _>>()?,
+        None => Vec::new(),
+    };
+    if points.is_empty() {
+        return Err(PcbError::new(SECTION, "Empty footprint polygon."));
+    }
+    let margin = super::numeric::stroke_margin(SECTION, node)?;
+    copper_area(fp, &outline::bounding_box(&points, margin), layer, layers)
+}
+
+fn copper_text(
+    fp: &Node,
+    node: &Node,
+    layer: &str,
+    layers: &Layers,
+) -> Result<ConductionAreaJson, PcbError> {
+    let local = point(node, "at")?;
+    let origin = outline::footprint_point(fp, local.0, local.1)?;
+    let angle_text = node.child("at").and_then(|at| at.atom(3)).unwrap_or("0");
+    let angle = -number(angle_text)? * PI / 180.0;
+    let text = node.atom(2).unwrap_or("");
+    let polygon = super::routing::text_rectangle(node, text, origin, angle)?;
+    Ok(ConductionAreaJson {
+        id: 0,
+        netName: Some(String::new()),
+        layerIndex: layers.index_of(layer)?,
+        isObstacle: true,
+        polygon: Some(polygon),
+    })
+}
+
+fn obstacle_noun(kind: &str) -> &'static str {
+    match kind {
+        "fp_rect" => "rectangles",
+        "fp_line" => "lines",
+        "fp_circle" => "circles",
+        "fp_arc" => "arcs",
+        "fp_poly" => "polygons",
+        _ => unreachable!("obstacle_noun is only called for the kinds handled above"),
+    }
+}
+
+fn obstacle_warning(kind: &str) -> String {
+    format!(
+        "Footprint copper {} are reserved as solid routing obstacles and preserved in downloads.",
+        obstacle_noun(kind)
+    )
 }
 
 fn custom_pad_polygon(
@@ -277,20 +368,41 @@ pub fn read_components(
 
         for node in child_nodes(fp) {
             let layer = node.value("layer").unwrap_or("");
-            if layers.could_be_copper(layer) && node.name() == "fp_rect" {
-                conduction_areas.push(copper_rectangle(fp, node, layer, layers)?);
-                warnings.push(
-                    "Footprint copper rectangles are reserved as solid routing obstacles and \
-                     preserved in downloads."
-                        .to_string(),
-                );
+            if !layers.could_be_copper(layer) {
                 continue;
             }
-            if layers.could_be_copper(layer) && node.name() != "pad" && node.name() != "layer" {
-                return Err(PcbError::new(
-                    SECTION,
-                    "Footprint copper graphics are not supported yet.",
-                ));
+            match node.name() {
+                kind @ ("fp_rect" | "fp_line") => {
+                    conduction_areas.push(copper_rectangle(fp, node, layer, layers)?);
+                    warnings.push(obstacle_warning(kind));
+                }
+                kind @ "fp_circle" => {
+                    conduction_areas.push(copper_circle(fp, node, layer, layers)?);
+                    warnings.push(obstacle_warning(kind));
+                }
+                kind @ "fp_arc" => {
+                    conduction_areas.push(copper_arc(fp, node, layer, layers)?);
+                    warnings.push(obstacle_warning(kind));
+                }
+                kind @ "fp_poly" => {
+                    conduction_areas.push(copper_poly(fp, node, layer, layers)?);
+                    warnings.push(obstacle_warning(kind));
+                }
+                "fp_text" => {
+                    conduction_areas.push(copper_text(fp, node, layer, layers)?);
+                    warnings.push(
+                        "Footprint copper text is preserved and reserved as conservative \
+                         rectangular routing obstacles; check text clearances in KiCad."
+                            .to_string(),
+                    );
+                }
+                "pad" | "layer" => {}
+                _ => {
+                    return Err(PcbError::new(
+                        SECTION,
+                        "Footprint copper graphics are not supported yet.",
+                    ));
+                }
             }
         }
 

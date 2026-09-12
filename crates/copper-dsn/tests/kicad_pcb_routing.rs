@@ -1,4 +1,4 @@
-use copper_dsn::kicad::pcb::routing::{check_zones, read_copper_text, read_traces, read_vias};
+use copper_dsn::kicad::pcb::routing::{check_zones, read_copper_graphics, read_traces, read_vias};
 use copper_dsn::kicad::pcb::structure::{Layers, NetTable};
 use copper_dsn::kicad::sexpr::parse;
 
@@ -127,7 +127,7 @@ fn it_reserves_copper_text_as_an_obstacle() {
     );
     let layers = Layers::read(&root).expect("layers");
     let mut warnings = Vec::new();
-    let areas = read_copper_text(&root, &layers, &mut warnings).expect("areas");
+    let areas = read_copper_graphics(&root, &layers, &mut warnings).expect("areas");
     assert_eq!(areas.len(), 1);
     assert!(areas[0].isObstacle);
     let polygon = areas[0].polygon.as_ref().expect("a polygon");
@@ -147,7 +147,7 @@ fn it_rejects_copper_text_on_a_cu_suffixed_layer_absent_from_the_table() {
     );
     let layers = Layers::read(&root).expect("layers");
     let mut warnings = Vec::new();
-    let error = read_copper_text(&root, &layers, &mut warnings).expect_err("it fails");
+    let error = read_copper_graphics(&root, &layers, &mut warnings).expect_err("it fails");
     assert_eq!(error.message, "Unknown copper layer: In1.Cu");
 }
 
@@ -161,4 +161,113 @@ fn it_rejects_a_via_whose_layer_span_skips_an_inner_layer() {
         error.message,
         "Only through vias assigned to a net are supported."
     );
+}
+
+fn corners_of(area: &copper_dsn::kicad::ConductionAreaJson) -> Vec<(f64, f64)> {
+    area.polygon
+        .as_ref()
+        .expect("a polygon")
+        .iter()
+        .map(|p| (p.x, p.y))
+        .collect()
+}
+
+fn assert_close(got: &[(f64, f64)], want: &[(f64, f64)]) {
+    assert_eq!(got.len(), want.len(), "got {got:?}, want {want:?}");
+    for (g, w) in got.iter().zip(want) {
+        assert!(
+            (g.0 - w.0).abs() < 1e-9 && (g.1 - w.1).abs() < 1e-9,
+            "got {got:?}, want {want:?}"
+        );
+    }
+}
+
+#[test]
+fn it_reserves_a_copper_line_as_an_obstacle() {
+    let root = root_of(
+        r#"(gr_line (start 0 0) (end 4 0) (layer "F.Cu") (stroke (width 0.2) (type solid)))"#,
+    );
+    let layers = Layers::read(&root).expect("layers");
+    let mut warnings = Vec::new();
+    let areas = read_copper_graphics(&root, &layers, &mut warnings).expect("areas");
+    assert_eq!(areas.len(), 1);
+    assert!(areas[0].isObstacle);
+    assert_close(
+        &corners_of(&areas[0]),
+        &[(-0.1, -0.1), (4.1, -0.1), (4.1, 0.1), (-0.1, 0.1)],
+    );
+    assert!(warnings.iter().any(|w| w.contains("Copper lines")));
+}
+
+#[test]
+fn it_reserves_a_copper_rectangle_as_an_obstacle() {
+    let root = root_of(
+        r#"(gr_rect (start 0 0) (end 4 2) (layer "F.Cu") (stroke (width 0.2) (type solid)) (fill none))"#,
+    );
+    let layers = Layers::read(&root).expect("layers");
+    let mut warnings = Vec::new();
+    let areas = read_copper_graphics(&root, &layers, &mut warnings).expect("areas");
+    assert_eq!(areas.len(), 1);
+    assert_close(
+        &corners_of(&areas[0]),
+        &[(-0.1, -0.1), (4.1, -0.1), (4.1, 2.1), (-0.1, 2.1)],
+    );
+    assert!(warnings.iter().any(|w| w.contains("Copper rectangles")));
+}
+
+#[test]
+fn it_reserves_a_copper_circle_as_an_obstacle() {
+    let root = root_of(
+        r#"(gr_circle (center 2 0) (end 2.5 0) (layer "F.Cu") (stroke (width 0.1) (type solid)) (fill none))"#,
+    );
+    let layers = Layers::read(&root).expect("layers");
+    let mut warnings = Vec::new();
+    let areas = read_copper_graphics(&root, &layers, &mut warnings).expect("areas");
+    assert_eq!(areas.len(), 1);
+    assert_close(
+        &corners_of(&areas[0]),
+        &[(1.45, -0.55), (2.55, -0.55), (2.55, 0.55), (1.45, 0.55)],
+    );
+    assert!(warnings.iter().any(|w| w.contains("Copper circles")));
+}
+
+#[test]
+fn it_reserves_a_copper_arc_as_an_obstacle() {
+    let root = root_of(
+        r#"(gr_arc (start 0 0) (mid 1 1) (end 2 0) (layer "F.Cu") (stroke (width 0.2) (type solid)))"#,
+    );
+    let layers = Layers::read(&root).expect("layers");
+    let mut warnings = Vec::new();
+    let areas = read_copper_graphics(&root, &layers, &mut warnings).expect("areas");
+    assert_eq!(areas.len(), 1);
+    assert_close(
+        &corners_of(&areas[0]),
+        &[(-0.1, -0.1), (2.1, -0.1), (2.1, 1.1), (-0.1, 1.1)],
+    );
+    assert!(warnings.iter().any(|w| w.contains("Copper arcs")));
+}
+
+#[test]
+fn it_reserves_a_copper_polygon_as_an_obstacle() {
+    let root = root_of(
+        r#"(gr_poly (pts (xy 0 0) (xy 2 0) (xy 1 2)) (layer "F.Cu") (stroke (width 0.2) (type solid)) (fill yes))"#,
+    );
+    let layers = Layers::read(&root).expect("layers");
+    let mut warnings = Vec::new();
+    let areas = read_copper_graphics(&root, &layers, &mut warnings).expect("areas");
+    assert_eq!(areas.len(), 1);
+    assert_close(
+        &corners_of(&areas[0]),
+        &[(-0.1, -0.1), (2.1, -0.1), (2.1, 2.1), (-0.1, 2.1)],
+    );
+    assert!(warnings.iter().any(|w| w.contains("Copper polygons")));
+}
+
+#[test]
+fn it_still_rejects_a_top_level_copper_curve() {
+    let root = root_of(r#"(gr_curve (layer "F.Cu"))"#);
+    let layers = Layers::read(&root).expect("layers");
+    let mut warnings = Vec::new();
+    let error = read_copper_graphics(&root, &layers, &mut warnings).expect_err("it fails");
+    assert_eq!(error.message, "Unsupported copper object: gr_curve");
 }

@@ -15,6 +15,16 @@ fn read(body: &str) -> (Vec<copper_dsn::kicad::ComponentJson>, Vec<String>) {
     (components, warnings)
 }
 
+fn read_areas(body: &str) -> (Vec<copper_dsn::kicad::ConductionAreaJson>, Vec<String>) {
+    let text = format!("(kicad_pcb (version 20241229) {LAYERS} (net 1 \"GND\") {body})");
+    let root = parse(&text).expect("it parses");
+    let layers = Layers::read(&root).expect("layers");
+    let nets = NetTable::read(&root).expect("nets");
+    let mut warnings = Vec::new();
+    let (_, areas) = read_components(&root, &layers, &nets, &mut warnings).expect("components");
+    (areas, warnings)
+}
+
 fn read_err(body: &str) -> String {
     let text = format!("(kicad_pcb (version 20241229) {LAYERS} (net 1 \"GND\") {body})");
     let root = parse(&text).expect("it parses");
@@ -248,4 +258,144 @@ fn it_keeps_a_pad_on_a_renamed_copper_layer() {
         pad.layers.as_ref().expect("layers"),
         &vec![Some("TOP".to_string())]
     );
+}
+
+fn corners_of(area: &copper_dsn::kicad::ConductionAreaJson) -> Vec<(f64, f64)> {
+    area.polygon
+        .as_ref()
+        .expect("a polygon")
+        .iter()
+        .map(|p| (p.x, p.y))
+        .collect()
+}
+
+fn assert_close(got: &[(f64, f64)], want: &[(f64, f64)]) {
+    assert_eq!(got.len(), want.len(), "got {got:?}, want {want:?}");
+    for (g, w) in got.iter().zip(want) {
+        assert!(
+            (g.0 - w.0).abs() < 1e-9 && (g.1 - w.1).abs() < 1e-9,
+            "got {got:?}, want {want:?}"
+        );
+    }
+}
+
+#[test]
+fn it_reserves_a_footprint_copper_line_as_an_obstacle() {
+    let (areas, warnings) = read_areas(concat!(
+        r#"(footprint "U" (layer "F.Cu") (at 10 20)"#,
+        r#" (fp_line (start 0 0) (end 4 0) (layer "F.Cu") (stroke (width 0.2) (type solid)))"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
+    ));
+    assert_eq!(areas.len(), 1);
+    assert!(areas[0].isObstacle);
+    assert_eq!(areas[0].netName.as_deref(), Some(""));
+    assert_close(
+        &corners_of(&areas[0]),
+        &[(9.9, 19.9), (14.1, 19.9), (14.1, 20.1), (9.9, 20.1)],
+    );
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("Footprint copper lines"))
+    );
+}
+
+#[test]
+fn a_footprint_copper_line_pins_the_rotation_transform() {
+    let (areas, _) = read_areas(concat!(
+        r#"(footprint "U" (layer "F.Cu") (at 10 20 90)"#,
+        r#" (fp_line (start 0 0) (end 4 0) (layer "F.Cu") (stroke (width 0.2) (type solid)))"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
+    ));
+    assert_eq!(areas.len(), 1);
+    assert_close(
+        &corners_of(&areas[0]),
+        &[(9.9, 20.1), (9.9, 15.9), (10.1, 15.9), (10.1, 20.1)],
+    );
+}
+
+#[test]
+fn it_reserves_a_footprint_copper_circle_as_an_obstacle() {
+    let (areas, warnings) = read_areas(concat!(
+        r#"(footprint "U" (layer "F.Cu") (at 10 20)"#,
+        r#" (fp_circle (center 2 0) (end 2.5 0) (layer "F.Cu")"#,
+        r#" (stroke (width 0.1) (type solid)) (fill none))"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
+    ));
+    assert_eq!(areas.len(), 1);
+    assert_close(
+        &corners_of(&areas[0]),
+        &[
+            (11.45, 19.45),
+            (12.55, 19.45),
+            (12.55, 20.55),
+            (11.45, 20.55),
+        ],
+    );
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("Footprint copper circles"))
+    );
+}
+
+#[test]
+fn it_reserves_a_footprint_copper_arc_as_an_obstacle() {
+    let (areas, warnings) = read_areas(concat!(
+        r#"(footprint "U" (layer "F.Cu") (at 10 20)"#,
+        r#" (fp_arc (start 0 0) (mid 1 1) (end 2 0) (layer "F.Cu") (stroke (width 0.2) (type solid)))"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
+    ));
+    assert_eq!(areas.len(), 1);
+    assert_close(
+        &corners_of(&areas[0]),
+        &[(9.9, 19.9), (12.1, 19.9), (12.1, 21.1), (9.9, 21.1)],
+    );
+    assert!(warnings.iter().any(|w| w.contains("Footprint copper arcs")));
+}
+
+#[test]
+fn it_reserves_a_footprint_copper_polygon_as_an_obstacle() {
+    let (areas, warnings) = read_areas(concat!(
+        r#"(footprint "U" (layer "F.Cu") (at 10 20)"#,
+        r#" (fp_poly (pts (xy 0 0) (xy 2 0) (xy 1 2)) (layer "F.Cu")"#,
+        r#" (stroke (width 0.2) (type solid)) (fill yes))"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
+    ));
+    assert_eq!(areas.len(), 1);
+    assert_close(
+        &corners_of(&areas[0]),
+        &[(9.9, 19.9), (12.1, 19.9), (12.1, 22.1), (9.9, 22.1)],
+    );
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.contains("Footprint copper polygons"))
+    );
+}
+
+#[test]
+fn it_reserves_footprint_copper_text_as_an_obstacle() {
+    let (areas, warnings) = read_areas(concat!(
+        r#"(footprint "U" (layer "F.Cu") (at 10 20)"#,
+        r#" (fp_text user "HI" (at 5 5 0) (layer "F.Cu")"#,
+        r#" (effects (font (size 1 1) (thickness 0.15))))"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
+    ));
+    assert_eq!(areas.len(), 1);
+    assert_close(
+        &corners_of(&areas[0]),
+        &[(13.0, 24.0), (17.0, 24.0), (17.0, 26.0), (13.0, 26.0)],
+    );
+    assert!(warnings.iter().any(|w| w.contains("Footprint copper text")));
+}
+
+#[test]
+fn it_still_rejects_footprint_copper_curves() {
+    let error = read_err(concat!(
+        r#"(footprint "U" (layer "F.Cu") (at 0 0)"#,
+        r#" (fp_curve (pts (xy 0 0) (xy 1 1) (xy 2 0) (xy 3 1)) (layer "F.Cu"))"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
+    ));
+    assert_eq!(error, "Footprint copper graphics are not supported yet.");
 }

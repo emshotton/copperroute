@@ -106,7 +106,7 @@ pub fn arc_points(
     Ok(points)
 }
 
-fn native_arc_points(node: &Node) -> Result<Vec<(f64, f64)>, PcbError> {
+pub(crate) fn native_arc_points(node: &Node) -> Result<Vec<(f64, f64)>, PcbError> {
     if node.child("mid").is_some() {
         return arc_points(
             point(node, "start")?,
@@ -127,6 +127,25 @@ fn native_arc_points(node: &Node) -> Result<Vec<(f64, f64)>, PcbError> {
     )?;
     points[0] = start_point;
     Ok(points)
+}
+
+pub(crate) fn bounding_box(points: &[(f64, f64)], margin: f64) -> [(f64, f64); 4] {
+    let mut x0 = f64::INFINITY;
+    let mut x1 = f64::NEG_INFINITY;
+    let mut y0 = f64::INFINITY;
+    let mut y1 = f64::NEG_INFINITY;
+    for &(x, y) in points {
+        x0 = x0.min(x);
+        x1 = x1.max(x);
+        y0 = y0.min(y);
+        y1 = y1.max(y);
+    }
+    [
+        (x0 - margin, y0 - margin),
+        (x1 + margin, y0 - margin),
+        (x1 + margin, y1 + margin),
+        (x0 - margin, y1 + margin),
+    ]
 }
 
 #[derive(Debug, Clone, PartialEq)]

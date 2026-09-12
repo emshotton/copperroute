@@ -22,3 +22,20 @@ pub(super) fn xy(section: &str, node: Option<&Node>) -> Result<(f64, f64), PcbEr
 pub(super) fn point(section: &str, node: &Node, key: &str) -> Result<(f64, f64), PcbError> {
     xy(section, node.child(key))
 }
+
+pub(super) fn optional_number(
+    section: &str,
+    node: &Node,
+    key: &str,
+    fallback: f64,
+) -> Result<f64, PcbError> {
+    match node.value(key) {
+        Some(text) => number(section, text),
+        None => Ok(fallback),
+    }
+}
+
+pub(super) fn stroke_margin(section: &str, node: &Node) -> Result<f64, PcbError> {
+    let width_source = node.child("stroke").unwrap_or(node);
+    Ok(optional_number(section, width_source, "width", 0.0)? / 2.0)
+}
