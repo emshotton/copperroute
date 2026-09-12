@@ -262,7 +262,9 @@ export function importBoard(text, name, rules, options = {}) {
       warnings.push(`Copper ${obstacleNoun("poly")} are reserved as solid routing obstacles and preserved in downloads.`);
       continue;
     }
-    if (!["segment", "footprint", "module", "zone", "arc"].includes(kind))
+    // A `generated` node is a length-tuning recipe whose `members` are segments and arcs
+    // that already appear in the file, so it carries no copper of its own.
+    if (!["segment", "footprint", "module", "zone", "arc", "generated"].includes(kind))
       throw Error(`Unsupported copper object: ${kind}`);
   }
   if (outline.curved)
@@ -414,15 +416,12 @@ export function importBoard(text, name, rules, options = {}) {
         : number(val(pad, "drill", 0));
       if (slotted) {
         if (
-          type !== "thru_hole" ||
           number(drillNode.values[2]) <= 0 ||
           number(drillNode.values[3]) <= 0
         )
-          throw Error(
-            "Only plated slots with positive dimensions are supported.",
-          );
+          throw Error("Only slots with positive dimensions are supported.");
         warnings.push(
-          "Plated slots retain their copper pad geometry; slot-specific drill checks require KiCad DRC. Original slots are preserved in downloads.",
+          "Slots retain their copper pad geometry; slot-specific drill checks require KiCad DRC. Original slots are preserved in downloads.",
         );
       }
       const local = point(pad, "at"),

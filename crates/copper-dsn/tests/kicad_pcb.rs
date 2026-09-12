@@ -375,3 +375,62 @@ fn it_reports_the_count_of_imported_embedded_net_classes() {
         imported.warnings
     );
 }
+
+#[test]
+fn a_length_tuning_generator_on_copper_contributes_no_obstacle() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 1 1)
+          (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))
+        (generated (uuid "u") (type tuning_pattern) (layer "F.Cu")
+          (base_line (pts (xy 2 2) (xy 8 2)))
+          (members "a" "b")))"#
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    assert_eq!(
+        imported
+            .board
+            .conductionAreas
+            .as_deref()
+            .unwrap_or(&[])
+            .len(),
+        0,
+        "the generator's copper is its member segments, which are read on their own"
+    );
+}
+
+#[test]
+fn a_non_plated_slot_is_imported_with_the_narrow_slot_dimension_as_its_drill() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS}
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "H" (layer "F.Cu") (at 1 1)
+          (pad "" np_thru_hole oval (at 0 0) (size 1.6 1.9) (drill oval 0.8 1.5)
+            (layers "F.Cu" "B.Cu"))))"#
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    let components = imported.board.components.expect("components");
+    let pad = components
+        .iter()
+        .flat_map(|component| component.pads.as_deref().unwrap_or(&[]))
+        .find(|pad| pad.nonPlated)
+        .expect("the slot pad is imported");
+    assert_eq!(pad.drill, 0.8);
+}
+
+#[test]
+fn a_slot_with_a_zero_dimension_is_still_rejected() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS}
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "H" (layer "F.Cu") (at 1 1)
+          (pad "" np_thru_hole oval (at 0 0) (size 1.6 1.9) (drill oval 0 1.5)
+            (layers "F.Cu" "B.Cu"))))"#
+    );
+    let error = read_pcb(&text, "t", &default_net_class()).expect_err("it fails");
+    assert_eq!(
+        error.message,
+        "Only slots with positive dimensions are supported."
+    );
+}

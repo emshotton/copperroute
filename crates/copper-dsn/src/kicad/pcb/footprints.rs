@@ -454,14 +454,14 @@ pub fn read_components(
                 let node = drill_node.expect("slotted implies a drill node");
                 let width = number(node.atom(2).unwrap_or(""))?;
                 let height = number(node.atom(3).unwrap_or(""))?;
-                if pad_type != "thru_hole" || width <= 0.0 || height <= 0.0 {
+                if width <= 0.0 || height <= 0.0 {
                     return Err(PcbError::new(
                         SECTION,
-                        "Only plated slots with positive dimensions are supported.",
+                        "Only slots with positive dimensions are supported.",
                     ));
                 }
                 warnings.push(
-                    "Plated slots retain their copper pad geometry; slot-specific drill checks \
+                    "Slots retain their copper pad geometry; slot-specific drill checks \
                      require KiCad DRC. Original slots are preserved in downloads."
                         .to_string(),
                 );

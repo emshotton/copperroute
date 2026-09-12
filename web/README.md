@@ -148,7 +148,7 @@ subset of the native S-expression format into that existing representation.
   rectangles include their stroke and reserve their entire interior. Original
   graphics remain in the download; the reserved text bounds can reduce routability.
 - Keepouts restricting tracks or vias, separate outer boards, other footprint
-  copper graphics, net ties, and non-plated slots are explicitly rejected. Existing routing is
+  copper graphics, and net ties are explicitly rejected. Existing routing is
   discarded before import, including locked tracks, arcs and all via types. This excludes many production boards.
 - An optional `.kicad_pro` supplies net-class widths, clearances, via diameters,
   drills and class assignments to the existing KiCad JSON loader. The WASM entry

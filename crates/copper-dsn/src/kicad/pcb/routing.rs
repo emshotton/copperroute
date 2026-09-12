@@ -171,7 +171,10 @@ pub fn check_zones(
     Ok(())
 }
 
-const TOP_LEVEL_COPPER_ALLOWED: &[&str] = &["segment", "footprint", "module", "zone", "arc"];
+// A `generated` node is a length-tuning recipe whose `members` are segments and arcs that
+// already appear in the file, so it carries no copper of its own.
+const TOP_LEVEL_COPPER_ALLOWED: &[&str] =
+    &["segment", "footprint", "module", "zone", "arc", "generated"];
 
 pub(crate) fn text_rectangle(
     node: &Node,

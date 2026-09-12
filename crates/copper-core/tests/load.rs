@@ -249,7 +249,7 @@ fn a_kicad_pcb_inputs_read_pcb_warnings_reach_the_parsed_board() {
             "Rounded pads retain their corner radius for hole DRC; routing uses enclosing \
              rectangles."
                 .to_string(),
-            "Plated slots retain their copper pad geometry; slot-specific drill checks \
+            "Slots retain their copper pad geometry; slot-specific drill checks \
              require KiCad DRC. Original slots are preserved in downloads."
                 .to_string(),
         ],

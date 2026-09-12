@@ -612,3 +612,41 @@ test("rejects a pad whose only layer is absent from the copper table", () => {
       (pad "1" smd rect (at 0 0) (size 1 1) (layers "In1.Cu") (net 1 "GND"))))`;
   assert.throws(() => load(text), /Unknown copper layer: In1\.Cu/);
 });
+
+test("a length-tuning generator on copper contributes no obstacle", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts")) ' +
+      '(generated (uuid "u") (type tuning_pattern) (layer "F.Cu") ' +
+      '(base_line (pts (xy 2 2) (xy 8 2))) (members "a" "b"))',
+  );
+  const { board } = load(text);
+  assert.equal(board.conductionAreas.length, 0);
+});
+
+test("a non-plated slot imports with the narrow slot dimension as its drill", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))',
+  ).replace(
+    '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))',
+    '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))' +
+      ' (pad "" np_thru_hole oval (at 3 3) (size 1.6 1.9) (drill oval 0.8 1.5)' +
+      ' (layers "F.Cu" "B.Cu"))',
+  );
+  const { board } = load(text);
+  const slot = board.components.flatMap((c) => c.pads).find((p) => p.nonPlated);
+  assert.equal(slot.drill, 0.8);
+});
+
+test("a slot with a zero dimension is still rejected", () => {
+  const text = minimalBoard(
+    '(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))',
+  ).replace(
+    '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))',
+    '(pad "" np_thru_hole oval (at 3 3) (size 1.6 1.9) (drill oval 0 1.5)' +
+      ' (layers "F.Cu" "B.Cu"))',
+  );
+  assert.throws(
+    () => load(text),
+    /Only slots with positive dimensions are supported\./,
+  );
+});
