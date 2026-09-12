@@ -292,56 +292,72 @@ export function importBoard(text, name, rules, options = {}) {
       "Curved board edges are approximated within 0.005 mm for routing; the original outline is preserved in downloads.",
     );
   if (!edges.length) throw Error("A closed Edge.Cuts outline is required.");
-  const loops = [];
-  let strayEdges = 0;
-  const bridged = [];
-  while (edges.length) {
-    const [first, last] = edges.shift(), loop = [first];
-    let end = last, consumed = 0, closed = true;
-    const healed = [];
-    while (!equal(end, first)) {
-      loop.push(end);
-      const i = edges.findIndex(([a, b]) => equal(a, end) || equal(b, end));
-      if (i >= 0) {
-        const [a, b] = edges.splice(i, 1)[0];
-        consumed++;
-        end = equal(a, end) ? b : a;
+  // Walks edges into closed loops. Without heal this is exact chaining, which is what KiCad
+  // does; with it, a chain out of exact continuations bridges to the nearest endpoint within
+  // HEALING_TOLERANCE_MM. Edges of a chain that never closes come back as leftovers rather
+  // than being dropped, so the caller can retry them.
+  const chainLoops = (edges, heal) => {
+    const loops = [], leftovers = [], bridged = [];
+    while (edges.length) {
+      const edge = edges.shift(), [first, last] = edge;
+      const used = [edge], loop = [first], healed = [];
+      let end = last, closed = true;
+      while (!equal(end, first)) {
+        loop.push(end);
+        const i = edges.findIndex(([a, b]) => equal(a, end) || equal(b, end));
+        if (i >= 0) {
+          const [a, b] = edges.splice(i, 1)[0];
+          used.push([a, b]);
+          end = equal(a, end) ? b : a;
+          continue;
+        }
+        if (!heal) {
+          closed = false;
+          break;
+        }
+        let nearest = null;
+        edges.forEach(([a, b], index) => {
+          const toA = gapMm(a, end), toB = gapMm(b, end);
+          const [gap, other] = toA <= toB ? [toA, b] : [toB, a];
+          if (!nearest || gap < nearest.gap) nearest = { gap, index, other };
+        });
+        const toFirst = gapMm(end, first);
+        // Closing early would strand the rest of the outline, so a bridge to another edge
+        // wins unless the start is nearer, and the loop needs three corners to close.
+        if (
+          nearest &&
+          nearest.gap <= HEALING_TOLERANCE_MM &&
+          (nearest.gap <= toFirst || loop.length < 3)
+        ) {
+          healed.push({ gap: nearest.gap, at: end });
+          used.push(edges.splice(nearest.index, 1)[0]);
+          end = nearest.other;
+        } else if (toFirst <= HEALING_TOLERANCE_MM && loop.length >= 3) {
+          healed.push({ gap: toFirst, at: end });
+          break;
+        } else {
+          closed = false;
+          break;
+        }
+      }
+      if (!closed) {
+        leftovers.push(...used);
         continue;
       }
-      let nearest = null;
-      edges.forEach(([a, b], index) => {
-        const toA = gapMm(a, end), toB = gapMm(b, end);
-        const [gap, other] = toA <= toB ? [toA, b] : [toB, a];
-        if (!nearest || gap < nearest.gap) nearest = { gap, index, other };
-      });
-      const toFirst = gapMm(end, first);
-      // Closing early would strand the rest of the outline, so a bridge to another edge wins
-      // unless the start is nearer, and the loop needs three corners before it can close.
-      if (
-        nearest &&
-        nearest.gap <= HEALING_TOLERANCE_MM &&
-        (nearest.gap <= toFirst || loop.length < 3)
-      ) {
-        healed.push({ gap: nearest.gap, at: end });
-        edges.splice(nearest.index, 1);
-        consumed++;
-        end = nearest.other;
-      } else if (toFirst <= HEALING_TOLERANCE_MM && loop.length >= 3) {
-        healed.push({ gap: toFirst, at: end });
-        break;
-      } else {
-        closed = false;
-        break;
-      }
+      if (loop.length < 3) throw Error("Degenerate Edge.Cuts outline.");
+      bridged.push(...healed);
+      loops.push(loop);
     }
-    if (!closed) {
-      strayEdges += 1 + consumed;
-      continue;
-    }
-    if (loop.length < 3) throw Error("Degenerate Edge.Cuts outline.");
-    bridged.push(...healed);
-    loops.push(loop);
-  }
+    return { loops, leftovers, bridged };
+  };
+
+  // Exact chaining first, so every loop that already closed keeps the edges it had; only what
+  // exact chaining would have thrown away is offered to the bridging pass.
+  const exact = chainLoops(edges, false);
+  const healedPass = chainLoops(exact.leftovers, true);
+  const loops = [...exact.loops, ...healedPass.loops];
+  const strayEdges = healedPass.leftovers.length;
+  const bridged = healedPass.bridged;
   if (!loops.length) throw Error("A closed Edge.Cuts outline is required.");
   if (strayEdges)
     warnings.push(`${strayEdges} Edge.Cuts edges could not be closed into a loop and were ignored.`);

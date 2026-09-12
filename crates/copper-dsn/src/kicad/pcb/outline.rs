@@ -332,33 +332,29 @@ pub struct Outline {
     pub cutouts: Vec<Vec<(f64, f64)>>,
 }
 
-pub fn assemble_outline(
-    paths: &OutlinePaths,
-    warnings: &mut Vec<String>,
-) -> Result<Outline, PcbError> {
-    let mut edges: Vec<((f64, f64), (f64, f64))> = paths
-        .paths
-        .iter()
-        .flat_map(|path| path.windows(2).map(|w| (w[0], w[1])))
-        .collect();
+type Edge = ((f64, f64), (f64, f64));
 
-    if edges.is_empty() {
-        return Err(PcbError::new(
-            "outline",
-            "A closed Edge.Cuts outline is required.",
-        ));
-    }
-
+/// Walks edges into closed loops. Without `heal` this is exact chaining, which is what KiCad
+/// does; with it, a chain that has run out of exact continuations bridges to the nearest
+/// endpoint within `HEALING_TOLERANCE_MM`. Edges belonging to a chain that never closes come
+/// back as leftovers rather than being dropped, so a caller can retry them.
+fn chain_loops(
+    edges: &mut Vec<Edge>,
+    heal: bool,
+) -> Result<(Vec<Vec<(f64, f64)>>, Vec<Edge>, Vec<(f64, (f64, f64))>), PcbError> {
     let mut loops: Vec<Vec<(f64, f64)>> = Vec::new();
-    let mut stray_edges = 0usize;
+    let mut leftovers: Vec<Edge> = Vec::new();
     let mut bridged: Vec<(f64, (f64, f64))> = Vec::new();
+
     while !edges.is_empty() {
-        let (first, last) = edges.remove(0);
+        let edge = edges.remove(0);
+        let (first, last) = edge;
+        let mut used = vec![edge];
         let mut loop_points = vec![first];
-        let mut consumed = 0usize;
         let mut end = last;
         let mut closed = true;
         let mut healed: Vec<(f64, (f64, f64))> = Vec::new();
+
         while !equal(end, first) {
             loop_points.push(end);
             if let Some(index) = edges
@@ -366,9 +362,13 @@ pub fn assemble_outline(
                 .position(|(a, b)| equal(*a, end) || equal(*b, end))
             {
                 let (a, b) = edges.remove(index);
-                consumed += 1;
+                used.push((a, b));
                 end = if equal(a, end) { b } else { a };
                 continue;
+            }
+            if !heal {
+                closed = false;
+                break;
             }
             let nearest = edges
                 .iter()
@@ -384,15 +384,14 @@ pub fn assemble_outline(
                 .min_by(|x, y| x.0.total_cmp(&y.0));
             let to_first = gap_mm(end, first);
             // Closing early would strand the rest of the outline, so a bridge to another edge
-            // wins unless the start is nearer, and the loop needs three corners before it can
-            // close at all.
+            // wins unless the start is nearer, and the loop needs three corners to close.
             let continues = nearest.filter(|(gap, _, _)| {
                 *gap <= HEALING_TOLERANCE_MM && (*gap <= to_first || loop_points.len() < 3)
             });
             if let Some((gap, index, other)) = continues {
                 healed.push((gap, end));
-                edges.remove(index);
-                consumed += 1;
+                let bridged_edge = edges.remove(index);
+                used.push(bridged_edge);
                 end = other;
             } else if to_first <= HEALING_TOLERANCE_MM && loop_points.len() >= 3 {
                 healed.push((to_first, end));
@@ -402,8 +401,9 @@ pub fn assemble_outline(
                 break;
             }
         }
+
         if !closed {
-            stray_edges += 1 + consumed;
+            leftovers.extend(used);
             continue;
         }
         if loop_points.len() < 3 {
@@ -412,6 +412,33 @@ pub fn assemble_outline(
         bridged.extend(healed);
         loops.push(loop_points);
     }
+
+    Ok((loops, leftovers, bridged))
+}
+
+pub fn assemble_outline(
+    paths: &OutlinePaths,
+    warnings: &mut Vec<String>,
+) -> Result<Outline, PcbError> {
+    let mut edges: Vec<Edge> = paths
+        .paths
+        .iter()
+        .flat_map(|path| path.windows(2).map(|w| (w[0], w[1])))
+        .collect();
+
+    if edges.is_empty() {
+        return Err(PcbError::new(
+            "outline",
+            "A closed Edge.Cuts outline is required.",
+        ));
+    }
+
+    // Exact chaining first, so every loop that already closed keeps the edges it had; only
+    // what exact chaining would have thrown away is offered to the bridging pass.
+    let (mut loops, mut leftovers, _) = chain_loops(&mut edges, false)?;
+    let (healed_loops, strays, bridged) = chain_loops(&mut leftovers, true)?;
+    loops.extend(healed_loops);
+    let stray_edges = strays.len();
 
     if loops.is_empty() {
         return Err(PcbError::new(

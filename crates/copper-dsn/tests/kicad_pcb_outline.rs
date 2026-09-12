@@ -232,3 +232,35 @@ fn it_rejects_separate_outlines() {
         "Separate board outlines are not supported yet."
     );
 }
+
+/// The boundary needs a 0.8 mm bridge to close, and a cutout corner sits 0.22 mm from the
+/// point where it runs out of edges. Bridging to whatever is nearest would swallow that
+/// cutout edge, leaving neither loop able to close and the board with no outline at all.
+#[test]
+fn bridging_a_boundary_does_not_consume_a_nearby_cutout() {
+    let text = board(concat!(
+        r#"(gr_line (start 0 0) (end 20 0) (layer "Edge.Cuts"))"#,
+        r#"(gr_line (start 20 0) (end 20 20) (layer "Edge.Cuts"))"#,
+        r#"(gr_line (start 20 20) (end 0 20) (layer "Edge.Cuts"))"#,
+        r#"(gr_line (start 0 20) (end 0 0.8) (layer "Edge.Cuts"))"#,
+        r#"(gr_line (start 0.2 0.9) (end 4 0.9) (layer "Edge.Cuts"))"#,
+        r#"(gr_line (start 4 0.9) (end 4 4) (layer "Edge.Cuts"))"#,
+        r#"(gr_line (start 4 4) (end 0.2 4) (layer "Edge.Cuts"))"#,
+        r#"(gr_line (start 0.2 4) (end 0.2 0.9) (layer "Edge.Cuts"))"#,
+    ));
+    let root = parse(&text).expect("it parses");
+    let mut warnings = Vec::new();
+    let outline =
+        assemble_outline(&outline_paths(&root).expect("paths"), &mut warnings).expect("an outline");
+    assert_eq!(
+        outline.boundary.len(),
+        5,
+        "the four corners plus (0, 0.8), where the short edge stops and the bridge begins"
+    );
+    assert_eq!(outline.cutouts.len(), 1, "the cutout survives intact");
+    assert_eq!(outline.cutouts[0].len(), 4);
+    assert!(
+        warnings.iter().any(|warning| warning.contains("0.8000 mm")),
+        "the bridge is the boundary's own 0.8 mm gap: {warnings:?}"
+    );
+}
