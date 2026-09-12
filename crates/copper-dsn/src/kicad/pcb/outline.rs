@@ -4,8 +4,9 @@ use crate::kicad::sexpr::{Node, Value};
 pub const OUTLINE_TOLERANCE: f64 = 0.005;
 
 /// Matches KiCad's own `DEFAULT_CHAINING_EPSILON_MM` (board.h): the max distance between two
-/// endpoints for KiCad to treat them as connected when chaining a board outline.
-const CHAINING_EPSILON_MM: f64 = 0.01;
+/// endpoints for KiCad to treat them as connected when chaining a board outline, expressed
+/// in the integer nanometres KiCad stores coordinates in.
+const CHAINING_EPSILON_NM: f64 = 10_000.0;
 
 fn num(text: &str) -> Result<f64, PcbError> {
     let value: f64 = text.parse().unwrap_or(f64::NAN);
@@ -239,8 +240,15 @@ fn collect(
     Ok(())
 }
 
+/// KiCad rounds every coordinate to a nanometre and then chains with
+/// `SquaredEuclideanNorm() <= Square(epsilon)`, so a gap of exactly the epsilon closes.
+/// Subtracting millimetre floats instead leaves such a gap outside the limit, because
+/// `92.79 - 92.78` is `0.010000000000005116` in binary floating point.
 fn equal(a: (f64, f64), b: (f64, f64)) -> bool {
-    (a.0 - b.0).hypot(a.1 - b.1) < CHAINING_EPSILON_MM
+    let nanometres = |value: f64| (value * 1e6).round();
+    let dx = nanometres(a.0) - nanometres(b.0);
+    let dy = nanometres(a.1) - nanometres(b.1);
+    dx * dx + dy * dy <= CHAINING_EPSILON_NM * CHAINING_EPSILON_NM
 }
 
 fn area(points: &[(f64, f64)]) -> f64 {

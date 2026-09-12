@@ -634,3 +634,36 @@ fn an_unsupported_custom_pad_anchor_and_primitive_are_named_in_the_error() {
     .expect_err("it fails");
     assert_eq!(error.message, "Unsupported custom pad primitive: gr_curve");
 }
+
+/// A gap of exactly the chaining epsilon closes in KiCad, whose coordinates are integer
+/// nanometres. In millimetre floats `92.79 - 92.78` is `0.010000000000005116`, so comparing
+/// there would reject this outline however the limit is written.
+#[test]
+fn an_outline_gap_of_exactly_the_chaining_epsilon_closes() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_line (start 100 92.79) (end 110 92.79) (layer "Edge.Cuts"))
+        (gr_line (start 110 92.79) (end 110 102.79) (layer "Edge.Cuts"))
+        (gr_line (start 110 102.79) (end 100 102.79) (layer "Edge.Cuts"))
+        (gr_line (start 100 102.79) (end 100 92.78) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 105 97)
+          (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))))"#
+    );
+    let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
+    assert!(imported.board.outline.is_some());
+}
+
+#[test]
+fn an_outline_gap_beyond_the_chaining_epsilon_is_still_refused() {
+    let text = format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_line (start 100 92.79) (end 110 92.79) (layer "Edge.Cuts"))
+        (gr_line (start 110 92.79) (end 110 102.79) (layer "Edge.Cuts"))
+        (gr_line (start 110 102.79) (end 100 102.79) (layer "Edge.Cuts"))
+        (gr_line (start 100 102.79) (end 100 92.77) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 105 97)
+          (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))))"#
+    );
+    let error = read_pcb(&text, "t", &default_net_class()).expect_err("it fails");
+    assert_eq!(error.message, "A closed Edge.Cuts outline is required.");
+}

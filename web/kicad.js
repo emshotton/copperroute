@@ -74,9 +74,18 @@ const xy = (n) => {
 };
 const point = (n, key) => xy(child(n, key));
 // Matches KiCad's own DEFAULT_CHAINING_EPSILON_MM (board.h): the max distance between two
-// endpoints for KiCad to treat them as connected when chaining a board outline.
-const CHAINING_EPSILON_MM = 0.01;
-const equal = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < CHAINING_EPSILON_MM;
+// endpoints for KiCad to treat them as connected when chaining a board outline, expressed in
+// the integer nanometres KiCad stores coordinates in. KiCad rounds every coordinate to a
+// nanometre and then chains with SquaredEuclideanNorm() <= Square(epsilon), so a gap of
+// exactly the epsilon closes. Subtracting millimetre floats instead leaves such a gap outside
+// the limit, because 92.79 - 92.78 is 0.010000000000005116 in binary floating point.
+const CHAINING_EPSILON_NM = 10000;
+const equal = (a, b) => {
+  const nanometres = (value) => Math.round(value * 1e6);
+  const dx = nanometres(a.x) - nanometres(b.x),
+    dy = nanometres(a.y) - nanometres(b.y);
+  return dx * dx + dy * dy <= CHAINING_EPSILON_NM * CHAINING_EPSILON_NM;
+};
 const strokeMargin = (n) => number(val(child(n, "stroke") ?? n, "width", 0)) / 2;
 const obstacleNoun = (kind) =>
   ({ rect: "rectangles", line: "lines", circle: "circles", arc: "arcs", poly: "polygons" })[kind];
