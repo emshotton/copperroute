@@ -55,3 +55,22 @@ test("every example ships the files it declares, and its rules come from the boa
     }
   }
 });
+
+// index.html hand-writes the example dropdown, so its labels can drift from EXAMPLES and
+// nothing else would notice: an option with no entry silently does nothing when chosen, and
+// a mislabelled one advertises the wrong board.
+test("the example dropdown matches the example manifest exactly", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const select = html.match(/<select id="examples"[^>]*>([\s\S]*?)<\/select>/);
+  assert.ok(select, "index.html has no example dropdown");
+  const options = [...select[1].matchAll(/<option value="([^"]+)">([^<]+)<\/option>/g)].map(
+    (m) => [m[1], m[2]],
+  );
+  assert.deepEqual(
+    options.map(([value]) => value).sort(),
+    Object.keys(EXAMPLES).sort(),
+    "dropdown values and EXAMPLES keys differ",
+  );
+  for (const [value, label] of options)
+    assert.equal(label, EXAMPLES[value].name, `${value} is labelled differently in the dropdown`);
+});
