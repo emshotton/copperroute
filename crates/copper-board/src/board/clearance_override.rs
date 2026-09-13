@@ -58,7 +58,8 @@ impl Board {
         if changed {
             let mut items = std::mem::take(&mut self.items);
             let ctx = item_ctx!(self);
-            let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
+            let mut refs: Vec<&mut Item> = items.ordered_values_mut();
+            refs.reverse();
             self.trees.clearance_value_changed(&mut refs, &ctx);
             drop(refs);
             self.items = items;
@@ -363,7 +364,7 @@ impl Board {
                     }
                     _ => false,
                 })
-                .map(|(id, _)| *id)
+                .map(|(id, _)| id)
                 .collect()
         };
         // :424-426.

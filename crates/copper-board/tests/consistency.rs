@@ -34,7 +34,8 @@ fn build_autoroute_tree(board: &mut Board, clearance_class_index: usize) -> Tree
         bounding_box: &board.bounding_box,
         max_tree_shape_width: DEFAULT_MAX_TREE_SHAPE_WIDTH,
     };
-    let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
+    let mut refs: Vec<&mut Item> = items.ordered_values_mut();
+    refs.reverse();
     let id = board
         .trees
         .get_autoroute_tree(clearance_class_index, &mut refs, &ctx)

@@ -121,7 +121,7 @@ fn endpoint_snapping_is_stable_and_round_trips() {
         .items
         .iter()
         .filter(|(_, item)| matches!(item, Item::Trace(_)))
-        .map(|(id, _)| *id)
+        .map(|(id, _)| id)
         .collect();
     for trace_id in trace_ids {
         for start_side in [true, false] {

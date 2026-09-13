@@ -977,14 +977,14 @@ fn the_stub_takes_the_width_of_the_layer_it_lands_on() {
             1,
             FixedState::Unfixed,
         );
-        let target = *board
+        let target = board
             .items
             .iter()
             .filter(|(_, item)| matches!(item, Item::Trace(_)))
             .map(|(id, _)| id)
             .max()
             .expect("the trace was inserted");
-        let before: BTreeSet<ItemId> = board.items.keys().copied().collect();
+        let before: BTreeSet<ItemId> = board.items.keys().collect();
 
         assert!(
             board.connect_to_trace_sized_by_layer(&Point::new(0, 3400), target, &PER_LAYER, 1),
@@ -1018,14 +1018,14 @@ fn the_stub_takes_the_width_of_the_layer_it_lands_on() {
             1,
             FixedState::Unfixed,
         );
-        let wrong_target = *wrong
+        let wrong_target = wrong
             .items
             .iter()
             .filter(|(_, item)| matches!(item, Item::Trace(_)))
             .map(|(id, _)| id)
             .max()
             .expect("the trace was inserted");
-        let wrong_before: BTreeSet<ItemId> = wrong.items.keys().copied().collect();
+        let wrong_before: BTreeSet<ItemId> = wrong.items.keys().collect();
         assert!(wrong.connect_to_trace(
             &Point::new(0, 3400),
             wrong_target,

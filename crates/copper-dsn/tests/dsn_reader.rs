@@ -394,7 +394,7 @@ fn a_supplied_id_generator_reaches_the_boards_communication() {
         &DsnReadOptions::default(),
     );
     let (board, _) = success(&result);
-    let first = *board.items.keys().next().expect("at least one item");
+    let first = board.items.keys().next().expect("at least one item");
     assert_eq!(first.0, 101, "the outline takes the generator's 101st id");
 }
 

@@ -8,4 +8,5 @@ license.workspace = true
 web-time = "1.1"
 copper-geometry = { path = "../copper-geometry" }
 num-bigint.workspace = true
+rustc-hash.workspace = true
 thiserror.workspace = true

@@ -2777,7 +2777,7 @@ mod component_rejection_tests {
                 .items
                 .iter()
                 .filter(|(_, item)| matches!(item, Item::Pin(_)))
-                .map(|(id, _)| *id)
+                .map(|(id, _)| id)
                 .collect(),
             warnings: p.warnings,
         }

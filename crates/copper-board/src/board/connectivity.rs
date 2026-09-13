@@ -19,7 +19,7 @@ impl Board {
             .iter()
             .rev()
             .filter(|(_, item)| item.as_connectable().is_some() && item.contains_net(net_number))
-            .map(|(id, _)| *id)
+            .map(|(id, _)| id)
             .collect()
     }
 
@@ -35,7 +35,7 @@ impl Board {
             .iter()
             .rev()
             .filter(|(_, item)| item.component_id() == component_id)
-            .map(|(id, _)| *id)
+            .map(|(id, _)| id)
             .collect()
     }
 
@@ -44,7 +44,7 @@ impl Board {
             .iter()
             .rev()
             .filter(|(_, item)| item.component_id() == component_id && matches!(item, Item::Pin(_)))
-            .map(|(id, _)| *id)
+            .map(|(id, _)| id)
             .collect()
     }
 
@@ -58,7 +58,7 @@ impl Board {
                 }
                 _ => false,
             })
-            .map(|(id, _)| *id)
+            .map(|(id, _)| id)
     }
 
     pub fn get_connected_sets(&self, net_number: i32) -> Vec<BTreeSet<ItemId>> {
@@ -70,7 +70,7 @@ impl Board {
             .items
             .iter()
             .filter(|(_, item)| item.as_connectable().is_some() && item.contains_net(net_number))
-            .map(|(id, _)| *id)
+            .map(|(id, _)| id)
             .collect();
         while let Some(current) = items_to_handle.iter().next_back().copied() {
             let next_connected_set = self.connected_set(current, net_number, false);

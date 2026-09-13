@@ -18,6 +18,12 @@ pub trait ItemLookup {
     fn item(&self, id: ItemId) -> Option<&Item>;
 }
 
+impl ItemLookup for crate::board::item_store::ItemStore<Item> {
+    fn item(&self, id: ItemId) -> Option<&Item> {
+        self.get(&id)
+    }
+}
+
 impl ItemLookup for BTreeMap<ItemId, Item> {
     #[inline]
     fn item(&self, id: ItemId) -> Option<&Item> {

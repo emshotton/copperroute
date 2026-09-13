@@ -4,14 +4,15 @@ pub mod clearance_override;
 pub mod communication;
 pub mod connectivity;
 mod contact_cache;
+pub mod item_store;
 pub mod normalize;
 pub mod query;
 pub mod shape_trace_entries;
 pub mod snapshot;
 pub mod trace_normalize;
 
+use item_store::ItemStore;
 use std::borrow::Cow;
-use std::collections::BTreeMap;
 
 use copper_geometry::{Area, IntBox, Point, Polyline, PolylineShapeRef, TileShape, Vector};
 
@@ -57,7 +58,7 @@ pub(crate) use item_ctx;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Board {
-    pub items: BTreeMap<ItemId, Item>,
+    pub items: item_store::ItemStore<Item>,
     pub components: Components,
     pub rules: BoardRules,
     pub library: BoardLibrary,
@@ -107,7 +108,7 @@ impl Board {
                 .min(500.0 * communication.get_resolution(crate::structure::Unit::Mil));
         }
         let mut board = Board {
-            items: BTreeMap::new(),
+            items: ItemStore::new(),
             components,
             rules,
             library,
@@ -686,7 +687,7 @@ impl Board {
     }
 
     pub fn items_in_board_order(&self) -> Vec<ItemId> {
-        self.items.keys().rev().copied().collect()
+        self.items.keys().rev().collect()
     }
 
     pub fn get_outline(&self) -> Option<ItemId> {
@@ -694,7 +695,7 @@ impl Board {
             .iter()
             .rev()
             .find(|(_, item)| matches!(item, Item::BoardOutline(_)))
-            .map(|(id, _)| *id)
+            .map(|(id, _)| id)
     }
 
     pub fn get_conduction_areas(&self) -> Vec<ItemId> {
@@ -762,7 +763,7 @@ impl Board {
 
     pub fn unfill_conduction_areas(&mut self) {
         self.rules.set_ignore_conduction(true);
-        for item in self.items.values_mut().rev() {
+        for item in self.items.values_mut() {
             if let Item::ConductionArea(area) = item {
                 area.set_is_filled(false);
                 area.set_is_obstacle(false);
@@ -773,7 +774,7 @@ impl Board {
 
     pub fn change_conduction_is_obstacle(&mut self, value: bool) {
         let mut something_changed = false;
-        for item in self.items.values_mut().rev() {
+        for item in self.items.values_mut() {
             if let Item::ConductionArea(area) = item {
                 let is_signal = self.rules.layer_structure().layers[area.get_layer()].is_signal;
                 if is_signal && area.get_is_obstacle() != value {
@@ -791,7 +792,8 @@ impl Board {
     pub fn reinsert_tree_items(&mut self) {
         let mut items = std::mem::take(&mut self.items);
         let ctx = item_ctx!(self);
-        let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
+        let mut refs: Vec<&mut Item> = items.ordered_values_mut();
+        refs.reverse();
         self.trees.reinsert_tree_shapes(&mut refs, &ctx);
         drop(refs);
         self.items = items;
@@ -800,7 +802,8 @@ impl Board {
     pub fn set_clearance_compensation_used(&mut self, value: bool) {
         let mut items = std::mem::take(&mut self.items);
         let ctx = item_ctx!(self);
-        let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
+        let mut refs: Vec<&mut Item> = items.ordered_values_mut();
+        refs.reverse();
         self.trees
             .set_clearance_compensation_used(value, &mut refs, &ctx);
         drop(refs);
@@ -1411,7 +1414,7 @@ impl Board {
     }
 
     pub fn clear_all_item_temporary_autoroute_data(&mut self) {
-        for item in self.items.values_mut().rev() {
+        for item in self.items.values_mut() {
             item.clear_autoroute_info();
         }
     }
@@ -1424,7 +1427,7 @@ impl Board {
             .iter()
             .rev()
             .filter(|(_, item)| predicate(item))
-            .map(|(id, _)| *id)
+            .map(|(id, _)| id)
             .collect()
     }
 }
