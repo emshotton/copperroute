@@ -335,11 +335,8 @@ fn complete_shape_base(
     let mut overlapping_leaves: Vec<(TreeObject, usize)> = Vec::new();
     let mut node_stack: Vec<NodeId> = vec![root];
     while let Some(current_node) = node_stack.pop() {
-        let node = *tree.tree().node(current_node);
-        if !node_bounds(&node)
-            .to_tile_shape()
-            .intersects(&bounding_shape.to_tile_shape())
-        {
+        let node = tree.tree().node(current_node);
+        if !node_bounds(node).intersects(&bounding_shape) {
             continue;
         }
         match node {
@@ -347,14 +344,14 @@ fn complete_shape_base(
                 object,
                 shape_index,
                 ..
-            } => overlapping_leaves.push((object, shape_index)),
+            } => overlapping_leaves.push((*object, *shape_index)),
             Node::Inner {
                 first_child,
                 second_child,
                 ..
             } => {
-                node_stack.push(first_child);
-                node_stack.push(second_child);
+                node_stack.push(*first_child);
+                node_stack.push(*second_child);
             }
             Node::Free { .. } => unreachable!("ShapeTree::node rejects freed slots"),
         }
@@ -590,11 +587,8 @@ fn complete_shape_45(
     let mut new_result: Vec<IncompleteFreeSpaceExpansionRoom> = Vec::new();
 
     while let Some(current_node) = node_stack.pop() {
-        let node = *tree.tree().node(current_node);
-        if !node_bounds(&node)
-            .to_tile_shape()
-            .intersects_octagon(&bounding_shape)
-        {
+        let node = tree.tree().node(current_node);
+        if !node_bounds(node).intersects_octagon(&bounding_shape) {
             continue;
         }
         let (current_object, shape_index) = match node {
@@ -602,14 +596,14 @@ fn complete_shape_45(
                 object,
                 shape_index,
                 ..
-            } => (object, shape_index),
+            } => (*object, *shape_index),
             Node::Inner {
                 first_child,
                 second_child,
                 ..
             } => {
-                node_stack.push(first_child);
-                node_stack.push(second_child);
+                node_stack.push(*first_child);
+                node_stack.push(*second_child);
                 continue;
             }
             Node::Free { .. } => unreachable!("ShapeTree::node rejects freed slots"),
@@ -990,11 +984,8 @@ fn complete_shape_90(
 
     let mut node_stack: Vec<NodeId> = vec![root];
     while let Some(current_node) = node_stack.pop() {
-        let node = *tree.tree().node(current_node);
-        if !node_bounds(&node)
-            .to_tile_shape()
-            .intersects_box(&bounding_shape)
-        {
+        let node = tree.tree().node(current_node);
+        if !node_bounds(node).intersects_box(&bounding_shape) {
             continue;
         }
         let (current_object, shape_index) = match node {
@@ -1002,14 +993,14 @@ fn complete_shape_90(
                 object,
                 shape_index,
                 ..
-            } => (object, shape_index),
+            } => (*object, *shape_index),
             Node::Inner {
                 first_child,
                 second_child,
                 ..
             } => {
-                node_stack.push(first_child);
-                node_stack.push(second_child);
+                node_stack.push(*first_child);
+                node_stack.push(*second_child);
                 continue;
             }
             Node::Free { .. } => unreachable!("ShapeTree::node rejects freed slots"),
