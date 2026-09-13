@@ -62,6 +62,15 @@ impl RegularTileShape {
         }
     }
 
+    pub fn intersects(&self, other: &RegularTileShape) -> bool {
+        match (self, other) {
+            (RegularTileShape::Box(a), RegularTileShape::Box(b)) => a.intersects(b),
+            (RegularTileShape::Box(a), RegularTileShape::Octagon(b)) => b.intersects_box(a),
+            (RegularTileShape::Octagon(a), RegularTileShape::Box(b)) => a.intersects_box(b),
+            (RegularTileShape::Octagon(a), RegularTileShape::Octagon(b)) => a.intersects_octagon(b),
+        }
+    }
+
     pub fn contains(&self, other: &RegularTileShape) -> bool {
         match (self, other) {
             (RegularTileShape::Box(a), RegularTileShape::Box(b)) => b.is_contained_in(a),

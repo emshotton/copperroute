@@ -560,9 +560,7 @@ impl PolygonShape {
     }
 
     pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
-        self.cached_split_to_convex()
-            .as_deref()
-            .map(Clone::clone)
+        self.cached_split_to_convex().as_deref().map(Clone::clone)
     }
 
     fn split_to_convex_uncached(&self) -> Option<Vec<TileShape>> {

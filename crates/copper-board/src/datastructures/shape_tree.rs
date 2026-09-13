@@ -484,8 +484,6 @@ impl<O: Copy + Ord> ShapeTree<O> {
         let Some(root) = self.root else {
             return found_overlaps;
         };
-        let query = shape.to_tile_shape();
-
         let mut node_stack: Vec<NodeId> = Vec::new();
         node_stack.push(root);
         while let Some(current_node) = node_stack.pop() {
@@ -496,7 +494,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
                     shape_index,
                     ..
                 } => {
-                    if bounds.to_tile_shape().intersects(&query) {
+                    if bounds.intersects(shape) {
                         found_overlaps.push(TreeEntry {
                             object: *object,
                             shape_index: *shape_index,
@@ -509,7 +507,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
                     second_child,
                     ..
                 } => {
-                    if bounds.to_tile_shape().intersects(&query) {
+                    if bounds.intersects(shape) {
                         node_stack.push(*first_child);
                         node_stack.push(*second_child);
                     }
