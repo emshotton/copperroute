@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 use crate::float_line::FloatLine;
 use crate::float_point::FloatPoint;
 use crate::int_box::IntBox;
@@ -16,9 +18,25 @@ use crate::vector::Vector;
 const SEED: i64 = 99;
 
 /// A shape described by a closed polygon of corner points.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub struct PolygonShape {
     corners: Vec<Point>,
+    convex_pieces: OnceLock<Option<Vec<TileShape>>>,
+}
+
+impl Clone for PolygonShape {
+    fn clone(&self) -> Self {
+        PolygonShape {
+            corners: self.corners.clone(),
+            convex_pieces: self.convex_pieces.clone(),
+        }
+    }
+}
+
+impl PartialEq for PolygonShape {
+    fn eq(&self, other: &Self) -> bool {
+        self.corners == other.corners
+    }
 }
 
 fn int_point_of(point: &Point) -> IntPoint {
@@ -93,7 +111,10 @@ impl PolygonShape {
         for i in first_corner_no..start_corner_no {
             result.push(current_corners[i as usize].clone());
         }
-        PolygonShape { corners: result }
+        PolygonShape {
+            corners: result,
+            convex_pieces: OnceLock::new(),
+        }
     }
 
     pub fn from_points(corners: &[Point]) -> PolygonShape {
@@ -539,6 +560,10 @@ impl PolygonShape {
     }
 
     pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
+        self.cached_split_to_convex().clone()
+    }
+
+    fn split_to_convex_uncached(&self) -> Option<Vec<TileShape>> {
         // use a fixed seed to get reproducible result
         let mut random_generator = SplitMix64::new(SEED);
         let convex_pieces = self.split_to_convex_recu(&mut random_generator)?;
@@ -554,9 +579,14 @@ impl PolygonShape {
         )
     }
 
-    fn convex_pieces(&self) -> Vec<TileShape> {
-        self.split_to_convex()
+    fn convex_pieces(&self) -> &[TileShape] {
+        self.cached_split_to_convex()
+            .as_deref()
             .expect("PolygonShape.splitToConvex failed: the polygon may have selfintersections")
+    }
+
+    fn cached_split_to_convex(&self) -> &Option<Vec<TileShape>> {
+        self.convex_pieces.get_or_init(|| self.split_to_convex_uncached())
     }
 
     fn split_to_convex_recu(&self, random_generator: &mut SplitMix64) -> Option<Vec<PolygonShape>> {
