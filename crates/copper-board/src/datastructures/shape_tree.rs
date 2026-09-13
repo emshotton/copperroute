@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use copper_geometry::bounding_directions::ShapeBoundingDirections;
 use copper_geometry::regular_tile_shape::RegularTileShape;
 use copper_geometry::tile_shape::TileShape;
@@ -481,8 +479,8 @@ impl<O: Copy + Ord> ShapeTree<O> {
         }
     }
 
-    pub fn overlaps(&self, shape: &RegularTileShape) -> BTreeSet<TreeEntry<O>> {
-        let mut found_overlaps = BTreeSet::new();
+    pub fn overlaps(&self, shape: &RegularTileShape) -> Vec<TreeEntry<O>> {
+        let mut found_overlaps = Vec::new();
         let Some(root) = self.root else {
             return found_overlaps;
         };
@@ -499,7 +497,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
                     ..
                 } => {
                     if bounds.to_tile_shape().intersects(&query) {
-                        found_overlaps.insert(TreeEntry {
+                        found_overlaps.push(TreeEntry {
                             object: *object,
                             shape_index: *shape_index,
                         });
@@ -519,6 +517,8 @@ impl<O: Copy + Ord> ShapeTree<O> {
                 Node::Free { .. } => unreachable!("resolve rejects freed slots"),
             }
         }
+        found_overlaps.sort_unstable();
+        found_overlaps.dedup();
         found_overlaps
     }
 
