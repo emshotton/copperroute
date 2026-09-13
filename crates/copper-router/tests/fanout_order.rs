@@ -250,7 +250,7 @@ fn the_constructor_orders_a_real_boards_components_and_pins_like_the_jvm() {
     let fanout = BatchFanout::new(&board, &settings);
 
     assert_eq!(fanout.total_smd_pin_count, 10);
-    assert_eq!(fanout.already_connected_pin_count, 1);
+    assert_eq!(fanout.already_connected_pin_count(&board), 1);
 
     let shape: Vec<(i32, i32, Vec<u32>)> = fanout
         .sorted_components

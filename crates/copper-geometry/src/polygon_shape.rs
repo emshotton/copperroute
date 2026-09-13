@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use crate::float_line::FloatLine;
 use crate::float_point::FloatPoint;
@@ -21,7 +21,7 @@ const SEED: i64 = 99;
 #[derive(Debug)]
 pub struct PolygonShape {
     corners: Vec<Point>,
-    convex_pieces: OnceLock<Option<Vec<TileShape>>>,
+    convex_pieces: OnceLock<Option<Arc<Vec<TileShape>>>>,
 }
 
 impl Clone for PolygonShape {
@@ -560,7 +560,9 @@ impl PolygonShape {
     }
 
     pub fn split_to_convex(&self) -> Option<Vec<TileShape>> {
-        self.cached_split_to_convex().clone()
+        self.cached_split_to_convex()
+            .as_deref()
+            .map(Clone::clone)
     }
 
     fn split_to_convex_uncached(&self) -> Option<Vec<TileShape>> {
@@ -583,10 +585,12 @@ impl PolygonShape {
         self.cached_split_to_convex()
             .as_deref()
             .expect("PolygonShape.splitToConvex failed: the polygon may have selfintersections")
+            .as_slice()
     }
 
-    fn cached_split_to_convex(&self) -> &Option<Vec<TileShape>> {
-        self.convex_pieces.get_or_init(|| self.split_to_convex_uncached())
+    fn cached_split_to_convex(&self) -> &Option<Arc<Vec<TileShape>>> {
+        self.convex_pieces
+            .get_or_init(|| self.split_to_convex_uncached().map(Arc::new))
     }
 
     fn split_to_convex_recu(&self, random_generator: &mut SplitMix64) -> Option<Vec<PolygonShape>> {

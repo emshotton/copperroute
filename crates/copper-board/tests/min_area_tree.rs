@@ -3,7 +3,6 @@ use copper_board::ids::{ItemId, TreeObject};
 use copper_geometry::bounding_directions::ShapeBoundingDirections;
 use copper_geometry::int_box::IntBox;
 use copper_geometry::regular_tile_shape::RegularTileShape;
-use std::collections::BTreeSet;
 
 fn obj(n: u32) -> TreeObject {
     TreeObject::Item(ItemId(n))
@@ -61,7 +60,7 @@ fn dump(tree: &ShapeTree<TreeObject>) -> String {
     out
 }
 
-fn entries_str(found: &BTreeSet<TreeEntry<TreeObject>>) -> String {
+fn entries_str(found: &[TreeEntry<TreeObject>]) -> String {
     found
         .iter()
         .map(|e| {
@@ -291,7 +290,7 @@ fn to_array_walks_leftmost_leaf_first() {
     let order: Vec<String> = tree
         .to_array()
         .into_iter()
-        .map(|id| entries_str(&BTreeSet::from([tree.leaf_entry(id)])))
+        .map(|id| entries_str(&[tree.leaf_entry(id)]))
         .collect();
     assert_eq!(order.join(" "), "#1/0 #3/0 #2/0 #5/0 #4/0 #6/0");
 }
