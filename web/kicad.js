@@ -391,10 +391,52 @@ export function importBoard(text, name, rules, options = {}) {
     ...children(root, "footprint"),
     ...children(root, "module"),
   ].entries()) {
-    if (children(fp, "net_tie_pad_groups").length)
-      throw Error("Net ties are not supported yet.");
     if (children(fp, "zone").length)
       throw Error("Footprint zones are not supported yet.");
+    const reference =
+      children(fp, "property").find((n) => n.values[1] === "Reference")
+        ?.values[2] ??
+      children(fp, "fp_text").find((n) => n.values[1] === "reference")
+        ?.values[2] ??
+      `FP${fi}`;
+    const tieNets = {};
+    for (const node of children(fp, "net_tie_pad_groups")) {
+      for (const value of node.values.slice(1)) {
+        const numbers = String(value)
+          .split(",")
+          .map((n) => n.trim())
+          .filter((n) => n.length);
+        const members = [];
+        let unknown = null;
+        for (const number of numbers) {
+          const pad = children(fp, "pad").find((p) => String(p.values[1]) === number);
+          if (pad) {
+            const net = netName(pad);
+            if (net) members.push([number, net]);
+          } else unknown = number;
+        }
+        if (unknown !== null) {
+          warnings.push(
+            `Footprint ${reference} names pad ${unknown} in a net tie group but has no such pad; the group is ignored.`,
+          );
+          continue;
+        }
+        if (new Set(members.map(([, net]) => net)).size < 2) {
+          warnings.push(
+            `Footprint ${reference} has a net tie group spanning fewer than two nets; the group is ignored.`,
+          );
+          continue;
+        }
+        for (const [number, net] of members) {
+          const others = new Set([
+            ...(tieNets[number] ?? []),
+            ...members.filter(([, other]) => other !== net).map(([, other]) => other),
+          ]);
+          tieNets[number] = [...others].sort();
+        }
+      }
+    }
+    const areasBefore = conductionAreas.length;
     for (const n of fp.values.filter((v) => v?.values)) {
       const layer = val(n, "layer", "");
       if (!couldBeCopper(layer)) continue;
@@ -434,14 +476,11 @@ export function importBoard(text, name, rules, options = {}) {
       if (kind !== "pad" && kind !== "layer")
         throw Error("Footprint copper graphics are not supported yet.");
     }
+    if (Object.keys(tieNets).length)
+      for (let i = areasBefore; i < conductionAreas.length; i += 1)
+        conductionAreas[i].sourceFootprint = String(fi);
     const origin = point(fp, "at"),
       rotation = (number(child(fp, "at").values[3] ?? 0) * Math.PI) / 180;
-    const reference =
-      children(fp, "property").find((n) => n.values[1] === "Reference")
-        ?.values[2] ??
-      children(fp, "fp_text").find((n) => n.values[1] === "reference")
-        ?.values[2] ??
-      `FP${fi}`;
     for (const [pi, pad] of children(fp, "pad").entries()) {
       const shape = pad.values[3];
       const type = pad.values[2];
@@ -621,6 +660,7 @@ export function importBoard(text, name, rules, options = {}) {
             name: String(pi),
             sourceFootprint: String(fi),
             sourcePadNumber: String(pad.values[1]),
+            ...(tieNets[String(pad.values[1])] ? { netTieNets: tieNets[String(pad.values[1])] } : {}),
             netName: netName(pad),
             shape,
             ...(shape === "roundrect" ? { roundRectRatio: number(val(pad, "roundrect_rratio", 0.25)) } : {}),
