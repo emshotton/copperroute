@@ -30,6 +30,7 @@ fn boards() -> Vec<PathBuf> {
         }
     }
     paths.push(root.join("crates/copper-dsn/tests/data/net-tie.kicad_pcb"));
+    paths.push(root.join("crates/copper-dsn/tests/data/net-tie-edge-cases.kicad_pcb"));
     paths.retain(|p| p.exists());
     paths.sort();
     assert!(
