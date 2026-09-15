@@ -1,7 +1,8 @@
 use copper_board::{
     Board, BoardLibrary, BoardRules, ClearanceMatrix, Communication, Components, FixedState,
-    ItemClass, ItemIdGenerator, Layer, LayerStructure, NetClassId, Nets, Package, PackagePin,
-    Packages, Padstack, PadstackId, Padstacks, Unit, ViaInfo, ViaRule, equals_ignore_case,
+    ItemClass, ItemId, ItemIdGenerator, Layer, LayerStructure, NetClassId, Nets, Package,
+    PackagePin, Packages, Padstack, PadstackId, Padstacks, Unit, ViaInfo, ViaRule,
+    equals_ignore_case,
 };
 use copper_geometry::{
     Area, Circle, FloatPoint, IntBox, IntOctagon, IntPoint, IntVector, Point, PolygonShape,
@@ -1031,7 +1032,7 @@ pub fn read_board_json(
     };
     for zone in json_zones {
         let net_number = nets_get(&board.rules.nets, zone.netName.as_deref(), 1).unwrap_or(0);
-        let net_numbers = if net_number > 0 {
+        let mut net_numbers = if net_number > 0 {
             vec![net_number]
         } else {
             Vec::new()
@@ -1052,6 +1053,36 @@ pub fn read_board_json(
                 "json_payload",
                 "Exception occurred: Index 0 out of bounds for length 0",
             );
+        }
+
+        if let Some(footprint) = zone.sourceFootprint.as_deref()
+            && !board.rules.net_ties.is_empty()
+        {
+            let layer = zone.layerIndex.max(0) as usize;
+            let shape = Shape::Polygon(PolygonShape::from_points(&zone_points));
+            let tie_pads: Vec<ItemId> = board.rules.net_ties.pads_of(footprint).to_vec();
+            let mut tie_numbers: Vec<i32> = Vec::new();
+            for pad in tie_pads {
+                let Some(copper_board::Item::Pin(pin)) = board.items.get(&pad) else {
+                    continue;
+                };
+                let ctx = board.ctx();
+                let Some(pad_shape) = pin.get_shape_on_layer(layer, &ctx) else {
+                    continue;
+                };
+                if !shape.intersects(&pad_shape) {
+                    continue;
+                }
+                for number in pin.hdr.net_nos.iter().chain(board.rules.net_ties.nets_of(pad)) {
+                    if !tie_numbers.contains(number) {
+                        tie_numbers.push(*number);
+                    }
+                }
+            }
+            if !tie_numbers.is_empty() {
+                tie_numbers.sort_unstable();
+                net_numbers = tie_numbers;
+            }
         }
         #[allow(clippy::cast_sign_loss)]
         board.insert_conduction_area(
