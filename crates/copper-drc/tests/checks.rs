@@ -998,3 +998,47 @@ fn a_foreign_trace_landing_on_a_tie_pad_is_still_a_violation() {
         kinds(&out)
     );
 }
+
+#[test]
+fn tie_pad_hole_clearance_is_not_exempted_by_the_copper_clearance_exemption() {
+    let mut synthetic = SyntheticBoard::new(
+        &[
+            PadSpec {
+                name: "1",
+                half: 800,
+                offset: IntVector::new(0, 0),
+                through_hole: true,
+            },
+            PadSpec {
+                name: "2",
+                half: 800,
+                offset: IntVector::new(1000, 0),
+                through_hole: true,
+            },
+        ],
+        2,
+        2000,
+    );
+    let a = synthetic.pin(0, 1);
+    let b = synthetic.pin(1, 2);
+    synthetic
+        .board
+        .rules
+        .net_ties
+        .register_pad(a, "0".to_string(), vec![2]);
+    synthetic
+        .board
+        .rules
+        .net_ties
+        .register_pad(b, "0".to_string(), vec![1]);
+    let mut constraints = constraints_with(2000);
+    constraints.hole_clearance = Some(3000);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints, &mut out);
+    let hole_violations: Vec<_> = out
+        .iter()
+        .filter(|v| v.kind == DrcViolationKind::HoleClearance)
+        .collect();
+    assert!(!hole_violations.is_empty(), "kinds: {:?}", kinds(&out));
+    assert!(!out.iter().any(|v| v.kind == DrcViolationKind::ShortingItems));
+}
