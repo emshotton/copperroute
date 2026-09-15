@@ -892,3 +892,109 @@ fn a_multisegment_trace_reports_the_nearest_hole_gap_once_in_both_item_orders() 
         assert!((holes[0].actual - 2200.0).abs() < 1.0, "{holes:?}");
     }
 }
+
+#[test]
+fn two_overlapping_tie_pads_are_not_a_short() {
+    let mut synthetic = SyntheticBoard::new(
+        &[
+            PadSpec {
+                name: "1",
+                half: 800,
+                offset: IntVector::new(0, 0),
+                through_hole: false,
+            },
+            PadSpec {
+                name: "2",
+                half: 800,
+                offset: IntVector::new(1000, 0),
+                through_hole: false,
+            },
+        ],
+        2,
+        2000,
+    );
+    let a = synthetic.pin(0, 1);
+    let b = synthetic.pin(1, 2);
+    synthetic
+        .board
+        .rules
+        .net_ties
+        .register_pad(a, "0".to_string(), vec![2]);
+    synthetic
+        .board
+        .rules
+        .net_ties
+        .register_pad(b, "0".to_string(), vec![1]);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
+    assert_eq!(kinds(&out), Vec::<DrcViolationKind>::new());
+}
+
+#[test]
+fn two_overlapping_pads_that_are_not_tied_are_still_a_short() {
+    let mut synthetic = SyntheticBoard::new(
+        &[
+            PadSpec {
+                name: "1",
+                half: 800,
+                offset: IntVector::new(0, 0),
+                through_hole: false,
+            },
+            PadSpec {
+                name: "2",
+                half: 800,
+                offset: IntVector::new(1000, 0),
+                through_hole: false,
+            },
+        ],
+        2,
+        2000,
+    );
+    synthetic.pin(0, 1);
+    synthetic.pin(1, 2);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
+    assert_eq!(kinds(&out), vec![DrcViolationKind::ShortingItems]);
+}
+
+#[test]
+fn a_foreign_trace_landing_on_a_tie_pad_is_still_a_violation() {
+    let mut synthetic = SyntheticBoard::new(
+        &[
+            PadSpec {
+                name: "1",
+                half: 800,
+                offset: IntVector::new(0, 0),
+                through_hole: false,
+            },
+            PadSpec {
+                name: "2",
+                half: 800,
+                offset: IntVector::new(1000, 0),
+                through_hole: false,
+            },
+        ],
+        3,
+        2000,
+    );
+    let a = synthetic.pin(0, 1);
+    let b = synthetic.pin(1, 2);
+    synthetic
+        .board
+        .rules
+        .net_ties
+        .register_pad(a, "0".to_string(), vec![2]);
+    synthetic
+        .board
+        .rules
+        .net_ties
+        .register_pad(b, "0".to_string(), vec![1]);
+    synthetic.trace(&[(0, 0), (10_000, 0)], 0, 500, 3);
+    let mut out = Vec::new();
+    copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
+    assert!(
+        out.iter().any(|v| v.kind == DrcViolationKind::ShortingItems),
+        "kinds: {:?}",
+        kinds(&out)
+    );
+}

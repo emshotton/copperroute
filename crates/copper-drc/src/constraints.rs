@@ -75,6 +75,13 @@ pub fn pair_clearance(
     a: &Item,
     b: &Item,
 ) -> Option<i32> {
+    if board
+        .rules
+        .net_ties
+        .may_short(a.id(), a.net_nos(), b.id(), b.net_nos())
+    {
+        return Some(0);
+    }
     [
         netclass_clearance(board, constraints, a),
         netclass_clearance(board, constraints, b),
