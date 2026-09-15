@@ -43,9 +43,22 @@ fn a_tie_boards_pads_are_registered_against_each_others_nets() {
     assert!(!ties.is_empty());
     let ids = pins(&board);
     assert_eq!(ids.len(), 2);
+    assert_eq!(ties.pads_of("0"), ids.as_slice());
     let nets: Vec<&[i32]> = ids.iter().map(|id| ties.nets_of(*id)).collect();
     assert_eq!(nets, vec![&[2][..], &[1][..]]);
     assert!(ties.may_short(ids[0], &[1], ids[1], &[2]));
+}
+
+#[test]
+fn a_tie_boards_pads_are_not_obstacles_to_each_other() {
+    let board = board_of(TIE_BOARD);
+    let ids = pins(&board);
+    assert_eq!(ids.len(), 2);
+    let ctx = board.ctx();
+    let a = board.items.get(&ids[0]).expect("pad a");
+    let b = board.items.get(&ids[1]).expect("pad b");
+    assert!(!a.is_obstacle(b, &ctx));
+    assert!(!b.is_obstacle(a, &ctx));
 }
 
 #[test]
@@ -90,6 +103,31 @@ fn conduction_nets(board: &Board) -> Vec<Vec<i32>> {
 fn tie_copper_takes_the_nets_of_the_pads_it_overlaps() {
     let board = board_of(TIE_BOARD_WITH_COPPER);
     assert_eq!(conduction_nets(&board), vec![vec![1, 2], Vec::new()]);
+}
+
+const TIE_BOARD_SPANNING_TWO_GROUPS: &str = r#"(kicad_pcb (version 20241229)
+  (layers (0 "F.Cu" signal) (2 "B.Cu" signal))
+  (net 0 "")
+  (net 1 "GND")
+  (net 2 "AGND")
+  (net 3 "AVCC")
+  (net 4 "PGND")
+  (gr_line (start 0 0) (end 20 0) (layer "Edge.Cuts") (stroke (width 0.05) (type solid)))
+  (gr_line (start 20 0) (end 20 20) (layer "Edge.Cuts") (stroke (width 0.05) (type solid)))
+  (gr_line (start 20 20) (end 0 20) (layer "Edge.Cuts") (stroke (width 0.05) (type solid)))
+  (gr_line (start 0 20) (end 0 0) (layer "Edge.Cuts") (stroke (width 0.05) (type solid)))
+  (footprint "NT" (layer "F.Cu") (at 10 10) (net_tie_pad_groups "1,2" "3,4")
+    (fp_rect (start -0.2 -0.2) (end 3.2 0.2) (layer "F.Cu") (stroke (width 0.05) (type solid)))
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))
+    (pad "2" smd rect (at 1 0) (size 1 1) (layers "F.Cu") (net 2 "AGND"))
+    (pad "3" smd rect (at 2 0) (size 1 1) (layers "F.Cu") (net 3 "AVCC"))
+    (pad "4" smd rect (at 3 0) (size 1 1) (layers "F.Cu") (net 4 "PGND")))
+)"#;
+
+#[test]
+fn tie_copper_spanning_two_independent_groups_gets_every_overlapped_pads_nets() {
+    let board = board_of(TIE_BOARD_SPANNING_TWO_GROUPS);
+    assert_eq!(conduction_nets(&board), vec![vec![1, 2, 3, 4]]);
 }
 
 #[test]

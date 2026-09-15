@@ -96,6 +96,17 @@ mod tests {
     }
 
     #[test]
+    fn pads_of_different_groups_spanning_the_same_net_pair_may_short() {
+        let mut ties = NetTies::default();
+        ties.register_pad(ItemId(1), "0".to_string(), vec![2]);
+        ties.register_pad(ItemId(2), "0".to_string(), vec![1]);
+        ties.register_pad(ItemId(3), "0".to_string(), vec![1]);
+        ties.register_pad(ItemId(4), "0".to_string(), vec![2]);
+        assert!(ties.may_short(ItemId(1), &[1], ItemId(3), &[2]));
+        assert!(ties.may_short(ItemId(2), &[2], ItemId(4), &[1]));
+    }
+
+    #[test]
     fn an_unregistered_pad_never_shorts() {
         let mut ties = NetTies::default();
         ties.register_pad(ItemId(1), "0".to_string(), vec![2]);

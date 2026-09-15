@@ -1062,11 +1062,11 @@ pub fn read_board_json(
             let shape = Shape::Polygon(PolygonShape::from_points(&zone_points));
             let tie_pads: Vec<ItemId> = board.rules.net_ties.pads_of(footprint).to_vec();
             let mut tie_numbers: Vec<i32> = Vec::new();
+            let ctx = board.ctx();
             for pad in tie_pads {
                 let Some(copper_board::Item::Pin(pin)) = board.items.get(&pad) else {
                     continue;
                 };
-                let ctx = board.ctx();
                 let Some(pad_shape) = pin.get_shape_on_layer(layer, &ctx) else {
                     continue;
                 };
