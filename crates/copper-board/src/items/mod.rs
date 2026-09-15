@@ -306,7 +306,12 @@ impl Item {
                     return false;
                 }
                 if !other.shares_net(self) {
-                    return true;
+                    return !ctx.rules.net_ties.may_short(
+                        self.id(),
+                        self.net_nos(),
+                        other.id(),
+                        other.net_nos(),
+                    );
                 }
                 if other.is_trace() {
                     return false;
@@ -846,6 +851,58 @@ mod tests {
             ItemHeader::new(ItemId(id), net_nos, 1, THT_COMPONENT, FixedState::Unfixed),
             0,
         ))
+    }
+
+    fn tied(f: &mut Fixture, pads: &[(u32, &str, Vec<i32>)]) {
+        for (id, footprint, nets) in pads {
+            f.rules
+                .net_ties
+                .register_pad(ItemId(*id), (*footprint).to_string(), nets.clone());
+        }
+    }
+
+    #[test]
+    fn two_tie_pads_of_one_footprint_are_not_obstacles_to_each_other() {
+        let mut f = Fixture::new();
+        tied(
+            &mut f,
+            &[(1, "0", vec![2]), (2, "0", vec![1])],
+        );
+        let a = pin(1, vec![1]);
+        let b = pin(2, vec![2]);
+        assert!(!a.is_obstacle(&b, &f.ctx()));
+        assert!(!b.is_obstacle(&a, &f.ctx()));
+    }
+
+    #[test]
+    fn a_tie_pad_is_still_an_obstacle_to_a_foreign_net() {
+        let mut f = Fixture::new();
+        tied(
+            &mut f,
+            &[(1, "0", vec![2]), (2, "0", vec![1])],
+        );
+        let a = pin(1, vec![1]);
+        assert!(a.is_obstacle(&trace(3, vec![9]), &f.ctx()));
+        assert!(a.is_obstacle(&pin(4, vec![2]), &f.ctx()));
+    }
+
+    #[test]
+    fn tie_pads_of_different_footprints_are_still_obstacles() {
+        let mut f = Fixture::new();
+        tied(
+            &mut f,
+            &[(1, "0", vec![2]), (2, "7", vec![1])],
+        );
+        let a = pin(1, vec![1]);
+        let b = pin(2, vec![2]);
+        assert!(a.is_obstacle(&b, &f.ctx()));
+    }
+
+    #[test]
+    fn a_board_without_ties_is_unchanged() {
+        let f = Fixture::new();
+        let a = pin(1, vec![1]);
+        assert!(a.is_obstacle(&pin(2, vec![2]), &f.ctx()));
     }
 
     /// A unit square on layer 0 at the origin — enough geometry for the dispatch tests here;
