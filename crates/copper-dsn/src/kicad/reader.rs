@@ -961,6 +961,21 @@ pub fn read_board_json(
                 pin.source_footprint = pad.sourceFootprint.clone();
                 pin.source_pad_number = pad.sourcePadNumber.clone();
             }
+            if let (Some(tie_nets), Some(footprint)) =
+                (pad.netTieNets.as_ref(), pad.sourceFootprint.as_ref())
+            {
+                let numbers: Vec<i32> = tie_nets
+                    .iter()
+                    .filter_map(|name| nets_get(&board.rules.nets, Some(name.as_str()), 1))
+                    .filter(|number| *number > 0)
+                    .collect();
+                if !numbers.is_empty() {
+                    board
+                        .rules
+                        .net_ties
+                        .register_pad(pin_id, footprint.clone(), numbers);
+                }
+            }
             for (effective, mask) in [
                 (false, &pad.solderMaskExpansion),
                 (true, &pad.effectiveSolderMaskExpansion),
