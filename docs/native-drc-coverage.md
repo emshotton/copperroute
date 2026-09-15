@@ -2,7 +2,7 @@
 
 The routing compatibility benchmark covers all751 KiCad boards. The native checker accuracy survey covers549 imported boards and carries forward202 import failures from the initial native survey. Later mask surveys reimported the supported subset; they did not retry these202 failures. Thus “751 attempted” describes the original corpus coverage, not751 fresh native imports for every candidate.
 
-The table below records the initial survey and is not the current capability: trapezoid pads, multi-primitive custom pads, non-plated slots and footprint copper graphics have since been imported, and the tallies for those rows no longer apply.
+The table below records the initial survey and is not the current capability: trapezoid pads, multi-primitive custom pads, non-plated slots, footprint copper graphics and net ties have since been imported, and the tallies for those rows no longer apply.
 
 These are import exclusions, not proof that the boards are unsuitable routing benchmarks. Do not add them to the outlier register solely because the native adapter rejects them. Outline closure failures can reflect actual source geometry, conversion tolerances or unsupported outline objects; this tally does not distinguish those causes.
 
@@ -32,4 +32,4 @@ These are import exclusions, not proof that the boards are unsuitable routing be
 
 The complete board lists and original failure categories are retained in [native-coverage.json](routing-quality-artifacts/mask-effective/native-coverage.json). Mask-count accuracy comparisons additionally exclude KiCad reports at or above the suspected199-finding cap, leaving529 boards. That exclusion is separate from import support.
 
-The source adapter still contains explicit limitations for footprint copper graphics/zones, track/via keepouts, several pad shapes, slots and net ties. They cannot be fixed by adjusting the DRC checker alone: the checker needs faithful geometry and rule metadata. Current fixes improve represented shapes/rules and do not claim identical behavior on unsupported imports, all KiCad rule types or custom DRC rules.
+The source adapter still contains explicit limitations for footprint copper graphics/zones, track/via keepouts, several pad shapes and slots. They cannot be fixed by adjusting the DRC checker alone: the checker needs faithful geometry and rule metadata. Current fixes improve represented shapes/rules and do not claim identical behavior on unsupported imports, all KiCad rule types or custom DRC rules.
