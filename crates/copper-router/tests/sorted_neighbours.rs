@@ -463,7 +463,8 @@ fn p6t3_board() -> (Board, TreeId) {
         let mut manager = std::mem::take(&mut board.trees);
         let id = {
             let ctx = board.ctx();
-            let mut refs: Vec<&mut Item> = items.values_mut().rev().collect();
+            let mut refs: Vec<&mut Item> = items.ordered_values_mut();
+            refs.reverse();
             manager.get_autoroute_tree(1, &mut refs, &ctx).id()
         };
         board.items = items;

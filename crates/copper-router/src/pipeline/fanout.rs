@@ -324,7 +324,6 @@ pub struct BatchFanout<'a> {
     pub sorted_components: BTreeSet<FanoutComponent>,
     pub settings: &'a RouterSettings,
     pub total_smd_pin_count: i32,
-    pub already_connected_pin_count: i32,
     pub progress_throttler: ProgressThrottler,
     pub last_not_routed_count: i32,
     pub extra_vias_total: i32,
@@ -366,9 +365,27 @@ impl<'a> BatchFanout<'a> {
         }
 
         let mut pin_count = 0_i32;
-        let mut already_connected = 0_i32;
         for component in &sorted_components {
             pin_count += component.smd_pin_count;
+        }
+
+        BatchFanout {
+            sorted_components,
+            settings,
+            total_smd_pin_count: pin_count,
+            progress_throttler: ProgressThrottler::new(1000),
+            last_not_routed_count: 0,
+            extra_vias_total: 0,
+            total_items_fanouted: 0,
+            deadline: None,
+            is_timed_out: false,
+        }
+    }
+
+    #[must_use]
+    pub fn already_connected_pin_count(&self, board: &Board) -> i32 {
+        let mut already_connected = 0_i32;
+        for component in &self.sorted_components {
             for op in &component.smd_pins {
                 let Some(item) = board.get_item(op.inner.pin) else {
                     continue;
@@ -379,19 +396,7 @@ impl<'a> BatchFanout<'a> {
                 }
             }
         }
-
-        BatchFanout {
-            sorted_components,
-            settings,
-            total_smd_pin_count: pin_count,
-            already_connected_pin_count: already_connected,
-            progress_throttler: ProgressThrottler::new(1000),
-            last_not_routed_count: 0,
-            extra_vias_total: 0,
-            total_items_fanouted: 0,
-            deadline: None,
-            is_timed_out: false,
-        }
+        already_connected
     }
 }
 

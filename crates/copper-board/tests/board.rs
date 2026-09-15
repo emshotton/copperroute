@@ -2250,8 +2250,8 @@ fn the_fanout_via_break_changes_the_connection_set() {
         .items
         .keys()
         .filter(|id| {
-            board.connection_items(**id, StopConnectionOption::None)
-                != board.connection_items(**id, StopConnectionOption::FanoutVia)
+            board.connection_items(*id, StopConnectionOption::None)
+                != board.connection_items(*id, StopConnectionOption::FanoutVia)
         })
         .count();
     assert!(

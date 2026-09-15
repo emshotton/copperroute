@@ -61,7 +61,8 @@ impl AutorouteEngine {
             let mut trees = std::mem::take(&mut board.trees);
             let id = {
                 let ctx = board.ctx();
-                let mut refs: Vec<&mut copper_board::Item> = items.values_mut().rev().collect();
+                let mut refs: Vec<&mut copper_board::Item> = items.ordered_values_mut();
+                refs.reverse();
                 trees
                     .get_autoroute_tree(trace_clearance_class_index, &mut refs, &ctx)
                     .id()

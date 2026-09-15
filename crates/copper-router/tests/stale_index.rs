@@ -434,7 +434,7 @@ fn a_shortened_trace_makes_a_recorded_index_stale_and_clears_the_array_that_held
                 let corners: Vec<_> = (0..trace.polyline().corner_count())
                     .filter_map(|i| trace.polyline().corner(i))
                     .collect();
-                Some((*id, corners))
+                Some((id, corners))
             }
             _ => None,
         })

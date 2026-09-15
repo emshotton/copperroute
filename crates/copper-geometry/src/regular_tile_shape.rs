@@ -62,6 +62,29 @@ impl RegularTileShape {
         }
     }
 
+    pub fn intersects(&self, other: &RegularTileShape) -> bool {
+        match (self, other) {
+            (RegularTileShape::Box(a), RegularTileShape::Box(b)) => a.intersects(b),
+            (RegularTileShape::Box(a), RegularTileShape::Octagon(b)) => b.intersects_box(a),
+            (RegularTileShape::Octagon(a), RegularTileShape::Box(b)) => a.intersects_box(b),
+            (RegularTileShape::Octagon(a), RegularTileShape::Octagon(b)) => a.intersects_octagon(b),
+        }
+    }
+
+    pub fn intersects_octagon(&self, other: &IntOctagon) -> bool {
+        match self {
+            RegularTileShape::Box(b) => b.intersects_octagon(other),
+            RegularTileShape::Octagon(o) => o.intersects_octagon(other),
+        }
+    }
+
+    pub fn intersects_box(&self, other: &IntBox) -> bool {
+        match self {
+            RegularTileShape::Box(b) => b.intersects(other),
+            RegularTileShape::Octagon(o) => o.intersects_box(other),
+        }
+    }
+
     pub fn contains(&self, other: &RegularTileShape) -> bool {
         match (self, other) {
             (RegularTileShape::Box(a), RegularTileShape::Box(b)) => b.is_contained_in(a),
@@ -183,5 +206,68 @@ mod tests {
         assert_eq!(RegularTileShape::Box(b).get_id(), b.get_id());
         assert_eq!(RegularTileShape::Box(b).area(), 100.0);
         assert_eq!(RegularTileShape::Box(b).to_tile_shape(), TileShape::Box(b));
+    }
+
+    fn every_regular_pair() -> Vec<(RegularTileShape, RegularTileShape)> {
+        let coords = [
+            (0, 0, 10, 10),
+            (5, 5, 20, 20),
+            (10, 10, 20, 20),
+            (11, 11, 20, 20),
+            (-5, -5, 30, 30),
+            (0, 20, 10, 30),
+        ];
+        let shapes: Vec<RegularTileShape> = coords
+            .iter()
+            .flat_map(|(a, b, c, d)| {
+                let boxed = IntBox::from_coords(*a, *b, *c, *d);
+                [
+                    RegularTileShape::Box(boxed),
+                    RegularTileShape::Octagon(boxed.to_int_octagon()),
+                ]
+            })
+            .collect();
+        shapes
+            .iter()
+            .flat_map(|a| shapes.iter().map(move |b| (*a, *b)))
+            .collect()
+    }
+
+    #[test]
+    fn intersects_agrees_with_the_widened_tile_shape_test() {
+        for (a, b) in every_regular_pair() {
+            assert_eq!(
+                a.intersects(&b),
+                a.to_tile_shape().intersects(&b.to_tile_shape()),
+                "{a:?} against {b:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn intersects_octagon_agrees_with_the_widened_tile_shape_test() {
+        for (a, b) in every_regular_pair() {
+            let octagon = match b {
+                RegularTileShape::Box(boxed) => boxed.to_int_octagon(),
+                RegularTileShape::Octagon(oct) => oct,
+            };
+            assert_eq!(
+                a.intersects_octagon(&octagon),
+                a.to_tile_shape().intersects_octagon(&octagon),
+                "{a:?} against {octagon:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn intersects_box_agrees_with_the_widened_tile_shape_test() {
+        for (a, b) in every_regular_pair() {
+            let boxed = b.bounding_box();
+            assert_eq!(
+                a.intersects_box(&boxed),
+                a.to_tile_shape().intersects_box(&boxed),
+                "{a:?} against {boxed:?}"
+            );
+        }
     }
 }

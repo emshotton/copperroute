@@ -98,10 +98,10 @@ pub fn adjust_plane_autoroute_settings(board: &mut Board) -> Result<bool, DsnErr
 
     let mut layer_contains_wires = vec![false; layer_count];
     let mut conduction_area_ids: Vec<ItemId> = Vec::new();
-    for (id, item) in &board.items {
+    for (id, item) in board.items.iter() {
         match item {
             Item::Trace(trace) => layer_contains_wires[trace.get_layer()] = true,
-            Item::ConductionArea(_) => conduction_area_ids.push(*id),
+            Item::ConductionArea(_) => conduction_area_ids.push(id),
             _ => {}
         }
     }

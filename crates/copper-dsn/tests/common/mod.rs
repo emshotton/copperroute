@@ -362,7 +362,7 @@ pub fn directed_ses(path_name: &str, label: &str) -> (String, usize) {
 }
 
 pub fn directed_items(board: &Board) -> Vec<String> {
-    let mut ids: Vec<_> = board.items.keys().copied().collect();
+    let mut ids: Vec<_> = board.items.keys().collect();
     ids.sort_unstable();
     let mut out = Vec::new();
     for id in ids {

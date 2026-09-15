@@ -30,7 +30,7 @@ fn pins(board: &Board) -> Vec<copper_board::ItemId> {
         .items
         .iter()
         .filter(|(_, item)| matches!(item, Item::Pin(_)))
-        .map(|(id, _)| *id)
+        .map(|(id, _)| id)
         .collect();
     ids.sort();
     ids
@@ -92,7 +92,7 @@ fn conduction_nets(board: &Board) -> Vec<Vec<i32>> {
         .map(|(id, item)| {
             let mut nets = item.net_nos().to_vec();
             nets.sort();
-            (*id, nets)
+            (id, nets)
         })
         .collect();
     areas.sort_by_key(|(id, _)| *id);

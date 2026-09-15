@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use copper_geometry::bounding_directions::ShapeBoundingDirections;
 use copper_geometry::regular_tile_shape::RegularTileShape;
 use copper_geometry::tile_shape::TileShape;
@@ -481,13 +479,11 @@ impl<O: Copy + Ord> ShapeTree<O> {
         }
     }
 
-    pub fn overlaps(&self, shape: &RegularTileShape) -> BTreeSet<TreeEntry<O>> {
-        let mut found_overlaps = BTreeSet::new();
+    pub fn overlaps(&self, shape: &RegularTileShape) -> Vec<TreeEntry<O>> {
+        let mut found_overlaps = Vec::new();
         let Some(root) = self.root else {
             return found_overlaps;
         };
-        let query = shape.to_tile_shape();
-
         let mut node_stack: Vec<NodeId> = Vec::new();
         node_stack.push(root);
         while let Some(current_node) = node_stack.pop() {
@@ -498,8 +494,8 @@ impl<O: Copy + Ord> ShapeTree<O> {
                     shape_index,
                     ..
                 } => {
-                    if bounds.to_tile_shape().intersects(&query) {
-                        found_overlaps.insert(TreeEntry {
+                    if bounds.intersects(shape) {
+                        found_overlaps.push(TreeEntry {
                             object: *object,
                             shape_index: *shape_index,
                         });
@@ -511,7 +507,7 @@ impl<O: Copy + Ord> ShapeTree<O> {
                     second_child,
                     ..
                 } => {
-                    if bounds.to_tile_shape().intersects(&query) {
+                    if bounds.intersects(shape) {
                         node_stack.push(*first_child);
                         node_stack.push(*second_child);
                     }
@@ -519,6 +515,8 @@ impl<O: Copy + Ord> ShapeTree<O> {
                 Node::Free { .. } => unreachable!("resolve rejects freed slots"),
             }
         }
+        found_overlaps.sort_unstable();
+        found_overlaps.dedup();
         found_overlaps
     }
 
