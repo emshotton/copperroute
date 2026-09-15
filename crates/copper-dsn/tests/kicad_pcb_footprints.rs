@@ -36,6 +36,31 @@ fn read_err(body: &str) -> String {
         .message
 }
 
+fn board_text(body: &str) -> String {
+    format!("(kicad_pcb (version 20241229) {LAYERS} (net 1 \"GND\") (net 2 \"AGND\") {body})")
+}
+
+fn read_with_nets(body: &str) -> (Vec<copper_dsn::kicad::ComponentJson>, Vec<String>) {
+    let text = board_text(body);
+    let root = parse(&text).expect("it parses");
+    let layers = Layers::read(&root).expect("layers");
+    let nets = NetTable::read(&root).expect("nets");
+    let mut warnings = Vec::new();
+    let (components, _) =
+        read_components(&root, &layers, &nets, &mut warnings).expect("components");
+    (components, warnings)
+}
+
+fn read_areas_with_nets(body: &str) -> (Vec<copper_dsn::kicad::ConductionAreaJson>, Vec<String>) {
+    let text = board_text(body);
+    let root = parse(&text).expect("it parses");
+    let layers = Layers::read(&root).expect("layers");
+    let nets = NetTable::read(&root).expect("nets");
+    let mut warnings = Vec::new();
+    let (_, areas) = read_components(&root, &layers, &nets, &mut warnings).expect("components");
+    (areas, warnings)
+}
+
 #[test]
 fn it_gives_each_pad_its_own_component_at_absolute_position() {
     let (components, _) = read(concat!(
@@ -96,12 +121,80 @@ fn it_warns_that_rounded_pads_route_as_rectangles() {
 }
 
 #[test]
-fn it_rejects_net_ties() {
-    let error = read_err(concat!(
-        r#"(footprint "U" (layer "F.Cu") (at 0 0) (net_tie_pad_groups "1,2")"#,
+fn it_gives_each_tie_pad_the_other_nets_of_its_group() {
+    let text = concat!(
+        r#"(footprint "NT" (layer "F.Cu") (at 0 0) (net_tie_pad_groups "1,2")"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))"#,
+        r#" (pad "2" smd rect (at 0.5 0) (size 1 1) (layers "F.Cu") (net 2 "AGND")))"#,
+    );
+    let (components, _) = read_with_nets(text);
+    let pad_of = |index: usize| components[index].pads.as_ref().expect("pads")[0].clone();
+    assert_eq!(
+        pad_of(0).netTieNets.as_deref(),
+        Some(&["AGND".to_string()][..])
+    );
+    assert_eq!(
+        pad_of(1).netTieNets.as_deref(),
+        Some(&["GND".to_string()][..])
+    );
+}
+
+#[test]
+fn it_warns_instead_of_failing_on_a_group_naming_an_unknown_pad() {
+    let text = concat!(
+        r#"(footprint "NT" (layer "F.Cu") (at 0 0) (net_tie_pad_groups "1,9")"#,
         r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
-    ));
-    assert_eq!(error, "Net ties are not supported yet.");
+    );
+    let (components, warnings) = read_with_nets(text);
+    assert!(components[0].pads.as_ref().expect("pads")[0]
+        .netTieNets
+        .is_none());
+    assert!(
+        warnings.iter().any(|w| w.contains("net tie")),
+        "warnings: {warnings:?}"
+    );
+}
+
+#[test]
+fn it_warns_instead_of_failing_on_a_group_that_spans_one_net() {
+    let text = concat!(
+        r#"(footprint "NT" (layer "F.Cu") (at 0 0) (net_tie_pad_groups "1,2")"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))"#,
+        r#" (pad "2" smd rect (at 0.5 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
+    );
+    let (components, warnings) = read_with_nets(text);
+    assert!(components[0].pads.as_ref().expect("pads")[0]
+        .netTieNets
+        .is_none());
+    assert!(
+        warnings.iter().any(|w| w.contains("net tie")),
+        "warnings: {warnings:?}"
+    );
+}
+
+#[test]
+fn it_tags_a_tie_footprints_copper_graphics_with_its_index() {
+    let text = concat!(
+        r#"(footprint "NT" (layer "F.Cu") (at 0 0) (net_tie_pad_groups "1,2")"#,
+        r#" (fp_rect (start 0 0) (end 0.5 0.2) (layer "F.Cu") (stroke (width 0.05) (type solid)))"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))"#,
+        r#" (pad "2" smd rect (at 0.5 0) (size 1 1) (layers "F.Cu") (net 2 "AGND")))"#,
+    );
+    let (areas, _) = read_areas_with_nets(text);
+    assert_eq!(areas.len(), 1);
+    assert_eq!(areas[0].sourceFootprint.as_deref(), Some("0"));
+}
+
+#[test]
+fn it_leaves_an_ordinary_footprints_copper_graphics_untagged() {
+    let text = concat!(
+        r#"(footprint "R" (layer "F.Cu") (at 0 0)"#,
+        r#" (fp_rect (start 0 0) (end 0.5 0.2) (layer "F.Cu") (stroke (width 0.05) (type solid)))"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
+    );
+    let (areas, _) = read_areas_with_nets(text);
+    assert_eq!(areas.len(), 1);
+    assert!(areas[0].sourceFootprint.is_none());
 }
 
 #[test]

@@ -133,6 +133,8 @@ pub struct PadJson {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sourcePadNumber: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub netTieNets: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub copperClearance: Option<f64>,
     #[serde(default)]
     pub allowSolderMaskBridges: bool,
@@ -218,6 +220,8 @@ pub struct ConductionAreaJson {
     pub id: i32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub netName: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sourceFootprint: Option<String>,
     #[serde(default, deserialize_with = "nullable")]
     pub layerIndex: i32,
     #[serde(default, deserialize_with = "nullable")]
@@ -291,6 +295,7 @@ impl Default for PadJson {
         PadJson {
             sourceFootprint: None,
             sourcePadNumber: None,
+            netTieNets: None,
             copperClearance: None,
             solderMaskExpansion: None,
             effectiveSolderMaskExpansion: None,
@@ -354,6 +359,7 @@ impl Default for ConductionAreaJson {
         ConductionAreaJson {
             id: 0,
             netName: None,
+            sourceFootprint: None,
             layerIndex: 0,
             isObstacle: false,
             polygon: empty(),

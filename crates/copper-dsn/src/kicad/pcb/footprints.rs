@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::f64::consts::PI;
 
 use super::PcbError;
@@ -80,6 +80,7 @@ fn copper_area(
     Ok(ConductionAreaJson {
         id: 0,
         netName: Some(String::new()),
+        sourceFootprint: None,
         layerIndex: layers.index_of(layer)?,
         isObstacle: true,
         polygon: Some(polygon),
@@ -161,6 +162,7 @@ fn copper_text(
     Ok(ConductionAreaJson {
         id: 0,
         netName: Some(String::new()),
+        sourceFootprint: None,
         layerIndex: layers.index_of(layer)?,
         isObstacle: true,
         polygon: Some(polygon),
@@ -443,6 +445,22 @@ fn local_clearance(node: &Node, version: f64) -> Result<Option<f64>, PcbError> {
     }
 }
 
+fn net_tie_groups(fp: &Node) -> Vec<Vec<String>> {
+    fp.children("net_tie_pad_groups")
+        .flat_map(|node| node.values[1..].iter())
+        .filter_map(|value| match value {
+            Value::Atom(text) => Some(text),
+            _ => None,
+        })
+        .map(|text| {
+            text.split(',')
+                .map(|number| number.trim().to_string())
+                .filter(|number| !number.is_empty())
+                .collect()
+        })
+        .collect()
+}
+
 pub fn read_components(
     root: &Node,
     layers: &Layers,
@@ -463,9 +481,6 @@ pub fn read_components(
         .chain(root.children("module"))
         .enumerate()
     {
-        if fp.children("net_tie_pad_groups").next().is_some() {
-            return Err(PcbError::new(SECTION, "Net ties are not supported yet."));
-        }
         if fp.children("zone").next().is_some() {
             return Err(PcbError::new(
                 SECTION,
@@ -473,6 +488,48 @@ pub fn read_components(
             ));
         }
 
+        let groups = net_tie_groups(fp);
+        let mut tie_nets: HashMap<String, Vec<String>> = HashMap::new();
+        for group in &groups {
+            let mut members: Vec<(String, String)> = Vec::new();
+            let mut unknown = None;
+            for number in group {
+                match fp
+                    .children("pad")
+                    .find(|pad| pad.atom(1) == Some(number.as_str()))
+                {
+                    Some(pad) => members.push((number.clone(), nets.name_of(pad)?)),
+                    None => unknown = Some(number.clone()),
+                }
+            }
+            let distinct: BTreeSet<&String> = members.iter().map(|(_, net)| net).collect();
+            if let Some(number) = unknown {
+                warnings.push(format!(
+                    "Footprint {} names pad {number} in a net tie group but has no such pad; \
+                     the group is ignored.",
+                    footprint_reference(fp, fi)
+                ));
+                continue;
+            }
+            if distinct.len() < 2 {
+                warnings.push(format!(
+                    "Footprint {} has a net tie group spanning fewer than two nets; \
+                     the group is ignored.",
+                    footprint_reference(fp, fi)
+                ));
+                continue;
+            }
+            for (number, net) in &members {
+                let others: Vec<String> = members
+                    .iter()
+                    .filter(|(_, other)| other != net)
+                    .map(|(_, other)| other.clone())
+                    .collect();
+                tie_nets.insert(number.clone(), others);
+            }
+        }
+
+        let areas_before = conduction_areas.len();
         for node in child_nodes(fp) {
             let layer = node.value("layer").unwrap_or("");
             if !layers.could_be_copper(layer) {
@@ -510,6 +567,12 @@ pub fn read_components(
                         "Footprint copper graphics are not supported yet.",
                     ));
                 }
+            }
+        }
+
+        if !tie_nets.is_empty() {
+            for area in &mut conduction_areas[areas_before..] {
+                area.sourceFootprint = Some(fi.to_string());
             }
         }
 
@@ -659,6 +722,7 @@ pub fn read_components(
             let pad_json = PadJson {
                 sourceFootprint: Some(fi.to_string()),
                 sourcePadNumber: Some(pad.atom(1).unwrap_or("undefined").to_string()),
+                netTieNets: pad.atom(1).and_then(|number| tie_nets.get(number)).cloned(),
                 copperClearance: copper_clearance,
                 allowSolderMaskBridges: allow_solder_mask_bridges,
                 solderMaskExpansion: Some(solder_mask_expansion(raw_layers, mask_margin)),

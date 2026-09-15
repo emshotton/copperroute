@@ -270,6 +270,7 @@ pub fn write(board: &Board, design_name: &str) -> String {
             .push(ConductionAreaJson {
                 id: area_id,
                 netName: net_name,
+                sourceFootprint: None,
                 layerIndex: i32::try_from(area.get_layer()).unwrap_or(i32::MAX),
                 isObstacle: area.get_is_obstacle(),
                 polygon: Some(polygon),

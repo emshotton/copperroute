@@ -292,6 +292,7 @@ fn bbox_area(
     Ok(ConductionAreaJson {
         id: 0,
         netName: Some(String::new()),
+        sourceFootprint: None,
         layerIndex: layers.index_of(layer)?,
         isObstacle: true,
         polygon: Some(polygon),
@@ -321,6 +322,7 @@ pub fn read_copper_graphics(
                 areas.push(ConductionAreaJson {
                     id: 0,
                     netName: Some(String::new()),
+                    sourceFootprint: None,
                     layerIndex: layers.index_of(layer)?,
                     isObstacle: true,
                     polygon: Some(polygon),
