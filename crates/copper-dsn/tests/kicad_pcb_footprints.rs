@@ -61,6 +61,20 @@ fn read_areas_with_nets(body: &str) -> (Vec<copper_dsn::kicad::ConductionAreaJso
     (areas, warnings)
 }
 
+fn read_with_named_nets(
+    net_decls: &str,
+    body: &str,
+) -> (Vec<copper_dsn::kicad::ComponentJson>, Vec<String>) {
+    let text = format!("(kicad_pcb (version 20241229) {LAYERS} {net_decls} {body})");
+    let root = parse(&text).expect("it parses");
+    let layers = Layers::read(&root).expect("layers");
+    let nets = NetTable::read(&root).expect("nets");
+    let mut warnings = Vec::new();
+    let (components, _) =
+        read_components(&root, &layers, &nets, &mut warnings).expect("components");
+    (components, warnings)
+}
+
 #[test]
 fn it_gives_each_pad_its_own_component_at_absolute_position() {
     let (components, _) = read(concat!(
@@ -195,6 +209,104 @@ fn it_leaves_an_ordinary_footprints_copper_graphics_untagged() {
     let (areas, _) = read_areas_with_nets(text);
     assert_eq!(areas.len(), 1);
     assert!(areas[0].sourceFootprint.is_none());
+}
+
+#[test]
+fn it_unions_the_other_nets_when_a_pad_belongs_to_two_groups() {
+    let body = concat!(
+        r#"(footprint "NT" (layer "F.Cu") (at 0 0) (net_tie_pad_groups "1,2" "1,3")"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))"#,
+        r#" (pad "2" smd rect (at 0.5 0) (size 1 1) (layers "F.Cu") (net 2 "AGND"))"#,
+        r#" (pad "3" smd rect (at 1 0) (size 1 1) (layers "F.Cu") (net 3 "AVCC")))"#,
+    );
+    let (components, _) =
+        read_with_named_nets(r#"(net 1 "GND") (net 2 "AGND") (net 3 "AVCC")"#, body);
+    let pad_of = |index: usize| components[index].pads.as_ref().expect("pads")[0].clone();
+    assert_eq!(
+        pad_of(0).netTieNets.as_deref(),
+        Some(&["AGND".to_string(), "AVCC".to_string()][..])
+    );
+    assert_eq!(
+        pad_of(1).netTieNets.as_deref(),
+        Some(&["GND".to_string()][..])
+    );
+    assert_eq!(
+        pad_of(2).netTieNets.as_deref(),
+        Some(&["GND".to_string()][..])
+    );
+}
+
+#[test]
+fn it_keeps_disjoint_groups_separate() {
+    let body = concat!(
+        r#"(footprint "NT" (layer "F.Cu") (at 0 0) (net_tie_pad_groups "1,2" "3,4")"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))"#,
+        r#" (pad "2" smd rect (at 0.5 0) (size 1 1) (layers "F.Cu") (net 2 "AGND"))"#,
+        r#" (pad "3" smd rect (at 1 0) (size 1 1) (layers "F.Cu") (net 3 "AVCC"))"#,
+        r#" (pad "4" smd rect (at 1.5 0) (size 1 1) (layers "F.Cu") (net 4 "PGND")))"#,
+    );
+    let (components, _) = read_with_named_nets(
+        r#"(net 1 "GND") (net 2 "AGND") (net 3 "AVCC") (net 4 "PGND")"#,
+        body,
+    );
+    let pad_of = |index: usize| components[index].pads.as_ref().expect("pads")[0].clone();
+    assert_eq!(
+        pad_of(0).netTieNets.as_deref(),
+        Some(&["AGND".to_string()][..])
+    );
+    assert_eq!(
+        pad_of(1).netTieNets.as_deref(),
+        Some(&["GND".to_string()][..])
+    );
+    assert_eq!(
+        pad_of(2).netTieNets.as_deref(),
+        Some(&["PGND".to_string()][..])
+    );
+    assert_eq!(
+        pad_of(3).netTieNets.as_deref(),
+        Some(&["AVCC".to_string()][..])
+    );
+}
+
+#[test]
+fn it_warns_and_skips_a_group_with_an_unconnected_pad() {
+    let text = concat!(
+        r#"(footprint "NT" (layer "F.Cu") (at 0 0) (net_tie_pad_groups "1,2")"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))"#,
+        r#" (pad "2" smd rect (at 0.5 0) (size 1 1) (layers "F.Cu")))"#,
+    );
+    let (components, warnings) = read_with_nets(text);
+    assert!(components[0].pads.as_ref().expect("pads")[0]
+        .netTieNets
+        .is_none());
+    assert!(components[1].pads.as_ref().expect("pads")[0]
+        .netTieNets
+        .is_none());
+    assert!(
+        warnings.iter().any(|w| w.contains("net tie")),
+        "warnings: {warnings:?}"
+    );
+}
+
+#[test]
+fn it_ties_the_connected_pads_when_a_three_pad_group_has_one_unconnected_pad() {
+    let text = concat!(
+        r#"(footprint "NT" (layer "F.Cu") (at 0 0) (net_tie_pad_groups "1,2,3")"#,
+        r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))"#,
+        r#" (pad "2" smd rect (at 0.5 0) (size 1 1) (layers "F.Cu") (net 2 "AGND"))"#,
+        r#" (pad "3" smd rect (at 1 0) (size 1 1) (layers "F.Cu")))"#,
+    );
+    let (components, _) = read_with_nets(text);
+    let pad_of = |index: usize| components[index].pads.as_ref().expect("pads")[0].clone();
+    assert_eq!(
+        pad_of(0).netTieNets.as_deref(),
+        Some(&["AGND".to_string()][..])
+    );
+    assert_eq!(
+        pad_of(1).netTieNets.as_deref(),
+        Some(&["GND".to_string()][..])
+    );
+    assert!(pad_of(2).netTieNets.is_none());
 }
 
 #[test]

@@ -489,7 +489,7 @@ pub fn read_components(
         }
 
         let groups = net_tie_groups(fp);
-        let mut tie_nets: HashMap<String, Vec<String>> = HashMap::new();
+        let mut tie_nets: HashMap<String, BTreeSet<String>> = HashMap::new();
         for group in &groups {
             let mut members: Vec<(String, String)> = Vec::new();
             let mut unknown = None;
@@ -498,7 +498,12 @@ pub fn read_components(
                     .children("pad")
                     .find(|pad| pad.atom(1) == Some(number.as_str()))
                 {
-                    Some(pad) => members.push((number.clone(), nets.name_of(pad)?)),
+                    Some(pad) => {
+                        let net = nets.name_of(pad)?;
+                        if !net.is_empty() {
+                            members.push((number.clone(), net));
+                        }
+                    }
                     None => unknown = Some(number.clone()),
                 }
             }
@@ -520,12 +525,11 @@ pub fn read_components(
                 continue;
             }
             for (number, net) in &members {
-                let others: Vec<String> = members
+                let others = members
                     .iter()
                     .filter(|(_, other)| other != net)
-                    .map(|(_, other)| other.clone())
-                    .collect();
-                tie_nets.insert(number.clone(), others);
+                    .map(|(_, other)| other.clone());
+                tie_nets.entry(number.clone()).or_default().extend(others);
             }
         }
 
@@ -722,7 +726,10 @@ pub fn read_components(
             let pad_json = PadJson {
                 sourceFootprint: Some(fi.to_string()),
                 sourcePadNumber: Some(pad.atom(1).unwrap_or("undefined").to_string()),
-                netTieNets: pad.atom(1).and_then(|number| tie_nets.get(number)).cloned(),
+                netTieNets: pad
+                    .atom(1)
+                    .and_then(|number| tie_nets.get(number))
+                    .map(|others| others.iter().cloned().collect()),
                 copperClearance: copper_clearance,
                 allowSolderMaskBridges: allow_solder_mask_bridges,
                 solderMaskExpansion: Some(solder_mask_expansion(raw_layers, mask_margin)),
