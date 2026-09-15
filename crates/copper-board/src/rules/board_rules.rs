@@ -2,7 +2,7 @@ use crate::ids::{NetClassId, ViaInfoId, ViaRuleId};
 use crate::structure::{AngleRestriction, LayerStructure};
 
 use super::{
-    ClearanceClassIndexed, ClearanceMatrix, DrcConstraints, ItemClass, NetClasses, Nets,
+    ClearanceClassIndexed, ClearanceMatrix, DrcConstraints, ItemClass, NetClasses, NetTies, Nets,
     PadstackLookup, ViaInfos, ViaRule,
 };
 
@@ -17,6 +17,7 @@ pub struct BoardRules {
     pub via_rules: Vec<ViaRule>,
     pub net_classes: NetClasses,
     pub drc_constraints: Option<DrcConstraints>,
+    pub net_ties: NetTies,
     layer_structure: LayerStructure,
     pub trace_angle_restriction: AngleRestriction,
     ignore_conduction: bool,
@@ -39,6 +40,7 @@ impl BoardRules {
             via_rules: Vec::new(),
             net_classes: NetClasses::new(),
             drc_constraints: None,
+            net_ties: NetTies::default(),
             layer_structure,
             trace_angle_restriction: AngleRestriction::FortyFiveDegree,
             ignore_conduction: true,
