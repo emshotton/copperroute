@@ -142,8 +142,11 @@ violations in the statistics.
 
 What the design does *not* do carries as much weight. Because pads stay
 single-net, a foreign trace on a tie pad is still an obstacle and still a
-violation, and pads in different groups of one footprint are still obstacles to
-each other. The policing is inherited from not weakening the model.
+violation. Two pads of one footprint are exempt from each other only when each
+one's recorded nets hold the other's net; as with KiCad's own per-item netcode
+cache, this means two groups of one footprint that span the same net pair are
+mutually exempt too, even though they were declared separately. The policing
+is inherited from not weakening the model.
 
 ## DRC
 
