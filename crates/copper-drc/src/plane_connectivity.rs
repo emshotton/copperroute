@@ -132,6 +132,11 @@ impl PlaneConnectivity {
     }
 
     #[must_use]
+    pub fn cluster_counts(&self) -> &BTreeMap<i32, usize> {
+        &self.clusters
+    }
+
+    #[must_use]
     pub fn splits_more_than(&self, other: &PlaneConnectivity) -> bool {
         self.clusters.iter().any(|(net, count)| {
             other
@@ -139,6 +144,56 @@ impl PlaneConnectivity {
                 .get(net)
                 .is_none_or(|previous| count > previous)
         })
+    }
+}
+
+/// How much further a routed board's pours fragment than the board the design file described.
+/// Both sides are measured with the same model over the same pour outlines, so the model's own
+/// approximations cancel and only the routing's effect on the planes is left.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct PlaneFragmentation {
+    pub added_splits: usize,
+    pub nets: Vec<PlaneNetFragmentation>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlaneNetFragmentation {
+    pub net: String,
+    pub before: usize,
+    pub after: usize,
+}
+
+impl PlaneFragmentation {
+    #[must_use]
+    pub fn between(
+        before: &PlaneConnectivity,
+        after: &PlaneConnectivity,
+        board: &Board,
+    ) -> PlaneFragmentation {
+        let mut nets = Vec::new();
+        let mut added_splits = 0;
+        for (net, after_count) in after.cluster_counts() {
+            let before_count = before.cluster_counts().get(net).copied().unwrap_or(1);
+            if *after_count <= before_count {
+                continue;
+            }
+            added_splits += after_count - before_count;
+            nets.push(PlaneNetFragmentation {
+                net: board
+                    .rules
+                    .nets
+                    .get(*net)
+                    .map_or_else(|| net.to_string(), |net| net.name.clone()),
+                before: before_count,
+                after: *after_count,
+            });
+        }
+        PlaneFragmentation { added_splits, nets }
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.added_splits == 0
     }
 }
 

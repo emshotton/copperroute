@@ -1,9 +1,19 @@
 # copper-drc
 
-The design-rule checker. It answers three questions about a board — *which
-rules are violated, which items are unconnected, and how many connections
-are still incomplete* — and writes the answer as a KiCad DRC report. Use
+The design-rule checker. It answers four questions about a board — *which
+rules are violated, which items are unconnected, how many connections
+are still incomplete, and how much further the routing fragmented the copper
+pours* — and writes the answer as a KiCad DRC report. Use
 `copper_drc::prelude::*` to bring in every public type.
+
+The pour question is asked differentially. `PlaneConnectivity` models a refill
+on a raster, and that model is an approximation of the CAD tool's own filler,
+not a match for it: it erodes without re-inflating, has no thermal reliefs, and
+assumes a zone clearance the design file cannot supply. `PlaneFragmentation`
+therefore compares two runs of the same model over the same pour outlines —
+before and after a session — so the approximations cancel and what is left is
+the routing's own effect. An absolute cluster count from this model is not a
+claim about the board; a rise in one between two runs is.
 
 The crate sits on `copper-board` (the boards it checks) and on `copper-dsn` (for
 `CoordinateTransform` and the shared JSON formatter), and depends on `serde`,

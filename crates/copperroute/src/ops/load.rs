@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use copper_board::Board;
 use copper_core::{FileFormat, RoutingJob, SessionId};
+use copper_drc::PlaneConnectivity;
 use copper_dsn::{BoardMetadata, CoordinateTransform};
 use copper_settings::sources::DsnFileSettings;
 use copper_settings::{HostEnvironment, RouterSettings, SettingsSource};
@@ -46,6 +47,9 @@ pub struct Loaded {
     pub metadata: Option<BoardMetadata>,
     pub settings: RouterSettings,
     pub warnings: Vec<String>,
+    /// The planes as the design file described them, measured before a session was imported
+    /// over the top. Absent when no session was.
+    pub planes_before_session: Option<PlaneConnectivity>,
 }
 
 pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
@@ -164,6 +168,9 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
             .map_err(|error| OpError::Input(format!("Invalid pad clearance metadata: {error}")))?;
         apply_pad_clearance_metadata(&mut board, &floors)?;
     }
+    let planes_before_session = request.session.as_deref().map(|_| {
+        PlaneConnectivity::with_zone_clearance_um(&board, settings.get_zone_clearance_um())
+    });
     import_session(request.session.as_deref(), &mut board, &transform);
 
     job.router_settings = settings.clone();
@@ -175,6 +182,7 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
         metadata: parsed.metadata,
         settings,
         warnings: parsed.warnings,
+        planes_before_session,
     })
 }
 

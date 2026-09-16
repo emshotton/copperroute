@@ -17,6 +17,7 @@ pub struct KiCadDrcReport {
     pub violations: Vec<KiCadDrcViolation>,
     pub schematic_parity: Vec<serde_json::Value>,
     pub quality_score: Option<f64>,
+    pub plane_fragmentation: Option<crate::PlaneFragmentation>,
 }
 
 impl KiCadDrcReport {
@@ -37,6 +38,7 @@ impl KiCadDrcReport {
             violations: Vec::new(),
             schematic_parity: Vec::new(),
             quality_score: None,
+            plane_fragmentation: None,
         }
     }
 

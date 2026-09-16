@@ -48,6 +48,32 @@ impl Serialize for ReportSer<'_> {
         if let Some(score) = report.quality_score {
             map.serialize_entry("quality_score", &score)?;
         }
+        if let Some(fragmentation) = report.plane_fragmentation.as_ref() {
+            map.serialize_entry("plane_fragmentation", &FragmentationSer(fragmentation))?;
+        }
+        map.end()
+    }
+}
+
+struct FragmentationSer<'a>(&'a crate::PlaneFragmentation);
+
+impl Serialize for FragmentationSer<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serializer.serialize_map(None)?;
+        map.serialize_entry("added_splits", &self.0.added_splits)?;
+        let nets: Vec<serde_json::Value> = self
+            .0
+            .nets
+            .iter()
+            .map(|net| {
+                serde_json::json!({
+                    "net": net.net,
+                    "clusters_before": net.before,
+                    "clusters_after": net.after,
+                })
+            })
+            .collect();
+        map.serialize_entry("nets", &nets)?;
         map.end()
     }
 }

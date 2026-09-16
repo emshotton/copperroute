@@ -1,7 +1,7 @@
 use copper_board::Board;
 use copper_core::{BoardStatistics, RoutingJob};
-use copper_drc::DesignRulesChecker;
 use copper_drc::report::{DrcCoordinates, DrcReportOptions, KiCadDrcReport};
+use copper_drc::{DesignRulesChecker, PlaneConnectivity, PlaneFragmentation};
 use copper_settings::sources::DsnFileSettings;
 use copper_settings::{HostEnvironment, SettingsSource};
 
@@ -28,6 +28,8 @@ pub fn drc(request: &DrcRequest) -> Result<DrcOutcome, OpError> {
         mut board,
         transform,
         warnings,
+        settings,
+        planes_before_session,
         ..
     } = load(&request.load)?;
     let source = job.get_input().map_or_else(
@@ -48,6 +50,11 @@ pub fn drc(request: &DrcRequest) -> Result<DrcOutcome, OpError> {
     };
     let mut report = DesignRulesChecker::new(&mut board).generate_report(&coords, &options);
     report.quality_score = quality_score(&mut board, &job, &request.load.settings).map(f64::from);
+    report.plane_fragmentation = planes_before_session.as_ref().map(|before| {
+        let after =
+            PlaneConnectivity::with_zone_clearance_um(&board, settings.get_zone_clearance_um());
+        PlaneFragmentation::between(before, &after, &board)
+    });
 
     let json = report
         .to_json()

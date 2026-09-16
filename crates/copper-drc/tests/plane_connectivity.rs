@@ -2,7 +2,7 @@ mod common;
 
 use common::synthetic::{PadSpec, SyntheticBoard};
 use copper_board::prelude::*;
-use copper_drc::{DEFAULT_ZONE_CLEARANCE_UM, PlaneConnectivity};
+use copper_drc::{DEFAULT_ZONE_CLEARANCE_UM, PlaneConnectivity, PlaneFragmentation};
 use copper_geometry::{Area, IntBox, IntVector, Shape, TileShape};
 
 const GND: i32 = 1;
@@ -215,4 +215,34 @@ fn the_zone_clearance_decides_whether_a_gap_survives_the_refill() {
     assert_eq!(narrow.cluster_count(GND), Some(1));
     assert_eq!(wide.cluster_count(GND), Some(2));
     assert!(wide.splits_more_than(&narrow));
+}
+
+#[test]
+fn fragmentation_reports_only_the_nets_the_routing_made_worse() {
+    let mut synthetic = board_with_pour(&[0]);
+    let before = PlaneConnectivity::of(&synthetic.board);
+    wall(&mut synthetic, -45_000, 45_000);
+    let after = PlaneConnectivity::of(&synthetic.board);
+
+    let fragmentation = PlaneFragmentation::between(&before, &after, &synthetic.board);
+
+    assert_eq!(fragmentation.added_splits, 1);
+    assert_eq!(fragmentation.nets.len(), 1);
+    assert_eq!(fragmentation.nets[0].before, 1);
+    assert_eq!(fragmentation.nets[0].after, 2);
+    assert!(!fragmentation.is_empty());
+}
+
+#[test]
+fn fragmentation_is_empty_when_the_routing_left_the_pour_whole() {
+    let mut synthetic = board_with_pour(&[0]);
+    let before = PlaneConnectivity::of(&synthetic.board);
+    wall(&mut synthetic, -45_000, -7_000);
+    wall(&mut synthetic, 7_000, 45_000);
+    let after = PlaneConnectivity::of(&synthetic.board);
+
+    let fragmentation = PlaneFragmentation::between(&before, &after, &synthetic.board);
+
+    assert!(fragmentation.is_empty());
+    assert!(fragmentation.nets.is_empty());
 }
