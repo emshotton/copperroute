@@ -13,6 +13,7 @@ use crate::pipeline::batch_loop::stat;
 use crate::pipeline::counters::RouterCounters;
 use crate::pipeline::fanout::{instant_offset_ms, parse_timespan_seconds};
 use crate::pipeline::item_route_result::ItemRouteResult;
+use crate::pipeline::plane::plane_connectivity_of;
 use crate::pipeline::stop::{
     DeterministicWorkBudget, PassRecord, ProgressThrottler, RouterBudget, RouterStop,
 };
@@ -285,7 +286,7 @@ impl<'a> BatchOptimizer<'a> {
         }
         let plane_connectivity_before = self
             .plane_connectivity
-            .get_or_insert_with(|| PlaneConnectivity::of(board))
+            .get_or_insert_with(|| plane_connectivity_of(board, self.settings))
             .clone();
 
         let mut ripped_items: BTreeSet<ItemId> = BTreeSet::new();
@@ -428,7 +429,7 @@ impl<'a> BatchOptimizer<'a> {
             !stop.is_stop_requested() && !self.search_work_budget_spent() && result.improved();
         let plane_connectivity_after =
             (route_improved && snapshot.is_some() && !plane_connectivity_before.is_empty())
-                .then(|| PlaneConnectivity::of(board));
+                .then(|| plane_connectivity_of(board, self.settings));
         let route_improved = route_improved
             && plane_connectivity_after
                 .as_ref()

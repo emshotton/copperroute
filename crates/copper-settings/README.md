@@ -15,8 +15,9 @@ applied becomes a `MergeReport::errors` entry. No static mutable state.
 `RouterSettings` is the root: `enabled`, `algorithm`, `max_passes`,
 `max_items`, `max_threads`, `vias_allowed`, `automatic_neckdown`,
 `strict_drc`, `trace_pull_tight_accuracy`, `copper_to_edge_clearance_um`,
-`hole_clearance_um`, `neck_width_um`, `job_timeout_string`,
-`result_json_path`, `ignore_net_classes`, `save_intermediate_stages`,
+`hole_clearance_um`, `zone_clearance_um`, `neck_width_um`,
+`job_timeout_string`, `result_json_path`, `ignore_net_classes`,
+`save_intermediate_stages`,
 `opt_changed_area_ms`, `smd_via_relaxation`, `failure_give_up_threshold`, a
 per-layer `layers: Vec<LayerSettings>`, and the nested `fanout:
 FanoutSettings`, `optimizer: OptimizerSettings` and `scoring:
@@ -138,7 +139,9 @@ public (`DEFAULT_VIA_COSTS = 50`, `DEFAULT_PLANE_VIA_COSTS = 5`,
 `DEFAULT_CLEARANCE_VIOLATION_PENALTY = 1e6`,
 `DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM = 500.0`,
 `DEFAULT_HOLE_CLEARANCE_UM = 0.0`). `layers` and the two cost arrays are left
-absent — their size depends on the board.
+absent — their size depends on the board. `zone_clearance_um` defaults to
+`router_settings::DEFAULT_ZONE_CLEARANCE_UM` (500.0): the zone clearance the
+copper-pour refill model assumes, since no design file carries one.
 
 Clamps live on the setters: `set_bend_cost` clamps to `[0.0, 9.9]`;
 `set_via_costs`, `set_plane_via_costs` and `set_start_ripup_costs` floor at

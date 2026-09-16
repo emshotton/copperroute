@@ -45,7 +45,7 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -91,7 +91,7 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -184,7 +184,7 @@
 [s8] viapadstacks count=2
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
 [s8] viapadstack 1 name=via_power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -401,7 +401,7 @@
 [s8] viapadstacks count=2
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
 [s8] viapadstack 1 name=via_Power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -440,7 +440,7 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=1
 [s8] warning 0 Board Outline/Boundary is missing or empty in the JSON file. A supposed board edge around components with 5mm padding was generated.
@@ -480,7 +480,7 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=1
 [s8] warning 0 Board Outline/Boundary is missing or empty in the JSON file. A supposed board edge around components with 5mm padding was generated.
@@ -574,7 +574,7 @@
 [s8] viapadstacks count=2
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
 [s8] viapadstack 1 name=via_power fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=um resolution=10 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -608,7 +608,7 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=1
 [s8] warning 0 Board Outline/Boundary is missing or empty in the JSON file. A supposed board edge around components with 5mm padding was generated.
@@ -672,7 +672,7 @@
 [s8] viapadstacks count=2
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=2 attachAllowed=true placedAbsolute=false
 [s8] viapadstack 1 name=via_HV fromLayer=0 toLayer=2 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=3 unit=mil resolution=1 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -706,7 +706,7 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=um resolution=10 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -740,7 +740,7 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -773,7 +773,7 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -807,7 +807,7 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=2 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -841,7 +841,7 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=1 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -876,7 +876,7 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=1
 [s8] warning 0 Board Outline/Boundary is missing or empty in the JSON file. A supposed board edge around components with 5mm padding was generated.
@@ -912,7 +912,7 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -945,7 +945,7 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mil resolution=1 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -992,7 +992,7 @@
 [s8] viapadstacks count=2
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
 [s8] viapadstack 1 name=via_A fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0
 
@@ -1043,6 +1043,6 @@
 [s8] viarule 0 name=default vias=[defaultVia]
 [s8] viapadstacks count=1
 [s8] viapadstack 0 name=defaultVia fromLayer=0 toLayer=1 attachAllowed=true placedAbsolute=false
-[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE ignoreConduction=true
+[s8] boardrules holeClearance=0 minTraceHalfWidth=100000 maxTraceHalfWidth=100 traceAngleRestriction=FORTYFIVE_DEGREE
 [s8] metadata hostCad=KiCad hostVersion=v10.0 layerCount=2 unit=mm resolution=10000 snapAngle=FORTYFIVE_DEGREE routerSettings=<null>
 [s8] warnings count=0

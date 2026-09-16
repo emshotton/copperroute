@@ -17,7 +17,7 @@ pub use checker::DesignRulesChecker;
 pub use constraints::apply_kicad_project;
 pub use error::DrcError;
 pub use net_incompletes::{NetIncompletes, all_airlines};
-pub use plane_connectivity::PlaneConnectivity;
+pub use plane_connectivity::{DEFAULT_ZONE_CLEARANCE_UM, PlaneConnectivity};
 pub use report::{
     DrcCoordinates, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport, KiCadDrcViolation,
     KiCadDrcViolationItem,
@@ -33,7 +33,7 @@ pub mod prelude {
     pub use crate::checker::DesignRulesChecker;
     pub use crate::error::DrcError;
     pub use crate::net_incompletes::NetIncompletes;
-    pub use crate::plane_connectivity::PlaneConnectivity;
+    pub use crate::plane_connectivity::{DEFAULT_ZONE_CLEARANCE_UM, PlaneConnectivity};
     pub use crate::report::{
         DrcCoordinates, DrcReportOptions, KiCadDrcPosition, KiCadDrcReport, KiCadDrcViolation,
         KiCadDrcViolationItem,

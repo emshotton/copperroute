@@ -6,6 +6,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{FanoutSettings, HostEnvironment, LayerSettings, OptimizerSettings, ScoringSettings};
 
+/// KiCad fills a zone with its own zone clearance rather than the net-class clearance the
+/// tracks were routed with, and a Specctra design carries no zone clearance at all, so the
+/// refill model needs a value the board cannot supply. 0.5 mm is KiCad's own default.
+pub const DEFAULT_ZONE_CLEARANCE_UM: f64 = 500.0;
+
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct RouterSettings {
     #[serde(rename = "enabled", default, skip_serializing_if = "Option::is_none")]
@@ -34,6 +39,13 @@ pub struct RouterSettings {
         skip_serializing_if = "Option::is_none"
     )]
     pub hole_clearance_um: Option<f64>,
+
+    #[serde(
+        rename = "zone_clearance_um",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub zone_clearance_um: Option<f64>,
 
     #[serde(
         rename = "neck_width_um",
@@ -170,6 +182,7 @@ impl RouterSettings {
         "fanout",
         "copper_to_edge_clearance_um",
         "hole_clearance_um",
+        "zone_clearance_um",
         "neck_width_um",
         "strict_drc",
         "job_timeout_string",
@@ -230,6 +243,12 @@ impl RouterSettings {
 
     pub fn get_neck_width_um(&self) -> f64 {
         self.neck_width_um.filter(|v| *v > 0.0).unwrap_or(0.0)
+    }
+
+    pub fn get_zone_clearance_um(&self) -> f64 {
+        self.zone_clearance_um
+            .filter(|v| *v >= 0.0)
+            .unwrap_or(DEFAULT_ZONE_CLEARANCE_UM)
     }
 
     pub fn is_strict_drc(&self) -> bool {
@@ -529,6 +548,7 @@ impl RouterSettings {
         result.save_intermediate_stages = self.save_intermediate_stages;
         result.copper_to_edge_clearance_um = self.copper_to_edge_clearance_um;
         result.hole_clearance_um = self.hole_clearance_um;
+        result.zone_clearance_um = self.zone_clearance_um;
         result.neck_width_um = self.neck_width_um;
         result.strict_drc = self.strict_drc;
         result.ignore_net_classes = self.ignore_net_classes.clone();

@@ -616,6 +616,7 @@ fn field_kinds_match_the_java_field_types() {
             ("fanout", Nested),
             ("copper_to_edge_clearance_um", F64),
             ("hole_clearance_um", F64),
+            ("zone_clearance_um", F64),
             ("neck_width_um", F64),
             ("strict_drc", Bool),
             ("job_timeout_string", Str),

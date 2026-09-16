@@ -2,7 +2,7 @@ mod common;
 
 use common::synthetic::{PadSpec, SyntheticBoard};
 use copper_board::prelude::*;
-use copper_drc::PlaneConnectivity;
+use copper_drc::{DEFAULT_ZONE_CLEARANCE_UM, PlaneConnectivity};
 use copper_geometry::{Area, IntBox, IntVector, Shape, TileShape};
 
 const GND: i32 = 1;
@@ -190,4 +190,29 @@ fn a_smaller_pour_nested_in_another_net_pour_keeps_its_own_copper() {
 
     assert_eq!(connectivity.cluster_count(RAIL), Some(1));
     assert_eq!(connectivity.cluster_count(GND), Some(1));
+}
+
+#[test]
+fn of_is_the_default_zone_clearance() {
+    let synthetic = board_with_pour(&[0]);
+
+    assert_eq!(
+        PlaneConnectivity::of(&synthetic.board),
+        PlaneConnectivity::with_zone_clearance_um(&synthetic.board, DEFAULT_ZONE_CLEARANCE_UM)
+    );
+}
+
+#[test]
+fn the_zone_clearance_decides_whether_a_gap_survives_the_refill() {
+    let mut synthetic = board_with_pour(&[0]);
+    wall(&mut synthetic, -45_000, -7_000);
+    wall(&mut synthetic, 7_000, 45_000);
+
+    // The board's unit is the mil: 25 400 um is 1000 board units, 254 000 um is 10 000.
+    let narrow = PlaneConnectivity::with_zone_clearance_um(&synthetic.board, 25_400.0);
+    let wide = PlaneConnectivity::with_zone_clearance_um(&synthetic.board, 254_000.0);
+
+    assert_eq!(narrow.cluster_count(GND), Some(1));
+    assert_eq!(wide.cluster_count(GND), Some(2));
+    assert!(wide.splits_more_than(&narrow));
 }

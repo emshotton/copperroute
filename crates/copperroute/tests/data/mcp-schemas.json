@@ -250,6 +250,10 @@
       "trace_pull_tight_accuracy": {
         "description": "How hard the optimizer pulls a trace tight; larger is more accurate and slower.",
         "type": "integer"
+      },
+      "zone_clearance_um": {
+        "description": "Zone clearance the copper-pour refill is modelled with, in micrometres. A design file carries no zone clearance, so this stands in for the CAD tool's own; 500 (KiCad's default) unless set.",
+        "type": "number"
       }
     },
     "title": "RouterSettings",

@@ -208,6 +208,7 @@ fn field_names_pin_javas_declaration_order() {
             "fanout",
             "copper_to_edge_clearance_um",
             "hole_clearance_um",
+            "zone_clearance_um",
             "neck_width_um",
             "strict_drc",
             "job_timeout_string",

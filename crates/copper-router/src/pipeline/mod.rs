@@ -10,6 +10,7 @@ pub mod fanout;
 pub mod item_route_result;
 pub mod optimizer;
 pub mod pass_runner;
+pub mod plane;
 pub mod run;
 pub mod stop;
 pub mod unrouted_report;
@@ -34,6 +35,7 @@ pub use optimizer::{
     optimizer_ripup_costs, optimizer_route_improved,
 };
 pub use pass_runner::AutoroutePassRunner;
+pub use plane::plane_connectivity_of;
 pub use run::{PipelineResult, normalize_router_algorithm, run_pipeline};
 pub use stop::{
     CancelPoll, DeterministicWorkBudget, PassRecord, ProgressThrottler, RouterBudget, RouterStop,

@@ -105,6 +105,7 @@ pub fn router_settings_schema() -> Value {
             "fanout": fanout_schema(),
             "copper_to_edge_clearance_um": { "type": "number", "description": "Clearance between copper and the board outline, in micrometres. Applied to the board at load time." },
             "hole_clearance_um": { "type": "number", "description": "Clearance between copper and drilled holes, in micrometres. Applied to the board at load time." },
+            "zone_clearance_um": { "type": "number", "description": "Zone clearance the copper-pour refill is modelled with, in micrometres. A design file carries no zone clearance, so this stands in for the CAD tool's own; 500 (KiCad's default) unless set." },
             "neck_width_um": { "type": "number", "description": "Trace width, in micrometres, used where a full-width trace will not fit (see automatic_neckdown)." },
             "strict_drc": { "type": "boolean", "description": "Refuse a route that would leave a clearance violation, rather than accepting it and scoring the penalty." },
             "job_timeout": { "type": "string", "description": "Wall-clock budget for the whole job, as a timespan (for example 01:30:00 or 90s). Empty means no budget. A job that overruns it answers timed_out: true." },

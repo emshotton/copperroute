@@ -448,6 +448,7 @@ fn populated_router() -> RouterSettings {
     s.fanout = Some(populated_fanout());
     s.copper_to_edge_clearance_um = Some(41.5);
     s.hole_clearance_um = Some(42.5);
+    s.zone_clearance_um = Some(375.0);
     s.neck_width_um = Some(43.5);
     s.strict_drc = Some(true);
     s.job_timeout_string = Some("11m".to_string());

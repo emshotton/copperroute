@@ -81,6 +81,12 @@ impl RouterSettings {
             FieldKind::F64,
         ),
         spec(
+            "zone_clearance_um",
+            "zoneClearanceUm",
+            "zone_clearance_um",
+            FieldKind::F64,
+        ),
+        spec(
             "neck_width_um",
             "neckWidthUm",
             "neck_width_um",
@@ -642,6 +648,7 @@ fn set_router_leaf(
             target.copper_to_edge_clearance_um = Some(parse_f64(value, path)?);
         }
         "hole_clearance_um" => target.hole_clearance_um = Some(parse_f64(value, path)?),
+        "zone_clearance_um" => target.zone_clearance_um = Some(parse_f64(value, path)?),
         "neck_width_um" => target.neck_width_um = Some(parse_f64(value, path)?),
         "strict_drc" => target.strict_drc = Some(parse_bool(value)),
         "job_timeout_string" => target.job_timeout_string = Some(value.to_string()),

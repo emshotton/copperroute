@@ -447,6 +447,12 @@ impl CopyFields for RouterSettings {
             mode,
             report,
         );
+        scalar_copy(
+            &self.zone_clearance_um,
+            &mut target.zone_clearance_um,
+            mode,
+            report,
+        );
         scalar_copy(&self.neck_width_um, &mut target.neck_width_um, mode, report);
         scalar_copy(&self.strict_drc, &mut target.strict_drc, mode, report);
         scalar_copy(

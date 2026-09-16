@@ -50,6 +50,7 @@ impl DefaultSettings {
         settings.max_threads = Some(host.default_max_threads());
         settings.copper_to_edge_clearance_um = Some(Self::DEFAULT_COPPER_TO_EDGE_CLEARANCE_UM);
         settings.hole_clearance_um = Some(Self::DEFAULT_HOLE_CLEARANCE_UM);
+        settings.zone_clearance_um = Some(crate::router_settings::DEFAULT_ZONE_CLEARANCE_UM);
         settings.neck_width_um = Some(0.0);
         settings.strict_drc = Some(false);
         settings.smd_via_relaxation = Some(true);

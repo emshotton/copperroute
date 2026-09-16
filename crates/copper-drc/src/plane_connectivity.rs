@@ -8,9 +8,9 @@ const MAX_CELLS_PER_LAYER: f64 = 1_000_000.0;
 const CELLS_ACROSS_MIN_FEATURE: f64 = 4.0;
 const HALF_CELL_DIAGONAL: f64 = std::f64::consts::FRAC_1_SQRT_2;
 /// A Specctra design carries no zone clearance, only the net-class clearance the tracks were
-/// routed with; KiCad fills its zones with its own zone clearance, 0.5 mm unless the board
-/// says otherwise, so the pour retreats further from the tracks than the routing rules imply.
-const ASSUMED_ZONE_CLEARANCE_MM: f64 = 0.5;
+/// routed with; KiCad fills its zones with its own zone clearance, so the pour retreats further
+/// from the tracks than the routing rules imply. The board cannot supply it, so callers do.
+pub const DEFAULT_ZONE_CLEARANCE_UM: f64 = 500.0;
 
 /// The copper clusters each plane net falls into once its pours are refilled around the routed
 /// items. A pour keeps the rule clearance from every other-net item and drops copper narrower
@@ -24,6 +24,11 @@ pub struct PlaneConnectivity {
 impl PlaneConnectivity {
     #[must_use]
     pub fn of(board: &Board) -> PlaneConnectivity {
+        PlaneConnectivity::with_zone_clearance_um(board, DEFAULT_ZONE_CLEARANCE_UM)
+    }
+
+    #[must_use]
+    pub fn with_zone_clearance_um(board: &Board, zone_clearance_um: f64) -> PlaneConnectivity {
         let ctx = board.ctx();
         let pours = pours_by_layer(board, &ctx);
         if pours.is_empty() {
@@ -31,7 +36,8 @@ impl PlaneConnectivity {
         }
         let plane_nets: BTreeSet<i32> = pours.values().flatten().map(|pour| pour.net).collect();
         let bounds = board.get_bounding_box_of_items(board.items_in_board_order());
-        let zone_clearance_floor = ASSUMED_ZONE_CLEARANCE_MM * board_units_per_mm(board);
+        let zone_clearance_floor =
+            zone_clearance_um.max(0.0) * board_units_per_mm(board) / 1000.0;
         let cell = cell_size(board, &pours, zone_clearance_floor, &bounds);
         let signal_layers: Vec<usize> = (0..board.get_layer_count())
             .filter(|layer| board.layer_structure().layers[*layer].is_signal)
