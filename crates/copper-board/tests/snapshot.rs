@@ -485,14 +485,7 @@ fn the_conduction_area_flags_reach_the_hash() {
         panic!("the conduction area");
     };
     c.set_is_obstacle(false);
-    let after = a.structural_hash();
-    assert_ne!(after, before, "isObstacle");
-
-    let Some(Item::ConductionArea(c)) = a.get_item_mut(area) else {
-        panic!("the conduction area");
-    };
-    c.set_is_filled(false);
-    assert_ne!(a.structural_hash(), after, "isFilled");
+    assert_ne!(a.structural_hash(), before, "isObstacle");
 }
 
 #[test]

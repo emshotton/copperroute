@@ -761,34 +761,6 @@ impl Board {
         }
     }
 
-    pub fn unfill_conduction_areas(&mut self) {
-        self.rules.set_ignore_conduction(true);
-        for item in self.items.values_mut() {
-            if let Item::ConductionArea(area) = item {
-                area.set_is_filled(false);
-                area.set_is_obstacle(false);
-            }
-        }
-        self.reinsert_tree_items();
-    }
-
-    pub fn change_conduction_is_obstacle(&mut self, value: bool) {
-        let mut something_changed = false;
-        for item in self.items.values_mut() {
-            if let Item::ConductionArea(area) = item {
-                let is_signal = self.rules.layer_structure().layers[area.get_layer()].is_signal;
-                if is_signal && area.get_is_obstacle() != value {
-                    area.set_is_obstacle(value);
-                    something_changed = true;
-                }
-            }
-        }
-        self.rules.set_ignore_conduction(!value);
-        if something_changed {
-            self.reinsert_tree_items();
-        }
-    }
-
     pub fn reinsert_tree_items(&mut self) {
         let mut items = std::mem::take(&mut self.items);
         let ctx = item_ctx!(self);

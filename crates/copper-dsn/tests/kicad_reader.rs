@@ -332,12 +332,11 @@ fn emit(result: &BoardReadResult) -> Vec<String> {
 
     rows.push(format!(
         "boardrules holeClearance={} minTraceHalfWidth={} maxTraceHalfWidth={} \
-         traceAngleRestriction={} ignoreConduction={}",
+         traceAngleRestriction={}",
         board.rules.get_hole_clearance(),
         board.rules.get_min_trace_half_width(),
         board.rules.get_max_trace_half_width(),
-        angle_restriction_name(board.rules.trace_angle_restriction),
-        board.rules.get_ignore_conduction()
+        angle_restriction_name(board.rules.trace_angle_restriction)
     ));
 
     let metadata: &BoardMetadata = metadata.as_ref().expect("the tail always builds one");

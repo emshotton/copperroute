@@ -20,7 +20,6 @@ pub struct BoardRules {
     pub net_ties: NetTies,
     layer_structure: LayerStructure,
     pub trace_angle_restriction: AngleRestriction,
-    ignore_conduction: bool,
     min_trace_half_width: i32,
     max_trace_half_width: i32,
     pin_edge_to_turn_dist: f64,
@@ -43,7 +42,6 @@ impl BoardRules {
             net_ties: NetTies::default(),
             layer_structure,
             trace_angle_restriction: AngleRestriction::FortyFiveDegree,
-            ignore_conduction: true,
             min_trace_half_width: 100_000,
             max_trace_half_width: 100,
             pin_edge_to_turn_dist: 0.0,
@@ -371,14 +369,6 @@ impl BoardRules {
         self.pin_edge_to_turn_dist = value;
     }
 
-    pub fn get_ignore_conduction(&self) -> bool {
-        self.ignore_conduction
-    }
-
-    pub fn set_ignore_conduction(&mut self, value: bool) {
-        self.ignore_conduction = value;
-    }
-
     pub fn get_use_slow_autoroute_algorithm(&self) -> bool {
         self.use_slow_autoroute_algorithm
     }
@@ -458,7 +448,6 @@ mod tests {
             rules.trace_angle_restriction,
             AngleRestriction::FortyFiveDegree
         );
-        assert!(rules.get_ignore_conduction());
         assert_eq!(rules.get_min_trace_half_width(), 100_000);
         assert_eq!(rules.get_max_trace_half_width(), 100);
         assert_eq!(rules.get_hole_clearance(), 0);
@@ -785,8 +774,6 @@ mod tests {
     #[test]
     fn accessor_round_trips() {
         let mut rules = rules();
-        rules.set_ignore_conduction(false);
-        assert!(!rules.get_ignore_conduction());
         rules.set_pin_edge_to_turn_dist(3.5);
         assert_eq!(rules.get_pin_edge_to_turn_dist(), 3.5);
         rules.set_use_slow_autoroute_algorithm(true);

@@ -1375,12 +1375,9 @@ mod tests {
     }
 
     #[test]
-    fn conduction_area_copy_resets_is_filled_to_true() {
-        let mut area = ConductionArea::new(hdr(1, vec![5]), area_data(), true);
-        area.set_is_filled(false);
-        assert!(!area.get_is_filled());
+    fn conduction_area_copy_keeps_is_obstacle() {
+        let area = ConductionArea::new(hdr(1, vec![5]), area_data(), true);
         let copy = area.copy(ItemId(2)).expect("one net, so the copy succeeds");
-        assert!(copy.get_is_filled());
         assert!(copy.get_is_obstacle());
     }
 
@@ -1501,14 +1498,11 @@ mod tests {
     }
 
     #[test]
-    fn conduction_area_flags_round_trip() {
+    fn conduction_area_is_obstacle_round_trips() {
         let mut area = ConductionArea::new(hdr(1, vec![]), area_data(), false);
         assert!(!area.get_is_obstacle());
-        assert!(area.get_is_filled());
         area.set_is_obstacle(true);
         assert!(area.get_is_obstacle());
-        area.set_is_filled(false);
-        assert!(!area.get_is_filled());
     }
 
     #[test]

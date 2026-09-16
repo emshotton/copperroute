@@ -1056,43 +1056,6 @@ fn remove_items_marking_changed_area_marks_what_it_removed() {
     assert_eq!(board.get_item(ItemId(5)), None);
 }
 
-#[test]
-fn change_conduction_is_obstacle_applies_what_it_is_asked() {
-    let mut board = p2t11_board();
-    assert!(board.rules.get_ignore_conduction());
-    assert!(is_obstacle(&board, 8));
-
-    board.change_conduction_is_obstacle(false);
-    assert!(board.rules.get_ignore_conduction());
-    assert!(!is_obstacle(&board, 8));
-    board.change_conduction_is_obstacle(false);
-    assert!(board.rules.get_ignore_conduction());
-    assert!(!is_obstacle(&board, 8));
-
-    // And back: `true` into every signal-layer conduction area, and `ignoreConduction = !true`.
-    board.change_conduction_is_obstacle(true);
-    assert!(!board.rules.get_ignore_conduction());
-    assert!(is_obstacle(&board, 8));
-    board.change_conduction_is_obstacle(true);
-    assert!(!board.rules.get_ignore_conduction());
-    assert!(is_obstacle(&board, 8));
-}
-
-#[test]
-fn unfill_conduction_areas_clears_both_flags_and_reinserts() {
-    let mut board = p2t11_board();
-    board.change_conduction_is_obstacle(true);
-    board.unfill_conduction_areas();
-    assert!(board.rules.get_ignore_conduction());
-    assert!(!is_obstacle(&board, 8));
-    assert!(!is_filled(&board, 8));
-    // Every item is still on the board and still indexed.
-    assert_eq!(board.items.len(), 8);
-    assert_eq!(
-        descending(board.pick_items(&Point::new(0, 0), Some(0))),
-        vec![6, 4]
-    );
-}
 
 #[test]
 fn remove_trace_tails_finds_nothing_on_a_fully_contacted_net() {
@@ -2211,13 +2174,6 @@ fn board_is_send_and_sync_and_clones_independently() {
 fn is_obstacle(board: &Board, id: u32) -> bool {
     match board.get_item(ItemId(id)).expect("a conduction area") {
         Item::ConductionArea(area) => area.get_is_obstacle(),
-        other => panic!("item {id} is not a conduction area: {other}"),
-    }
-}
-
-fn is_filled(board: &Board, id: u32) -> bool {
-    match board.get_item(ItemId(id)).expect("a conduction area") {
-        Item::ConductionArea(area) => area.get_is_filled(),
         other => panic!("item {id} is not a conduction area: {other}"),
     }
 }

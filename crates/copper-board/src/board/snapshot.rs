@@ -267,7 +267,6 @@ impl Board {
                 Item::ConductionArea(area) => {
                     hash_obstacle_area(&area.area, &mut hasher);
                     area.get_is_obstacle().hash(&mut hasher);
-                    area.get_is_filled().hash(&mut hasher);
                 }
                 Item::ComponentOutline(outline) => {
                     hash_area(outline.get_area(&ctx), &mut hasher);

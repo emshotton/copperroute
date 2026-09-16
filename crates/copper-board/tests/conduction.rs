@@ -6,7 +6,7 @@ use copper_geometry::{
     Area, IntBox, Point, PolygonShape, Polyline, PolylineShapeRef, Shape, TileShape,
 };
 
-fn pour_board() -> (Board, ItemId, ItemId) {
+fn pour_board(is_obstacle: bool) -> (Board, ItemId, ItemId) {
     let ls = LayerStructure::new(vec![
         Layer::new("front".to_string(), true),
         Layer::new("back".to_string(), true),
@@ -34,7 +34,7 @@ fn pour_board() -> (Board, ItemId, ItemId) {
     board.rules.nets.add("GND", 1, false, default_class);
     board.rules.nets.add("SIG", 1, false, default_class);
 
-    // The pour: net 1, layer 0 (a **signal** layer), an obstacle as constructed.
+    // The pour: net 1, layer 0 (a **signal** layer).
     let pour = board.insert_conduction_area(
         Area::Shape(Shape::Tile(TileShape::Box(IntBox::from_coords(
             -4000, -4000, 4000, 4000,
@@ -42,7 +42,7 @@ fn pour_board() -> (Board, ItemId, ItemId) {
         0,
         vec![1],
         1,
-        true,
+        is_obstacle,
         FixedState::Unfixed,
     );
     // The foreign-net trace: net 2, straight across the pour on the same layer.
@@ -91,93 +91,23 @@ fn is_obstacle(board: &Board, id: ItemId) -> bool {
 }
 
 #[test]
-fn a_signal_layer_pour_obstructs_a_foreign_net() {
-    let (mut board, pour, foreign) = pour_board();
-
-    assert!(board.rules.get_ignore_conduction());
+fn a_signal_layer_pour_obstructs_a_foreign_net_only_when_it_is_an_obstacle() {
+    let (mut board, pour, foreign) = pour_board(true);
     assert!(is_obstacle(&board, pour));
     assert!(the_pour_obstructs_the_foreign_net(&mut board, pour));
 
-    board.change_conduction_is_obstacle(false);
-    assert!(!is_obstacle(&board, pour), "quirk #50");
+    let (mut board, pour, _) = pour_board(false);
+    assert!(!is_obstacle(&board, pour));
     assert!(
         !the_pour_obstructs_the_foreign_net(&mut board, pour),
-        "a pour that is not an obstacle must not block a foreign net — quirk #50"
-    );
-    assert!(
-        board.rules.get_ignore_conduction(),
-        "`ignoreConduction` is the negation of `isObstacle`, so it stays true here"
+        "a pour that is not an obstacle must not block a foreign net"
     );
 
-    board.change_conduction_is_obstacle(false);
-    assert!(!is_obstacle(&board, pour));
-    assert!(board.rules.get_ignore_conduction());
-
-    // And back again.
-    board.change_conduction_is_obstacle(true);
-    assert!(is_obstacle(&board, pour));
-    assert!(
-        the_pour_obstructs_the_foreign_net(&mut board, pour),
-        "and an obstacle pour blocks it again"
-    );
-    assert!(
-        !board.rules.get_ignore_conduction(),
-        "the board-level flag mirrors the per-item one, negated, on every call"
-    );
-
-    board.change_conduction_is_obstacle(true);
-    assert!(is_obstacle(&board, pour));
-    assert!(!board.rules.get_ignore_conduction());
-
-    // The pour's own net is never obstructed by it, before or after — `storeItems:185-187`'s
-    // `containsOwnNet` arm, which the fix does not touch.
-    let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
-    let mut entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
-    assert!(entries.store_items(&board, &[pour], false, false));
-    let _ = foreign;
-}
-
-#[test]
-fn the_conduction_flag_mirrors_the_per_item_state_from_either_start() {
-    for start in [true, false] {
-        let (mut board, pour, _) = pour_board();
-        board.rules.set_ignore_conduction(start);
-        for request in [false, false, true, true, false, true] {
-            board.change_conduction_is_obstacle(request);
-            assert_eq!(
-                is_obstacle(&board, pour),
-                request,
-                "start={start}: the pour must carry what was last requested"
-            );
-            assert_eq!(
-                board.rules.get_ignore_conduction(),
-                !request,
-                "start={start}: and the board-level flag must be its negation"
-            );
-        }
+    for obstacle in [true, false] {
+        let (board, pour, _) = pour_board(obstacle);
+        let shape = TileShape::Box(IntBox::from_coords(-500, -500, 500, 500));
+        let mut entries = ShapeTraceEntries::new(shape, 0, vec![1], 1, None);
+        assert!(entries.store_items(&board, &[pour], false, false));
     }
-}
-
-#[test]
-fn unfill_and_change_agree_on_what_the_pair_means() {
-    let (mut unfilled, pour, _) = pour_board();
-    unfilled.unfill_conduction_areas();
-
-    let (mut changed, _, _) = pour_board();
-    changed.change_conduction_is_obstacle(false);
-
-    assert_eq!(
-        (
-            unfilled.rules.get_ignore_conduction(),
-            is_obstacle(&unfilled, pour)
-        ),
-        (true, false)
-    );
-    assert_eq!(
-        (
-            changed.rules.get_ignore_conduction(),
-            is_obstacle(&changed, pour)
-        ),
-        (true, false)
-    );
+    let _ = foreign;
 }

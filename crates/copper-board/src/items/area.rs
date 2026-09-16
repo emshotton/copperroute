@@ -318,7 +318,6 @@ pub struct ConductionArea {
     pub hdr: ItemHeader,
     pub area: ObstacleAreaData,
     is_obstacle: bool,
-    is_filled: bool,
 }
 
 impl ConductionArea {
@@ -327,7 +326,6 @@ impl ConductionArea {
             hdr,
             area,
             is_obstacle,
-            is_filled: true,
         }
     }
 
@@ -339,15 +337,6 @@ impl ConductionArea {
         self.is_obstacle = value;
     }
 
-    pub fn get_is_filled(&self) -> bool {
-        self.is_filled
-    }
-
-    pub fn set_is_filled(&mut self, value: bool) {
-        self.is_filled = value;
-        self.clear_derived_data();
-    }
-
     pub fn copy(&self, new_id: ItemId) -> Option<ConductionArea> {
         if self.hdr.net_count() > 1 {
             return None;
@@ -356,7 +345,6 @@ impl ConductionArea {
             hdr: copied_header(&self.hdr, new_id),
             area: self.area.copied(),
             is_obstacle: self.is_obstacle,
-            is_filled: true,
         })
     }
 
