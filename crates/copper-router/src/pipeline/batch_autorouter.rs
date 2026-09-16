@@ -319,7 +319,14 @@ impl<'a> BatchAutorouter<'a> {
 
     /// Re-ask the refill model which plane-net items its pours do not actually reach. Routing
     /// changes the answer, so a pass that trusts a stale one leaves pads unrouted.
+    ///
+    /// The optimizer runs a whole `BatchAutorouter` per item it tries to improve, and rasterising
+    /// the board for each of those would cost far more than the answer is worth there: the
+    /// optimizer adds no connections, and gates its own work on the same model already.
     pub fn refresh_plane_bonding(&mut self, board: &Board) {
+        if self.is_optimizer_autorouter {
+            return;
+        }
         self.stranded_from_plane = plane_connectivity_of(board, self.settings)
             .stranded_items()
             .clone();
