@@ -1,0 +1,13 @@
+{
+  "base": "66612acf2efe7e2131dcbb0bfc86387d24e3f111",
+  "tests_passed": 2808,
+  "tests_failed": 0,
+  "tests_ignored": 77,
+  "source_sha256": {
+    "crates/copper-router/src/pipeline/after_optimization_repair.rs": "8573d8be6ade1e194eaa423bb6f6a8addb3561eea5e77a5f6b155594850779a6",
+    "crates/copper-router/src/pipeline/run.rs": "c06d08f6a9d54002e6a3f09501f8c72e7fca64cb3ff25cc542cd17cd76e21a0e",
+    "crates/copper-router/src/pipeline/mod.rs": "ff22b4fec11bdc2d0c3ae060e2b5c3fa550a90782f8211dbf6b8d05f41592632",
+    "crates/copper-router/src/pipeline/batch_loop.rs": "dd429cdba316b5a4e572c12a145d6607a588addbce13ae8c158e15c5a7e5aa7d"
+  },
+  "binary_sha256": "1ba0f41a96f08dd002801b7c97496b336610b389ece2cbf2a8da4b17e8034474"
+}

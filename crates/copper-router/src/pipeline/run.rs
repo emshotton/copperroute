@@ -57,6 +57,12 @@ pub fn run_pipeline(
         None
     };
 
+    if router_enabled {
+        if let Some(ref result) = router_loop {
+            super::after_optimization_repair::run(board, settings, budget, stop, result.passes_run);
+        }
+    }
+
     let final_statistics = BoardStatistics::new(board);
 
     let (router_state, router_passes_completed, fanout, per_pass) = match router_loop {
@@ -71,7 +77,8 @@ pub fn run_pipeline(
 
     let timed_out = router_state == TaskState::TimedOut
         || fanout.as_ref().is_some_and(|f| f.is_timed_out)
-        || optimizer_timed_out;
+        || optimizer_timed_out
+        || stop.is_timed_out();
 
     Ok(PipelineResult {
         router_state,

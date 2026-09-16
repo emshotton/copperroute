@@ -1,0 +1,58 @@
+[
+  {
+    "board": "pcbench-MSGEQ7-Breakout-Board_MSGEQ7_Breakout_Board",
+    "status": "ok",
+    "unrouted": 0,
+    "violations": 0,
+    "reason": ""
+  },
+  {
+    "board": "pcbench-Own-Mailbox-Hardware_mailbox",
+    "status": "ok",
+    "unrouted": 7,
+    "violations": 0,
+    "reason": ""
+  },
+  {
+    "board": "pcbench-Practicas-Curso-Kicad_Ejercicio_2",
+    "status": "ok",
+    "unrouted": 0,
+    "violations": 0,
+    "reason": ""
+  },
+  {
+    "board": "pcbench-RX5808_diversityModule",
+    "status": "ok",
+    "unrouted": 0,
+    "violations": 0,
+    "reason": ""
+  },
+  {
+    "board": "pcbench-SNAP-Badge_SNAP_badge",
+    "status": "ok",
+    "unrouted": 0,
+    "violations": 0,
+    "reason": ""
+  },
+  {
+    "board": "pcbench-SmartLaserCO2-PCB_OptAdjust",
+    "status": "ok",
+    "unrouted": 0,
+    "violations": 0,
+    "reason": ""
+  },
+  {
+    "board": "pcbench-UltraPIF_Hardware_led",
+    "status": "ok",
+    "unrouted": 0,
+    "violations": 0,
+    "reason": ""
+  },
+  {
+    "board": "pcbench-beast-phat_beast-phat",
+    "status": "ok",
+    "unrouted": 0,
+    "violations": 0,
+    "reason": ""
+  }
+]

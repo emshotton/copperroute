@@ -1,0 +1,1035 @@
+{
+  "baseline_scored": 32,
+  "baseline_invalid": [],
+  "baseline": {
+    "pcbench-Feather-ICE40-PCB_feather_ice40": {
+      "unrouted": 26,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 79.21,
+      "rss": 35.3,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 869.2396,
+      "vias": 37
+    },
+    "pcbench-srambo_1_srambo_1": {
+      "unrouted": 1,
+      "copper": 0,
+      "mask": 136,
+      "cpu": 140.56,
+      "rss": 41.6,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 3547.0889,
+      "vias": 92
+    },
+    "pcbench-kitspace_sympetrum-v2%20NFF1.1": {
+      "unrouted": 13,
+      "copper": 0,
+      "mask": 171,
+      "cpu": 122.14999999999999,
+      "rss": 24.0,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 810.4185,
+      "vias": 28
+    },
+    "pcbench-8bit-cpu_programming_interface": {
+      "unrouted": 5,
+      "copper": 0,
+      "mask": 1,
+      "cpu": 53.300000000000004,
+      "rss": 29.7,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 1408.5325,
+      "vias": 15
+    },
+    "pcbench-EnvOpenPico_EliteMicro2040": {
+      "unrouted": 13,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 74.94,
+      "rss": 30.1,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 458.859,
+      "vias": 31
+    },
+    "pcbench-Mouse_Mouse": {
+      "unrouted": 4,
+      "copper": 0,
+      "mask": 44,
+      "cpu": 52.79,
+      "rss": 35.9,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 924.5609,
+      "vias": 29
+    },
+    "pcbench-RC6502-Apple-1-Replica_RC6502_Terminal": {
+      "unrouted": 8,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 18.94,
+      "rss": 41.4,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 2589.9754,
+      "vias": 3
+    },
+    "pcbench-TK44_TK44": {
+      "unrouted": 15,
+      "copper": 1,
+      "mask": 0,
+      "cpu": 133.15,
+      "rss": 102.5,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 3215.2473,
+      "vias": 39
+    },
+    "pcbench-hbr-mk2_hbr-mk2-digital": {
+      "unrouted": 14,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 37.86,
+      "rss": 40.5,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 2044.0578,
+      "vias": 23
+    },
+    "pcbench-gb-hardware_GB-CARTPP-XC": {
+      "unrouted": 9,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 96.91000000000001,
+      "rss": 39.7,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 1151.6135,
+      "vias": 65
+    },
+    "pcbench-project-hydra-meshtastic-pcb_meshtastic-diy": {
+      "unrouted": 24,
+      "copper": 5,
+      "mask": 2,
+      "cpu": 132.15,
+      "rss": 32.0,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 988.6881,
+      "vias": 61
+    },
+    "pcbench-AIOsense_AIOsense": {
+      "unrouted": 18,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 70.08,
+      "rss": 37.0,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 807.4439,
+      "vias": 0
+    },
+    "pcbench-antdroid-board_antdroid-board": {
+      "unrouted": 18,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 71.16,
+      "rss": 41.5,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 1527.8232,
+      "vias": 0
+    },
+    "pcbench-ChirpHardware_chirp": {
+      "unrouted": 1,
+      "copper": 0,
+      "mask": 29,
+      "cpu": 64.63000000000001,
+      "rss": 22.1,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 728.9735,
+      "vias": 31
+    },
+    "pcbench-Doorman_doorman_slot": {
+      "unrouted": 6,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 11.27,
+      "rss": 18.3,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 196.6597,
+      "vias": 18
+    },
+    "pcbench-TinyTracker_ub-minimal": {
+      "unrouted": 3,
+      "copper": 0,
+      "mask": 199,
+      "cpu": 57.94,
+      "rss": 28.1,
+      "deadline": false,
+      "mask_cap": true,
+      "cap": true,
+      "wirelength": 612.9652,
+      "vias": 31
+    },
+    "pcbench-esper_EsperDNS": {
+      "unrouted": 9,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 69.3,
+      "rss": 43.1,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 965.0656,
+      "vias": 50
+    },
+    "pcbench-kitspace_USB-C-Screen-Adapter": {
+      "unrouted": 3,
+      "copper": 2,
+      "mask": 83,
+      "cpu": 133.99,
+      "rss": 62.6,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 1104.3514,
+      "vias": 83
+    },
+    "pcbench-real-time-chess_kfchess": {
+      "unrouted": 78,
+      "copper": 70,
+      "mask": 0,
+      "cpu": 304.84999999999997,
+      "rss": 180.1,
+      "deadline": true,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 16496.6171,
+      "vias": 245
+    },
+    "pcbench-karabas-nano_karabas-nano-revC": {
+      "unrouted": 97,
+      "copper": 1,
+      "mask": 199,
+      "cpu": 299.95,
+      "rss": 63.7,
+      "deadline": true,
+      "mask_cap": true,
+      "cap": true,
+      "wirelength": 7080.5718,
+      "vias": 313
+    },
+    "pcbench-kinetoscope_sram-bank": {
+      "unrouted": 111,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 299.35,
+      "rss": 82.0,
+      "deadline": true,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 4640.2991,
+      "vias": 194
+    },
+    "pcbench-freeDSP-CLASSIC-SMD-BALANCED_FreeDSP_BAL": {
+      "unrouted": 0,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 134.14,
+      "rss": 92.4,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 4131.2874,
+      "vias": 68
+    },
+    "pcbench-free-of-charge_BMS": {
+      "unrouted": 0,
+      "copper": 0,
+      "mask": 142,
+      "cpu": 145.26000000000002,
+      "rss": 63.6,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 2046.8511,
+      "vias": 72
+    },
+    "pcbench-freeUSBi_USBi_Programmer": {
+      "unrouted": 0,
+      "copper": 0,
+      "mask": 8,
+      "cpu": 3.1399999999999997,
+      "rss": 17.5,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 574.772,
+      "vias": 1
+    },
+    "kicad-issue180-test--test": {
+      "unrouted": 0,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 4.930000000000001,
+      "rss": 26.5,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 659.3647,
+      "vias": 0
+    },
+    "kicad-issue367-ultraflactyl--ultraflactyl": {
+      "unrouted": 1,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 64.17999999999999,
+      "rss": 51.2,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 2679.8708,
+      "vias": 14
+    },
+    "kicad-issue283-unconnectedtracesunderpads--natural_tone_preamp": {
+      "unrouted": 0,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 209.04,
+      "rss": 48.3,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 2670.3595,
+      "vias": 113
+    },
+    "kicad-issue558-dev-board-autoroute-demo--dev-board": {
+      "unrouted": 0,
+      "copper": 4,
+      "mask": 0,
+      "cpu": 11.52,
+      "rss": 17.5,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 1107.4235,
+      "vias": 22
+    },
+    "pcbench-Hardware_Playground_nrf52832_uno": {
+      "unrouted": 0,
+      "copper": 0,
+      "mask": 37,
+      "cpu": 24.33,
+      "rss": 17.4,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 1637.4332,
+      "vias": 27
+    },
+    "pcbench-TLPHnodeV2_TLPHnodeV2": {
+      "unrouted": 0,
+      "copper": 0,
+      "mask": 120,
+      "cpu": 43.46,
+      "rss": 24.9,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 459.142,
+      "vias": 10
+    },
+    "pcbench-clock_lcdb4": {
+      "unrouted": 0,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 20.419999999999998,
+      "rss": 17.5,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 1352.8142,
+      "vias": 7
+    },
+    "pcbench-kitspace_piezo_amplifier": {
+      "unrouted": 0,
+      "copper": 0,
+      "mask": 0,
+      "cpu": 26.810000000000002,
+      "rss": 23.0,
+      "deadline": false,
+      "mask_cap": false,
+      "cap": false,
+      "wirelength": 3778.3046,
+      "vias": 12
+    }
+  },
+  "comparisons": {
+    "alternatives": {
+      "scored": 32,
+      "invalid": [],
+      "groups": {
+        "all": {
+          "paired": 32,
+          "unrouted": {
+            "main": 477,
+            "candidate": 428,
+            "delta": -49,
+            "improved": 2,
+            "regressed": 1
+          },
+          "copper": {
+            "main": 83,
+            "candidate": 86,
+            "delta": 3,
+            "improved": 0,
+            "regressed": 1
+          },
+          "mask": {
+            "main": 1171,
+            "candidate": 1171,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "cpu": {
+            "main": 3011.71,
+            "candidate": 2994.86
+          },
+          "deadline": {
+            "main": 3,
+            "candidate": 2
+          },
+          "cap": {
+            "main": 2,
+            "candidate": 2
+          },
+          "cpu_ratio": 0.9944051718126912,
+          "max_rss": {
+            "main": 180.1,
+            "candidate": 180.1
+          },
+          "fully_connected": {
+            "main": 10,
+            "candidate": 10
+          },
+          "both_completed": {
+            "paired": 29,
+            "unrouted_delta": 0,
+            "copper_delta": 0,
+            "mask_delta": 0
+          },
+          "uncapped_mask": {
+            "paired": 30,
+            "delta": 0,
+            "gainers": 0
+          }
+        },
+        "pcbench": {
+          "paired": 28,
+          "unrouted": {
+            "main": 476,
+            "candidate": 427,
+            "delta": -49,
+            "improved": 2,
+            "regressed": 1
+          },
+          "copper": {
+            "main": 79,
+            "candidate": 82,
+            "delta": 3,
+            "improved": 0,
+            "regressed": 1
+          },
+          "mask": {
+            "main": 1171,
+            "candidate": 1171,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "cpu": {
+            "main": 2722.04,
+            "candidate": 2776.14
+          },
+          "deadline": {
+            "main": 3,
+            "candidate": 2
+          },
+          "cap": {
+            "main": 2,
+            "candidate": 2
+          },
+          "cpu_ratio": 1.019874799782516,
+          "max_rss": {
+            "main": 180.1,
+            "candidate": 180.1
+          },
+          "fully_connected": {
+            "main": 7,
+            "candidate": 7
+          },
+          "both_completed": {
+            "paired": 25,
+            "unrouted_delta": 0,
+            "copper_delta": 0,
+            "mask_delta": 0
+          },
+          "uncapped_mask": {
+            "paired": 26,
+            "delta": 0,
+            "gainers": 0
+          }
+        },
+        "local": {
+          "paired": 4,
+          "unrouted": {
+            "main": 1,
+            "candidate": 1,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "copper": {
+            "main": 4,
+            "candidate": 4,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "mask": {
+            "main": 0,
+            "candidate": 0,
+            "delta": 0,
+            "improved": 0,
+            "regressed": 0
+          },
+          "cpu": {
+            "main": 289.66999999999996,
+            "candidate": 218.71999999999997
+          },
+          "deadline": {
+            "main": 0,
+            "candidate": 0
+          },
+          "cap": {
+            "main": 0,
+            "candidate": 0
+          },
+          "cpu_ratio": 0.7550661097110505,
+          "max_rss": {
+            "main": 51.2,
+            "candidate": 56.5
+          },
+          "fully_connected": {
+            "main": 3,
+            "candidate": 3
+          },
+          "both_completed": {
+            "paired": 4,
+            "unrouted_delta": 0,
+            "copper_delta": 0,
+            "mask_delta": 0
+          },
+          "uncapped_mask": {
+            "paired": 4,
+            "delta": 0,
+            "gainers": 0
+          }
+        }
+      },
+      "changes": [
+        {
+          "board": "pcbench-real-time-chess_kfchess",
+          "main": {
+            "unrouted": 78,
+            "copper": 70,
+            "mask": 0,
+            "cpu": 304.84999999999997,
+            "rss": 180.1,
+            "deadline": true,
+            "mask_cap": false,
+            "cap": false,
+            "wirelength": 16496.6171,
+            "vias": 245
+          },
+          "candidate": {
+            "unrouted": 71,
+            "copper": 73,
+            "mask": 0,
+            "cpu": 301.34999999999997,
+            "rss": 180.1,
+            "deadline": true,
+            "mask_cap": false,
+            "cap": false,
+            "wirelength": 16593.7413,
+            "vias": 205
+          }
+        },
+        {
+          "board": "pcbench-karabas-nano_karabas-nano-revC",
+          "main": {
+            "unrouted": 97,
+            "copper": 1,
+            "mask": 199,
+            "cpu": 299.95,
+            "rss": 63.7,
+            "deadline": true,
+            "mask_cap": true,
+            "cap": true,
+            "wirelength": 7080.5718,
+            "vias": 313
+          },
+          "candidate": {
+            "unrouted": 54,
+            "copper": 1,
+            "mask": 199,
+            "cpu": 299.69,
+            "rss": 81.8,
+            "deadline": true,
+            "mask_cap": true,
+            "cap": true,
+            "wirelength": 8617.2168,
+            "vias": 351
+          }
+        },
+        {
+          "board": "pcbench-kinetoscope_sram-bank",
+          "main": {
+            "unrouted": 111,
+            "copper": 0,
+            "mask": 0,
+            "cpu": 299.35,
+            "rss": 82.0,
+            "deadline": true,
+            "mask_cap": false,
+            "cap": false,
+            "wirelength": 4640.2991,
+            "vias": 194
+          },
+          "candidate": {
+            "unrouted": 112,
+            "copper": 0,
+            "mask": 0,
+            "cpu": 274.83000000000004,
+            "rss": 82.6,
+            "deadline": false,
+            "mask_cap": false,
+            "cap": false,
+            "wirelength": 4321.5302,
+            "vias": 186
+          }
+        }
+      ],
+      "rows": {
+        "pcbench-Feather-ICE40-PCB_feather_ice40": {
+          "unrouted": 26,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 113.11,
+          "rss": 37.1,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 869.2396,
+          "vias": 37
+        },
+        "pcbench-srambo_1_srambo_1": {
+          "unrouted": 1,
+          "copper": 0,
+          "mask": 136,
+          "cpu": 164.83,
+          "rss": 43.1,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 3547.0889,
+          "vias": 92
+        },
+        "pcbench-kitspace_sympetrum-v2%20NFF1.1": {
+          "unrouted": 13,
+          "copper": 0,
+          "mask": 171,
+          "cpu": 150.29,
+          "rss": 26.6,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 810.4185,
+          "vias": 28
+        },
+        "pcbench-8bit-cpu_programming_interface": {
+          "unrouted": 5,
+          "copper": 0,
+          "mask": 1,
+          "cpu": 63.68,
+          "rss": 30.7,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 1408.5325,
+          "vias": 15
+        },
+        "pcbench-EnvOpenPico_EliteMicro2040": {
+          "unrouted": 13,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 82.86,
+          "rss": 30.3,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 458.859,
+          "vias": 31
+        },
+        "pcbench-Mouse_Mouse": {
+          "unrouted": 4,
+          "copper": 0,
+          "mask": 44,
+          "cpu": 54.75,
+          "rss": 36.0,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 924.5609,
+          "vias": 29
+        },
+        "pcbench-RC6502-Apple-1-Replica_RC6502_Terminal": {
+          "unrouted": 8,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 19.81,
+          "rss": 41.8,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 2589.9754,
+          "vias": 3
+        },
+        "pcbench-TK44_TK44": {
+          "unrouted": 15,
+          "copper": 1,
+          "mask": 0,
+          "cpu": 147.53,
+          "rss": 103.6,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 3215.2473,
+          "vias": 39
+        },
+        "pcbench-hbr-mk2_hbr-mk2-digital": {
+          "unrouted": 14,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 31.450000000000003,
+          "rss": 40.6,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 2044.0578,
+          "vias": 23
+        },
+        "pcbench-gb-hardware_GB-CARTPP-XC": {
+          "unrouted": 9,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 79.64,
+          "rss": 40.8,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 1151.6135,
+          "vias": 65
+        },
+        "pcbench-project-hydra-meshtastic-pcb_meshtastic-diy": {
+          "unrouted": 24,
+          "copper": 5,
+          "mask": 2,
+          "cpu": 118.07000000000001,
+          "rss": 32.4,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 988.6881,
+          "vias": 61
+        },
+        "pcbench-AIOsense_AIOsense": {
+          "unrouted": 18,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 85.59,
+          "rss": 38.8,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 807.4439,
+          "vias": 0
+        },
+        "pcbench-antdroid-board_antdroid-board": {
+          "unrouted": 18,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 73.88,
+          "rss": 47.6,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 1527.8232,
+          "vias": 0
+        },
+        "pcbench-ChirpHardware_chirp": {
+          "unrouted": 1,
+          "copper": 0,
+          "mask": 29,
+          "cpu": 84.86,
+          "rss": 23.6,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 728.9735,
+          "vias": 31
+        },
+        "pcbench-Doorman_doorman_slot": {
+          "unrouted": 6,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 9.33,
+          "rss": 18.3,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 196.6597,
+          "vias": 18
+        },
+        "pcbench-TinyTracker_ub-minimal": {
+          "unrouted": 3,
+          "copper": 0,
+          "mask": 199,
+          "cpu": 57.989999999999995,
+          "rss": 30.5,
+          "deadline": false,
+          "mask_cap": true,
+          "cap": true,
+          "wirelength": 612.9652,
+          "vias": 31
+        },
+        "pcbench-esper_EsperDNS": {
+          "unrouted": 9,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 61.52,
+          "rss": 43.1,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 965.0656,
+          "vias": 50
+        },
+        "pcbench-kitspace_USB-C-Screen-Adapter": {
+          "unrouted": 3,
+          "copper": 2,
+          "mask": 83,
+          "cpu": 132.4,
+          "rss": 64.5,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 1104.3514,
+          "vias": 83
+        },
+        "pcbench-real-time-chess_kfchess": {
+          "unrouted": 71,
+          "copper": 73,
+          "mask": 0,
+          "cpu": 301.34999999999997,
+          "rss": 180.1,
+          "deadline": true,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 16593.7413,
+          "vias": 205
+        },
+        "pcbench-karabas-nano_karabas-nano-revC": {
+          "unrouted": 54,
+          "copper": 1,
+          "mask": 199,
+          "cpu": 299.69,
+          "rss": 81.8,
+          "deadline": true,
+          "mask_cap": true,
+          "cap": true,
+          "wirelength": 8617.2168,
+          "vias": 351
+        },
+        "pcbench-kinetoscope_sram-bank": {
+          "unrouted": 112,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 274.83000000000004,
+          "rss": 82.6,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 4321.5302,
+          "vias": 186
+        },
+        "pcbench-freeDSP-CLASSIC-SMD-BALANCED_FreeDSP_BAL": {
+          "unrouted": 0,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 118.33,
+          "rss": 92.3,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 4131.2874,
+          "vias": 68
+        },
+        "pcbench-free-of-charge_BMS": {
+          "unrouted": 0,
+          "copper": 0,
+          "mask": 142,
+          "cpu": 121.91,
+          "rss": 72.2,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 2046.8511,
+          "vias": 72
+        },
+        "pcbench-freeUSBi_USBi_Programmer": {
+          "unrouted": 0,
+          "copper": 0,
+          "mask": 8,
+          "cpu": 2.68,
+          "rss": 17.5,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 574.772,
+          "vias": 1
+        },
+        "kicad-issue180-test--test": {
+          "unrouted": 0,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 4.949999999999999,
+          "rss": 26.4,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 659.3647,
+          "vias": 0
+        },
+        "kicad-issue367-ultraflactyl--ultraflactyl": {
+          "unrouted": 1,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 74.38999999999999,
+          "rss": 56.5,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 2679.8708,
+          "vias": 14
+        },
+        "kicad-issue283-unconnectedtracesunderpads--natural_tone_preamp": {
+          "unrouted": 0,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 131.67999999999998,
+          "rss": 47.8,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 2670.3595,
+          "vias": 113
+        },
+        "kicad-issue558-dev-board-autoroute-demo--dev-board": {
+          "unrouted": 0,
+          "copper": 4,
+          "mask": 0,
+          "cpu": 7.7,
+          "rss": 17.4,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 1107.4235,
+          "vias": 22
+        },
+        "pcbench-Hardware_Playground_nrf52832_uno": {
+          "unrouted": 0,
+          "copper": 0,
+          "mask": 37,
+          "cpu": 35.25,
+          "rss": 17.6,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 1637.4332,
+          "vias": 27
+        },
+        "pcbench-TLPHnodeV2_TLPHnodeV2": {
+          "unrouted": 0,
+          "copper": 0,
+          "mask": 120,
+          "cpu": 43.6,
+          "rss": 26.1,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 459.142,
+          "vias": 10
+        },
+        "pcbench-clock_lcdb4": {
+          "unrouted": 0,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 20.43,
+          "rss": 17.5,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 1352.8142,
+          "vias": 7
+        },
+        "pcbench-kitspace_piezo_amplifier": {
+          "unrouted": 0,
+          "copper": 0,
+          "mask": 0,
+          "cpu": 26.48,
+          "rss": 23.0,
+          "deadline": false,
+          "mask_cap": false,
+          "cap": false,
+          "wirelength": 3778.3046,
+          "vias": 12
+        }
+      }
+    }
+  }
+}

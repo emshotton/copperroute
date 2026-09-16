@@ -1,0 +1,240 @@
+{
+  "boards": [
+    {
+      "id": "pcbench-DoroidOscillo-Board_Android_Oscilloscope",
+      "source": "pcbench/DoroidOscillo-Board_Android_Oscilloscope/unrouted.dsn",
+      "origin": "pcbench",
+      "referee": "kicad",
+      "tiers": [
+        "pcbench",
+        "d3-c"
+      ],
+      "nets": 77,
+      "layers": 3,
+      "connections": null,
+      "expected_duration_s": null,
+      "kicad": {
+        "raw": "pcbench/DoroidOscillo-Board_Android_Oscilloscope/raw.kicad_pcb",
+        "stripped": "pcbench/DoroidOscillo-Board_Android_Oscilloscope/stripped.kicad_pcb",
+        "ground_truth": "pcbench/DoroidOscillo-Board_Android_Oscilloscope/ground_truth.json",
+        "project": "pcbench/DoroidOscillo-Board_Android_Oscilloscope/stripped.kicad_pro"
+      },
+      "status": "ok",
+      "reason": "",
+      "license": null
+    },
+    {
+      "id": "pcbench-FRM16_Relay_Module_I2C_Controller_relay_controller",
+      "source": "pcbench/FRM16_Relay_Module_I2C_Controller_relay_controller/unrouted.dsn",
+      "origin": "pcbench",
+      "referee": "kicad",
+      "tiers": [
+        "pcbench",
+        "d3-c"
+      ],
+      "nets": 43,
+      "layers": 2,
+      "connections": null,
+      "expected_duration_s": null,
+      "kicad": {
+        "raw": "pcbench/FRM16_Relay_Module_I2C_Controller_relay_controller/raw.kicad_pcb",
+        "stripped": "pcbench/FRM16_Relay_Module_I2C_Controller_relay_controller/stripped.kicad_pcb",
+        "ground_truth": "pcbench/FRM16_Relay_Module_I2C_Controller_relay_controller/ground_truth.json",
+        "project": "pcbench/FRM16_Relay_Module_I2C_Controller_relay_controller/stripped.kicad_pro"
+      },
+      "status": "ok",
+      "reason": "",
+      "license": null
+    },
+    {
+      "id": "pcbench-Mouse_Mouse",
+      "source": "pcbench/Mouse_Mouse/unrouted.dsn",
+      "origin": "pcbench",
+      "referee": "kicad",
+      "tiers": [
+        "pcbench",
+        "d3-c"
+      ],
+      "nets": 137,
+      "layers": 2,
+      "connections": null,
+      "expected_duration_s": null,
+      "kicad": {
+        "raw": "pcbench/Mouse_Mouse/raw.kicad_pcb",
+        "stripped": "pcbench/Mouse_Mouse/stripped.kicad_pcb",
+        "ground_truth": "pcbench/Mouse_Mouse/ground_truth.json",
+        "project": "pcbench/Mouse_Mouse/stripped.kicad_pro"
+      },
+      "status": "ok",
+      "reason": "",
+      "license": {
+        "spdx_id": "MIT",
+        "status": "licensed"
+      }
+    },
+    {
+      "id": "pcbench-Solare-BQ24210_Solare-BQ24210",
+      "source": "pcbench/Solare-BQ24210_Solare-BQ24210/unrouted.dsn",
+      "origin": "pcbench",
+      "referee": "kicad",
+      "tiers": [
+        "pcbench",
+        "d3-a"
+      ],
+      "nets": 12,
+      "layers": 2,
+      "connections": null,
+      "expected_duration_s": null,
+      "kicad": {
+        "raw": "pcbench/Solare-BQ24210_Solare-BQ24210/raw.kicad_pcb",
+        "stripped": "pcbench/Solare-BQ24210_Solare-BQ24210/stripped.kicad_pcb",
+        "ground_truth": "pcbench/Solare-BQ24210_Solare-BQ24210/ground_truth.json",
+        "project": "pcbench/Solare-BQ24210_Solare-BQ24210/stripped.kicad_pro"
+      },
+      "status": "ok",
+      "reason": "",
+      "license": null
+    },
+    {
+      "id": "pcbench-free-of-charge_BMS",
+      "source": "pcbench/free-of-charge_BMS/unrouted.dsn",
+      "origin": "pcbench",
+      "referee": "kicad",
+      "tiers": [
+        "pcbench",
+        "d3-c"
+      ],
+      "nets": 121,
+      "layers": 2,
+      "connections": null,
+      "expected_duration_s": null,
+      "kicad": {
+        "raw": "pcbench/free-of-charge_BMS/raw.kicad_pcb",
+        "stripped": "pcbench/free-of-charge_BMS/stripped.kicad_pcb",
+        "ground_truth": "pcbench/free-of-charge_BMS/ground_truth.json",
+        "project": "pcbench/free-of-charge_BMS/stripped.kicad_pro"
+      },
+      "status": "ok",
+      "reason": "",
+      "license": null
+    },
+    {
+      "id": "pcbench-gb-hardware_GB-CART256K-A",
+      "source": "pcbench/gb-hardware_GB-CART256K-A/unrouted.dsn",
+      "origin": "pcbench",
+      "referee": "kicad",
+      "tiers": [
+        "pcbench",
+        "d3-c"
+      ],
+      "nets": 43,
+      "layers": 2,
+      "connections": null,
+      "expected_duration_s": null,
+      "kicad": {
+        "raw": "pcbench/gb-hardware_GB-CART256K-A/raw.kicad_pcb",
+        "stripped": "pcbench/gb-hardware_GB-CART256K-A/stripped.kicad_pcb",
+        "ground_truth": "pcbench/gb-hardware_GB-CART256K-A/ground_truth.json",
+        "project": "pcbench/gb-hardware_GB-CART256K-A/stripped.kicad_pro"
+      },
+      "status": "ok",
+      "reason": "",
+      "license": {
+        "spdx_id": "CC-BY-4.0",
+        "status": "licensed"
+      }
+    },
+    {
+      "id": "pcbench-srambo_1_srambo_1",
+      "source": "pcbench/srambo_1_srambo_1/unrouted.dsn",
+      "origin": "pcbench",
+      "referee": "kicad",
+      "tiers": [
+        "pcbench",
+        "d3-c"
+      ],
+      "nets": 94,
+      "layers": 2,
+      "connections": null,
+      "expected_duration_s": null,
+      "kicad": {
+        "raw": "pcbench/srambo_1_srambo_1/raw.kicad_pcb",
+        "stripped": "pcbench/srambo_1_srambo_1/stripped.kicad_pcb",
+        "ground_truth": "pcbench/srambo_1_srambo_1/ground_truth.json",
+        "project": "pcbench/srambo_1_srambo_1/stripped.kicad_pro"
+      },
+      "status": "ok",
+      "reason": "",
+      "license": null
+    },
+    {
+      "id": "pcbench-starfish_starfish",
+      "source": "pcbench/starfish_starfish/unrouted.dsn",
+      "origin": "pcbench",
+      "referee": "kicad",
+      "tiers": [
+        "pcbench",
+        "d3-c"
+      ],
+      "nets": 47,
+      "layers": 2,
+      "connections": null,
+      "expected_duration_s": null,
+      "kicad": {
+        "raw": "pcbench/starfish_starfish/raw.kicad_pcb",
+        "stripped": "pcbench/starfish_starfish/stripped.kicad_pcb",
+        "ground_truth": "pcbench/starfish_starfish/ground_truth.json",
+        "project": "pcbench/starfish_starfish/stripped.kicad_pro"
+      },
+      "status": "ok",
+      "reason": "",
+      "license": null
+    },
+    {
+      "id": "pcbench-uSKY_uSKY",
+      "source": "pcbench/uSKY_uSKY/unrouted.dsn",
+      "origin": "pcbench",
+      "referee": "kicad",
+      "tiers": [
+        "pcbench",
+        "d3-b"
+      ],
+      "nets": 37,
+      "layers": 2,
+      "connections": null,
+      "expected_duration_s": null,
+      "kicad": {
+        "raw": "pcbench/uSKY_uSKY/raw.kicad_pcb",
+        "stripped": "pcbench/uSKY_uSKY/stripped.kicad_pcb",
+        "ground_truth": "pcbench/uSKY_uSKY/ground_truth.json",
+        "project": "pcbench/uSKY_uSKY/stripped.kicad_pro"
+      },
+      "status": "ok",
+      "reason": "",
+      "license": null
+    },
+    {
+      "id": "pcbench-zx-sizif-128_sizif128",
+      "source": "pcbench/zx-sizif-128_sizif128/unrouted.dsn",
+      "origin": "pcbench",
+      "referee": "kicad",
+      "tiers": [
+        "pcbench",
+        "d3-c"
+      ],
+      "nets": 120,
+      "layers": 2,
+      "connections": null,
+      "expected_duration_s": null,
+      "kicad": {
+        "raw": "pcbench/zx-sizif-128_sizif128/raw.kicad_pcb",
+        "stripped": "pcbench/zx-sizif-128_sizif128/stripped.kicad_pcb",
+        "ground_truth": "pcbench/zx-sizif-128_sizif128/ground_truth.json",
+        "project": "pcbench/zx-sizif-128_sizif128/stripped.kicad_pro"
+      },
+      "status": "ok",
+      "reason": "",
+      "license": null
+    }
+  ]
+}

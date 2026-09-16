@@ -1,0 +1,115 @@
+{
+  "completed": 10,
+  "rows": [
+    {
+      "board": "pcbench-DoroidOscillo-Board_Android_Oscilloscope",
+      "status": "ok",
+      "same_ses": true,
+      "prototype_unrouted": 4,
+      "cleaned_unrouted": 4,
+      "prototype_copper": 0,
+      "cleaned_copper": 0,
+      "cpu_s": 120.42999999999999,
+      "timed_out": false
+    },
+    {
+      "board": "pcbench-FRM16_Relay_Module_I2C_Controller_relay_controller",
+      "status": "ok",
+      "same_ses": true,
+      "prototype_unrouted": 0,
+      "cleaned_unrouted": 0,
+      "prototype_copper": 0,
+      "cleaned_copper": 0,
+      "cpu_s": 13.299999999999999,
+      "timed_out": false
+    },
+    {
+      "board": "pcbench-Mouse_Mouse",
+      "status": "ok",
+      "same_ses": true,
+      "prototype_unrouted": 4,
+      "cleaned_unrouted": 4,
+      "prototype_copper": 0,
+      "cleaned_copper": 0,
+      "cpu_s": 30.0,
+      "timed_out": false
+    },
+    {
+      "board": "pcbench-Solare-BQ24210_Solare-BQ24210",
+      "status": "ok",
+      "same_ses": true,
+      "prototype_unrouted": 0,
+      "cleaned_unrouted": 0,
+      "prototype_copper": 0,
+      "cleaned_copper": 0,
+      "cpu_s": 48.29,
+      "timed_out": false
+    },
+    {
+      "board": "pcbench-free-of-charge_BMS",
+      "status": "ok",
+      "same_ses": true,
+      "prototype_unrouted": 0,
+      "cleaned_unrouted": 0,
+      "prototype_copper": 0,
+      "cleaned_copper": 0,
+      "cpu_s": 99.05,
+      "timed_out": false
+    },
+    {
+      "board": "pcbench-gb-hardware_GB-CART256K-A",
+      "status": "ok",
+      "same_ses": true,
+      "prototype_unrouted": 12,
+      "cleaned_unrouted": 12,
+      "prototype_copper": 0,
+      "cleaned_copper": 0,
+      "cpu_s": 107.89,
+      "timed_out": false
+    },
+    {
+      "board": "pcbench-srambo_1_srambo_1",
+      "status": "ok",
+      "same_ses": true,
+      "prototype_unrouted": 1,
+      "cleaned_unrouted": 1,
+      "prototype_copper": 0,
+      "cleaned_copper": 0,
+      "cpu_s": 104.58,
+      "timed_out": false
+    },
+    {
+      "board": "pcbench-starfish_starfish",
+      "status": "ok",
+      "same_ses": true,
+      "prototype_unrouted": 0,
+      "cleaned_unrouted": 0,
+      "prototype_copper": 0,
+      "cleaned_copper": 0,
+      "cpu_s": 73.79,
+      "timed_out": false
+    },
+    {
+      "board": "pcbench-uSKY_uSKY",
+      "status": "ok",
+      "same_ses": true,
+      "prototype_unrouted": 22,
+      "cleaned_unrouted": 22,
+      "prototype_copper": 0,
+      "cleaned_copper": 0,
+      "cpu_s": 29.64,
+      "timed_out": false
+    },
+    {
+      "board": "pcbench-zx-sizif-128_sizif128",
+      "status": "ok",
+      "same_ses": true,
+      "prototype_unrouted": 0,
+      "cleaned_unrouted": 0,
+      "prototype_copper": 0,
+      "cleaned_copper": 0,
+      "cpu_s": 131.92000000000002,
+      "timed_out": false
+    }
+  ]
+}

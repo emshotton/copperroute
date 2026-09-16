@@ -1,0 +1,4 @@
+[candidates.repair]
+kind="rust"
+sha="repair-clean"
+exec=["python3", "/home/em/copperroute-after-repair-validation/router-wrapper.py", "repair", "/home/em/copperroute-after-optimization-repair/target/release/copperroute"]

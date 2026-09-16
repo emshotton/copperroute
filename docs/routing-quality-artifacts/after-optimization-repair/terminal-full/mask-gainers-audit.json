@@ -1,0 +1,107 @@
+[
+  {
+    "board": "pcbench-Electronics-MainBoard_MainBoard",
+    "delta": 2,
+    "capped": true,
+    "same_ses": true,
+    "deadline": false
+  },
+  {
+    "board": "pcbench-Librecalc-Hardware__autosave-calculator",
+    "delta": 4,
+    "capped": true,
+    "same_ses": false,
+    "deadline": true
+  },
+  {
+    "board": "pcbench-MixSID_mixsid",
+    "delta": 3,
+    "capped": true,
+    "same_ses": true,
+    "deadline": false
+  },
+  {
+    "board": "pcbench-Own-Mailbox-Hardware_eth",
+    "delta": 2,
+    "capped": true,
+    "same_ses": true,
+    "deadline": false
+  },
+  {
+    "board": "pcbench-Own-Mailbox-Hardware_mailbox",
+    "delta": 3,
+    "capped": true,
+    "same_ses": true,
+    "deadline": false
+  },
+  {
+    "board": "pcbench-amalthea_amalthea_rev0",
+    "delta": 1,
+    "capped": true,
+    "same_ses": true,
+    "deadline": true
+  },
+  {
+    "board": "pcbench-badge2016_Badge_init",
+    "delta": 17,
+    "capped": true,
+    "same_ses": true,
+    "deadline": false
+  },
+  {
+    "board": "pcbench-balena-rover-wide-hat_resin-rover",
+    "delta": 1,
+    "capped": true,
+    "same_ses": true,
+    "deadline": false
+  },
+  {
+    "board": "pcbench-dorkyboard_keyboard",
+    "delta": 9,
+    "capped": true,
+    "same_ses": true,
+    "deadline": false
+  },
+  {
+    "board": "pcbench-headstage-adapter_headstage adapter",
+    "delta": 1,
+    "capped": true,
+    "same_ses": true,
+    "deadline": false
+  },
+  {
+    "board": "pcbench-karabas-nano_karabas-nano-revC",
+    "delta": 1,
+    "capped": true,
+    "same_ses": false,
+    "deadline": true
+  },
+  {
+    "board": "pcbench-karabas-nano_karabas-nano-revG",
+    "delta": 2,
+    "capped": true,
+    "same_ses": false,
+    "deadline": true
+  },
+  {
+    "board": "pcbench-kitspace_40-channel-hv-switching-board",
+    "delta": 3,
+    "capped": true,
+    "same_ses": false,
+    "deadline": true
+  },
+  {
+    "board": "pcbench-memsarray_mems_array",
+    "delta": 14,
+    "capped": true,
+    "same_ses": true,
+    "deadline": false
+  },
+  {
+    "board": "pcbench-wavegen_wavegen",
+    "delta": 3,
+    "capped": true,
+    "same_ses": true,
+    "deadline": false
+  }
+]
