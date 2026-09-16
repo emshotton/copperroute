@@ -141,6 +141,7 @@ fn a_rejected_connection_restores_the_pre_route_board_exactly() {
             settings.get_start_ripup_costs(),
             !settings.is_fanout_enabled(),
             settings.trace_pull_tight_accuracy.unwrap_or(500),
+            true,
             RouterBudget::disabled(),
             &|| false,
             None,

@@ -160,9 +160,11 @@ fn it_warns_instead_of_failing_on_a_group_naming_an_unknown_pad() {
         r#" (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
     );
     let (components, warnings) = read_with_nets(text);
-    assert!(components[0].pads.as_ref().expect("pads")[0]
-        .netTieNets
-        .is_none());
+    assert!(
+        components[0].pads.as_ref().expect("pads")[0]
+            .netTieNets
+            .is_none()
+    );
     assert!(
         warnings.iter().any(|w| w.contains("has no such pad")),
         "warnings: {warnings:?}"
@@ -177,9 +179,11 @@ fn it_warns_instead_of_failing_on_a_group_that_spans_one_net() {
         r#" (pad "2" smd rect (at 0.5 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))"#,
     );
     let (components, warnings) = read_with_nets(text);
-    assert!(components[0].pads.as_ref().expect("pads")[0]
-        .netTieNets
-        .is_none());
+    assert!(
+        components[0].pads.as_ref().expect("pads")[0]
+            .netTieNets
+            .is_none()
+    );
     assert!(
         warnings.iter().any(|w| w.contains("fewer than two nets")),
         "warnings: {warnings:?}"
@@ -276,12 +280,16 @@ fn it_warns_and_skips_a_group_with_an_unconnected_pad() {
         r#" (pad "2" smd rect (at 0.5 0) (size 1 1) (layers "F.Cu")))"#,
     );
     let (components, warnings) = read_with_nets(text);
-    assert!(components[0].pads.as_ref().expect("pads")[0]
-        .netTieNets
-        .is_none());
-    assert!(components[1].pads.as_ref().expect("pads")[0]
-        .netTieNets
-        .is_none());
+    assert!(
+        components[0].pads.as_ref().expect("pads")[0]
+            .netTieNets
+            .is_none()
+    );
+    assert!(
+        components[1].pads.as_ref().expect("pads")[0]
+            .netTieNets
+            .is_none()
+    );
     assert!(
         warnings.iter().any(|w| w.contains("fewer than two nets")),
         "warnings: {warnings:?}"

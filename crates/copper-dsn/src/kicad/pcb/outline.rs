@@ -453,16 +453,17 @@ pub fn assemble_outline(
         ));
     }
 
-    if let Some(&(worst, at)) = bridged
-        .iter()
-        .max_by(|a, b| a.0.total_cmp(&b.0))
-    {
+    if let Some(&(worst, at)) = bridged.iter().max_by(|a, b| a.0.total_cmp(&b.0)) {
         warnings.push(format!(
             "{} Edge.Cuts {} bridged to give the router a closed boundary, the widest \
              {worst:.4} mm at ({:.4}, {:.4}). KiCad reports an outline with gaps like these \
              as malformed; the Edge.Cuts geometry in downloads is unchanged.",
             bridged.len(),
-            if bridged.len() == 1 { "gap was" } else { "gaps were" },
+            if bridged.len() == 1 {
+                "gap was"
+            } else {
+                "gaps were"
+            },
             at.0,
             at.1,
         ));

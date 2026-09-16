@@ -101,12 +101,18 @@ fn a_mixed_edit_sequence_matches_a_btree_map() {
 
     let mut state: u64 = 0x2545F491_4F6CDD1D;
     for step in 0..2000_u32 {
-        state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let id = ItemId((state >> 33) as u32 % 64);
         if step % 3 == 0 {
             assert_eq!(store.remove(&id), oracle.remove(&id), "remove {id:?}");
         } else {
-            assert_eq!(store.insert(id, step), oracle.insert(id, step), "insert {id:?}");
+            assert_eq!(
+                store.insert(id, step),
+                oracle.insert(id, step),
+                "insert {id:?}"
+            );
         }
         assert_eq!(store.len(), oracle.len());
         assert_eq!(store.get(&id), oracle.get(&id));

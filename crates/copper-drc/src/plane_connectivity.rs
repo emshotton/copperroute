@@ -19,6 +19,7 @@ pub const DEFAULT_ZONE_CLEARANCE_UM: f64 = 500.0;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct PlaneConnectivity {
     clusters: BTreeMap<i32, usize>,
+    stranded: BTreeSet<ItemId>,
 }
 
 impl PlaneConnectivity {
@@ -36,8 +37,7 @@ impl PlaneConnectivity {
         }
         let plane_nets: BTreeSet<i32> = pours.values().flatten().map(|pour| pour.net).collect();
         let bounds = board.get_bounding_box_of_items(board.items_in_board_order());
-        let zone_clearance_floor =
-            zone_clearance_um.max(0.0) * board_units_per_mm(board) / 1000.0;
+        let zone_clearance_floor = zone_clearance_um.max(0.0) * board_units_per_mm(board) / 1000.0;
         let cell = cell_size(board, &pours, zone_clearance_floor, &bounds);
         let signal_layers: Vec<usize> = (0..board.get_layer_count())
             .filter(|layer| board.layer_structure().layers[*layer].is_signal)
@@ -61,9 +61,10 @@ impl PlaneConnectivity {
         }
 
         let mut clusters = BTreeMap::new();
+        let mut stranded = BTreeSet::new();
         for net in plane_nets {
-            let mut net_labels: Vec<u32> = Vec::new();
-            let mut unlabelled_items = 0;
+            let mut labelled: Vec<(ItemId, u32)> = Vec::new();
+            let mut unlabelled: Vec<ItemId> = Vec::new();
             for id in board.get_connectable_items(net) {
                 let Some(item) = board.get_item(id) else {
                     continue;
@@ -76,22 +77,40 @@ impl PlaneConnectivity {
                     .filter_map(|(layer, point)| copper.label_at(layer, &point))
                     .collect();
                 match item_labels.split_first() {
-                    None => unlabelled_items += 1,
+                    None => unlabelled.push(id),
                     Some((first, rest)) => {
                         for label in rest {
                             copper.union(*first, *label);
                         }
-                        net_labels.push(*first);
+                        labelled.push((id, *first));
                     }
                 }
             }
-            let roots: BTreeSet<u32> = net_labels
-                .into_iter()
-                .map(|label| copper.find(label))
-                .collect();
-            clusters.insert(net, roots.len() + unlabelled_items);
+            let mut by_root: BTreeMap<u32, BTreeSet<ItemId>> = BTreeMap::new();
+            for (id, label) in labelled {
+                by_root.entry(copper.find(label)).or_default().insert(id);
+            }
+            clusters.insert(net, by_root.len() + unlabelled.len());
+            stranded.extend(unlabelled);
+            let main = by_root
+                .iter()
+                .max_by_key(|(root, items)| (items.len(), std::cmp::Reverse(**root)))
+                .map(|(root, _)| *root);
+            for (root, items) in by_root {
+                if Some(root) != main {
+                    stranded.extend(items);
+                }
+            }
         }
-        PlaneConnectivity { clusters }
+        PlaneConnectivity { clusters, stranded }
+    }
+
+    /// The connectable items a refilled pour does not actually join to the rest of their net:
+    /// the items on no copper at all, and those the refill leaves on an island of their own.
+    /// The pour's outline still covers them, so the board model calls them connected.
+    #[must_use]
+    pub fn stranded_items(&self) -> &BTreeSet<ItemId> {
+        &self.stranded
     }
 
     #[must_use]

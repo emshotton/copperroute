@@ -449,7 +449,10 @@ fn a_trapezoid_pad_matches_the_corners_kicad_builds() {
     let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
     let components = imported.board.components.expect("components");
     let pad = &components[0].pads.as_ref().expect("pads")[0];
-    let polygon = pad.copperPolygon.as_ref().expect("a trapezoid carries its polygon");
+    let polygon = pad
+        .copperPolygon
+        .as_ref()
+        .expect("a trapezoid carries its polygon");
     let corners: Vec<(f64, f64)> = polygon.iter().map(|p| (p.x, p.y)).collect();
     assert_eq!(
         corners,
@@ -468,7 +471,10 @@ fn a_trapezoid_without_a_delta_is_the_plain_rectangle() {
     let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
     let components = imported.board.components.expect("components");
     let pad = &components[0].pads.as_ref().expect("pads")[0];
-    let polygon = pad.copperPolygon.as_ref().expect("a trapezoid carries its polygon");
+    let polygon = pad
+        .copperPolygon
+        .as_ref()
+        .expect("a trapezoid carries its polygon");
     let corners: Vec<(f64, f64)> = polygon.iter().map(|p| (p.x, p.y)).collect();
     assert_eq!(
         corners,
@@ -688,7 +694,6 @@ fn a_gap_past_the_chaining_epsilon_is_bridged_and_reported() {
 
 #[test]
 fn a_gap_wider_than_the_healing_tolerance_is_still_refused() {
-    let error =
-        read_pcb(&square_with_gap(1.5), "t", &default_net_class()).expect_err("it fails");
+    let error = read_pcb(&square_with_gap(1.5), "t", &default_net_class()).expect_err("it fails");
     assert_eq!(error.message, "A closed Edge.Cuts outline is required.");
 }

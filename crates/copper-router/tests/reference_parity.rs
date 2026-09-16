@@ -201,6 +201,7 @@ fn route_stem_with(row: &Row, steps: Steps) -> Vec<RouterConnectionDoc> {
                 settings.get_start_ripup_costs(),
                 !settings.is_fanout_enabled(),
                 settings.trace_pull_tight_accuracy.unwrap_or(500),
+                true,
                 RouterBudget::disabled(),
                 &|| false,
                 None,

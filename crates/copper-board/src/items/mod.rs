@@ -864,10 +864,7 @@ mod tests {
     #[test]
     fn two_tie_pads_of_one_footprint_are_not_obstacles_to_each_other() {
         let mut f = Fixture::new();
-        tied(
-            &mut f,
-            &[(1, "0", vec![2]), (2, "0", vec![1])],
-        );
+        tied(&mut f, &[(1, "0", vec![2]), (2, "0", vec![1])]);
         let a = pin(1, vec![1]);
         let b = pin(2, vec![2]);
         assert!(!a.is_obstacle(&b, &f.ctx()));
@@ -877,10 +874,7 @@ mod tests {
     #[test]
     fn a_tie_pad_is_still_an_obstacle_to_a_foreign_net() {
         let mut f = Fixture::new();
-        tied(
-            &mut f,
-            &[(1, "0", vec![2]), (2, "0", vec![1])],
-        );
+        tied(&mut f, &[(1, "0", vec![2]), (2, "0", vec![1])]);
         let a = pin(1, vec![1]);
         assert!(a.is_obstacle(&trace(3, vec![9]), &f.ctx()));
         assert!(a.is_obstacle(&pin(4, vec![2]), &f.ctx()));
@@ -889,10 +883,7 @@ mod tests {
     #[test]
     fn tie_pads_of_different_footprints_are_still_obstacles() {
         let mut f = Fixture::new();
-        tied(
-            &mut f,
-            &[(1, "0", vec![2]), (2, "7", vec![1])],
-        );
+        tied(&mut f, &[(1, "0", vec![2]), (2, "7", vec![1])]);
         let a = pin(1, vec![1]);
         let b = pin(2, vec![2]);
         assert!(a.is_obstacle(&b, &f.ctx()));

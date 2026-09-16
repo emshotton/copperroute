@@ -993,7 +993,8 @@ fn a_foreign_trace_landing_on_a_tie_pad_is_still_a_violation() {
     let mut out = Vec::new();
     copper::run(&mut synthetic.board, &constraints_with(2000), &mut out);
     assert!(
-        out.iter().any(|v| v.kind == DrcViolationKind::ShortingItems),
+        out.iter()
+            .any(|v| v.kind == DrcViolationKind::ShortingItems),
         "kinds: {:?}",
         kinds(&out)
     );
@@ -1040,5 +1041,8 @@ fn tie_pad_hole_clearance_is_not_exempted_by_the_copper_clearance_exemption() {
         .filter(|v| v.kind == DrcViolationKind::HoleClearance)
         .collect();
     assert!(!hole_violations.is_empty(), "kinds: {:?}", kinds(&out));
-    assert!(!out.iter().any(|v| v.kind == DrcViolationKind::ShortingItems));
+    assert!(
+        !out.iter()
+            .any(|v| v.kind == DrcViolationKind::ShortingItems)
+    );
 }

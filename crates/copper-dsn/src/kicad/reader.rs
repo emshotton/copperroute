@@ -1073,7 +1073,12 @@ pub fn read_board_json(
                 if !shape.intersects(&pad_shape) {
                     continue;
                 }
-                for number in pin.hdr.net_nos.iter().chain(board.rules.net_ties.nets_of(pad)) {
+                for number in pin
+                    .hdr
+                    .net_nos
+                    .iter()
+                    .chain(board.rules.net_ties.nets_of(pad))
+                {
                     if !tie_numbers.contains(number) {
                         tie_numbers.push(*number);
                     }

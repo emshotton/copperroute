@@ -1020,6 +1020,7 @@ pub fn route_connection(
             remove_unconnected_vias,
             retain_autoroute_database,
             false,
+            true,
             stop,
         ) {
             Steps1To5::Early(result) | Steps1To5::Ran { result, .. } => result,
@@ -1067,6 +1068,7 @@ fn route_connection_steps_1_to_5(
     remove_unconnected_vias: bool,
     retain_autoroute_database: bool,
     take_strict_drc_snapshot: bool,
+    plane_contact_connects: bool,
     stop: StopCheck<'_>,
 ) -> Steps1To5 {
     let route_net = board.rules.nets.get(net_no);
@@ -1098,11 +1100,13 @@ fn route_connection_steps_1_to_5(
 
     let connected_set = board.connected_set(item, net_no, false);
     let (route_start_set, route_dest_set) = if contains_plane {
-        for current_item in connected_set.iter().rev() {
-            if matches!(board.get_item(*current_item), Some(Item::ConductionArea(_))) {
-                return Steps1To5::Early(AutorouteAttemptResult::new(
-                    AutorouteAttemptState::ConnectedToPlane,
-                ));
+        if plane_contact_connects {
+            for current_item in connected_set.iter().rev() {
+                if matches!(board.get_item(*current_item), Some(Item::ConductionArea(_))) {
+                    return Steps1To5::Early(AutorouteAttemptResult::new(
+                        AutorouteAttemptState::ConnectedToPlane,
+                    ));
+                }
             }
         }
         (connected_set, unconnected_set)
@@ -1169,6 +1173,7 @@ pub fn route_connection_full(
     start_ripup_costs: i32,
     remove_unconnected_vias: bool,
     trace_pull_tight_accuracy: i32,
+    plane_contact_connects: bool,
     budget: RouterBudget,
     stop: StopCheck<'_>,
     search_budget: Option<&ConnectionBudget>,
@@ -1188,6 +1193,7 @@ pub fn route_connection_full(
             start_ripup_costs,
             remove_unconnected_vias,
             trace_pull_tight_accuracy,
+            plane_contact_connects,
             budget,
             stop,
             search_budget,
@@ -1211,6 +1217,7 @@ fn route_connection_steps_1_to_8(
     start_ripup_costs: i32,
     remove_unconnected_vias: bool,
     trace_pull_tight_accuracy: i32,
+    plane_contact_connects: bool,
     budget: RouterBudget,
     stop: StopCheck<'_>,
     search_budget: Option<&ConnectionBudget>,
@@ -1231,6 +1238,7 @@ fn route_connection_steps_1_to_8(
         remove_unconnected_vias,
         BatchAutorouter::BENCHMARK_RETAIN_AUTOROUTE_DATABASE,
         true,
+        plane_contact_connects,
         search_stop,
     ) {
         Steps1To5::Early(result) => return result,

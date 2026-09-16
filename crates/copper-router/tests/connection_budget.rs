@@ -157,6 +157,7 @@ fn the_search_budget_is_polled_by_the_search_and_not_by_the_cleanup() {
         settings.get_start_ripup_costs(),
         !settings.is_fanout_enabled(),
         settings.trace_pull_tight_accuracy.unwrap_or(500),
+        true,
         RouterBudget::disabled(),
         &stop,
         Some(&budget),

@@ -1056,7 +1056,6 @@ fn remove_items_marking_changed_area_marks_what_it_removed() {
     assert_eq!(board.get_item(ItemId(5)), None);
 }
 
-
 #[test]
 fn remove_trace_tails_finds_nothing_on_a_fully_contacted_net() {
     let mut board = p2t11_board();

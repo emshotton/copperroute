@@ -60,6 +60,7 @@ impl AutoroutePassRunner {
     ) -> Result<bool, RouterError> {
         stop.poll_cancel();
         stop.poll_deadline();
+        router.refresh_plane_bonding(board);
         let autoroute_item_list = router.autoroute_items(board);
 
         if autoroute_item_list.is_empty() {

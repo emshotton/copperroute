@@ -35,7 +35,11 @@ fn offset_copper_rotates_without_moving_the_hole_anchor() {
     );
     let shape = pin.get_shape_on_layer(0, &ctx).unwrap();
     assert!(shape.contains_inside(&Point::from(copper_geometry::IntPoint::new(100000, -92000))));
-    assert!(!shape.contains_inside(&Point::from(copper_geometry::IntPoint::new(100000, -108000))));
+    assert!(
+        !shape.contains_inside(&Point::from(copper_geometry::IntPoint::new(
+            100000, -108000
+        )))
+    );
     assert_eq!(pin.get_padstack(&ctx).unwrap().drill_diameter, Some(6000.0));
     assert_eq!(
         board
@@ -71,7 +75,11 @@ fn a_custom_polygon_keeps_its_clipped_corner() {
         .find_map(|i| if let Item::Pin(p) = i { Some(p) } else { None })
         .unwrap();
     let shape = pin.get_shape_on_layer(0, &ctx).unwrap();
-    assert!(shape.contains_inside(&Point::from(copper_geometry::IntPoint::new(100000, -100000))));
+    assert!(
+        shape.contains_inside(&Point::from(copper_geometry::IntPoint::new(
+            100000, -100000
+        )))
+    );
     assert!(!shape.contains_inside(&Point::from(copper_geometry::IntPoint::new(92000, -92000))));
 }
 

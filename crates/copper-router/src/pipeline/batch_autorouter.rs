@@ -20,6 +20,7 @@ use crate::pipeline::board_history::BoardHistory;
 use crate::pipeline::connection_budget::ConnectionBudget;
 use crate::pipeline::failure_log::RoutingFailureLog;
 use crate::pipeline::pass_runner::AutoroutePassRunner;
+use crate::pipeline::plane::plane_connectivity_of;
 use crate::pipeline::stop::{DeterministicWorkBudget, ProgressThrottler, RouterBudget};
 use crate::pipeline::{NamedAlgorithmType, ProgressSink, RouterStop};
 
@@ -45,6 +46,7 @@ pub struct BatchAutorouter<'a> {
 
     budget: RouterBudget,
     optimizer_work_budget: Option<Rc<DeterministicWorkBudget>>,
+    stranded_from_plane: BTreeSet<ItemId>,
 }
 
 impl<'a> BatchAutorouter<'a> {
@@ -110,6 +112,7 @@ impl<'a> BatchAutorouter<'a> {
             ),
             budget,
             optimizer_work_budget: None,
+            stranded_from_plane: BTreeSet::new(),
         }
     }
 
@@ -303,6 +306,7 @@ impl<'a> BatchAutorouter<'a> {
             self.start_ripup_costs,
             self.remove_unconnected_vias,
             self.trace_pull_tight_accuracy,
+            !self.stranded_from_plane.contains(&item),
             self.budget,
             stop,
             search_budget,
@@ -311,6 +315,14 @@ impl<'a> BatchAutorouter<'a> {
 
     pub fn reset_net_filter_after_ripup(&mut self) {
         self.net_filter = self.configured_net_filter.clone();
+    }
+
+    /// Re-ask the refill model which plane-net items its pours do not actually reach. Routing
+    /// changes the answer, so a pass that trusts a stale one leaves pads unrouted.
+    pub fn refresh_plane_bonding(&mut self, board: &Board) {
+        self.stranded_from_plane = plane_connectivity_of(board, self.settings)
+            .stranded_items()
+            .clone();
     }
 
     pub fn autoroute_items(&self, board: &Board) -> Vec<(ItemId, i32)> {
@@ -344,8 +356,12 @@ impl<'a> BatchAutorouter<'a> {
                 {
                     continue;
                 }
-                let connected_set = board.connected_set(current_item, current_net_number, false);
+                let stranded = self.stranded_from_plane.contains(&current_item);
+                let connected_set = board.connected_set(current_item, current_net_number, stranded);
                 for connected in &connected_set {
+                    if self.stranded_from_plane.contains(connected) {
+                        continue;
+                    }
                     if board
                         .get_item(*connected)
                         .is_some_and(|c| c.net_count() <= 1)
@@ -360,7 +376,7 @@ impl<'a> BatchAutorouter<'a> {
                 }
 
                 let net = board.rules.nets.get(current_net_number);
-                if net.is_some_and(|net| net.contains_plane()) {
+                if net.is_some_and(|net| net.contains_plane()) && !stranded {
                     let already_connected_to_plane = connected_set
                         .iter()
                         .any(|id| matches!(board.get_item(*id), Some(Item::ConductionArea(_))));
