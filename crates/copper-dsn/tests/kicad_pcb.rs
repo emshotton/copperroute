@@ -62,14 +62,55 @@ fn it_rejects_a_board_with_no_pads() {
 }
 
 #[test]
-fn it_rejects_curved_tracks() {
+fn it_keeps_curved_tracks_as_fixed_copper() {
     let text = r#"(kicad_pcb (version 20241229) (layers (0 "F.Cu" signal)) (net 1 "GND")
         (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
         (footprint "R" (layer "F.Cu") (at 1 1)
           (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))
-        (arc (start 1 1) (mid 2 2) (end 3 3) (width 0.25) (layer "F.Cu") (net 1)))"#;
-    let error = read_pcb(text, "t", &default_net_class()).expect_err("it fails");
-    assert_eq!(error.message, "Curved tracks are not supported yet.");
+        (arc (start 1 1) (mid 2 1.5) (end 3 1) (width 0.25) (layer "F.Cu") (net 1)))"#;
+    let imported = read_pcb(text, "t", &default_net_class()).expect("the board imports");
+    let traces = imported.board.traces.expect("traces");
+    assert!(traces[0].arc);
+    assert!(
+        imported
+            .warnings
+            .iter()
+            .any(|w| w.starts_with("Curved tracks are kept"))
+    );
+}
+
+#[test]
+fn rip_up_removes_only_unlocked_routing_on_the_chosen_nets() {
+    let text = r#"(kicad_pcb (version 20241229) (layers (0 "F.Cu" signal) (31 "B.Cu" signal)) (net 1 "GND") (net 2 "SIG")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 1 1)
+          (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))
+        (segment (start 1 1) (end 3 1) (width 0.25) (layer "F.Cu") (net 1) (locked yes))
+        (segment (start 1 2) (end 3 2) (width 0.25) (layer "F.Cu") (net 1))
+        (segment (start 1 3) (end 3 3) (width 0.25) (layer "F.Cu") (net 2))
+        (via (at 5 5) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1)))"#;
+    let imported = read_pcb(text, "t", &default_net_class()).expect("the board imports");
+    let mut every_net = imported.board.clone();
+    copper_dsn::kicad::pcb::rip_up(
+        &mut every_net,
+        &copper_dsn::kicad::pcb::ImportOptions {
+            rip_up: true,
+            ..Default::default()
+        },
+    );
+    assert_eq!(every_net.traces.as_ref().map(Vec::len), Some(1));
+    assert_eq!(every_net.vias.as_ref().map(Vec::len), Some(0));
+    let mut one_net = imported.board.clone();
+    copper_dsn::kicad::pcb::rip_up(
+        &mut one_net,
+        &copper_dsn::kicad::pcb::ImportOptions {
+            rip_up: true,
+            rip_up_nets: Some(["SIG".to_string()].into()),
+            ..Default::default()
+        },
+    );
+    assert_eq!(one_net.traces.as_ref().map(Vec::len), Some(3 - 1));
+    assert_eq!(one_net.vias.as_ref().map(Vec::len), Some(1));
 }
 
 #[test]
@@ -749,4 +790,38 @@ fn a_gap_past_the_chaining_epsilon_is_bridged_and_reported() {
 fn a_gap_wider_than_the_healing_tolerance_is_still_refused() {
     let error = read_pcb(&square_with_gap(1.5), "t", &default_net_class()).expect_err("it fails");
     assert_eq!(error.message, "A closed Edge.Cuts outline is required.");
+}
+
+#[test]
+fn respecting_zones_turns_fills_into_copper_and_skips_teardrops() {
+    let text = r#"(kicad_pcb (version 20241229) (layers (0 "F.Cu" signal) (31 "B.Cu" signal)) (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 1 1)
+          (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND")))
+        (zone (net 1) (net_name "GND") (layer "B.Cu")
+          (polygon (pts (xy 0 0) (xy 10 0) (xy 10 10) (xy 0 10)))
+          (filled_polygon (layer "B.Cu") (pts (xy 0.5 0.5) (xy 9.5 0.5) (xy 9.5 9.5) (xy 0.5 9.5))))
+        (zone (net 1) (net_name "GND") (layer "F.Cu") (attr (teardrop (type padvia)))
+          (polygon (pts (xy 1 1) (xy 2 1) (xy 2 2)))
+          (filled_polygon (layer "F.Cu") (pts (xy 1 1) (xy 2 1) (xy 2 2)))))"#;
+    let mut imported = read_pcb(text, "t", &default_net_class()).expect("the board imports");
+    assert_eq!(
+        imported.zone_fills.len(),
+        1,
+        "the teardrop fill is left out"
+    );
+    let areas_before = imported.board.conductionAreas.as_ref().map_or(0, Vec::len);
+    copper_dsn::kicad::pcb::apply_import_options(
+        &mut imported,
+        &copper_dsn::kicad::pcb::ImportOptions {
+            respect_zones: true,
+            ..Default::default()
+        },
+    );
+    let areas = imported.board.conductionAreas.expect("areas");
+    assert_eq!(areas.len(), areas_before + 1);
+    let fill = areas.last().expect("the fill");
+    assert_eq!(fill.netName.as_deref(), Some("GND"));
+    assert_eq!(fill.layerIndex, 1);
+    assert!(fill.isObstacle);
 }

@@ -10,6 +10,7 @@ pub fn run(cli: &Cli, args: &DrcArgs) -> ExitCode {
     load.rules = args.rules.clone();
     load.session = args.ses.clone();
     load.kicad_project = args.kicad_project.clone();
+    load.kicad_import.respect_zones = args.respect_zones;
     load.settings = super::overrides(cli, &[]);
 
     let outcome = match drc(&DrcRequest {

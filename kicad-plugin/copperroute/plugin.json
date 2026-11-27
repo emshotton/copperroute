@@ -1,0 +1,42 @@
+{
+  "$schema": "https://go.kicad.org/api/schemas/v1",
+  "identifier": "net.copperroute.autorouter",
+  "name": "CopperRoute",
+  "description": "Autoroutes the open board, keeping locked and existing tracks.",
+  "runtime": {
+    "type": "python",
+    "min_version": "3.9"
+  },
+  "actions": [
+    {
+      "identifier": "net.copperroute.autorouter.route",
+      "name": "Autoroute board",
+      "description": "Route every missing connection, keeping existing tracks and vias.",
+      "show-button": true,
+      "scopes": ["pcb"],
+      "entrypoint": "route_board.py",
+      "icons-light": ["icons/route-24.png", "icons/route-48.png"],
+      "icons-dark": ["icons/route-dark-24.png", "icons/route-dark-48.png"]
+    },
+    {
+      "identifier": "net.copperroute.autorouter.route-selection",
+      "name": "Autoroute selected nets",
+      "description": "Route the missing connections of the nets of the selected items.",
+      "show-button": false,
+      "scopes": ["pcb"],
+      "entrypoint": "route_selection.py",
+      "icons-light": ["icons/route-24.png", "icons/route-48.png"],
+      "icons-dark": ["icons/route-dark-24.png", "icons/route-dark-48.png"]
+    },
+    {
+      "identifier": "net.copperroute.autorouter.reroute",
+      "name": "Rip up and reroute",
+      "description": "Remove unlocked tracks and vias (of the selected nets, if any) and route again.",
+      "show-button": false,
+      "scopes": ["pcb"],
+      "entrypoint": "reroute.py",
+      "icons-light": ["icons/route-24.png", "icons/route-48.png"],
+      "icons-dark": ["icons/route-dark-24.png", "icons/route-dark-48.png"]
+    }
+  ]
+}

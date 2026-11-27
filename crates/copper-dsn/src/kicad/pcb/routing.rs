@@ -1,10 +1,11 @@
+use std::collections::BTreeSet;
 use std::f64::consts::PI;
 
 use super::PcbError;
 use super::outline;
 use super::structure::{Layers, NetTable};
 use crate::kicad::sexpr::{Node, Value};
-use crate::kicad::{ConductionAreaJson, Point2D, TraceJson, ViaJson};
+use crate::kicad::{ConductionAreaJson, KeepoutJson, Point2D, TraceJson, ViaJson};
 
 const SECTION: &str = "routing";
 
@@ -14,10 +15,6 @@ fn number(text: &str) -> Result<f64, PcbError> {
 
 fn point(node: &Node, key: &str) -> Result<(f64, f64), PcbError> {
     super::numeric::point(SECTION, node, key)
-}
-
-fn has_flag(node: &Node, key: &str) -> bool {
-    has_atom(node, key) || node.child(key).is_some()
 }
 
 fn has_atom(node: &Node, key: &str) -> bool {
@@ -33,33 +30,31 @@ fn atom_str(value: &Value) -> &str {
     }
 }
 
+/// KiCad writes `(locked yes)` from version 7 and a bare `locked` atom before it.
+pub(crate) fn is_locked(node: &Node) -> bool {
+    has_atom(node, "locked") || node.value("locked").is_some_and(|value| value != "no")
+}
+
+pub fn source_id(node: &Node) -> Option<String> {
+    node.value("uuid")
+        .or_else(|| node.value("tstamp"))
+        .map(|id| id.trim_matches('"').to_string())
+}
+
 pub fn read_traces(
     root: &Node,
     layers: &Layers,
     nets: &NetTable,
 ) -> Result<Vec<TraceJson>, PcbError> {
     let mut traces = Vec::new();
-    for (id, node) in root.children("segment").enumerate() {
-        if has_flag(node, "locked") {
-            return Err(PcbError::new(
-                SECTION,
-                "Locked tracks are not supported yet.",
-            ));
-        }
-        let net_name = nets.name_of(node)?;
-        if net_name.is_empty() {
-            return Err(PcbError::new(
-                SECTION,
-                "Tracks without a net are not supported yet.",
-            ));
-        }
+    for node in root.children("segment") {
         let width = number(node.value("width").unwrap_or(""))?;
         let layer_index = layers.index_of(node.value("layer").unwrap_or(""))?;
         let start = point(node, "start")?;
         let end = point(node, "end")?;
         traces.push(TraceJson {
-            id: id as i32,
-            netName: Some(net_name),
+            id: traces.len() as i32,
+            netName: Some(nets.name_of(node)?),
             width,
             layerIndex: layer_index,
             points: Some(vec![
@@ -69,6 +64,24 @@ pub fn read_traces(
                 },
                 Point2D { x: end.0, y: end.1 },
             ]),
+            locked: is_locked(node),
+            arc: false,
+            sourceId: source_id(node),
+        });
+    }
+    for node in root.children("arc") {
+        let width = number(node.value("width").unwrap_or(""))?;
+        let layer_index = layers.index_of(node.value("layer").unwrap_or(""))?;
+        let points = outline::native_arc_points(node)?;
+        traces.push(TraceJson {
+            id: traces.len() as i32,
+            netName: Some(nets.name_of(node)?),
+            width: width + 2.0 * outline::OUTLINE_TOLERANCE,
+            layerIndex: layer_index,
+            points: Some(points.into_iter().map(|(x, y)| Point2D { x, y }).collect()),
+            locked: is_locked(node),
+            arc: true,
+            sourceId: source_id(node),
         });
     }
     Ok(traces)
@@ -77,12 +90,6 @@ pub fn read_traces(
 pub fn read_vias(root: &Node, layers: &Layers, nets: &NetTable) -> Result<Vec<ViaJson>, PcbError> {
     let mut vias = Vec::new();
     for (id, node) in root.children("via").enumerate() {
-        if has_flag(node, "locked") || has_atom(node, "blind") || has_atom(node, "micro") {
-            return Err(PcbError::new(
-                SECTION,
-                "Locked, blind, and micro vias are not supported yet.",
-            ));
-        }
         let raw_span: &[Value] = node
             .child("layers")
             .map(|layers| &layers.values[1..])
@@ -90,42 +97,87 @@ pub fn read_vias(root: &Node, layers: &Layers, nets: &NetTable) -> Result<Vec<Vi
         if raw_span.len() != 2 {
             return Err(PcbError::new(SECTION, "Missing via layer span."));
         }
-        let start_name = atom_str(&raw_span[0]);
-        let end_name = atom_str(&raw_span[1]);
-        let net_name = nets.name_of(node)?;
-        let first_layer = layers
-            .entries
-            .first()
-            .and_then(|layer| layer.name.as_deref())
-            .unwrap_or("");
-        let last_layer = layers
-            .entries
-            .last()
-            .and_then(|layer| layer.name.as_deref())
-            .unwrap_or("");
-        if net_name.is_empty() || start_name != first_layer || end_name != last_layer {
-            return Err(PcbError::new(
-                SECTION,
-                "Only through vias assigned to a net are supported.",
-            ));
-        }
+        let start_layer = layers.index_of(atom_str(&raw_span[0]))?;
+        let end_layer = layers.index_of(atom_str(&raw_span[1]))?;
+        let (start_layer, end_layer) = (start_layer.min(end_layer), start_layer.max(end_layer));
+        let through = start_layer == 0 && end_layer as usize + 1 == layers.entries.len();
         let position = point(node, "at")?;
         let diameter = number(node.value("size").unwrap_or(""))?;
         let drill = number(node.value("drill").unwrap_or(""))?;
         vias.push(ViaJson {
             id: id as i32,
-            netName: Some(net_name),
+            netName: Some(nets.name_of(node)?),
             position: Some(Point2D {
                 x: position.0,
                 y: position.1,
             }),
             diameter,
             drill,
-            startLayerIndex: layers.index_of(start_name)?,
-            endLayerIndex: layers.index_of(end_name)?,
+            startLayerIndex: start_layer,
+            endLayerIndex: end_layer,
+            locked: is_locked(node) || !through,
+            sourceId: source_id(node),
         });
     }
     Ok(vias)
+}
+
+pub(crate) fn zone_layers(zone: &Node, layers: &Layers) -> Result<Vec<i32>, PcbError> {
+    let names: Vec<&str> = match zone.child("layers") {
+        Some(node) => node.values[1..].iter().map(atom_str).collect(),
+        None => zone.value("layer").into_iter().collect(),
+    };
+    let mut result = Vec::new();
+    for name in names {
+        if name == "*.Cu" || name == "F&B.Cu" {
+            let mut all = layers.entries.iter().map(|layer| layer.index);
+            if name == "*.Cu" {
+                result.extend(all);
+            } else {
+                result.extend(all.next());
+                result.extend(all.next_back());
+            }
+        } else if layers.could_be_copper(name) {
+            result.push(layers.index_of(name)?);
+        }
+    }
+    result.sort_unstable();
+    result.dedup();
+    Ok(result)
+}
+
+fn zone_outline(zone: &Node) -> Result<Vec<Point2D>, PcbError> {
+    let polygon = zone
+        .child("polygon")
+        .ok_or_else(|| PcbError::new(SECTION, "Zone without an outline."))?;
+    Ok(poly_points(polygon)?
+        .into_iter()
+        .map(|(x, y)| Point2D { x, y })
+        .collect())
+}
+
+pub fn read_keepouts(root: &Node, layers: &Layers) -> Result<Vec<KeepoutJson>, PcbError> {
+    let mut result = Vec::new();
+    for zone in root.children("zone") {
+        let Some(keepout) = zone.child("keepout") else {
+            continue;
+        };
+        let no_tracks = keepout.value("tracks") == Some("not_allowed");
+        let no_vias = keepout.value("vias") == Some("not_allowed");
+        if !no_tracks && !no_vias {
+            continue;
+        }
+        let polygon = zone_outline(zone)?;
+        for layer_index in zone_layers(zone, layers)? {
+            result.push(KeepoutJson {
+                layerIndex: layer_index,
+                noTracks: no_tracks,
+                noVias: no_vias,
+                polygon: polygon.clone(),
+            });
+        }
+    }
+    Ok(result)
 }
 
 pub fn check_zones(
@@ -135,17 +187,19 @@ pub fn check_zones(
 ) -> Result<(), PcbError> {
     let mut copper_zones = 0u32;
     let mut preserved_keepouts = 0u32;
+    let mut routing_keepouts = 0u32;
     for zone in root.children("zone") {
         if let Some(keepout) = zone.child("keepout") {
-            if keepout.value("tracks") != Some("allowed")
-                || keepout.value("vias") != Some("allowed")
+            if keepout.value("tracks") == Some("not_allowed")
+                || keepout.value("vias") == Some("not_allowed")
             {
-                return Err(PcbError::new(
-                    SECTION,
-                    "Zone keepouts that restrict tracks or vias are not supported for routing yet.",
-                ));
+                routing_keepouts += 1;
+            } else {
+                preserved_keepouts += 1;
             }
-            preserved_keepouts += 1;
+            continue;
+        }
+        if is_teardrop(zone) {
             continue;
         }
         if nets.name_of(zone)?.is_empty() {
@@ -168,7 +222,111 @@ pub fn check_zones(
              KiCad zone refill."
         ));
     }
+    if routing_keepouts > 0 {
+        warnings.push(format!(
+            "{routing_keepouts} keepout areas restrict routing. A keepout that forbids tracks \
+             also keeps vias out."
+        ));
+    }
     Ok(())
+}
+
+pub fn read_zone_fills(
+    root: &Node,
+    layers: &Layers,
+    nets: &NetTable,
+) -> Result<Vec<ConductionAreaJson>, PcbError> {
+    let mut fills = Vec::new();
+    for zone in root.children("zone") {
+        if zone.child("keepout").is_some() || is_teardrop(zone) {
+            continue;
+        }
+        let net_name = nets.name_of(zone)?;
+        for fill in zone.children("filled_polygon") {
+            let layer = fill.value("layer").unwrap_or("");
+            if !layers.is_copper(layer) {
+                continue;
+            }
+            let polygon = poly_points(fill)?
+                .into_iter()
+                .map(|(x, y)| Point2D { x, y })
+                .collect();
+            fills.push(ConductionAreaJson {
+                id: fills.len() as i32,
+                netName: Some(net_name.clone()),
+                sourceFootprint: None,
+                layerIndex: layers.index_of(layer)?,
+                isObstacle: true,
+                polygon: Some(polygon),
+            });
+        }
+    }
+    Ok(fills)
+}
+
+/// KiCad stores fills with holes as one outline joined to each hole by a zero-width cut. The
+/// router needs that outline split into convex pieces, which fails on some cuts.
+pub(crate) fn fill_is_usable(fill: &ConductionAreaJson, resolution: f64) -> bool {
+    let points: Vec<copper_geometry::Point> = fill
+        .polygon
+        .iter()
+        .flatten()
+        .map(|corner| {
+            copper_geometry::Point::Int(copper_geometry::IntPoint::new(
+                (corner.x * resolution).round() as i32,
+                (-corner.y * resolution).round() as i32,
+            ))
+        })
+        .collect();
+    points.len() >= 3
+        && copper_geometry::PolygonShape::from_points(&points)
+            .split_to_convex()
+            .is_some()
+}
+
+/// KiCad pairs nets whose names differ only in a final `+`/`-` or `P`/`N`.
+pub fn differential_pair_nets<'a>(names: impl IntoIterator<Item = &'a str>) -> BTreeSet<String> {
+    let names: BTreeSet<&str> = names.into_iter().collect();
+    let mut result = BTreeSet::new();
+    for name in &names {
+        for (positive, negative) in [('+', '-'), ('P', 'N')] {
+            if let Some(base) = name.strip_suffix(positive) {
+                let partner = format!("{base}{negative}");
+                if !base.is_empty() && names.contains(partner.as_str()) {
+                    result.insert((*name).to_string());
+                    result.insert(partner);
+                }
+            }
+        }
+    }
+    result
+}
+
+/// Nets whose tracks belong to a KiCad length-tuning pattern.
+pub fn tuned_nets(root: &Node, nets: &NetTable) -> Result<BTreeSet<String>, PcbError> {
+    let members: BTreeSet<String> = root
+        .children("generated")
+        .filter(|node| node.value("type") == Some("tuning_pattern"))
+        .filter_map(|node| node.child("members"))
+        .flat_map(|members| members.values[1..].iter().map(atom_str))
+        .map(|id| id.trim_matches('"').to_string())
+        .collect();
+    let mut result = BTreeSet::new();
+    for node in root.children("segment").chain(root.children("arc")) {
+        if source_id(node).is_some_and(|id| members.contains(&id)) {
+            let name = nets.name_of(node)?;
+            if !name.is_empty() {
+                result.insert(name);
+            }
+        }
+    }
+    Ok(result)
+}
+
+/// KiCad regenerates teardrops itself, so their zones are left out of routing.
+pub(crate) fn is_teardrop(zone: &Node) -> bool {
+    zone.child("attr")
+        .is_some_and(|attr| attr.child("teardrop").is_some())
 }
 
 // A `generated` node is a length-tuning recipe whose `members` are segments and arcs that

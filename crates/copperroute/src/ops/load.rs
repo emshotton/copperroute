@@ -22,6 +22,9 @@ pub struct LoadRequest {
     pub discover_adjacent_rules: bool,
     pub session: Option<PathBuf>,
     pub kicad_project: Option<PathBuf>,
+    pub kicad_import: copper_dsn::kicad::pcb::ImportOptions,
+    /// A `.kicad_dru`; without it, one beside a `.kicad_pcb` input is used when present.
+    pub kicad_rules: Option<PathBuf>,
     pub settings: SettingsOverrides,
 }
 
@@ -33,6 +36,8 @@ impl LoadRequest {
             discover_adjacent_rules: false,
             session: None,
             kicad_project: None,
+            kicad_import: copper_dsn::kicad::pcb::ImportOptions::default(),
+            kicad_rules: None,
             settings: SettingsOverrides::default(),
         }
     }
@@ -114,7 +119,24 @@ pub fn load(request: &LoadRequest) -> Result<Loaded, OpError> {
     );
 
     let (mut parsed, embedded_net_classes) = if format == FileFormat::KicadPcb {
-        parse_kicad_pcb(&job, kicad_project_text.as_deref())?
+        let rules_path = request.kicad_rules.clone().or_else(|| {
+            kicad_pcb_path
+                .as_ref()
+                .map(|path| path.with_extension("kicad_dru"))
+                .filter(|path| path.is_file())
+        });
+        let rules_text = match rules_path {
+            Some(path) => Some(std::fs::read_to_string(&path).map_err(|error| {
+                OpError::Input(format!("cannot read {}: {error}", path.display()))
+            })?),
+            None => None,
+        };
+        parse_kicad_pcb(
+            &job,
+            kicad_project_text.as_deref(),
+            rules_text.as_deref(),
+            &request.kicad_import,
+        )?
     } else {
         (copper_core::parse_board_if_needed(&job)?, 0)
     };
@@ -239,6 +261,8 @@ fn apply_kicad_project_constraints(
 fn parse_kicad_pcb(
     job: &RoutingJob,
     project_text: Option<&str>,
+    rules_text: Option<&str>,
+    options: &copper_dsn::kicad::pcb::ImportOptions,
 ) -> Result<(copper_core::ParsedBoard, usize), OpError> {
     let input = job.get_input().expect("caller has already set the input");
     let data = input.get_data().to_vec();
@@ -248,6 +272,7 @@ fn parse_kicad_pcb(
         copper_dsn::kicad::read_pcb(&text, &name, &copper_dsn::kicad::pcb::default_net_class())
             .map_err(|error| OpError::Input(error.to_string()))?;
     let embedded_net_classes = imported.embedded_net_classes;
+    copper_dsn::kicad::pcb::apply_import_options(&mut imported, options);
     if let Some(project_text) = project_text {
         match copper_dsn::kicad::apply_net_classes(&mut imported.board, project_text) {
             Ok(()) => tracing::info!("KiCad project net classes applied"),
@@ -260,8 +285,15 @@ fn parse_kicad_pcb(
             }
         }
     }
+    if let Some(rules_text) = rules_text {
+        let warnings = copper_dsn::kicad::dru::apply_custom_rules(&mut imported.board, rules_text)
+            .map_err(|error| OpError::Input(error.to_string()))?;
+        tracing::info!("KiCad custom design rules applied");
+        imported.warnings.extend(warnings);
+    }
     let mut parsed =
         copper_core::parse_board_result(copper_dsn::kicad::read_board_json(imported.board, None))?;
+    copper_dsn::kicad::pcb::ignore_nets(&mut parsed.board, &imported.skipped_nets);
     parsed.warnings.extend(imported.warnings);
     Ok((parsed, embedded_net_classes))
 }

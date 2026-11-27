@@ -297,6 +297,23 @@ impl NetClasses {
         NetClassId(self.classes.len() - 1)
     }
 
+    /// Adds a copy of `id` that the autorouter leaves alone, or returns that copy if it exists.
+    pub fn ignored_copy_of(&mut self, id: NetClassId) -> NetClassId {
+        let original = &self.classes[id.0];
+        if original.is_ignored_by_autorouter {
+            return id;
+        }
+        let name = format!("{} (not autorouted)", original.name);
+        if let Some(existing) = self.get_no(&name) {
+            return existing;
+        }
+        let mut copy = original.clone();
+        copy.name = name;
+        copy.is_ignored_by_autorouter = true;
+        self.classes.push(copy);
+        NetClassId(self.classes.len() - 1)
+    }
+
     pub fn append_with_generated_name(&mut self, layer_structure: &LayerStructure) -> NetClassId {
         let mut index = 0;
         let new_name = loop {

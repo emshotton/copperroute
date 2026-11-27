@@ -198,6 +198,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "copper-kicad"
+version = "0.1.0"
+dependencies = [
+ "copper-board",
+ "copper-core",
+ "copper-drc",
+ "copper-dsn",
+ "copper-router",
+ "copper-settings",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "copper-router"
 version = "0.1.0"
 dependencies = [
@@ -250,6 +264,7 @@ dependencies = [
  "copper-drc",
  "copper-dsn",
  "copper-geometry",
+ "copper-kicad",
  "copper-router",
  "copper-settings",
  "serde",

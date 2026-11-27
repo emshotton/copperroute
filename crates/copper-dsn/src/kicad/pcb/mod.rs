@@ -5,13 +5,113 @@ pub mod routing;
 pub mod structure;
 
 use crate::kicad::sexpr::{self, Node};
-use crate::kicad::{KiCadBoardJson, NetClassJson, OutlineJson, Point2D, UnitJson};
+use crate::kicad::{
+    ConductionAreaJson, KiCadBoardJson, NetClassJson, OutlineJson, Point2D, UnitJson,
+};
 use structure::{Layers, NetTable};
 
 const SECTION: &str = "pcb";
 
 fn number(text: &str) -> Result<f64, PcbError> {
     numeric::number(SECTION, text)
+}
+
+/// What to do with routing already on a KiCad board before autorouting it.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ImportOptions {
+    /// Remove unlocked tracks, arcs and through vias so they are routed again.
+    pub rip_up: bool,
+    /// Limits rip-up to these nets; every net when absent.
+    pub rip_up_nets: Option<std::collections::BTreeSet<String>>,
+    /// Treat existing zone fills as copper: their own net connects through them and every
+    /// other net routes around them.
+    pub respect_zones: bool,
+    /// Also autoroute differential pairs and length-tuned nets, which are skipped by default.
+    pub route_tuned_nets: bool,
+}
+
+/// Applies `options` to a freshly read board.
+pub fn apply_import_options(imported: &mut ImportedPcb, options: &ImportOptions) {
+    rip_up(&mut imported.board, options);
+    if !options.route_tuned_nets && !imported.tuned_nets.is_empty() {
+        imported.skipped_nets.clone_from(&imported.tuned_nets);
+        imported.warnings.push(format!(
+            "{} differential pair and length-tuned nets are left for KiCad's own tools: {}.",
+            imported.tuned_nets.len(),
+            imported
+                .tuned_nets
+                .iter()
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+    if options.respect_zones {
+        let fills = std::mem::take(&mut imported.zone_fills);
+        let usable: Vec<ConductionAreaJson> = fills
+            .into_iter()
+            .filter(|fill| routing::fill_is_usable(fill, imported.board.resolution))
+            .collect();
+        if !usable.is_empty() {
+            imported.warnings.push(format!(
+                "{} zone fills are routed around as copper; refill zones in KiCad after routing.",
+                usable.len()
+            ));
+        }
+        imported
+            .board
+            .conductionAreas
+            .get_or_insert_with(Vec::new)
+            .extend(usable);
+    }
+}
+
+/// Locked items, blind or buried vias, and nets outside the selection are always kept.
+pub fn rip_up(board: &mut crate::kicad::KiCadBoardJson, options: &ImportOptions) {
+    if !options.rip_up {
+        return;
+    }
+    let ripped = |locked: bool, net: Option<&str>| {
+        !locked
+            && options
+                .rip_up_nets
+                .as_ref()
+                .is_none_or(|nets| nets.contains(net.unwrap_or_default()))
+    };
+    if let Some(traces) = board.traces.as_mut() {
+        traces.retain(|trace| !ripped(trace.locked, trace.netName.as_deref()));
+        for (id, trace) in traces.iter_mut().enumerate() {
+            trace.id = id as i32;
+        }
+    }
+    if let Some(vias) = board.vias.as_mut() {
+        vias.retain(|via| !ripped(via.locked, via.netName.as_deref()));
+    }
+}
+
+/// Moves each named net into a copy of its net class that the autorouter ignores.
+pub fn ignore_nets(board: &mut copper_board::Board, names: &std::collections::BTreeSet<String>) {
+    let numbers: Vec<i32> = board
+        .rules
+        .nets
+        .iter()
+        .filter(|net| names.contains(&net.name))
+        .map(|net| net.net_number)
+        .collect();
+    for number in numbers {
+        let Some(class) = board
+            .rules
+            .nets
+            .get(number)
+            .map(copper_board::Net::get_net_class)
+        else {
+            continue;
+        };
+        let ignored = board.rules.net_classes.ignored_copy_of(class);
+        if let Some(net) = board.rules.nets.get_mut(number) {
+            net.set_class(ignored);
+        }
+    }
 }
 
 pub fn default_net_class() -> NetClassJson {
@@ -31,6 +131,12 @@ pub struct ImportedPcb {
     pub board: KiCadBoardJson,
     pub warnings: Vec<String>,
     pub embedded_net_classes: usize,
+    /// Filled copper of every zone, used only with [`ImportOptions::respect_zones`].
+    pub zone_fills: Vec<ConductionAreaJson>,
+    /// Differential pair and length-tuned nets.
+    pub tuned_nets: std::collections::BTreeSet<String>,
+    /// Nets the autorouter must leave alone; see [`ignore_nets`].
+    pub skipped_nets: std::collections::BTreeSet<String>,
 }
 
 pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<ImportedPcb, PcbError> {
@@ -72,17 +178,23 @@ pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<Impor
 
     let traces = routing::read_traces(&root, &layers, &nets)?;
     let vias = routing::read_vias(&root, &layers, &nets)?;
+    let keepouts = routing::read_keepouts(&root, &layers)?;
+    let zone_fills = routing::read_zone_fills(&root, &layers, &nets)?;
+    let mut tuned_nets = routing::tuned_nets(&root, &nets)?;
 
-    if root.children("arc").next().is_some() {
-        return Err(PcbError::new(
-            SECTION,
-            "Curved tracks are not supported yet.",
-        ));
+    if traces.iter().any(|trace| trace.arc) {
+        warnings.push(
+            "Curved tracks are kept as fixed copper, approximated within 0.005 mm for clearance."
+                .to_string(),
+        );
     }
 
     let embedded_classes = root.children("net_class").count();
     let classes = structure::read_net_classes(&root, defaults)?;
     let (board_nets, net_classes) = nets.finish(classes);
+    tuned_nets.extend(routing::differential_pair_nets(
+        board_nets.iter().filter_map(|net| net.name.as_deref()),
+    ));
     if embedded_classes > 0 {
         warnings.push(format!(
             "Imported {embedded_classes} embedded KiCad net classes, including trace widths, \
@@ -148,6 +260,7 @@ pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<Impor
         traces: Some(traces),
         vias: Some(vias),
         conductionAreas: Some(conduction_areas),
+        keepouts,
         ..Default::default()
     };
 
@@ -158,6 +271,9 @@ pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<Impor
         board,
         warnings,
         embedded_net_classes: embedded_classes,
+        zone_fills,
+        tuned_nets,
+        skipped_nets: std::collections::BTreeSet::new(),
     })
 }
 

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://go.kicad.org/pcm/schemas/v1",
+  "name": "CopperRoute",
+  "description": "PCB autorouter that keeps locked and existing routing.",
+  "description_full": "CopperRoute autoroutes the open board from the PCB editor and adds the result as one undoable change.\n\nIt keeps locked tracks, curved tracks, blind and buried vias and existing routing, respects keepouts, zone fills, net classes and the common custom design rules, and leaves differential pairs and length-tuned nets for KiCad's own tools.\n\nSettings can be changed with a copperroute.json file beside the project.",
+  "identifier": "net.copperroute.autorouter",
+  "type": "plugin",
+  "author": {
+    "name": "CopperRoute",
+    "contact": {
+      "web": "https://copperroute.net"
+    }
+  },
+  "license": "GPL-3.0",
+  "resources": {
+    "homepage": "https://copperroute.net",
+    "repository": "https://github.com/emshotton/copperroute"
+  },
+  "tags": ["autorouter", "routing"],
+  "versions": [
+    {
+      "version": "0.1.0",
+      "status": "testing",
+      "kicad_version": "10.0",
+      "runtime": "ipc"
+    }
+  ]
+}

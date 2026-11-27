@@ -1,4 +1,6 @@
-use copper_dsn::kicad::pcb::routing::{check_zones, read_copper_graphics, read_traces, read_vias};
+use copper_dsn::kicad::pcb::routing::{
+    check_zones, read_copper_graphics, read_keepouts, read_traces, read_vias,
+};
 use copper_dsn::kicad::pcb::structure::{Layers, NetTable};
 use copper_dsn::kicad::sexpr::parse;
 
@@ -26,23 +28,52 @@ fn it_reads_a_track() {
 }
 
 #[test]
-fn it_rejects_a_track_without_a_net() {
+fn a_track_without_a_net_is_kept_as_an_obstacle() {
     let root = root_of(r#"(segment (start 1 2) (end 3 4) (width 0.25) (layer "F.Cu"))"#);
     let layers = Layers::read(&root).expect("layers");
     let nets = NetTable::read(&root).expect("nets");
-    let error = read_traces(&root, &layers, &nets).expect_err("it fails");
-    assert_eq!(error.message, "Tracks without a net are not supported yet.");
+    let traces = read_traces(&root, &layers, &nets).expect("traces");
+    assert_eq!(traces[0].netName.as_deref(), Some(""));
 }
 
 #[test]
-fn it_rejects_a_locked_track() {
+fn a_locked_track_keeps_its_lock_and_id() {
     let root = root_of(
-        r#"(segment (start 1 2) (end 3 4) (width 0.25) (layer "F.Cu") (net 1) (locked yes))"#,
+        r#"(segment (start 1 2) (end 3 4) (width 0.25) (layer "F.Cu") (net 1) (locked yes) (uuid "1234-ab"))
+           (segment (start 1 2) (end 3 4) (width 0.25) (layer "F.Cu") (net 1) (locked no))
+           (segment locked (start 1 2) (end 3 4) (width 0.25) (layer "F.Cu") (net 1) (tstamp 5678))"#,
     );
     let layers = Layers::read(&root).expect("layers");
     let nets = NetTable::read(&root).expect("nets");
-    let error = read_traces(&root, &layers, &nets).expect_err("it fails");
-    assert_eq!(error.message, "Locked tracks are not supported yet.");
+    let traces = read_traces(&root, &layers, &nets).expect("traces");
+    let summary: Vec<(bool, Option<&str>)> = traces
+        .iter()
+        .map(|t| (t.locked, t.sourceId.as_deref()))
+        .collect();
+    assert_eq!(
+        summary,
+        vec![(true, Some("1234-ab")), (false, None), (true, Some("5678"))]
+    );
+}
+
+#[test]
+fn a_curved_track_becomes_a_widened_chord_chain() {
+    let root = root_of(
+        r#"(arc (start 0 0) (mid 1 1) (end 2 0) (width 0.25) (layer "F.Cu") (net 1) (uuid "arc1"))"#,
+    );
+    let layers = Layers::read(&root).expect("layers");
+    let nets = NetTable::read(&root).expect("nets");
+    let traces = read_traces(&root, &layers, &nets).expect("traces");
+    assert_eq!(traces.len(), 1);
+    assert!(traces[0].arc && !traces[0].locked);
+    assert!((traces[0].width - 0.26).abs() < 1e-12);
+    let points = traces[0].points.as_ref().expect("points");
+    assert!(points.len() > 3);
+    assert!(
+        points
+            .iter()
+            .all(|p| ((p.x - 1.0).hypot(p.y) - 1.0).abs() < 1e-9)
+    );
 }
 
 #[test]
@@ -57,16 +88,20 @@ fn it_reads_a_through_via() {
 }
 
 #[test]
-fn it_rejects_a_blind_via() {
-    let root =
-        root_of(r#"(via blind (at 5 6) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1))"#);
+fn blind_and_micro_vias_are_kept_as_fixed_copper() {
+    let text = r#"(kicad_pcb (version 20241229) (layers (0 "F.Cu" signal) (1 "In1.Cu" signal) (2 "B.Cu" signal)) (net 1 "GND")
+        (via blind (at 5 6) (size 0.6) (drill 0.3) (layers "F.Cu" "In1.Cu") (net 1))
+        (via micro (at 7 6) (size 0.3) (drill 0.1) (layers "In1.Cu" "F.Cu") (net 1))
+        (via (at 9 6) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1)))"#;
+    let root = parse(text).expect("it parses");
     let layers = Layers::read(&root).expect("layers");
     let nets = NetTable::read(&root).expect("nets");
-    let error = read_vias(&root, &layers, &nets).expect_err("it fails");
-    assert_eq!(
-        error.message,
-        "Locked, blind, and micro vias are not supported yet."
-    );
+    let vias = read_vias(&root, &layers, &nets).expect("vias");
+    let spans: Vec<(i32, i32, bool)> = vias
+        .iter()
+        .map(|v| (v.startLayerIndex, v.endLayerIndex, v.locked))
+        .collect();
+    assert_eq!(spans, vec![(0, 1, true), (0, 1, true), (0, 2, false)]);
 }
 
 #[test]
@@ -109,15 +144,45 @@ fn it_rejects_a_netless_copper_zone() {
 }
 
 #[test]
-fn it_rejects_a_keepout_that_restricts_tracks() {
-    let root = root_of(r#"(zone (layer "F.Cu") (keepout (tracks not_allowed) (vias allowed)))"#);
+fn a_keepout_that_restricts_routing_is_read_per_layer() {
+    let root = root_of(
+        r#"(zone (layers "F.Cu" "B.Cu") (keepout (tracks not_allowed) (vias allowed))
+             (polygon (pts (xy 0 0) (xy 2 0) (xy 2 2) (xy 0 2))))
+           (zone (layers "*.Cu") (keepout (tracks allowed) (vias not_allowed))
+             (polygon (pts (xy 5 5) (xy 6 5) (xy 6 6))))"#,
+    );
+    let layers = Layers::read(&root).expect("layers");
     let nets = NetTable::read(&root).expect("nets");
     let mut warnings = Vec::new();
-    let error = check_zones(&root, &nets, &mut warnings).expect_err("it fails");
-    assert_eq!(
-        error.message,
-        "Zone keepouts that restrict tracks or vias are not supported for routing yet."
+    check_zones(&root, &nets, &mut warnings).expect("keepouts are accepted");
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.starts_with("2 keepout areas restrict routing"))
     );
+    let keepouts = read_keepouts(&root, &layers).expect("keepouts");
+    let summary: Vec<(i32, bool, bool, usize)> = keepouts
+        .iter()
+        .map(|k| (k.layerIndex, k.noTracks, k.noVias, k.polygon.len()))
+        .collect();
+    assert_eq!(
+        summary,
+        vec![
+            (0, true, false, 4),
+            (1, true, false, 4),
+            (0, false, true, 3),
+            (1, false, true, 3)
+        ]
+    );
+}
+
+#[test]
+fn a_teardrop_zone_is_left_out() {
+    let root = root_of(r#"(zone (net 1) (layer "F.Cu") (attr (teardrop (type padvia))))"#);
+    let nets = NetTable::read(&root).expect("nets");
+    let mut warnings = Vec::new();
+    check_zones(&root, &nets, &mut warnings).expect("teardrops are accepted");
+    assert!(warnings.is_empty());
 }
 
 #[test]
@@ -152,15 +217,11 @@ fn it_rejects_copper_text_on_a_cu_suffixed_layer_absent_from_the_table() {
 }
 
 #[test]
-fn it_rejects_a_via_whose_layer_span_skips_an_inner_layer() {
+fn it_rejects_a_via_on_a_layer_absent_from_the_table() {
     let root = root_of(r#"(via (at 5 6) (size 0.6) (drill 0.3) (layers "F.Cu" "In1.Cu") (net 1))"#);
     let layers = Layers::read(&root).expect("layers");
     let nets = NetTable::read(&root).expect("nets");
-    let error = read_vias(&root, &layers, &nets).expect_err("it fails");
-    assert_eq!(
-        error.message,
-        "Only through vias assigned to a net are supported."
-    );
+    assert!(read_vias(&root, &layers, &nets).is_err());
 }
 
 fn corners_of(area: &copper_dsn::kicad::ConductionAreaJson) -> Vec<(f64, f64)> {
@@ -270,4 +331,27 @@ fn it_still_rejects_a_top_level_copper_curve() {
     let mut warnings = Vec::new();
     let error = read_copper_graphics(&root, &layers, &mut warnings).expect_err("it fails");
     assert_eq!(error.message, "Unsupported copper object: gr_curve");
+}
+
+#[test]
+fn differential_pairs_are_matched_by_their_last_character() {
+    let pairs = copper_dsn::kicad::pcb::routing::differential_pair_nets([
+        "USB_DP", "USB_DN", "CLK+", "CLK-", "VCCP", "GND", "-",
+    ]);
+    let pairs: Vec<&str> = pairs.iter().map(String::as_str).collect();
+    assert_eq!(pairs, vec!["CLK+", "CLK-", "USB_DN", "USB_DP"]);
+}
+
+#[test]
+fn tuned_nets_are_the_nets_of_tuning_pattern_members() {
+    let root = root_of(
+        r#"(segment (start 1 2) (end 3 4) (width 0.25) (layer "F.Cu") (net 1) (uuid "s1"))
+           (generated (uuid "g1") (type tuning_pattern) (name "Tuning Pattern") (members "s1"))"#,
+    );
+    let nets = NetTable::read(&root).expect("nets");
+    let tuned = copper_dsn::kicad::pcb::routing::tuned_nets(&root, &nets).expect("tuned");
+    assert_eq!(
+        tuned.into_iter().collect::<Vec<_>>(),
+        vec!["GND".to_string()]
+    );
 }

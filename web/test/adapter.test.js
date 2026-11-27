@@ -85,8 +85,11 @@ test("replaces routing and preserves all unrelated source bytes", () => {
     };
   const exported = exportBoard(input, routed),
     again = load(exported);
-  assert.equal(again.board.traces.length, 1);
-  assert.equal(again.board.traces[0].layerIndex, 1);
+  assert.equal(again.board.traces.length, 2, "the existing track is kept beside the new one");
+  assert.equal(again.board.traces[1].layerIndex, 1);
+  const replaced = importBoard(text, "example", rules, { ripUpRouting: true });
+  const rerouted = load(exportBoard(replaced, routed));
+  assert.equal(rerouted.board.traces.length, 1, "ripping up replaces the existing track");
   const objects = (s) =>
     parse(s)
       .values.filter(
@@ -179,7 +182,7 @@ test("native preview escapes text and displays copper without a routing import",
       "(setup",
       '(arc (start 105 105) (mid 110 100) (end 115 105) (width 0.25) (layer "F.Cu") (net 1)) (setup',
     );
-  assert.throws(() => load(text));
+  assert.ok(load(text).board.traces.some((t) => t.arc), "a curved track is kept as fixed copper");
   const svg = previewBoard(text);
   assert.ok(svg.includes("&lt;script&gt;"));
   assert.ok(!svg.includes("<script>"));
@@ -200,20 +203,17 @@ test("pour-only keepouts allow routing and remain byte-identical in the download
     assert.ok(input.warnings.some((w) => w.includes("1 keepout areas")));
     assert.ok(!input.warnings.some((w) => w.includes("1 copper zones")));
   }
-  for (const restricted of ["tracks", "vias"])
-    assert.throws(
-      () =>
-        importBoard(
-          text.replace(
-            `(${restricted} allowed)`,
-            `(${restricted} not_allowed)`,
-          ),
-          "keepout",
-          rules,
-          { ripUpRouting: true, rebuildZones: true },
-        ),
-      /restrict tracks or vias/,
+  for (const restricted of ["tracks", "vias"]) {
+    const input = importBoard(
+      text.replace(`(${restricted} allowed)`, `(${restricted} not_allowed)`),
+      "keepout",
+      rules,
+      { ripUpRouting: true, rebuildZones: true },
     );
+    assert.equal(input.board.keepouts.length, 2, "one keepout per copper layer");
+    assert.ok(input.board.keepouts.every((k) => restricted === "tracks" ? k.noTracks : k.noVias));
+    assert.ok(input.warnings.some((w) => w.includes("1 keepout areas restrict routing")));
+  }
 });
 
 test("KiCad 10 copper IDs, aliases and plane restrictions survive export", async () => {
@@ -461,15 +461,32 @@ const arcSource = source.replace(
 )`,
 );
 
-test("refuses a curved track that a deselected net would keep", () => {
-  assert.throws(
-    () =>
-      importBoard(arcSource, "example", rules, {
-        ripUpRouting: true,
-        ripUpNets: new Set(["Return"]),
-      }),
-    /Curved tracks are not supported/,
+test("keeps a curved track that a deselected net would keep as fixed copper", () => {
+  const input = importBoard(arcSource, "example", rules, {
+    ripUpRouting: true,
+    ripUpNets: new Set(["Return"]),
+  });
+  const arc = input.board.traces.find((t) => t.arc);
+  assert.ok(arc.points.length > 2);
+  assert.ok(Math.abs(arc.width - 0.26) < 1e-9, "widened by the 0.005 mm tolerance each side");
+  assert.ok(exportBoard(input, input.board).includes("(arc (start 105 105)"));
+});
+
+test("locked tracks and vias survive rip-up and keep their source bytes", () => {
+  const locked = source.replace(
+    /\)\s*$/,
+    `  (segment (start 105 105) (end 125 115) (width 0.25) (layer "F.Cu") (locked yes) (net 1) (uuid "aaaa"))
+  (segment (start 105 110) (end 125 120) (width 0.25) (layer "F.Cu") (net 1) (uuid "bbbb"))
+  (via (at 110 110) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (locked yes) (net 1))
+)`,
   );
+  const input = importBoard(locked, "example", rules, { ripUpRouting: true });
+  assert.deepEqual(input.board.traces.map((t) => [t.sourceId, !!t.locked]), [["aaaa", true]]);
+  assert.equal(input.board.vias.length, 1);
+  const exported = exportBoard(input, input.board);
+  assert.ok(exported.includes('(locked yes) (net 1) (uuid "aaaa")'));
+  assert.ok(!exported.includes('"bbbb"'));
+  assert.equal(load(exported).board.traces.length, 1, "the kept track is not written twice");
 });
 
 test("accepts a curved track on a net that is being ripped up", () => {

@@ -183,6 +183,7 @@ pub fn write(board: &Board, design_name: &str) -> String {
                 width: f64::from(poly_trace.get_half_width().wrapping_mul(2)) / scale_factor,
                 layerIndex: i32::try_from(poly_trace.get_layer()).unwrap_or(i32::MAX),
                 points: Some(points),
+                ..Default::default()
             });
         trace_id += 1;
     }
@@ -242,6 +243,7 @@ pub fn write(board: &Board, design_name: &str) -> String {
                     .map_or(diameter * 0.5, |d| d / scale_factor),
                 startLayerIndex: i32::try_from(first_layer).unwrap_or(i32::MAX),
                 endLayerIndex: i32::try_from(last_layer).unwrap_or(i32::MAX),
+                ..Default::default()
             });
         via_id += 1;
     }

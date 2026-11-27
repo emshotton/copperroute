@@ -208,27 +208,61 @@ export function importBoard(text, name, rules, options = {}) {
     if (!net) throw Error(`Unknown net ${id}`);
     return net.name;
   };
+  // KiCad writes (locked yes) from version 7 and a bare locked atom before it.
+  const isLocked = (n) =>
+    n.values.includes("locked") || (!!child(n, "locked") && val(n, "locked") !== "no");
+  const sourceId = (n) => val(n, "uuid") ?? val(n, "tstamp");
+  const isBlindOrMicro = (n) => {
+    const span = child(n, "layers")?.values.slice(1) ?? [];
+    return n.values[0] === "via" && span.length === 2 &&
+      !(span.includes(layers[0]?.name) && span.includes(layers.at(-1)?.name));
+  };
   const rippedUp = (n) =>
     !!options.ripUpRouting &&
+    !isLocked(n) &&
+    !isBlindOrMicro(n) &&
     (!options.ripUpNets || options.ripUpNets.has(netName(n)));
   const zones = children(root, "zone");
   let copperZones = 0,
-    preservedKeepouts = 0;
+    preservedKeepouts = 0,
+    routingKeepouts = 0;
+  const keepouts = [];
+  const zoneLayers = (zone) => {
+    const names = child(zone, "layers")?.values.slice(1) ?? [val(zone, "layer")].filter(Boolean);
+    const result = new Set();
+    for (const name of names) {
+      if (name === "*.Cu") layers.forEach((l) => result.add(l.index));
+      else if (name === "F&B.Cu") { result.add(layers[0].index); result.add(layers.at(-1).index); }
+      else if (layers.some((l) => l.name === name) || name.endsWith(".Cu")) result.add(layerIndex(name));
+    }
+    return [...result].sort((a, b) => a - b);
+  };
+  // KiCad regenerates teardrops itself, so their zones are left out of routing.
+  const isTeardrop = (zone) => !!child(child(zone, "attr") ?? { values: [] }, "teardrop");
   for (const zone of zones) {
     const keepout = child(zone, "keepout");
     if (keepout) {
-      // These rule areas do not constrain track/via routing. Preserve the source
-      // so KiCad applies their pour/placement restrictions during refill.
-      if (
-        val(keepout, "tracks") !== "allowed" ||
-        val(keepout, "vias") !== "allowed"
-      )
-        throw Error(
-          "Zone keepouts that restrict tracks or vias are not supported for routing yet.",
-        );
-      preservedKeepouts++;
+      const noTracks = val(keepout, "tracks") === "not_allowed",
+        noVias = val(keepout, "vias") === "not_allowed";
+      if (!noTracks && !noVias) {
+        preservedKeepouts++;
+        continue;
+      }
+      routingKeepouts++;
+      const polygonNode = child(zone, "polygon");
+      if (!polygonNode) throw Error("Zone without an outline.");
+      const polygon = children(child(polygonNode, "pts") ?? { values: [] }, "xy").map(xy);
+      if (!polygon.length) throw Error("Empty board polygon.");
+      for (const layerIndex of zoneLayers(zone))
+        keepouts.push({
+          layerIndex,
+          ...(noTracks ? { noTracks: true } : {}),
+          ...(noVias ? { noVias: true } : {}),
+          polygon,
+        });
       continue;
     }
+    if (isTeardrop(zone)) continue;
     if (!netName(zone))
       throw Error("Netless copper zones are not supported for routing yet.");
     copperZones++;
@@ -240,6 +274,10 @@ export function importBoard(text, name, rules, options = {}) {
   if (preservedKeepouts)
     warnings.push(
       `${preservedKeepouts} keepout areas allow tracks and vias and are preserved for KiCad zone refill.`,
+    );
+  if (routingKeepouts)
+    warnings.push(
+      `${routingKeepouts} keepout areas restrict routing. A keepout that forbids tracks also keeps vias out.`,
     );
   const conductionAreas = [];
   const outline = outlinePaths(root);
@@ -691,53 +729,54 @@ export function importBoard(text, name, rules, options = {}) {
     }
   }
   if (!components.length) throw Error("No pads were found.");
-  const keptSegments = children(root, "segment").filter((n) => !rippedUp(n));
-  const traces = keptSegments.map(
-    (n, id) => {
-      if (n.values.includes("locked") || child(n, "locked"))
-        throw Error("Locked tracks are not supported yet.");
-      if (!netName(n))
-        throw Error("Tracks without a net are not supported yet.");
-      return {
-        id,
-        netName: netName(n),
-        width: number(val(n, "width")),
-        layerIndex: layerIndex(val(n, "layer")),
-        points: [point(n, "start"), point(n, "end")],
-      };
-    },
-  );
-  const keptVias = children(root, "via").filter((n) => !rippedUp(n));
-  const vias = keptVias.map(
-    (n, id) => {
-      if (
-        n.values.includes("locked") ||
-        child(n, "locked") ||
-        n.values.includes("blind") ||
-        n.values.includes("micro")
-      )
-        throw Error("Locked, blind, and micro vias are not supported yet.");
-      const span = child(n, "layers")?.values.slice(1);
-      if (span?.length !== 2) throw Error("Missing via layer span.");
-      if (
-        !netName(n) ||
-        span[0] !== layers[0].name ||
-        span[1] !== layers.at(-1).name
-      )
-        throw Error("Only through vias assigned to a net are supported.");
-      return {
-        id,
-        netName: netName(n),
-        position: point(n, "at"),
-        diameter: number(val(n, "size")),
-        drill: number(val(n, "drill")),
-        startLayerIndex: layerIndex(span[0]),
-        endLayerIndex: layerIndex(span[1]),
-      };
-    },
-  );
-  if (children(root, "arc").some((n) => !rippedUp(n)))
-    throw Error("Curved tracks are not supported yet.");
+  const traces = [];
+  for (const n of children(root, "segment")) {
+    if (rippedUp(n)) continue;
+    traces.push({
+      id: traces.length,
+      netName: netName(n),
+      width: number(val(n, "width")),
+      layerIndex: layerIndex(val(n, "layer")),
+      points: [point(n, "start"), point(n, "end")],
+      ...(isLocked(n) ? { locked: true } : {}),
+      ...(sourceId(n) ? { sourceId: sourceId(n) } : {}),
+    });
+  }
+  for (const n of children(root, "arc")) {
+    if (rippedUp(n)) continue;
+    traces.push({
+      id: traces.length,
+      netName: netName(n),
+      width: number(val(n, "width")) + 2 * OUTLINE_TOLERANCE,
+      layerIndex: layerIndex(val(n, "layer")),
+      points: nativeArcPoints(n),
+      ...(isLocked(n) ? { locked: true } : {}),
+      arc: true,
+      ...(sourceId(n) ? { sourceId: sourceId(n) } : {}),
+    });
+  }
+  if (traces.some((t) => t.arc))
+    warnings.push("Curved tracks are kept as fixed copper, approximated within 0.005 mm for clearance.");
+  const vias = [];
+  for (const [id, n] of children(root, "via").entries()) {
+    if (rippedUp(n)) continue;
+    const span = child(n, "layers")?.values.slice(1);
+    if (span?.length !== 2) throw Error("Missing via layer span.");
+    const a = layerIndex(span[0]), b = layerIndex(span[1]);
+    const start = Math.min(a, b), end = Math.max(a, b);
+    const through = start === 0 && end === layers.length - 1;
+    vias.push({
+      id,
+      netName: netName(n),
+      position: point(n, "at"),
+      diameter: number(val(n, "size")),
+      drill: number(val(n, "drill")),
+      startLayerIndex: start,
+      endLayerIndex: end,
+      ...(isLocked(n) || !through ? { locked: true } : {}),
+      ...(sourceId(n) ? { sourceId: sourceId(n) } : {}),
+    });
+  }
   const embedded = children(root, "net_class");
   const netClasses = embeddedNetClasses(root);
   const classNames = new Set();
@@ -769,6 +808,7 @@ export function importBoard(text, name, rules, options = {}) {
     root,
     namedNets,
     ripUpRouting: !!options.ripUpRouting,
+    rippedUp,
     rebuildZones: !!options.rebuildZones,
     warnings: [...new Set(warnings)],
     board: {
@@ -792,6 +832,7 @@ export function importBoard(text, name, rules, options = {}) {
       traces,
       vias,
       conductionAreas,
+      ...(keepouts.length ? { keepouts } : {}),
     },
   };
 }
@@ -817,6 +858,21 @@ export function exportBoard(input, routed) {
     return Number(n.toFixed(6));
   };
   const added = [];
+  const near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < 1e-4;
+  const onSegment = (p, a, b) => {
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+    if (len < 1e-9) return near(p, a);
+    const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / (len * len);
+    return t > -1e-6 && t < 1 + 1e-6 && Math.abs((p.x - a.x) * dy - (p.y - a.y) * dx) / len < 1e-4;
+  };
+  const kept = input.board.traces.flatMap((t) =>
+    t.points.slice(1).map((b, i) => ({ a: t.points[i], b, layerIndex: t.layerIndex, width: t.width })));
+  const isKept = (a, b, layerIndex, width) =>
+    kept.some((k) => k.layerIndex === layerIndex && Math.abs(k.width - width) < 1e-4 &&
+      onSegment(a, k.a, k.b) && onSegment(b, k.a, k.b));
+  const isKeptVia = (v) =>
+    input.board.vias.some((k) => near(k.position, v.position) &&
+      k.startLayerIndex === v.startLayerIndex && k.endLayerIndex === v.endLayerIndex);
   for (const t of routed.traces) {
     if (input.routingLayers && !input.routingLayers.includes(input.board.layers.find(l => l.index === t.layerIndex)?.name))
       throw Error("Router output contains a trace outside the selected routing layers.");
@@ -825,19 +881,20 @@ export function exportBoard(input, routed) {
     for (let i = 1; i < t.points.length; i++) {
       const a = t.points[i - 1],
         b = t.points[i];
+      if (isKept(a, b, t.layerIndex, t.width)) continue;
       added.push(
         `  (segment (start ${f(a.x)} ${f(a.y)}) (end ${f(b.x)} ${f(b.y)}) (width ${f(t.width)}) (layer ${layer(t.layerIndex)}) (net ${net(t.netName)}))`,
       );
     }
   }
-  for (const v of routed.vias)
+  for (const v of routed.vias.filter((v) => !isKeptVia(v)))
     added.push(
       `  (via (at ${f(v.position.x)} ${f(v.position.y)}) (size ${f(v.diameter)}) (drill ${f(v.drill)}) (layers ${layer(v.startLayerIndex)} ${layer(v.endLayerIndex)}) (net ${net(v.netName)}))`,
     );
   const removed = [
-    ...children(input.root, "segment"),
-    ...children(input.root, "via"),
-    ...(input.ripUpRouting ? children(input.root, "arc") : []),
+    ...children(input.root, "segment").filter(input.rippedUp),
+    ...children(input.root, "via").filter(input.rippedUp),
+    ...children(input.root, "arc").filter(input.rippedUp),
     ...(input.rebuildZones
       ? children(input.root, "zone").flatMap((zone) => [
           ...children(zone, "filled_polygon"),

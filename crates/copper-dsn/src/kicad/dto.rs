@@ -51,6 +51,19 @@ pub struct KiCadBoardJson {
     pub vias: Option<Vec<ViaJson>>,
     #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub conductionAreas: Option<Vec<ConductionAreaJson>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub keepouts: Vec<KeepoutJson>,
+}
+
+/// A rule area that forbids tracks, vias or both on one copper layer.
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+pub struct KeepoutJson {
+    pub layerIndex: i32,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub noTracks: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub noVias: bool,
+    pub polygon: Vec<Point2D>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
@@ -198,6 +211,13 @@ pub struct TraceJson {
     pub layerIndex: i32,
     #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub points: Option<Vec<Point2D>>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub locked: bool,
+    /// A KiCad track arc, approximated by chords and widened by the outline tolerance.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub arc: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sourceId: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -216,6 +236,10 @@ pub struct ViaJson {
     pub startLayerIndex: i32,
     #[serde(default, deserialize_with = "nullable")]
     pub endLayerIndex: i32,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub locked: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sourceId: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -263,6 +287,7 @@ impl Default for KiCadBoardJson {
             traces: empty(),
             vias: empty(),
             conductionAreas: empty(),
+            keepouts: Vec::new(),
         }
     }
 }
@@ -342,6 +367,9 @@ impl Default for TraceJson {
             width: 0.0,
             layerIndex: 0,
             points: empty(),
+            locked: false,
+            arc: false,
+            sourceId: None,
         }
     }
 }
@@ -356,6 +384,8 @@ impl Default for ViaJson {
             drill: 0.0,
             startLayerIndex: 0,
             endLayerIndex: 0,
+            locked: false,
+            sourceId: None,
         }
     }
 }

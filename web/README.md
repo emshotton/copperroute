@@ -4,8 +4,10 @@ A static webpage that accepts a `.kicad_pcb` by dropping it onto the routing
 preview window or using the file picker,
 runs the existing Rust autorouter in a WebAssembly module worker, displays an
 SVG copper preview, and downloads the routed PCB and SVG. No board data is
-uploaded. **Route board** removes the existing top-level segments, track arcs and
-vias of the selected nets (including locked items) and routes those from scratch.
+uploaded. **Route board** removes the unlocked top-level segments, track arcs and
+through vias of the selected nets and routes those from scratch. Locked items, blind and
+buried vias, and routing on deselected nets stay in place as fixed copper; curved tracks are
+kept as chords widened by the 0.005 mm outline tolerance.
 The initial preview shows the original board; clicking Route shows the unrouted
 copy while WASM runs, then updates live with routed copper. The pass number,
 remaining connections, and routes completed in the pass update alongside it.
@@ -137,23 +139,23 @@ subset of the native S-expression format into that existing representation.
   `filled_polygon`/`fill_segments` data. Open it in KiCad, press **B** to refill,
   then run DRC. This is not an in-browser zone fill implementation. Keepout areas that
   explicitly allow both tracks and vias are preserved, including pour-only
-  keepouts. Areas restricting tracks or vias, and netless copper zones, remain
-  rejected. Deselecting the option rejects copper zones but still allows these
-  non-routing keepout areas.
+  keepouts. Areas restricting tracks or vias become routing obstacles on each of their
+  layers; one that forbids tracks also keeps vias out. Netless copper zones remain
+  rejected and teardrop zones are ignored. Deselecting the option rejects copper zones but
+  still allows keepout areas.
 - Offset pad copper is translated in its local coordinate system while the hole
   stays at the pad anchor. Custom pad copper keeps its real outline: the
   circular or rectangular anchor holds the pad centre, and every primitive (polygon,
   line, rectangle, arc and circle, filled or outlined) adds its own copper beside it,
   inflated by its stroke and approximated within 0.005 mm. Concave pads are split
-  into convex pieces, so traces of other nets can use the notches. Traces still
-  attach at the pad centre.
+  into convex pieces, so traces of other nets can use the notches, and a trace ending
+  anywhere inside pad copper is connected, as in KiCad.
   Trapezoid pads are imported as their four corners.
 - Copper text is reserved using conservative rectangles. Footprint copper
   rectangles include their stroke and reserve their entire interior. Original
   graphics remain in the download; the reserved text bounds can reduce routability.
-- Keepouts restricting tracks or vias, separate outer boards, other footprint
-  copper graphics, and net ties are explicitly rejected. Existing routing is
-  discarded before import, including locked tracks, arcs and all via types. This excludes many production boards.
+- Separate outer boards, other footprint copper graphics, and net ties are explicitly
+  rejected.
 - An optional `.kicad_pro` supplies net-class widths, clearances, via diameters,
   drills and class assignments to the existing KiCad JSON loader. The WASM entry
   point also calls the same `fr_drc::apply_kicad_project` API as the native CLI

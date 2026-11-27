@@ -178,3 +178,35 @@ fn a_kicad_track_ending_off_centre_inside_its_pads_is_connected() {
     assert_eq!(findings["violations"], serde_json::json!([]));
     assert_eq!(findings["unconnected_items"], serde_json::json!([]));
 }
+
+#[test]
+fn routing_to_a_kicad_board_keeps_locked_copper_and_adds_the_new_tracks() {
+    let dir = scratch("kicad-output");
+    let board = testkit::workspace_root().join("crates/copper-kicad/tests/data/two-nets.kicad_pcb");
+    let routed = dir.join("routed.kicad_pcb");
+    let (_, stderr, code) = run(&[
+        "route",
+        &board.to_string_lossy(),
+        "-o",
+        &routed.to_string_lossy(),
+        "--rip-up",
+    ]);
+    assert_eq!(code, 0, "route failed: {stderr}");
+    let text = std::fs::read_to_string(&routed).expect("the routed board");
+    assert!(text.contains("(locked yes) (net 1) (uuid \"locked-a\")"));
+    assert!(
+        !text.contains("loose-b"),
+        "the unlocked track was ripped up"
+    );
+    let report = dir.join("drc.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &routed.to_string_lossy(),
+        "-o",
+        &report.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "the routed board has DRC findings: {stderr}");
+    let findings: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report).expect("a report")).expect("JSON");
+    assert_eq!(findings["unconnected_items"], serde_json::json!([]));
+}

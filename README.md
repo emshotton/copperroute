@@ -65,6 +65,28 @@ Import `board.ses` back into KiCad with **File → Import → Specctra
 Session**. The DRC report uses KiCad's own report schema, so it can be
 compared directly with the output of `kicad-cli pcb drc`.
 
+A `.kicad_pcb` output writes the routed board directly, leaving every existing
+byte in place and appending only the new tracks and vias:
+
+```sh
+copperroute route board.kicad_pcb -o routed.kicad_pcb --respect-zones
+```
+
+Existing routing is kept and only missing connections are routed. Locked
+tracks and vias, curved tracks and blind or buried vias are always kept;
+`--rip-up` (optionally with `--rip-up-net NET`) removes the rest first.
+Keepouts are obstacles, `--respect-zones` routes around zone fills and
+connects their nets through them, a `.kicad_dru` beside the board (or
+`--kicad-rules`) applies its net-class rules, and differential pairs and
+length-tuned nets are skipped unless `--route-tuned-nets` is given.
+
+### KiCad plugin
+
+[`kicad-plugin/`](kicad-plugin/README.md) is a KiCad 10/11 IPC plugin that
+routes the open board from the PCB editor and adds the result as one undoable
+change. It uses the router through the `copperroute-kicad` Python package in
+[`bindings/python`](bindings/python).
+
 ## Layout
 
 The workspace is split into crates, each with its own README:
@@ -76,6 +98,7 @@ The workspace is split into crates, each with its own README:
 - `copper-router` — fanout, maze routing and the optimizer
 - `copper-drc` — the design-rule checker and KiCad DRC report writer
 - `copper-core` — loading, saving, the routing job and result manifest
+- `copper-kicad` — routes a KiCad board's file text and returns the edits to apply to it
 - `copperroute` — the command-line program
 
 ## License

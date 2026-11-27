@@ -40,7 +40,8 @@ pub enum Command {
 pub struct RouteArgs {
     /// A Specctra DSN, a KiCad board JSON, or a KiCad .kicad_pcb board.
     pub input: PathBuf,
-    /// Where to write the session: a .ses (Specctra) or a .json (KiCad session).
+    /// Where to write the result: a .ses (Specctra), a .json (KiCad session), or, for a
+    /// .kicad_pcb input, a .kicad_pcb with the routing added.
     #[arg(short, long, value_parser = parse_output_path)]
     pub output: PathBuf,
     /// A Specctra .rules file. Without it, a .rules beside the input is used when present.
@@ -52,6 +53,22 @@ pub struct RouteArgs {
     /// A KiCad .kicad_pro whose design rules are applied before routing.
     #[arg(long)]
     pub kicad_project: Option<PathBuf>,
+    /// KiCad boards: remove unlocked tracks and vias and route them again. Without it,
+    /// existing routing is kept and only missing connections are routed.
+    #[arg(long)]
+    pub rip_up: bool,
+    /// Limit --rip-up to this net. Repeatable.
+    #[arg(long = "rip-up-net", value_name = "NET", requires = "rip_up")]
+    pub rip_up_nets: Vec<String>,
+    /// KiCad boards: route around existing zone fills, and connect their own net through them.
+    #[arg(long)]
+    pub respect_zones: bool,
+    /// KiCad custom design rules. Without it, a .kicad_dru beside the board is used.
+    #[arg(long)]
+    pub kicad_rules: Option<PathBuf>,
+    /// KiCad boards: also autoroute differential pairs and length-tuned nets.
+    #[arg(long)]
+    pub route_tuned_nets: bool,
     /// How many routing passes to run; 0 means unlimited.
     #[arg(long)]
     pub max_passes: Option<u32>,
@@ -94,6 +111,9 @@ pub struct DrcArgs {
     /// A KiCad .kicad_pro whose design rules are applied before checking.
     #[arg(long)]
     pub kicad_project: Option<PathBuf>,
+    /// KiCad boards: check against existing zone fills as copper.
+    #[arg(long)]
+    pub respect_zones: bool,
     /// Where to write the report; stdout when omitted.
     #[arg(short, long)]
     pub output: Option<PathBuf>,
@@ -110,10 +130,14 @@ pub struct InfoArgs {
 
 fn parse_output_path(value: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(value);
+    if path.extension().is_some_and(|ext| ext == "kicad_pcb") {
+        return Ok(path);
+    }
     match OutputFormat::from_path(&path) {
         Some(_) => Ok(path),
         None => Err(format!(
-            "'{value}' must end in .ses (a Specctra session) or .json (a KiCad session)"
+            "'{value}' must end in .ses (a Specctra session), .json (a KiCad session) or \
+             .kicad_pcb (the routed KiCad board)"
         )),
     }
 }

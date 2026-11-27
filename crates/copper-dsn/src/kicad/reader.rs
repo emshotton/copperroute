@@ -1151,6 +1151,40 @@ pub fn read_board_json(
         );
     }
 
+    let keepout_class = {
+        let default_class = board.rules.get_default_net_class();
+        board
+            .rules
+            .net_classes
+            .get(default_class)
+            .default_item_clearance_classes
+            .get(ItemClass::Area)
+    };
+    for keepout in &board_json.keepouts {
+        let Ok(layer) = usize::try_from(keepout.layerIndex) else {
+            return parse_error("keepouts", "Invalid keepout layer");
+        };
+        if keepout.polygon.len() < 3 || layer >= layer_count {
+            return parse_error("keepouts", "Invalid keepout area");
+        }
+        let points: Vec<Point> = keepout
+            .polygon
+            .iter()
+            .map(|corner| {
+                Point::Int(IntPoint::new(
+                    (corner.x * scale_factor).round() as i32,
+                    (-corner.y * scale_factor).round() as i32,
+                ))
+            })
+            .collect();
+        let area = Area::Shape(Shape::Polygon(PolygonShape::from_points(&points)));
+        if keepout.noTracks {
+            board.insert_obstacle(area, layer, keepout_class, FixedState::SystemFixed);
+        } else if keepout.noVias {
+            board.insert_via_obstacle(area, layer, keepout_class, FixedState::SystemFixed);
+        }
+    }
+
     let Some(json_traces) = board_json.traces.as_ref() else {
         return npe("java.util.List.iterator()", "boardJson.traces");
     };
