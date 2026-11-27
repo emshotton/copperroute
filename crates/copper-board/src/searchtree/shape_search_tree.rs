@@ -184,17 +184,23 @@ impl ShapeSearchTree {
         ctx: &ItemCtx<'_>,
     ) -> Vec<Option<TileShape>> {
         let count = item.tile_shape_count(ctx);
+        let layer_count = item.last_layer(ctx) + 1 - item.first_layer(ctx);
         (0..count)
             .map(|i| {
+                let is_primary = i < layer_count;
                 let current_shape = drill_item_shape(item, i, ctx)
-                    .or_else(|| self.drill_hole_obstacle(item, ctx))?;
+                    .or_else(|| is_primary.then(|| self.drill_hole_obstacle(item, ctx))?)?;
                 let layer = item.shape_layer(i, ctx);
-                let offset_width =
-                    self.clearance_compensation_value(
-                        item.header().clearance_class(),
-                        layer,
-                        ctx.rules,
-                    ) + self.drill_hole_clearance_delta(item, &current_shape, layer, ctx);
+                let hole_delta = if is_primary {
+                    self.drill_hole_clearance_delta(item, &current_shape, layer, ctx)
+                } else {
+                    0
+                };
+                let offset_width = self.clearance_compensation_value(
+                    item.header().clearance_class(),
+                    layer,
+                    ctx.rules,
+                ) + hole_delta;
                 let offset_width = f64::from(offset_width);
                 Some(match self.angle {
                     AngleRestriction::NinetyDegree => {

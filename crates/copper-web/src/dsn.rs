@@ -184,7 +184,7 @@ fn svg(board: &Board) -> String {
             }
             Item::Pin(pin) => {
                 for layer in pin.first_layer(&ctx)..=pin.last_layer(&ctx) {
-                    if let Some(shape) = pin.get_shape_on_layer(layer, &ctx) {
+                    for shape in pin.shapes_on_layer(layer, &ctx) {
                         out.push_str(&shape_svg(&shape, "#edcf86", 1.0));
                     }
                 }

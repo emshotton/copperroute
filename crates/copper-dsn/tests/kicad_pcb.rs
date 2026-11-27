@@ -449,7 +449,10 @@ fn a_trapezoid_pad_matches_the_corners_kicad_builds() {
     let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
     let components = imported.board.components.expect("components");
     let pad = &components[0].pads.as_ref().expect("pads")[0];
-    let polygon = pad.copperPolygon.as_ref().expect("a trapezoid carries its polygon");
+    let polygon = pad
+        .copperPolygon
+        .as_ref()
+        .expect("a trapezoid carries its polygon");
     let corners: Vec<(f64, f64)> = polygon.iter().map(|p| (p.x, p.y)).collect();
     assert_eq!(
         corners,
@@ -468,7 +471,10 @@ fn a_trapezoid_without_a_delta_is_the_plain_rectangle() {
     let imported = read_pcb(&text, "t", &default_net_class()).expect("the board imports");
     let components = imported.board.components.expect("components");
     let pad = &components[0].pads.as_ref().expect("pads")[0];
-    let polygon = pad.copperPolygon.as_ref().expect("a trapezoid carries its polygon");
+    let polygon = pad
+        .copperPolygon
+        .as_ref()
+        .expect("a trapezoid carries its polygon");
     let corners: Vec<(f64, f64)> = polygon.iter().map(|p| (p.x, p.y)).collect();
     assert_eq!(
         corners,
@@ -492,16 +498,26 @@ fn a_trapezoid_delta_wider_than_the_pad_is_rejected() {
     );
 }
 
-fn only_pad_polygon(text: &str) -> Vec<(f64, f64)> {
+fn pad_pieces(text: &str) -> Vec<Vec<(f64, f64)>> {
     let imported = read_pcb(text, "t", &default_net_class()).expect("the board imports");
     let components = imported.board.components.expect("components");
-    components[0].pads.as_ref().expect("pads")[0]
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    let primary = pad
         .copperPolygon
         .as_ref()
-        .expect("a custom pad carries its polygon")
-        .iter()
-        .map(|p| (p.x, p.y))
+        .expect("a custom pad carries its anchor polygon");
+    std::iter::once(primary)
+        .chain(pad.extraCopperPolygons.iter().flatten())
+        .map(|polygon| polygon.iter().map(|p| (p.x, p.y)).collect())
         .collect()
+}
+
+fn pieces_contain(pieces: &[Vec<(f64, f64)>], p: (f64, f64)) -> bool {
+    pieces.iter().any(|piece| contains(piece, p))
+}
+
+fn pieces_bounds(pieces: &[Vec<(f64, f64)>]) -> (f64, f64, f64, f64) {
+    bounds(&pieces.concat())
 }
 
 fn contains(polygon: &[(f64, f64)], p: (f64, f64)) -> bool {
@@ -524,7 +540,7 @@ fn bounds(polygon: &[(f64, f64)]) -> (f64, f64, f64, f64) {
 
 /// The shape that dominates the corpus: a rectangular anchor with a polygon and two circles
 /// forming a stadium. The union spans x [-0.5, 0.55] and y [-0.75, 0.75]; circles are sampled
-/// circumscribed, so the hull may exceed that by up to the 0.005 mm outline tolerance.
+/// circumscribed, so the pieces may exceed that by up to the 0.005 mm outline tolerance.
 #[test]
 fn a_stadium_custom_pad_covers_its_polygon_and_both_circles() {
     let text = format!(
@@ -538,13 +554,16 @@ fn a_stadium_custom_pad_covers_its_polygon_and_both_circles() {
               (gr_circle (center 0 -0.25) (end 0.5 -0.25) (width 0))
               (gr_circle (center 0 0.25) (end 0.5 0.25) (width 0))))))"#
     );
-    let polygon = only_pad_polygon(&text);
+    let pieces = pad_pieces(&text);
     assert!(
-        contains(&polygon, (-0.45, 0.45)),
-        "only the circles reach the upper left; without them the hull runs straight from the \
-         anchor corner (-0.5, 0.25) to the polygon corner (0, 0.75), which cuts this point off"
+        pieces_contain(&pieces, (-0.3, 0.45)),
+        "the upper circle covers the upper left of the anchor"
     );
-    let (x0, y0, x1, y1) = bounds(&polygon);
+    assert!(
+        !pieces_contain(&pieces, (-0.45, 0.7)),
+        "the corner outside both circles and the polygon is not copper"
+    );
+    let (x0, y0, x1, y1) = pieces_bounds(&pieces);
     assert!((-0.505..=-0.5).contains(&x0), "left edge was {x0}");
     assert_eq!(x1, 0.55, "the polygon's right edge is exact");
     assert!((-0.755..=-0.75).contains(&y0), "bottom edge was {y0}");
@@ -563,7 +582,7 @@ fn a_circular_anchor_takes_its_diameter_from_the_x_size_alone() {
             (options (clearance outline) (anchor circle))
             (primitives (gr_line (start -0.1 0) (end 0.1 0) (width 0.1))))))"#
     );
-    let (x0, y0, x1, y1) = bounds(&only_pad_polygon(&text));
+    let (x0, y0, x1, y1) = pieces_bounds(&pad_pieces(&text));
     for edge in [x0.abs(), y0.abs(), x1, y1] {
         assert!(
             (0.6..=0.605).contains(&edge),
@@ -572,37 +591,77 @@ fn a_circular_anchor_takes_its_diameter_from_the_x_size_alone() {
     }
 }
 
-#[test]
-fn a_multi_primitive_pad_warns_that_its_hull_can_overstate_the_copper() {
-    let hull_warning = "Custom pads that are not a single convex outline are reserved as their \
-                        convex hull, which can overstate their copper; original pad definitions \
-                        are preserved.";
-    let board = |primitives: &str| {
-        format!(
-            r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
-            (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
-            (footprint "R" (layer "F.Cu") (at 1 1)
-              (pad "1" smd custom (at 0 0) (size 0.4 0.4) (layers "F.Cu") (net 1 "GND")
-                (options (clearance outline) (anchor circle))
-                (primitives {primitives}))))"#
-        )
-    };
-    let convex = board(
-        r#"(gr_poly (pts (xy -0.5 -0.5) (xy 0.5 -0.5) (xy 0.5 0.5) (xy -0.5 0.5)) (width 0) (fill yes))"#,
-    );
-    let imported = read_pcb(&convex, "t", &default_net_class()).expect("the board imports");
-    assert!(
-        !imported.warnings.iter().any(|w| w == hull_warning),
-        "a single convex filled outline is reserved exactly"
-    );
+fn custom_pad_board(primitives: &str) -> String {
+    format!(
+        r#"(kicad_pcb (version 20241229) {LAYERS} (net 1 "GND")
+        (gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))
+        (footprint "R" (layer "F.Cu") (at 1 1)
+          (pad "1" smd custom (at 0 0) (size 0.4 0.4) (layers "F.Cu") (net 1 "GND")
+            (options (clearance outline) (anchor circle))
+            (primitives {primitives}))))"#
+    )
+}
 
-    let pair = board(
+#[test]
+fn a_cross_of_strokes_keeps_its_notches_free() {
+    let pieces = pad_pieces(&custom_pad_board(
         r#"(gr_line (start -1 0) (end 1 0) (width 0.3)) (gr_line (start 0 -1) (end 0 1) (width 0.3))"#,
-    );
-    let imported = read_pcb(&pair, "t", &default_net_class()).expect("the board imports");
+    ));
+    assert_eq!(pieces.len(), 3, "the anchor and one stadium per stroke");
     assert!(
-        imported.warnings.iter().any(|w| w == hull_warning),
-        "a cross of two strokes is not convex, so its hull overstates the copper"
+        pieces_contain(&pieces, (1.1, 0.0)),
+        "the stroke end cap is copper"
+    );
+    assert!(
+        pieces_contain(&pieces, (0.0, -1.1)),
+        "the stroke end cap is copper"
+    );
+    assert!(
+        !pieces_contain(&pieces, (0.6, 0.6)),
+        "the notch between two arms is free, where a hull would have reserved it"
+    );
+}
+
+#[test]
+fn a_concave_filled_polygon_is_kept_concave() {
+    let pieces = pad_pieces(&custom_pad_board(
+        r#"(gr_poly (pts (xy -1 -1) (xy 1 -1) (xy 1 -0.6) (xy -0.6 -0.6) (xy -0.6 1) (xy -1 1)) (width 0) (fill yes))"#,
+    ));
+    assert_eq!(pieces.len(), 2, "the anchor and the polygon itself");
+    assert_eq!(pieces[1].len(), 6, "the polygon keeps its concave corner");
+    let imported = read_pcb(
+        &custom_pad_board(
+            r#"(gr_poly (pts (xy -1 -1) (xy 1 -1) (xy 1 -0.6) (xy -0.6 -0.6) (xy -0.6 1) (xy -1 1)) (width 0.2) (fill yes))"#,
+        ),
+        "t",
+        &default_net_class(),
+    )
+    .expect("the board imports");
+    let components = imported.board.components.expect("components");
+    let pad = &components[0].pads.as_ref().expect("pads")[0];
+    assert_eq!(
+        pad.extraCopperPolygons.as_ref().map(Vec::len),
+        Some(7),
+        "a stroked polygon adds a stadium for each of its six edges"
+    );
+}
+
+#[test]
+fn an_outline_circle_is_a_ring_of_strokes() {
+    let filled = pad_pieces(&custom_pad_board(
+        r#"(gr_circle (center 0 0) (end 1 0) (width 0.2) (fill yes))"#,
+    ));
+    let ring = pad_pieces(&custom_pad_board(
+        r#"(gr_circle (center 0 0) (end 1 0) (width 0.2) (fill no))"#,
+    ));
+    assert!(pieces_contain(&filled, (0.5, 0.0)));
+    assert!(
+        !pieces_contain(&ring, (0.5, 0.0)),
+        "the ring's hole is free"
+    );
+    assert!(
+        pieces_contain(&ring, (1.05, 0.0)),
+        "the ring itself is copper"
     );
 }
 
@@ -688,7 +747,6 @@ fn a_gap_past_the_chaining_epsilon_is_bridged_and_reported() {
 
 #[test]
 fn a_gap_wider_than_the_healing_tolerance_is_still_refused() {
-    let error =
-        read_pcb(&square_with_gap(1.5), "t", &default_net_class()).expect_err("it fails");
+    let error = read_pcb(&square_with_gap(1.5), "t", &default_net_class()).expect_err("it fails");
     assert_eq!(error.message, "A closed Edge.Cuts outline is required.");
 }

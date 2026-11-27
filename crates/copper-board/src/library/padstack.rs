@@ -14,6 +14,7 @@ pub struct Padstack {
     pub attach_allowed: bool,
     pub placed_absolute: bool,
     shapes: Vec<Option<Shape>>,
+    extra_shapes: Vec<Vec<Shape>>,
     pub hole_only: bool,
     /// Drill diameter in board units. None means legacy data without drill metadata.
     pub drill_diameter: Option<f64>,
@@ -31,12 +32,14 @@ impl Padstack {
         attach_allowed: bool,
         placed_absolute: bool,
     ) -> Padstack {
+        let extra_shapes = vec![Vec::new(); shapes.len()];
         Padstack {
             name,
             no,
             attach_allowed,
             placed_absolute,
             shapes,
+            extra_shapes,
             hole_only: false,
             drill_diameter: None,
             drill_estimated: true,
@@ -53,6 +56,20 @@ impl Padstack {
             return None;
         }
         self.shapes[layer as usize].as_ref()
+    }
+
+    /// Convex copper beyond the primary shape on the same layer. The primary shape holds the
+    /// pin centre; these pieces may overlap it and each other.
+    pub fn get_extra_shapes(&self, layer: i32) -> &[Shape] {
+        if layer < 0 || layer as usize >= self.extra_shapes.len() || self.get_shape(layer).is_none()
+        {
+            return &[];
+        }
+        &self.extra_shapes[layer as usize]
+    }
+
+    pub fn has_extra_shapes(&self) -> bool {
+        self.extra_shapes.iter().any(|pieces| !pieces.is_empty())
     }
 
     pub fn from_layer(&self) -> i32 {
@@ -177,6 +194,32 @@ fn shape_max_width(shape: &Shape) -> f64 {
     }
 }
 
+/// Splits pad copper into the convex pieces a padstack layer holds. A piece containing
+/// `anchor` comes first so it can serve as the primary shape.
+pub fn convex_pad_pieces(shape: &Shape, anchor: &copper_geometry::Point) -> Option<Vec<Shape>> {
+    let mut pieces: Vec<Shape> = match shape {
+        Shape::Tile(_) | Shape::Circle(_) => vec![shape.clone()],
+        Shape::Polygon(polygon) => polygon
+            .split_to_convex()
+            .or_else(|| polygon.convex_hull().split_to_convex())?
+            .into_iter()
+            .map(|tile| {
+                Shape::Tile(match tile {
+                    TileShape::Simplex(simplex) => simplex.simplify(),
+                    other => other,
+                })
+            })
+            .collect(),
+    };
+    if pieces.iter().any(|piece| piece.dimension() == 2) {
+        pieces.retain(|piece| piece.dimension() == 2);
+    }
+    if let Some(index) = pieces.iter().position(|piece| piece.contains(anchor)) {
+        pieces[..=index].rotate_right(1);
+    }
+    (!pieces.is_empty()).then_some(pieces)
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Padstacks {
     pub board_layer_structure: LayerStructure,
@@ -219,6 +262,18 @@ impl Padstacks {
     pub fn set_round_rect_radius(&mut self, id: PadstackId, radius: Option<f64>) {
         assert!(radius.is_none_or(|r| r.is_finite() && r >= 0.0));
         self.list[id.0 - 1].round_rect_radius = radius;
+    }
+
+    pub fn set_extra_shapes(&mut self, id: PadstackId, extra_shapes: Vec<Vec<Shape>>) {
+        let pad = &mut self.list[id.0 - 1];
+        assert_eq!(extra_shapes.len(), pad.shapes.len());
+        assert!(
+            extra_shapes
+                .iter()
+                .flatten()
+                .all(|shape| !matches!(shape, Shape::Polygon(_)))
+        );
+        pad.extra_shapes = extra_shapes;
     }
 
     pub fn count(&self) -> usize {

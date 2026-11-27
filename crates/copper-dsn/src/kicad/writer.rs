@@ -21,6 +21,7 @@ pub fn write(board: &Board, design_name: &str) -> String {
 
     let mut board_json = KiCadBoardJson {
         allowSolderMaskBridgesInFootprints: board.rules.allow_solder_mask_bridges_in_footprints,
+        traceEndsAnywhereInPads: board.rules.trace_ends_anywhere_in_pads,
         solderMaskMinWidth: board
             .rules
             .solder_mask_min_width

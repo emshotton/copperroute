@@ -130,3 +130,51 @@ fn it_routes_a_kicad_board_to_a_session_that_actually_connects_the_nets() {
         "the session should name both nets from web/example.kicad_pcb, got:\n{session}"
     );
 }
+
+#[test]
+fn a_pad_in_the_notch_of_a_concave_custom_pad_routes_without_violations() {
+    let dir = scratch("concave-pad");
+    let board =
+        testkit::workspace_root().join("crates/copperroute/tests/data/concave-pad/l-pad.kicad_pcb");
+    let session = dir.join("l-pad.ses");
+    let report = dir.join("l-pad-drc.json");
+    let (_, stderr, code) = run(&[
+        "route",
+        &board.to_string_lossy(),
+        "-o",
+        &session.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "route failed: {stderr}");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &board.to_string_lossy(),
+        "--ses",
+        &session.to_string_lossy(),
+        "-o",
+        &report.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "the routed board has DRC findings: {stderr}");
+    let findings: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report).expect("a report")).expect("JSON");
+    assert_eq!(findings["violations"], serde_json::json!([]));
+    assert_eq!(findings["unconnected_items"], serde_json::json!([]));
+}
+
+#[test]
+fn a_kicad_track_ending_off_centre_inside_its_pads_is_connected() {
+    let dir = scratch("off-centre-track");
+    let board = testkit::workspace_root()
+        .join("crates/copperroute/tests/data/off-centre-track/off-centre.kicad_pcb");
+    let report = dir.join("drc.json");
+    let (_, stderr, code) = run(&[
+        "drc",
+        &board.to_string_lossy(),
+        "-o",
+        &report.to_string_lossy(),
+    ]);
+    assert_eq!(code, 0, "the board has DRC findings: {stderr}");
+    let findings: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report).expect("a report")).expect("JSON");
+    assert_eq!(findings["violations"], serde_json::json!([]));
+    assert_eq!(findings["unconnected_items"], serde_json::json!([]));
+}

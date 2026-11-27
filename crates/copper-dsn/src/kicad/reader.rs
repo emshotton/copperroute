@@ -2,7 +2,7 @@ use copper_board::{
     Board, BoardLibrary, BoardRules, ClearanceMatrix, Communication, Components, FixedState,
     ItemClass, ItemId, ItemIdGenerator, Layer, LayerStructure, NetClassId, Nets, Package,
     PackagePin, Packages, Padstack, PadstackId, Padstacks, Unit, ViaInfo, ViaRule,
-    equals_ignore_case,
+    convex_pad_pieces, equals_ignore_case,
 };
 use copper_geometry::{
     Area, Circle, FloatPoint, IntBox, IntOctagon, IntPoint, IntVector, Point, PolygonShape,
@@ -369,6 +369,7 @@ pub fn read_board_json(
     board_rules.strict_smd_via_attachment = true;
     board_rules.allow_solder_mask_bridges_in_footprints =
         board_json.allowSolderMaskBridgesInFootprints;
+    board_rules.trace_ends_anywhere_in_pads = board_json.traceEndsAnywhereInPads;
     if let Some(width) = board_json.solderMaskMinWidth {
         let scaled = width * scale_factor;
         if !width.is_finite() || width < 0.0 || scaled > f64::from(i32::MAX) {
@@ -626,7 +627,8 @@ pub fn read_board_json(
         }
     }
 
-    let mut pad_padstacks: Vec<(Vec<Option<Shape>>, PadDrillKey, PadstackId)> = Vec::new();
+    type PadShapes = (Vec<Option<Shape>>, Vec<Vec<Shape>>);
+    let mut pad_padstacks: Vec<(PadShapes, PadDrillKey, PadstackId)> = Vec::new();
 
     let Some(json_components) = board_json.components.as_ref() else {
         return npe("java.util.List.iterator()", "boardJson.components");
@@ -662,10 +664,10 @@ pub fn read_board_json(
             };
             let dx = pad_size.x * scale_factor / 2.0;
             let dy = pad_size.y * scale_factor / 2.0;
-            let pad_shape = if let Some(polygon) = &pad.copperPolygon {
+            let board_polygon = |polygon: &[Point2D]| -> Option<Shape> {
                 if polygon.len() < 3 || polygon.iter().any(|p| !p.x.is_finite() || !p.y.is_finite())
                 {
-                    return parse_error("components", "Invalid custom copper polygon");
+                    return None;
                 }
                 let points: Vec<Point> = polygon
                     .iter()
@@ -676,7 +678,20 @@ pub fn read_board_json(
                         ))
                     })
                     .collect();
-                Shape::Polygon(PolygonShape::from_points(&points))
+                Some(Shape::Polygon(PolygonShape::from_points(&points)))
+            };
+            let mut extra_pad_shapes: Vec<Shape> = Vec::new();
+            for polygon in pad.extraCopperPolygons.iter().flatten() {
+                let Some(shape) = board_polygon(polygon) else {
+                    return parse_error("components", "Invalid custom copper polygon");
+                };
+                extra_pad_shapes.push(shape);
+            }
+            let pad_shape = if let Some(polygon) = &pad.copperPolygon {
+                let Some(shape) = board_polygon(polygon) else {
+                    return parse_error("components", "Invalid custom copper polygon");
+                };
+                shape
             } else if shape_name == "circle" {
                 let radius = (pad_size.x).min(pad_size.y) * scale_factor / 2.0;
                 Shape::Circle(Circle::new(IntPoint::ZERO, (radius).round() as i32))
@@ -721,13 +736,24 @@ pub fn read_board_json(
                         "Pad shape offset must keep the drill anchor inside the copper shape",
                     );
                 }
-                pad_shape.translate_by(&Vector::Int(IntVector::new(
+                let offset_vector = Vector::Int(IntVector::new(
                     (offset.x * scale_factor).round() as i32,
                     (-offset.y * scale_factor).round() as i32,
-                )))
+                ));
+                for shape in &mut extra_pad_shapes {
+                    *shape = shape.translate_by(&offset_vector);
+                }
+                pad_shape.translate_by(&offset_vector)
             } else {
                 pad_shape
             };
+            let mut extra_pieces: Vec<Shape> = Vec::new();
+            for shape in &extra_pad_shapes {
+                let Some(pieces) = convex_pad_pieces(shape, &Point::Int(IntPoint::ZERO)) else {
+                    return parse_error("components", "Invalid custom copper polygon");
+                };
+                extra_pieces.extend(pieces);
+            }
 
             if pad.drill > 0.0
                 && (pad.shapeOffset.is_some() || pad.copperPolygon.is_some())
@@ -738,6 +764,13 @@ pub fn read_board_json(
                     "Drill anchor must lie inside custom or offset pad copper",
                 );
             }
+            let Some(mut primary_pieces) =
+                convex_pad_pieces(&pad_shape, &Point::Int(IntPoint::ZERO))
+            else {
+                return parse_error("components", "Invalid custom copper polygon");
+            };
+            let pad_shape = primary_pieces.remove(0);
+            extra_pieces.splice(0..0, primary_pieces);
 
             let mut start_layer = 0usize;
             let mut end_layer = layer_count - 1;
@@ -761,9 +794,13 @@ pub fn read_board_json(
                 end_layer = highest_idx;
             }
 
+            let mut extra_shapes: Vec<Vec<Shape>> = vec![Vec::new(); layer_count];
             if start_layer <= end_layer {
                 for shape in &mut shapes[start_layer..=end_layer] {
                     *shape = Some(pad_shape.clone());
+                }
+                for pieces in &mut extra_shapes[start_layer..=end_layer] {
+                    pieces.clone_from(&extra_pieces);
                 }
             }
 
@@ -795,25 +832,32 @@ pub fn read_board_json(
                 pad.drillEstimated,
                 round_rect_radius,
             );
-            let padstack = match pad_padstacks
-                .iter()
-                .find(|(existing, drillable, _)| *drillable == drill_key && *existing == shapes)
-            {
-                Some((_, _, id)) => *id,
-                None => {
-                    if shapes.iter().all(Option::is_none) {
-                        return no_shape_on_any_layer(
-                            "components",
-                            &format!(
-                                "pad `{}` of component `{}`",
-                                pad.name.as_deref().unwrap_or_default(),
-                                component.reference.as_deref().unwrap_or_default()
-                            ),
-                            "its `layers` list names no layer this board has",
-                        );
-                    }
-                    let padstack_name =
-                        match get_descriptive_padstack_name(pad, &board_layer_names, layer_count) {
+            let padstack =
+                match pad_padstacks
+                    .iter()
+                    .find(|((existing, existing_extras), drillable, _)| {
+                        *drillable == drill_key
+                            && *existing == shapes
+                            && *existing_extras == extra_shapes
+                    }) {
+                    Some((_, _, id)) => *id,
+                    None => {
+                        if shapes.iter().all(Option::is_none) {
+                            return no_shape_on_any_layer(
+                                "components",
+                                &format!(
+                                    "pad `{}` of component `{}`",
+                                    pad.name.as_deref().unwrap_or_default(),
+                                    component.reference.as_deref().unwrap_or_default()
+                                ),
+                                "its `layers` list names no layer this board has",
+                            );
+                        }
+                        let padstack_name = match get_descriptive_padstack_name(
+                            pad,
+                            &board_layer_names,
+                            layer_count,
+                        ) {
                             Ok(name) => name,
                             Err(message) => {
                                 return parse_error(
@@ -822,30 +866,36 @@ pub fn read_board_json(
                                 );
                             }
                         };
-                    let padstack_name =
-                        unique_padstack_name(&board.library.padstacks, padstack_name);
-                    let id = board.library.padstacks.add(
-                        padstack_name,
-                        shapes.clone(),
-                        is_drillable,
-                        false,
-                    );
-                    board
-                        .library
-                        .padstacks
-                        .set_round_rect_radius(id, round_rect_radius);
-                    if is_drillable || start_layer == end_layer {
-                        board.library.padstacks.set_drill(
-                            id,
-                            pad.drill * scale_factor,
-                            hole_only,
-                            pad.drillEstimated,
+                        let padstack_name =
+                            unique_padstack_name(&board.library.padstacks, padstack_name);
+                        let id = board.library.padstacks.add(
+                            padstack_name,
+                            shapes.clone(),
+                            is_drillable,
+                            false,
                         );
+                        board
+                            .library
+                            .padstacks
+                            .set_round_rect_radius(id, round_rect_radius);
+                        if !extra_pieces.is_empty() {
+                            board
+                                .library
+                                .padstacks
+                                .set_extra_shapes(id, extra_shapes.clone());
+                        }
+                        if is_drillable || start_layer == end_layer {
+                            board.library.padstacks.set_drill(
+                                id,
+                                pad.drill * scale_factor,
+                                hole_only,
+                                pad.drillEstimated,
+                            );
+                        }
+                        pad_padstacks.push(((shapes, extra_shapes), drill_key, id));
+                        id
                     }
-                    pad_padstacks.push((shapes, drill_key, id));
-                    id
-                }
-            };
+                };
             let Some(offset) = pad.offset.as_ref() else {
                 return npe_field("x", "pad.offset");
             };
@@ -1067,13 +1117,19 @@ pub fn read_board_json(
                 let Some(copper_board::Item::Pin(pin)) = board.items.get(&pad) else {
                     continue;
                 };
-                let Some(pad_shape) = pin.get_shape_on_layer(layer, &ctx) else {
-                    continue;
-                };
-                if !shape.intersects(&pad_shape) {
+                if !pin
+                    .shapes_on_layer(layer, &ctx)
+                    .iter()
+                    .any(|pad_shape| shape.intersects(pad_shape))
+                {
                     continue;
                 }
-                for number in pin.hdr.net_nos.iter().chain(board.rules.net_ties.nets_of(pad)) {
+                for number in pin
+                    .hdr
+                    .net_nos
+                    .iter()
+                    .chain(board.rules.net_ties.nets_of(pad))
+                {
                     if !tie_numbers.contains(number) {
                         tie_numbers.push(*number);
                     }

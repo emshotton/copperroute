@@ -401,18 +401,20 @@ test("still rejects footprint copper curves", () => {
   assert.throws(() => load(text), /Footprint copper graphics are not supported yet\./);
 });
 
-test("a stroked convex custom pad includes its copper, while unsupported primitives fail", () => {
+test("a custom pad keeps its anchor as the primary piece and its primitives beside it", () => {
   const pad = '(pad "1" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8)';
   const custom = '(pad "1" thru_hole custom (at 0 0) (size 0.8 0.8) (options (anchor circle)) (primitives (gr_poly (pts (xy -0.8 -0.8) (xy 0 -0.8) (xy 0.8 0) (xy 0.8 0.8) (xy -0.8 0.8)) (width 0.2) (fill yes))) (drill 0.3)';
   const text = source.replace(pad,custom);
-  const polygon = load(text).board.components[0].pads[0].copperPolygon;
-  assert.ok(polygon.length>5);
-  assert.ok(Math.max(...polygon.map(p=>p.y))>=.9);
-  assert.ok(Math.max(...polygon.map(p=>p.y))<=.905);
-  // A ring and a filled disc share a convex hull, and this outline already covers the
-  // 0.8 x 0.8 anchor either way, so neither fill nor anchor kind moves the copper.
-  assert.deepEqual(load(text.replace('(fill yes)','(fill no)')).board.components[0].pads[0].copperPolygon, polygon);
-  assert.deepEqual(load(text.replace('(anchor circle)','(anchor rect)')).board.components[0].pads[0].copperPolygon, polygon);
+  const loaded = load(text).board.components[0].pads[0];
+  assert.ok(Math.max(...loaded.copperPolygon.map(p=>Math.hypot(p.x,p.y)))<=0.405);
+  assert.equal(loaded.extraCopperPolygons.length, 6, "the polygon and a stadium for each of its five edges");
+  const ys = loaded.extraCopperPolygons.flat().map(p=>p.y);
+  assert.ok(Math.max(...ys)>=.9);
+  assert.ok(Math.max(...ys)<=.905);
+  const ring = load(text.replace('(fill yes)','(fill no)')).board.components[0].pads[0];
+  assert.equal(ring.extraCopperPolygons.length, 5, "an outline polygon is only its edge strokes");
+  const rect = load(text.replace('(anchor circle)','(anchor rect)')).board.components[0].pads[0];
+  assert.deepEqual(rect.copperPolygon, [{x:-0.4,y:0.4},{x:-0.4,y:-0.4},{x:0.4,y:-0.4},{x:0.4,y:0.4}]);
   assert.throws(()=>load(text.replace('(gr_poly','(gr_curve')),/Unsupported custom pad primitive: gr_curve/);
 });
 
@@ -726,14 +728,16 @@ test("a trapezoid delta wider than the pad is rejected", () => {
   );
 });
 
-const onlyPadPolygon = (primitives, size, anchor) =>
-  load(
+const padPieces = (primitives, size, anchor) => {
+  const pad = load(
     minimalBoard('(gr_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))').replace(
       '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "GND"))',
       `(pad "1" smd custom (at 0 0) (size ${size}) (layers "F.Cu") (net 1 "GND")` +
         ` (options (clearance outline) (anchor ${anchor})) (primitives ${primitives}))`,
     ),
-  ).board.components[0].pads[0].copperPolygon;
+  ).board.components[0].pads[0];
+  return [pad.copperPolygon, ...(pad.extraCopperPolygons ?? [])];
+};
 
 const inside = (polygon, p) => {
   const sides = polygon
@@ -746,32 +750,32 @@ const inside = (polygon, p) => {
 };
 
 // The shape that dominates the corpus: a rectangular anchor with a polygon and two circles
-// forming a stadium. Only the circles reach the upper left, so a hull that dropped them would
-// run straight from the anchor corner (-0.5, 0.25) to the polygon corner (0, 0.75).
+// forming a stadium.
 test("a stadium custom pad covers its polygon and both circles", () => {
-  const polygon = onlyPadPolygon(
+  const pieces = padPieces(
     '(gr_poly (pts (xy 0.55 0.75) (xy 0 0.75) (xy 0 -0.75) (xy 0.55 -0.75)) (width 0))' +
       ' (gr_circle (center 0 -0.25) (end 0.5 -0.25) (width 0))' +
       ' (gr_circle (center 0 0.25) (end 0.5 0.25) (width 0))',
     "1 0.5",
     "rect",
   );
-  assert.ok(inside(polygon, { x: -0.45, y: 0.45 }));
-  const xs = polygon.map((p) => p.x),
-    ys = polygon.map((p) => p.y);
+  assert.ok(pieces.some((piece) => inside(piece, { x: -0.3, y: 0.45 })));
+  assert.ok(!pieces.some((piece) => inside(piece, { x: -0.45, y: 0.7 })));
+  const xs = pieces.flat().map((p) => p.x),
+    ys = pieces.flat().map((p) => p.y);
   assert.ok(Math.min(...xs) >= -0.505 && Math.min(...xs) <= -0.5);
   assert.equal(Math.max(...xs), 0.55);
   assert.ok(Math.max(...ys) >= 0.75 && Math.max(...ys) <= 0.755);
 });
 
 test("a circular anchor takes its diameter from the x size alone", () => {
-  const polygon = onlyPadPolygon(
+  const [anchor] = padPieces(
     '(gr_line (start -0.1 0) (end 0.1 0) (width 0.1))',
     "1.2 0.4",
     "circle",
   );
-  const xs = polygon.map((p) => p.x),
-    ys = polygon.map((p) => p.y);
+  const xs = anchor.map((p) => p.x),
+    ys = anchor.map((p) => p.y);
   for (const edge of [
     Math.abs(Math.min(...xs)),
     Math.abs(Math.min(...ys)),
@@ -781,13 +785,24 @@ test("a circular anchor takes its diameter from the x size alone", () => {
     assert.ok(edge >= 0.6 && edge <= 0.605, `edge at ${edge}`);
 });
 
+test("a cross of strokes keeps its notches free", () => {
+  const pieces = padPieces(
+    '(gr_line (start -1 0) (end 1 0) (width 0.3)) (gr_line (start 0 -1) (end 0 1) (width 0.3))',
+    "0.4 0.4",
+    "circle",
+  );
+  assert.equal(pieces.length, 3);
+  assert.ok(pieces.some((piece) => inside(piece, { x: 1.1, y: 0 })));
+  assert.ok(!pieces.some((piece) => inside(piece, { x: 0.6, y: 0.6 })));
+});
+
 test("an unsupported custom pad anchor and primitive are named in the error", () => {
   assert.throws(
-    () => onlyPadPolygon('(gr_line (start 0 0) (end 1 0) (width 0.1))', "0.4 0.4", "oval"),
+    () => padPieces('(gr_line (start 0 0) (end 1 0) (width 0.1))', "0.4 0.4", "oval"),
     /Unsupported custom pad anchor: oval/,
   );
   assert.throws(
-    () => onlyPadPolygon('(gr_curve (width 0.1))', "0.4 0.4", "circle"),
+    () => padPieces('(gr_curve (width 0.1))', "0.4 0.4", "circle"),
     /Unsupported custom pad primitive: gr_curve/,
   );
 });

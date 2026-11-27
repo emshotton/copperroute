@@ -32,7 +32,7 @@ pub use items::{
 };
 pub use library::{
     BoardLibrary, DrillItemPadstackLookup, Keepout, LogicalPart, LogicalParts, Package, PackagePin,
-    Packages, Padstack, Padstacks, PartPin,
+    Packages, Padstack, Padstacks, PartPin, convex_pad_pieces,
 };
 pub use rules::{
     BoardRules, CLEARANCE_SAFETY_MARGIN, ClearanceClassIndexed, ClearanceMatrix,

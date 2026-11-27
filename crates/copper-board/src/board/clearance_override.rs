@@ -1,4 +1,4 @@
-use copper_geometry::{Area, Shape, ShapeOps};
+use copper_geometry::{Area, Shape, ShapeOps, TileShape};
 
 use crate::Board;
 use crate::board::item_ctx;
@@ -103,13 +103,33 @@ impl Board {
             return requested;
         };
         let ctx = self.ctx();
-        let Some(shape) = pin.get_shape_on_layer(layer, &ctx) else {
-            return requested;
-        };
-        let copper = shape.bounding_tile();
-        let search = copper.enlarge(f64::from(requested));
+        let coppers: Vec<TileShape> = pin
+            .shapes_on_layer(layer, &ctx)
+            .iter()
+            .map(Shape::bounding_tile)
+            .collect();
         let mut limit = requested;
-        for object in self.overlapping_objects(&search, Some(layer)) {
+        for copper in &coppers {
+            let search = copper.enlarge(f64::from(requested));
+            limit = limit.min(
+                self.solder_mask_clearance_limit_for(id, pin, layer, requested, copper, &search),
+            );
+        }
+        limit
+    }
+
+    fn solder_mask_clearance_limit_for(
+        &self,
+        id: ItemId,
+        pin: &crate::items::Pin,
+        layer: usize,
+        requested: i32,
+        copper: &TileShape,
+        search: &TileShape,
+    ) -> i32 {
+        let ctx = self.ctx();
+        let mut limit = requested;
+        for object in self.overlapping_objects(search, Some(layer)) {
             let crate::ids::TreeObject::Item(other_id) = object else {
                 continue;
             };
@@ -122,21 +142,20 @@ impl Board {
             {
                 continue;
             }
-            let Some(other_shape) = other.get_shape_on_layer(layer, &ctx) else {
-                continue;
-            };
-            let other_copper = other_shape.bounding_tile();
-            if search.intersection(&other_copper).dimension() != 2 {
-                continue;
+            for other_shape in other.shapes_on_layer(layer, &ctx) {
+                let other_copper = other_shape.bounding_tile();
+                if search.intersection(&other_copper).dimension() != 2 {
+                    continue;
+                }
+                let gap = Self::calculate_clearance_between_two_shapes(
+                    copper,
+                    &other_copper,
+                    f64::from(requested),
+                    0,
+                    0,
+                );
+                limit = limit.min(gap.floor() as i32);
             }
-            let gap = Self::calculate_clearance_between_two_shapes(
-                &copper,
-                &other_copper,
-                f64::from(requested),
-                0,
-                0,
-            );
-            limit = limit.min(gap.floor() as i32);
         }
         limit.max(0)
     }

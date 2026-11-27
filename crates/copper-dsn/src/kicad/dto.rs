@@ -15,6 +15,8 @@ pub struct KiCadBoardJson {
     /// Explicit permission for newly routed vias to share SMD pad copper.
     #[serde(default, skip_serializing_if = "is_false")]
     pub viaInPadAllowed: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub traceEndsAnywhereInPads: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub designName: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -166,6 +168,8 @@ pub struct PadJson {
     pub shapeOffset: Option<Point2D>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub copperPolygon: Option<Vec<Point2D>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extraCopperPolygons: Option<Vec<Vec<Point2D>>>,
     #[serde(default = "empty", skip_serializing_if = "Option::is_none")]
     pub layers: Option<Vec<Option<String>>>,
 }
@@ -244,6 +248,7 @@ impl Default for KiCadBoardJson {
             solderMaskMinWidth: None,
             allowSolderMaskBridgesInFootprints: false,
             viaInPadAllowed: false,
+            traceEndsAnywhereInPads: false,
             designName: None,
             hostCad: None,
             hostVersion: None,
@@ -312,6 +317,7 @@ impl Default for PadJson {
             roundRectRatio: None,
             shapeOffset: None,
             copperPolygon: None,
+            extraCopperPolygons: None,
             layers: empty(),
         }
     }

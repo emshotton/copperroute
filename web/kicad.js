@@ -491,45 +491,15 @@ export function importBoard(text, name, rules, options = {}) {
         throw Error(
           `Unsupported pad ${reference}.${pad.values[1]}: ${type}/${shape}`,
         );
-      let copperPolygon;
+      let copperPolygon, extraCopperPolygons;
       if (shape === "custom") {
         const size = point(pad, "size");
         const cross = (a, b, c) => (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
-        // A primitive is a disc of its stroke radius swept along its outline, so each outline
-        // point carries that radius. fill does not affect the result: a ring and a filled disc
-        // share a convex hull.
-        const discs = (n) => {
-          const stroke = strokeMargin(n);
-          if (stroke < 0) throw Error("Custom pad primitives need a nonnegative stroke.");
-          const kind = n.values[0];
-          if (kind === "gr_circle") {
-            const c = point(n, "center"), e = point(n, "end");
-            return [{p: c, r: Math.hypot(e.x-c.x, e.y-c.y) + stroke}];
-          }
-          let points;
-          if (kind === "gr_poly") points = children(child(n, "pts") ?? {values: []}, "xy").map(xy);
-          else if (kind === "gr_line") points = [point(n, "start"), point(n, "end")];
-          else if (kind === "gr_rect") {
-            const a = point(n, "start"), b = point(n, "end");
-            points = [a, {x:b.x,y:a.y}, b, {x:a.x,y:b.y}];
-          } else if (kind === "gr_arc") points = nativeArcPoints(n);
-          else throw Error(`Unsupported custom pad primitive: ${kind}`);
-          return points.map(p => ({p, r: stroke}));
-        };
-        // KiCad takes a circular anchor's diameter from size.x alone and ignores size.y, and
-        // makes a rectangular anchor the whole size box. Checked against KiCad 10.0.3.
-        const anchorName = val(child(pad, "options") ?? {values: []}, "anchor") ?? "circle";
-        const hx = size.x/2, hy = size.y/2;
-        let anchor;
-        if (anchorName === "circle") anchor = [{p:{x:0,y:0}, r:hx}];
-        else if (anchorName === "rect")
-          anchor = [{x:-hx,y:hy},{x:-hx,y:-hy},{x:hx,y:-hy},{x:hx,y:hy}].map(p => ({p, r:0}));
-        else throw Error(`Unsupported custom pad anchor: ${anchorName}`);
-
+        const sampleCount = r => Math.max(24, Math.ceil(Math.PI / Math.acos(1 / (1 + OUTLINE_TOLERANCE / r))));
         const half = points => {const out=[];for(const p of points){while(out.length>1 && cross(out.at(-2),out.at(-1),p)<=0)out.pop();out.push(p);}return out.slice(0,-1);};
         const hullOf = (ds) => {
           const samples = ds.flatMap(({p, r}) => {
-            const count = r ? Math.max(24, Math.ceil(Math.PI / Math.acos(1 / (1 + OUTLINE_TOLERANCE / r)))) : 1;
+            const count = r ? sampleCount(r) : 1;
             const outer = r ? r / Math.cos(Math.PI/count) : 0;
             return Array.from({length: count}, (_, i) => {
               const angle = i * 2*Math.PI/count;
@@ -538,32 +508,65 @@ export function importBoard(text, name, rules, options = {}) {
           }).sort((a,b) => a.x-b.x || a.y-b.y);
           return [...half(samples), ...half([...samples].reverse())];
         };
-        const covers = (hull, ds) => hull.length >= 3 && ds.every(({p, r}) =>
-          hull.every((a, i) => {
-            const b = hull[(i+1)%hull.length], span = Math.hypot(b.x-a.x, b.y-a.y);
-            return span === 0 || cross(a, b, p) / span >= r;
-          }));
+        const area = poly => Math.abs(poly.reduce((sum, a, i) => {
+          const b = poly[(i+1)%poly.length];
+          return sum + a.x*b.y - b.x*a.y;
+        }, 0)) / 2;
+        const edgeStrokes = (points, r, closed) => {
+          if (r <= 0 || points.length < 2) return [];
+          const count = closed ? points.length : points.length - 1;
+          return Array.from({length: count}, (_, i) =>
+            hullOf([{p: points[i], r}, {p: points[(i+1)%points.length], r}]));
+        };
+        // KiCad fills a primitive with no stroke whatever its fill flag says. An explicit
+        // (fill no) with a stroke is an outline; anything else is reserved filled.
+        const pieces = (n) => {
+          const stroke = strokeMargin(n);
+          if (stroke < 0) throw Error("Custom pad primitives need a nonnegative stroke.");
+          const filled = stroke === 0 || !["no", "none"].includes(val(n, "fill"));
+          const kind = n.values[0];
+          let result;
+          if (kind === "gr_circle") {
+            const c = point(n, "center"), e = point(n, "end");
+            const r = Math.hypot(e.x-c.x, e.y-c.y);
+            if (filled || r === 0) result = [hullOf([{p: c, r: r + stroke}])];
+            else {
+              const count = sampleCount(r), outer = r / Math.cos(Math.PI/count);
+              const ring = Array.from({length: count}, (_, i) => {
+                const angle = i * 2*Math.PI/count;
+                return {x: c.x + outer*Math.cos(angle), y: c.y + outer*Math.sin(angle)};
+              });
+              result = edgeStrokes(ring, stroke, true);
+            }
+          } else if (kind === "gr_rect") {
+            const a = point(n, "start"), b = point(n, "end");
+            const corners = [a, {x:b.x,y:a.y}, b, {x:a.x,y:b.y}];
+            result = filled ? [hullOf(corners.map(p => ({p, r: stroke})))] : edgeStrokes(corners, stroke, true);
+          } else if (kind === "gr_poly") {
+            const points = children(child(n, "pts") ?? {values: []}, "xy").map(xy);
+            result = edgeStrokes(points, stroke, true);
+            if (filled && points.length >= 3) result.unshift(points);
+          } else if (kind === "gr_line") result = edgeStrokes([point(n, "start"), point(n, "end")], stroke, false);
+          else if (kind === "gr_arc") result = edgeStrokes(nativeArcPoints(n), stroke, false);
+          else throw Error(`Unsupported custom pad primitive: ${kind}`);
+          return result.filter(piece => area(piece) > 0);
+        };
+        // KiCad takes a circular anchor's diameter from size.x alone and ignores size.y, and
+        // makes a rectangular anchor the whole size box. Checked against KiCad 10.0.3.
+        const anchorName = val(child(pad, "options") ?? {values: []}, "anchor") ?? "circle";
+        const hx = size.x/2, hy = size.y/2;
+        let anchor;
+        if (anchorName === "circle") anchor = hullOf([{p:{x:0,y:0}, r:hx}]);
+        else if (anchorName === "rect") anchor = [{x:-hx,y:hy},{x:-hx,y:-hy},{x:hx,y:-hy},{x:hx,y:hy}];
+        else throw Error(`Unsupported custom pad anchor: ${anchorName}`);
+        if (!(area(anchor) > 0)) throw Error("Custom pads need a copper outline with area.");
 
         const primitives = (child(pad, "primitives")?.values.slice(1) ?? [])
           .filter(v => typeof v === "object" && v?.values);
-        let ds = primitives.flatMap(discs);
-        let hull = hullOf(ds);
-        const anchorCovered = covers(hull, anchor);
-        if (!anchorCovered) hull = hullOf(ds.concat(anchor));
-        if (hull.length < 3) throw Error("Custom pads need a copper outline with area.");
-
-        let exact = false;
-        if (anchorCovered && primitives.length === 1 && primitives[0].values[0] === "gr_poly"
-            && val(primitives[0], "fill") === "yes") {
-          const poly = discs(primitives[0]).map(d => d.p);
-          const signs = poly.map((p, i) =>
-            cross(p, poly[(i+1)%poly.length], poly[(i+2)%poly.length])).filter(Boolean);
-          exact = signs.every((s, i) => i === 0 || s * signs[i-1] > 0);
-        }
-        if (!exact)
-          warnings.push("Custom pads that are not a single convex outline are reserved as their convex hull, which can overstate their copper; original pad definitions are preserved.");
-        copperPolygon = hull;
-        warnings.push("Convex custom pad outlines include their stroke, approximated within 0.005 mm; original pad definitions are preserved.");
+        const extras = primitives.flatMap(pieces);
+        copperPolygon = anchor;
+        if (extras.length) extraCopperPolygons = extras;
+        warnings.push("Custom pad copper includes curves and strokes approximated within 0.005 mm; original pad definitions are preserved.");
       } else if (children(pad, "primitives").length) throw Error("Unexpected custom pad primitives.");
       else if (shape === "trapezoid") {
         // KiCad grows the pad by rect_delta.x along Y and by rect_delta.y along X, so the
@@ -666,6 +669,7 @@ export function importBoard(text, name, rules, options = {}) {
             ...(shape === "roundrect" ? { roundRectRatio: number(val(pad, "roundrect_rratio", 0.25)) } : {}),
             size,
             ...(copperPolygon ? { copperPolygon } : {}),
+            ...(extraCopperPolygons ? { extraCopperPolygons } : {}),
             ...(drillNode && child(drillNode, "offset") ? { shapeOffset: point(drillNode, "offset") } : {}),
             offset: { x: 0, y: 0 },
             position,
@@ -771,6 +775,7 @@ export function importBoard(text, name, rules, options = {}) {
       allowSolderMaskBridgesInFootprints: !!setup && val(setup, "allow_soldermask_bridges_in_footprints", "no") === "yes",
       solderMaskMinWidth: setup && child(setup, "solder_mask_min_width") ? number(val(setup, "solder_mask_min_width", 0)) : undefined,
       viaInPadAllowed: !!options.allowViaInPad,
+      traceEndsAnywhereInPads: true,
       designName: name,
       unit: "MM",
       resolution: 10000,

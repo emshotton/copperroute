@@ -7,27 +7,33 @@ use crate::checks::geometry::{candidates, gap_below, has_copper, item_shapes, se
 use crate::constraints::severity;
 use crate::{DrcViolation, DrcViolationKind};
 
-fn mask_base_shape(board: &Board, id: ItemId, layer: usize) -> Option<Shape> {
-    let Item::Pin(pin) = board.get_item(id)? else {
-        return None;
+fn mask_base_shapes(board: &Board, id: ItemId, layer: usize) -> Vec<Shape> {
+    let Some(Item::Pin(pin)) = board.get_item(id) else {
+        return Vec::new();
     };
     let ctx = board.ctx();
-    pin.get_shape_on_layer(layer, &ctx).or_else(|| {
-        (pin.solder_mask_expansion.contains_key(&layer)
-            && pin.first_layer(&ctx) == pin.last_layer(&ctx))
-        .then(|| pin.get_shape_on_layer(pin.first_layer(&ctx), &ctx))
-        .flatten()
-    })
+    let on_layer = pin.shapes_on_layer(layer, &ctx);
+    if !on_layer.is_empty() {
+        return on_layer;
+    }
+    if pin.solder_mask_expansion.contains_key(&layer)
+        && pin.first_layer(&ctx) == pin.last_layer(&ctx)
+    {
+        return pin.shapes_on_layer(pin.first_layer(&ctx), &ctx);
+    }
+    Vec::new()
 }
 
 fn mask_item_shapes(board: &mut Board, id: ItemId) -> Vec<(usize, TileShape)> {
     let mut shapes = item_shapes(board, id);
     if let Some(Item::Pin(pin)) = board.get_item(id) {
         for &layer in pin.solder_mask_expansion.keys() {
-            if !shapes.iter().any(|(existing, _)| *existing == layer)
-                && let Some(shape) = mask_base_shape(board, id, layer)
-            {
-                shapes.push((layer, shape.bounding_tile()));
+            if !shapes.iter().any(|(existing, _)| *existing == layer) {
+                shapes.extend(
+                    mask_base_shapes(board, id, layer)
+                        .iter()
+                        .map(|shape| (layer, shape.bounding_tile())),
+                );
             }
         }
     }
@@ -39,7 +45,7 @@ fn pad_routing_gap(board: &Board, pad: ItemId, other: ItemId, layer: usize) -> O
         return None;
     };
     let ctx = board.ctx();
-    let shape = mask_base_shape(board, pad, layer)?;
+    let shapes = mask_base_shapes(board, pad, layer);
     let (segments, half_width) = match board.get_item(other)? {
         Item::Trace(trace) => (
             trace
@@ -62,56 +68,68 @@ fn pad_routing_gap(board: &Board, pad: ItemId, other: ItemId, layer: usize) -> O
         }
         _ => return None,
     };
-    if let Shape::Circle(circle) = shape {
-        let center = circle.center.to_float();
+    let radius = pin.get_padstack(&ctx)?.round_rect_radius.unwrap_or(0.0);
+    let gap_to = |shape: &Shape| {
+        if let Shape::Circle(circle) = shape {
+            let center = circle.center.to_float();
+            let distance = segments
+                .iter()
+                .map(|s| s.segment_distance(&center))
+                .fold(f64::INFINITY, f64::min);
+            return distance - f64::from(circle.radius) - half_width;
+        }
+        let tile = shape.bounding_tile().offset(-radius);
         let distance = segments
             .iter()
-            .map(|s| s.segment_distance(&center))
+            .map(|segment| segment_gap(&tile, segment))
             .fold(f64::INFINITY, f64::min);
-        return Some(distance - f64::from(circle.radius) - half_width);
-    }
-    let radius = pin.get_padstack(&ctx)?.round_rect_radius.unwrap_or(0.0);
-    let tile = shape.bounding_tile().offset(-radius);
-    let distance = segments
-        .iter()
-        .map(|segment| segment_gap(&tile, segment))
-        .fold(f64::INFINITY, f64::min);
-    Some(distance - radius - half_width)
+        distance - radius - half_width
+    };
+    shapes.iter().map(gap_to).reduce(f64::min)
 }
 
 fn pad_pair_gap(board: &Board, a: ItemId, b: ItemId, layer: usize) -> Option<f64> {
     let ctx = board.ctx();
-    let core = |id| {
+    let cores = |id| -> Option<Vec<(TileShape, f64)>> {
         let Item::Pin(pin) = board.get_item(id)? else {
             return None;
         };
-        let shape = mask_base_shape(board, id, layer)?;
-        if let Shape::Circle(circle) = shape {
-            return Some((
-                TileShape::Box(copper_geometry::IntBox::from_coords(
-                    circle.center.x,
-                    circle.center.y,
-                    circle.center.x,
-                    circle.center.y,
-                )),
-                f64::from(circle.radius),
-            ));
-        }
         let radius = pin.get_padstack(&ctx)?.round_rect_radius.unwrap_or(0.0);
-        Some((shape.bounding_tile().offset(-radius), radius))
+        let cores: Vec<(TileShape, f64)> = mask_base_shapes(board, id, layer)
+            .into_iter()
+            .map(|shape| match shape {
+                Shape::Circle(circle) => (
+                    TileShape::Box(copper_geometry::IntBox::from_coords(
+                        circle.center.x,
+                        circle.center.y,
+                        circle.center.x,
+                        circle.center.y,
+                    )),
+                    f64::from(circle.radius),
+                ),
+                shape => (shape.bounding_tile().offset(-radius), radius),
+            })
+            .collect();
+        (!cores.is_empty()).then_some(cores)
     };
-    let (a, ar) = core(a)?;
-    let (b, br) = core(b)?;
-    let corners = b.corner_approx_arr();
-    let gap = (0..corners.len())
-        .map(|i| {
-            segment_gap(
-                &a,
-                &FloatLine::new(corners[i], corners[(i + 1) % corners.len()]),
-            )
-        })
-        .fold(f64::INFINITY, f64::min);
-    Some(gap - ar - br)
+    let pair_gap = |(a, ar): &(TileShape, f64), (b, br): &(TileShape, f64)| {
+        let corners = b.corner_approx_arr();
+        let gap = (0..corners.len())
+            .map(|i| {
+                segment_gap(
+                    a,
+                    &FloatLine::new(corners[i], corners[(i + 1) % corners.len()]),
+                )
+            })
+            .fold(f64::INFINITY, f64::min);
+        gap - ar - br
+    };
+    let a_cores = cores(a)?;
+    let b_cores = cores(b)?;
+    a_cores
+        .iter()
+        .flat_map(|a| b_cores.iter().map(move |b| pair_gap(a, b)))
+        .reduce(f64::min)
 }
 
 pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcViolation>) {
@@ -134,7 +152,7 @@ pub fn run(board: &mut Board, constraints: &DrcConstraints, out: &mut Vec<DrcVio
                 let largest = largest_margin.entry(layer).or_default();
                 *largest = (*largest).max(margin);
                 if pin.get_shape_on_layer(layer, &board.ctx()).is_none()
-                    && mask_base_shape(board, id, layer).is_some()
+                    && !mask_base_shapes(board, id, layer).is_empty()
                 {
                     mask_only_pins.entry(layer).or_default().push(id);
                 }

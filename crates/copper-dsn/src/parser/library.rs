@@ -1,5 +1,7 @@
-use copper_board::{Keepout, PackagePin, Padstack, PadstackId, Padstacks, equals_ignore_case};
-use copper_geometry::{Area, Circle, IntVector, Shape, ShapeOps, TileShape, Vector};
+use copper_board::{
+    Keepout, PackagePin, Padstack, PadstackId, Padstacks, convex_pad_pieces, equals_ignore_case,
+};
+use copper_geometry::{Area, Circle, IntPoint, IntVector, Point, Shape, ShapeOps, Vector};
 
 use crate::coordinate_transform::CoordinateTransform;
 use crate::error::DsnError;
@@ -383,15 +385,19 @@ pub fn write_padstack_scope(p: &mut WriteScopeParameter<'_>, padstack: &Padstack
             i32::try_from(i).unwrap_or(i32::MAX),
             board_layer.is_signal,
         );
-        let current_shape = p
-            .coordinate_transform
-            .board_to_dsn_rel_shape(current_board_shape, current_layer);
-        p.file.start_scope_nl();
-        p.file.write("shape");
-        if let Some(current_shape) = current_shape {
-            current_shape.write_scope(&mut p.file, &p.identifier_type);
+        let layer_shapes = std::iter::once(current_board_shape)
+            .chain(padstack.get_extra_shapes(i32::try_from(i).unwrap_or(i32::MAX)));
+        for board_shape in layer_shapes {
+            let current_shape = p
+                .coordinate_transform
+                .board_to_dsn_rel_shape(board_shape, current_layer.clone());
+            p.file.start_scope_nl();
+            p.file.write("shape");
+            if let Some(current_shape) = current_shape {
+                current_shape.write_scope(&mut p.file, &p.identifier_type);
+            }
+            p.file.end_scope();
         }
-        p.file.end_scope();
     }
     if !padstack.attach_allowed {
         p.file.new_line();
@@ -457,57 +463,71 @@ pub fn read_padstack_scope(
     if shape_list.is_empty() {
         return Ok(true);
     }
-    let mut padstack_shapes: Vec<Option<Shape>> = vec![None; layer_structure.layers.len()];
+    let layer_count = layer_structure.layers.len();
+    let mut layer_shapes: Vec<Vec<Shape>> = vec![Vec::new(); layer_count];
+    let mut from_wildcard = vec![false; layer_count];
     for pad_shape in &shape_list {
-        let mut padstack_shape = pad_shape
-            .transform_to_board_rel(coordinate_transform)
-            .and_then(to_convex_shape);
-        if let Some(shape) = &padstack_shape
-            && shape.dimension() < 2
-        {
-            let enlarged = offset_convex(shape, 1.0);
-            padstack_shape = if enlarged.dimension() < 2 {
-                None
-            } else {
-                Some(enlarged)
-            };
-        }
-
+        let board_shape = pad_shape.transform_to_board_rel(coordinate_transform);
         let layer = pad_shape.layer();
-        if *layer == DsnLayer::pcb() || *layer == DsnLayer::signal() {
-            padstack_shapes.fill(padstack_shape);
+        let is_wildcard = *layer == DsnLayer::pcb() || *layer == DsnLayer::signal();
+        let target_layers: Vec<usize> = if is_wildcard {
+            (0..layer_count).collect()
         } else {
             let Some(shape_layer) = layer_structure.get_no(&layer.name) else {
                 return Ok(false);
             };
-            if shape_layer >= padstack_shapes.len() {
+            if shape_layer >= layer_count {
                 return Ok(false);
             }
-            padstack_shapes[shape_layer] = padstack_shape;
+            vec![shape_layer]
+        };
+        for target in target_layers {
+            if is_wildcard || from_wildcard[target] {
+                layer_shapes[target].clear();
+            }
+            from_wildcard[target] = is_wildcard;
+            layer_shapes[target].extend(board_shape.clone());
         }
     }
-    board_padstacks.add(
+
+    let mut padstack_shapes: Vec<Option<Shape>> = vec![None; layer_count];
+    let mut extra_shapes: Vec<Vec<Shape>> = vec![Vec::new(); layer_count];
+    for (layer, shapes) in layer_shapes.into_iter().enumerate() {
+        let mut pieces: Vec<Shape> = shapes
+            .iter()
+            .filter_map(|shape| convex_pad_pieces(shape, &Point::Int(IntPoint::ZERO)))
+            .flatten()
+            .collect();
+        if let Some(index) = pieces
+            .iter()
+            .position(|piece| piece.contains(&Point::Int(IntPoint::ZERO)))
+        {
+            pieces[..=index].rotate_right(1);
+        }
+        if let Some(shape) = pieces.first()
+            && shape.dimension() < 2
+        {
+            let enlarged = offset_convex(shape, 1.0);
+            if enlarged.dimension() < 2 {
+                pieces.clear();
+            } else {
+                pieces[0] = enlarged;
+            }
+        }
+        let mut pieces = pieces.into_iter();
+        padstack_shapes[layer] = pieces.next();
+        extra_shapes[layer] = pieces.collect();
+    }
+    let id = board_padstacks.add(
         padstack_name,
         padstack_shapes,
         is_drilllable,
         placed_absolute,
     );
-    Ok(true)
-}
-
-fn to_convex_shape(shape: Shape) -> Option<Shape> {
-    match shape {
-        Shape::Tile(_) | Shape::Circle(_) => Some(shape),
-        Shape::Polygon(polygon) => {
-            let hull = Shape::Polygon(polygon.convex_hull());
-            let convex_shapes = hull.split_to_convex()?;
-            let first = convex_shapes.first()?;
-            Some(Shape::Tile(match first {
-                TileShape::Simplex(simplex) => simplex.simplify(),
-                other => other.clone(),
-            }))
-        }
+    if extra_shapes.iter().any(|pieces| !pieces.is_empty()) {
+        board_padstacks.set_extra_shapes(id, extra_shapes);
     }
+    Ok(true)
 }
 
 fn offset_convex(shape: &Shape, distance: f64) -> Shape {

@@ -142,15 +142,16 @@ pub fn item_shapes(board: &mut Board, id: ItemId) -> Vec<(usize, TileShape)> {
     // DRC measures the copper itself.
     {
         let ctx = board.ctx();
-        let copper_on = |layer: usize| match board.get_item(id) {
-            Some(Item::Pin(pin)) => pin.get_shape_on_layer(layer, &ctx),
-            Some(Item::Via(via)) => via.get_shape_on_layer(layer, &ctx),
+        let copper_at = |index: usize| match board.get_item(id) {
+            Some(Item::Pin(pin)) => pin.get_shape(index, &ctx),
+            Some(Item::Via(via)) => via.get_shape(index, &ctx),
             _ => None,
         };
         if matches!(board.get_item(id), Some(Item::Pin(_) | Item::Via(_))) {
             return layers
                 .into_iter()
-                .filter_map(|layer| Some((layer, copper_on(layer)?.bounding_tile())))
+                .enumerate()
+                .filter_map(|(index, layer)| Some((layer, copper_at(index)?.bounding_tile())))
                 .collect();
         }
     }
@@ -232,23 +233,29 @@ pub fn circle_copper_gap(
             f64::from(trace.get_half_width()),
         ),
         _ => {
-            let (shape, radius) = match item {
+            let (shapes, radius) = match item {
                 Item::Pin(pin) => (
-                    pin.get_shape_on_layer(layer, &ctx)?,
+                    pin.shapes_on_layer(layer, &ctx),
                     pin.get_padstack(&ctx)?.round_rect_radius,
                 ),
-                Item::Via(via) => (via.get_shape_on_layer(layer, &ctx)?, None),
+                Item::Via(via) => (vec![via.get_shape_on_layer(layer, &ctx)?], None),
                 _ => return None,
             };
-            if let Shape::Circle(circle) = &shape {
-                (circle.center.to_float(), f64::from(circle.radius))
-            } else {
-                let tile = shape.bounding_tile();
-                let rounded =
-                    radius.and_then(|r| tile.offset(-r).nearest_point_approx(&p).map(|q| (q, r)));
-                // Integer rounding can collapse an inset; keep checking the enclosing copper.
-                rounded.unwrap_or_else(|| (tile.nearest_point_approx(&p).unwrap_or(p), 0.0))
-            }
+            let nearest_on = |shape: &Shape| {
+                if let Shape::Circle(circle) = shape {
+                    (circle.center.to_float(), f64::from(circle.radius))
+                } else {
+                    let tile = shape.bounding_tile();
+                    let rounded = radius
+                        .and_then(|r| tile.offset(-r).nearest_point_approx(&p).map(|q| (q, r)));
+                    // Integer rounding can collapse an inset; keep checking the enclosing copper.
+                    rounded.unwrap_or_else(|| (tile.nearest_point_approx(&p).unwrap_or(p), 0.0))
+                }
+            };
+            shapes
+                .iter()
+                .map(nearest_on)
+                .min_by(|a, b| (p.distance(&a.0) - a.1).total_cmp(&(p.distance(&b.0) - b.1)))?
         }
     };
     let distance = p.distance(&nearest);

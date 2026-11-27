@@ -121,6 +121,7 @@ pub fn read_pcb(text: &str, name: &str, defaults: &NetClassJson) -> Result<Impor
         unit: Some(UnitJson::MM),
         resolution: 10000.0,
         allowSolderMaskBridgesInFootprints: allow_solder_mask_bridges_in_footprints,
+        traceEndsAnywhereInPads: true,
         solderMaskMinWidth: solder_mask_min_width,
         layers: Some(layers.entries),
         nets: Some(board_nets),

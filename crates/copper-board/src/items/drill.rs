@@ -91,6 +91,10 @@ trait DrillItemBase {
     fn shape_of(&self, index: usize, ctx: &ItemCtx<'_>) -> Option<Shape>;
 
     fn placed_on_front(&self, ctx: &ItemCtx<'_>) -> bool;
+
+    fn extra_shape_layers<'s>(&'s self, _ctx: &ItemCtx<'_>) -> &'s [usize] {
+        &[]
+    }
 }
 
 fn layer_index(value: i32, what: &str) -> usize {
@@ -131,7 +135,7 @@ fn last_layer_of<D: DrillItemBase>(item: &D, ctx: &ItemCtx<'_>) -> usize {
     })
 }
 
-fn tile_shape_count_of<D: DrillItemBase>(item: &D, ctx: &ItemCtx<'_>) -> usize {
+fn layer_shape_count_of<D: DrillItemBase>(item: &D, ctx: &ItemCtx<'_>) -> usize {
     let padstack = item
         .padstack_of(ctx)
         .expect("DrillItem.tileShapeCount: Java NPEs on a null padstack (DrillItem.java:204)");
@@ -139,6 +143,12 @@ fn tile_shape_count_of<D: DrillItemBase>(item: &D, ctx: &ItemCtx<'_>) -> usize {
         padstack.to_layer() - padstack.from_layer() + 1,
         "DrillItem.tileShapeCount",
     )
+}
+
+/// Shape indices below the layer count hold each layer's primary shape; the extra pieces of a
+/// multi-shape pad follow them.
+fn tile_shape_count_of<D: DrillItemBase>(item: &D, ctx: &ItemCtx<'_>) -> usize {
+    layer_shape_count_of(item, ctx) + item.extra_shape_layers(ctx).len()
 }
 
 fn bounding_box_of<D: DrillItemBase>(item: &D, ctx: &ItemCtx<'_>) -> IntBox {
@@ -154,7 +164,7 @@ fn bounding_box_of<D: DrillItemBase>(item: &D, ctx: &ItemCtx<'_>) -> IntBox {
 fn smallest_radius_of<D: DrillItemBase>(item: &D, center: &Point, ctx: &ItemCtx<'_>) -> f64 {
     let mut result = f64::MAX;
     let c = center.to_float();
-    for i in 0..tile_shape_count_of(item, ctx) {
+    for i in 0..layer_shape_count_of(item, ctx) {
         if let Some(shape) = item.shape_of(i, ctx) {
             result = (result).min(shape.border_distance(&c));
         }
@@ -193,6 +203,12 @@ fn shape_on_layer_of<D: DrillItemBase>(item: &D, layer: usize, ctx: &ItemCtx<'_>
 fn shape_layer_of<D: DrillItemBase>(item: &D, index: usize, ctx: &ItemCtx<'_>) -> usize {
     let from_layer = first_layer_of(item, ctx);
     let to_layer = last_layer_of(item, ctx);
+    let layer_count = to_layer - from_layer + 1;
+    if index >= layer_count
+        && let Some(&layer) = item.extra_shape_layers(ctx).get(index - layer_count)
+    {
+        return layer;
+    }
     from_layer + index.min(to_layer - from_layer)
 }
 
@@ -443,6 +459,7 @@ pub struct Pin {
     pin_index: i32,
     changed_to: Option<ItemId>,
     shapes: OnceLock<Vec<Option<Shape>>>,
+    extra_shape_layers: OnceLock<Vec<usize>>,
 }
 
 impl PartialEq for Pin {
@@ -475,6 +492,11 @@ impl DrillItemBase for Pin {
     fn placed_on_front(&self, ctx: &ItemCtx<'_>) -> bool {
         self.is_placed_on_front(ctx)
     }
+
+    fn extra_shape_layers<'s>(&'s self, ctx: &ItemCtx<'_>) -> &'s [usize] {
+        self.extra_shape_layers
+            .get_or_init(|| self.calculate_extra_shape_layers(ctx))
+    }
 }
 
 impl Pin {
@@ -490,6 +512,7 @@ impl Pin {
             source_pad_number: None,
             changed_to: None,
             shapes: OnceLock::new(),
+            extra_shape_layers: OnceLock::new(),
         }
     }
 
@@ -624,70 +647,110 @@ impl Pin {
             .flatten()
     }
 
-    fn calculate_shapes(&self, ctx: &ItemCtx<'_>) -> Option<Vec<Option<Shape>>> {
-        {
-            let padstack = self
-                .get_padstack(ctx)
-                .expect("Pin.getShape: Java NPEs on a null padstack (Pin.java:166,170)");
-            let count = layer_index(
-                padstack.to_layer() - padstack.from_layer() + 1,
-                "Pin.getShape",
-            );
-            let component = self.component(ctx)?;
-            let package = ctx.library.get_package(component.get_package());
-            let package_pin = package.get_pin(self.pin_index)?;
+    fn layer_shape_count(&self, ctx: &ItemCtx<'_>) -> usize {
+        layer_shape_count_of(self, ctx)
+    }
 
-            let component_rotation = component.get_rotation_in_degree();
-            let mirror_on_y_axis =
-                !component.placed_on_front() && !ctx.components.get_flip_style_rotate_first();
-            let rel_location = if mirror_on_y_axis {
-                package_pin.relative_location.mirror_at_y_axis()
-            } else {
-                package_pin.relative_location.clone()
-            };
-            let component_translation = component
-                .get_location()
-                .expect("Pin.getShape: Java NPEs on an unplaced component (Pin.java:197)")
-                .difference_by(&Point::ZERO);
-
-            let mut shapes: Vec<Option<Shape>> = Vec::with_capacity(count);
-            for shape_index in 0..count {
-                let padstack_layer = self.get_padstack_layer(shape_index as i32, ctx);
-                let Some(base) = padstack.get_shape(padstack_layer) else {
-                    shapes.push(None);
-                    continue;
-                };
-                let pin_rotation = package_pin.rotation_in_degree;
-                let mut current_shape = if pin_rotation % 90.0 == 0.0 {
-                    let factor = pin_rotation as i32 / 90;
-                    if factor == 0 {
-                        base.clone()
-                    } else {
-                        base.turn_90_degree(factor, &IntPoint::ZERO)
-                    }
-                } else {
-                    base.rotate_approx(pin_rotation.to_radians(), &FloatPoint::ZERO)
-                };
-                if mirror_on_y_axis {
-                    current_shape = current_shape.mirror_vertical(&IntPoint::ZERO);
-                }
-                let mut translated_shape = current_shape.translate_by(&rel_location);
-                if component_rotation % 90.0 == 0.0 {
-                    let factor = component_rotation as i32 / 90;
-                    if factor != 0 {
-                        translated_shape = translated_shape.turn_90_degree(factor, &IntPoint::ZERO);
-                    }
-                } else {
-                    translated_shape = translated_shape
-                        .rotate_approx(component_rotation.to_radians(), &FloatPoint::ZERO);
-                }
-                if !component.placed_on_front() && ctx.components.get_flip_style_rotate_first() {
-                    translated_shape = translated_shape.mirror_vertical(&IntPoint::ZERO);
-                }
-                shapes.push(Some(translated_shape.translate_by(&component_translation)));
-            }
-            Some(shapes)
+    fn calculate_extra_shape_layers(&self, ctx: &ItemCtx<'_>) -> Vec<usize> {
+        let Some(padstack) = self.get_padstack(ctx) else {
+            return Vec::new();
+        };
+        if !padstack.has_extra_shapes() || self.component(ctx).is_none() {
+            return Vec::new();
         }
+        let first_layer = first_layer_of(self, ctx);
+        (0..self.layer_shape_count(ctx))
+            .flat_map(|shape_index| {
+                let padstack_layer = self.get_padstack_layer(shape_index as i32, ctx);
+                let count = padstack.get_extra_shapes(padstack_layer).len();
+                std::iter::repeat_n(first_layer + shape_index, count)
+            })
+            .collect()
+    }
+
+    fn calculate_shapes(&self, ctx: &ItemCtx<'_>) -> Option<Vec<Option<Shape>>> {
+        let padstack = self
+            .get_padstack(ctx)
+            .expect("Pin.getShape: Java NPEs on a null padstack (Pin.java:166,170)");
+        let count = self.layer_shape_count(ctx);
+        let component = self.component(ctx)?;
+        let package = ctx.library.get_package(component.get_package());
+        let package_pin = package.get_pin(self.pin_index)?;
+
+        let component_rotation = component.get_rotation_in_degree();
+        let mirror_on_y_axis =
+            !component.placed_on_front() && !ctx.components.get_flip_style_rotate_first();
+        let rel_location = if mirror_on_y_axis {
+            package_pin.relative_location.mirror_at_y_axis()
+        } else {
+            package_pin.relative_location.clone()
+        };
+        let component_translation = component
+            .get_location()
+            .expect("Pin.getShape: Java NPEs on an unplaced component (Pin.java:197)")
+            .difference_by(&Point::ZERO);
+
+        let place = |base: &Shape| -> Shape {
+            let pin_rotation = package_pin.rotation_in_degree;
+            let mut current_shape = if pin_rotation % 90.0 == 0.0 {
+                let factor = pin_rotation as i32 / 90;
+                if factor == 0 {
+                    base.clone()
+                } else {
+                    base.turn_90_degree(factor, &IntPoint::ZERO)
+                }
+            } else {
+                base.rotate_approx(pin_rotation.to_radians(), &FloatPoint::ZERO)
+            };
+            if mirror_on_y_axis {
+                current_shape = current_shape.mirror_vertical(&IntPoint::ZERO);
+            }
+            let mut translated_shape = current_shape.translate_by(&rel_location);
+            if component_rotation % 90.0 == 0.0 {
+                let factor = component_rotation as i32 / 90;
+                if factor != 0 {
+                    translated_shape = translated_shape.turn_90_degree(factor, &IntPoint::ZERO);
+                }
+            } else {
+                translated_shape = translated_shape
+                    .rotate_approx(component_rotation.to_radians(), &FloatPoint::ZERO);
+            }
+            if !component.placed_on_front() && ctx.components.get_flip_style_rotate_first() {
+                translated_shape = translated_shape.mirror_vertical(&IntPoint::ZERO);
+            }
+            translated_shape.translate_by(&component_translation)
+        };
+
+        let padstack_layers: Vec<i32> = (0..count)
+            .map(|shape_index| self.get_padstack_layer(shape_index as i32, ctx))
+            .collect();
+        let mut shapes: Vec<Option<Shape>> = padstack_layers
+            .iter()
+            .map(|&layer| padstack.get_shape(layer).map(place))
+            .collect();
+        shapes.extend(
+            padstack_layers
+                .iter()
+                .flat_map(|&layer| padstack.get_extra_shapes(layer))
+                .map(|shape| Some(place(shape))),
+        );
+        Some(shapes)
+    }
+
+    pub fn shapes_on_layer(&self, layer: usize, ctx: &ItemCtx<'_>) -> Vec<Shape> {
+        let Some(primary) = self.get_shape_on_layer(layer, ctx) else {
+            return Vec::new();
+        };
+        let layer_count = self.layer_shape_count(ctx);
+        let mut result = vec![primary];
+        result.extend(
+            self.extra_shape_layers(ctx)
+                .iter()
+                .enumerate()
+                .filter(|&(_, &extra_layer)| extra_layer == layer)
+                .filter_map(|(i, _)| self.get_shape(layer_count + i, ctx)),
+        );
+        result
     }
 
     pub fn get_shape_on_layer(&self, layer: usize, ctx: &ItemCtx<'_>) -> Option<Shape> {
@@ -1039,6 +1102,7 @@ impl Pin {
         self.hdr.clear_derived_data();
         self.drill.clear_derived_data();
         self.shapes.take();
+        self.extra_shape_layers.take();
     }
 }
 
@@ -1050,6 +1114,9 @@ fn net_no_of_pin(pin: &Pin) -> i32 {
     }
 }
 
+/// Keeps a trace end placed on a pad piece strictly inside its copper after rounding.
+const PAD_PIECE_CONNECTION_MARGIN: f64 = 10.0;
+
 impl Connectable for Pin {
     fn header(&self) -> &ItemHeader {
         &self.hdr
@@ -1058,10 +1125,24 @@ impl Connectable for Pin {
     fn get_trace_connection_shape(
         &self,
         _tree: TreeId,
-        _index: usize,
+        index: usize,
         ctx: &ItemCtx<'_>,
     ) -> Option<TileShape> {
-        Some(trace_connection_shape_of(&self.get_center(ctx)))
+        if index < self.layer_shape_count(ctx) {
+            return Some(trace_connection_shape_of(&self.get_center(ctx)));
+        }
+        let piece = self.get_shape(index, ctx)?;
+        Some(match piece {
+            Shape::Tile(tile) => {
+                let inner = tile.offset(-PAD_PIECE_CONNECTION_MARGIN);
+                if inner.dimension() == 2 {
+                    inner
+                } else {
+                    trace_connection_shape_of(&Point::Int(tile.centre_of_gravity().round()))
+                }
+            }
+            other => trace_connection_shape_of(&Point::Int(other.centre_of_gravity().round())),
+        })
     }
 }
 

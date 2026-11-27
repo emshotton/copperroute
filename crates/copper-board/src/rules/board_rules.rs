@@ -14,6 +14,9 @@ pub struct BoardRules {
     pub strict_smd_via_attachment: bool,
     pub solder_mask_min_width: Option<i32>,
     pub allow_solder_mask_bridges_in_footprints: bool,
+    /// KiCad's rule: a trace ending anywhere inside pad copper is connected. Off, a trace
+    /// must end at the pad centre, unless the pad has several copper pieces.
+    pub trace_ends_anywhere_in_pads: bool,
     pub via_rules: Vec<ViaRule>,
     pub net_classes: NetClasses,
     pub drc_constraints: Option<DrcConstraints>,
@@ -37,6 +40,7 @@ impl BoardRules {
             strict_smd_via_attachment: false,
             solder_mask_min_width: None,
             allow_solder_mask_bridges_in_footprints: false,
+            trace_ends_anywhere_in_pads: false,
             via_rules: Vec::new(),
             net_classes: NetClasses::new(),
             drc_constraints: None,

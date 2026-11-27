@@ -141,10 +141,12 @@ subset of the native S-expression format into that existing representation.
   rejected. Deselecting the option rejects copper zones but still allows these
   non-routing keepout areas.
 - Offset pad copper is translated in its local coordinate system while the hole
-  stays at the pad anchor. Custom pad copper is the convex hull of every primitive
-  (polygon, line, rectangle, arc and circle) inflated by its stroke, together with
-  the circular or rectangular anchor, approximated within 0.005 mm. A pad that is
-  not a single convex filled outline warns that its hull can overstate its copper.
+  stays at the pad anchor. Custom pad copper keeps its real outline: the
+  circular or rectangular anchor holds the pad centre, and every primitive (polygon,
+  line, rectangle, arc and circle, filled or outlined) adds its own copper beside it,
+  inflated by its stroke and approximated within 0.005 mm. Concave pads are split
+  into convex pieces, so traces of other nets can use the notches. Traces still
+  attach at the pad centre.
   Trapezoid pads are imported as their four corners.
 - Copper text is reserved using conservative rectangles. Footprint copper
   rectangles include their stroke and reserve their entire interior. Original

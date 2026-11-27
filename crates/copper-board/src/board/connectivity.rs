@@ -1,7 +1,7 @@
 //! |---|---|
 use std::collections::BTreeSet;
 
-use copper_geometry::{Point, TileShape};
+use copper_geometry::{Point, ShapeOps, TileShape};
 
 use crate::datastructures::StopCheck;
 use crate::error::BoardError;
@@ -194,7 +194,7 @@ impl Board {
                     other_trace.first_corner().as_ref() == Some(point)
                         || other_trace.last_corner().as_ref() == Some(point)
                 }
-                Item::Via(_) | Item::Pin(_) => self.drill_center(other_id).as_ref() == Some(point),
+                Item::Via(_) | Item::Pin(_) => self.holds_trace_end(other_id, point, layer),
                 Item::ConductionArea(area) => area.get_area(&ctx).contains(point),
                 _ => false,
             };
@@ -203,6 +203,22 @@ impl Board {
             }
         }
         result
+    }
+
+    pub fn holds_trace_end(&self, id: ItemId, point: &Point, layer: usize) -> bool {
+        match self.items.get(&id) {
+            Some(Item::Pin(pin)) => {
+                let ctx = self.ctx();
+                pin.get_center(&ctx) == *point
+                    || (self.pin_accepts_trace_ends_inside(pin)
+                        && pin
+                            .shapes_on_layer(layer, &ctx)
+                            .iter()
+                            .any(|shape| shape.contains(point)))
+            }
+            Some(Item::Via(via)) => via.get_center() == *point,
+            _ => false,
+        }
     }
 
     pub fn trace_start_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
@@ -225,6 +241,13 @@ impl Board {
         }
     }
 
+    fn pin_accepts_trace_ends_inside(&self, pin: &crate::items::Pin) -> bool {
+        self.rules.trace_ends_anywhere_in_pads
+            || pin
+                .get_padstack(&self.ctx())
+                .is_some_and(crate::library::Padstack::has_extra_shapes)
+    }
+
     fn drill_item_normal_contacts(&self, id: ItemId) -> BTreeSet<ItemId> {
         let mut result = BTreeSet::new();
         let Some(drill_center) = self.drill_center(id) else {
@@ -232,6 +255,32 @@ impl Board {
         };
         let item = &self.items[&id];
         let ctx = self.ctx();
+        if let Item::Pin(pin) = item
+            && self.pin_accepts_trace_ends_inside(pin)
+        {
+            for layer in pin.first_layer(&ctx)..=pin.last_layer(&ctx) {
+                for shape in pin.shapes_on_layer(layer, &ctx) {
+                    for object in self.overlapping_objects(&shape.bounding_tile(), Some(layer)) {
+                        let TreeObject::Item(other_id) = object else {
+                            continue;
+                        };
+                        let Some(Item::Trace(trace)) = self.items.get(&other_id) else {
+                            continue;
+                        };
+                        if trace.get_layer() == layer
+                            && other_id != id
+                            && self.items[&other_id].shares_net(item)
+                            && [trace.first_corner(), trace.last_corner()]
+                                .into_iter()
+                                .flatten()
+                                .any(|corner| self.holds_trace_end(id, &corner, layer))
+                        {
+                            result.insert(other_id);
+                        }
+                    }
+                }
+            }
+        }
         let search_shape = TileShape::Box(TileShape::get_instance_from_point(&drill_center));
         for object in self.overlapping_objects(&search_shape, None) {
             let TreeObject::Item(other_id) = object else {
@@ -362,9 +411,15 @@ impl Board {
             return None;
         }
         let drill_center = self.drill_center(drill_id)?;
-        (trace.first_corner().as_ref() == Some(&drill_center)
-            || trace.last_corner().as_ref() == Some(&drill_center))
-        .then_some(drill_center)
+        if trace.first_corner().as_ref() == Some(&drill_center)
+            || trace.last_corner().as_ref() == Some(&drill_center)
+        {
+            return Some(drill_center);
+        }
+        [trace.first_corner(), trace.last_corner()]
+            .into_iter()
+            .flatten()
+            .find(|corner| self.holds_trace_end(drill_id, corner, trace.get_layer()))
     }
 
     pub fn first_common_layer(&self, a: ItemId, b: ItemId) -> Option<usize> {

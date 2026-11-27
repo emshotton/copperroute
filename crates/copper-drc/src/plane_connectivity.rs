@@ -509,8 +509,10 @@ fn clear_around_other_nets(
                 .get_shape_on_layer(layer, ctx)
                 .map_or_else(Vec::new, |shape| Outline::of_shape(&shape)),
             Item::Pin(pin) if item.is_on_layer(layer, ctx) => pin
-                .get_shape_on_layer(layer, ctx)
-                .map_or_else(Vec::new, |shape| Outline::of_shape(&shape)),
+                .shapes_on_layer(layer, ctx)
+                .iter()
+                .flat_map(Outline::of_shape)
+                .collect(),
             Item::ConductionArea(area) if area.get_layer() == layer => area
                 .split_to_convex(ctx)
                 .unwrap_or_default()
@@ -611,7 +613,7 @@ fn paint_plane_net_items(
                 }
             }
             Item::Pin(pin) if item.is_on_layer(layer, ctx) => {
-                if let Some(shape) = pin.get_shape_on_layer(layer, ctx) {
+                for shape in pin.shapes_on_layer(layer, ctx) {
                     for outline in Outline::of_shape(&shape) {
                         raster.for_each_cell_near_outline(&outline, touch, |owner, _| *owner = net);
                     }
